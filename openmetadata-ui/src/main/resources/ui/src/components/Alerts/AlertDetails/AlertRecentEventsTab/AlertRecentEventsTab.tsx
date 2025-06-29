@@ -27,7 +27,6 @@ import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
-import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -76,7 +75,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     handlePageSizeChange,
     showPagination,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_BASE);
+  } = usePaging();
 
   const { id, alertName } = useMemo(
     () => ({

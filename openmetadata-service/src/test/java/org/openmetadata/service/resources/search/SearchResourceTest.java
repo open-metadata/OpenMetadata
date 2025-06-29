@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,8 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -831,6 +834,21 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
       case "/" -> "slash";
       default -> "unknown";
     };
+
+@Test 
+public void testListMapping(TestInfo test) {
+    IndexMappingLoader indexMappingLoader = IndexMappingLoader.getInstance();
+    Map<String, IndexMapping> indexMapping = indexMappingLoader.getIndexMapping();
+
+    assertNotNull(indexMapping, "Index mapping should not be null");
+    IndexMapping tableIndexMapping = indexMapping.get("table");
+    assertNotNull(tableIndexMapping, "Table index mapping should not be null");
+
+    Map<String, Map<String, Object>> entityIndexMapping =
+        indexMappingLoader.getEntityIndexMapping();
+    assertNotNull(entityIndexMapping, "Entity index mapping should not be null");
+    Map<String, Object> tableMapping = entityIndexMapping.get("table");
+    assertNotNull(tableMapping, "Table mapping should not be null");
   }
 
   private Response searchWithQuery(String query, String index) {

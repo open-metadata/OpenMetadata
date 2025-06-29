@@ -244,6 +244,19 @@ function buildParameters(queryType, value, operator, fieldName, config) {
  */
 function buildEsRule(fieldName, value, operator, config, valueSrc) {
   if (!fieldName || !operator || value == undefined) return undefined; // rule is not fully entered
+
+  // Check if field has custom elasticsearch field mapping or handle extension fields
+  let actualFieldName = fieldName;
+  let isNestedExtensionField = false;
+  let entityType = null;
+
+  if (fieldName.startsWith('extension.') && fieldName.split('.').length >= 3) {
+    const parts = fieldName.split('.');
+    entityType = parts[1];
+    actualFieldName = `${parts[0]}.${parts.slice(2).join('.')}`;
+    isNestedExtensionField = true;
+  }
+
   let op = operator;
   let opConfig = config.operators[op];
   if (!opConfig) return undefined; // unknown operator
@@ -286,15 +299,17 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
       queryType,
       value,
       op,
-      fieldName,
+      actualFieldName,
       config
     );
   } else {
-    parameters = buildParameters(queryType, value, op, fieldName, config);
+    parameters = buildParameters(queryType, value, op, actualFieldName, config);
   }
 
+  // Build the main query
+  let mainQuery;
   if (not) {
-    return {
+    mainQuery = {
       bool: {
         must_not: {
           [queryType]: { ...parameters },
@@ -302,10 +317,28 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
       },
     };
   } else {
-    return {
+    mainQuery = {
       [queryType]: { ...parameters },
     };
   }
+
+  // For nested extension fields, combine with entityType filter
+  if (isNestedExtensionField && entityType) {
+    return {
+      bool: {
+        must: [
+          mainQuery,
+          {
+            term: {
+              entityType: entityType,
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  return mainQuery;
 }
 
 /**

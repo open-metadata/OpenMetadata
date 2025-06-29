@@ -1,5 +1,5 @@
 ---
-title: Observability Alerts
+title: Observability Alerts | OpenMetadata Alerting Guide
 slug: /how-to-guides/data-quality-observability/observability/alerts
 ---
 

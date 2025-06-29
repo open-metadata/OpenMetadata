@@ -90,6 +90,8 @@ test.describe('Domains', () => {
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
     await classification.create(apiContext);
@@ -116,6 +118,8 @@ test.describe('Domains', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.delete(apiContext);
     await classification.delete(apiContext);
@@ -898,6 +902,10 @@ test.describe('Data Consumer Domain Ownership', () => {
       async () => {
         await sidebarClick(dataConsumerPage, SidebarItem.DOMAIN);
         await selectDomain(dataConsumerPage, testResources.domainForTest.data);
+
+        await dataConsumerPage.locator('[data-testid="loader"]').waitFor({
+          state: 'detached',
+        });
 
         await dataConsumerPage.getByTestId('domain-details-add-button').click();
 

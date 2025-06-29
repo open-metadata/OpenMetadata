@@ -70,7 +70,7 @@ export const DomainExpertWidget = () => {
         data-testid="domain-expert-heading-name">
         {t('label.expert-plural')}
       </Typography.Text>
-      {editOwnerPermission && (
+      {!isVersionView && editOwnerPermission && (
         <UserSelectableList
           hasPermission
           popoverProps={{ placement: 'topLeft' }}
