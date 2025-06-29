@@ -26,6 +26,7 @@ import org.openmetadata.schema.entity.applications.configuration.internal.Servic
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -175,7 +176,7 @@ public class RunAppImpl {
             .triggerApplicationOnDemand(
                 app, Entity.getCollectionDAO(), Entity.getSearchRepository(), config);
         break;
-      } catch (UnhandledServerException e) {
+      } catch (JsonParsingException | UnhandledServerException e) {
         if (e.getMessage().contains("Job is already running")) {
           attempt++;
           if (attempt >= maxRetries) {
