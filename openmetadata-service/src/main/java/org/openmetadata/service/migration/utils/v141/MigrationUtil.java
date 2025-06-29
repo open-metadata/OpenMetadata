@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.AnnouncementDetails;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {

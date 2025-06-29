@@ -64,6 +64,7 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.BadRequestException;
@@ -800,7 +801,7 @@ public class UserRepository extends EntityRepository<User> {
           .forEach(
               teamRef -> {
                 EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
-                searchRepository.updateEntity(team);
+                searchRepository.updateEntityIndex(team);
               });
     }
 

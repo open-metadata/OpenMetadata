@@ -16,9 +16,11 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import './domain-select-dropdown.less';
@@ -64,6 +66,7 @@ const DomainSelectableList = ({
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
+  const { isVersionView } = useGenericContext<Domain>();
 
   const selectedDomainsList = useMemo(() => {
     if (selectedDomain) {
@@ -123,19 +126,20 @@ const DomainSelectableList = ({
         trigger="click"
         onOpenChange={setPopupVisible}
         {...popoverProps}>
-        {children ?? (
-          <EditIconButton
-            newLook
-            data-testid="add-domain"
-            disabled={!hasPermission}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.domain'),
-            })}
-            onClick={(e) => e.stopPropagation()}
-          />
-        )}
+        {children ??
+          (!isVersionView && (
+            <EditIconButton
+              newLook
+              data-testid="add-domain"
+              disabled={!hasPermission}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.domain'),
+              })}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ))}
       </Popover>
     );
   }, [
@@ -148,6 +152,7 @@ const DomainSelectableList = ({
     popoverProps,
     popupVisible,
     selectedDomainsList,
+    isVersionView,
   ]);
 
   if (wrapInButton) {

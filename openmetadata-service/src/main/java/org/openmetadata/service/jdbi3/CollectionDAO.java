@@ -143,6 +143,7 @@ import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
@@ -155,7 +156,6 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindConcat;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindJsonContains;
@@ -5883,6 +5883,27 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT 42")
     Integer testConnection() throws StatementException;
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_EXTRACT(json, '$.fullyQualifiedName') FROM <table> WHERE id NOT IN ( SELECT toId FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json ->> 'fullyQualifiedName' FROM <table> WHERE id NOT IN ( SELECT toId FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity)",
+        connectionType = POSTGRES)
+    List<String> getBrokenRelationFromParentToChild(
+        @Define("table") String tableName,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity);
+
+    @SqlUpdate(
+        value =
+            "DELETE FROM <table> WHERE id NOT IN (SELECT toId FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity)")
+    int deleteBrokenRelationFromParentToChild(
+        @Define("table") String tableName,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity);
   }
 
   class SettingsRowMapper implements RowMapper<Settings> {

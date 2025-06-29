@@ -169,7 +169,9 @@ test.describe('Activity feed', () => {
     await page.getByTestId('request-entity-tags').click();
 
     // create tag task
+    const openTaskAfterTagResponse = page.waitForResponse(TASK_OPEN_FETCH_LINK);
     await createTagTask(page, { ...value, tag: 'PII.None' });
+    await openTaskAfterTagResponse;
 
     await redirectToHomePage(page);
 
@@ -413,6 +415,9 @@ test.describe('Activity feed', () => {
 
     expect(descriptionTask).toContain('Request to update description');
 
+    // check initial replies count
+    await expect(page.getByTestId('replies-count')).not.toBeVisible();
+
     for (let i = 0; i < 10; i++) {
       const commentInput = page.locator('[data-testid="comments-input-field"]');
       commentInput.click();
@@ -439,6 +444,9 @@ test.describe('Activity feed', () => {
         page.locator('.right-container [data-testid="feed-replies"]')
       ).toContainText(`Reply message ${i}`);
     }
+
+    // check replies count in feed card
+    await expect(page.getByTestId('replies-count')).toHaveText('10 Replies');
   });
 
   test('Open and Closed Task Tab with approve from Task Feed Card', async ({
@@ -583,11 +591,14 @@ test.describe('Activity feed', () => {
 
       // Create task for the user 1
       await page2.getByTestId('request-entity-tags').click();
+      const openTaskAfterTagResponse =
+        page2.waitForResponse(TASK_OPEN_FETCH_LINK);
       await createTagTask(page2, {
         term: entity.entity.displayName,
         tag: 'PII.None',
         assignee: user1.responseData.name,
       });
+      await openTaskAfterTagResponse;
 
       await redirectToHomePage(page2);
       const taskResponse = page2.waitForResponse(
@@ -737,7 +748,10 @@ base.describe('Activity feed with Data Consumer User', () => {
       await page1.getByTestId('request-entity-tags').click();
 
       // create tag task
+      const openTaskAfterTagResponse =
+        page1.waitForResponse(TASK_OPEN_FETCH_LINK);
       await createTagTask(page1, { ...value, tag: 'PII.None' });
+      await openTaskAfterTagResponse;
 
       // Should only see the close button
       expect(page1.locator('[data-testid="close-button"]')).toBeVisible();
@@ -854,7 +868,10 @@ base.describe('Activity feed with Data Consumer User', () => {
       await page1.getByTestId('request-entity-tags').click();
 
       // create tag task
+      const openTaskAfterTagResponse =
+        page1.waitForResponse(TASK_OPEN_FETCH_LINK);
       await createTagTask(page1, value, false);
+      await openTaskAfterTagResponse;
 
       await page1.waitForLoadState('networkidle');
 

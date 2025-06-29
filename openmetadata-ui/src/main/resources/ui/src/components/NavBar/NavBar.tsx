@@ -45,10 +45,10 @@ import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-side
 import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
   DEFAULT_DOMAIN_VALUE,
+  LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
   ONE_HOUR_MS,
   SOCKET_EVENTS,
-  VERSION_FETCH_TIME_KEY,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
@@ -130,22 +130,16 @@ const NavBar = () => {
   } = useCurrentUserPreferences();
 
   const fetchOMVersion = async () => {
-    // If version fetch happens within an hour, skip fetching
-    const lastFetchTime = cookieStorage.getItem(VERSION_FETCH_TIME_KEY);
-    const now = Date.now();
-
-    if (lastFetchTime && now - Number(lastFetchTime) < ONE_HOUR_MS) {
-      // Less than an hour since last fetch, skip fetching
-      return;
-    }
-
     try {
       const res = await getVersion();
-      setVersion(res.version);
-      // Set/update the cookie with current time, expires in 1 hour
-      cookieStorage.setItem(VERSION_FETCH_TIME_KEY, String(now), {
-        expires: new Date(now + ONE_HOUR_MS),
+
+      const now = Date.now();
+      // Update the cache timestamp
+      cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
+        expires: new Date(Date.now() + ONE_HOUR_MS),
       });
+
+      setVersion(res.version);
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -325,7 +319,27 @@ const NavBar = () => {
       ) {
         return;
       }
+
+      // Check if we need to fetch based on cache timing
+      // This is to block the API call for 1 hour
+      const lastFetchTime = cookieStorage.getItem(LAST_VERSION_FETCH_TIME_KEY);
+      const now = Date.now();
+
+      if (lastFetchTime) {
+        const timeSinceLastFetch = now - parseInt(lastFetchTime);
+        if (timeSinceLastFetch < ONE_HOUR_MS) {
+          // Less than 1 hour since last fetch, skip API call
+          return;
+        }
+      }
+
       const newVersion = await getVersion();
+
+      // Update the cache timestamp
+      cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
+        expires: new Date(Date.now() + ONE_HOUR_MS),
+      });
+
       // Compare version only if version is set previously to have fair comparison
       if (version && version !== newVersion.version) {
         setShowVersionMissMatchAlert(true);

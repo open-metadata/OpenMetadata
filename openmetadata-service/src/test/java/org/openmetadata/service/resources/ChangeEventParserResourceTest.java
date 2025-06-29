@@ -43,13 +43,13 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.TagLabel.State;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 @TestInstance(Lifecycle.PER_CLASS)
