@@ -11,13 +11,46 @@
  *  limitations under the License.
  */
 import { ConfigProvider } from 'antd';
-import React, { FC, ReactNode } from 'react';
+import React, { FC, ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_THEME } from '../../constants/Appearance.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { generatePalette } from '../../styles/colorPallet';
 
 const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
   const { applicationConfig } = useApplicationStore();
+
+  useEffect(() => {
+    const palette = generatePalette(
+      applicationConfig?.customTheme?.primaryColor ?? DEFAULT_THEME.primaryColor
+    );
+    palette.forEach((color, index) => {
+      switch (index) {
+        case 0:
+          document.documentElement.style.setProperty(`--ant-primary-25`, color);
+
+          break;
+        case 1:
+          document.documentElement.style.setProperty(`--ant-primary-50`, color);
+
+          break;
+        default:
+          document.documentElement.style.setProperty(
+            `--ant-primary-${index - 1}`,
+            color
+          );
+      }
+    });
+    document.documentElement.style.setProperty(
+      `--ant-primary-color-hover`,
+      palette[6]
+    );
+    document.documentElement.style.setProperty(
+      `--ant-primary-color-active`,
+      palette[8]
+    );
+  }, [applicationConfig?.customTheme?.primaryColor]);
 
   ConfigProvider.config({
     theme: {
