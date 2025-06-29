@@ -1,5 +1,5 @@
 ---
-title: testSuitePipeline
+title: testSuitePipeline | OpenMetadata Test Suite Pipeline
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/testsuitepipeline
 ---
 

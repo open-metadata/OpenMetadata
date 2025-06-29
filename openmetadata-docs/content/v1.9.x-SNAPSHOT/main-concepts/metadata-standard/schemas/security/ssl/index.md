@@ -1,5 +1,5 @@
 ---
-title: index
+title: SSL Schema | OpenMetadata SSL Schema Overview
 slug: /main-concepts/metadata-standard/schemas/security/ssl
 ---
 

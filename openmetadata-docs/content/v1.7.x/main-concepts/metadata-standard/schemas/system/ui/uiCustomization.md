@@ -1,5 +1,5 @@
 ---
-title: uiCustomization
+title: uiCustomization | OpenMetadata UI Customization
 slug: /main-concepts/metadata-standard/schemas/system/ui/uicustomization
 ---
 

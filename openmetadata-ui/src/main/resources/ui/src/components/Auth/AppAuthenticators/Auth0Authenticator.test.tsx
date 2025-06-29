@@ -12,7 +12,7 @@
  */
 
 import { act, render } from '@testing-library/react';
-import React, { createRef } from 'react';
+import { createRef } from 'react';
 import { AccessTokenResponse } from '../../../rest/auth-API';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';

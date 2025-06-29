@@ -12,7 +12,7 @@
  */
 
 import { Button, Col, Form, Input, Row, Select, Switch } from 'antd';
-import React, { FocusEvent } from 'react';
+import { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import { TRANSPORTATION_STRATEGY_OPTIONS } from '../../../../constants/EmailConfig.constants';

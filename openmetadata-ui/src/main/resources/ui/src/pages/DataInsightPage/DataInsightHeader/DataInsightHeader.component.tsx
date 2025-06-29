@@ -12,9 +12,9 @@
  */
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import DataInsightSummary from '../../../components/DataInsight/DataInsightSummary';
@@ -29,6 +29,7 @@ import { DataInsightTabs } from '../../../interface/data-insight.interface';
 import { getOptionalDataInsightTabFlag } from '../../../utils/DataInsightUtils';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import dataInsightClassBase from '../DataInsightClassBase';
 import { useDataInsightProvider } from '../DataInsightProvider';
 import { DataInsightHeaderProps } from './DataInsightHeader.interface';
@@ -42,8 +43,8 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
     kpi,
   } = useDataInsightProvider();
 
-  const { tab } = useParams<{ tab: DataInsightTabs }>();
-  const history = useHistory();
+  const { tab } = useRequiredParams<{ tab: DataInsightTabs }>();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
 
@@ -66,7 +67,7 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   );
 
   const handleAddKPI = () => {
-    history.push(ROUTES.ADD_KPI);
+    navigate(ROUTES.ADD_KPI);
   };
 
   return (

@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { postKillIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import KillIngestionModal from './KillIngestionPipelineModal';
 import { KillIngestionModalProps } from './KillIngestionPipelineModal.interface';
@@ -37,10 +36,6 @@ jest.mock('../../../rest/ingestionPipelineAPI', () => ({
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
-}));
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
 }));
 
 describe('Test Kill Ingestion Modal component', () => {
@@ -71,19 +66,17 @@ describe('Test Kill Ingestion Modal component', () => {
   });
 
   it('Should call kill api on click of confirm button', async () => {
-    await act(async () => {
-      render(<KillIngestionModal {...mockProps} />);
+    render(<KillIngestionModal {...mockProps} />);
 
-      const confirmButton = await screen.findByText('label.confirm');
+    const confirmButton = await screen.findByText('label.confirm');
 
-      expect(confirmButton).toBeInTheDocument();
+    expect(confirmButton).toBeInTheDocument();
 
-      fireEvent.click(confirmButton);
+    fireEvent.click(confirmButton);
 
-      expect(postKillIngestionPipelineById).toHaveBeenCalledWith(
-        mockProps.pipelineId
-      );
-    });
+    expect(postKillIngestionPipelineById).toHaveBeenCalledWith(
+      mockProps.pipelineId
+    );
   });
 
   it('Should call onIngestionWorkflowsUpdate after killing the pipeline', async () => {

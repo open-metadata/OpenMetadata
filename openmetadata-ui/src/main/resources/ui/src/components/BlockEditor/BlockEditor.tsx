@@ -14,12 +14,7 @@ import { EditorContent } from '@tiptap/react';
 import classNames from 'classnames';
 import { isNil, isUndefined } from 'lodash';
 
-import React, {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-} from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   EDITOR_OPTIONS,

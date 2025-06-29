@@ -1,5 +1,5 @@
 ---
-title: icebergCatalog
+title: Iceberg Catalog | OpenMetadata Iceberg Catalog Configuration
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/iceberg/icebergcatalog
 ---
 

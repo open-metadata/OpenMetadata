@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import AddObservabilityPage from './AddObservabilityPage';
 
@@ -46,8 +45,7 @@ const MOCK_DATA = [
     provider: 'user',
   },
 ];
-const mockPush = jest.fn();
-const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../rest/observabilityAPI', () => ({
   getObservabilityAlertByFQN: jest.fn().mockImplementation(() =>
@@ -70,16 +68,7 @@ jest.mock('../../rest/observabilityAPI', () => ({
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
@@ -93,16 +82,17 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-    goBack: mockGoBack,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
+
+const mockProps = {
+  pageTitle: 'add-observability',
+};
 
 describe('Add ObservabilityPage Alerts Page Tests', () => {
   it('should render Add Observability Page', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -112,7 +102,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should display SubTitle', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -124,7 +114,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should render Add alert button', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -134,7 +124,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should display the correct breadcrumb', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -147,7 +137,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should navigate back when the cancel button is clicked', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -158,6 +148,6 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
       fireEvent.click(cancelButton);
     });
 
-    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 });
