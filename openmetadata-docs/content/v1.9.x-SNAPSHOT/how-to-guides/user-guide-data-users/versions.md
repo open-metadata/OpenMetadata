@@ -1,5 +1,5 @@
 ---
-title: Data Asset Versioning
+title: Data Asset Versioning | OpenMetadata Version Control Guide
 slug: /how-to-guides/guide-for-data-users/versions
 ---
 
@@ -14,7 +14,7 @@ Metadata versioning helps **simplify debugging processes**. View the version his
 Versioning also helps in **broader collaboration** among consumers and producers of data. Admins can provide access to more users in the organization to change certain fields. Crowd-sourcing makes metadata the collective responsibility of the entire organization.
 
 {% image
-  src="/images/v1.9features/ingestion/versioning/metadata-versioning.gif"
+  src="/images/v1.9/features/ingestion/versioning/metadata-versioning.gif"
   alt="Metadata versioning"
   caption="Metadata Versioning"
  /%}
@@ -22,7 +22,7 @@ Versioning also helps in **broader collaboration** among consumers and producers
 OpenMetadata versions all the changes to the metadata to capture the evolution of data over time in the Versions History. This is tracked for all the data assets. OpenMetadata also captures the metadata changes at the source. Click on the Versions icon to see the Version History of your data.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/v1.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/v1.png"
 alt="Version History Icon"
 caption="Version History Icon"
 /%}
@@ -30,7 +30,7 @@ caption="Version History Icon"
 If a user adds a description to a column that is recorded as a **Minor version** change by incrementing the version number by 0.1. When description, owner, or tags are added, updated, or removed the minor version changes are recorded. These are backward-compatible changes. When a column is deleted at the source, OpenMetadata captures it as backward-incompatible change. To indicate that, the **major version** is changed by incrementing the version number by 1.0.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/v2.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/v2.png"
 alt="Version History"
 caption="Version History"
 /%}

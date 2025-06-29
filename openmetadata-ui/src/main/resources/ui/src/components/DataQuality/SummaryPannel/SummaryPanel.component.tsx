@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as TestCaseAbortedIcon } from '../../../assets/svg/aborted-status.svg';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/all-activity-v2.svg';

@@ -175,9 +175,11 @@ import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -196,7 +198,6 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -1121,29 +1122,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
-    if (supportsSearch) {
-      searchRepository.createEntity(entity);
-    }
+    EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
   }
 
   protected void postCreate(List<T> entities) {
-    if (supportsSearch) {
-      searchRepository.createEntities((List<EntityInterface>) entities);
+    for (T entity : entities) {
+      EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
     }
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
-    if (supportsSearch) {
-      searchRepository.updateEntity(updated);
-    }
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntityUpdated(updated, updated.getChangeDescription(), null);
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T updated) {
-    if (supportsSearch) {
-      searchRepository.updateEntity(updated);
-    }
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntityUpdated(updated, updated.getChangeDescription(), null);
   }
 
   @Transaction
@@ -1384,19 +1381,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postDelete(T entity) {}
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
-    if (supportsSearch) {
-      if (hardDelete) {
-        searchRepository.deleteEntity(entity);
-      } else {
-        searchRepository.softDeleteOrRestoreEntity(entity, true);
-      }
+    if (hardDelete) {
+      // Hard delete - dispatch delete event
+      EntityLifecycleEventDispatcher.getInstance().onEntityDeleted(entity, null);
+    } else {
+      // Soft delete - dispatch soft delete event
+      EntityLifecycleEventDispatcher.getInstance()
+          .onEntitySoftDeletedOrRestored(entity, true, null);
     }
   }
 
   public final void restoreFromSearch(T entity) {
-    if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntity(entity, false);
-    }
+    // Dispatch entity restore event
+    EntityLifecycleEventDispatcher.getInstance().onEntitySoftDeletedOrRestored(entity, false, null);
   }
 
   public ResultList<T> listFromSearchWithOffset(
@@ -2710,7 +2707,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
       // Update ES
-      searchRepository.updateEntity(ref);
+      EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(ref, null);
     }
 
     result.withSuccessRequest(success);

@@ -1,5 +1,5 @@
 ---
-title: fernetConfiguration
+title: Fernet Configuration | OpenMetadata Encryption Config
 slug: /main-concepts/metadata-standard/schemas/configuration/fernetconfiguration
 ---
 

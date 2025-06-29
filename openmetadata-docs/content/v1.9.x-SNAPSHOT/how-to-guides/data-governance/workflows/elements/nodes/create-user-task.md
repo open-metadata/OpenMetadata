@@ -21,4 +21,4 @@ After you define a **Display Name** and a **Description** for this node, you can
 
 We can see an example of this node's configuration below:
 
-{% image src="/images/v1.9how-to-guides/governance/workflows-create-user-task.png" alt="create-user-task" /%}
+{% image src="/images/v1.9/how-to-guides/governance/workflows-create-user-task.png" alt="create-user-task" /%}

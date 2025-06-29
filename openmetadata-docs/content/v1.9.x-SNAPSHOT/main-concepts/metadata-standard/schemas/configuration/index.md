@@ -1,5 +1,5 @@
 ---
-title: index
+title: Configuration Schemas | OpenMetadata Configuration
 slug: /main-concepts/metadata-standard/schemas/configuration
 ---
 

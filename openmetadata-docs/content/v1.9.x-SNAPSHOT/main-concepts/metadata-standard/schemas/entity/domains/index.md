@@ -1,5 +1,5 @@
 ---
-title: index
+title: Domains Schema | OpenMetadata Domains Schema and API
 slug: /main-concepts/metadata-standard/schemas/entity/domains
 ---
 

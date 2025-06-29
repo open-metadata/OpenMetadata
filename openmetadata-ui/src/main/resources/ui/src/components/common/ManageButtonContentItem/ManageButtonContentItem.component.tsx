@@ -14,7 +14,6 @@
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { noop } from 'lodash';
-import React from 'react';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
 
 export const ManageButtonItemLabel = ({

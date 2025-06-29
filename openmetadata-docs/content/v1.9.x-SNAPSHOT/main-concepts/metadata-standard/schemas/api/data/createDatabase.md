@@ -1,5 +1,5 @@
 ---
-title: createDatabase
+title: Create Database API | OpenMetadata Database API
 slug: /main-concepts/metadata-standard/schemas/api/data/createdatabase
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: testSuite
+title: Test Suite | OpenMetadata Test Suite Details
 slug: /main-concepts/metadata-standard/schemas/tests/testsuite
 ---
 

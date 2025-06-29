@@ -36,7 +36,13 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await domain.create(apiContext);
   await table.visitEntityPage(page);
   await assignDomain(page, domain.data);
-  await assignTag(page, 'PersonalData.Personal');
+  await assignTag(
+    page,
+    'PersonalData.Personal',
+    'Add',
+    table.endpoint,
+    'KnowledgePanel.Tags'
+  );
   await afterAction();
 });
 

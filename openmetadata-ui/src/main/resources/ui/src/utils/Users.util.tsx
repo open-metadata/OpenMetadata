@@ -14,9 +14,7 @@
 import { Popover, Skeleton, Space, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
@@ -25,6 +23,7 @@ import { MASKED_EMAIL } from '../constants/User.constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { getIsErrorMatch } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
+import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 

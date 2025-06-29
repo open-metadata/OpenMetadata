@@ -1,5 +1,5 @@
 ---
-title: customEvent
+title: Custom Event Schema | OpenMetadata Custom Analytics Event
 slug: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventtype/customevent
 ---
 

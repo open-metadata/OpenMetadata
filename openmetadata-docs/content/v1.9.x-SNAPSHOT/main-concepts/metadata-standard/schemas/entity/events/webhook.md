@@ -1,5 +1,5 @@
 ---
-title: webhook
+title: Webhook Schema | OpenMetadata Webhook Schema Details
 slug: /main-concepts/metadata-standard/schemas/entity/events/webhook
 ---
 

@@ -452,8 +452,9 @@ export const assignTag = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
-  tagFqn?: string,
-  parentId = 'KnowledgePanel.Tags'
+  endpoint: string,
+  parentId = 'KnowledgePanel.Tags',
+  tagFqn?: string
 ) => {
   await page
     .getByTestId(parentId)
@@ -473,11 +474,13 @@ export const assignTag = async (
     { state: 'visible' }
   );
 
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+  await patchRequest;
 
   await expect(
     page

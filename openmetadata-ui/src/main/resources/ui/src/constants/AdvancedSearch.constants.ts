@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { LabelType } from '../generated/type/tagLabel';
+import { t } from '../utils/i18next/LocalUtil';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {

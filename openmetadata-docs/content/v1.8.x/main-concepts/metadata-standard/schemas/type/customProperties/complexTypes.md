@@ -1,5 +1,5 @@
 ---
-title: complexTypes
+title: complexTypes | OpenMetadata Complex Types
 slug: /main-concepts/metadata-standard/schemas/type/customproperties/complextypes
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: createType
+title: Create Type API | OpenMetadata Type Creation API
 slug: /main-concepts/metadata-standard/schemas/api/createtype
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: index
+title: Private Config | OpenMetadata Private Config
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/private
 ---
 
