@@ -71,6 +71,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   onValidateFormRequiredFields,
   shouldValidateForm = true,
   showDetails = true,
+  onTestConnection,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -127,6 +128,13 @@ const TestConnection: FC<TestConnectionProps> = ({
     isTestingDisabled ||
     !allowTestConn ||
     !isAirflowAvailable;
+
+  // To display Next button When user is not allowed to test
+  useEffect(() => {
+    if (!isAirflowAvailable || !allowTestConn || isTestingDisabled) {
+      onTestConnection?.();
+    }
+  }, [isAirflowAvailable, allowTestConn, isTestingDisabled]);
 
   // data fetch handlers
 
@@ -364,6 +372,8 @@ const TestConnection: FC<TestConnectionProps> = ({
       if (workflowId) {
         await handleDeleteWorkflow(workflowId);
       }
+    } finally {
+      onTestConnection?.();
     }
   };
 

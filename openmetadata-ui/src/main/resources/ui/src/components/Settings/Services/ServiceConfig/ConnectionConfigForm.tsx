@@ -57,6 +57,7 @@ const ConnectionConfigForm = ({
 }: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
   const [ingestionRunner, setIngestionRunner] = useState<string | undefined>();
+  const [hasTestedConnection, setHasTestedConnection] = useState(false);
 
   const formRef = useRef<Form<ConfigData>>(null);
 
@@ -150,6 +151,10 @@ const ConnectionConfigForm = ({
     }
   }, [formRef.current?.state?.formData]);
 
+  const handleTestConnection = () => {
+    setHasTestedConnection(true);
+  };
+
   return (
     <Fragment>
       <AirflowMessageBanner />
@@ -157,6 +162,7 @@ const ConnectionConfigForm = ({
         cancelText={cancelText ?? ''}
         fields={customFields}
         formData={validConfig}
+        hasTestedConnection={hasTestedConnection}
         okText={okText ?? ''}
         ref={formRef}
         schema={schemaWithoutDefaultFilterPatternFields}
@@ -187,18 +193,17 @@ const ConnectionConfigForm = ({
             type="info"
           />
         )}
-        {!isEmpty(connSch.schema) &&
-          isAirflowAvailable &&
-          formRef.current?.state?.formData && (
-            <TestConnection
-              connectionType={serviceType}
-              getData={() => formRef.current?.state?.formData}
-              isTestingDisabled={disableTestConnection}
-              serviceCategory={serviceCategory}
-              serviceName={data?.name}
-              onValidateFormRequiredFields={handleRequiredFieldsValidation}
-            />
-          )}
+        {!isEmpty(connSch.schema) && (
+          <TestConnection
+            connectionType={serviceType}
+            getData={() => formRef.current?.state?.formData}
+            isTestingDisabled={disableTestConnection}
+            serviceCategory={serviceCategory}
+            serviceName={data?.name}
+            onTestConnection={handleTestConnection}
+            onValidateFormRequiredFields={handleRequiredFieldsValidation}
+          />
+        )}
         {!isUndefined(inlineAlertDetails) && (
           <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
         )}
