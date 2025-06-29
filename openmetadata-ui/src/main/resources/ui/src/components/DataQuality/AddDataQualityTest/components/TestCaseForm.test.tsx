@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { findByRole, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import {
+  findByRole,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { act, forwardRef } from 'react';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
 import {
@@ -149,7 +154,7 @@ describe('TestCaseForm', () => {
     expect(mockProps.onCancel).toHaveBeenCalled();
   });
 
-  it.skip("should call onSubmit when click 'Submit' button", async () => {
+  it("should call onSubmit when click 'Submit' button", async () => {
     await act(async () => {
       render(<TestCaseForm {...mockProps} />);
     });
@@ -159,7 +164,8 @@ describe('TestCaseForm', () => {
       'combobox'
     );
     await act(async () => {
-      await userEvent.click(typeSelector);
+      fireEvent.focus(typeSelector);
+      fireEvent.keyDown(typeSelector, { key: 'ArrowDown', code: 'ArrowDown' });
     });
 
     expect(typeSelector).toBeInTheDocument();
@@ -167,7 +173,7 @@ describe('TestCaseForm', () => {
     await waitFor(() => screen.getByText('Column Value Lengths To Be Between'));
 
     await act(async () => {
-      await userEvent.click(
+      fireEvent.click(
         await screen.findByText('Column Value Lengths To Be Between')
       );
     });
@@ -207,7 +213,7 @@ describe('TestCaseForm', () => {
   });
 
   // column test case
-  it.skip("should show column section when test type is 'Column'", async () => {
+  it("should show column section when test type is 'Column'", async () => {
     mockParams.dashboardType = ProfilerDashboardType.COLUMN;
     await act(async () => {
       render(<TestCaseForm {...mockProps} />);
@@ -217,7 +223,7 @@ describe('TestCaseForm', () => {
     expect(getListTestDefinitions).not.toHaveBeenCalled();
   });
 
-  it.skip('should call getListTestDefinitions when column value change', async () => {
+  it('should call getListTestDefinitions when column value change', async () => {
     mockParams.dashboardType = ProfilerDashboardType.COLUMN;
 
     await act(async () => {
@@ -229,7 +235,8 @@ describe('TestCaseForm', () => {
       'combobox'
     );
     await act(async () => {
-      await userEvent.click(column);
+      fireEvent.focus(column);
+      fireEvent.keyDown(column, { key: 'ArrowDown', code: 'ArrowDown' });
     });
 
     expect(column).toBeInTheDocument();
@@ -237,7 +244,7 @@ describe('TestCaseForm', () => {
     await waitFor(() => screen.getByText('last_name'));
 
     await act(async () => {
-      await userEvent.click(await screen.findByText('last_name'));
+      fireEvent.click(await screen.findByText('last_name'));
     });
 
     expect(mockNavigate).toHaveBeenCalledWith({
@@ -254,7 +261,7 @@ describe('TestCaseForm', () => {
     mockParams.dashboardType = ProfilerDashboardType.TABLE;
   });
 
-  it.skip('should show compute row count field, if supportsRowLevelPassedFailed is true in test definition', async () => {
+  it('should show compute row count field, if supportsRowLevelPassedFailed is true in test definition', async () => {
     await act(async () => {
       render(<TestCaseForm {...mockProps} />);
     });
@@ -264,7 +271,8 @@ describe('TestCaseForm', () => {
       'combobox'
     );
     await act(async () => {
-      await userEvent.click(typeSelector);
+      fireEvent.focus(typeSelector);
+      fireEvent.keyDown(typeSelector, { key: 'ArrowDown', code: 'ArrowDown' });
     });
 
     expect(typeSelector).toBeInTheDocument();
@@ -272,7 +280,7 @@ describe('TestCaseForm', () => {
     await waitFor(() => screen.getByText('Column Value Lengths To Be Between'));
 
     await act(async () => {
-      await userEvent.click(
+      fireEvent.click(
         await screen.findByText('Column Value Lengths To Be Between')
       );
     });
@@ -313,13 +321,14 @@ describe('TestCaseForm', () => {
       'combobox'
     );
     await act(async () => {
-      await userEvent.click(typeSelector);
+      fireEvent.focus(typeSelector);
+      fireEvent.keyDown(typeSelector, { key: 'ArrowDown', code: 'ArrowDown' });
     });
 
     await waitFor(() => screen.getByText('Column Value Lengths To Be Between'));
 
     await act(async () => {
-      await userEvent.click(
+      fireEvent.click(
         await screen.findByText('Column Value Lengths To Be Between')
       );
     });
@@ -429,13 +438,14 @@ describe('TestCaseForm', () => {
       'combobox'
     );
     await act(async () => {
-      await userEvent.click(typeSelector);
+      fireEvent.focus(typeSelector);
+      fireEvent.keyDown(typeSelector, { key: 'ArrowDown', code: 'ArrowDown' });
     });
 
     await waitFor(() => screen.getByText('Column Value Lengths To Be Between'));
 
     await act(async () => {
-      await userEvent.click(
+      fireEvent.click(
         await screen.findByText('Column Value Lengths To Be Between')
       );
     });

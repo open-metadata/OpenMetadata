@@ -55,7 +55,7 @@ jest.mock('antd', () => {
 });
 
 describe('DestinationSelectItem component', () => {
-  it.skip('should show internal tab by default in the dropdown', async () => {
+  it('should show internal tab by default in the dropdown', async () => {
     render(
       <Form initialValues={{ destinations: [{}] }}>
         <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
@@ -72,14 +72,13 @@ describe('DestinationSelectItem component', () => {
       'combobox'
     );
 
-    // Handle initial focus and state updates
-    await act(async () => {
-      fireEvent.focus(categorySelect);
-    });
-
     // Handle click and dropdown rendering
     await act(async () => {
-      fireEvent.click(categorySelect);
+      fireEvent.focus(categorySelect);
+      fireEvent.keyDown(categorySelect, {
+        key: 'ArrowDown',
+        code: 'ArrowDown',
+      });
     });
 
     // Wait for the dropdown to be rendered in the portal
@@ -108,7 +107,7 @@ describe('DestinationSelectItem component', () => {
     ).toHaveTextContent('Users');
   });
 
-  it.skip('should show external tab by default when selected destination type is external', async () => {
+  it('should show external tab by default when selected destination type is external', async () => {
     jest.spyOn(Form, 'useFormInstance').mockImplementationOnce(() => ({
       ...Form.useFormInstance(),
       setFieldValue: jest.fn(),
@@ -140,11 +139,10 @@ describe('DestinationSelectItem component', () => {
     // Handle initial focus and state updates
     await act(async () => {
       fireEvent.focus(categorySelect);
-    });
-
-    // Handle click and dropdown rendering
-    await act(async () => {
-      fireEvent.click(categorySelect);
+      fireEvent.keyDown(categorySelect, {
+        key: 'ArrowDown',
+        code: 'ArrowDown',
+      });
     });
 
     // Wait for the dropdown to be rendered in the portal
