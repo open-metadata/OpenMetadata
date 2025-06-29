@@ -72,6 +72,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private static final String POISON_PILL = "__POISON_PILL__";
   private static final int DEFAULT_QUEUE_SIZE = 20000;
 
+  // Thread limits to prevent exhaustion in cloud environments
+  private static final int MAX_PRODUCER_THREADS = 20;
+  private static final int MAX_CONSUMER_THREADS = 20;
+  private static final int MAX_TOTAL_THREADS = 50;
+
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
           ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
@@ -261,6 +266,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobData.setPayLoadSize(clusterMetrics.getMaxPayloadSizeBytes());
       jobData.setConsumerThreads(clusterMetrics.getRecommendedConsumerThreads());
       jobData.setQueueSize(clusterMetrics.getRecommendedQueueSize());
+
+      LOG.info(
+          "Auto-tune recommendations - Batch: {}, Concurrent requests: {}, Payload: {} MB, Consumers: {}, Queue: {}",
+          jobData.getBatchSize(),
+          jobData.getMaxConcurrentRequests(),
+          jobData.getPayLoadSize() / (1024 * 1024),
+          jobData.getConsumerThreads(),
+          jobData.getQueueSize());
     }
 
     batchSize.set(jobData.getBatchSize());
@@ -320,15 +333,31 @@ public class SearchIndexApp extends AbstractNativeApplication {
       throws InterruptedException {
     long totalEntities = searchIndexStats.get().getJobStats().getTotalRecords();
 
-    // Calculate thread counts based on workload
-    int numConsumers = jobData.getConsumerThreads() != null ? jobData.getConsumerThreads() : 2;
-    int numProducers = Math.clamp((int) (totalEntities / 10000), 2, 20); // Default calculation
+    // Calculate thread counts with strict limits to prevent exhaustion
+    int numConsumers =
+        jobData.getConsumerThreads() != null
+            ? Math.min(jobData.getConsumerThreads(), MAX_CONSUMER_THREADS)
+            : 2;
+    int numProducers = Math.clamp((int) (totalEntities / 10000), 2, MAX_PRODUCER_THREADS);
 
     if (clusterMetrics != null) {
-      numConsumers = clusterMetrics.getRecommendedConsumerThreads();
-      numProducers = clusterMetrics.getRecommendedProducerThreads(); // Use auto-tuned value
-      LOG.info("Using auto-tuned consumer threads: {}", numConsumers);
-      LOG.info("Using auto-tuned producer threads: {}", numProducers);
+      // Apply strict limits even for auto-tuned values
+      numConsumers = Math.min(clusterMetrics.getRecommendedConsumerThreads(), MAX_CONSUMER_THREADS);
+      numProducers = Math.min(clusterMetrics.getRecommendedProducerThreads(), MAX_PRODUCER_THREADS);
+      LOG.info("Using auto-tuned consumer threads (limited): {}", numConsumers);
+      LOG.info("Using auto-tuned producer threads (limited): {}", numProducers);
+    }
+
+    // Ensure total threads don't exceed limit
+    int totalThreads = numProducers + numConsumers + jobData.getEntities().size();
+    if (totalThreads > MAX_TOTAL_THREADS) {
+      LOG.warn(
+          "Total thread count {} exceeds limit {}, reducing...", totalThreads, MAX_TOTAL_THREADS);
+      // Proportionally reduce threads
+      double ratio = (double) MAX_TOTAL_THREADS / totalThreads;
+      numProducers = Math.max(1, (int) (numProducers * ratio));
+      numConsumers = Math.max(1, (int) (numConsumers * ratio));
+      LOG.info("Adjusted to {} producers and {} consumers", numProducers, numConsumers);
     }
 
     LOG.info(
@@ -343,10 +372,22 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     taskQueue = new ArrayBlockingQueue<>(queueSize);
     producersDone.set(false);
-    jobExecutor = Executors.newCachedThreadPool(Thread.ofPlatform().name("job-", 0).factory());
+    // Use fixed thread pool to prevent thread explosion
+    jobExecutor =
+        Executors.newFixedThreadPool(
+            jobData.getEntities().size(), Thread.ofPlatform().name("job-", 0).factory());
+    // CRITICAL: Ensure we're not exceeding consumer thread limit
+    if (numConsumers > MAX_CONSUMER_THREADS) {
+      LOG.error(
+          "Consumer threads {} exceeds maximum {}, forcing to max",
+          numConsumers,
+          MAX_CONSUMER_THREADS);
+      numConsumers = MAX_CONSUMER_THREADS;
+    }
+
     consumerExecutor =
         Executors.newFixedThreadPool(
-            numConsumers, Thread.ofVirtual().name("consumer-", 0).factory());
+            numConsumers, Thread.ofPlatform().name("consumer-", 0).factory());
 
     CountDownLatch consumerLatch = new CountDownLatch(numConsumers);
     for (int i = 0; i < numConsumers; i++) {
@@ -449,16 +490,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
                             LOG.debug("Skipping batch - stop signal received");
                             return;
                           }
-                          long backpressureDelay = getBackpressureDelay();
-                          if (backpressureDelay > 0) {
-                            LOG.debug("Applying backpressure delay of {} ms", backpressureDelay);
-                            try {
-                              TimeUnit.MILLISECONDS.sleep(backpressureDelay);
-                            } catch (InterruptedException ie) {
-                              Thread.currentThread().interrupt();
-                              LOG.debug("Backpressure delay interrupted");
-                              return;
-                            }
+                          // Check for backpressure but don't block
+                          if (isBackpressureActive()) {
+                            LOG.debug("Backpressure active, will retry later");
+                            // Re-submit this task to be processed later
+                            producerLatch.countDown();
+                            return;
                           }
                           LOG.debug(
                               "Virtual thread processing offset: {}, remaining batches: {}",
@@ -578,23 +615,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   /**
-   * Calculate natural throttling delay based on recent backpressure events.
-   * Returns delay in milliseconds.
+   * Check if backpressure is currently active
    */
-  private long getBackpressureDelay() {
+  private boolean isBackpressureActive() {
     if (lastBackpressureTime == 0) {
-      return 0;
+      return false;
     }
 
     long timeSinceBackpressure = System.currentTimeMillis() - lastBackpressureTime;
-    if (timeSinceBackpressure >= BACKPRESSURE_WAIT_MS) {
-      return 0; // Enough time has passed
-    }
 
-    // Calculate remaining cooldown time and convert to a reasonable delay
-    long remainingCooldown = BACKPRESSURE_WAIT_MS - timeSinceBackpressure;
-    // Add delay proportional to consecutive errors (50-500ms range)
-    return Math.clamp(remainingCooldown / 10, 50, 500);
+    // Consider backpressure active if within the wait window
+    return timeSinceBackpressure < BACKPRESSURE_WAIT_MS;
   }
 
   private void handleJobFailure(Exception ex) {

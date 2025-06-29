@@ -177,7 +177,7 @@ public class SearchClusterMetrics {
 
     int maxProducerThreads = (maxDbConnections * 3) / 4; // 75% of connection pool
     int recommendedConcurrentRequests = maxProducerThreads;
-    int recommendedProducerThreads = Math.min(maxProducerThreads, 30 * totalNodes);
+    int recommendedProducerThreads = Math.min(maxProducerThreads, 10 * totalNodes); // Reduced from 30 to 10 per node
 
     if (memoryUsagePercent > 80) {
       recommendedProducerThreads = Math.max(10, recommendedProducerThreads / 4);
@@ -187,13 +187,13 @@ public class SearchClusterMetrics {
 
     // Consumers transform entities to search documents - lighter work than producers
     // Can have many consumers since they're not DB-bound
-    int recommendedConsumerThreads = 50 * totalNodes;
+    int recommendedConsumerThreads = 10 * totalNodes; // Reduced from 50 to 10 per node
 
     // Only limit if memory is very high
     if (memoryUsagePercent > 80) {
       recommendedConsumerThreads = Math.max(10, recommendedConsumerThreads / 2);
     }
-    recommendedConsumerThreads = Math.min(100, recommendedConsumerThreads); // Cap at 100
+    recommendedConsumerThreads = Math.min(20, recommendedConsumerThreads); // Cap at 20 to prevent thread exhaustion
 
     int baseConcurrentRequests = totalNodes * 50;
     if (memoryUsagePercent > 80) {
@@ -221,13 +221,13 @@ public class SearchClusterMetrics {
     if (totalEntities > 1000000) {
       recommendedBatchSize = Math.min(500, recommendedBatchSize); // Cap at 500
       recommendedProducerThreads =
-          Math.min(50, recommendedProducerThreads); // Capped by connection pool
+          Math.min(20, recommendedProducerThreads); // Cap at 20 to prevent thread exhaustion
     } else if (totalEntities > 500000) {
       recommendedBatchSize = Math.min(400, recommendedBatchSize); // Cap at 400
-      recommendedProducerThreads = Math.min(40, recommendedProducerThreads);
+      recommendedProducerThreads = Math.min(20, recommendedProducerThreads);
     } else if (totalEntities > 100000) {
       recommendedBatchSize = Math.min(300, recommendedBatchSize); // Cap at 300
-      recommendedProducerThreads = Math.min(30, recommendedProducerThreads);
+      recommendedProducerThreads = Math.min(20, recommendedProducerThreads);
     }
 
     int recommendedQueueSize =
