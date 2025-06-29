@@ -10,7 +10,7 @@ Apart from adding the a description to the data assets directly, users can also 
 - Click on the **?** icon next to Description
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/desc3.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/desc3.png"
 alt="Request for Data Asset Description"
 caption="Request for Data Asset Description"
 /%}
@@ -25,7 +25,7 @@ caption="Request for Data Asset Description"
   - Click on **Submit** to create the task.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/desc4.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/desc4.png"
 alt="Create a Task for Data Asset Description"
 caption="Create a Task for Data Asset Description"
 /%}
@@ -33,7 +33,7 @@ caption="Create a Task for Data Asset Description"
 Once a task has been created, it is displayed in the **Activity Feeds & Tasks** tab for that Data Asset. The assignees, can either `Accept the Suggestion` or `Edit and Accept the Suggestion`. Assignees can also add a **Comment**. They can also add other users as **Assignees**.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/desc5.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/desc5.png"
 alt="Task: Accept Suggestion and Comment"
 caption="Task: Accept Suggestion and Comment"
 /%}
@@ -44,7 +44,7 @@ Apart from requesting for a description, users can also create a **Conversation*
 - Click on the **Conversation** icon next to the description.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/desc6.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/desc6.png"
 alt="Conversation around Description"
 caption="Conversation around Description"
 /%}
@@ -52,7 +52,7 @@ caption="Conversation around Description"
 - Start a conversation right within the data asset page. Add **@mention** to tag a user or team. Add a **#mention** to tag a data asset.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/desc7.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/desc7.png"
 alt="Start a Conversation"
 caption="Start a Conversation"
 /%}
@@ -60,7 +60,7 @@ caption="Start a Conversation"
 - Further in the conversation, users can **Reply** to discuss further as well as add **Reactions**, **Edit**, or **Delete**.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/desc8.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/desc8.png"
 alt="Conversation: Reply, React, Edit or Delete"
 caption="Conversation: Reply, React, Edit or Delete"
 /%}

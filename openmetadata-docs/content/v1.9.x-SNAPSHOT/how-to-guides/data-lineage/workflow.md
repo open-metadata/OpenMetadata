@@ -14,7 +14,7 @@ Once the metadata ingestion runs correctly, and we are able to explore the servi
 
 If the database has views, then the view lineage would be generated automatically, along with the column-level lineage. In such a case, the table type is **View** as shown in the example below.
  {% image
- src="/images/v1.9how-to-guides/lineage/view.png"
+ src="/images/v1.9/how-to-guides/lineage/view.png"
  alt="View Lineage through Metadata Ingestion"
  caption="View Lineage through Metadata Ingestion"
  /%}
@@ -26,26 +26,26 @@ Apart from the Metadata ingestion, we can create a workflow that will obtain the
 
 Navigate to **Settings >> Services >> Databases**. Select the required service
  {% image
- src="/images/v1.9how-to-guides/lineage/wkf1.png"
+ src="/images/v1.9/how-to-guides/lineage/wkf1.png"
  alt="Select a Service"
  caption="Select a Service"
  /%}
 
  {% image
- src="/images/v1.9how-to-guides/lineage/wkf1.1.png"
+ src="/images/v1.9/how-to-guides/lineage/wkf1.1.png"
  alt="Click on Databases"
  caption="Click on Databases"
  /%}
 
  {% image
- src="/images/v1.9how-to-guides/lineage/wkf1.2.png"
+ src="/images/v1.9/how-to-guides/lineage/wkf1.2.png"
  alt="Select the Database"
  caption="Select the Database"
  /%}
 
 Go the the **Ingestions** tab. Click on **Add Ingestion** and select **Add Lineage Agent**.
  {% image
- src="/images/v1.9how-to-guides/lineage/wkf2.png"
+ src="/images/v1.9/how-to-guides/lineage/wkf2.png"
  alt="Add a Lineage Agent"
  caption="Add a Lineage Agent"
  /%}
@@ -54,7 +54,7 @@ Go the the **Ingestions** tab. Click on **Add Ingestion** and select **Add Linea
 
 Here you can enter the Lineage Agent details:
  {% image
- src="/images/v1.9how-to-guides/lineage/wkf3.png"
+ src="/images/v1.9/how-to-guides/lineage/wkf3.png"
  alt="Configure the Lineage Agent"
  caption="Configure the Lineage Agent"
  /%}
@@ -73,14 +73,14 @@ Here you can enter the Lineage Agent details:
 
 After clicking Next, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the lineage pipeline being added to the Service Ingestions.
  {% image
- src="/images/v1.9how-to-guides/lineage/wkf4.png"
+ src="/images/v1.9/how-to-guides/lineage/wkf4.png"
  alt="Schedule and Deploy the Lineage Agent"
  caption="Schedule and Deploy the Lineage Agent"
  /%}
 
 ## Run Lineage Workflow Externally
 
-{% partial file="/v1.9connectors/yaml/lineage.md" variables={connector: "bigquery"} /%}
+{% partial file="/v1.9/connectors/yaml/lineage.md" variables={connector: "bigquery"} /%}
 
 ## dbt Ingestion
 

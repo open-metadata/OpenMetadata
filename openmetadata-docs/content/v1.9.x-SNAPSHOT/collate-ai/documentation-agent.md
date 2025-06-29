@@ -21,7 +21,7 @@ The Documentation Agent utilizes generative AI to automatically generate metadat
 1. **Navigate to Applications**: Go to `Settings > Applications`.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-agent.png"
+src="/images/v1.9/collate-ai/collate-ai-agent.png"
 alt="Navigate to Applications"
 caption="Navigate to Applications"
 /%}
@@ -29,7 +29,7 @@ caption="Navigate to Applications"
 2. **Install the Agent**: Click on "Add Apps" to access the marketplace and install the Collate AI Documentation Agent.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-documentation-agent.png"
+src="/images/v1.9/collate-ai/collate-ai-documentation-agent.png"
 alt="Installation"
 caption="Installation"
 /%}
@@ -39,7 +39,7 @@ caption="Installation"
    - **Add Description If Empty**: Enable this option to automatically add descriptions to assets lacking them.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-documentation-agent1.png"
+src="/images/v1.9/collate-ai/collate-ai-documentation-agent1.png"
 alt="Configuration"
 caption="Configuration"
 /%}
@@ -47,7 +47,7 @@ caption="Configuration"
 4. **Scheduling**: Set up regular intervals for the agent to run and update metadata.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-documentation-agent2.png"
+src="/images/v1.9/collate-ai/collate-ai-documentation-agent2.png"
 alt="Scheduling"
 caption="Scheduling"
 /%}

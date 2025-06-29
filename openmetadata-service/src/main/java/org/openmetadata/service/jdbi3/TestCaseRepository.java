@@ -59,8 +59,10 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TestCaseParameterValidationRuleType;
+import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
@@ -69,7 +71,6 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -113,7 +114,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(TEST_CASE_RESULT) ? getTestCaseResult(test) : test.getTestCaseResult());
     test.setIncidentId(
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
-    test.setTags(fields.contains(FIELD_TAGS) ? getTestCaseTags(test) : test.getTags());
   }
 
   @Override
@@ -368,15 +368,19 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private void inheritTags(TestCase testCase, Fields fields, Table table) {
     if (fields.contains(FIELD_TAGS)) {
       EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-      List<TagLabel> tags = new ArrayList<>(table.getTags());
+      List<TagLabel> testCaseTags =
+          testCase.getTags() != null ? new ArrayList<>(testCase.getTags()) : new ArrayList<>();
+      List<TagLabel> tableTags =
+          table.getTags() != null ? new ArrayList<>(table.getTags()) : new ArrayList<>();
+      EntityUtil.mergeTags(testCaseTags, tableTags);
       if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-        // if we have a column test case get the columns tags as well
+        // if we have a column test case inherit the columns tags as well
         table.getColumns().stream()
             .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
             .findFirst()
-            .ifPresent(column -> tags.addAll(column.getTags()));
+            .ifPresent(column -> EntityUtil.mergeTags(testCaseTags, column.getTags()));
       }
-      testCase.setTags(tags);
+      testCase.setTags(testCaseTags);
     }
   }
 
@@ -424,6 +428,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     test.setTestDefinition(testDefinition.getEntityReference());
 
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
+    validateColumnTestCase(entityLink, testDefinition.getEntityType());
   }
 
   /*
@@ -515,6 +520,25 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               "Required parameter " + parameter.getName() + " is not passed in parameterValues");
         }
         validateParameterRule(parameter, values);
+      }
+    }
+  }
+
+  private void validateColumnTestCase(
+      EntityLink entityLink, TestDefinitionEntityType testDefinitionEntityType) {
+    if (testDefinitionEntityType.equals(TestDefinitionEntityType.COLUMN)) {
+      if (entityLink.getFieldName() == null) {
+        throw new IllegalArgumentException(
+            "Column test case must have a field name and an array field name in the entity link."
+                + " e.g. <#E::table::{entityFqn}::columns::{columnName}>");
+      }
+      // Validate that the field name is a valid column name
+      if (!entityLink.getFieldName().equals("columns")) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid field name '%s' for column test case. It should be 'columns'."
+                    + " e.g. <#E::table::{entityFqn}::columns::{columnName}>",
+                entityLink.getFieldName()));
       }
     }
   }
@@ -696,20 +720,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     return ongoingIncident;
-  }
-
-  private List<TagLabel> getTestCaseTags(TestCase test) {
-    EntityLink entityLink = EntityLink.parse(test.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "tags,columns", ALL);
-    List<TagLabel> tags = new ArrayList<>(table.getTags());
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-      // if we have a column test case get the columns tags as well
-      table.getColumns().stream()
-          .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
-          .findFirst()
-          .ifPresent(column -> tags.addAll(column.getTags()));
-    }
-    return tags;
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
