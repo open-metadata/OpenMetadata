@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TestSuiteStepper from './TestSuiteStepper';
 
@@ -22,12 +21,6 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
 
 jest.mock('../../../../rest/testAPI', () => ({
   createTestSuites: jest.fn().mockImplementation(() => Promise.resolve()),
-}));
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
 }));
 
 jest.mock('../../AddDataQualityTest/rightPanelData', () => ({

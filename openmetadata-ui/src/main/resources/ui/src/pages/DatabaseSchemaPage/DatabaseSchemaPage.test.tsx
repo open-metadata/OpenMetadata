@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
@@ -207,16 +206,11 @@ const mockLocationPathname =
   '/databaseSchema/sample_data.ecommerce_db.shopify/table';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    history: {
-      push: jest.fn(),
-    },
-    replace: jest.fn(),
-  })),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
   useParams: jest.fn().mockImplementation(() => mockParams),
+  useNavigate: jest.fn(),
 }));
 
 describe('Tests for DatabaseSchemaPage', () => {
