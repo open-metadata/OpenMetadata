@@ -1,5 +1,5 @@
 ---
-title: redashConnection
+title: Redash Connection | OpenMetadata Redash Connection Setup
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/redashconnection
 ---
 

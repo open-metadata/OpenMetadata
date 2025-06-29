@@ -1,5 +1,5 @@
 ---
-title: dbtS3Config
+title: dbtS3Config | OpenMetadata dbt S3 Config
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbts3config
 ---
 

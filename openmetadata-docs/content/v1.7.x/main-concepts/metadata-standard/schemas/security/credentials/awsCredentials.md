@@ -1,5 +1,5 @@
 ---
-title: awsCredentials
+title: awsCredentials | OpenMetadata AWS Credentials
 slug: /main-concepts/metadata-standard/schemas/security/credentials/awscredentials
 ---
 

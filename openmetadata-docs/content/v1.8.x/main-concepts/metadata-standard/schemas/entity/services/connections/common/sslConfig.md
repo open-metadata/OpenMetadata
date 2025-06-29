@@ -1,5 +1,5 @@
 ---
-title: sslConfig
+title: SSL Config | OpenMetadata SSL Configurations
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/common/sslconfig
 ---
 

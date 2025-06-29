@@ -1,5 +1,5 @@
 ---
-title: mssqlConnection
+title: MSSQL Connection | OpenMetadata Microsoft SQL Server Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mssqlconnection
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: index
+title: Governance Schemas | OpenMetadata Governance Schemas Overview
 slug: /main-concepts/metadata-standard/schemas/governance
 ---
 

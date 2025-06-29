@@ -1,5 +1,5 @@
 ---
-title: bigTableConnection
+title: BigTable Connection | OpenMetadata BigTable
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/bigtableconnection
 ---
 

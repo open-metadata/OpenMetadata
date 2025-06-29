@@ -1,5 +1,5 @@
 ---
-title: dbtHttpConfig
+title: dbtHttpConfig | OpenMetadata dbt HTTP Config
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbthttpconfig
 ---
 

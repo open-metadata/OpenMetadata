@@ -1,5 +1,5 @@
 ---
-title: entityHierarchy
+title: entityHierarchy | OpenMetadata Entity Hierarchy
 slug: /main-concepts/metadata-standard/schemas/type/entityhierarchy
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: workflowInstance
+title: workflowInstance | OpenMetadata Workflow Instance
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/workflowinstance
 ---
 

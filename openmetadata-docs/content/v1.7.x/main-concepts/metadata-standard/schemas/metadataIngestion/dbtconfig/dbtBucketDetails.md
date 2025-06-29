@@ -1,5 +1,5 @@
 ---
-title: dbtBucketDetails
+title: dbtBucketDetails | OpenMetadata dbt Bucket Details
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtbucketdetails
 ---
 

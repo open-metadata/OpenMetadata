@@ -1,5 +1,5 @@
 ---
-title: filters
+title: Filters Schema | OpenMetadata Filters Schema and Usage
 slug: /main-concepts/metadata-standard/schemas/entity/policies/filters
 ---
 

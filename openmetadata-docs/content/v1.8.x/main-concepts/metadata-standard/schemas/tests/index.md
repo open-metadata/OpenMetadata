@@ -1,5 +1,5 @@
 ---
-title: index
+title: Tests Schema | OpenMetadata Tests Schema Overview
 slug: /main-concepts/metadata-standard/schemas/tests
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: pulsarConnection
+title: Pulsar Connection | OpenMetadata Pulsar Messaging Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/pulsarconnection
 ---
 

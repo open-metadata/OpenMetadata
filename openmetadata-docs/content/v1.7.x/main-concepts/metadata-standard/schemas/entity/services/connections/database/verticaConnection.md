@@ -1,5 +1,5 @@
 ---
-title: verticaConnection
+title: Vertica Connection | OpenMetadata Vertica
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/verticaconnection
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: icebergConnection
+title: Iceberg Connection | OpenMetadata Iceberg
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/icebergconnection
 ---
 

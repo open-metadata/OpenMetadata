@@ -1,5 +1,5 @@
 ---
-title: storageConfig
+title: Storage Config | OpenMetadata Storage Config
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/deltalake/storageconfig
 ---
 

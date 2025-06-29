@@ -1,5 +1,5 @@
 ---
-title: page
+title: Page Schema | OpenMetadata Page Schema Details
 slug: /main-concepts/metadata-standard/schemas/system/ui/page
 ---
 

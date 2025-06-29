@@ -1,5 +1,5 @@
 ---
-title: gcpExternalAccount
+title: gcpExternalAccount | OpenMetadata GCP External Account
 slug: /main-concepts/metadata-standard/schemas/security/credentials/gcpexternalaccount
 ---
 

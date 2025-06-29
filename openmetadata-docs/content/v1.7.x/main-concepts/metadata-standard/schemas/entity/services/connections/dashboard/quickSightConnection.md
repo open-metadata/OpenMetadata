@@ -1,5 +1,5 @@
 ---
-title: quickSightConnection
+title: QuickSight Connection | OpenMetadata QuickSight
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/quicksightconnection
 ---
 

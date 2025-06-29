@@ -1,5 +1,5 @@
 ---
-title: dbtAzureConfig
+title: dbtAzureConfig | OpenMetadata dbt Azure Config
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtazureconfig
 ---
 

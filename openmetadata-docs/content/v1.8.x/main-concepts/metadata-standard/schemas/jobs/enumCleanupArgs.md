@@ -1,5 +1,5 @@
 ---
-title: enumCleanupArgs
+title: enumCleanupArgs | OpenMetadata Enum Cleanup Args
 slug: /main-concepts/metadata-standard/schemas/jobs/enumcleanupargs
 ---
 

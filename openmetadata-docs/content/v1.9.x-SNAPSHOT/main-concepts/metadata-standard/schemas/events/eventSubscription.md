@@ -1,5 +1,5 @@
 ---
-title: eventSubscription
+title: eventSubscription | OpenMetadata Event Subscription
 slug: /main-concepts/metadata-standard/schemas/events/eventsubscription
 ---
 

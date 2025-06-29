@@ -1,5 +1,5 @@
 ---
-title: index
+title: API Connection | OpenMetadata API Connections
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/api
 ---
 

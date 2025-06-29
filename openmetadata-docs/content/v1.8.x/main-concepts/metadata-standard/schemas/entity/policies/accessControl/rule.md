@@ -1,5 +1,5 @@
 ---
-title: rule
+title: Rule Schema | OpenMetadata Rules Schema and API
 slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/rule
 ---
 

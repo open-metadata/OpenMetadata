@@ -1,5 +1,5 @@
 ---
-title: nodeSubType
+title: Node Subtype | OpenMetadata Node Subtype Schema
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodesubtype
 noindex: true
 nofollow: true

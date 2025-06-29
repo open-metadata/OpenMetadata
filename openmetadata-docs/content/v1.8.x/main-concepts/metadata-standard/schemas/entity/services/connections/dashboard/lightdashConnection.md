@@ -1,5 +1,5 @@
 ---
-title: lightdashConnection
+title: Lightdash Connection | OpenMetadata Lightdash
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/lightdashconnection
 ---
 

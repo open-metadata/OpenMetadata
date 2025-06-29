@@ -1,5 +1,5 @@
 ---
-title: backgroundJob
+title: backgroundJob | OpenMetadata Background Job
 slug: /main-concepts/metadata-standard/schemas/jobs/backgroundjob
 ---
 

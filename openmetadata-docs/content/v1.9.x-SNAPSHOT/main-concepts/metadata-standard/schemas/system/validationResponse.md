@@ -1,5 +1,5 @@
 ---
-title: validationResponse
+title: validationResponse | OpenMetadata Validation Response
 slug: /main-concepts/metadata-standard/schemas/system/validationresponse
 ---
 

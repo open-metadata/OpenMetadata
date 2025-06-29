@@ -1,5 +1,5 @@
 ---
-title: index
+title: Workflows Overview | OpenMetadata Workflows Summary
 slug: /main-concepts/metadata-standard/schemas/governance/workflows
 ---
 

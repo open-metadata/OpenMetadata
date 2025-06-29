@@ -1,5 +1,5 @@
 ---
-title: eventFilterRule
+title: eventFilterRule | OpenMetadata Event Filter Rule
 slug: /main-concepts/metadata-standard/schemas/events/eventfilterrule
 ---
 

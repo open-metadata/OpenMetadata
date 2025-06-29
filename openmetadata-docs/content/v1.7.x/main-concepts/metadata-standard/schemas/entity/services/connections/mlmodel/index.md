@@ -1,5 +1,5 @@
 ---
-title: index
+title: ML Model Connections | OpenMetadata ML Models
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: index
+title: Metadata Connections | OpenMetadata Metadata
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata
 ---
 

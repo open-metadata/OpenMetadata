@@ -1,5 +1,5 @@
 ---
-title: apiAccessTokenAuth
+title: apiAccessTokenAuth | OpenMetadata API Access Token Auth
 slug: /main-concepts/metadata-standard/schemas/security/credentials/apiaccesstokenauth
 ---
 

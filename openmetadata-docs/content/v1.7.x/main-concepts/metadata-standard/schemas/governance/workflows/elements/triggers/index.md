@@ -1,5 +1,5 @@
 ---
-title: index
+title: Workflow Triggers | OpenMetadata Workflow Triggers Overview
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/triggers
 ---
 

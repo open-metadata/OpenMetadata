@@ -1,5 +1,5 @@
 ---
-title: workflow
+title: workflow | OpenMetadata Ingestion Workflow
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/workflow
 ---
 

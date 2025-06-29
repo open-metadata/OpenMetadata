@@ -1,5 +1,5 @@
 ---
-title: basicAuth
+title: Basic Auth | OpenMetadata Basic Authentication Setup
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/basicauth
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: dailyCount
+title: Daily Count | OpenMetadata Daily Count Details
 slug: /main-concepts/metadata-standard/schemas/type/dailycount
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: index
+title: DeltaLake Config | OpenMetadata DeltaLake
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/deltalake
 ---
 

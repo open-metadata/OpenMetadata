@@ -1,5 +1,5 @@
 ---
-title: mlflowConnection
+title: MLflow Connection | OpenMetadata MLflow Model Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/mlflowconnection
 ---
 

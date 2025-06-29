@@ -1,5 +1,5 @@
 ---
-title: s3Config
+title: S3 Config | OpenMetadata Amazon S3 Storage Config
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake/s3config
 ---
 

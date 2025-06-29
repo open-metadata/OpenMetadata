@@ -1,5 +1,5 @@
 ---
-title: messagingService
+title: Messaging Service | OpenMetadata Messaging Service
 slug: /main-concepts/metadata-standard/schemas/entity/services/messagingservice
 ---
 

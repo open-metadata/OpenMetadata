@@ -1,5 +1,5 @@
 ---
-title: gcpCredentials
+title: gcpCredentials | OpenMetadata GCP Credentials
 slug: /main-concepts/metadata-standard/schemas/security/credentials/gcpcredentials
 ---
 

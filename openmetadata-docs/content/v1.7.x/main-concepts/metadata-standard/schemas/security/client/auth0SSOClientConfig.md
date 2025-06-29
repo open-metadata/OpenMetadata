@@ -1,5 +1,5 @@
 ---
-title: auth0SSOClientConfig
+title: auth0SSOClientConfig | OpenMetadata Auth0 SSO Client
 slug: /main-concepts/metadata-standard/schemas/security/client/auth0ssoclientconfig
 ---
 

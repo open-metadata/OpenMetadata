@@ -1,5 +1,5 @@
 ---
-title: adlsConnection
+title: ADLS Connection | OpenMetadata Azure Data Lake Storage Config
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/adlsconnection
 ---
 

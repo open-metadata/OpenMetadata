@@ -1,5 +1,5 @@
 ---
-title: amundsenConnection
+title: Amundsen Connection | OpenMetadata Amundsen
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/amundsenconnection
 ---
 

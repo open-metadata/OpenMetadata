@@ -1,5 +1,5 @@
 ---
-title: subscriptionStatus
+title: subscriptionStatus | OpenMetadata Subscription Status
 slug: /main-concepts/metadata-standard/schemas/events/subscriptionstatus
 ---
 

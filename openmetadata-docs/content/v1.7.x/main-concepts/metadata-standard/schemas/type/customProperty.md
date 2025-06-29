@@ -1,5 +1,5 @@
 ---
-title: customProperty
+title: customProperty | OpenMetadata Custom Property
 slug: /main-concepts/metadata-standard/schemas/type/customproperty
 ---
 

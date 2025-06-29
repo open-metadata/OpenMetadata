@@ -1,5 +1,5 @@
 ---
-title: index
+title: Custom Properties | OpenMetadata Custom Properties Overview
 slug: /main-concepts/metadata-standard/schemas/type/customproperties
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: index
+title: Events Schema | OpenMetadata Events Schema Details
 slug: /main-concepts/metadata-standard/schemas/events
 ---
 

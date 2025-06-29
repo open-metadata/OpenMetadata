@@ -1,5 +1,5 @@
 ---
-title: glueConnection
+title: Glue Connection | OpenMetadata AWS Glue Connection Details
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/glueconnection
 ---
 

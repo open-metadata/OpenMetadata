@@ -1,5 +1,5 @@
 ---
-title: csvDocumentation
+title: csvDocumentation | OpenMetadata CSV Documentation
 slug: /main-concepts/metadata-standard/schemas/type/csvdocumentation
 ---
 

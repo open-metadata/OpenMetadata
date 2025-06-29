@@ -1,5 +1,5 @@
 ---
-title: dynamoDBConnection
+title: DynamoDB Connection | OpenMetadata DynamoDB
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/dynamodbconnection
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: flinkConnection
+title: Flink Connection | OpenMetadata Apache Flink Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/flinkconnection
 ---
 

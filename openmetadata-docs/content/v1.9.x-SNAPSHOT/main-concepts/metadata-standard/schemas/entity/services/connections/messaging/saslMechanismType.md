@@ -1,5 +1,5 @@
 ---
-title: saslMechanismType
+title: SASL Mechanism Type | OpenMetadata SASL Authentication Types
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/saslmechanismtype
 noindex: true
 nofollow: true

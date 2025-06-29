@@ -1,5 +1,5 @@
 ---
-title: policy
+title: Policy Schema | OpenMetadata Policy Schema and Management
 slug: /main-concepts/metadata-standard/schemas/entity/policies/policy
 ---
 

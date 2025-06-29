@@ -1,5 +1,5 @@
 ---
-title: nodeType
+title: Node Type | OpenMetadata Node Type Details
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodetype
 noindex: true
 nofollow: true

@@ -1,5 +1,5 @@
 ---
-title: index
+title: Jobs Schema | OpenMetadata Jobs Schema Details
 slug: /main-concepts/metadata-standard/schemas/jobs
 ---
 

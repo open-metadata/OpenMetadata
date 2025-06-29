@@ -1,5 +1,5 @@
 ---
-title: index
+title: Workflow Nodes | OpenMetadata Workflow Nodes Details
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: navigationItem
+title: navigationItem | OpenMetadata Navigation Item
 slug: /main-concepts/metadata-standard/schemas/system/ui/navigationitem
 ---
 

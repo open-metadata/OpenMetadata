@@ -1,5 +1,5 @@
 ---
-title: gcpValues
+title: GCP Values Credentials | OpenMetadata GCP Values Information
 slug: /main-concepts/metadata-standard/schemas/security/credentials/gcpvalues
 ---
 
