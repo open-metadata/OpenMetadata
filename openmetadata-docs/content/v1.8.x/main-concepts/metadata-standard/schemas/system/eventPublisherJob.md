@@ -1,5 +1,5 @@
 ---
-title: eventPublisherJob
+title: eventPublisherJob | OpenMetadata Event Publisher Job
 slug: /main-concepts/metadata-standard/schemas/system/eventpublisherjob
 ---
 

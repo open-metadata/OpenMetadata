@@ -1,5 +1,5 @@
 ---
-title: changeEvent
+title: Change Event | OpenMetadata Change Event Information
 slug: /main-concepts/metadata-standard/schemas/type/changeevent
 ---
 

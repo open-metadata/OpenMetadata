@@ -1,5 +1,5 @@
 ---
-title: athenaConnection
+title: Athena Connection | OpenMetadata Athena Connection Details
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/athenaconnection
 ---
 

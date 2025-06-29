@@ -1,5 +1,5 @@
 ---
-title: index
+title: Start Event Node | OpenMetadata Start Event Node Overview
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/startevent
 ---
 

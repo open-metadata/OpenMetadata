@@ -1,5 +1,5 @@
 ---
-title: dataInsightPipeline
+title: dataInsightPipeline | OpenMetadata Data Insight Pipeline
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/datainsightpipeline
 ---
 
