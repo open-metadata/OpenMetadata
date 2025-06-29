@@ -64,9 +64,11 @@ import org.openmetadata.service.resources.events.MSTeamsCallbackResource;
 import org.openmetadata.service.resources.events.SlackCallbackResource;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.search.SearchRepository;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
+import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -95,6 +97,7 @@ public abstract class OpenMetadataApplicationTest {
 
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
+  private static GenericContainer<?> REDIS_CONTAINER;
 
   protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
@@ -209,6 +212,9 @@ public abstract class OpenMetadataApplicationTest {
     configOverrides.add(
         ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScriptsLocation));
 
+    // Redis cache configuration (if enabled by system properties)
+    setupRedisIfEnabled();
+
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
     APP = getApp(configOverridesArray);
     // Run System Migrations
@@ -259,7 +265,28 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
-    return jdbi.onDemand(CollectionDAO.class);
+    CollectionDAO originalDAO = jdbi.onDemand(CollectionDAO.class);
+
+    // Wrap with caching decorator if Redis is enabled
+    String enableCache = System.getProperty("enableCache");
+    String cacheType = System.getProperty("cacheType");
+
+    if ("true".equals(enableCache) && "redis".equals(cacheType)) {
+      LOG.info("Wrapping CollectionDAO with Redis caching support for tests");
+      try {
+        // Import dynamically to avoid compilation issues if cache classes aren't available
+        Class<?> cachedDAOClass =
+            Class.forName("org.openmetadata.service.cache.CachedCollectionDAO");
+        return (CollectionDAO)
+            cachedDAOClass.getConstructor(CollectionDAO.class).newInstance(originalDAO);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to enable caching support, falling back to original DAO: {}", e.getMessage());
+        return originalDAO;
+      }
+    }
+
+    return originalDAO;
   }
 
   @NotNull
@@ -292,6 +319,16 @@ public abstract class OpenMetadataApplicationTest {
       APP.getEnvironment().getApplicationContext().getServer().stop();
     }
     ELASTIC_SEARCH_CONTAINER.stop();
+
+    // Stop Redis container if it was started
+    if (REDIS_CONTAINER != null) {
+      try {
+        REDIS_CONTAINER.stop();
+        LOG.info("Redis container stopped successfully");
+      } catch (Exception e) {
+        LOG.error("Error stopping Redis container", e);
+      }
+    }
 
     if (client != null) {
       client.close();
@@ -360,6 +397,59 @@ public abstract class OpenMetadataApplicationTest {
         ConfigOverride.config("elasticsearch.clusterAlias", ELASTIC_SEARCH_CLUSTER_ALIAS));
     configOverrides.add(
         ConfigOverride.config("elasticsearch.searchType", ELASTIC_SEARCH_TYPE.value()));
+  }
+
+  private static void setupRedisIfEnabled() {
+    String enableCache = System.getProperty("enableCache");
+    String cacheType = System.getProperty("cacheType");
+    String redisContainerImage = System.getProperty("redisContainerImage");
+
+    if ("true".equals(enableCache) && "redis".equals(cacheType)) {
+      LOG.info("Redis cache enabled for tests");
+
+      if (CommonUtil.nullOrEmpty(redisContainerImage)) {
+        redisContainerImage = "redis:7-alpine";
+      }
+
+      LOG.info("Starting Redis container with image: {}", redisContainerImage);
+
+      REDIS_CONTAINER =
+          new GenericContainer<>(DockerImageName.parse(redisContainerImage))
+              .withExposedPorts(6379)
+              .withCommand("redis-server", "--requirepass", "test-password")
+              .withReuse(false)
+              .withStartupTimeout(Duration.ofMinutes(2));
+
+      REDIS_CONTAINER.start();
+
+      String redisHost = REDIS_CONTAINER.getHost();
+      Integer redisPort = REDIS_CONTAINER.getFirstMappedPort();
+
+      LOG.info("Redis container started at {}:{}", redisHost, redisPort);
+
+      // Add Redis configuration overrides
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.enabled", "true"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.provider", "REDIS_STANDALONE"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.host", redisHost));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.port", redisPort.toString()));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.authType", "PASSWORD"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.password", "test-password"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.useSsl", "false"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.database", "0"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.ttlSeconds", "3600"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.connectionTimeoutSecs", "5"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.socketTimeoutSecs", "60"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.maxRetries", "3"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupEnabled", "true"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupThreads", "2"));
+
+      LOG.info("Redis configuration overrides added");
+    } else {
+      LOG.info(
+          "Redis cache not enabled for tests (enableCache={}, cacheType={})",
+          enableCache,
+          cacheType);
+    }
   }
 
   private static void overrideDatabaseConfig(JdbcDatabaseContainer<?> sqlContainer) {
