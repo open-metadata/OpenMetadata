@@ -43,6 +43,12 @@
       "type": "boolean",
       "default": false
     },
+    "propagateDomain": {
+      "title": "Propagate Domain",
+      "description": "Propagate domain from the parent through lineage",
+      "type": "boolean",
+      "default": false
+    },
     "propagateOwner": {
       "title": "Propagate Owner",
       "description": "Propagate owner from the parent",
