@@ -834,9 +834,10 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
       case "/" -> "slash";
       default -> "unknown";
     };
+  }
 
-@Test 
-public void testListMapping(TestInfo test) {
+  @Test
+  public void testListMapping(TestInfo test) {
     IndexMappingLoader indexMappingLoader = IndexMappingLoader.getInstance();
     Map<String, IndexMapping> indexMapping = indexMappingLoader.getIndexMapping();
 

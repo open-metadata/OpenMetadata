@@ -26,22 +26,12 @@ import org.openmetadata.service.Entity;
  */
 public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
-  Pattern QUERY_SYNTAX_PATTERN =
-      Pattern.compile(
-          "\\w+\\s*:\\s*\\w+|"
-              + // Field queries (field:value)
-              "\\b(?:AND|OR|NOT)\\b|"
-              + // Boolean operators (uppercase only)
-              "[*?]|"
-              + // Wildcards
-              "[()]|"
-              + // Parentheses
-              "\"|"
-              + // Quotes
-              "\\[.+\\s+TO\\s+.+\\]|"
-              + // Range queries
-              "[+\\-~\\^]" // Special operators
-          );
+  Pattern FIELD_QUERY_PATTERN = Pattern.compile("^\\w+\\s*:\\s*\\S+$");
+  Pattern BOOLEAN_OPERATOR_PATTERN = Pattern.compile("^(AND|OR|NOT)$");
+  Pattern RANGE_QUERY_PATTERN = Pattern.compile("^\\[.*\\s+TO\\s+.*\\]$");
+  Pattern WILDCARD_PATTERN = Pattern.compile("^[\\w*?]+$");
+  Pattern PHRASE_PATTERN = Pattern.compile("^\".*\"$");
+  Pattern SINGLE_CHAR_OPERATOR_PATTERN = Pattern.compile("^[()+\\-~^]$");
 
   Set<String> FUZZY_FIELDS =
       Set.of(
@@ -242,12 +232,38 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   S addAggregationsToNLQQuery(S searchSourceBuilder, String indexName);
 
+  /**
+   * Checks if the query looks like Lucene syntax.
+   *
+   * We scan each token and confirm it matches known
+   * Lucene patterns (e.g. field queries, operators, ranges).
+   * If all tokens match, we treat it as Lucene syntax.
+   *
+   * Otherwise, it's considered plain text needing escaping.
+   *
+   * @param query the search string
+   * @return true if query seems to use Lucene syntax
+   */
   default boolean containsQuerySyntax(String query) {
     if (query == null || query.isEmpty()) {
       return false;
     }
+
     query = query.replace("%20", " ").trim();
-    return QUERY_SYNTAX_PATTERN.matcher(query).find();
+    String[] tokens = query.split("\\s+");
+
+    for (String token : tokens) {
+      if (FIELD_QUERY_PATTERN.matcher(token).matches()) continue;
+      if (BOOLEAN_OPERATOR_PATTERN.matcher(token).matches()) continue;
+      if (RANGE_QUERY_PATTERN.matcher(token).matches()) continue;
+      if (PHRASE_PATTERN.matcher(token).matches()) continue;
+      if (SINGLE_CHAR_OPERATOR_PATTERN.matcher(token).matches()) continue;
+      if (WILDCARD_PATTERN.matcher(token).matches()) continue;
+
+      // Found a token that doesn't match Lucene syntax
+      return false;
+    }
+    return true;
   }
 
   default boolean isFuzzyField(String key) {

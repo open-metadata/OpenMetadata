@@ -64,8 +64,10 @@ public class ElasticSearchSourceBuilderFactory
             .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
+    String queryStringInput =
+        containsQuerySyntax(query) ? query : SearchUtils.escapeSpecialCharactersForQuery(query);
     QueryStringQueryBuilder fuzzyQueryBuilder =
-        QueryBuilders.queryStringQuery(SearchUtils.escapeSpecialCharactersForQuery(query))
+        QueryBuilders.queryStringQuery(queryStringInput)
             .fields(fuzzyFields)
             .type(MOST_FIELDS)
             .defaultOperator(Operator.AND)
@@ -75,7 +77,7 @@ public class ElasticSearchSourceBuilderFactory
             .tieBreaker(0.5f);
 
     MultiMatchQueryBuilder nonFuzzyQueryBuilder =
-        QueryBuilders.multiMatchQuery(query)
+        QueryBuilders.multiMatchQuery(SearchUtils.escapeSpecialCharactersForQuery(query))
             .fields(nonFuzzyFields)
             .type(MOST_FIELDS)
             .operator(Operator.AND)
@@ -158,8 +160,10 @@ public class ElasticSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
+    String queryStringInput =
+        containsQuerySyntax(query) ? query : SearchUtils.escapeSpecialCharactersForQuery(query);
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(SearchUtils.escapeSpecialCharactersForQuery(query))
+        QueryBuilders.queryStringQuery(queryStringInput)
             .fields(SearchIndex.getAllFields())
             .fuzziness(Fuzziness.AUTO)
             .fuzzyMaxExpansions(10);
@@ -206,7 +210,7 @@ public class ElasticSearchSourceBuilderFactory
       baseQuery.must(QueryBuilders.matchAllQuery());
     } else if (containsQuerySyntax(query)) {
       QueryStringQueryBuilder fuzzyQueryBuilder =
-          QueryBuilders.queryStringQuery(SearchUtils.escapeSpecialCharactersForQuery(query))
+          QueryBuilders.queryStringQuery(query)
               .fields(fuzzyFields)
               .defaultOperator(Operator.AND)
               .type(MOST_FIELDS)

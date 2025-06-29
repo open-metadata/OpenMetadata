@@ -78,12 +78,12 @@ public class SearchUtil {
       case "api_service_search_index",
           "mlmodel_service_search_index",
           "database_service_search_index",
-          "messaging_service_index",
-          "dashboard_service_index",
-          "pipeline_service_index",
-          "storage_service_index",
-          "search_service_index",
-          "metadata_service_index" -> true;
+          "messaging_service_search_index",
+          "dashboard_service_search_index",
+          "pipeline_service_search_index",
+          "storage_service_search_index",
+          "search_service_search_index",
+          "metadata_service_search_index" -> true;
       default -> false;
     };
   }
