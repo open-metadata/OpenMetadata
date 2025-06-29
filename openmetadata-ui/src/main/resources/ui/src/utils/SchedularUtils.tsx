@@ -13,10 +13,8 @@
 
 import { Select } from 'antd';
 import cronstrue from 'cronstrue/i18n';
-import { t } from 'i18next';
 import { isUndefined, toNumber, toString } from 'lodash';
 import { RuleObject } from 'rc-field-form/es/interface';
-import React from 'react';
 import {
   Combination,
   CronOption,
@@ -32,6 +30,7 @@ import {
 } from '../constants/Schedular.constants';
 import { CronTypes } from '../enums/Schedular.enum';
 import { FieldTypes, FormItemLayout } from '../interface/FormUtils.interface';
+import { t } from './i18next/LocalUtil';
 
 export const getScheduleOptionsFromSchedules = (
   scheduleOptions: string[]

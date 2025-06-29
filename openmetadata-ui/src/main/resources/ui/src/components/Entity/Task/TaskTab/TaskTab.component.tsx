@@ -24,6 +24,7 @@ import {
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -37,20 +38,13 @@ import {
   unionBy,
 } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
-
 import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
@@ -111,13 +105,12 @@ import {
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ActivityFeedCardV2 from '../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2';
-import ActivityFeedEditor, {
-  EditorContentRef,
-} from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import ActivityFeedEditor from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
+import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
 import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -129,8 +122,8 @@ export const TaskTab = ({
   hasGlossaryReviewer,
   ...rest
 }: TaskTabProps) => {
-  const editorRef = useRef<EditorContentRef>();
-  const history = useHistory();
+  const editorRef = useRef<EditorContentRef>(null);
+  const navigate = useNavigate();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
@@ -292,7 +285,7 @@ export const TaskTab = ({
   };
 
   const handleTaskLinkClick = () => {
-    history.push({
+    navigate({
       pathname: getTaskDetailPath(taskThread),
     });
   };
@@ -427,7 +420,7 @@ export const TaskTab = ({
         // Added block for sonar code smell
       })
       .finally(() => {
-        editorRef.current?.clearEditorValue();
+        editorRef.current?.clearEditorContent();
       });
   };
 
@@ -673,7 +666,7 @@ export const TaskTab = ({
           icon={<DownOutlined />}
           loading={isActionLoading}
           menu={{
-            items: INCIDENT_TASK_ACTION_LIST,
+            items: INCIDENT_TASK_ACTION_LIST as ItemType[],
             selectable: true,
             selectedKeys: [taskAction.key],
             onClick: handleTaskMenuClick,

@@ -13,13 +13,7 @@
 import { Button, Col, Modal, Row, Space, Typography } from 'antd';
 import cronstrue from 'cronstrue';
 import { isEmpty } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import {

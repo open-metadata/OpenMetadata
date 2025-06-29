@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Divider, Space } from 'antd';
-import React from 'react';
 import { Status } from '../../../generated/entity/data/glossaryTerm';
 import { StatusClass } from '../../../utils/GlossaryUtils';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';

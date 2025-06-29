@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import {
   GRAPH_BACKGROUND_COLOR,
   TEXT_BODY_COLOR,

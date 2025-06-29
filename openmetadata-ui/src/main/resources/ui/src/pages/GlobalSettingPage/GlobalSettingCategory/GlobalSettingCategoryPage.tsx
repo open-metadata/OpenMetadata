@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Col, Row, Space } from 'antd';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -37,13 +37,14 @@ import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import '../global-setting-page.style.less';
 
 const GlobalSettingCategoryPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { settingCategory } =
-    useParams<{ settingCategory: GlobalSettingsMenuCategory }>();
+    useRequiredParams<{ settingCategory: GlobalSettingsMenuCategory }>();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
 
@@ -72,12 +73,12 @@ const GlobalSettingCategoryPage = () => {
 
     switch (option) {
       case GlobalSettingOptions.TEAMS:
-        history.push(getTeamsWithFqnPath(TeamType.Organization));
+        navigate(getTeamsWithFqnPath(TeamType.Organization));
 
         break;
       case GlobalSettingOptions.SEARCH:
         if (category === GlobalSettingsMenuCategory.PREFERENCES) {
-          history.push(
+          navigate(
             getSettingsPathWithFqn(
               category,
               option,
@@ -85,12 +86,12 @@ const GlobalSettingCategoryPage = () => {
             )
           );
         } else {
-          history.push(getSettingPath(category, option));
+          navigate(getSettingPath(category, option));
         }
 
         break;
       default:
-        history.push(getSettingPath(category, option));
+        navigate(getSettingPath(category, option));
 
         break;
     }

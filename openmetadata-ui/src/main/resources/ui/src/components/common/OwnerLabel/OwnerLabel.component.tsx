@@ -14,7 +14,7 @@
 import { Button, Typography } from 'antd';
 import classNames from 'classnames';
 import { reverse } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';

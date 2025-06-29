@@ -12,7 +12,6 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { NodeViewProps } from '@tiptap/react';
-import React from 'react';
 import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 import ImageAttachment from './ImageAttachment';
 

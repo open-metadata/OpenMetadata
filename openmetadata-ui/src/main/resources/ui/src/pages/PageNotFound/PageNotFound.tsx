@@ -12,7 +12,6 @@
  */
 
 import { Button, Col, Row, Space, Typography } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import notFoundImage from '../../assets/img/404-image.png';

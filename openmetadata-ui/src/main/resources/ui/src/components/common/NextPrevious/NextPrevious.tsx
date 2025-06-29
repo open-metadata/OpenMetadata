@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
 import classNames from 'classnames';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowRightOutlined } from '../../../assets/svg/arrow-right.svg';
 import { ReactComponent as DownOutlined } from '../../../assets/svg/ic-arrow-down.svg';

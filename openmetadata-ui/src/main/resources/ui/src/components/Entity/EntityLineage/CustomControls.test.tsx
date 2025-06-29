@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import React from 'react';
 import { LineageLayer } from '../../../generated/settings/settings';
 import CustomControlsComponent from './CustomControls.component';
 

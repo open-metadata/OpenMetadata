@@ -12,7 +12,6 @@
  */
 import { FieldErrorProps } from '@rjsf/utils';
 import { render } from '@testing-library/react';
-import React from 'react';
 import { FieldErrorTemplate } from './FieldErrorTemplate';
 
 describe('FieldErrorTemplate', () => {

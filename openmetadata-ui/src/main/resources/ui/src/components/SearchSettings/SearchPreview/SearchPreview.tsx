@@ -14,9 +14,8 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -25,6 +24,7 @@ import { SearchSettings } from '../../../generated/api/search/previewSearchReque
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { searchPreview } from '../../../rest/searchAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
@@ -49,7 +49,7 @@ const SearchPreview = ({
   disabledSave,
 }: SearchPreviewProps) => {
   const { t } = useTranslation();
-  const { fqn } = useParams<{ fqn: keyof typeof ENTITY_PATH }>();
+  const { fqn } = useRequiredParams<{ fqn: keyof typeof ENTITY_PATH }>();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SearchedDataProps['data']>([]);
   const [searchValue, setSearchValue] = useState<string>('');

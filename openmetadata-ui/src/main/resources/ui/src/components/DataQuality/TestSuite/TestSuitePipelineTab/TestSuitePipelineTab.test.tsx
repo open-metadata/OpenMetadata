@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -113,13 +112,13 @@ jest.mock(
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useLocation: jest.fn().mockReturnValue({
     pathname: '/test/path',
     search: '',
     hash: '',
     state: null,
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({

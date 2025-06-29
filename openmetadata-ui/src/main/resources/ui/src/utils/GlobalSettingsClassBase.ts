@@ -10,9 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from 'i18next';
-import { SettingMenuItem } from './GlobalSettingsUtils';
-
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
@@ -58,6 +55,7 @@ import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/theme-colored-new.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/url-link-colored.svg';
 import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
+import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
 import {
@@ -70,6 +68,7 @@ import {
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { userPermissions } from '../utils/PermissionsUtils';
 import brandClassBase from './BrandData/BrandClassBase';
+import { t } from './i18next/LocalUtil';
 
 class GlobalSettingsClassBase {
   settingCategories: Record<string, { name: string; url: string }> = {

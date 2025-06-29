@@ -14,7 +14,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CreateGlossary,

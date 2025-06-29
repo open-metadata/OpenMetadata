@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
@@ -40,8 +39,11 @@ jest.mock(
       .mockImplementation(() => <div>ManageButtonItemLabel</div>),
   })
 );
+
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: mockNavigate,
 }));
 
 describe('ExtraDatabaseServiceDropdownOptions', () => {
@@ -54,7 +56,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
     const result = ExtraDatabaseServiceDropdownOptions(
       'databaseServiceFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(1);
@@ -70,7 +73,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
     const result = ExtraDatabaseServiceDropdownOptions(
       'databaseServiceFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(1);
@@ -86,7 +90,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
     const result = ExtraDatabaseServiceDropdownOptions(
       'databaseServiceFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(2);
@@ -102,7 +107,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
     const result = ExtraDatabaseServiceDropdownOptions(
       'databaseServiceFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(0);
@@ -117,7 +123,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
     const result = ExtraDatabaseServiceDropdownOptions(
       'databaseServiceFqn',
       permission,
-      true
+      true,
+      mockNavigate
     );
 
     expect(result).toHaveLength(0);

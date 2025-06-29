@@ -12,7 +12,8 @@
  */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { act, render } from '@testing-library/react';
-import React, { createRef } from 'react';
+import { createRef } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 
 // Mocks
 const setIsAuthenticated = jest.fn();
@@ -49,9 +50,11 @@ describe('GenericAuthenticator', () => {
 
   it('should render children', () => {
     const { getByText } = render(
-      <GenericAuthenticator ref={null}>
-        <div>Child</div>
-      </GenericAuthenticator>
+      <MemoryRouter>
+        <GenericAuthenticator ref={null}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
     );
 
     expect(getByText('Child')).toBeInTheDocument();
@@ -65,9 +68,11 @@ describe('GenericAuthenticator', () => {
     // @ts-ignore
     window.location = { assign: locationAssign } as unknown as Location;
     render(
-      <GenericAuthenticator ref={ref}>
-        <div>Child</div>
-      </GenericAuthenticator>
+      <MemoryRouter>
+        <GenericAuthenticator ref={ref}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
     );
     act(() => {
       ref.current?.invokeLogin();
@@ -83,9 +88,11 @@ describe('GenericAuthenticator', () => {
   it('should call logoutUser and handleSuccessfulLogout on invokeLogout', async () => {
     const ref = createRef<AuthenticatorRef>();
     render(
-      <GenericAuthenticator ref={ref}>
-        <div>Child</div>
-      </GenericAuthenticator>
+      <MemoryRouter>
+        <GenericAuthenticator ref={ref}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
     );
     await act(async () => {
       await ref.current?.invokeLogout();
@@ -100,9 +107,11 @@ describe('GenericAuthenticator', () => {
     const mockResp = { accessToken: 'token', foo: 'bar' };
     renewToken.mockResolvedValueOnce(mockResp);
     render(
-      <GenericAuthenticator ref={ref}>
-        <div>Child</div>
-      </GenericAuthenticator>
+      <MemoryRouter>
+        <GenericAuthenticator ref={ref}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
     );
     let result;
     await act(async () => {

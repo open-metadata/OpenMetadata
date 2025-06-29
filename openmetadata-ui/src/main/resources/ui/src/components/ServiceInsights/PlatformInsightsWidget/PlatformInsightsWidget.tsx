@@ -12,7 +12,7 @@
  */
 import { Card, Col, Row, Skeleton, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import { ReactComponent as ArrowDown } from '../../../assets/svg/down-full-arrow.svg';

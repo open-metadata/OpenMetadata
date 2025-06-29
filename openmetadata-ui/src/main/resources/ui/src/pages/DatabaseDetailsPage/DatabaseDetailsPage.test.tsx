@@ -147,13 +147,10 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <p data-testid="link">{children}</p>
     )),
-  useHistory: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-  }),
   useParams: jest.fn().mockReturnValue({
     fqn: 'bigquery.shopify',
   }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock(

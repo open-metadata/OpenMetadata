@@ -19,7 +19,7 @@ import classNames from 'classnames';
 import { isArray, isUndefined, sortBy } from 'lodash';
 import { PagingResponse } from 'Models';
 import QueryString from 'qs';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';

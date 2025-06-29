@@ -14,13 +14,14 @@
 import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
+import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
@@ -49,7 +50,7 @@ const Severity = ({
   const onCancel = useCallback(() => setIsEditSeverity(false), []);
 
   const handleSubmit = useCallback(
-    async (data) => {
+    async (data: Severities) => {
       await onSubmit?.(data);
       onCancel();
     },

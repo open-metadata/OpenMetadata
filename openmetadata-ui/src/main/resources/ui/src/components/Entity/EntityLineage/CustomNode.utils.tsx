@@ -12,7 +12,7 @@
  */
 import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';

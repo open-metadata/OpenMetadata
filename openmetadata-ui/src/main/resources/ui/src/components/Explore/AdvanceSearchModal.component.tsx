@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { Builder, Query } from '@react-awesome-query-builder/antd';
 import { Button, Modal, Space, Typography } from 'antd';
-import React, { FunctionComponent } from 'react';
-import { Builder, Query } from 'react-awesome-query-builder';
+import 'antd/dist/antd.css';
+import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import './advanced-search-modal.less';
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';

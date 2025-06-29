@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TABLE_DATA } from '../../../../mocks/Teams.mock';
 import AddTestSuiteForm from './AddTestSuiteForm';
@@ -23,12 +22,6 @@ jest.mock('../../../../rest/testAPI', () => ({
   getListTestSuites: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE_DATA)),
-}));
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
 }));
 
 jest.mock('../../../common/RichTextEditor/RichTextEditor', () =>

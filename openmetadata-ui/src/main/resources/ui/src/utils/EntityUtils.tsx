@@ -23,7 +23,7 @@ import {
 } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import QueryString from 'qs';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
@@ -1792,11 +1792,11 @@ export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
   },
   {
     name: entity.name,
-    url: {
-      pathname: getEntityLinkFromType(
-        entity.fullyQualifiedName ?? '',
-        (entity as SourceType)?.entityType as EntityType
-      ),
+    url: getEntityLinkFromType(
+      entity.fullyQualifiedName ?? '',
+      (entity as SourceType)?.entityType as EntityType
+    ),
+    options: {
       state: {
         breadcrumbData: [
           {

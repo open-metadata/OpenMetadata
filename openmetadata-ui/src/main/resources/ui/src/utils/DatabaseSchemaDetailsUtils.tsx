@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
-import React from 'react';
-import { useHistory } from 'react-router-dom';
+import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -37,7 +35,7 @@ import StoredProcedureTab from '../pages/StoredProcedure/StoredProcedureTab';
 import { exportDatabaseSchemaDetailsInCSV } from '../rest/databaseAPI';
 import { DatabaseSchemaPageTabProps } from './DatabaseSchemaClassBase';
 import { getEntityImportPath } from './EntityUtils';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
@@ -135,10 +133,10 @@ export const getDataBaseSchemaPageBaseTabs = ({
 export const ExtraDatabaseSchemaDropdownOptions = (
   fqn: string,
   permission: OperationPermission,
-  deleted: boolean
+  deleted: boolean,
+  navigate: NavigateFunction
 ) => {
   const { showModal } = useEntityExportModalProvider();
-  const history = useHistory();
 
   const { ViewAll, EditAll } = permission;
 
@@ -149,14 +147,14 @@ export const ExtraDatabaseSchemaDropdownOptions = (
             label: (
               <LimitWrapper resource="databaseSchema">
                 <ManageButtonItemLabel
-                  description={i18n.t('message.import-entity-help', {
-                    entity: i18n.t('label.database-schema'),
+                  description={t('message.import-entity-help', {
+                    entity: t('label.database-schema'),
                   })}
                   icon={ImportIcon}
                   id="import-button"
-                  name={i18n.t('label.import')}
+                  name={t('label.import')}
                   onClick={() =>
-                    history.push(
+                    navigate(
                       getEntityImportPath(EntityType.DATABASE_SCHEMA, fqn)
                     )
                   }
@@ -172,12 +170,12 @@ export const ExtraDatabaseSchemaDropdownOptions = (
           {
             label: (
               <ManageButtonItemLabel
-                description={i18n.t('message.export-entity-help', {
-                  entity: i18n.t('label.database-schema'),
+                description={t('message.export-entity-help', {
+                  entity: t('label.database-schema'),
                 })}
                 icon={ExportIcon}
                 id="export-button"
-                name={i18n.t('label.export')}
+                name={t('label.export')}
                 onClick={() =>
                   showModal({
                     name: fqn,

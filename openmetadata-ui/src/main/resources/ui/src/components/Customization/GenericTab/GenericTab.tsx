@@ -12,7 +12,7 @@
  */
 import classNames from 'classnames';
 import React, { useCallback, useMemo } from 'react';
-import RGL, { WidthProvider } from 'react-grid-layout';
+import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
@@ -22,7 +22,9 @@ import { useGenericContext } from '../GenericProvider/GenericProvider';
 import { DynamicHeightWidget } from './DynamicHeightWidget';
 import './generic-tab.less';
 
-const ReactGridLayout = WidthProvider(RGL);
+const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
+  ReactGridLayoutProps & { children?: React.ReactNode }
+>;
 
 interface GenericTabProps {
   type: PageType;

@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, { CSSProperties, FunctionComponent } from 'react';
+import { CSSProperties, FunctionComponent } from 'react';
 import './Loader.less';
 
 type Props = {

@@ -13,8 +13,12 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import RGL, { Layout, WidthProvider } from 'react-grid-layout';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import RGL, {
+  Layout,
+  ReactGridLayoutProps,
+  WidthProvider,
+} from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
 import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
@@ -47,7 +51,9 @@ import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePa
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
 
-const ReactGridLayout = WidthProvider(RGL);
+const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
+  ReactGridLayoutProps & { children?: React.ReactNode }
+>;
 
 function CustomizeMyData({
   personaDetails,

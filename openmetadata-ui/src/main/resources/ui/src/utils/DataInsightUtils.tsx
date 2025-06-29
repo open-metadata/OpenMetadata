@@ -12,8 +12,6 @@
  */
 
 import { Card, Typography } from 'antd';
-import { RangePickerProps } from 'antd/lib/date-picker';
-import { t } from 'i18next';
 import {
   first,
   get,
@@ -29,8 +27,7 @@ import {
   toNumber,
   uniqBy,
 } from 'lodash';
-import moment from 'moment';
-import React from 'react';
+import { DateTime } from 'luxon';
 import {
   CartesianGrid,
   LegendProps,
@@ -41,6 +38,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { RangePickerProps } from '../components/common/DatePicker/DatePicker';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -70,6 +68,7 @@ import { entityChartColor } from '../utils/CommonUtils';
 import { axisTickFormatter } from './ChartUtils';
 import { pluralize } from './CommonUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
+import { t } from './i18next/LocalUtil';
 
 export const renderLegend = (
   legendData: LegendProps,
@@ -408,8 +407,9 @@ export const getWebChartSummary = (
 
 export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
   // Can not select days before today
+  const today = DateTime.now().startOf('day');
 
-  return current && current.isBefore(moment().subtract(1, 'day'));
+  return current ? current.startOf('day') < today : false;
 };
 
 export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {

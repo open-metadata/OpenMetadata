@@ -14,7 +14,7 @@
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { createElement, FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
@@ -93,7 +93,7 @@ const Emoji: FC<EmojiProps> = ({
     setIsClicked(false);
   }, [reaction]);
 
-  const element = React.createElement(
+  const element = createElement(
     'g-emoji',
     {
       alias: reactionObject?.alias,

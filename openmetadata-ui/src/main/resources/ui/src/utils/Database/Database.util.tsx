@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
 import { toLower } from 'lodash';
-import React from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-import.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -43,7 +41,7 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { exportDatabaseDetailsInCSV } from '../../rest/databaseAPI';
 import { getEntityImportPath, getEntityName } from '../EntityUtils';
-import i18n from '../i18next/LocalUtil';
+import { t } from '../i18next/LocalUtil';
 import { getEntityDetailsPath } from '../RouterUtils';
 import { ownerTableObject } from '../TableColumn.util';
 import { getUsagePercentile } from '../TableUtils';
@@ -213,10 +211,10 @@ export const getDatabaseWidgetsFromKey = (widgetConfig: WidgetConfig) => {
 export const ExtraDatabaseDropdownOptions = (
   fqn: string,
   permission: OperationPermission,
-  deleted: boolean
+  deleted: boolean,
+  navigate: NavigateFunction
 ) => {
   const { showModal } = useEntityExportModalProvider();
-  const history = useHistory();
 
   const { ViewAll, EditAll } = permission;
 
@@ -227,14 +225,14 @@ export const ExtraDatabaseDropdownOptions = (
             label: (
               <LimitWrapper resource="database">
                 <ManageButtonItemLabel
-                  description={i18n.t('message.import-entity-help', {
-                    entity: i18n.t('label.database'),
+                  description={t('message.import-entity-help', {
+                    entity: t('label.database'),
                   })}
                   icon={ImportIcon}
                   id="import-button"
-                  name={i18n.t('label.import')}
+                  name={t('label.import')}
                   onClick={() =>
-                    history.push(getEntityImportPath(EntityType.DATABASE, fqn))
+                    navigate(getEntityImportPath(EntityType.DATABASE, fqn))
                   }
                 />
               </LimitWrapper>
@@ -248,12 +246,12 @@ export const ExtraDatabaseDropdownOptions = (
           {
             label: (
               <ManageButtonItemLabel
-                description={i18n.t('message.export-entity-help', {
-                  entity: i18n.t('label.database'),
+                description={t('message.export-entity-help', {
+                  entity: t('label.database'),
                 })}
                 icon={ExportIcon}
                 id="export-button"
-                name={i18n.t('label.export')}
+                name={t('label.export')}
                 onClick={() =>
                   showModal({
                     name: fqn,

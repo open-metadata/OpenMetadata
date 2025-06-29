@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import React, { FC, useEffect, useMemo, useState } from 'react';
-
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
+import { ValidatorType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
@@ -154,7 +154,7 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <Form
+        <Form<ProfilerConfig>
           focusOnFirstError
           noHtml5Validate
           className={classNames('rjsf no-header profiler-settings-form')}
@@ -173,7 +173,7 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
           }}
           transformErrors={transformErrors}
           uiSchema={uiSchema}
-          validator={validator}
+          validator={validator as ValidatorType<ProfilerConfig>}
           widgets={{ RangeWidget: CustomRangeWidget }}
           onChange={handleOnChange}
           onSubmit={handleUpdate}

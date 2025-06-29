@@ -12,7 +12,7 @@
  */
 import { NodeViewProps } from '@tiptap/react';
 import classNames from 'classnames';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ReactComponent as IconFormatImage } from '../../../../../assets/svg/ic-format-image.svg';
 import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 

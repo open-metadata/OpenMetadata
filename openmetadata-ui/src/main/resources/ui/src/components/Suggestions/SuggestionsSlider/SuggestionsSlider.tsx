@@ -12,8 +12,8 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Space, Typography } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
+
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
@@ -31,6 +31,7 @@ const SuggestionsSlider = () => {
     loadingReject,
     onUpdateActiveUser,
   } = useSuggestionsContext();
+  const { t } = useTranslation();
 
   return (
     <div className="d-flex items-center gap-2 m-r-md">

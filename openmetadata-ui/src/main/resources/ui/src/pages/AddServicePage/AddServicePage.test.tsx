@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AIRFLOW_HYBRID } from '../../constants/constants';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -28,10 +27,7 @@ const mockParam = {
   serviceCategory: 'databaseServices',
 };
 
-const mockPush = jest.fn();
-const mockHistory = {
-  push: mockPush,
-};
+const mockNavigate = jest.fn();
 
 const mockSetInlineAlertDetails = jest.fn();
 
@@ -54,21 +50,12 @@ jest.mock('../../utils/ServiceUtilClassBase', () => ({
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParam),
 }));
 
@@ -204,6 +191,10 @@ const baseAirflowMock = {
   fetchAirflowStatus: jest.fn(),
 };
 
+const mockProps = {
+  pageTitle: 'add-service',
+};
+
 describe('AddServicePage', () => {
   afterEach(() => {
     jest.clearAllMocks();
@@ -211,7 +202,7 @@ describe('AddServicePage', () => {
 
   it('should render the component', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     expect(screen.getByTestId('add-new-service-container')).toBeInTheDocument();
@@ -222,7 +213,7 @@ describe('AddServicePage', () => {
 
   it('should handle service type selection', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     const selectMySQLButton = screen.getByText('Select MySQL');
@@ -238,7 +229,7 @@ describe('AddServicePage', () => {
 
   it('should handle service type selection cancel', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     const cancelButton = screen.getByText('Cancel');
@@ -250,12 +241,12 @@ describe('AddServicePage', () => {
     expect(getServiceRouteFromServiceType).toHaveBeenCalledWith(
       ServiceCategory.DATABASE_SERVICES
     );
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   it('should show error when trying to proceed without selecting service type', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     const nextButton = screen.getByText('Next');
@@ -268,7 +259,7 @@ describe('AddServicePage', () => {
 
   it('should handle connection configuration', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     // First select a service type
@@ -300,7 +291,7 @@ describe('AddServicePage', () => {
 
   it('should handle service creation success', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     // Select service type
@@ -334,12 +325,12 @@ describe('AddServicePage', () => {
     });
 
     expect(postService).toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith('/service/details/path');
+    expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
   });
 
   it('should handle back navigation in connection configuration', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     // Select service type
@@ -375,7 +366,7 @@ describe('AddServicePage', () => {
     );
 
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     // Select service type
@@ -420,7 +411,7 @@ describe('AddServicePage', () => {
 
     const mockGetExtraInfo = serviceUtilClassBaseModule.default
       .getExtraInfo as jest.Mock;
-    render(<AddServicePage />, { wrapper: MemoryRouter });
+    render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(mockGetExtraInfo).toHaveBeenCalled();
   });
@@ -433,7 +424,7 @@ describe('AddServicePage', () => {
 
     const mockGetExtraInfo = serviceUtilClassBaseModule.default
       .getExtraInfo as jest.Mock;
-    render(<AddServicePage />, { wrapper: MemoryRouter });
+    render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(mockGetExtraInfo).not.toHaveBeenCalled();
   });

@@ -13,9 +13,9 @@
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -39,7 +39,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 const LoginConfigurationPage = () => {
   const { t } = useTranslation();
   const { authConfig } = useApplicationStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(false);
   const [loginConfig, setLoginConfig] = useState<LoginConfiguration>();
 
@@ -74,7 +74,7 @@ const LoginConfigurationPage = () => {
   };
 
   const handleEditClick = () => {
-    history.push(ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG);
+    navigate(ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG);
   };
 
   useEffect(() => {

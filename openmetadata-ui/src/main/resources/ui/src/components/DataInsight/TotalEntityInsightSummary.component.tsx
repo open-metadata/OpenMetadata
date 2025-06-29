@@ -14,7 +14,7 @@ import { Button, Col, Row } from 'antd';
 import { Gutter } from 'antd/lib/grid/row';
 import classNames from 'classnames';
 import { includes, startCase, toLower } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import { entityChartColor } from '../../utils/CommonUtils';

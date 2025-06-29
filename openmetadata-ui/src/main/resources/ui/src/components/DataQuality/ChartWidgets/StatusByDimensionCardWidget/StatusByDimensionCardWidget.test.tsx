@@ -12,7 +12,6 @@
  */
 import '@testing-library/jest-dom/extend-expect';
 import { render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
 import { DataQualityDashboardChartFilters } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
@@ -94,7 +93,7 @@ describe('StatusByDimensionCardWidget', () => {
     );
 
     expect(
-      screen.getAllByText('StatusByDimensionWidget.component')
+      await screen.findAllByText('StatusByDimensionWidget.component')
     ).toHaveLength(2);
   });
 
@@ -110,7 +109,7 @@ describe('StatusByDimensionCardWidget', () => {
     );
 
     expect(
-      screen.getAllByText('StatusByDimensionWidget.component')
+      await screen.findAllByText('StatusByDimensionWidget.component')
     ).toHaveLength(8);
   });
 });

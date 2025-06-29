@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { DRAGGABLE_BODY_ROW } from '../../../constants/Teams.constants';
 import {

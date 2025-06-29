@@ -13,7 +13,7 @@
 
 import { Button, Col, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { FunctionComponent } from 'react';
+import { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { EntityReference } from '../../../generated/entity/type';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';

@@ -14,9 +14,9 @@
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
@@ -50,7 +50,6 @@ import {
   handleAlertSave,
 } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -59,7 +58,7 @@ import {
 } from './AddObservabilityPage.interface';
 
 function AddObservabilityPage() {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const { fqn } = useFqn();
@@ -151,7 +150,7 @@ function AddObservabilityPage() {
           updateAlertAPI: updateObservabilityAlert,
           afterSaveAction: async (fqn: string) => {
             !fqn && (await getResourceLimit('eventsubscription', true, true));
-            history.push(getObservabilityAlertDetailsPath(fqn));
+            navigate(getObservabilityAlertDetailsPath(fqn));
           },
           setInlineAlertDetails,
         });
@@ -161,7 +160,7 @@ function AddObservabilityPage() {
         setSaving(false);
       }
     },
-    [fqn, history, initialData, currentUser]
+    [fqn, navigate, initialData, currentUser]
   );
 
   const [selectedTrigger] =
@@ -192,7 +191,7 @@ function AddObservabilityPage() {
     [selectedTrigger, supportedTriggers]
   );
 
-  if (fetching) {
+  if (fetching || (isEditMode && isEmpty(alert))) {
     return <Loader />;
   }
 
@@ -322,7 +321,7 @@ function AddObservabilityPage() {
                       <Button
                         className="float-right"
                         data-testid="cancel-button"
-                        onClick={() => history.goBack()}>
+                        onClick={() => navigate(-1)}>
                         {t('label.cancel')}
                       </Button>
                     </Col>
@@ -348,8 +347,4 @@ function AddObservabilityPage() {
   );
 }
 
-export default withPageLayout(
-  i18n.t('label.add-entity', {
-    entity: i18n.t('label.observability'),
-  })
-)(AddObservabilityPage);
+export default withPageLayout(AddObservabilityPage);

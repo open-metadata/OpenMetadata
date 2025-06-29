@@ -15,9 +15,9 @@ import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -68,16 +68,15 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import APIEndpointsTab from './APIEndpointsTab';
 
 const APICollectionVersionPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { version, tab } = useParams<{
-    version: string;
-    tab: EntityTabs;
-  }>();
+  const { version, tab } =
+    useRequiredParams<{ version: string; tab: string }>();
 
   const { fqn: decodedEntityFQN } = useFqn();
 
@@ -216,7 +215,7 @@ const APICollectionVersionPage = () => {
   );
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.API_COLLECTION,
         decodedEntityFQN,
@@ -243,7 +242,7 @@ const APICollectionVersionPage = () => {
   const { versionHandler, backHandler } = useMemo(
     () => ({
       versionHandler: (newVersion = version) => {
-        history.push(
+        navigate(
           getVersionPath(
             EntityType.API_COLLECTION,
             decodedEntityFQN,
@@ -253,7 +252,7 @@ const APICollectionVersionPage = () => {
         );
       },
       backHandler: () => {
-        history.push(
+        navigate(
           getEntityDetailsPath(EntityType.API_COLLECTION, decodedEntityFQN, tab)
         );
       },

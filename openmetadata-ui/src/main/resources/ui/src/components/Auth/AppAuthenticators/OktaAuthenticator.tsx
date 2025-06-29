@@ -12,12 +12,7 @@
  */
 
 import { useOktaAuth } from '@okta/okta-react';
-import React, {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useImperativeHandle,
-} from 'react';
+import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
 
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';

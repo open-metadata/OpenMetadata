@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { PropertyInput, PropertyInputProps } from './PropertyInput';
 
 const onCancel = jest.fn();
@@ -59,10 +57,9 @@ describe('Test PropertyInput Component', () => {
     expect(valueInput).toBeInTheDocument();
     expect(valueInput).toHaveValue('yValue');
 
-    userEvent.clear(valueInput);
-    // type the new value
-    userEvent.type(valueInput, input);
-    userEvent.click(saveBtn);
+    fireEvent.change(valueInput, { target: { value: input } });
+
+    fireEvent.click(saveBtn);
 
     expect(mockProp.onSave).toHaveBeenCalledWith(input);
   });

@@ -23,7 +23,7 @@ import {
   reduce,
   sortBy,
 } from 'lodash';
-import { default as React, useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,
@@ -67,9 +67,8 @@ const TotalDataAssetsWidget = ({
   selectedGridSize,
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const [chartData, setChartData] =
-    React.useState<DataInsightCustomChartResult>();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [chartData, setChartData] = useState<DataInsightCustomChartResult>();
 
   const { rightSideEntityList, latestData, graphData, changeInValue, total } =
     useMemo(() => {

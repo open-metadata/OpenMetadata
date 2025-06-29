@@ -17,7 +17,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { TagLabel, TestCase } from '../../../../generated/tests/testCase';
 import {
   LabelType,

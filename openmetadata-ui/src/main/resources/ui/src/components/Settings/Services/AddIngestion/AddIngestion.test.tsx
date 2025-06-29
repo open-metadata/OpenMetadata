@@ -12,7 +12,6 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
-import React from 'react';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';

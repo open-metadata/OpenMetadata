@@ -13,7 +13,7 @@
 
 import { Button } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useCallback, useMemo } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
 import TaskFeedCardNew from '../TaskFeedCard/TaskFeedCardNew.component';

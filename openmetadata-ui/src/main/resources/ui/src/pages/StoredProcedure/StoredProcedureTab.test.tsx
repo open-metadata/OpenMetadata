@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import StoredProcedureTab from './StoredProcedureTab';
 
 jest.mock(
@@ -50,12 +49,10 @@ jest.mock('react-router-dom', () => ({
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
   useParams: jest.fn().mockImplementation(() => ({ fqn: 'something' })),
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 jest.mock('../../utils/EntityUtils', () => ({

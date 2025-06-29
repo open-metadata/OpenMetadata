@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DraggableMenuItem from './DraggableMenuItem.component';
@@ -66,7 +64,7 @@ describe('DraggableMenuItem', () => {
     renderComponent();
 
     const button = screen.getByRole('button');
-    await userEvent.click(button);
+    fireEvent.click(button);
 
     expect(mockOnSelect).toHaveBeenCalledWith('test', false);
   });
@@ -78,7 +76,7 @@ describe('DraggableMenuItem', () => {
     });
 
     const button = screen.getByRole('button');
-    await userEvent.click(button);
+    fireEvent.click(button);
 
     expect(mockOnSelect).toHaveBeenCalledWith('test', true);
   });

@@ -16,7 +16,6 @@
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import {
   capitalize,
   get,
@@ -36,7 +35,7 @@ import {
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -59,7 +58,7 @@ import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
-import { history } from './HistoryUtils';
+import { t } from './i18next/LocalUtil';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { showErrorToast } from './ToastUtils';
 
@@ -587,10 +586,6 @@ export const getLoadingStatus = (
   return children;
 };
 
-export const refreshPage = () => {
-  history.go(0);
-};
-
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
   if (isString(tag)) {
     return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
@@ -638,7 +633,7 @@ export const Transi18next = ({
 }: {
   i18nKey: string;
   values?: object;
-  renderElement: JSX.Element | HTMLElement;
+  renderElement: ReactNode;
 }): JSX.Element => (
   <Trans i18nKey={i18nKey} values={values} {...otherProps}>
     {renderElement}

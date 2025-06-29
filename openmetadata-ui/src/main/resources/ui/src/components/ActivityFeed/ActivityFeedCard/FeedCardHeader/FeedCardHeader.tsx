@@ -14,7 +14,7 @@
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ThreadType } from '../../../../generated/entity/feed/thread';

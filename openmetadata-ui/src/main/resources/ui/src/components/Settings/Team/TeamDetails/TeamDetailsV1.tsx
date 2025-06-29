@@ -30,9 +30,9 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
@@ -132,7 +132,7 @@ const TeamDetailsV1 = ({
   isFetchingAllTeamAdvancedDetails,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { isAdminUser } = useAuth();
   const { currentUser } = useApplicationStore();
@@ -208,7 +208,7 @@ const TeamDetailsV1 = ({
     [childTeamList, currentTeam.childrenCount]
   );
   const updateActiveTab = (key: string) => {
-    history.push({ search: Qs.stringify({ activeTab: key }) });
+    navigate({ search: Qs.stringify({ activeTab: key }) });
   };
 
   const { createTeamPermission, editUserPermission } = useMemo(() => {
@@ -505,7 +505,7 @@ const TeamDetailsV1 = ({
     }
   }, [currentTeam]);
   const handleImportClick = useCallback(async () => {
-    history.push({
+    navigate({
       pathname: getSettingsPathWithFqn(
         GlobalSettingsMenuCategory.MEMBERS,
         GlobalSettingOptions.TEAMS,
@@ -728,7 +728,7 @@ const TeamDetailsV1 = ({
         noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
         type={AssetsOfEntity.TEAM}
-        onAddAsset={() => history.push(ROUTES.EXPLORE)}
+        onAddAsset={() => navigate(ROUTES.EXPLORE)}
         onAssetClick={setPreviewAsset}
       />
     ),

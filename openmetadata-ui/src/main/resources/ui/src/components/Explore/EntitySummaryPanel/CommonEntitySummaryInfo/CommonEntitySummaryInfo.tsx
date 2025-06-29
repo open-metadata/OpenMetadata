@@ -14,7 +14,6 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
@@ -45,21 +44,26 @@ function CommonEntitySummaryInfo({
               </Col>
               <Col span={16}>
                 {info.isLink ? (
-                  <Link
-                    component={Typography.Link}
-                    data-testid={`${info.name}-value`}
-                    target={info.isExternal ? '_blank' : '_self'}
-                    to={info.linkProps ?? { pathname: info.url }}>
-                    {info.value}
-                    {info.isExternal ? (
+                  info.isExternal ? (
+                    <a
+                      data-testid={`${info.name}-value`}
+                      href={info.url}
+                      target="_blank">
+                      {info.value}
                       <Icon
                         className="m-l-xs"
                         component={IconExternalLink}
                         data-testid="external-link-icon"
                         style={ICON_DIMENSION}
                       />
-                    ) : null}
-                  </Link>
+                    </a>
+                  ) : (
+                    <Link
+                      data-testid={`${info.name}-value`}
+                      to={info.linkProps ?? info.url ?? ''}>
+                      {info.value}
+                    </Link>
+                  )
                 ) : (
                   <Typography.Text
                     className={classNames('summary-item-value text-grey-body')}

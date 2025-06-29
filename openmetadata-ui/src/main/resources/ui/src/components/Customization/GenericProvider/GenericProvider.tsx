@@ -12,7 +12,8 @@
  */
 import { AxiosError } from 'axios';
 import { once } from 'lodash';
-import React, {
+import {
+  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -21,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import {
   CustomizeEntityType,
   ENTITY_PAGE_TYPE_MAP,
@@ -40,6 +40,7 @@ import {
   updateWidgetHeightRecursively,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 
@@ -72,7 +73,7 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
-  React.createContext({} as GenericContextType<T>)
+  createContext({} as GenericContextType<T>)
 );
 
 export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
@@ -94,7 +95,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const expandedLayout = useRef<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetConfig[]>(
     getLayoutFromCustomizedPage(pageType, tab, customizedPage)

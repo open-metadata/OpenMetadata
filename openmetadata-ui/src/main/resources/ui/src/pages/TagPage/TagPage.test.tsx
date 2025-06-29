@@ -12,7 +12,6 @@
  */
 
 import { render, waitFor } from '@testing-library/react';
-import React from 'react';
 import { useFqn } from '../../hooks/useFqn';
 import { searchData } from '../../rest/miscAPI';
 import { getTagByFqn } from '../../rest/tagAPI';
@@ -39,8 +38,10 @@ jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn(),
 }));
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({ fqn: 'PII.NonSensitive' }),
   useLocation: jest
     .fn()

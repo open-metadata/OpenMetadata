@@ -13,7 +13,6 @@
 import Icon from '@ant-design/icons';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import React from 'react';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
@@ -40,7 +39,7 @@ export const ownerTableObject = <
   T extends { owners?: EntityReference[] }
 >(): ColumnsType<T> => [
   {
-    title: i18n.t('label.owner-plural'),
+    title: i18n.t('label.owner-plural').toString(),
     dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
     key: TABLE_COLUMNS_KEYS.OWNERS,
     width: 180,
@@ -60,7 +59,7 @@ export const domainTableObject = <
   T extends { domain?: EntityReference }
 >(): ColumnsType<T> => [
   {
-    title: i18n.t('label.domain'),
+    title: i18n.t('label.domain').toString(),
     dataIndex: TABLE_COLUMNS_KEYS.DOMAIN,
     key: TABLE_COLUMNS_KEYS.DOMAIN,
     width: 200,
@@ -80,7 +79,7 @@ export const dataProductTableObject = <
   T extends { dataProducts?: EntityReference[] }
 >(): ColumnsType<T> => [
   {
-    title: i18n.t('label.data-product-plural'),
+    title: i18n.t('label.data-product-plural').toString(),
     dataIndex: TABLE_COLUMNS_KEYS.DATA_PRODUCTS,
     key: TABLE_COLUMNS_KEYS.DATA_PRODUCTS,
     width: 200,
@@ -98,7 +97,7 @@ export const tagTableObject = <
   T extends { tags?: TagLabel[] }
 >(): ColumnsType<T> => [
   {
-    title: i18n.t('label.tag-plural'),
+    title: i18n.t('label.tag-plural').toString(),
     dataIndex: TABLE_COLUMNS_KEYS.TAGS,
     width: 240,
     key: TABLE_COLUMNS_KEYS.TAGS,

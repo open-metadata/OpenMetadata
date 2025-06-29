@@ -12,7 +12,7 @@
  */
 import { Button, Modal, Tooltip } from 'antd';
 import { isNil } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemove } from '../../../../assets/svg/ic-remove.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';

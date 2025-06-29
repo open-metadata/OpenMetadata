@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { get } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   AdvanceSearchProviderProps,

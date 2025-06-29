@@ -13,12 +13,7 @@
 
 import { OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
-import React, {
-  FunctionComponent,
-  ReactNode,
-  useCallback,
-  useMemo,
-} from 'react';
+import { FunctionComponent, ReactNode, useCallback, useMemo } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { useAuthProvider } from './AuthProvider';

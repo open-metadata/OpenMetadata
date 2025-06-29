@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useParams } from 'react-router-dom';
 import { Page, PageType } from '../../generated/system/ui/page';
 import {
@@ -86,6 +85,7 @@ jest.mock('react-router-dom', () => ({
     pageFqn: PageType.LandingPage,
   })),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('./CustomizeStore', () => ({
@@ -129,13 +129,11 @@ describe('CustomizablePage component', () => {
   });
 
   it('CustomizablePage should show Loader while the layout is being fetched', async () => {
-    await act(async () => {
-      render(<CustomizablePage />);
+    render(<CustomizablePage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-      expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
-      expect(screen.queryByTestId('CustomizeMyData')).toBeNull();
-    });
+    expect(await screen.findByText('Loader')).toBeInTheDocument();
+    expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
+    expect(screen.queryByTestId('CustomizeMyData')).toBeNull();
   });
 
   it('CustomizablePage should pass the correct page layout data for the persona', async () => {

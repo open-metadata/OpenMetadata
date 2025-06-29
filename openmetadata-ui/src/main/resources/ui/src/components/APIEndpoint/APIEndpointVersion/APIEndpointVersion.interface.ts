@@ -19,7 +19,7 @@ import { EntityHistory } from '../../../generated/type/entityHistory';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface APIEndpointVersionProp {
-  version: string;
+  version?: string;
   currentVersionData: APIEndpoint;
   isVersionLoading: boolean;
   owners: APIEndpoint['owners'];

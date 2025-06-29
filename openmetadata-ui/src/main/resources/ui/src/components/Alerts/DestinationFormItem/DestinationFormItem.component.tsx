@@ -14,7 +14,7 @@
 import { Button, Col, Divider, Form, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
-import React, { Fragment, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';

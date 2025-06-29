@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
@@ -29,6 +30,7 @@ const TourPage = () => {
     updateTourPage,
     updateTourSearch,
   } = useTourProvider();
+  const { t } = useTranslation();
 
   const clearSearchTerm = () => {
     updateTourSearch('');
@@ -44,7 +46,7 @@ const TourPage = () => {
         return <MyDataPage />;
 
       case CurrentTourPageType.EXPLORE_PAGE:
-        return <ExplorePageV1Component />;
+        return <ExplorePageV1Component pageTitle={t('label.explore')} />;
 
       case CurrentTourPageType.DATASET_PAGE:
         return <TableDetailsPageV1 />;

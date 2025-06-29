@@ -13,7 +13,6 @@
 
 import { Carousel } from 'antd';
 import { uniqueId } from 'lodash';
-import React from 'react';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FeaturesCarouselProps } from './FeaturesCarousel.interface';

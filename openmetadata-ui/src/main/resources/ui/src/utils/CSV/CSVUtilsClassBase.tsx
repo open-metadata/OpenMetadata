@@ -13,9 +13,8 @@
 
 import { Form } from 'antd';
 import Select, { DefaultOptionType } from 'antd/lib/select';
-import { t } from 'i18next';
 import { toString } from 'lodash';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import Certification from '../../components/Certification/Certification.component';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
@@ -33,6 +32,7 @@ import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
 import Fqn from '../Fqn';
+import { t } from '../i18next/LocalUtil';
 import { EditorProps } from './CSV.utils';
 
 class CSVUtilsClassBase {

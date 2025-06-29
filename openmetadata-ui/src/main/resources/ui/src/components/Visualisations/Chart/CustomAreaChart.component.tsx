@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Divider, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   Area,
   AreaChart,

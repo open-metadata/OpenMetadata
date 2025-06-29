@@ -74,6 +74,7 @@ test('Logical TestSuite', async ({ page }) => {
   const testCaseName1 = table.testCasesResponseData?.[0]?.['name'];
   const testCaseName2 = table.testCasesResponseData?.[1]?.['name'];
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
+  await page.waitForLoadState('networkidle');
   const testSuite = page.waitForResponse(
     '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*'
   );
@@ -216,6 +217,9 @@ test('Logical TestSuite', async ({ page }) => {
     await page.click('[data-testid="owner-select-filter"]');
     await page.waitForSelector("[data-testid='select-owner-tabs']", {
       state: 'visible',
+    });
+    await page.waitForSelector(`[data-testid="loader"]`, {
+      state: 'detached',
     });
     const getOwnerList = page.waitForResponse(
       '/api/v1/search/query?q=*isBot:false*index=user_search_index*'

@@ -200,6 +200,7 @@ export const selectOption = async (
   optionTitle: string
 ) => {
   await dropdownLocator.click();
+  await page.keyboard.type(optionTitle);
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',
   });

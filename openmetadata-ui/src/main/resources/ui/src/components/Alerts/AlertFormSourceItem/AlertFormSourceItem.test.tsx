@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
-import { act } from 'react-dom/test-utils';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useFqn } from '../../../hooks/useFqn';
 import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
@@ -69,9 +66,7 @@ describe('AlertFormSourceItem', () => {
       wrapper: MemoryRouter,
     });
     const addButton = screen.getByTestId('add-source-button');
-    await act(async () => {
-      userEvent.click(addButton);
-    });
+    fireEvent.click(addButton);
 
     expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
   });

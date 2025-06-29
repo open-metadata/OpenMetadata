@@ -13,7 +13,6 @@
 
 import { Card, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import './form-card-section.less';
 import { FormCardSectionProps } from './FormCardSection.interface';
 

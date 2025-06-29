@@ -15,7 +15,7 @@ import { Card, Segmented, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
@@ -191,7 +191,7 @@ export const PipelineTaskTab = () => {
             <Link
               className="flex items-center gap-2"
               target="_blank"
-              to={{ pathname: record.sourceUrl }}>
+              to={record.sourceUrl ?? ''}>
               <div className="d-flex items-center">
                 <span className="break-all">{getEntityName(record)}</span>
 

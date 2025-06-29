@@ -13,8 +13,6 @@
 
 import { Badge, Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
@@ -29,6 +27,7 @@ import { Tag } from '../generated/entity/classification/tag';
 import { ChangeDescription } from '../generated/entity/type';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
 import { getEntityVersionByField } from './EntityVersionUtils';
+import { t } from './i18next/LocalUtil';
 import { getClassificationTagPath } from './RouterUtils';
 import { getDeleteIcon, getTagImageSrc } from './TagsUtils';
 
@@ -102,21 +101,19 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
     key: 'description',
     width: 300,
     render: (text: string) => (
-      <>
-        <div className="cursor-pointer d-flex">
-          <div>
-            {text ? (
-              <RichTextEditorPreviewerNew markdown={text} />
-            ) : (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </span>
-            )}
-          </div>
+      <div className="cursor-pointer d-flex">
+        <div>
+          {text ? (
+            <RichTextEditorPreviewerNew markdown={text} />
+          ) : (
+            <span className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </span>
+          )}
         </div>
-      </>
+      </div>
     ),
   },
 ];

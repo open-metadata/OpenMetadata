@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useAuth } from '../../../../hooks/authHooks';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import WhatsNewAlert from './WhatsNewAlert.component';

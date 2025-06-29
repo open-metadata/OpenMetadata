@@ -21,12 +21,12 @@ import {
   TreeSelect,
   TreeSelectProps,
 } from 'antd';
-import { Key } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, {
+import {
   FC,
+  Key,
   ReactElement,
   useEffect,
   useMemo,

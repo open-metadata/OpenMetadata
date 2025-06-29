@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../../Explore/Explore.mock';
@@ -65,24 +64,21 @@ describe('DataAssetsWidget', () => {
   it('should render DataAssetsWidget', async () => {
     await act(async () => {
       render(<DataAssetsWidget {...widgetProps} />);
-
-      expect(screen.getByTestId('data-assets-widget')).toBeInTheDocument();
-      expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
-      expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
-      expect(screen.queryByText('DataAssetCard')).not.toBeInTheDocument();
     });
+
+    expect(screen.getByTestId('data-assets-widget')).toBeInTheDocument();
+    expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
+    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(screen.queryByText('DataAssetCard')).not.toBeInTheDocument();
   });
 
   it('should handle close click when in edit view', async () => {
     await act(async () => {
       render(<DataAssetsWidget {...widgetProps} />);
-
-      fireEvent.click(screen.getByTestId('remove-widget-button'));
-
-      expect(mockHandleRemoveWidget).toHaveBeenCalledWith(
-        widgetProps.widgetKey
-      );
     });
+    fireEvent.click(screen.getByTestId('remove-widget-button'));
+
+    expect(mockHandleRemoveWidget).toHaveBeenCalledWith(widgetProps.widgetKey);
   });
 
   it('should render ErrorPlaceholder if API is rejected', async () => {

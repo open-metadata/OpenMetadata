@@ -13,7 +13,6 @@
 
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
-import React from 'react';
 import { TAG_LIST_SIZE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';

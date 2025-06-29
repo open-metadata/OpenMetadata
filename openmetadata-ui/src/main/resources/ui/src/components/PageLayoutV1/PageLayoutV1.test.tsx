@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import React from 'react';
 import PageLayoutV1 from './PageLayoutV1';
 
 jest.mock('../common/DocumentTitle/DocumentTitle', () =>

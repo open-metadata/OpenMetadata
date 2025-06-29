@@ -13,8 +13,8 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Popover, Radio, Space, Spin, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
 import { Tag } from '../../generated/entity/classification/tag';
 import { getTags } from '../../rest/tagAPI';
@@ -32,6 +32,7 @@ const Certification = ({
   popoverProps,
   onClose,
 }: CertificationProps) => {
+  const { t } = useTranslation();
   const popoverRef = useRef<any>(null);
   const [isLoadingCertificationData, setIsLoadingCertificationData] =
     useState<boolean>(false);
@@ -166,7 +167,9 @@ const Certification = ({
               <div className="flex gap-2 items-center w-full">
                 <CertificationIcon height={18} width={18} />
                 <Typography.Text className="m-b-0 font-semibold text-sm">
-                  {t('label.edit-entity', { entity: t('label.certification') })}
+                  {t('label.edit-entity', {
+                    entity: t('label.certification'),
+                  })}
                 </Typography.Text>
               </div>
               <Typography.Text

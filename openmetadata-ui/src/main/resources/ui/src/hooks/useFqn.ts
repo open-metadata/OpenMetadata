@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useParams } from 'react-router-dom';
-import { getDecodedFqn } from '../utils/StringsUtils';
+import { useRequiredParams } from '../utils/useRequiredParams';
 
 type Fqn = { fqn: string; ingestionFQN: string; ruleName: string };
 
@@ -20,11 +19,11 @@ type Fqn = { fqn: string; ingestionFQN: string; ruleName: string };
  * @returns {fqn: string, ingestionFQN: string} - fqn and ingestionFQN from the url
  */
 export const useFqn = (): Fqn => {
-  const { fqn, ingestionFQN, ruleName } = useParams<Fqn>();
+  const { fqn, ingestionFQN, ruleName } = useRequiredParams<Fqn>();
 
   return {
-    fqn: fqn ? getDecodedFqn(fqn) : '',
-    ingestionFQN: ingestionFQN ? getDecodedFqn(ingestionFQN) : '',
-    ruleName: ruleName ? getDecodedFqn(ruleName) : '',
+    fqn: fqn ?? '',
+    ingestionFQN: ingestionFQN ?? '',
+    ruleName: ruleName ?? '',
   };
 };

@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { PageType } from '../../../../generated/system/ui/page';
 import {
   mockActiveAnnouncementData,
@@ -24,8 +22,6 @@ import {
 } from '../../../../mocks/MyDataPage.mock';
 import CustomizeMyData from './CustomizeMyData';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-
-const mockPush = jest.fn();
 
 const mockProps: CustomizeMyDataProps = {
   initialPageData: mockDocumentData.data.pages[0],
@@ -111,9 +107,6 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   useParams: jest.fn().mockImplementation(() => ({
     fqn: mockPersonaName,
     pageFqn: PageType.LandingPage,
@@ -184,7 +177,7 @@ describe('CustomizeMyData component', () => {
 
     const resetButton = screen.getByTestId('reset-button');
 
-    await act(async () => userEvent.click(resetButton));
+    fireEvent.click(resetButton);
 
     expect(mockProps.onSaveLayout).toHaveBeenCalled();
   });
@@ -198,7 +191,7 @@ describe('CustomizeMyData component', () => {
 
     const saveButton = screen.getByTestId('save-button');
 
-    await act(async () => userEvent.click(saveButton));
+    fireEvent.click(saveButton);
 
     expect(mockProps.onSaveLayout).toHaveBeenCalledTimes(1);
 
@@ -220,7 +213,7 @@ describe('CustomizeMyData component', () => {
 
     const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
 
-    await act(async () => userEvent.click(addWidgetButton));
+    fireEvent.click(addWidgetButton);
 
     expect(screen.getByText('AddWidgetModal')).toBeInTheDocument();
   });
@@ -232,13 +225,13 @@ describe('CustomizeMyData component', () => {
 
     const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
 
-    await act(async () => userEvent.click(addWidgetButton));
+    fireEvent.click(addWidgetButton);
 
     expect(screen.getByText('AddWidgetModal')).toBeInTheDocument();
 
     const closeWidgetButton = screen.getByText('handleCloseAddWidgetModal');
 
-    await act(async () => userEvent.click(closeWidgetButton));
+    fireEvent.click(closeWidgetButton);
 
     expect(screen.queryByText('AddWidgetModal')).toBeNull();
   });

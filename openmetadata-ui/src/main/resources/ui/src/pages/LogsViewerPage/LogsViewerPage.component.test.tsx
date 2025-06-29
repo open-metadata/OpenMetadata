@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import React from 'react';
+import { TextDecoder, TextEncoder } from 'util';
+global.TextEncoder = TextEncoder as unknown as typeof TextEncoder;
+global.TextDecoder = TextDecoder as unknown as typeof global.TextDecoder;
+
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
 import {
   mockDataInsightApplication,
@@ -33,6 +36,7 @@ jest.mock('react-router-dom', () => ({
     logEntityType: 'TestSuite',
     ingestionName: 'ingestion_123456',
   }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../utils/LogsClassBase', () => ({
@@ -48,12 +52,6 @@ jest.mock(
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
-
-jest.mock('react-lazylog', () => ({
-  LazyLog: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="logs">LazyLog</div>),
-}));
 
 jest.mock('../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelineLogById: jest
@@ -93,19 +91,17 @@ jest.mock('../../rest/applicationAPI', () => ({
 
 describe('LogsViewerPage.component', () => {
   it('On initial, component should render', async () => {
-    await act(async () => {
-      render(<LogsViewerPage />);
+    render(<LogsViewerPage />);
 
-      expect(
-        await screen.findByText('TitleBreadcrumb.component')
-      ).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText('TitleBreadcrumb.component')
+    ).toBeInTheDocument();
 
     expect(
       await screen.findByText('test-redshift_metadata_ZeCajs9g')
     ).toBeInTheDocument();
 
-    const logElement = await screen.findByTestId('logs');
+    const logElement = await screen.findByText(mockLogsData.ingestion_task);
 
     expect(logElement).toBeInTheDocument();
   });
@@ -116,13 +112,13 @@ describe('LogsViewerPage.component', () => {
       fqn: 'DataInsightsApplication',
     });
 
-    await act(async () => {
-      render(<LogsViewerPage />);
-    });
+    render(<LogsViewerPage />);
 
-    expect(getApplicationByName).toHaveBeenCalled();
-    expect(getExternalApplicationRuns).toHaveBeenCalled();
-    expect(getLatestApplicationRuns).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(getApplicationByName).toHaveBeenCalled();
+      expect(getExternalApplicationRuns).toHaveBeenCalled();
+      expect(getLatestApplicationRuns).toHaveBeenCalled();
+    });
   });
 
   it('should show basic configuration for application in right panel', async () => {

@@ -61,18 +61,11 @@ export const getSilentRedirectUri = () => {
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const {
-    authority,
-    clientId,
-    callbackUrl,
-    responseType = 'id_token',
-    scope,
-  } = authClient;
+  const { authority, clientId, callbackUrl, scope } = authClient;
 
   return {
     authority,
     client_id: clientId,
-    response_type: responseType ?? '',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,

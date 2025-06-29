@@ -18,7 +18,7 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface PipelineVersionProp {
-  version: string;
+  version?: string;
   currentVersionData: Pipeline;
   isVersionLoading: boolean;
   owners: Pipeline['owners'];

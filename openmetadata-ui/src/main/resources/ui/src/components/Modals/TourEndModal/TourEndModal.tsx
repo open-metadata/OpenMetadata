@@ -13,12 +13,13 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Modal, Row, Typography } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as LogoMonogram } from '../../../assets/svg/logo-monogram.svg';
 import { TourEndModalProps } from './TourEndModal.interface';
 
 const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
+  const { t } = useTranslation();
+
   return (
     <Modal
       closable={false}

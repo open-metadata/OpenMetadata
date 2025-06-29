@@ -12,7 +12,7 @@
  */
 import { Col, Row, Skeleton, Steps, Typography } from 'antd';
 import { last, toLower } from 'lodash';
-import React, { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as FailureCommentIcon } from '../../../../assets/svg/ic-failure-comment.svg';

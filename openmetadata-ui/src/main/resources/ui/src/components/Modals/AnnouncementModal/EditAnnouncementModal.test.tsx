@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import EditAnnouncementModal from './EditAnnouncementModal';
 
 jest.mock('../../../utils/AnnouncementsUtils', () => ({
@@ -29,6 +28,10 @@ jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditor</div>);
 });
 
+jest.mock('../../common/DatePicker/DatePicker', () => {
+  return jest.fn().mockReturnValue(<div>DatePicker</div>);
+});
+
 const onCancel = jest.fn();
 const onConfirm = jest.fn();
 
@@ -43,6 +46,10 @@ const mockProps = {
   onCancel,
   onConfirm,
 };
+
+jest.mock('../../common/DatePicker/DatePicker', () =>
+  jest.fn().mockImplementation((props) => <input type="text" {...props} />)
+);
 
 describe('Test Edit Announcement modal', () => {
   it('Should render the component', async () => {

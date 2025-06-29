@@ -14,7 +14,7 @@
 import { Card, Col, Empty, Row, Typography } from 'antd';
 import Tree from 'antd/lib/tree';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../../assets/svg/vector.svg';
 import {

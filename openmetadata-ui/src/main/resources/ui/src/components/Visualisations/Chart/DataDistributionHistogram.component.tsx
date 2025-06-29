@@ -13,7 +13,6 @@
 
 import { Col, Row, Tag } from 'antd';
 import { isUndefined, map } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,

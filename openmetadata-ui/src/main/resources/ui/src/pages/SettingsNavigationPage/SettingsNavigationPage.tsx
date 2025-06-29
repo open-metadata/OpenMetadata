@@ -30,9 +30,9 @@ import {
   Typography,
 } from 'antd';
 import { cloneDeep } from 'lodash';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDown } from '../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../assets/svg/ic-arrow-right.svg';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -54,12 +54,12 @@ export const SettingsNavigationPage = ({
 }: Props) => {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
-  const history = useHistory();
+  const navigate = useNavigate();
   const [hiddenKeys, setHiddenKeys] = useState<string[]>(
     getHiddenKeysFromNavigationItems(currentNavigation)
   );
   const [treeData, setTreeData] = useState<TreeDataNode[]>(() =>
-    getTreeDataForNavigationItems(currentNavigation)
+    currentNavigation ? getTreeDataForNavigationItems(currentNavigation) : []
   );
 
   const handleSave = async () => {
@@ -138,7 +138,7 @@ export const SettingsNavigationPage = ({
     setTreeData(tempData);
   };
 
-  const switcherIcon = useCallback(({ expanded }) => {
+  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
@@ -155,7 +155,7 @@ export const SettingsNavigationPage = ({
 
   const titleRenderer = (node: TreeDataNode) => (
     <div className="space-between">
-      {node.title}
+      {node.title as string}
       <Switch
         checked={!hiddenKeys.includes(node.key as string)}
         onChange={(checked) => handleRemoveToggle(checked, node.key as string)}
@@ -164,7 +164,7 @@ export const SettingsNavigationPage = ({
   );
 
   const handleCancel = () => {
-    history.goBack();
+    navigate(-1);
   };
 
   return (

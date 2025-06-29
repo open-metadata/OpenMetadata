@@ -12,7 +12,6 @@
  */
 
 import { uniqueId } from 'lodash';
-import React from 'react';
 import {
   DEFAULT_SKELETON_DATA_LENGTH,
   getSkeletonMockData,

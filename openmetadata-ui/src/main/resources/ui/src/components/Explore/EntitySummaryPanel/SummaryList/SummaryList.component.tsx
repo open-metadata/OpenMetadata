@@ -13,7 +13,6 @@
 
 import { Collapse, List, Row, Skeleton, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import './summary-list.less';

@@ -18,7 +18,7 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface MlModelVersionProp {
-  version: string;
+  version?: string;
   currentVersionData: Mlmodel;
   isVersionLoading: boolean;
   owners: Mlmodel['owners'];

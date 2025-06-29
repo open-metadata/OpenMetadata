@@ -13,8 +13,9 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Divider, Input, Space, Typography } from 'antd';
-import { t } from 'i18next';
-import React, { FC, useMemo } from 'react';
+
+import { FC, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconError } from '../../../../assets/svg/error.svg';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import { AuthenticationMechanism } from '../../../../generated/entity/teams/user';
@@ -37,6 +38,7 @@ const AuthMechanism: FC<Props> = ({
   onTokenRevoke,
   isBot,
 }: Props) => {
+  const { t } = useTranslation();
   const { JWTToken, JWTTokenExpiresAt } = useMemo(() => {
     if (isBot) {
       const botData = authenticationMechanism as AuthenticationMechanism;

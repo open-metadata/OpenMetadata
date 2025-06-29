@@ -13,7 +13,7 @@
 import { Space, Tooltip, Typography } from 'antd';
 import { omit, startCase } from 'lodash';
 import Qs from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';

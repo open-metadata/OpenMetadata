@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
@@ -133,6 +132,10 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     currentUser: mockUserData,
   })),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 describe('FeedsWidget', () => {

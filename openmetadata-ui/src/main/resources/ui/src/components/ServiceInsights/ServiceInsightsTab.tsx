@@ -17,8 +17,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PLATFORM_INSIGHTS_CHART } from '../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
@@ -36,6 +35,7 @@ import {
 } from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   ChartData,
   ChartSeriesData,
@@ -48,10 +48,8 @@ const ServiceInsightsTab = ({
   workflowStatesData,
   isWorkflowStatusLoading,
 }: ServiceInsightsTabProps) => {
-  const { serviceCategory } = useParams<{
-    serviceCategory: ServiceTypes;
-    tab: string;
-  }>();
+  const { serviceCategory } =
+    useRequiredParams<{ serviceCategory: ServiceTypes }>();
   const [chartsResults, setChartsResults] = useState<{
     platformInsightsChart: ChartSeriesData[];
     piiDistributionChart: ChartData[];

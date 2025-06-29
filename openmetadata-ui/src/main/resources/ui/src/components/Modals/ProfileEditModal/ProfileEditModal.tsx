@@ -13,7 +13,7 @@
 
 import { Form, FormProps, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import { FunctionComponent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../generated/entity/teams/user';
 import { showErrorToast } from '../../../utils/ToastUtils';

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { pagingObject } from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
 import { PagingHandlerParams } from '../NextPrevious/NextPrevious.interface';

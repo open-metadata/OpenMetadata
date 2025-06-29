@@ -14,9 +14,9 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../../enums/entity.enum';
@@ -34,6 +34,7 @@ import {
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import Loader from '../../../common/Loader/Loader';
@@ -61,9 +62,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   versionHandler,
   entityPermissions,
 }: DataModelVersionProp) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -120,7 +121,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.DASHBOARD_DATA_MODEL,
         entityFqn,
@@ -250,7 +251,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.DASHBOARD_DATA_MODEL}
         versionHandler={versionHandler}
         versionList={versionList}

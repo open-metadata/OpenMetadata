@@ -18,7 +18,6 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import * as React from 'react';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -98,7 +97,7 @@ describe('LineageSearchSelect', () => {
       selectElm && userEvent.click(selectElm);
     });
 
-    const option1 = screen.getByTestId('option-test1');
+    const option1 = await screen.findByTestId('option-test1');
 
     expect(option1).toBeInTheDocument();
   });
@@ -114,7 +113,7 @@ describe('LineageSearchSelect', () => {
       selectElm && userEvent.click(selectElm);
     });
 
-    const option1 = screen.getByTestId('option-test1');
+    const option1 = await screen.findByTestId('option-test1');
 
     expect(option1).toBeInTheDocument();
 
@@ -135,7 +134,7 @@ describe('LineageSearchSelect', () => {
       selectElm && userEvent.click(selectElm);
     });
 
-    const column = screen.getByTestId('option-column1');
+    const column = await screen.findByTestId('option-column1');
 
     expect(column).toBeInTheDocument();
 
