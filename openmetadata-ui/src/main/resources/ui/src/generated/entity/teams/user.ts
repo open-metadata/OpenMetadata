@@ -87,6 +87,10 @@ export interface User {
      */
     isEmailVerified?: boolean;
     /**
+     * Last time the user was active in the system.
+     */
+    lastActivityTime?: number;
+    /**
      * Last time the user logged in.
      */
     lastLoginTime?: number;

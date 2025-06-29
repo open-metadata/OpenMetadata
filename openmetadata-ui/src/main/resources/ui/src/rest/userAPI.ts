@@ -38,10 +38,29 @@ export interface UsersQueryParams {
   include?: Include;
 }
 
+export interface OnlineUsersQueryParams {
+  timeWindow?: number;
+  fields?: string;
+  limit?: number;
+  before?: string;
+  after?: string;
+}
+
 export const getUsers = async (params: UsersQueryParams) => {
   const response = await APIClient.get<PagingResponse<User[]>>('/users', {
     params,
   });
+
+  return response.data;
+};
+
+export const getOnlineUsers = async (params: OnlineUsersQueryParams) => {
+  const response = await APIClient.get<PagingResponse<User[]>>(
+    '/users/online',
+    {
+      params,
+    }
+  );
 
   return response.data;
 };

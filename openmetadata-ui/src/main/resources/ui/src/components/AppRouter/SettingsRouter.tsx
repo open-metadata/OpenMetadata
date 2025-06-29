@@ -39,6 +39,7 @@ import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
 import LineageConfigPage from '../../pages/LineageConfigPage/LineageConfigPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
 import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
+import OnlineUsersPage from '../../pages/OnlineUsersPage/OnlineUsersPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
 import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import AddPolicyPage from '../../pages/PoliciesPage/AddPolicyPage/AddPolicyPage';
@@ -259,6 +260,12 @@ const SettingsRouter = () => {
       </Route>
       <AdminProtectedRoute
         exact
+        hasPermission
+        component={OnlineUsersPage}
+        path="/settings/members/online-users"
+      />
+      <AdminProtectedRoute
+        exact
         component={PersonaDetailsPage}
         path={getSettingPath(GlobalSettingOptions.PERSONA, '', true)}
       />
@@ -357,6 +364,11 @@ const SettingsRouter = () => {
           true
         )}
       />
+      <Route
+        exact
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}
+        render={() => <Redirect to="/settings/members/users" />}
+      />
       <AdminProtectedRoute
         exact
         component={UserListPageV1}
@@ -364,7 +376,7 @@ const SettingsRouter = () => {
           ResourceEntity.USER,
           permissions
         )}
-        path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}
+        path="/settings/members/:tab"
       />
       <AdminProtectedRoute
         exact

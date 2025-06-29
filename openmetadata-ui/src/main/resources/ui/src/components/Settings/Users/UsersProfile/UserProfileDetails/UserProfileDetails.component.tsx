@@ -12,9 +12,18 @@
  */
 
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Button, Divider, Input, Space, Tooltip, Typography } from 'antd';
+import {
+  Badge,
+  Button,
+  Divider,
+  Input,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
+import moment from 'moment';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -94,6 +103,40 @@ const UserProfileDetails = ({
       ),
     [userData]
   );
+
+  const onlineStatus = useMemo(() => {
+    // Don't show online status for bots
+    if (userData.isBot) {
+      return null;
+    }
+
+    // Use lastActivityTime if available, otherwise fall back to lastLoginTime
+    const activityTime = userData.lastActivityTime || userData.lastLoginTime;
+
+    if (!activityTime) {
+      return null;
+    }
+
+    const lastActivityMoment = moment(activityTime);
+    const now = moment();
+    const diffMinutes = now.diff(lastActivityMoment, 'minutes');
+
+    if (diffMinutes <= 5) {
+      return {
+        status: 'success' as const,
+        text: t('label.online-now'),
+        tooltip: t('label.last-activity-n-minutes-ago', { count: diffMinutes }),
+      };
+    } else if (diffMinutes <= 60) {
+      return {
+        status: 'success' as const,
+        text: t('label.active-recently'),
+        tooltip: t('label.last-activity-n-minutes-ago', { count: diffMinutes }),
+      };
+    }
+
+    return null;
+  }, [userData.lastActivityTime, userData.lastLoginTime, userData.isBot, t]);
 
   const onDisplayNameChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value),
@@ -334,6 +377,16 @@ const UserProfileDetails = ({
                 </Tooltip>
               )}
             </Space>
+          )}
+          {onlineStatus && (
+            <Tooltip title={onlineStatus.tooltip}>
+              <Badge
+                className="m-l-sm"
+                data-testid="user-online-status"
+                status={onlineStatus.status}
+                text={onlineStatus.text}
+              />
+            </Tooltip>
           )}
           {userData.deleted && (
             <span className="deleted-badge-button" data-testid="deleted-badge">
