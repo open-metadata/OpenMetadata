@@ -177,7 +177,8 @@ public class SearchClusterMetrics {
 
     int maxProducerThreads = (maxDbConnections * 3) / 4; // 75% of connection pool
     int recommendedConcurrentRequests = maxProducerThreads;
-    int recommendedProducerThreads = Math.min(maxProducerThreads, 10 * totalNodes); // Reduced from 30 to 10 per node
+    int recommendedProducerThreads =
+        Math.min(maxProducerThreads, 10 * totalNodes); // Reduced from 30 to 10 per node
 
     if (memoryUsagePercent > 80) {
       recommendedProducerThreads = Math.max(10, recommendedProducerThreads / 4);
@@ -193,7 +194,8 @@ public class SearchClusterMetrics {
     if (memoryUsagePercent > 80) {
       recommendedConsumerThreads = Math.max(10, recommendedConsumerThreads / 2);
     }
-    recommendedConsumerThreads = Math.min(20, recommendedConsumerThreads); // Cap at 20 to prevent thread exhaustion
+    recommendedConsumerThreads =
+        Math.min(20, recommendedConsumerThreads); // Cap at 20 to prevent thread exhaustion
 
     int baseConcurrentRequests = totalNodes * 50;
     if (memoryUsagePercent > 80) {
