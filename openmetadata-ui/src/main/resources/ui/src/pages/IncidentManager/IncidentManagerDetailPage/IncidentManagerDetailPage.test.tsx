@@ -84,6 +84,8 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   testCasePermission: MOCK_PERMISSIONS,
   setTestCasePermission: jest.fn(),
   setIsPermissionLoading: jest.fn(),
+  isTabExpanded: false,
+  setIsTabExpanded: jest.fn(),
 };
 jest.mock('./useTestCase.store', () => ({
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
