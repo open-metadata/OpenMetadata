@@ -136,7 +136,8 @@ public class SearchClusterMetricsTest {
     when(openSearchClient.nodesStats()).thenReturn(nodesStats);
     when(openSearchClient.clusterSettings()).thenReturn(clusterSettings);
 
-    SearchClusterMetrics metrics = SearchClusterMetrics.fetchClusterMetrics(searchRepository, 1000);
+    SearchClusterMetrics metrics =
+        SearchClusterMetrics.fetchClusterMetrics(searchRepository, 1000, 50);
 
     assertNotNull(metrics);
     assertTrue(metrics.getHeapSizeBytes() > 0);

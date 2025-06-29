@@ -70,7 +70,7 @@ import org.quartz.JobExecutionContext;
 public class SearchIndexApp extends AbstractNativeApplication {
   private static final String ALL = "all";
   private static final String POISON_PILL = "__POISON_PILL__";
-  private static final int QUEUE_CAPACITY = 20000;
+  private static final int DEFAULT_QUEUE_SIZE = 20000;
 
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
@@ -250,7 +250,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
     SearchClusterMetrics clusterMetrics = null;
     if (Boolean.TRUE.equals(jobData.getAutoTune())) {
       LOG.info("Auto-tune enabled, analyzing cluster and adjusting parameters...");
-      clusterMetrics = applyAutoTuning();
+      clusterMetrics =
+          SearchClusterMetrics.fetchClusterMetrics(
+              searchRepository,
+              searchIndexStats.get().getJobStats().getTotalRecords(),
+              searchRepository.getMaxDBConnections());
+
+      jobData.setBatchSize(clusterMetrics.getRecommendedBatchSize());
+      jobData.setMaxConcurrentRequests(clusterMetrics.getRecommendedConcurrentRequests());
+      jobData.setPayLoadSize(clusterMetrics.getMaxPayloadSizeBytes());
+      jobData.setConsumerThreads(clusterMetrics.getRecommendedConsumerThreads());
+      jobData.setQueueSize(clusterMetrics.getRecommendedQueueSize());
     }
 
     batchSize.set(jobData.getBatchSize());
@@ -309,11 +319,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void reIndexFromStartToEnd(SearchClusterMetrics clusterMetrics)
       throws InterruptedException {
     long totalEntities = searchIndexStats.get().getJobStats().getTotalRecords();
-    int numProducers = Math.clamp((int) (totalEntities / 10000), 2, 8);
-    int numConsumers = jobData.getConsumerThreads(); // Default from config
+
+    // Calculate thread counts based on workload
+    int numConsumers = jobData.getConsumerThreads() != null ? jobData.getConsumerThreads() : 2;
+    int numProducers = Math.clamp((int) (totalEntities / 10000), 2, 20); // Default calculation
+
     if (clusterMetrics != null) {
       numConsumers = clusterMetrics.getRecommendedConsumerThreads();
+      numProducers = clusterMetrics.getRecommendedProducerThreads(); // Use auto-tuned value
       LOG.info("Using auto-tuned consumer threads: {}", numConsumers);
+      LOG.info("Using auto-tuned producer threads: {}", numProducers);
     }
 
     LOG.info(
@@ -322,10 +337,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
         numConsumers,
         totalEntities);
 
-    taskQueue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
+    // Use a reasonable queue size
+    int queueSize = jobData.getQueueSize() != null ? jobData.getQueueSize() : DEFAULT_QUEUE_SIZE;
+    LOG.info("Using queue size: {}", queueSize);
+
+    taskQueue = new ArrayBlockingQueue<>(queueSize);
     producersDone.set(false);
-    jobExecutor = Executors.newVirtualThreadPerTaskExecutor();
-    consumerExecutor = Executors.newFixedThreadPool(numConsumers, Thread.ofVirtual().factory());
+    jobExecutor = Executors.newCachedThreadPool(Thread.ofPlatform().name("job-", 0).factory());
+    consumerExecutor =
+        Executors.newFixedThreadPool(
+            numConsumers, Thread.ofVirtual().name("consumer-", 0).factory());
 
     CountDownLatch consumerLatch = new CountDownLatch(numConsumers);
     for (int i = 0; i < numConsumers; i++) {
@@ -352,7 +373,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
           });
     }
 
-    producerExecutor = Executors.newFixedThreadPool(numProducers, Thread.ofVirtual().factory());
+    producerExecutor =
+        Executors.newFixedThreadPool(
+            numProducers, Thread.ofPlatform().name("producer-", 0).factory());
 
     try {
       processEntityReindex(jobExecutionContext);
@@ -1188,39 +1211,5 @@ public class SearchIndexApp extends AbstractNativeApplication {
     return entityStats.getTotalRecords()
         - entityStats.getFailedRecords()
         - entityStats.getSuccessRecords();
-  }
-
-  private SearchClusterMetrics applyAutoTuning() {
-    try {
-      ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
-      LOG.info("Auto-tune: Request compression enabled for {} bulk operations", searchType);
-      LOG.info("Auto-tune: JSON payloads will be gzip compressed (~75% size reduction)");
-
-      long totalEntities = searchIndexStats.get().getJobStats().getTotalRecords();
-      SearchClusterMetrics clusterMetrics =
-          SearchClusterMetrics.fetchClusterMetrics(searchRepository, totalEntities);
-
-      clusterMetrics.logRecommendations();
-
-      // Apply recommendations
-      jobData.setBatchSize(clusterMetrics.getRecommendedBatchSize());
-      jobData.setMaxConcurrentRequests(clusterMetrics.getRecommendedConcurrentRequests());
-      jobData.setPayLoadSize(clusterMetrics.getMaxPayloadSizeBytes());
-      jobData.setConsumerThreads(clusterMetrics.getRecommendedConsumerThreads());
-
-      batchSize.set(jobData.getBatchSize());
-
-      LOG.info(
-          "Applied auto-tune settings - Batch size: {}, Max concurrent requests: {}, Payload size: {} MB, Consumer threads: {}",
-          jobData.getBatchSize(),
-          jobData.getMaxConcurrentRequests(),
-          jobData.getPayLoadSize() / (1024 * 1024),
-          jobData.getConsumerThreads());
-
-      return clusterMetrics;
-    } catch (Exception e) {
-      LOG.warn("Failed to apply auto-tuning, using default settings: {}", e.getMessage());
-      return null;
-    }
   }
 }

@@ -24,30 +24,38 @@ public class SearchClusterMetrics {
   private final int recommendedBatchSize;
   private final int recommendedProducerThreads;
   private final int recommendedConsumerThreads;
+  private final int recommendedQueueSize;
 
   public static SearchClusterMetrics fetchClusterMetrics(
-      SearchRepository searchRepository, long totalEntities) {
+      SearchRepository searchRepository, long totalEntities, int maxDbConnections) {
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
 
     try {
       if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
         return fetchOpenSearchMetrics(
-            searchRepository, (OpenSearchClient) searchRepository.getSearchClient(), totalEntities);
+            searchRepository,
+            (OpenSearchClient) searchRepository.getSearchClient(),
+            totalEntities,
+            maxDbConnections);
       } else {
         return fetchElasticSearchMetrics(
             searchRepository,
             (ElasticSearchClient) searchRepository.getSearchClient(),
-            totalEntities);
+            totalEntities,
+            maxDbConnections);
       }
     } catch (Exception e) {
       LOG.warn("Failed to fetch cluster metrics, using conservative defaults: {}", e.getMessage());
-      return getConservativeDefaults(searchRepository, totalEntities);
+      return getConservativeDefaults(searchRepository, totalEntities, maxDbConnections);
     }
   }
 
   @SuppressWarnings("unchecked")
   private static SearchClusterMetrics fetchOpenSearchMetrics(
-      SearchRepository searchRepository, OpenSearchClient osClient, long totalEntities) {
+      SearchRepository searchRepository,
+      OpenSearchClient osClient,
+      long totalEntities,
+      int maxDbConnections) {
     try {
       Map<String, Object> clusterStats = osClient.clusterStats();
       Map<String, Object> nodesStats = osClient.nodesStats();
@@ -86,17 +94,21 @@ public class SearchClusterMetrics {
           memoryUsagePercent,
           heapMaxBytes,
           maxContentLength,
-          totalEntities);
+          totalEntities,
+          maxDbConnections);
 
     } catch (Exception e) {
       LOG.warn("Failed to fetch OpenSearch cluster metrics: {}", e.getMessage(), e);
-      return getConservativeDefaults(searchRepository, totalEntities);
+      return getConservativeDefaults(searchRepository, totalEntities, maxDbConnections);
     }
   }
 
   @SuppressWarnings("unchecked")
   private static SearchClusterMetrics fetchElasticSearchMetrics(
-      SearchRepository searchRepository, ElasticSearchClient client, long totalEntities) {
+      SearchRepository searchRepository,
+      ElasticSearchClient client,
+      long totalEntities,
+      int maxDbConnections) {
     try {
       Map<String, Object> clusterStats = client.clusterStats();
       Map<String, Object> nodesStats = client.nodesStats();
@@ -131,7 +143,8 @@ public class SearchClusterMetrics {
           memoryUsagePercent,
           heapMaxBytes,
           maxContentLength,
-          totalEntities);
+          totalEntities,
+          maxDbConnections);
 
     } catch (Exception e) {
       LOG.warn(
@@ -140,7 +153,8 @@ public class SearchClusterMetrics {
           e.getMessage(),
           e);
       LOG.info("Using conservative defaults for {} total entities", totalEntities);
-      SearchClusterMetrics defaults = getConservativeDefaults(searchRepository, totalEntities);
+      SearchClusterMetrics defaults =
+          getConservativeDefaults(searchRepository, totalEntities, maxDbConnections);
       LOG.info(
           "Conservative defaults: Batch size={}, Producer threads={}, Concurrent requests={}, Max payload={} MB",
           defaults.getRecommendedBatchSize(),
@@ -158,13 +172,11 @@ public class SearchClusterMetrics {
       double memoryUsagePercent,
       long heapMaxBytes,
       long maxContentLength,
-      long totalEntities) {
+      long totalEntities,
+      int maxDbConnections) {
 
-    // Database connection pool is typically 50-300 connections
-    // Use at most 75% to maximize throughput while leaving room for other operations
-    int maxDbConnections = 100; // Conservative estimate, could be made configurable
     int maxProducerThreads = (maxDbConnections * 3) / 4; // 75% of connection pool
-
+    int recommendedConcurrentRequests = maxProducerThreads;
     int recommendedProducerThreads = Math.min(maxProducerThreads, 30 * totalNodes);
 
     if (memoryUsagePercent > 80) {
@@ -218,6 +230,9 @@ public class SearchClusterMetrics {
       recommendedProducerThreads = Math.min(30, recommendedProducerThreads);
     }
 
+    int recommendedQueueSize =
+        recommendedBatchSize * recommendedConcurrentRequests * 2; // Buffer for smooth operation
+
     return SearchClusterMetrics.builder()
         .availableProcessors(Runtime.getRuntime().availableProcessors())
         .heapSizeBytes(heapMaxBytes)
@@ -231,6 +246,7 @@ public class SearchClusterMetrics {
         .recommendedBatchSize(recommendedBatchSize)
         .recommendedProducerThreads(recommendedProducerThreads)
         .recommendedConsumerThreads(recommendedConsumerThreads)
+        .recommendedQueueSize(recommendedQueueSize)
         .build();
   }
 
@@ -374,7 +390,7 @@ public class SearchClusterMetrics {
   }
 
   private static SearchClusterMetrics getConservativeDefaults(
-      SearchRepository searchRepository, long totalEntities) {
+      SearchRepository searchRepository, long totalEntities, int maxDbConnections) {
     int conservativeBatchSize;
     if (totalEntities > 1000000) {
       conservativeBatchSize = 500;
@@ -390,19 +406,13 @@ public class SearchClusterMetrics {
       conservativeBatchSize = 100;
     }
 
-    // Conservative DB connection usage - assume 50 connections available
-    int conservativeThreads = 37; // 75% of assumed 50 connections
-    if (totalEntities > 1000000) {
-      conservativeThreads = 60; // 75% of 80 connections for large datasets
-    } else if (totalEntities > 500000) {
-      conservativeThreads = 45; // 75% of 60 connections
-    } else if (totalEntities < 50000) {
-      conservativeThreads = 22; // 75% of 30 connections for small datasets
-    }
+    // Conservative DB connection usage - use 75% of configured max size
+    int conservativeThreads = (maxDbConnections * 3) / 4;
 
     int conservativeConcurrentRequests = totalEntities > 100000 ? 50 : 25;
 
     int conservativeConsumerThreads = 20; // Default 20 consumers with virtual threads
+    int conservativeQueueSize = conservativeBatchSize * conservativeConcurrentRequests * 2;
 
     long maxHeap = Runtime.getRuntime().maxMemory();
     long totalHeap = Runtime.getRuntime().totalMemory();
@@ -453,6 +463,7 @@ public class SearchClusterMetrics {
         .recommendedBatchSize(conservativeBatchSize)
         .recommendedProducerThreads(conservativeThreads)
         .recommendedConsumerThreads(conservativeConsumerThreads)
+        .recommendedQueueSize(conservativeQueueSize)
         .build();
   }
 
@@ -474,6 +485,7 @@ public class SearchClusterMetrics {
     LOG.info(
         "Consumer Threads: {} (processing-heavy with full field loading)",
         recommendedConsumerThreads);
+    LOG.info("Queue Size: {}", recommendedQueueSize);
     LOG.info("Concurrent Requests: {}", recommendedConcurrentRequests);
     LOG.info(
         "Max Payload Size: {} MB (with compression optimization)",
