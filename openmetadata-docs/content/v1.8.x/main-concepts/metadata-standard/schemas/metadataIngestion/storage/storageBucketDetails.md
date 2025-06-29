@@ -1,5 +1,5 @@
 ---
-title: storageBucketDetails
+title: storageBucketDetails | OpenMetadata Storage Bucket Details
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storage/storagebucketdetails
 ---
 

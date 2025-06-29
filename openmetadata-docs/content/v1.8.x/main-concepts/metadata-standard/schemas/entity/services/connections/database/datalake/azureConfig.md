@@ -1,5 +1,5 @@
 ---
-title: azureConfig
+title: Azure Config | OpenMetadata Azure Config
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake/azureconfig
 ---
 

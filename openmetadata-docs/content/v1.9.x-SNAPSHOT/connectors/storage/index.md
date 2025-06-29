@@ -7,7 +7,7 @@ slug: /connectors/storage
 
 This is the supported list of connectors for Storage Services:
 
-{% partial file="/v1.9connectors/storage/connectors-list.md" /%}
+{% partial file="/v1.9/connectors/storage/connectors-list.md" /%}
 
 If you have a request for a new connector, don't hesitate to reach out in [Slack](https://slack.open-metadata.org/) or
 open a [feature request](https://github.com/open-metadata/OpenMetadata/issues/new/choose) in our GitHub repo.
@@ -46,7 +46,7 @@ We are flattening this structure to simplify the navigation.
 
 {% /note %}
 
-{% partial file="/v1.9connectors/storage/manifest.md" /%}
+{% partial file="/v1.9/connectors/storage/manifest.md" /%}
 
 ## Example
 
@@ -205,11 +205,11 @@ Once the ingestion process runs, we'll see the following metadata:
 
 First, the service we called `s3-demo`, which has the two buckets we included in the filter.
 
-{% image src="/images/v1.9connectors/storage/s3-demo.png" alt="s3-demo" /%}
+{% image src="/images/v1.9/connectors/storage/s3-demo.png" alt="s3-demo" /%}
 
 Then, if we click on the `collate-demo-storage` container, we'll see all the children defined in the manifest.
 
-{% image src="/images/v1.9connectors/storage/collate-demo-storage.png" alt="s3-demo" /%}
+{% image src="/images/v1.9/connectors/storage/collate-demo-storage.png" alt="s3-demo" /%}
 
 - **cities**: Will show the columns extracted from the sampled parquet files, since there is no partition columns specified.
 - **cities_multiple**: Will have the parquet columns and the `Year` and `State` columns indicated in the partitions.

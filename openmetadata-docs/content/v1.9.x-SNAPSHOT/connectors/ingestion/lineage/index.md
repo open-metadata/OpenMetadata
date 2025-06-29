@@ -10,7 +10,7 @@ queries to determine upstream and downstream entities for data assets. Lineage i
 
 Using the OpenMetadata user interface and API, you may trace the path of data across Tables, Pipelines, and Dashboards.
 
-![gif](/images/v1.9features/ingestion/lineage/lineage-ingestion.gif)
+![gif](/images/v1.9/features/ingestion/lineage/lineage-ingestion.gif)
 
 Lineage ingestion is specific to the type of the Entity that we are processing. We are going to explain
 the ingestion process for the supported services.
@@ -52,7 +52,7 @@ table written down in SQL. To close this gap, we run a query against ElasticSear
 Once we have identified all the ingredients in OpenMetadata as Entities, we can run the Lineage API to add the
 relationship between the nodes.
 
-![query-parser](/images/v1.9features/ingestion/lineage/query-parser.png)
+![query-parser](/images/v1.9/features/ingestion/lineage/query-parser.png)
 
 What we just described is the core process of identifying and ingesting lineage, and it will be reused (or partially reused)
 for the rest of the options as well.
@@ -123,7 +123,7 @@ the data feeding the Dashboards and Charts.
 When ingesting the Dashboards metadata, the workflow will pick up the origin tables (or database, in the case of
 PowerBI), and prepare the lineage information.
 {% image
-  src="/images/v1.9features/ingestion/lineage/dashboard-ingestion-lineage.png"
+  src="/images/v1.9/features/ingestion/lineage/dashboard-ingestion-lineage.png"
   alt="Dashboard Lineage"
   caption="Dashboard Lineage"
  /%}
