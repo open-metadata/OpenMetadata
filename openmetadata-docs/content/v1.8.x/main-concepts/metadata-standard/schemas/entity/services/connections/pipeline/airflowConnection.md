@@ -1,5 +1,5 @@
 ---
-title: airflowConnection
+title: Airflow Connection | OpenMetadata Airflow
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/airflowconnection
 ---
 

@@ -12,12 +12,12 @@ We ❤️ all contributions, big and small!
 ## GitHub issues
 Look for issues under [GitHub/issues tab](https://github.com/open-metadata/OpenMetadata/issues). If you have a feature request or found a bug please file an issue. This will help us track and will help the community overall as well.
 
-{% image src="/images/v1.9developers/contribute/github-issues.png" alt="GitHub issues" caption=" " /%}
+{% image src="/images/v1.9/developers/contribute/github-issues.png" alt="GitHub issues" caption=" " /%}
 
 ## Fork GitHub project
 OpenMetadata GitHub repository can be accessed here [https://github.com/open-metadata/OpenMetadata](https://github.com/open-metadata/OpenMetadata).
 
-{% image src="/images/v1.9developers/contribute/fork-github-project.png" alt="Fork GitHub project" caption=" " /%}
+{% image src="/images/v1.9/developers/contribute/fork-github-project.png" alt="Fork GitHub project" caption=" " /%}
 
 Create a local clone of your fork
 
@@ -53,11 +53,11 @@ git push origin HEAD:refs/heads/issue-200
 
 1. Go to https://github.com/open-metadata/OpenMetadata/pulls
 2. It should show an option to open a pull request.
-{% image src="/images/v1.9developers/contribute/open-pr.png" alt="Open a pull request" caption=" " /%}
+{% image src="/images/v1.9/developers/contribute/open-pr.png" alt="Open a pull request" caption=" " /%}
 3. If not, click on "New Pull request"
-{% image src="/images/v1.9developers/contribute/new-pr.png" alt="New Pull request" caption=" " /%}
+{% image src="/images/v1.9/developers/contribute/new-pr.png" alt="New Pull request" caption=" " /%}
 4. Select your fork repository and branch
-{% image src="/images/v1.9developers/contribute/select-fork-branch.png" alt="Select your fork repository and branch" caption=" " /%}
+{% image src="/images/v1.9/developers/contribute/select-fork-branch.png" alt="Select your fork repository and branch" caption=" " /%}
 5. Click "Create pull request"
 
 ## We are here to help

@@ -12,22 +12,22 @@ This is a small How-To guide to help you understand how to easily edit the workf
 
 1. Click on the **Configuration** tab
 
-{% image src="/images/v1.9how-to-guides/governance/workflows-how-to-edit-configuration.png" alt="how-to-edit-configuration-click" /%}
+{% image src="/images/v1.9/how-to-guides/governance/workflows-how-to-edit-configuration.png" alt="how-to-edit-configuration-click" /%}
 
 2. Edit the needed fields and **Save**
 
-{% image src="/images/v1.9how-to-guides/governance/workflows-how-to-edit-configuration-page.png" alt="how-to-edit-configuration-page" /%}
+{% image src="/images/v1.9/how-to-guides/governance/workflows-how-to-edit-configuration-page.png" alt="how-to-edit-configuration-page" /%}
 
 ## Edit Nodes
 
 1. Click on the **Workflow** tab
 
-{% image src="/images/v1.9how-to-guides/governance/workflows-how-to-edit-workflow.png" alt="how-to-edit-workflow" /%}
+{% image src="/images/v1.9/how-to-guides/governance/workflows-how-to-edit-workflow.png" alt="how-to-edit-workflow" /%}
 
 2. Click on the **Node** that you wish you edit
 
-{% image src="/images/v1.9how-to-guides/governance/workflows-how-to-edit-node-click.png" alt="how-to-edit-node-click" /%}
+{% image src="/images/v1.9/how-to-guides/governance/workflows-how-to-edit-node-click.png" alt="how-to-edit-node-click" /%}
 
 3. Edit the needed fields and **Submit**
 
-{% image src="/images/v1.9how-to-guides/governance/workflows-how-to-edit-node-page.png" alt="how-to-edit-node-page" /%}
+{% image src="/images/v1.9/how-to-guides/governance/workflows-how-to-edit-node-page.png" alt="how-to-edit-node-page" /%}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Skeleton, Typography } from 'antd';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';

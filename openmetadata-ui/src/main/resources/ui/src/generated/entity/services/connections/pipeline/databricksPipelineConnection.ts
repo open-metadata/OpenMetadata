@@ -16,6 +16,10 @@
 export interface DatabricksPipelineConnection {
     connectionArguments?: { [key: string]: any };
     /**
+     * Connection timeout in seconds.
+     */
+    connectionTimeout?: number;
+    /**
      * Host and port of the Databricks service.
      */
     hostPort: string;

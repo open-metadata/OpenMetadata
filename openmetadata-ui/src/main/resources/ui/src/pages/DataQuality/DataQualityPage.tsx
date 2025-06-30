@@ -13,9 +13,9 @@
 
 import { Button, Card, Col, Row, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -23,17 +23,19 @@ import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import i18n from '../../utils/i18next/LocalUtil';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {
-  const { tab: activeTab = DataQualityClassBase.getDefaultActiveTab() } =
-    useParams<{ tab: DataQualityPageTabs }>();
-  const history = useHistory();
+  const {
+    tab: activeTab = (DataQualityClassBase.getDefaultActiveTab() =
+      DataQualityClassBase.getDefaultActiveTab()),
+  } = useRequiredParams<{ tab: DataQualityPageTabs }>();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { testSuite: testSuitePermission } = permissions;
@@ -58,9 +60,30 @@ const DataQualityPage = () => {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.replace(getDataQualityPagePath(activeKey as DataQualityPageTabs));
+      navigate(getDataQualityPagePath(activeKey as DataQualityPageTabs));
     }
   };
+
+  const renderTabComponent = useMemo(() => {
+    const currentTab = DataQualityClassBase.getDataQualityTab().find(
+      (tabItem) => tabItem.key === activeTab
+    );
+
+    if (!currentTab) {
+      return (
+        <Navigate
+          replace
+          to={getDataQualityPagePath(
+            DataQualityClassBase.getDefaultActiveTab()
+          )}
+        />
+      );
+    }
+
+    const TabComponent = currentTab.component;
+
+    return <TabComponent />;
+  }, [activeTab]);
 
   return (
     <DataQualityProvider>
@@ -123,4 +146,4 @@ const DataQualityPage = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.data-quality'))(DataQualityPage);
+export default withPageLayout(DataQualityPage);

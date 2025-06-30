@@ -25,9 +25,9 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE, ROUTES } from '../../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -82,7 +82,7 @@ export const TestSuites = () => {
     tab?: DataQualityPageTabs;
     subTab?: DataQualitySubTabs;
   }>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { isTestCaseSummaryLoading, testCaseSummary } =
     useDataQualityProvider();
@@ -255,7 +255,7 @@ export const TestSuites = () => {
     value: string,
     key: keyof TestSuiteSearchParams
   ) => {
-    history.push({
+    navigate({
       search: QueryString.stringify({
         ...params,
         [key]: isEmpty(value) ? undefined : value,

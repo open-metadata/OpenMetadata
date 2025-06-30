@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { FC } from 'react';
-import './banner.less';
-
 import { LoadingOutlined } from '@ant-design/icons';
 import { Spin } from 'antd';
 import classNames from 'classnames';
+import { FC } from 'react';
 import { ReactComponent as ErrorIcon } from '../../../assets/svg/banner/ic-banner-error.svg';
 import { ReactComponent as SuccessIcon } from '../../../assets/svg/banner/ic-banner-success.svg';
+import './banner.less';
 
 export interface BannerProps extends React.HTMLAttributes<HTMLDivElement> {
   type: 'success' | 'error';

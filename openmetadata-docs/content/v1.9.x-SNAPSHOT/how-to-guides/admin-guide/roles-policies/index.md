@@ -12,7 +12,7 @@ OpenMetadata introduces a versatile hierarchical team structure that aligns with
 **Organization** serves as the foundation of the team hierarchy representing the entire company. Under Organization, you can add Business Units, Divisions, Departments, Groups, and Users. For instance, if your company is Facebook, then the Organization represents entire Facebook itself, which further houses diverse teams like Engineering, Sales, Finance, and Marketing.
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/all-teams.png"
+src="/images/v1.9/how-to-guides/roles-policies/all-teams.png"
 alt="Teams Hierarchy"
 caption="Teams Hierarchy"
 /%}
@@ -20,7 +20,7 @@ caption="Teams Hierarchy"
 **BusinessUnit** is positioned one level below the Organization and can contain other Business Units, Divisions, Departments, and Groups. To illustrate, the Engineering Business Unit could be one of the top-tier Business Units in the Organization. It contains other teams like Groups and additional Business Units.
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/b-u.png"
+src="/images/v1.9/how-to-guides/roles-policies/b-u.png"
 alt="Business Unit"
 caption="Business Unit"
 /%}
@@ -38,7 +38,7 @@ This structured hierarchy enhances your control over team management and resourc
 ## Access Control Design: Roles and Policies
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/evaluation.png"
+src="/images/v1.9/how-to-guides/roles-policies/evaluation.png"
 alt="Policy Evaluation"
 caption="Policy Evaluation"
 /%}
@@ -57,7 +57,7 @@ Bots, on the other hand, are equipped with a JWT token generated based on SSL ce
 ## Authentication Flow
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/auth.png"
+src="/images/v1.9/how-to-guides/roles-policies/auth.png"
 alt="Authentication Flow"
 caption="Authentication Flow"
 /%}
@@ -71,7 +71,7 @@ caption="Authentication Flow"
 OpenMetadata's authorization is a result of evaluating three crucial factors:
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/access.png"
+src="/images/v1.9/how-to-guides/roles-policies/access.png"
 alt="Authorization Framework"
 caption="Authorization Framework"
 /%}
@@ -83,7 +83,7 @@ caption="Authorization Framework"
 Below is a list of resources that correspond to Entities such as Table, Topic, Pipeline, etc.
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/rules1.png"
+src="/images/v1.9/how-to-guides/roles-policies/rules1.png"
 alt="Resources Correspond to Entities"
 caption="Resources Correspond to Entities"
 /%}
@@ -144,7 +144,7 @@ The operations **ViewBasic** and **ViewAll** in OpenMetadata differ in the level
 Choose the appropriate operation based on the level of access required.
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/rules2.png"
+src="/images/v1.9/how-to-guides/roles-policies/rules2.png"
 alt="Each Resource has its Own Set of Granular Operations"
 caption="Each Resource has its Own Set of Granular Operations"
 /%}

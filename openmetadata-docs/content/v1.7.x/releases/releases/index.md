@@ -1,5 +1,5 @@
 ---
-title: All Releases
+title: All Releases | OpenMetadata All Releases
 slug: /releases/all-releases
 ---
 

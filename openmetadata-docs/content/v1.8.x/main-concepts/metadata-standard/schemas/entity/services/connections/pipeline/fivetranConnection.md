@@ -1,5 +1,5 @@
 ---
-title: fivetranConnection
+title: Fivetran Connection | OpenMetadata Fivetran
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/fivetranconnection
 ---
 

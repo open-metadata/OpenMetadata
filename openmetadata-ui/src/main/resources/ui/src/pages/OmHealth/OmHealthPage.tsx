@@ -13,7 +13,7 @@
 import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { map, startCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import ConnectionStepCard from '../../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';

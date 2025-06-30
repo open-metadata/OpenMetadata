@@ -223,6 +223,18 @@ export const getSettingPath = (
   return path;
 };
 
+export const getSettingPathRelative = (
+  category?: string,
+  tab?: string,
+  withFqn = false,
+  withAction = false
+) => {
+  return getSettingPath(category, tab, withFqn, withAction).replace(
+    ROUTES.SETTINGS,
+    ''
+  );
+};
+
 export const getSettingsPathWithFqn = (
   category: string,
   tab: string,
@@ -251,7 +263,7 @@ export const getSettingCategoryPath = (category: string) => {
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }
 
-  return path;
+  return path.replace(ROUTES.SETTINGS, '');
 };
 
 export const getTeamsWithFqnPath = (fqn: string) => {
