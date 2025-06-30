@@ -29,6 +29,10 @@ export interface LineagePropagationAction {
      */
     propagateDescription?: boolean;
     /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
+    /**
      * Propagate glossary terms through lineage
      */
     propagateGlossaryTerms?: boolean;
@@ -48,10 +52,6 @@ export interface LineagePropagationAction {
      * Propagate tier from the parent
      */
     propagateTier?: boolean;
-    /**
-     * Propagate domain from the parent through lineage
-     */
-    propagateDomain?: boolean;
     /**
      * Application Type
      */

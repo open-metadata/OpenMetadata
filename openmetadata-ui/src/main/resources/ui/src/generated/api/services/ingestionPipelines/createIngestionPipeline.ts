@@ -1065,6 +1065,10 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
+    /**
      * Propagate glossary terms through lineage
      */
     propagateGlossaryTerms?: boolean;
@@ -1084,10 +1088,6 @@ export interface Action {
      * Propagate tier from the parent
      */
     propagateTier?: boolean;
-    /**
-     * Propagate domain from the parent through lineage
-     */
-    propagateDomain?: boolean;
 }
 
 /**
@@ -2920,8 +2920,10 @@ export interface ConfigClass {
      * The maximum amount of time (in seconds) to wait for a successful connection to the data
      * source. If the connection attempt takes longer than this timeout period, an error will be
      * returned.
+     *
+     * Connection timeout in seconds.
      */
-    connectionTimeout?: number;
+    connectionTimeout?: number | number;
     /**
      * Databricks compute resources URL.
      */

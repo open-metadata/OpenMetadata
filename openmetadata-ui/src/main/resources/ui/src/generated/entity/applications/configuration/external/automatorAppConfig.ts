@@ -178,6 +178,10 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
+    /**
      * Propagate glossary terms through lineage
      */
     propagateGlossaryTerms?: boolean;
@@ -197,10 +201,6 @@ export interface Action {
      * Propagate tier from the parent
      */
     propagateTier?: boolean;
-    /**
-     * Propagate domain from the parent through lineage
-     */
-    propagateDomain?: boolean;
 }
 
 /**
