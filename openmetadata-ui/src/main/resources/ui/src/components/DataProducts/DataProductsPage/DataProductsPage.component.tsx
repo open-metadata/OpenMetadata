@@ -15,9 +15,9 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -40,6 +40,7 @@ import {
   getVersionPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -48,10 +49,10 @@ import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDeta
 
 const DataProductsPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
+  const { version } = useRequiredParams<{ version: string }>();
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
-  const { version } = useParams<{ version: string }>();
   const { fqn: dataProductFqn } = useFqn();
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [dataProduct, setDataProduct] = useState<DataProduct>();
@@ -78,7 +79,7 @@ const DataProductsPage = () => {
         setDataProduct(response);
 
         if (dataProduct?.name !== updatedData.name) {
-          history.push(
+          navigate(
             getEntityDetailsPath(
               EntityType.DATA_PRODUCT,
               response.fullyQualifiedName ?? ''
@@ -104,7 +105,7 @@ const DataProductsPage = () => {
         })
       );
       const domainPath = getDomainPath();
-      history.push(domainPath);
+      navigate(domainPath);
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -176,11 +177,11 @@ const DataProductsPage = () => {
       dataProductFqn,
       selectedVersion
     );
-    history.push(path);
+    navigate(path);
   };
 
   const onBackHandler = () => {
-    history.push(getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn));
+    navigate(getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn));
   };
 
   const followDataProduct = async () => {
@@ -267,7 +268,7 @@ const DataProductsPage = () => {
             ghost
             className="m-t-sm"
             type="primary"
-            onClick={() => history.push(getDomainPath())}>
+            onClick={() => navigate(getDomainPath())}>
             {t('label.go-back')}
           </Button>
         </div>

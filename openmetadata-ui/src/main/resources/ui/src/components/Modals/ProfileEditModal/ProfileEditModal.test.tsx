@@ -13,7 +13,6 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import React from 'react';
 import { User } from '../../../generated/entity/teams/user';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ProfileEditModal } from './ProfileEditModal';

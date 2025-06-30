@@ -12,7 +12,7 @@
  */
 
 import { Button, Card, Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { CardStyle } from '../../../../generated/entity/feed/thread';

@@ -1,5 +1,5 @@
 ---
-title: dataQualityReport
+title: dataQualityReport | OpenMetadata Data Quality Report
 slug: /main-concepts/metadata-standard/schemas/tests/dataqualityreport
 ---
 

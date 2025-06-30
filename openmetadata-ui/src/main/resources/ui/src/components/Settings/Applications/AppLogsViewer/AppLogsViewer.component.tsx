@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { LazyLog } from '@melloware/react-logviewer';
 import {
   Badge,
   Button,
@@ -23,9 +24,8 @@ import {
   Typography,
 } from 'antd';
 import { isEmpty, isNil } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LazyLog } from 'react-lazylog';
 import { useHistory } from 'react-router-dom';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { StepStats } from '../../../../generated/entity/applications/appRunRecord';

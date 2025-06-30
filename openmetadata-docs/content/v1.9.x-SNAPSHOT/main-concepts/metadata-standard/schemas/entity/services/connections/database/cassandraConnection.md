@@ -1,5 +1,5 @@
 ---
-title: cassandraConnection
+title: Cassandra Connection | OpenMetadata Cassandra
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cassandraconnection
 ---
 

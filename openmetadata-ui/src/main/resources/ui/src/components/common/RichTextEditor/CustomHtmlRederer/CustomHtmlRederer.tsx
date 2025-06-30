@@ -30,7 +30,7 @@ import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/python/python';
 import 'codemirror/mode/sql/sql';
 import 'codemirror/mode/yaml/yaml';
-import { t } from 'i18next';
+
 import katex from 'katex';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
@@ -40,6 +40,7 @@ import {
   MARKDOWN_MATCH_ID,
 } from '../../../../constants/regex.constants';
 import { MarkdownToHTMLConverter } from '../../../../utils/FeedUtils';
+import i18n from '../../../../utils/i18next/LocalUtil';
 import {
   HTMLToken,
   OpenTagToken,
@@ -157,7 +158,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
               className="code-copy-message"
               data-copied="false"
               data-testid="copied-message">
-              {t('label.copied')}
+              {i18n.t('label.copied').toString()}
             </span>
             <img
               className="code-copy-button"

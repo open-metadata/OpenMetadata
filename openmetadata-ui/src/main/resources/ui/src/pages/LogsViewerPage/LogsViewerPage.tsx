@@ -12,10 +12,11 @@
  */
 
 import { DownloadOutlined } from '@ant-design/icons';
+import { LazyLog } from '@melloware/react-logviewer';
 import { Button, Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, round, toNumber } from 'lodash';
-import React, {
+import {
   Fragment,
   useCallback,
   useEffect,
@@ -24,7 +25,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LazyLog } from 'react-lazylog';
 import { useParams } from 'react-router-dom';
 import { CopyToClipboardButton } from '../../components/common/CopyToClipboardButton/CopyToClipboardButton';
 import Loader from '../../components/common/Loader/Loader';

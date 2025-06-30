@@ -14,7 +14,6 @@
 import Icon from '@ant-design/icons';
 import { Space, Tooltip, Typography } from 'antd';
 import { isEqual } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTaskClose } from '../../../assets/svg/complete.svg';
 import { ReactComponent as IconTaskOpen } from '../../../assets/svg/in-progress.svg';

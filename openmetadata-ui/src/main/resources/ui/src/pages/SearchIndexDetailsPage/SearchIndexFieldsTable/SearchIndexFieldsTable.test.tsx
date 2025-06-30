@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MOCK_SEARCH_INDEX_FIELDS } from '../../../mocks/SearchIndex.mock';
 import SearchIndexFieldsTable from './SearchIndexFieldsTable';
 
