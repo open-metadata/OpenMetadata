@@ -1086,8 +1086,10 @@ export interface ConfigClass {
      * The maximum amount of time (in seconds) to wait for a successful connection to the data
      * source. If the connection attempt takes longer than this timeout period, an error will be
      * returned.
+     *
+     * Connection timeout in seconds.
      */
-    connectionTimeout?: number;
+    connectionTimeout?: number | number;
     /**
      * Databricks compute resources URL.
      */
@@ -5277,6 +5279,12 @@ export interface IncrementalMetadataExtractionConfiguration {
  * Details required to generate Lineage
  */
 export interface LineageInformation {
+    /**
+     * List of service path prefixes for lineage matching. Supported formats: DBServiceName,
+     * DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or
+     * DBServiceName.DatabaseName.SchemaName.TableName
+     */
+    dbServicePrefixes?: string[];
     /**
      * List of Database Service Names for creation of lineage
      */

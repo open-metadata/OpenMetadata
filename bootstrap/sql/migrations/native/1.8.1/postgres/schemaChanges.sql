@@ -16,4 +16,7 @@ SET
   )
 WHERE
   json :: jsonb -> 'sourceConfig' -> 'config' ->> 'type' = 'DashboardMetadata'
-  AND json :: jsonb -> 'sourceConfig' -> 'config' -> 'lineageInformation' ? 'dbServiceNames';
+  AND jsonb_exists(
+    json :: jsonb -> 'sourceConfig' -> 'config' -> 'lineageInformation',
+    'dbServiceNames'
+  );
