@@ -74,7 +74,7 @@ export const getMetricVersions = async (id: string) => {
   return response.data;
 };
 
-export const getMetricVersion = async (id: string, versionId: string) => {
+export const getMetricVersion = async (id: string, versionId?: string) => {
   const response = await APIClient.get<Metric>(
     `/metrics/${id}/versions/${versionId}`
   );

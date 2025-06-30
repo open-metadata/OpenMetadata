@@ -1,5 +1,5 @@
 ---
-title: sslCertValues
+title: SSL Cert Values | OpenMetadata SSL Values
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/common/sslcertvalues
 ---
 

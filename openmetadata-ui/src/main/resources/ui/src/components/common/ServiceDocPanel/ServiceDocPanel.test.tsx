@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import ServiceRequirements from './ServiceDocPanel';
 
 jest.mock('../Loader/Loader', () =>

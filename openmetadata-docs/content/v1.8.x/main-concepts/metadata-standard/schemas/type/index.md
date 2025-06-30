@@ -1,5 +1,5 @@
 ---
-title: index
+title: Type Schema | OpenMetadata Type Schema Overview
 slug: /main-concepts/metadata-standard/schemas/type
 ---
 

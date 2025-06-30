@@ -13,7 +13,7 @@
 import { EditorView } from '@tiptap/pm/view';
 import { AxiosError } from 'axios';
 import { isString, isUndefined, noop } from 'lodash';
-import React, { createContext, ReactNode, useContext, useState } from 'react';
+import { createContext, ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { showErrorToast } from '../../../../utils/ToastUtils';

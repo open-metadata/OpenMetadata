@@ -12,7 +12,6 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React from 'react';
 
 export const TagRenderer = (props: CustomTagProps) => {
   const { label, closable, onClose } = props;

@@ -22,7 +22,7 @@ This is a narrowed-down view of the database schema, focusing on the main tables
 you will find the columns that are `GENERATED`:
 
 {% image
-src="/images/v1.9main-concepts/backend-db/db-diagram.png"
+src="/images/v1.9/main-concepts/backend-db/db-diagram.png"
 alt="Backend DB Simplified Diagram"
 caption="Backend DB Simplified Diagram"
 /%}

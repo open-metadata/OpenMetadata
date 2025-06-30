@@ -13,15 +13,16 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -71,13 +72,15 @@ import {
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
-  const history = useHistory();
-  const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab: activeTab = EntityTabs.CODE } =
+    useRequiredParams<{ tab: EntityTabs }>();
 
   const { fqn: decodedStoredProcedureFQN } = useFqn();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -176,7 +179,7 @@ const StoredProcedurePage = () => {
       });
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);
@@ -185,7 +188,7 @@ const StoredProcedurePage = () => {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.STORED_PROCEDURE,
           decodedStoredProcedureFQN,
@@ -357,11 +360,11 @@ const StoredProcedurePage = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
-    []
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    [navigate]
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as StoredProcedure;
 
     setStoredProcedure((data) => ({
@@ -372,7 +375,7 @@ const StoredProcedurePage = () => {
 
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.STORED_PROCEDURE,
           decodedStoredProcedureFQN,

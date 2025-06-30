@@ -1,5 +1,5 @@
 ---
-title: searchService
+title: Search Service | OpenMetadata Search Service
 slug: /main-concepts/metadata-standard/schemas/entity/services/searchservice
 ---
 

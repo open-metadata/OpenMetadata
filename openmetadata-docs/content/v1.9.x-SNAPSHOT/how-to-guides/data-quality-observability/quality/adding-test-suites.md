@@ -11,7 +11,7 @@ Test Suites are logical container allowing you to group related Test Cases toget
 From the vertical navigation bar, click on `Quality icon > Data Quality` and navigate to the `By Test Suites` tab. From there click on `Add Test Suite` button on the top right corner.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/profiler-tab-view.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/profiler-tab-view.png"
   alt="Write your first test"
   caption="Write your first test"
  /%}
@@ -20,7 +20,7 @@ From the vertical navigation bar, click on `Quality icon > Data Quality` and nav
 On the next page, enter the name and description (optional) of your test suite.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/test-suite-page.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/test-suite-page.png"
   alt="Create test suite"
   caption="Create test suite"
  /%}
@@ -32,10 +32,10 @@ On the next page, you will be able to add existing test cases from different ent
 **Note:** Test Case name needs to be unique across the whole platform. A warning message will show if your Test Case name is not unique.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/test-case-page.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/test-case-page.png"
   alt="Create test case"
   caption="Create test case"
  /%}
 
 
-{% partial file="/v1.9connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.9/connectors/yaml/data-quality.md" /%}

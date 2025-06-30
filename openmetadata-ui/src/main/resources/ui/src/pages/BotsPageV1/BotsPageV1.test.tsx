@@ -10,17 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import BotsPageV1 from './BotsPageV1.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../components/Settings/Bot/BotListV1/BotListV1.component', () =>
@@ -42,12 +39,12 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
 );
 
 describe('BotsPageV1 component', () => {
-  it('Add bot should call mockPush', () => {
+  it('Add bot should call mockPush', async () => {
     render(<BotsPageV1 />);
 
     userEvent.click(screen.getByRole('button', { name: 'Add Bot' }));
 
-    expect(mockPush).toHaveBeenCalled();
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
   });
 
   it('Bot deleted should not present by default', () => {
@@ -56,13 +53,13 @@ describe('BotsPageV1 component', () => {
     expect(screen.queryByText('Bot Deleted')).not.toBeInTheDocument();
   });
 
-  it('Delete Bot button should delete bot', () => {
+  it('Delete Bot button should delete bot', async () => {
     render(<BotsPageV1 />);
 
     expect(screen.queryByText('Bot Deleted')).not.toBeInTheDocument();
 
     userEvent.click(screen.getByRole('button', { name: 'Delete Bot' }));
 
-    expect(screen.getByText('Bot Deleted')).toBeInTheDocument();
+    expect(await screen.findByText('Bot Deleted')).toBeInTheDocument();
   });
 });

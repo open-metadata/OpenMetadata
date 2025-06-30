@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons';
 import i18next from 'i18next';
-import React from 'react';
 import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { FeedFilter } from '../../enums/mydata.enum';

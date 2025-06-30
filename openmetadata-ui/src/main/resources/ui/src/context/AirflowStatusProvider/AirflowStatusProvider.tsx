@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import React, {
+import {
   createContext,
   ReactNode,
   useCallback,

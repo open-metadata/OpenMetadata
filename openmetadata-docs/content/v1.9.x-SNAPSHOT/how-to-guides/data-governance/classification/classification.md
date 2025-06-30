@@ -19,7 +19,7 @@ For Classification in OpenMetadata, we use a flat list of terms from knowledge o
 In the below example, PersonalData is a Classification and it further has Tags under it. `PersonalData` is also a **System** Classification. System classifications are an important part of OpenMetadata and therefore cannot be deleted. The descriptions for the System tags can be modified. They can also be disabled. `PII` and `Tiers` are the other important system classifications in OpenMetadata.
 
 {% image
-src="/images/v1.9how-to-guides/governance/tag4.png"
+src="/images/v1.9/how-to-guides/governance/tag4.png"
 alt="Classification: Groups together Tags"
 caption="Classification: Groups together Tags"
 /%}
@@ -38,7 +38,7 @@ There are cases where only one tag from a particular classification is relevant 
 {% note %}
 **Pro Tip:** The Global Search in OpenMetadata also helps discover related Glossary Terms and Tags.
 {% image
-src="/images/v1.9how-to-guides/governance/tag1.png"
+src="/images/v1.9/how-to-guides/governance/tag1.png"
 alt="Search for Glossary Terms and Tags"
 caption="Search for Glossary Terms and Tags"
 /%}

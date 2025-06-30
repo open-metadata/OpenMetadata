@@ -14,7 +14,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -50,7 +49,7 @@ const CreateErrorPlaceHolder = ({
     <div
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm'
+        'h-full flex-center border-default border-radius-sm bg-white'
       )}
       data-testid={`create-error-placeholder-${heading}`}>
       <Space align="center" className="w-full" direction="vertical" size={10}>

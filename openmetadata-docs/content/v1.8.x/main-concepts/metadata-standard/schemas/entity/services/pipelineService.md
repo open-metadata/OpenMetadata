@@ -1,5 +1,5 @@
 ---
-title: pipelineService
+title: Pipeline Service | OpenMetadata Pipeline Service
 slug: /main-concepts/metadata-standard/schemas/entity/services/pipelineservice
 ---
 
