@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import React, { forwardRef, useMemo } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './all-widgets-content.less';

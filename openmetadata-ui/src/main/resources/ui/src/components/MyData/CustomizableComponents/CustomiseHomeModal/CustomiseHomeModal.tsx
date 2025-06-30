@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Modal, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';

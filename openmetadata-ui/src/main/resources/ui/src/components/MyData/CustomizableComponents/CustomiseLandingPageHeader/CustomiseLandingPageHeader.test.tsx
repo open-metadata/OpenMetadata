@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { getRecentlyViewedData } from '../../../../utils/CommonUtils';

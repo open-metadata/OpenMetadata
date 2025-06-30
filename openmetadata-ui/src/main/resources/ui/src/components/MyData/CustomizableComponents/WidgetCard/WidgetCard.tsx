@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons';
 import { Card, Typography } from 'antd';
-import React from 'react';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import './widget-card.less';
