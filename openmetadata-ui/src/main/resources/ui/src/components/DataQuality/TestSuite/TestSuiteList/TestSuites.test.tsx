@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
@@ -26,9 +25,7 @@ const testSuitePermission = {
   EditDisplayName: true,
   EditCustomFields: true,
 };
-const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
-  tab?: DataQualityPageTabs;
-};
+
 const mockLocation = {
   search: '',
 };
@@ -86,8 +83,7 @@ jest.mock('react-router-dom', () => {
       .mockImplementation(({ children, ...rest }) => (
         <div {...rest}>{children}</div>
       )),
-    useHistory: jest.fn(),
-    useParams: jest.fn().mockImplementation(() => mockUseParam),
+    useNavigate: jest.fn().mockReturnValue(jest.fn()),
   };
 });
 jest.mock('../../../common/NextPrevious/NextPrevious', () => {

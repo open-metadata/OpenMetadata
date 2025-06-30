@@ -1,5 +1,5 @@
 ---
-title: tableQuery
+title: Table Query | OpenMetadata Table Query Schema
 slug: /main-concepts/metadata-standard/schemas/type/tablequery
 ---
 

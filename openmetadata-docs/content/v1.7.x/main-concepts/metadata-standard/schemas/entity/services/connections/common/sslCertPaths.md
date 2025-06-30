@@ -1,5 +1,5 @@
 ---
-title: sslCertPaths
+title: SSL Cert Paths | OpenMetadata SSL Certificate Paths
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/common/sslcertpaths
 ---
 

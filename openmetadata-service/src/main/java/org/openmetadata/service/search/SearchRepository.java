@@ -89,6 +89,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -107,7 +108,6 @@ import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -775,7 +775,7 @@ public class SearchRepository {
               fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
               scriptTxt.append(" ");
             }
-          } catch (UnhandledServerException e) {
+          } catch (JsonParsingException e) {
             scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
           }
         }
@@ -797,7 +797,7 @@ public class SearchRepository {
                     field.getName(),
                     field.getName()));
             fieldData.put(field.getName(), newEntityReference);
-          } catch (UnhandledServerException e) {
+          } catch (JsonParsingException e) {
             if (field.getName().equals(Entity.FIELD_TEST_SUITES)) {
               scriptTxt.append(PROPAGATE_TEST_SUITES_SCRIPT);
               fieldData.put(Entity.FIELD_TEST_SUITES, field.getNewValue());
@@ -840,7 +840,7 @@ public class SearchRepository {
               fieldData.put(field.getName(), entityReference);
             }
             scriptTxt.append(" ");
-          } catch (UnhandledServerException e) {
+          } catch (JsonParsingException e) {
             if (field.getName().equals(FIELD_DISPLAY_NAME)) {
               String fieldPath =
                   getFieldPath(entity.getEntityReference().getType(), field.getName());

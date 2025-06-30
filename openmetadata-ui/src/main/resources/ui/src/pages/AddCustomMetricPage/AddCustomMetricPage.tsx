@@ -13,9 +13,9 @@
 import { Button, Col, Form, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -40,17 +40,17 @@ import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const AddCustomMetricPage = () => {
   const { dashboardType } =
-    useParams<{ dashboardType: ProfilerDashboardType }>();
+    useRequiredParams<{ dashboardType: ProfilerDashboardType }>();
   const { fqn } = useFqn();
   const { t } = useTranslation();
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const isColumnMetric = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm<CustomMetric>();
@@ -103,7 +103,7 @@ const AddCustomMetricPage = () => {
   );
 
   const handleBackClick = () => {
-    history.push({
+    navigate({
       pathname: getEntityDetailsPath(
         EntityType.TABLE,
         entityFqn,
@@ -163,7 +163,7 @@ const AddCustomMetricPage = () => {
       (column) => column.name === columnName
     );
     if (selectedColumn) {
-      history.push({
+      navigate({
         search: QueryString.stringify({
           activeColumnFqn: selectedColumn?.fullyQualifiedName,
         }),
@@ -270,8 +270,4 @@ const AddCustomMetricPage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-entity', {
-    entity: i18n.t('label.custom-metric'),
-  })
-)(AddCustomMetricPage);
+export default withPageLayout(AddCustomMetricPage);

@@ -1,5 +1,5 @@
 ---
-title: persona
+title: Persona | OpenMetadata Persona API Details
 slug: /main-concepts/metadata-standard/schemas/entity/teams/persona
 ---
 
