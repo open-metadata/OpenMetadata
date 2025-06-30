@@ -15,14 +15,16 @@ System Metric
 
 from abc import ABC
 from collections import defaultdict
-from typing import Callable, Generic, List, TypeVar
+from typing import Callable, Dict, Generic, List, Optional, Protocol, Type, TypeVar
 
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.profiler.metrics.core import SystemMetric
+from metadata.profiler.orm.registry import PythonDialects
 from metadata.utils.helpers import deep_size_of_dict
+from metadata.utils.importer import import_from_module
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 
@@ -61,56 +63,71 @@ class CacheProvider(ABC, Generic[T]):
         return result
 
 
-class EmptySystemMetricsSource:
-    """Empty system metrics source that can be used as a default. Just returns an empty list of system metrics
-    for any resource."""
+class SystemMetricsComputer(Protocol):
+    """System metrics computer class to fetch system metrics for a given table."""
 
-    def get_inserts(self, **kwargs) -> List[SystemProfile]:
-        """Get insert queries"""
-        return []
-
-    def get_deletes(self, **kwargs) -> List[SystemProfile]:
-        """Get delete queries"""
-        return []
-
-    def get_updates(self, **kwargs) -> List[SystemProfile]:
-        """Get update queries"""
-        return []
-
-    def get_kwargs(self, **kwargs):
-        """Get kwargs to be used in get_inserts, get_deletes, get_updates"""
-        return {}
-
-
-class SystemMetricsComputer(EmptySystemMetricsSource):
-    def __init__(self, *args, **kwargs):
-        # collaborative constructor that initalizes upstream classes
-        super().__init__(*args, **kwargs)
-
-    def get_system_metrics(self, **kwargs) -> List[SystemProfile]:
+    def get_system_metrics(self) -> List[SystemProfile]:
         """Return system metrics for a given table. Actual passed object can be a variety of types based
         on the underlying infrastructure. For example, in the case of SQLalchemy, it can be a Table object
         and in the case of Mongo, it can be a collection object."""
-        kwargs = super().get_kwargs(**kwargs)
-        return (
-            super().get_inserts(**kwargs)
-            + super().get_deletes(**kwargs)
-            + super().get_updates(**kwargs)
-        )
+        return self.get_inserts() + self.get_deletes() + self.get_updates()
+
+    def get_inserts(self) -> List[SystemProfile]:
+        """Get insert queries"""
+        return []
+
+    def get_deletes(self) -> List[SystemProfile]:
+        """Get delete queries"""
+        return []
+
+    def get_updates(self) -> List[SystemProfile]:
+        """Get update queries"""
+        return []
 
 
-class SQASessionProvider:
-    """SQASessionProvider class to provide session to the system metrics"""
+class SystemMetricsRegistry:
+    _registry: Dict[str, Type["SystemMetricsComputer"]] = {}
 
-    def __init__(self, *args, **kwargs):
-        self.session = kwargs.pop("session")
-        super().__init__(*args, **kwargs)
+    @classmethod
+    def register(cls, dialect: PythonDialects, implementation: Type):
+        cls._registry[dialect.value.lower()] = implementation
 
-    def get_session(self):
-        return self.session
+    @classmethod
+    def get(cls, dialect: PythonDialects) -> Optional[Type["SystemMetricsComputer"]]:
+        if dialect.value.lower() not in cls._registry:
+            cls._discover_implementation(dialect)
+        return cls._registry.get(dialect.value.lower())
 
-    def get_database(self) -> str:
-        return self.session.get_bind().url.database
+    @classmethod
+    def _discover_implementation(cls, dialect: PythonDialects):
+        """Auto-discover the implementation in the profiler metrics"""
+        try:
+            implementation = import_from_module(
+                f"metadata.profiler.metrics.system.{dialect.value.lower()}.system"
+            )
+        except ImportError:
+            logger.warning(f"No implementation found for {dialect.value.lower()}")
+            return
+        cls._registry[dialect.value.lower()] = implementation
+
+
+def register_system_metrics(
+    dialect: PythonDialects,
+) -> Callable[[Type["SystemMetricsComputer"]], Type["SystemMetricsComputer"]]:
+    """Decorator to register a system metric implementation
+
+    Args:
+        dialect (PythonDialects): database type
+
+    Returns:
+        Callable: decorator function
+    """
+
+    def decorator(cls: Type["SystemMetricsComputer"]):
+        SystemMetricsRegistry.register(dialect, cls)
+        return cls
+
+    return decorator
 
 
 class System(SystemMetric):

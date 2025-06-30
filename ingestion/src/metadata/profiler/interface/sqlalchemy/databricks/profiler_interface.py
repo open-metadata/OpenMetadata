@@ -13,24 +13,53 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from typing import List
+from typing import List, Type, cast
 
 from pyhive.sqlalchemy_hive import HiveCompiler
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import Column as OMColumn
-from metadata.generated.schema.entity.data.table import ColumnName, DataType
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    DataType,
+    SystemProfile,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.metrics.system.databricks.system import (
+    DatabricksSystemMetricsComputer,
+)
+from metadata.profiler.metrics.system.system import System
 from metadata.profiler.orm.converter.base import build_orm_col
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.logger import profiler_interface_registry_logger
+
+logger = profiler_interface_registry_logger()
 
 
 class DatabricksProfilerInterface(SQAProfilerInterface):
     """Databricks profiler interface"""
+
+    def _compute_system_metrics(
+        self,
+        metrics: Type[System],
+        runner: QueryRunner,
+        *args,
+        **kwargs,
+    ) -> List[SystemProfile]:
+        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
+        self.system_metrics_class = cast(
+            Type[DatabricksSystemMetricsComputer], self.system_metrics_class
+        )
+        instance = self.system_metrics_class(
+            session=self.session,
+            runner=runner,
+        )
+        return instance.get_system_metrics()
 
     def visit_column(self, *args, **kwargs):
         result = super(  # pylint: disable=bad-super-call

@@ -3,16 +3,17 @@
 from typing import List
 
 from pydantic import TypeAdapter
+from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.ingestion.source.database.bigquery.queries import BigQueryQueryResult
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
 from metadata.profiler.metrics.system.system import (
     CacheProvider,
-    EmptySystemMetricsSource,
-    SQASessionProvider,
     SystemMetricsComputer,
+    register_system_metrics,
 )
+from metadata.profiler.orm.registry import PythonDialects
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_logger
 from metadata.utils.time_utils import datetime_to_timestamp
@@ -20,36 +21,32 @@ from metadata.utils.time_utils import datetime_to_timestamp
 logger = profiler_logger()
 
 
-class BigQuerySystemMetricsSource(
-    SQASessionProvider, EmptySystemMetricsSource, CacheProvider
-):
+@register_system_metrics(PythonDialects.BigQuery)
+class BigQuerySystemMetricsComputer(SystemMetricsComputer, CacheProvider):
     """BigQuery system metrics source class"""
 
-    def get_kwargs(self, **kwargs):
-        runner: QueryRunner = kwargs.get("runner")
-        return {
-            "table": runner.table_name,
-            "project_id": runner.session.get_bind().url.host,
-            "dataset_id": runner.schema_name,
-            "usage_location": kwargs.get("usage_location"),
-        }
+    def __init__(
+        self,
+        session: Session,
+        runner: QueryRunner,
+        usage_location: str,
+    ):
+        self.session = session
+        self.table = runner.table_name
+        self.project_id = runner.session.get_bind().url.host
+        self.dataset_id = runner.schema_name
+        self.usage_location = usage_location
 
-    def get_deletes(self, **kwargs) -> List[SystemProfile]:
-        table, project_id, usage_location, dataset_id = (
-            kwargs.get("table"),
-            kwargs.get("project_id"),
-            kwargs.get("usage_location"),
-            kwargs.get("dataset_id"),
-        )
+    def get_deletes(self) -> List[SystemProfile]:
         return self.get_system_profile(
-            project_id,
-            dataset_id,
-            table,
+            self.project_id,
+            self.dataset_id,
+            self.table,
             list(
                 self.get_queries_by_operation(
-                    usage_location,
-                    project_id,
-                    dataset_id,
+                    self.usage_location,
+                    self.project_id,
+                    self.dataset_id,
                     [
                         DatabaseDMLOperations.DELETE,
                     ],
@@ -59,21 +56,15 @@ class BigQuerySystemMetricsSource(
             DmlOperationType.DELETE,
         )
 
-    def get_updates(self, **kwargs) -> List[SystemProfile]:
-        table, project_id, usage_location, dataset_id = (
-            kwargs.get("table"),
-            kwargs.get("project_id"),
-            kwargs.get("usage_location"),
-            kwargs.get("dataset_id"),
-        )
+    def get_updates(self) -> List[SystemProfile]:
         return self.get_system_profile(
-            project_id,
-            dataset_id,
-            table,
+            self.project_id,
+            self.dataset_id,
+            self.table,
             self.get_queries_by_operation(
-                usage_location,
-                project_id,
-                dataset_id,
+                self.usage_location,
+                self.project_id,
+                self.dataset_id,
                 [
                     DatabaseDMLOperations.UPDATE,
                     DatabaseDMLOperations.MERGE,
@@ -83,21 +74,15 @@ class BigQuerySystemMetricsSource(
             DmlOperationType.UPDATE,
         )
 
-    def get_inserts(self, **kwargs) -> List[SystemProfile]:
-        table, project_id, usage_location, dataset_id = (
-            kwargs.get("table"),
-            kwargs.get("project_id"),
-            kwargs.get("usage_location"),
-            kwargs.get("dataset_id"),
-        )
+    def get_inserts(self) -> List[SystemProfile]:
         return self.get_system_profile(
-            project_id,
-            dataset_id,
-            table,
+            self.project_id,
+            self.dataset_id,
+            self.table,
             self.get_queries_by_operation(
-                usage_location,
-                project_id,
-                dataset_id,
+                self.usage_location,
+                self.project_id,
+                self.dataset_id,
                 [
                     DatabaseDMLOperations.INSERT,
                     DatabaseDMLOperations.MERGE,
@@ -127,7 +112,7 @@ class BigQuerySystemMetricsSource(
         return self.get_or_update_cache(
             f"{project_id}.{dataset_id}",
             BigQueryQueryResult.get_for_table,
-            session=super().get_session(),
+            session=self.session,
             usage_location=usage_location,
             project_id=project_id,
             dataset_id=dataset_id,
@@ -160,7 +145,3 @@ class BigQuerySystemMetricsSource(
                 and q.table_name == table
             ]
         )
-
-
-class BigQuerySystemMetricsComputer(SystemMetricsComputer, BigQuerySystemMetricsSource):
-    pass

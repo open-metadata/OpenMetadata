@@ -667,7 +667,8 @@
       "enum": [
         "UPDATE",
         "INSERT",
-        "DELETE"
+        "DELETE",
+        "WRITE"
       ]
     },
     "systemProfile": {
@@ -955,7 +956,7 @@
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "type": "string",
-      "enum": ["csv", "tsv", "avro", "parquet", "pq", "pqt", "parq", "parquet.snappy", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
+      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
     }
   },
   "properties": {
