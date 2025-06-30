@@ -11,19 +11,11 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { CustomizablePageHeader } from './CustomizablePageHeader';
-// Mock the required hooks and modules
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useHistory: () => ({
-    goBack: jest.fn(),
-  }),
-}));
 
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'test-persona' }),

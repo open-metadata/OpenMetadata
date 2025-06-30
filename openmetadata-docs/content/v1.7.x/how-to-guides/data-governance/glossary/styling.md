@@ -1,5 +1,5 @@
 ---
-title: Glossary Styling
+title: Glossary Styling | OpenMetadata Glossary Customization
 slug: /how-to-guides/data-governance/glossary/styling
 ---
 

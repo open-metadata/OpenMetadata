@@ -351,7 +351,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     },
   },
   entity_dashboardDataModel: {
-    name: 'dataModel',
+    name: 'dashboardDataModel',
     description: 'This is Data Model custom property',
     integerValue: '23',
     stringValue: 'This is string propery',

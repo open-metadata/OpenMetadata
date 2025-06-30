@@ -1,5 +1,5 @@
 ---
-title: Qlik Cloud
+title: Qlik Cloud Connector | OpenMetadata Dashboard Integration
 slug: /connectors/dashboard/qlikcloud
 ---
 
@@ -47,7 +47,7 @@ To deploy OpenMetadata, check the Deployment guides.
 
 - **Qlik Cloud Host Port**: This field refers to the base url of your Qlik Cloud Portal, will be used for generating the redirect links for dashboards and charts. Example: `https://<TenantURL>.qlikcloud.com`
 - **Qlik Cloud API Token**: Enter the API token for Qlik Cloud APIs access. Refer to [this](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Admin/mc-generate-api-keys.htm) document for more details about. Example: `eyJhbGciOiJFU***`.
-- **Qlik Cloud Space Types**: Select relevant space types of Qlik Cloud to filter the dashboards ingested into the platform. Example: `Personal`, `Shared`, `Managed`.
+- **Qlik Cloud Space Types**: Select relevant space types of Qlik Cloud to filter the dashboards ingested into the platform. Example: `Personal`, `Shared`, `Managed`, `Data`.
 
 {% /extraContent %}
 

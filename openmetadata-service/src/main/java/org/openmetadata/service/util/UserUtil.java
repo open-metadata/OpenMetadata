@@ -44,6 +44,7 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -355,6 +356,8 @@ public final class UserUtil {
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))
-        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()));
+        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()))
+        .withExternalId(create.getExternalId())
+        .withScimUserName(create.getScimUserName());
   }
 }

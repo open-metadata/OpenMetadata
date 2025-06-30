@@ -1,5 +1,5 @@
 ---
-title: Glue Pipeline
+title: Glue Pipeline | OpenMetadata Data Integration Pipeline
 slug: /connectors/pipeline/glue-pipeline
 ---
 

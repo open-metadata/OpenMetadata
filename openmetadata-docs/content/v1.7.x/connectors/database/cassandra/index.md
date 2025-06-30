@@ -1,5 +1,5 @@
 ---
-title: Cassandra
+title: Cassandra Connector | OpenMetadata Database Integration
 slug: /connectors/database/cassandra
 ---
 

@@ -12,21 +12,10 @@
  */
 import { Card } from 'antd';
 import Qs from 'qs';
-import React, {
-  DragEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import { DragEvent, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import ReactFlow, {
-  Background,
-  MiniMap,
-  Panel,
-  ReactFlowProvider,
-} from 'reactflow';
+import { useNavigate } from 'react-router-dom';
+import ReactFlow, { Background, MiniMap, Panel } from 'reactflow';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
@@ -59,7 +48,7 @@ const Lineage = ({
   isPlatformLineage,
 }: LineageProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const location = useCustomLocation();
@@ -73,7 +62,6 @@ const Lineage = ({
     onNodeDrop,
     onNodesChange,
     onEdgesChange,
-    entityLineage,
     onPaneClick,
     onConnect,
     onInitReactFlow,
@@ -84,13 +72,13 @@ const Lineage = ({
   const isFullScreen = queryParams.get('fullscreen') === 'true';
 
   const onFullScreenClick = useCallback(() => {
-    history.push({
+    navigate({
       search: Qs.stringify({ fullscreen: true }),
     });
   }, []);
 
   const onExitFullScreenViewClick = useCallback(() => {
-    history.push({
+    navigate({
       search: '',
     });
   }, []);
@@ -162,7 +150,7 @@ const Lineage = ({
         data-testid="lineage-container"
         id="lineage-container" // ID is required for export PNG functionality
         ref={reactFlowWrapper}>
-        {entityLineage && (
+        {init ? (
           <>
             {isPlatformLineage ? null : (
               <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
@@ -178,10 +166,6 @@ const Lineage = ({
                 isFullScreen ? onExitFullScreenViewClick : undefined
               }
             />
-          </>
-        )}
-        {init ? (
-          <ReactFlowProvider>
             <ReactFlow
               elevateEdgesOnSelect
               className="custom-react-flow"
@@ -222,7 +206,7 @@ const Lineage = ({
                 <LineageLayers entity={entity} entityType={entityType} />
               </Panel>
             </ReactFlow>
-          </ReactFlowProvider>
+          </>
         ) : (
           <div className="loading-card">
             <Loader />

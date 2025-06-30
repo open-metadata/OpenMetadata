@@ -50,11 +50,11 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -254,5 +254,39 @@ public class DashboardDataModelResourceTest
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void test_getByNameColumnsPaginationConsistency_200_OK(TestInfo test) throws IOException {
+    Column dateStruct =
+        getColumn("date", STRUCT, null)
+            .withChildren(
+                listOf(
+                    getColumn("year", INT, null),
+                    getColumn("month", INT, null),
+                    getColumn("day", INT, null)));
+
+    List<Column> columns =
+        listOf(
+            getColumn("revenue", BIGINT, USER_ADDRESS_TAG_LABEL),
+            getColumn("cost", BIGINT, null),
+            getColumn("profit", BIGINT, null),
+            getColumn("region", INT, GLOSSARY1_TERM1_LABEL),
+            getColumn("product", INT, null),
+            dateStruct,
+            getColumn("customer_count", BIGINT, TIER1_TAG_LABEL),
+            getColumn("order_count", BIGINT, null));
+
+    CreateDashboardDataModel create = createRequest(test).withColumns(columns);
+    DashboardDataModel dataModel = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    DashboardDataModel mixedFieldsDataModel =
+        getEntityByName(
+            dataModel.getFullyQualifiedName(), "columns,owners,description", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        mixedFieldsDataModel.getColumns(), "Mixed fields including columns should return columns");
+    assertEquals(
+        8, mixedFieldsDataModel.getColumns().size(), "Should return all columns in mixed request");
+    assertNotNull(mixedFieldsDataModel.getOwners(), "Should also return other requested fields");
   }
 }

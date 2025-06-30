@@ -22,6 +22,7 @@ import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { TagClass } from '../support/tag/TagClass';
 import {
   clickOutside,
   descriptionBox,
@@ -43,10 +44,10 @@ export const visitEntityPage = async (data: {
   dataTestId: string;
 }) => {
   const { page, searchTerm, dataTestId } = data;
+  await page.waitForLoadState('networkidle');
   const waitForSearchResponse = page.waitForResponse(
     '/api/v1/search/query?q=*index=dataAsset*'
   );
-  await page.waitForLoadState('networkidle');
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
@@ -345,6 +346,39 @@ export const removeTier = async (page: Page, endpoint: string) => {
   await expect(page.getByTestId('Tier')).toContainText('No Tier');
 };
 
+export const assignCertification = async (
+  page: Page,
+  certification: TagClass,
+  endpoint: string
+) => {
+  await page.getByTestId('edit-certification').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page
+    .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
+    .click();
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  await page.getByTestId('update-certification').click();
+  await patchRequest;
+  await clickOutside(page);
+
+  await expect(page.getByTestId('certification-label')).toContainText(
+    certification.responseData.displayName
+  );
+};
+
+export const removeCertification = async (page: Page, endpoint: string) => {
+  await page.getByTestId('edit-certification').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  await page.getByTestId('clear-certification').click();
+  await patchRequest;
+  await clickOutside(page);
+
+  await expect(page.getByTestId('certification-label')).toContainText(
+    'No Certification'
+  );
+};
+
 export const updateDescription = async (
   page: Page,
   description: string,
@@ -371,12 +405,56 @@ export const updateDescription = async (
       ).toContainText(description);
 };
 
+export const updateDescriptionForChildren = async (
+  page: Page,
+  description: string,
+  rowId: string,
+  rowSelector: string,
+  entityEndpoint: string
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-button')
+    .click();
+
+  await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+
+  await page.locator(descriptionBox).first().click();
+  await page.locator(descriptionBox).first().clear();
+  await page.locator(descriptionBox).first().fill(description);
+  let updateRequest;
+  if (
+    entityEndpoint === 'tables' ||
+    entityEndpoint === 'dashboard/datamodels'
+  ) {
+    updateRequest = page.waitForResponse('/api/v1/columns/name/*');
+  } else {
+    updateRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+  }
+  await page.getByTestId('save').click();
+  await updateRequest;
+
+  await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
+
+  isEmpty(description)
+    ? await expect(
+        page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
+      ).toContainText('No Description')
+    : await expect(
+        page
+          .locator(`[${rowSelector}="${rowId}"]`)
+          .getByTestId('viewer-container')
+          .getByRole('paragraph')
+      ).toContainText(description);
+};
+
 export const assignTag = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
-  tagFqn?: string,
-  parentId = 'KnowledgePanel.Tags'
+  endpoint: string,
+  parentId = 'KnowledgePanel.Tags',
+  tagFqn?: string
 ) => {
   await page
     .getByTestId(parentId)
@@ -396,11 +474,13 @@ export const assignTag = async (
     { state: 'visible' }
   );
 
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+  await patchRequest;
 
   await expect(
     page
@@ -416,12 +496,14 @@ export const assignTagToChildren = async ({
   rowId,
   action = 'Add',
   rowSelector = 'data-row-key',
+  entityEndpoint,
 }: {
   page: Page;
   tag: string;
   rowId: string;
   action?: 'Add' | 'Edit';
   rowSelector?: string;
+  entityEndpoint: string;
 }) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
@@ -438,10 +520,15 @@ export const assignTagToChildren = async ({
   await searchTags;
 
   await page.getByTestId(`tag-${tag}`).click();
-
-  const patchRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
-  );
+  let patchRequest;
+  if (
+    entityEndpoint === 'tables' ||
+    entityEndpoint === 'dashboard/datamodels'
+  ) {
+    patchRequest = page.waitForResponse('/api/v1/columns/name/*');
+  } else {
+    patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+  }
 
   await page.waitForSelector(
     '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
@@ -504,11 +591,13 @@ export const removeTagsFromChildren = async ({
   rowId,
   tags,
   rowSelector = 'data-row-key',
+  entityEndpoint,
 }: {
   page: Page;
   tags: string[];
   rowId: string;
   rowSelector?: string;
+  entityEndpoint: string;
 }) => {
   for (const tag of tags) {
     await page
@@ -523,10 +612,15 @@ export const removeTagsFromChildren = async ({
       .getByTestId('remove-tags')
       .click();
 
-    const patchTagRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
-    );
-
+    let patchRequest;
+    if (
+      entityEndpoint === 'tables' ||
+      entityEndpoint === 'dashboard/datamodels'
+    ) {
+      patchRequest = page.waitForResponse('/api/v1/columns/name/*');
+    } else {
+      patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+    }
     await page.waitForSelector(
       '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
       { state: 'visible' }
@@ -536,7 +630,7 @@ export const removeTagsFromChildren = async ({
 
     await page.getByTestId('saveAssociatedTag').click();
 
-    await patchTagRequest;
+    await patchRequest;
 
     await expect(
       page
@@ -597,12 +691,14 @@ export const assignGlossaryTermToChildren = async ({
   action = 'Add',
   rowId,
   rowSelector = 'data-row-key',
+  entityEndpoint,
 }: {
   page: Page;
   glossaryTerm: GlossaryTermOption;
   rowId: string;
   action?: 'Add' | 'Edit';
   rowSelector?: string;
+  entityEndpoint: string;
 }) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
@@ -617,8 +713,8 @@ export const assignGlossaryTermToChildren = async ({
   await searchGlossaryTerm;
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
-  const patchRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+  const putRequest = page.waitForResponse(
+    (response) => response.request().method() === 'PUT'
   );
 
   await page.waitForSelector(
@@ -626,13 +722,24 @@ export const assignGlossaryTermToChildren = async ({
     { state: 'visible' }
   );
 
+  let patchRequest;
+  if (
+    entityEndpoint === 'tables' ||
+    entityEndpoint === 'dashboard/datamodels'
+  ) {
+    patchRequest = page.waitForResponse('/api/v1/columns/name/*');
+  } else {
+    patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+  }
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
+  await patchRequest;
 
   await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
-  await patchRequest;
+  await putRequest;
 
   await expect(
     page
@@ -687,11 +794,13 @@ export const removeGlossaryTermFromChildren = async ({
   page,
   glossaryTerms,
   rowId,
+  entityEndpoint,
   rowSelector = 'data-row-key',
 }: {
   page: Page;
   glossaryTerms: GlossaryTermOption[];
   rowId: string;
+  entityEndpoint: string;
   rowSelector?: string;
 }) => {
   for (const tag of glossaryTerms) {
@@ -708,9 +817,15 @@ export const removeGlossaryTermFromChildren = async ({
       .locator('svg')
       .click();
 
-    const patchRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
-    );
+    let patchRequest;
+    if (
+      entityEndpoint === 'tables' ||
+      entityEndpoint === 'dashboard/datamodels'
+    ) {
+      patchRequest = page.waitForResponse('/api/v1/columns/name/*');
+    } else {
+      patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+    }
 
     await page.waitForSelector(
       '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
@@ -1011,6 +1126,77 @@ export const updateDisplayNameForEntity = async (
   await expect(
     page.locator('[data-testid="entity-header-display-name"]')
   ).toHaveText(displayName);
+};
+
+export const updateDisplayNameForEntityChildren = async (
+  page: Page,
+  displayName: { oldDisplayName: string; newDisplayName: string },
+  rowId: string,
+  rowSelector = 'data-row-key'
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-displayName-button')
+    .click();
+
+  const nameInputIsDisabled = await page.locator('#name').isEnabled();
+
+  expect(nameInputIsDisabled).toBe(false);
+
+  await expect(page.locator('#displayName')).toBeVisible();
+
+  expect(await page.locator('#displayName').inputValue()).toBe(
+    displayName.oldDisplayName
+  );
+
+  await page.locator('#displayName').fill(displayName.newDisplayName);
+
+  const updateRequest = page.waitForResponse((req) =>
+    ['PUT', 'PATCH'].includes(req.request().method())
+  );
+
+  await page.click('[data-testid="save-button"]');
+  await updateRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('column-display-name')
+  ).toHaveText(displayName.newDisplayName);
+};
+
+export const removeDisplayNameForEntityChildren = async (
+  page: Page,
+  displayName: string,
+  rowId: string,
+  rowSelector = 'data-row-key'
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-displayName-button')
+    .click();
+
+  const nameInputIsDisabled = await page.locator('#name').isEnabled();
+
+  expect(nameInputIsDisabled).toBe(false);
+
+  await expect(page.locator('#displayName')).toBeVisible();
+
+  expect(await page.locator('#displayName').inputValue()).toBe(displayName);
+
+  await page.locator('#displayName').fill('');
+
+  const updateRequest = page.waitForResponse((req) =>
+    ['PUT', 'PATCH'].includes(req.request().method())
+  );
+  await page.click('[data-testid="save-button"]');
+  await updateRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('column-display-name')
+  ).not.toBeVisible();
 };
 
 export const checkForEditActions = async ({
@@ -1367,11 +1553,10 @@ export const hardDeleteEntity = async (
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
-  await page.waitForLoadState('networkidle');
-  await toastNotification(
-    page,
+
+  await expect(page.getByTestId('alert-bar')).toHaveText(
     /(deleted successfully!|Delete operation initiated)/,
-    BIG_ENTITY_DELETE_TIMEOUT
+    { timeout: BIG_ENTITY_DELETE_TIMEOUT }
   );
 };
 
@@ -1459,6 +1644,22 @@ export const generateEntityChildren = (entityName: string, count = 25) => {
       displayName: `pw-${entityName}-${i + 1}-${id}`,
     };
   });
+};
+
+export const checkItemNotExistsInQuickFilter = async (
+  page: Page,
+  filterLabel: string,
+  filterValue: string
+) => {
+  await sidebarClick(page, SidebarItem.EXPLORE);
+  await page.waitForLoadState('networkidle');
+  await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+  const testId = filterValue.toLowerCase();
+
+  // testId should not be present
+  await expect(page.getByTestId(testId)).toBeHidden();
+
+  await clickOutside(page);
 };
 
 export const checkExploreSearchFilter = async (

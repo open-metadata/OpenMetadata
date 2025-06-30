@@ -39,11 +39,12 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -51,7 +52,7 @@ import org.quartz.JobExecutionContext;
 
 @ExtendWith(MockitoExtension.class)
 @Slf4j
-public class SearchIndexAppTest {
+public class SearchIndexAppTest extends OpenMetadataApplicationTest {
 
   @Mock private CollectionDAO collectionDAO;
   @Mock private SearchRepository searchRepository;
@@ -250,7 +251,7 @@ public class SearchIndexAppTest {
 
     List<EntityInterface> entities = List.of(mockEntity);
     ResultList<EntityInterface> resultList =
-        new ResultList<EntityInterface>(entities, readerErrors, null, null, entities.size());
+        new ResultList<>(entities, readerErrors, null, null, entities.size());
 
     Map<String, Object> contextData = new HashMap<>();
     contextData.put("entityType", "user");
@@ -334,8 +335,7 @@ public class SearchIndexAppTest {
     searchIndexApp.updateStats("table", batch3);
 
     Stats jobStats = searchIndexApp.getJobData().getStats();
-    StepStats tableStats =
-        (StepStats) jobStats.getEntityStats().getAdditionalProperties().get("table");
+    StepStats tableStats = jobStats.getEntityStats().getAdditionalProperties().get("table");
 
     assertEquals(33, tableStats.getSuccessRecords()); // 10 + 15 + 8
     assertEquals(3, tableStats.getFailedRecords()); // 2 + 1 + 0
@@ -419,8 +419,7 @@ public class SearchIndexAppTest {
     executor.shutdown();
 
     Stats jobStats = searchIndexApp.getJobData().getStats();
-    StepStats tableStats =
-        (StepStats) jobStats.getEntityStats().getAdditionalProperties().get("table");
+    StepStats tableStats = jobStats.getEntityStats().getAdditionalProperties().get("table");
 
     int expectedSuccess = 0;
     int expectedFailures = 0;
@@ -431,5 +430,43 @@ public class SearchIndexAppTest {
 
     assertEquals(expectedSuccess, tableStats.getSuccessRecords());
     assertEquals(expectedFailures, tableStats.getFailedRecords());
+  }
+
+  @Test
+  void testAutoTuneConfiguration() {
+    EventPublisherJob autoTuneJobData =
+        new EventPublisherJob()
+            .withEntities(Set.of("table"))
+            .withBatchSize(100)
+            .withPayLoadSize(10 * 1024 * 1024L)
+            .withMaxConcurrentRequests(50)
+            .withProducerThreads(2)
+            .withAutoTune(true) // Enable auto-tuning
+            .withRecreateIndex(false)
+            .withStats(new Stats());
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(autoTuneJobData, Object.class));
+
+    lenient()
+        .when(searchRepository.getSearchType())
+        .thenReturn(
+            org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration
+                .SearchType.ELASTICSEARCH);
+
+    assertDoesNotThrow(
+        () -> searchIndexApp.init(testApp), "SearchIndexApp should handle autoTune configuration");
+
+    EventPublisherJob resultJobData = searchIndexApp.getJobData();
+    assertNotNull(resultJobData, "Job data should be available");
+    assertTrue(resultJobData.getAutoTune(), "AutoTune flag should be preserved");
+
+    assertTrue(resultJobData.getBatchSize() > 0, "Batch size should be positive");
+    assertTrue(resultJobData.getPayLoadSize() > 0, "Payload size should be positive");
+    assertTrue(
+        resultJobData.getMaxConcurrentRequests() > 0, "Concurrent requests should be positive");
+    assertTrue(resultJobData.getProducerThreads() > 0, "Producer threads should be positive");
   }
 }

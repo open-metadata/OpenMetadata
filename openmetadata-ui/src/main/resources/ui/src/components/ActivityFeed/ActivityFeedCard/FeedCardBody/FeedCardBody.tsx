@@ -14,7 +14,7 @@
 import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {

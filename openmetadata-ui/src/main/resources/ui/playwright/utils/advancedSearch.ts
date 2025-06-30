@@ -200,6 +200,7 @@ export const selectOption = async (
   optionTitle: string
 ) => {
   await dropdownLocator.click();
+  await page.keyboard.type(optionTitle);
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',
   });
@@ -257,6 +258,9 @@ export const fillRule = async (
       }
 
       await dropdownInput.click();
+      if (aggregateRes) {
+        await aggregateRes;
+      }
       await dropdownInput.fill(searchData);
 
       if (aggregateRes) {
@@ -534,9 +538,10 @@ export const checkAddRuleOrGroupWithOperator = async (
   if (field.id !== 'Column' && operator === 'AND') {
     const res = await searchRes;
     const json = await res.json();
+    const hits = json.hits.hits;
 
-    expect(JSON.stringify(json)).toContain(searchCriteria1);
-    expect(JSON.stringify(json)).not.toContain(searchCriteria2);
+    expect(JSON.stringify(hits)).toContain(searchCriteria1);
+    expect(JSON.stringify(hits)).not.toContain(searchCriteria2);
   }
 };
 

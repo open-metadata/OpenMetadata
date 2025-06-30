@@ -29,6 +29,7 @@ import {
 import {
   addMultiOwner,
   addOwner,
+  assignCertification,
   assignGlossaryTerm,
   assignGlossaryTermToChildren,
   assignTag,
@@ -41,6 +42,8 @@ import {
   downVote,
   followEntity,
   hardDeleteEntity,
+  removeCertification,
+  removeDisplayNameForEntityChildren,
   removeGlossaryTerm,
   removeGlossaryTermFromChildren,
   removeOwner,
@@ -51,7 +54,9 @@ import {
   softDeleteEntity,
   unFollowEntity,
   updateDescription,
+  updateDescriptionForChildren,
   updateDisplayNameForEntity,
+  updateDisplayNameForEntityChildren,
   updateOwner,
   upVote,
   validateFollowedEntityToWidget,
@@ -59,6 +64,7 @@ import {
 import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
+import { TagClass } from '../tag/TagClass';
 import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
 
 export class EntityClass {
@@ -224,6 +230,35 @@ export class EntityClass {
     await removeTier(page, this.endpoint);
   }
 
+  async certification(
+    page: Page,
+    certification1: TagClass,
+    certification2: TagClass,
+    entity?: EntityClass
+  ) {
+    await assignCertification(page, certification1, this.endpoint);
+    if (entity) {
+      await checkExploreSearchFilter(
+        page,
+        'Certification',
+        'certification.tagLabel.tagFQN',
+        certification1.responseData.fullyQualifiedName,
+        entity
+      );
+    }
+    await assignCertification(page, certification2, this.endpoint);
+    if (entity) {
+      await checkExploreSearchFilter(
+        page,
+        'Certification',
+        'certification.tagLabel.tagFQN',
+        certification2.responseData.fullyQualifiedName,
+        entity
+      );
+    }
+    await removeCertification(page, this.endpoint);
+  }
+
   async descriptionUpdate(page: Page) {
     const description =
       // eslint-disable-next-line max-len
@@ -232,15 +267,61 @@ export class EntityClass {
     await updateDescription(page, description);
   }
 
+  async descriptionUpdateChildren(
+    page: Page,
+    rowId: string,
+    rowSelector: string,
+    entityEndpoint: string
+  ) {
+    const description =
+      // eslint-disable-next-line max-len
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
+
+    // Add description
+    await updateDescriptionForChildren(
+      page,
+      description,
+      rowId,
+      rowSelector,
+      entityEndpoint
+    );
+
+    // Update description
+    await updateDescriptionForChildren(
+      page,
+      description + ' updated',
+
+      rowId,
+      rowSelector,
+      entityEndpoint
+    );
+
+    // Remove description
+    await updateDescriptionForChildren(
+      page,
+      '',
+      rowId,
+      rowSelector,
+      entityEndpoint
+    );
+  }
+
   async tag(
     page: Page,
     tag1: string,
     tag2: string,
-    tag2Fqn?: string,
-    entity?: EntityClass
+    entity: EntityClass,
+    tag2Fqn?: string
   ) {
-    await assignTag(page, tag1);
-    await assignTag(page, tag2, 'Edit', tag2Fqn);
+    await assignTag(page, tag1, 'Add', entity.endpoint, 'KnowledgePanel.Tags');
+    await assignTag(
+      page,
+      tag2,
+      'Edit',
+      entity.endpoint,
+      'KnowledgePanel.Tags',
+      tag2Fqn
+    );
     if (entity && tag2Fqn) {
       await checkExploreSearchFilter(
         page,
@@ -270,32 +351,43 @@ export class EntityClass {
     tag2,
     rowId,
     rowSelector = 'data-row-key',
+    entityEndpoint,
   }: {
     page: Page;
     tag1: string;
     tag2: string;
     rowId: string;
     rowSelector?: string;
+    entityEndpoint: string;
   }) {
-    await assignTagToChildren({ page, tag: tag1, rowId, rowSelector });
+    await assignTagToChildren({
+      page,
+      tag: tag1,
+      rowId,
+      rowSelector,
+      entityEndpoint,
+    });
     await assignTagToChildren({
       page,
       tag: tag2,
       rowId,
       rowSelector,
       action: 'Edit',
+      entityEndpoint,
     });
     await removeTagsFromChildren({
       page,
       tags: [tag2],
       rowId,
       rowSelector,
+      entityEndpoint,
     });
     await removeTagsFromChildren({
       page,
       tags: [tag1],
       rowId,
       rowSelector,
+      entityEndpoint,
     });
 
     await page
@@ -336,6 +428,7 @@ export class EntityClass {
     glossaryTerm1,
     glossaryTerm2,
     rowId,
+    entityEndpoint,
     rowSelector = 'data-row-key',
   }: {
     page: Page;
@@ -343,24 +436,29 @@ export class EntityClass {
     glossaryTerm2: GlossaryTerm['responseData'];
     rowId: string;
     rowSelector?: string;
+    entityEndpoint: string;
   }) {
     await assignGlossaryTermToChildren({
       page,
       glossaryTerm: glossaryTerm1,
+      action: 'Add',
       rowId,
       rowSelector,
+      entityEndpoint,
     });
     await assignGlossaryTermToChildren({
       page,
       glossaryTerm: glossaryTerm2,
+      action: 'Edit',
       rowId,
       rowSelector,
-      action: 'Edit',
+      entityEndpoint,
     });
     await removeGlossaryTermFromChildren({
       page,
       glossaryTerms: [glossaryTerm1, glossaryTerm2],
       rowId,
+      entityEndpoint,
       rowSelector,
     });
 
@@ -409,6 +507,46 @@ export class EntityClass {
       page,
       `Cypress ${entityName} updated`,
       this.endpoint
+    );
+  }
+
+  async displayNameChildren({
+    page,
+    columnName,
+    rowSelector,
+  }: {
+    page: Page;
+    columnName: string;
+    rowSelector: string;
+  }) {
+    // Add display name
+    await updateDisplayNameForEntityChildren(
+      page,
+      {
+        oldDisplayName: '',
+        newDisplayName: `Playwright ${columnName} updated`,
+      },
+      this.childrenSelectorId ?? '',
+      rowSelector
+    );
+
+    // Update display name
+    await updateDisplayNameForEntityChildren(
+      page,
+      {
+        oldDisplayName: `Playwright ${columnName} updated`,
+        newDisplayName: `Playwright ${columnName} updated again`,
+      },
+      this.childrenSelectorId ?? '',
+      rowSelector
+    );
+
+    // Remove display name
+    await removeDisplayNameForEntityChildren(
+      page,
+      `Playwright ${columnName} updated again`,
+      this.childrenSelectorId ?? '',
+      rowSelector
     );
   }
 

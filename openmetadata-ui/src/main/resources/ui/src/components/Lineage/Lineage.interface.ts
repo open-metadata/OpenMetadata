@@ -81,6 +81,7 @@ export interface LineageEntityReference extends EntityReference {
     parentId?: string;
     childrenLength?: number;
   };
-  expandPerformed?: boolean;
+  upstreamExpandPerformed?: boolean;
+  downstreamExpandPerformed?: boolean;
   direction?: LineageDirection;
 }

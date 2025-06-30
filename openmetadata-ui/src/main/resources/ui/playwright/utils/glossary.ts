@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
@@ -196,7 +196,7 @@ export const addTeamAsReviewer = async (
   isSelectableInsideForm = false
 ) => {
   const teamsResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index&sort_field=displayName.keyword&sort_order=asc'
+    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index&deleted=false&sort_field=displayName.keyword&sort_order=asc'
   );
 
   const teamsSearchResponse = page.waitForResponse(
@@ -1003,7 +1003,7 @@ export const createDescriptionTaskForGlossary = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index*`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -1016,6 +1016,7 @@ export const createDescriptionTaskForGlossary = async (
   }
 
   if (addDescription) {
+    await page.locator(descriptionBox).clear();
     await page
       .locator(descriptionBox)
       .fill(value.description ?? 'Updated description');
@@ -1058,7 +1059,7 @@ export const createTagTaskForGlossary = async (
     );
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index*`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;

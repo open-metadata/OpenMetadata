@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
-  createNewPage,
   descriptionBoxReadOnly,
   redirectToHomePage,
   toastNotification,
@@ -51,13 +52,24 @@ const entities = [
 ];
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+const adminUser = new UserClass();
+
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
 
 test.describe('Entity Version pages', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
 
     await EntityDataClass.preRequisitesForTests(
       apiContext,
@@ -118,7 +130,9 @@ test.describe('Entity Version pages', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.delete(apiContext);
+
     await EntityDataClass.postRequisitesForTests(
       apiContext,
       entityCreationConfig
@@ -177,7 +191,7 @@ test.describe('Entity Version pages', () => {
           type: 'Users',
         });
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -229,7 +243,7 @@ test.describe('Entity Version pages', () => {
 
         await assignTier(page, 'Tier1', entity.endpoint);
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -270,7 +284,7 @@ test.describe('Entity Version pages', () => {
 
           await expect(deletedBadge).toHaveText('Deleted');
 
-          const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
+          const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
           await page.locator('[data-testid="version-button"]').click();
           await versionDetailResponse;
 

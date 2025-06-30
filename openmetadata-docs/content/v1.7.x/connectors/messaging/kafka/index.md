@@ -1,5 +1,5 @@
 ---
-title: Kafka
+title: Kafka Connector | OpenMetadata Messaging Integration
 slug: /connectors/messaging/kafka
 ---
 

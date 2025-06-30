@@ -18,11 +18,14 @@ import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -63,6 +66,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -70,7 +74,6 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.tags.TagResource.TagList;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
@@ -508,6 +511,96 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         BAD_REQUEST,
         CatalogExceptionMessage.disabledTag(
             new TagLabel().withTagFQN(getTag.getFullyQualifiedName())));
+  }
+
+  @Test
+  void test_ownerInheritance(TestInfo test) throws IOException {
+    // Create a classification with owners
+    CreateClassification create = classificationResourceTest.createRequest(getEntityName(test));
+    Classification classification =
+        classificationResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        listOrEmpty(classification.getOwners()).isEmpty(),
+        "Classification should have no owners initially");
+
+    // Update classification owners as admin using PATCH
+    String json = JsonUtils.pojoToJson(classification);
+    classification.setOwners(List.of(USER1.getEntityReference()));
+    ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
+    fieldAdded(change, FIELD_OWNERS, List.of(USER1.getEntityReference()));
+    Classification createdClassification =
+        classificationResourceTest.patchEntityAndCheck(
+            classification, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertEquals(
+        1,
+        listOrEmpty(createdClassification.getOwners()).size(),
+        "Classification should have one owner");
+    assertEquals(
+        USER1.getId(),
+        createdClassification.getOwners().getFirst().getId(),
+        "Owner should match USER1");
+
+    // Create a tag under the classification
+    String tagName = "TestTagForInheritance";
+    CreateTag createTag =
+        createRequest(tagName).withClassification(createdClassification.getName());
+    Tag tag = createEntity(createTag, ADMIN_AUTH_HEADERS);
+
+    // Verify that the tag inherited owners from classification
+    Tag getTag = getEntity(tag.getId(), FIELD_OWNERS, ADMIN_AUTH_HEADERS);
+    assertNotNull(getTag.getOwners(), "Tag should have inherited owners");
+    assertEquals(
+        classification.getOwners().size(),
+        getTag.getOwners().size(),
+        "Tag should have inherited the correct number of owners");
+    assertEquals(
+        USER1_REF.getId(),
+        getTag.getOwners().getFirst().getId(),
+        "Tag should have inherited the correct owner");
+    assertTrue(getTag.getOwners().getFirst().getInherited(), "Owner should be marked as inherited");
+
+    // Update classification owners - replace existing owner with a new one
+    List<EntityReference> previousOwners = new ArrayList<>(classification.getOwners());
+    String classificationJson = JsonUtils.pojoToJson(classification);
+    classification.setOwners(List.of(USER2.getEntityReference()));
+    change = getChangeDescription(classification, MINOR_UPDATE);
+    fieldUpdated(change, FIELD_OWNERS, previousOwners, classification.getOwners());
+    classification =
+        classificationResourceTest.patchEntity(
+            classification.getId(), classificationJson, classification, ADMIN_AUTH_HEADERS);
+
+    // Verify that the tag's owners were updated
+    getTag = getEntity(tag.getId(), FIELD_OWNERS, ADMIN_AUTH_HEADERS);
+    assertNotNull(getTag.getOwners(), "Tag should have updated owners");
+    assertEquals(
+        classification.getOwners().size(),
+        getTag.getOwners().size(),
+        "Tag should have inherited the correct number of owners after update");
+    assertEquals(
+        USER2_REF.getId(),
+        getTag.getOwners().getFirst().getId(),
+        "Tag should have the updated owner");
+    assertTrue(getTag.getOwners().getFirst().getInherited(), "Owner should be marked as inherited");
+
+    // Test that tags with explicit owners don't get updated
+    String tagWithOwnersName = "TagWithOwners";
+    CreateTag createTagWithOwners =
+        createRequest(tagWithOwnersName)
+            .withClassification(classification.getName())
+            .withOwners(List.of(USER1_REF));
+    Tag tagWithOwners = createEntity(createTagWithOwners, ADMIN_AUTH_HEADERS);
+
+    // Verify that the tag is having both inherited owner USER2 as well as explicit owner USER1
+    Tag getTagWithOwners = getEntity(tagWithOwners.getId(), FIELD_OWNERS, ADMIN_AUTH_HEADERS);
+    assertNotNull(getTagWithOwners.getOwners(), "Tag should have owners");
+    assertEquals(1, getTagWithOwners.getOwners().size(), "Tag should have one owner");
+    assertEquals(
+        USER1_REF.getId(),
+        getTagWithOwners.getOwners().getFirst().getId(),
+        "Tag should have kept its original owner");
+    assertNull(
+        getTagWithOwners.getOwners().getFirst().getInherited(),
+        "Owner should not be marked as inherited");
   }
 
   public Tag createTag(

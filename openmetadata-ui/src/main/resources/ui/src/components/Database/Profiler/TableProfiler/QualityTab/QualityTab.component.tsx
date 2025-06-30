@@ -23,9 +23,9 @@ import {
   Tooltip,
 } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
@@ -98,7 +98,7 @@ export const QualityTab = () => {
     };
   }, [permissions]);
   const { fqn: datasetFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
 
@@ -285,15 +285,17 @@ export const QualityTab = () => {
   };
 
   const handleAddTestClick = (type: ProfilerDashboardType) => {
-    history.push(getAddDataQualityTableTestPath(type, datasetFQN));
+    navigate(getAddDataQualityTableTestPath(type, datasetFQN));
   };
 
   const handleTabChange = () => {
-    history.replace({
-      pathname: location.pathname,
-      search: location.search,
-      state: undefined,
-    });
+    navigate(
+      {
+        pathname: location.pathname,
+        search: location.search,
+      },
+      { state: undefined, replace: true }
+    );
   };
 
   const addButtonContent = useMemo(

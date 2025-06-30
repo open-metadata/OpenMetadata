@@ -32,4 +32,8 @@ export interface PipeLineDetailsProp {
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
   handleToggleDelete: (version?: number) => void;
   onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
+  onPipelineUpdate: (
+    updatedPipeline: Pipeline,
+    key?: keyof Pipeline
+  ) => Promise<void>;
 }

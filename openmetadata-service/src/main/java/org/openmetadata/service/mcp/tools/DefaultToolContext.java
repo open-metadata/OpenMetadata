@@ -6,6 +6,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -26,7 +27,7 @@ public class DefaultToolContext {
     return getToolProperties(toolFilePath);
   }
 
-  public Object callTool(
+  public McpSchema.CallToolResult callTool(
       Authorizer authorizer,
       JwtFilter jwtFilter,
       Limits limits,
@@ -56,20 +57,43 @@ public class DefaultToolContext {
         case "patch_entity":
           result = new PatchEntityTool().execute(authorizer, limits, securityContext, params);
           break;
-        default:
-          result = Map.of("error", "Unknown function: " + toolName);
+        case "get_entity_lineage":
+          result = new GetLineageTool().execute(authorizer, securityContext, params);
           break;
+        default:
+          return new McpSchema.CallToolResult(
+              List.of(
+                  new McpSchema.TextContent(
+                      JsonUtils.pojoToJson(Map.of("error", "Unknown function: " + toolName)))),
+              true);
       }
 
-      return result;
+      return new McpSchema.CallToolResult(
+          List.of(new McpSchema.TextContent(JsonUtils.pojoToJson(result))), false);
     } catch (AuthorizationException ex) {
       LOG.error("Authorization error: {}", ex.getMessage());
-      return Map.of(
-          "error", String.format("Authorization error: %s", ex.getMessage()), "statusCode", 403);
+      return new McpSchema.CallToolResult(
+          List.of(
+              new McpSchema.TextContent(
+                  JsonUtils.pojoToJson(
+                      Map.of(
+                          "error",
+                          String.format("Authorization error: %s", ex.getMessage()),
+                          "statusCode",
+                          403)))),
+          true);
     } catch (Exception ex) {
       LOG.error("Error executing tool: {}", ex.getMessage());
-      return Map.of(
-          "error", String.format("Error executing tool: %s", ex.getMessage()), "statusCode", 500);
+      return new McpSchema.CallToolResult(
+          List.of(
+              new McpSchema.TextContent(
+                  JsonUtils.pojoToJson(
+                      Map.of(
+                          "error",
+                          String.format("Error executing tool: %s", ex.getMessage()),
+                          "statusCode",
+                          500)))),
+          true);
     }
   }
 }

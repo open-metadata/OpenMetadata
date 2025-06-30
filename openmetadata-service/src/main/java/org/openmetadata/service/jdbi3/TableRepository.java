@@ -94,6 +94,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
@@ -109,7 +110,6 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.ValidatorUtil;
@@ -576,7 +576,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  public Table getLatestTableProfile(String fqn, boolean authorizePII) {
+  public Table getLatestTableProfile(
+      String fqn, boolean authorizePII, boolean includeColumnProfile) {
     Table table = findByName(fqn, ALL);
     TableProfile tableProfile =
         JsonUtils.readValue(
@@ -585,12 +586,14 @@ public class TableRepository extends EntityRepository<Table> {
                 .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
             TableProfile.class);
     table.setProfile(tableProfile);
-    setColumnProfile(table.getColumns());
+    if (includeColumnProfile) {
+      setColumnProfile(table.getColumns());
+    }
 
     // Set the column tags. Will be used to hide the data
     if (!authorizePII) {
       populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
-      return PIIMasker.getTableProfile(table);
+      table.setColumns(PIIMasker.getTableProfile(table.getColumns()));
     }
 
     return table;
@@ -858,6 +861,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // More fields that should be empty for columns
     addField(recordList, ""); // tiers (empty for columns)
+    addField(recordList, ""); // certification (empty for columns)
     addField(recordList, ""); // retentionPeriod (empty for columns)
     addField(recordList, ""); // sourceUrl (empty for columns)
     addField(recordList, ""); // domain (empty for columns)
@@ -1570,6 +1574,60 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
+  public ResultList<Column> getTableColumns(
+      UUID tableId, int limit, int offset, String fieldsParam, Include include) {
+    Table table = find(tableId, include);
+    return getTableColumnsInternal(table, limit, offset, fieldsParam);
+  }
+
+  public ResultList<Column> getTableColumnsByFQN(
+      String fqn, int limit, int offset, String fieldsParam, Include include) {
+    Table table = findByName(fqn, include);
+    return getTableColumnsInternal(table, limit, offset, fieldsParam);
+  }
+
+  private org.openmetadata.service.util.ResultList<Column> getTableColumnsInternal(
+      Table table, int limit, int offset, String fieldsParam) {
+    // For paginated column access, we need to load the table with columns
+    // but we'll optimize the field loading to only process what we need
+    Table fullTable = get(null, table.getId(), getFields(Set.of(COLUMN_FIELD)), NON_DELETED, false);
+
+    List<Column> allColumns = fullTable.getColumns();
+    if (allColumns == null || allColumns.isEmpty()) {
+      return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
+    }
+
+    // Apply pagination
+    int total = allColumns.size();
+    int fromIndex = Math.min(offset, total);
+    int toIndex = Math.min(offset + limit, total);
+
+    List<Column> paginatedColumns = allColumns.subList(fromIndex, toIndex);
+
+    // Apply field processing if needed
+    if (fieldsParam != null && fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+    }
+
+    if (fieldsParam != null && fieldsParam.contains("customMetrics")) {
+      for (Column column : paginatedColumns) {
+        column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+      }
+    }
+
+    if (fieldsParam != null && fieldsParam.contains("profile")) {
+      setColumnProfile(paginatedColumns);
+      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+      paginatedColumns = PIIMasker.getTableProfile(paginatedColumns);
+    }
+
+    // Calculate pagination metadata
+    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    String after = toIndex < total ? String.valueOf(toIndex) : null;
+
+    return new ResultList<>(paginatedColumns, before, after, total);
+  }
+
   private static void validateTableColumns(List<Column> columns) {
     if (columns == null) return;
 
@@ -1584,5 +1642,82 @@ public class TableRepository extends EntityRepository<Table> {
         validateTableColumns(column.getChildren());
       }
     }
+  }
+
+  public ResultList<Column> searchTableColumnsById(
+      UUID id, String query, int limit, int offset, String fieldsParam, Include include) {
+    Table table = get(null, id, getFields(fieldsParam), include, false);
+    return searchTableColumnsInternal(table, query, limit, offset, fieldsParam);
+  }
+
+  public ResultList<Column> searchTableColumnsByFQN(
+      String fqn, String query, int limit, int offset, String fieldsParam, Include include) {
+    Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
+    return searchTableColumnsInternal(table, query, limit, offset, fieldsParam);
+  }
+
+  private ResultList<Column> searchTableColumnsInternal(
+      Table table, String query, int limit, int offset, String fieldsParam) {
+    List<Column> allColumns = table.getColumns();
+    if (allColumns == null || allColumns.isEmpty()) {
+      return new ResultList<>(List.of(), null, null, 0);
+    }
+
+    // Flatten nested columns for search
+    List<Column> flattenedColumns = flattenTableColumns(allColumns);
+
+    List<Column> matchingColumns;
+    if (query == null || query.trim().isEmpty()) {
+      matchingColumns = flattenedColumns;
+    } else {
+      String searchTerm = query.toLowerCase().trim();
+      matchingColumns =
+          flattenedColumns.stream()
+              .filter(
+                  column -> {
+                    if (column.getName() != null
+                        && column.getName().toLowerCase().contains(searchTerm)) {
+                      return true;
+                    }
+                    return column.getDisplayName() != null
+                        && column.getDisplayName().toLowerCase().contains(searchTerm);
+                  })
+              .toList();
+    }
+
+    int total = matchingColumns.size();
+    int startIndex = Math.min(offset, total);
+    int endIndex = Math.min(offset + limit, total);
+
+    List<Column> paginatedResults =
+        startIndex < total ? matchingColumns.subList(startIndex, endIndex) : List.of();
+
+    Fields fields = getFields(fieldsParam);
+    if (fields.contains("customMetrics") || fields.contains("*")) {
+      for (Column column : paginatedResults) {
+        column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+      }
+    }
+
+    if (fieldsParam != null && fieldsParam.contains("profile")) {
+      setColumnProfile(matchingColumns);
+      populateEntityFieldTags(entityType, matchingColumns, table.getFullyQualifiedName(), true);
+      matchingColumns = PIIMasker.getTableProfile(matchingColumns);
+    }
+
+    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    String after = endIndex < total ? String.valueOf(endIndex) : null;
+    return new ResultList<>(paginatedResults, before, after, total);
+  }
+
+  private List<Column> flattenTableColumns(List<Column> columns) {
+    List<Column> flattened = new ArrayList<>();
+    for (Column column : columns) {
+      flattened.add(column);
+      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+        flattened.addAll(flattenTableColumns(column.getChildren()));
+      }
+    }
+    return flattened;
   }
 }

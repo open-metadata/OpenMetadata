@@ -11,12 +11,12 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SearchMetadataTool implements McpTool {
@@ -119,7 +119,7 @@ public class SearchMetadataTool implements McpTool {
         "SearchMetadataTool does not support limits enforcement.");
   }
 
-  private static Map<String, Object> cleanSearchResponse(Map<String, Object> searchResponse) {
+  public static Map<String, Object> cleanSearchResponse(Map<String, Object> searchResponse) {
     if (searchResponse == null) return Collections.emptyMap();
 
     Map<String, Object> topHits = safeGetMap(searchResponse.get("hits"));
@@ -140,6 +140,12 @@ public class SearchMetadataTool implements McpTool {
     }
 
     return Collections.emptyMap();
+  }
+
+  @SuppressWarnings("unused")
+  public static Map<String, Object> cleanSearchResponseObject(Map<String, Object> object) {
+    IGNORE_SEARCH_KEYS.forEach(object::remove);
+    return object;
   }
 
   @SuppressWarnings("unchecked")

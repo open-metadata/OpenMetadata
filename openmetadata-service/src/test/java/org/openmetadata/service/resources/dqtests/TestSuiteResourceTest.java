@@ -56,14 +56,15 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
@@ -144,10 +145,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
 
     for (int i = 0; i < 5; i++) {
-      CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest("test_testSuite_" + i)
-              .withTestSuite(TEST_SUITE1.getFullyQualifiedName());
+      CreateTestCase createTestCase = testCaseResourceTest.createRequest("test_testSuite_" + i);
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
@@ -156,10 +154,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     }
 
     for (int i = 5; i < 10; i++) {
-      CreateTestCase create =
-          testCaseResourceTest
-              .createRequest("test_testSuite_2_" + i)
-              .withTestSuite(TEST_SUITE2.getFullyQualifiedName());
+      CreateTestCase create = testCaseResourceTest.createRequest("test_testSuite_2_" + i);
       TestCase testCase = testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
       testCaseResourceTest.postTestCaseResult(
           testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
@@ -217,9 +212,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       TestSuite testSuite = createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
       for (int j = 0; j < 3; j++) {
         CreateTestCase createTestCase =
-            testCaseResourceTest
-                .createRequest("test_" + RandomStringUtils.randomAlphabetic(10))
-                .withTestSuite(testSuite.getFullyQualifiedName());
+            testCaseResourceTest.createRequest("test_" + RandomStringUtils.randomAlphabetic(10));
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       }
       testSuites.add(createTestSuite);
@@ -369,9 +362,9 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // We'll create tests cases for testSuite1
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
-              .withTestSuite(executableTestSuite.getFullyQualifiedName());
+          testCaseResourceTest.createRequest(
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i,
+              new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName()));
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
@@ -522,9 +515,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // We'll create tests cases for testSuite1
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
-              .withTestSuite(testSuite.getFullyQualifiedName());
+          testCaseResourceTest.createRequest(
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i);
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
@@ -572,9 +564,9 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // We'll create tests cases for testSuite
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
-              .withTestSuite(testSuite.getFullyQualifiedName());
+          testCaseResourceTest.createRequest(
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i,
+              new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName()));
       testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
     }
 
@@ -724,9 +716,9 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // We'll create tests cases for testSuite1
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
-              .withTestSuite(executableTestSuite.getFullyQualifiedName());
+          testCaseResourceTest.createRequest(
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i,
+              new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName()));
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases.add(testCase.getEntityReference());
@@ -770,9 +762,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // We'll create tests cases for testSuite1
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
-              .withTestSuite(executableTestSuite.getFullyQualifiedName());
+          testCaseResourceTest.createRequest(
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i);
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());

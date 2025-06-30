@@ -1,9 +1,13 @@
 package org.openmetadata.service.mcp;
 
 import static org.openmetadata.service.mcp.McpUtils.getJsonRpcMessageWithAuthorizationParam;
+import static org.openmetadata.service.mcp.McpUtils.readRequestBody;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpServerSession;
 import io.modelcontextprotocol.spec.McpServerTransportProvider;
@@ -13,7 +17,6 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.security.SecureRandom;
@@ -24,18 +27,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.CheckForNull;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.config.MCPConfiguration;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.service.mcp.tools.DefaultToolContext;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.util.JsonUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -66,23 +80,31 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   private final transient JwtFilter jwtFilter;
   private final transient Authorizer authorizer;
   private final transient List<McpSchema.Tool> tools = new ArrayList<>();
+  private final transient List<McpSchema.Prompt> prompts = new ArrayList<>();
   private final transient Limits limits;
   private final transient DefaultToolContext toolContext;
-  private final transient MCPConfiguration mcpConfiguration;
+  private final transient DefaultPromptsContext promptsContext;
+  private static final LoadingCache<String, MCPConfiguration> MCP_CONFIG_CACHE =
+      CacheBuilder.newBuilder()
+          .maximumSize(100)
+          .expireAfterWrite(1, TimeUnit.MINUTES)
+          .build(new McpConfigLoader());
 
   public MCPStreamableHttpServlet(
-      MCPConfiguration mcpConfiguration,
       JwtFilter jwtFilter,
       Authorizer authorizer,
       Limits limits,
       DefaultToolContext toolContext,
-      List<McpSchema.Tool> tools) {
-    this.mcpConfiguration = mcpConfiguration;
+      DefaultPromptsContext promptsContext,
+      List<McpSchema.Tool> tools,
+      List<McpSchema.Prompt> prompts) {
     this.jwtFilter = jwtFilter;
     this.authorizer = authorizer;
     this.limits = limits;
     this.toolContext = toolContext;
+    this.promptsContext = promptsContext;
     this.tools.addAll(tools);
+    this.prompts.addAll(prompts);
   }
 
   @Override
@@ -120,7 +142,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   protected void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     String origin = request.getHeader("Origin");
-    if (origin != null && !isValidOrigin(origin)) {
+    if (!isValidOrigin(origin)) {
       sendError(response, HttpServletResponse.SC_FORBIDDEN, "Invalid origin");
       return;
     }
@@ -622,29 +644,6 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   }
 
   @Override
-  protected void doGet(HttpServletRequest request, HttpServletResponse response)
-      throws ServletException, IOException {
-
-    String sessionId = request.getHeader(SESSION_HEADER);
-    String acceptHeader = request.getHeader("Accept");
-
-    if (acceptHeader == null || !acceptHeader.contains(CONTENT_TYPE_SSE)) {
-      sendError(
-          response,
-          HttpServletResponse.SC_BAD_REQUEST,
-          "Accept header must include text/event-stream");
-      return;
-    }
-
-    if (sessionId != null && !sessions.containsKey(sessionId)) {
-      sendError(response, HttpServletResponse.SC_NOT_FOUND, "Session not found");
-      return;
-    }
-
-    startSSEStreamForGet(request, response, sessionId);
-  }
-
-  @Override
   protected void doDelete(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     String sessionId = request.getHeader(SESSION_HEADER);
@@ -689,48 +688,6 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
     response.getWriter().write(responseJson);
 
     log("New session initialized: " + sessionId);
-  }
-
-  private void startSSEStreamForGet(
-      HttpServletRequest request, HttpServletResponse response, String sessionId)
-      throws IOException {
-
-    response.setContentType(CONTENT_TYPE_SSE);
-    response.setHeader("Cache-Control", "no-cache");
-    response.setHeader("Connection", "keep-alive");
-    response.setHeader("Access-Control-Allow-Origin", "*");
-    response.setStatus(HttpServletResponse.SC_OK);
-
-    AsyncContext asyncContext = request.startAsync();
-    asyncContext.setTimeout(0); // No timeout for long-lived connections
-
-    SSEConnection connection = new SSEConnection(response.getWriter(), sessionId);
-    String connectionId = UUID.randomUUID().toString();
-    sseConnections.put(connectionId, connection);
-
-    // Keep connection alive and handle server-initiated messages
-    executorService.submit(
-        () -> {
-          try {
-            while (!connection.isClosed()) {
-              // Send keepalive every 30 seconds
-              Thread.sleep(30000);
-              connection.sendComment("keepalive");
-            }
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-          } catch (IOException e) {
-            LOG.error("SSE connection error for connection ID:  {}", connectionId, e);
-          } finally {
-            try {
-              connection.close();
-              asyncContext.complete();
-            } catch (Exception e) {
-              log("Error closing long-lived SSE connection", e);
-            }
-            sseConnections.remove(connectionId);
-          }
-        });
   }
 
   @Override
@@ -828,38 +785,53 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
 
     try {
       switch (method) {
-        case "ping":
+        case McpSchema.METHOD_PING:
           response.put("result", "pong");
           break;
 
-        case "resources/list":
+        case McpSchema.METHOD_RESOURCES_LIST:
           response.put("result", new McpSchema.ListResourcesResult(new ArrayList<>(), null));
           break;
 
-        case "resources/read":
+        case McpSchema.METHOD_RESOURCES_READ:
           // TODO: Implement resource reading logic
           break;
 
-        case "tools/list":
-          response.put("result", new McpSchema.ListToolsResult(tools, null));
+        case McpSchema.METHOD_PROMPT_LIST:
+          response.put("result", new McpSchema.ListPromptsResult(prompts, null));
           break;
 
-        case "tools/call":
-          JsonNode toolParams = request.get("params");
-          if (toolParams != null && toolParams.has("name")) {
-            String toolName = toolParams.get("name").asText();
-            JsonNode arguments = toolParams.get("arguments");
-            McpSchema.Content content =
-                new McpSchema.TextContent(
-                    JsonUtils.pojoToJson(
-                        toolContext.callTool(
-                            authorizer, jwtFilter, limits, toolName, JsonUtils.getMap(arguments))));
-            response.put("result", new McpSchema.CallToolResult(List.of(content), false));
+        case McpSchema.METHOD_PROMPT_GET:
+          Pair<String, Map<String, Object>> promptWithArgs = getArguments(request);
+          if (promptWithArgs != null) {
+            String promptName = promptWithArgs.getLeft();
+            Map<String, Object> arguments = promptWithArgs.getRight();
+            response.put(
+                "result",
+                promptsContext
+                    .callPrompt(
+                        jwtFilter, promptName, new McpSchema.GetPromptRequest(null, arguments))
+                    .getResult());
           } else {
             response.put("error", createError(-32602, "Invalid params"));
           }
           break;
 
+        case McpSchema.METHOD_TOOLS_LIST:
+          response.put("result", new McpSchema.ListToolsResult(tools, null));
+          break;
+
+        case McpSchema.METHOD_TOOLS_CALL:
+          Pair<String, Map<String, Object>> toolWithArgs = getArguments(request);
+          if (toolWithArgs != null) {
+            String toolName = toolWithArgs.getLeft();
+            Map<String, Object> arguments = toolWithArgs.getRight();
+            response.put(
+                "result", toolContext.callTool(authorizer, jwtFilter, limits, toolName, arguments));
+          } else {
+            response.put("error", createError(-32602, "Invalid params"));
+          }
+          break;
         default:
           response.put("error", createError(-32601, "Method not found: " + method));
       }
@@ -869,6 +841,16 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
     }
 
     return response;
+  }
+
+  private Pair<String, Map<String, Object>> getArguments(JsonNode request) {
+    JsonNode toolParams = request.get("params");
+    if (toolParams != null && toolParams.has("name")) {
+      String toolName = toolParams.get("name").asText();
+      JsonNode arguments = toolParams.get("arguments");
+      return Pair.of(toolName, arguments != null ? JsonUtils.getMap(arguments) : new HashMap<>());
+    }
+    return null;
   }
 
   private void processNotification(JsonNode notification, String sessionId) {
@@ -898,21 +880,20 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   }
 
   private boolean isValidOrigin(String origin) {
-    if (null == origin || origin.isEmpty()) {
-      return false;
-    }
-    return origin.startsWith(mcpConfiguration.getOriginHeaderUri());
-  }
-
-  private String readRequestBody(HttpServletRequest request) throws IOException {
-    StringBuilder body = new StringBuilder();
-    try (BufferedReader reader = request.getReader()) {
-      String line;
-      while ((line = reader.readLine()) != null) {
-        body.append(line);
+    try {
+      if (MCP_CONFIG_CACHE.get("McpApplication").isOriginValidationEnabled()) {
+        if (null == origin || origin.isEmpty()) {
+          return false;
+        } else {
+          return origin.startsWith(MCP_CONFIG_CACHE.get("McpApplication").getOriginHeaderUri());
+        }
+      } else {
+        return true;
       }
+    } catch (ExecutionException e) {
+      LOG.error("Error Validating Origin Header");
     }
-    return body.toString();
+    return false;
   }
 
   private void sendError(HttpServletResponse response, int statusCode, String message)
@@ -965,6 +946,25 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
         } catch (IOException e) {
           log("Error sending notification to session: " + sessionId, e);
         }
+      }
+    }
+  }
+
+  static class McpConfigLoader extends CacheLoader<String, MCPConfiguration> {
+    @Override
+    public @NonNull MCPConfiguration load(@CheckForNull String userName) {
+      try {
+        App app = Entity.getEntityByName(Entity.APPLICATION, "McpApplication", "id", Include.ALL);
+        return JsonUtils.convertValue(app.getAppConfiguration(), MCPConfiguration.class);
+      } catch (Exception ex) {
+        LOG.error("Failed to Load MCP Configuration");
+        MCPConfiguration config = new MCPConfiguration();
+        config.setOriginHeaderUri(
+            SettingsCache.getSetting(
+                    SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
+                    OpenMetadataBaseUrlConfiguration.class)
+                .getOpenMetadataUrl());
+        return config;
       }
     }
   }

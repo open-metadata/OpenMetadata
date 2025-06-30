@@ -1,5 +1,6 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
 import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
@@ -16,13 +17,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
@@ -42,6 +39,8 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.AppException;
@@ -50,11 +49,10 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -83,14 +81,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Getter private EventPublisherJob jobData;
   private final Object jobDataLock = new Object();
   private ExecutorService producerExecutor;
-  private final ExecutorService jobExecutor = Executors.newCachedThreadPool();
-  private BlockingQueue<Runnable> producerQueue = new LinkedBlockingQueue<>(100);
+  private ExecutorService jobExecutor;
   private final AtomicReference<Stats> searchIndexStats = new AtomicReference<>();
   private final AtomicReference<Integer> batchSize = new AtomicReference<>(5);
   private JobExecutionContext jobExecutionContext;
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000; // 2 seconds
+
+  // Maximum concurrent tasks to prevent exhausting DB connections
+  private static final int MAX_CONCURRENT_TASKS = 50;
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -117,6 +117,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   public void startApp(JobExecutionContext jobExecutionContext) {
     try {
       this.jobExecutionContext = jobExecutionContext;
+
+      // Initialize bounded executors
+      this.jobExecutor =
+          Executors.newFixedThreadPool(MAX_CONCURRENT_TASKS, Thread.ofVirtual().factory());
+
       initializeJob(jobExecutionContext);
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
@@ -162,12 +167,20 @@ public class SearchIndexApp extends AbstractNativeApplication {
     cleanUpStaleJobsFromRuns();
 
     LOG.info("Executing Reindexing Job with JobData: {}", jobData);
-    batchSize.set(jobData.getBatchSize());
+
     jobData.setStatus(EventPublisherJob.Status.RUNNING);
 
     LOG.debug("Initializing job statistics.");
     searchIndexStats.set(initializeTotalRecords(jobData.getEntities()));
     jobData.setStats(searchIndexStats.get());
+
+    // Apply auto-tuning if enabled (after stats are initialized)
+    if (Boolean.TRUE.equals(jobData.getAutoTune())) {
+      LOG.info("Auto-tune enabled, analyzing cluster and adjusting parameters...");
+      applyAutoTuning();
+    }
+
+    batchSize.set(jobData.getBatchSize());
     sendUpdates(jobExecutionContext, true);
 
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
@@ -232,15 +245,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
     int numConsumers = jobData.getConsumerThreads();
     LOG.info("Starting reindexing with {} producers and {} consumers.", numProducers, numConsumers);
 
-    producerQueue = new LinkedBlockingQueue<>(jobData.getQueueSize());
+    // Use bounded executor for producer threads
     producerExecutor =
-        new ThreadPoolExecutor(
-            numProducers,
-            numProducers,
-            0L,
-            TimeUnit.MILLISECONDS,
-            producerQueue,
-            new ThreadPoolExecutor.CallerRunsPolicy());
+        Executors.newFixedThreadPool(
+            Math.min(numProducers, MAX_CONCURRENT_TASKS), Thread.ofVirtual().factory());
 
     try {
       processEntityReindex(jobExecutionContext);
@@ -270,29 +278,29 @@ public class SearchIndexApp extends AbstractNativeApplication {
               int totalEntityRecords = getTotalEntityRecords(entityType);
               Source<?> source = createSource(entityType);
               int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
-              Semaphore semaphore = new Semaphore(jobData.getQueueSize());
               if (totalEntityRecords > 0) {
                 for (int i = 0; i < loadPerThread; i++) {
-                  semaphore.acquire();
                   LOG.debug(
-                      "Submitting producer task current queue size: {}", producerQueue.size());
+                      "Submitting virtual thread producer task for batch {}/{}",
+                      i + 1,
+                      loadPerThread);
                   int currentOffset = i * batchSize.get();
                   producerExecutor.submit(
                       () -> {
                         try {
                           LOG.debug(
-                              "Running Task for CurrentOffset: {},  Producer Latch Down, Current : {}",
+                              "Virtual thread processing offset: {}, remaining batches: {}",
                               currentOffset,
                               producerLatch.getCount());
                           processReadTask(jobExecutionContext, entityType, source, currentOffset);
                         } catch (Exception e) {
-                          LOG.error("Error processing entity type {}", entityType, e);
+                          LOG.error(
+                              "Error processing entity type {} with virtual thread", entityType, e);
                         } finally {
                           LOG.debug(
-                              "Producer Latch Down and Semaphore Release, Current : {}",
-                              producerLatch.getCount());
+                              "Virtual thread completed batch, remaining: {}",
+                              producerLatch.getCount() - 1);
                           producerLatch.countDown();
-                          semaphore.release();
                         }
                       });
                 }
@@ -536,8 +544,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       // After successful write, create a new StepStats for the current batch
       StepStats currentEntityStats = new StepStats();
-      currentEntityStats.setSuccessRecords(entities.getData().size());
-      currentEntityStats.setFailedRecords(entities.getErrors().size());
+      currentEntityStats.setSuccessRecords(listOrEmpty(entities.getData()).size());
+      currentEntityStats.setFailedRecords(listOrEmpty(entities.getErrors()).size());
       // Do NOT set Total Records here
 
       // Update statistics in a thread-safe manner
@@ -709,6 +717,42 @@ public class SearchIndexApp extends AbstractNativeApplication {
     return entityStats.getTotalRecords()
         - entityStats.getFailedRecords()
         - entityStats.getSuccessRecords();
+  }
+
+  private void applyAutoTuning() {
+    try {
+      ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
+      LOG.info("Auto-tune: Request compression enabled for {} bulk operations", searchType);
+      LOG.info("Auto-tune: JSON payloads will be gzip compressed (~75% size reduction)");
+
+      long totalEntities = searchIndexStats.get().getJobStats().getTotalRecords();
+      SearchClusterMetrics clusterMetrics =
+          SearchClusterMetrics.fetchClusterMetrics(searchRepository, totalEntities);
+      clusterMetrics.logRecommendations();
+      LOG.info("Applying auto-tuned parameters...");
+      LOG.info(
+          "Original - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
+          jobData.getBatchSize(),
+          jobData.getProducerThreads(),
+          jobData.getMaxConcurrentRequests(),
+          jobData.getPayLoadSize() / (1024 * 1024));
+
+      jobData.setBatchSize(clusterMetrics.getRecommendedBatchSize());
+      jobData.setProducerThreads(clusterMetrics.getRecommendedProducerThreads());
+      jobData.setMaxConcurrentRequests(clusterMetrics.getRecommendedConcurrentRequests());
+      jobData.setPayLoadSize(clusterMetrics.getMaxPayloadSizeBytes());
+
+      LOG.info(
+          "Auto-tuned - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
+          jobData.getBatchSize(),
+          jobData.getProducerThreads(),
+          jobData.getMaxConcurrentRequests(),
+          jobData.getPayLoadSize() / (1024 * 1024));
+
+    } catch (Exception e) {
+      LOG.warn("Auto-tuning failed, using original parameters: {}", e.getMessage());
+      LOG.debug("Auto-tuning error details", e);
+    }
   }
 
   static record IndexingTask<T>(

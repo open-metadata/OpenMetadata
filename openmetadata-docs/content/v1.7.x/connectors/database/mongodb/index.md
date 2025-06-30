@@ -1,5 +1,5 @@
 ---
-title: MongoDB
+title: MongoDB Connector | OpenMetadata NoSQL Database Integration
 slug: /connectors/database/mongodb
 ---
 

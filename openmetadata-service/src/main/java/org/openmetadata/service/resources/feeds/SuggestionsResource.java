@@ -298,8 +298,7 @@ public class SuggestionsResource {
       dao.checkPermissionsForAcceptOrRejectSuggestion(
           suggestion, SuggestionStatus.Rejected, securityContext);
       dao.checkPermissionsForEditEntity(suggestion, suggestionType, securityContext, authorizer);
-      return dao.acceptSuggestionList(
-          uriInfo, suggestions, suggestionType, securityContext, authorizer);
+      return dao.acceptSuggestionList(uriInfo, suggestions, securityContext, authorizer);
     } else {
       // No suggestions found
       return new RestUtil.PutResponse<>(

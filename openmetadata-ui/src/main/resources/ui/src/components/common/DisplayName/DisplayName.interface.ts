@@ -19,5 +19,12 @@ export interface DisplayNameProps {
   displayName?: ReactNode;
   link?: string;
   onEditDisplayName?: (data: EntityName, id?: string) => Promise<void>;
+  /**
+   * To allow renaming the `name` field of the entity
+   */
   allowRename?: boolean;
+  /**
+   * To allow renaming the `displayName` field of the entity
+   */
+  hasEditPermission?: boolean;
 }

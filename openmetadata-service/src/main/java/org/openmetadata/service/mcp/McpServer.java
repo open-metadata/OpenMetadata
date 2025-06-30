@@ -12,13 +12,13 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.config.MCPConfiguration;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class McpServer {
@@ -26,9 +26,11 @@ public class McpServer {
   private Authorizer authorizer;
   private Limits limits;
   protected DefaultToolContext toolContext;
+  protected DefaultPromptsContext promptsContext;
 
-  public McpServer(DefaultToolContext toolContext) {
+  public McpServer(DefaultToolContext toolContext, DefaultPromptsContext promptsContext) {
     this.toolContext = toolContext;
+    this.promptsContext = promptsContext;
   }
 
   public void initializeMcpServer(
@@ -46,18 +48,24 @@ public class McpServer {
             new JwtFilter(
                 config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration()));
     List<McpSchema.Tool> tools = getTools();
-    addSSETransport(contextHandler, authFilter, tools);
-    addStreamableHttpServlet(config.getMcpConfiguration(), contextHandler, authFilter, tools);
+    List<McpSchema.Prompt> prompts = getPrompts();
+    addSSETransport(contextHandler, authFilter, tools, prompts);
+    addStreamableHttpServlet(contextHandler, authFilter, tools, prompts);
   }
 
   protected List<McpSchema.Tool> getTools() {
     return toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json");
   }
 
+  protected List<McpSchema.Prompt> getPrompts() {
+    return promptsContext.loadPromptsDefinitionsFromJson("json/data/mcp/prompts.json");
+  }
+
   private void addSSETransport(
       MutableServletContextHandler contextHandler,
       McpAuthFilter authFilter,
-      List<McpSchema.Tool> tools) {
+      List<McpSchema.Tool> tools,
+      List<McpSchema.Prompt> prompts) {
     McpSchema.ServerCapabilities serverCapabilities =
         McpSchema.ServerCapabilities.builder()
             .tools(true)
@@ -74,6 +82,7 @@ public class McpServer {
             .capabilities(serverCapabilities)
             .build();
     addToolsToServer(server, tools);
+    addPromptsToServer(server, prompts);
 
     // SSE transport for MCP
     ServletHolder servletHolderSSE = new ServletHolder(sseTransport);
@@ -84,14 +93,14 @@ public class McpServer {
   }
 
   private void addStreamableHttpServlet(
-      MCPConfiguration configuration,
       MutableServletContextHandler contextHandler,
       McpAuthFilter authFilter,
-      List<McpSchema.Tool> tools) {
+      List<McpSchema.Tool> tools,
+      List<McpSchema.Prompt> prompts) {
     // Streamable HTTP servlet for MCP
     MCPStreamableHttpServlet streamableHttpServlet =
         new MCPStreamableHttpServlet(
-            configuration, jwtFilter, authorizer, limits, toolContext, tools);
+            jwtFilter, authorizer, limits, toolContext, promptsContext, tools, prompts);
     ServletHolder servletHolderStreamableHttp = new ServletHolder(streamableHttpServlet);
     contextHandler.addServlet(servletHolderStreamableHttp, "/mcp");
 
@@ -105,6 +114,12 @@ public class McpServer {
     }
   }
 
+  public void addPromptsToServer(McpSyncServer server, List<McpSchema.Prompt> tools) {
+    for (McpSchema.Prompt pm : tools) {
+      server.addPrompt(getPrompt(pm));
+    }
+  }
+
   private McpServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
     return new McpServerFeatures.SyncToolSpecification(
         tool,
@@ -115,5 +130,12 @@ public class McpServer {
                       toolContext.callTool(authorizer, jwtFilter, limits, tool.name(), arguments)));
           return new McpSchema.CallToolResult(List.of(content), false);
         });
+  }
+
+  private McpServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
+    return new McpServerFeatures.SyncPromptSpecification(
+        prompt,
+        (exchange, arguments) ->
+            promptsContext.callPrompt(jwtFilter, prompt.name(), arguments).getResult());
   }
 }

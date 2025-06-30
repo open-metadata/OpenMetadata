@@ -51,6 +51,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
+import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.LoadGlossary;
@@ -252,7 +253,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
     // Filter by glossary parent term
     if (parentTermParam != null) {
-      GlossaryTerm parentTerm = repository.find(parentTermParam, Include.NON_DELETED);
+      GlossaryTerm parentTerm =
+          repository.get(null, parentTermParam, repository.getFields("parent"));
       fqn = parentTerm.getFullyQualifiedName();
 
       // Ensure parent glossary term belongs to the glossary
@@ -620,7 +622,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
-      @Valid AddGlossaryToAssetsRequest request) {
+      @Valid ValidateGlossaryTagsRequest request) {
     return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
   }
 

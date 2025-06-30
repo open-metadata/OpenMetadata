@@ -154,7 +154,7 @@
       "aggregations": [
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply"
+      "boostMode": "sum"
     },
     {
       "assetType": "databaseSchema",
@@ -200,7 +200,7 @@
       "aggregations": [
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply"
+      "boostMode": "sum"
     },
     {
       "assetType": "table",
@@ -271,7 +271,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "description",
@@ -341,7 +341,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "description",
@@ -400,7 +400,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "description",
@@ -468,7 +468,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -571,7 +571,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -641,7 +641,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -701,7 +701,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -762,7 +762,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -823,7 +823,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -888,7 +888,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -976,7 +976,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -1027,7 +1027,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -1073,7 +1073,7 @@
       "aggregations": [
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -1118,12 +1118,16 @@
         {
           "field": "classification.name",
           "boost": 7.0
+        },
+        {
+          "field": "classification.displayName",
+          "boost": 7.0
         }
       ],
       "aggregations": [
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -1200,7 +1204,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",

@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
@@ -38,7 +39,6 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
@@ -62,6 +62,7 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void init(App app) {
     this.app = app;
+    ApplicationContext.getInstance().registerApp(this);
   }
 
   @Override
@@ -93,7 +94,7 @@ public class AbstractNativeApplication implements NativeApplication {
 
   @Override
   public void uninstall() {
-    /* Not needed by default */
+    ApplicationContext.getInstance().unregisterApp(this);
   }
 
   @Override

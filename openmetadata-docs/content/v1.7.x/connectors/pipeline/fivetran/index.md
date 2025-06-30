@@ -1,5 +1,5 @@
 ---
-title: Fivetran
+title: Fivetran Connector | OpenMetadata Data Integration
 slug: /connectors/pipeline/fivetran
 ---
 
