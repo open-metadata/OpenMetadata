@@ -77,7 +77,7 @@ const GlobalSettingCategoryPage = () => {
 
         break;
       case GlobalSettingOptions.ONLINE_USERS:
-        history.push(getSettingPath(category, option));
+        navigate(getSettingPath(category, option));
 
         break;
       case GlobalSettingOptions.SEARCH:

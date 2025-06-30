@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { User } from '../../generated/entity/teams/user';
 import ProfileSectionUserDetailsCard from './ProfileSectionUserDetailsCard.component';
 

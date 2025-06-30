@@ -257,7 +257,7 @@ export const getSettingsPathWithFqn = (
 };
 
 export const getSettingCategoryPath = (category: string) => {
-  let path = ROUTES.SETTINGS_WITH_CATEGORY;
+  let path = ROUTES.SETTINGS_WITH_TAB;
 
   if (category) {
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
