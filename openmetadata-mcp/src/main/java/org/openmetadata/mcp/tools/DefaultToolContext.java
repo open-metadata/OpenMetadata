@@ -1,6 +1,6 @@
-package org.openmetadata.service.mcp.tools;
+package org.openmetadata.mcp.tools;
 
-import static org.openmetadata.service.mcp.McpUtils.getToolProperties;
+import static org.openmetadata.mcp.McpUtils.getToolProperties;
 
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;

@@ -1,4 +1,4 @@
-package org.openmetadata.service.mcp.tools;
+package org.openmetadata.mcp.tools;
 
 import java.util.List;
 import java.util.Map;

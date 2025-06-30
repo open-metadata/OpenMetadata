@@ -1,4 +1,4 @@
-package org.openmetadata.service.mcp;
+package org.openmetadata.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.core.setup.Environment;
@@ -15,24 +15,32 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
-import org.openmetadata.service.mcp.tools.DefaultToolContext;
+import org.openmetadata.mcp.prompts.DefaultPromptsContext;
+import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.apps.McpServerProvider;
 
 @Slf4j
-public class McpServer {
+public class McpServer implements McpServerProvider {
   private JwtFilter jwtFilter;
   private Authorizer authorizer;
   private Limits limits;
   protected DefaultToolContext toolContext;
   protected DefaultPromptsContext promptsContext;
 
+  // Default constructor for dynamic loading
+  public McpServer() {
+    this.toolContext = new DefaultToolContext();
+    this.promptsContext = new DefaultPromptsContext();
+  }
+
   public McpServer(DefaultToolContext toolContext, DefaultPromptsContext promptsContext) {
     this.toolContext = toolContext;
     this.promptsContext = promptsContext;
   }
 
+  @Override
   public void initializeMcpServer(
       Environment environment,
       Authorizer authorizer,

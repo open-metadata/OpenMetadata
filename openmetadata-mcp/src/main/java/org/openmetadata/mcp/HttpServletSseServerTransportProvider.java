@@ -1,6 +1,6 @@
-package org.openmetadata.service.mcp;
+package org.openmetadata.mcp;
 
-import static org.openmetadata.service.mcp.McpUtils.getJsonRpcMessageWithAuthorizationParam;
+import static org.openmetadata.mcp.McpUtils.getJsonRpcMessageWithAuthorizationParam;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

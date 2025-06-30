@@ -1,4 +1,4 @@
-package org.openmetadata.service.mcp.prompts;
+package org.openmetadata.mcp.prompts;
 
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;

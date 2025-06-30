@@ -1,7 +1,7 @@
-package org.openmetadata.service.mcp;
+package org.openmetadata.mcp;
 
-import static org.openmetadata.service.mcp.McpUtils.getJsonRpcMessageWithAuthorizationParam;
-import static org.openmetadata.service.mcp.McpUtils.readRequestBody;
+import static org.openmetadata.mcp.McpUtils.getJsonRpcMessageWithAuthorizationParam;
+import static org.openmetadata.mcp.McpUtils.readRequestBody;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,8 +45,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.config.MCPConfiguration;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
-import org.openmetadata.service.mcp.tools.DefaultToolContext;
+import org.openmetadata.mcp.prompts.DefaultPromptsContext;
+import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;

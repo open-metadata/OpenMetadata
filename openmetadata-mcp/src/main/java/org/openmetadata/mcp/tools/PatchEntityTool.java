@@ -1,4 +1,4 @@
-package org.openmetadata.service.mcp.tools;
+package org.openmetadata.mcp.tools;
 
 import jakarta.json.JsonPatch;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package org.openmetadata.service.mcp;
+package org.openmetadata.mcp;
 
 import static org.openmetadata.service.socket.SocketAddressFilter.validatePrefixedTokenRequest;
 
