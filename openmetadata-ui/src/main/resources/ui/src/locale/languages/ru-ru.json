@@ -1915,6 +1915,7 @@
     "no-data-quality-test-case": "Улучшите надежность данных, добавив тесты качества к этой таблице. Наш пошаговый руководство покажет, как начать, <0>{{explore}}</0>",
     "no-data-yet": "Еще нет данных",
     "no-default-persona": "Нет стандартной персоны",
+    "no-description-available": "Нет описания.",
     "no-domain-assigned-to-entity": "No Domains are Assigned to {{entity}}",
     "no-domain-available": "No Domains are available to configure. Click on <0>{{link}}</0> to add Domains",
     "no-entity-activity-message": "В {{entity}} пока нет активности. Начните обсуждение, нажав на кнопку",

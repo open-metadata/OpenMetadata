@@ -1915,6 +1915,7 @@
     "no-data-quality-test-case": "Aumente a confiabilidade de seus dados adicionando testes de qualidade a esta tabela. Nosso guia passo a passo mostrará como começar, <0>{{explore}}</0>",
     "no-data-yet": "Ainda não há dados",
     "no-default-persona": "Nenhuma persona padrão",
+    "no-description-available": "Nenhuma descrição disponível.",
     "no-domain-assigned-to-entity": "Nenhum domínio está atribuído a {{entity}}",
     "no-domain-available": "Nenhum domínio disponível para configurar. Clique em <0>{{link}}</0> para adicionar domínios",
     "no-entity-activity-message": "Não há atividade em {{entity}} ainda. Inicie uma conversa clicando em",

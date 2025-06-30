@@ -236,6 +236,8 @@ function CustomizeMyData({
         <div className="grid-wrapper">
           <CustomiseLandingPageHeader
             overlappedContainer
+            addedWidgetsList={addedWidgetsList}
+            handleAddWidget={handleMainPanelAddWidget}
             onBackgroundColorUpdate={handleBackgroundColorUpdate} // TODO: We need to update this background color updation api call when we get the api
           />
           <ReactGridLayout

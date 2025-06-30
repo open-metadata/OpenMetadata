@@ -1915,6 +1915,7 @@
     "no-data-quality-test-case": "Bu tabloya kalite testleri ekleyerek veri güvenilirliğinizi artırın. Adım adım kılavuzumuz nasıl başlayacağınızı gösterecektir, <0>{{explore}}</0>",
     "no-data-yet": "Henüz Veri Yok",
     "no-default-persona": "Varsayılan persona yok",
+    "no-description-available": "Açıklama yok",
     "no-domain-assigned-to-entity": "{{entity}} için Atanmış Alan Adı Yok",
     "no-domain-available": "Yapılandırılacak Alan Adı mevcut değil. Alan Adları eklemek için <0>{{link}}</0> tıklayın",
     "no-entity-activity-message": "{{entity}} üzerinde henüz bir aktivite yok. Şuna tıklayarak bir konuşma başlatın:",

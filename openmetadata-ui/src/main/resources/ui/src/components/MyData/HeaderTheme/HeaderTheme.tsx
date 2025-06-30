@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { headerBackgroundColors } from '../../../constants/Mydata.constants';
 import CustomiseLandingPageHeader from '../CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';

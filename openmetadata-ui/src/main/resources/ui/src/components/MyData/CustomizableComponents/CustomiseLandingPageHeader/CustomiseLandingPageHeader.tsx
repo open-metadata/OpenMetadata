@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Button, Input, Typography } from 'antd';
 import { get } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/filter.svg';
@@ -30,19 +30,16 @@ import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import './customise-landing-page-header.less';
-
-interface CustomiseLandingPageHeaderProps {
-  hideCustomiseButton?: boolean;
-  overlappedContainer?: boolean;
-  backgroundColor?: string;
-  onBackgroundColorUpdate?: (color: string) => Promise<void>;
-}
+import { CustomiseLandingPageHeaderProps } from './CustomiseLandingPageHeader.interface';
 
 const CustomiseLandingPageHeader = ({
+  addedWidgetsList,
+  handleAddWidget,
   hideCustomiseButton = false,
   overlappedContainer = false,
   backgroundColor,
   onBackgroundColorUpdate,
+  placeholderWidgetKey,
 }: CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -183,8 +180,11 @@ const CustomiseLandingPageHeader = ({
 
       {!hideCustomiseButton && showCustomiseHomeModal && (
         <CustomiseHomeModal
+          addedWidgetsList={addedWidgetsList}
           currentBackgroundColor={bgColor}
+          handleAddWidget={handleAddWidget}
           open={showCustomiseHomeModal}
+          placeholderWidgetKey={placeholderWidgetKey}
           onBackgroundColorUpdate={onBackgroundColorUpdate}
           onClose={handleCloseCustomiseHomeModal}
         />

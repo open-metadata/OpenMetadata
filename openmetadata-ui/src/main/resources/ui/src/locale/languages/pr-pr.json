@@ -1915,6 +1915,7 @@
     "no-data-quality-test-case": "با اضافه کردن تست‌های کیفیت داده به این جدول، اعتماد خود را بهبود بخشید. راهنمای مرحله‌ای ما به شما نشان خواهد داد که چگونه شروع کنیم، <0>{{explore}}</0>",
     "no-data-yet": "هنوز هیچ داده‌ای وجود ندارد",
     "no-default-persona": "No hay persona predeterminada",
+    "no-description-available": "توضیحات موجود نیست.",
     "no-domain-assigned-to-entity": "هیچ دامنه‌ای به {{entity}} اختصاص داده نشده است.",
     "no-domain-available": "هیچ دامنه‌ای برای پیکربندی در دسترس نیست. برای افزودن دامنه‌ها کلیک کنید <0>{{link}}</0>.",
     "no-entity-activity-message": "هنوز هیچ فعالیتی در {{entity}} وجود ندارد. با کلیک روی آن مکالمه‌ای را شروع کنید.",
