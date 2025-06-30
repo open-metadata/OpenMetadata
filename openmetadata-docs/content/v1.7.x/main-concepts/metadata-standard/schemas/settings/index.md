@@ -1,5 +1,5 @@
 ---
-title: index
+title: Settings Schema | OpenMetadata Settings Schema Details
 slug: /main-concepts/metadata-standard/schemas/settings
 ---
 

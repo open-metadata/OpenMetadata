@@ -12,12 +12,12 @@
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { LazyLog } from '@melloware/react-logviewer';
 import { Button, Collapse, Divider, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LazyLog } from 'react-lazylog';
 import { ReactComponent as AttentionIcon } from '../../../../assets/svg/attention.svg';
 import { ReactComponent as FailIcon } from '../../../../assets/svg/fail-badge.svg';
 import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';

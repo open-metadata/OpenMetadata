@@ -1,5 +1,5 @@
 ---
-title: Python SDK
+title: Python SDK | OpenMetadata Python SDK Documentation
 slug: /sdk/python
 ---
 

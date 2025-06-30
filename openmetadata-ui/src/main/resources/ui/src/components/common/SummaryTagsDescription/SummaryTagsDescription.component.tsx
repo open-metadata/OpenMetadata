@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Row, Typography } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip } from 'antd';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {

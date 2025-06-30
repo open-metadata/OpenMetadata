@@ -17,7 +17,7 @@ In OpenMetadata, you can work around the data asset descriptions in one of the f
 - Click on the pencil icon to add or edit the description
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/desc1.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/desc1.png"
 alt="Add or Edit the Data Asset Description"
 caption="Add or Edit the Data Asset Description"
 /%}
@@ -40,7 +40,7 @@ The editor supports **Markdown formatting**, which can be applied using the tool
 - Refer to the [Markdown Guide](https://www.markdownguide.org/cheat-sheet/) for more information.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/desc2.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/desc2.png"
 alt="Add or Edit the Data Asset Description"
 caption="Add or Edit the Data Asset Description"
 /%}

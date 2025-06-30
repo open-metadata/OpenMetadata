@@ -15,12 +15,12 @@ To import a glossary into OpenMetadata:
 You can also bulk upload terms to an existing glossary.
 
 {% image
-src="/images/v1.9how-to-guides/governance/glossary1.png"
+src="/images/v1.9/how-to-guides/governance/glossary1.png"
 alt="Add a New Glossary"
 caption="Add a New Glossary"
 /%}
 {% image
-src="/images/v1.9how-to-guides/governance/glossary1.1.png"
+src="/images/v1.9/how-to-guides/governance/glossary1.1.png"
 alt="Add a New Glossary"
 caption="Add a New Glossary"
 /%}
@@ -28,7 +28,7 @@ caption="Add a New Glossary"
 - Add the Name*, Display Name, Description*, Tags, Owner, and Reviewer details for the glossary. The * marked fields are required fields.
 
 {% image
-src="/images/v1.9how-to-guides/governance/glossary2.png"
+src="/images/v1.9/how-to-guides/governance/glossary2.png"
 alt="Configure the Glossary"
 caption="Configure the Glossary"
 /%}
@@ -36,7 +36,7 @@ caption="Configure the Glossary"
 - Click on the **⋮** icon and **Export** the glossary file. If you have glossary terms in your Glossary, the same will be exported as a CSV file. If you have If there are no terms in the Glossary, then a blank CSV template will be downloaded.
 
 {% image
-src="/images/v1.9how-to-guides/governance/glossary8.png"
+src="/images/v1.9/how-to-guides/governance/glossary8.png"
 alt="Export Glossary File"
 caption="Export Glossary File"
 /%}
@@ -45,7 +45,7 @@ caption="Export Glossary File"
   - **parent** - The parent column helps to define the hierarchy of the glossary terms. If you leave this field blank, the Term will be created at the root level. If you want to create a hierarchy of Glossary Terms, the parent details must be entered as per the hierarchy. For example, from the Glossary level, `Banking.Account.Savings Account`
 
   {% image
-  src="/images/v1.9how-to-guides/governance/glossary9.png"
+  src="/images/v1.9/how-to-guides/governance/glossary9.png"
   alt="Hierarchy can be defined in the Parent Column"
   caption="Hierarchy can be defined in the Parent Column"
   /%}
@@ -74,7 +74,7 @@ If the Owner details are added while creating the glossary, the same will be inh
 - Drag and drop the CSV file, or upload it by clicking on the Browse button.
 
 {% image
-src="/images/v1.9how-to-guides/governance/import0.png"
+src="/images/v1.9/how-to-guides/governance/import0.png"
 alt="Import the Glossary CSV File"
 caption="Import the Glossary CSV File"
 /%}
@@ -84,7 +84,7 @@ caption="Import the Glossary CSV File"
 - After previewing the uploaded terms, click on **Import**.
 
 {% image
-src="/images/v1.9how-to-guides/governance/import1.png"
+src="/images/v1.9/how-to-guides/governance/import1.png"
 alt="Preview of the Glossary"
 caption="Preview of the Glossary"
 /%}
@@ -92,7 +92,7 @@ caption="Preview of the Glossary"
 - The glossary terms will be scanned and imported. After which a Success or Failure message will be displayed.
 
 {% image
-src="/images/v1.9how-to-guides/governance/import2.png"
+src="/images/v1.9/how-to-guides/governance/import2.png"
 alt="Glossary Imported Successfully"
 caption="Glossary Imported Successfully"
 /%}
@@ -104,7 +104,7 @@ caption="Glossary Imported Successfully"
 - The glossary **Owner** is inherited for all the glossary terms.
 
 {% image
-src="/images/v1.9how-to-guides/governance/import3.png"
+src="/images/v1.9/how-to-guides/governance/import3.png"
 alt="Drag and Drop Glossary Terms to Rearrange the Hierarchy"
 caption="Drag and Drop Glossary Terms to Rearrange the Hierarchy"
 /%}

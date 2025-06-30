@@ -1,6 +1,7 @@
 package org.openmetadata.service.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
@@ -46,7 +47,6 @@ import static org.openmetadata.service.search.SearchConstants.SERVICE_ID;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.search.SearchConstants.TEST_SUITES;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
-import static org.openmetadata.service.search.models.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
@@ -87,6 +87,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -99,21 +100,21 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
@@ -194,32 +195,8 @@ public class SearchRepository {
   }
 
   private void loadIndexMappings() {
-    Set<String> entities;
-    entityIndexMap = new HashMap<>();
-    try (InputStream in = getClass().getResourceAsStream("/elasticsearch/indexMapping.json")) {
-      assert in != null;
-      JsonObject jsonPayload = JsonUtils.readJson(new String(in.readAllBytes())).asJsonObject();
-      entities = jsonPayload.keySet();
-      for (String s : entities) {
-        entityIndexMap.put(
-            s, JsonUtils.readValue(jsonPayload.get(s).toString(), IndexMapping.class));
-      }
-    } catch (Exception e) {
-      throw new UnhandledServerException("Failed to load indexMapping.json", e);
-    }
-    try (InputStream in2 =
-        getClass().getResourceAsStream("/elasticsearch/collate/indexMapping.json")) {
-      if (in2 != null) {
-        JsonObject jsonPayload = JsonUtils.readJson(new String(in2.readAllBytes())).asJsonObject();
-        entities = jsonPayload.keySet();
-        for (String s : entities) {
-          entityIndexMap.put(
-              s, JsonUtils.readValue(jsonPayload.get(s).toString(), IndexMapping.class));
-        }
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to load indexMapping.json");
-    }
+    IndexMappingLoader mappingLoader = IndexMappingLoader.getInstance();
+    entityIndexMap = mappingLoader.getIndexMapping();
   }
 
   public SearchClient buildSearchClient(ElasticSearchConfiguration config) {
@@ -380,7 +357,7 @@ public class SearchRepository {
   public void createEntitiesIndex(List<EntityInterface> entities) {
     if (!nullOrEmpty(entities)) {
       // All entities in the list are of the same type
-      String entityType = entities.get(0).getEntityReference().getType();
+      String entityType = entities.getFirst().getEntityReference().getType();
       IndexMapping indexMapping = entityIndexMap.get(entityType);
       List<Map<String, String>> docs = new ArrayList<>();
       for (EntityInterface entity : entities) {
@@ -796,7 +773,7 @@ public class SearchRepository {
               fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
               scriptTxt.append(" ");
             }
-          } catch (UnhandledServerException e) {
+          } catch (JsonParsingException e) {
             scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
           }
         }
@@ -818,7 +795,7 @@ public class SearchRepository {
                     field.getName(),
                     field.getName()));
             fieldData.put(field.getName(), newEntityReference);
-          } catch (UnhandledServerException e) {
+          } catch (JsonParsingException e) {
             if (field.getName().equals(Entity.FIELD_TEST_SUITES)) {
               scriptTxt.append(PROPAGATE_TEST_SUITES_SCRIPT);
               fieldData.put(Entity.FIELD_TEST_SUITES, field.getNewValue());
@@ -861,7 +838,7 @@ public class SearchRepository {
               fieldData.put(field.getName(), entityReference);
             }
             scriptTxt.append(" ");
-          } catch (UnhandledServerException e) {
+          } catch (JsonParsingException e) {
             if (field.getName().equals(FIELD_DISPLAY_NAME)) {
               String fieldPath =
                   getFieldPath(entity.getEntityReference().getType(), field.getName());

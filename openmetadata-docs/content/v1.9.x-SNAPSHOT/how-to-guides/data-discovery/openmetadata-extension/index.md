@@ -54,7 +54,7 @@ Whether you are working on a Tableau dashboard, a report, or another web applica
 - Visit the Chrome Web Store and search for "Open Metadata."
 
 {% image
-src="/images/v1.9how-to-guides/discovery/extension-0.png"
+src="/images/v1.9/how-to-guides/discovery/extension-0.png"
 alt="Visit the Chrome Web Store"
 caption="Visit the Chrome Web Store"
 /%}
@@ -62,7 +62,7 @@ caption="Visit the Chrome Web Store"
 - Add the extension to your Chrome browser and pin it for quick access.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/extension-1.png"
+src="/images/v1.9/how-to-guides/discovery/extension-1.png"
 alt="Add Extension to Chrome Browser"
 caption="Add extension to chrome browser"
 /%}
@@ -70,7 +70,7 @@ caption="Add extension to chrome browser"
 - Click on the OpenMetadata icon in your browser to open the extension, then add the base URL of your OpenMetadata instance and click **Connect**.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/extension-2.png"
+src="/images/v1.9/how-to-guides/discovery/extension-2.png"
 alt="OpenMetadata icon"
 caption="Open Metadata icon"
 /%}
@@ -78,7 +78,7 @@ caption="Open Metadata icon"
 - The extension will guide you through the sign-in process based on your organization's authentication method.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/extension-3.png"
+src="/images/v1.9/how-to-guides/discovery/extension-3.png"
 alt="Sign-in process"
 caption="Sign-in process"
 /%}

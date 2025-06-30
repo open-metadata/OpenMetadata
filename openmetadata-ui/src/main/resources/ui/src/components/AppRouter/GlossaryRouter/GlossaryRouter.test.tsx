@@ -11,23 +11,22 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { MemoryRouter, Switch } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import GlossaryRouter from './GlossaryRouter';
 
-jest.mock('../../pages/AddGlossary/AddGlossaryPage.component', () => {
+jest.mock('../../../pages/AddGlossary/AddGlossaryPage.component', () => {
   return jest.fn(() => <div>AddGlossaryPage</div>);
 });
 
-jest.mock('../Glossary/GlossaryVersion/GlossaryVersion.component', () => {
+jest.mock('../../Glossary/GlossaryVersion/GlossaryVersion.component', () => {
   return jest.fn(() => <div>GlossaryVersion</div>);
 });
 
-jest.mock('../../pages/Glossary/GlossaryPage/GlossaryPage.component', () => {
+jest.mock('../../../pages/Glossary/GlossaryPage/GlossaryPage.component', () => {
   return jest.fn(() => <div>GlossaryPage</div>);
 });
 
-jest.mock('../../utils/PermissionsUtils', () => {
+jest.mock('../../../utils/PermissionsUtils', () => {
   return {
     userPermissions: {
       hasViewPermissions: jest.fn(() => true),
@@ -35,10 +34,15 @@ jest.mock('../../utils/PermissionsUtils', () => {
   };
 });
 
+jest.mock('../AdminProtectedRoute', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ children }) => children),
+}));
+
 describe('GlossaryRouter', () => {
   it('should render AddGlossaryPage component for add glossary route', async () => {
     render(
-      <MemoryRouter initialEntries={['/glossary/add']}>
+      <MemoryRouter initialEntries={['/add']}>
         <GlossaryRouter />
       </MemoryRouter>
     );
@@ -48,24 +52,8 @@ describe('GlossaryRouter', () => {
 
   it('should render GlossaryVersion component for glossary version route', async () => {
     render(
-      <MemoryRouter initialEntries={['/glossary/glossaryID/versions/123']}>
+      <MemoryRouter initialEntries={['/glossaryID/versions/123']}>
         <GlossaryRouter />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('GlossaryVersion')).toBeInTheDocument();
-  });
-
-  it('should render GlossaryVersion component for glossary terms version route', async () => {
-    render(
-      <MemoryRouter
-        initialEntries={[
-          '/glossary/terms/versions/tab',
-          '/glossary/terms/versions',
-        ]}>
-        <Switch>
-          <GlossaryRouter />
-        </Switch>
       </MemoryRouter>
     );
 
@@ -75,14 +63,8 @@ describe('GlossaryRouter', () => {
   it('should render GlossaryPage component for glossary details route', async () => {
     render(
       <MemoryRouter
-        initialEntries={[
-          '/glossary',
-          '/glossary/testGlossary',
-          '/glossary/testGlossary/action/import',
-        ]}>
-        <Switch>
-          <GlossaryRouter />
-        </Switch>
+        initialEntries={['', '/testGlossary', '/testGlossary/action/import']}>
+        <GlossaryRouter />
       </MemoryRouter>
     );
 
@@ -92,13 +74,8 @@ describe('GlossaryRouter', () => {
   it('should render GlossaryPage component for glossary details with tab/subtab route', async () => {
     render(
       <MemoryRouter
-        initialEntries={[
-          '/glossary/testGlossary/tab',
-          '/glossary/testGlossary/subtab',
-        ]}>
-        <Switch>
-          <GlossaryRouter />
-        </Switch>
+        initialEntries={['/testGlossary/tab', '/testGlossary/subtab']}>
+        <GlossaryRouter />
       </MemoryRouter>
     );
 

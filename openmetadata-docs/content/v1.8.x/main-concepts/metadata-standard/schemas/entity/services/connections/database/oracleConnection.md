@@ -1,5 +1,5 @@
 ---
-title: oracleConnection
+title: Oracle Connection | OpenMetadata Oracle Database Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/oracleconnection
 ---
 
