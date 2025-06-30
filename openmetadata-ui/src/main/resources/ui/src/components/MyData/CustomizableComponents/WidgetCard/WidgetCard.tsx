@@ -34,6 +34,7 @@ const WidgetCard = ({
   return (
     <Card
       className={`widget-card ${isSelected ? 'selected' : ''}`}
+      data-testid="widget-card"
       onClick={handleClick}>
       <div className="widget-card-content">
         <Typography.Text strong>{widget.name}</Typography.Text>
@@ -43,7 +44,9 @@ const WidgetCard = ({
           </div>
         )}
       </div>
-      <Typography.Paragraph className="widget-desc">
+      <Typography.Paragraph
+        className="widget-desc"
+        data-testid="widget-description">
         {widget.description ?? 'No description available.'}
       </Typography.Paragraph>
     </Card>
