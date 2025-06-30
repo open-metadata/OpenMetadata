@@ -35,6 +35,7 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     Markdown,
 )
+from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.api.rest.metadata import RestSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
@@ -142,6 +143,106 @@ MOCK_JSON_RESPONSE = {
     ],
 }
 
+# Mock data for testing process_schema_fields
+MOCK_SCHEMA_RESPONSE_SIMPLE = {
+    "components": {
+        "schemas": {
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "email": {"type": "string"},
+                },
+            }
+        }
+    }
+}
+
+MOCK_SCHEMA_RESPONSE_WITH_ARRAY = {
+    "components": {
+        "schemas": {
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "tags": {
+                        "type": "array",
+                        "items": {"$ref": "#/components/schemas/Tag"},
+                    },
+                },
+            },
+            "Tag": {
+                "type": "object",
+                "properties": {"id": {"type": "integer"}, "name": {"type": "string"}},
+            },
+        }
+    }
+}
+
+MOCK_SCHEMA_RESPONSE_WITH_OBJECT_REF = {
+    "components": {
+        "schemas": {
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "address": {"$ref": "#/components/schemas/Address"},
+                },
+            },
+            "Address": {
+                "type": "object",
+                "properties": {
+                    "street": {"type": "string"},
+                    "city": {"type": "string"},
+                },
+            },
+        }
+    }
+}
+
+MOCK_SCHEMA_RESPONSE_WITH_ARRAY_CIRCULAR = {
+    "components": {
+        "schemas": {
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "friends": {
+                        "type": "array",
+                        "items": {"$ref": "#/components/schemas/User"},
+                    },
+                },
+            }
+        }
+    }
+}
+
+MOCK_SCHEMA_RESPONSE_WITH_OBJECT_REF_CIRCULAR = {
+    "components": {
+        "schemas": {
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "profile": {"$ref": "#/components/schemas/Profile"},
+                },
+            },
+            "Profile": {
+                "type": "object",
+                "properties": {
+                    "bio": {"type": "string"},
+                    "user": {"$ref": "#/components/schemas/User"},
+                },
+            },
+        }
+    }
+}
+
 
 class RESTTest(TestCase):
     @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
@@ -244,3 +345,95 @@ class RESTTest(TestCase):
         )
         collections_invalid = list(rest_source_invalid.get_api_collections())
         assert len(collections_invalid) == 0
+
+    def test_process_schema_fields_simple(self):
+        """Test processing simple schema fields without references"""
+        self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_SIMPLE
+
+        result = self.rest_source.process_schema_fields("#/components/schemas/User")
+
+        assert result is not None
+        assert len(result) == 3
+        # Check field names and types
+        field_names = {field.name.root for field in result}
+        assert field_names == {"id", "name", "email"}
+
+        # Check specific field types
+        id_field = next(field for field in result if field.name.root == "id")
+        assert id_field.dataType == DataTypeTopic.INT
+        assert id_field.children is None
+
+    def test_process_schema_fields_with_array(self):
+        """Test processing schema fields with array references"""
+        self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_WITH_ARRAY
+
+        result = self.rest_source.process_schema_fields("#/components/schemas/User")
+
+        assert result is not None
+        assert len(result) == 3
+
+        # Find the tags field (array type)
+        tags_field = next(field for field in result if field.name.root == "tags")
+        assert tags_field.dataType == DataTypeTopic.ARRAY
+        assert tags_field.children is not None
+        assert len(tags_field.children) == 2
+
+        # Check array children fields
+        child_names = {child.name.root for child in tags_field.children}
+        assert child_names == {"id", "name"}
+
+    def test_process_schema_fields_with_object_reference(self):
+        """Test processing schema fields with object references"""
+        self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_WITH_OBJECT_REF
+
+        result = self.rest_source.process_schema_fields("#/components/schemas/User")
+
+        assert result is not None
+        assert len(result) == 3
+
+        # Find the address field (object reference)
+        address_field = next(field for field in result if field.name.root == "address")
+        assert address_field.dataType == DataTypeTopic.UNKNOWN
+        assert address_field.children is not None
+        assert len(address_field.children) == 2
+
+        # Check object children fields
+        child_names = {child.name.root for child in address_field.children}
+        assert child_names == {"street", "city"}
+
+    def test_process_schema_fields_circular_reference_array(self):
+        """Test processing schema fields with circular references in arrays"""
+        self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_WITH_ARRAY_CIRCULAR
+
+        result = self.rest_source.process_schema_fields("#/components/schemas/User")
+
+        assert result is not None
+        assert len(result) == 3
+
+        # Find the friends field (array with circular reference)
+        friends_field = next(field for field in result if field.name.root == "friends")
+        assert friends_field.dataType == DataTypeTopic.ARRAY
+        # Should be None due to circular reference prevention
+        assert friends_field.children is None
+
+    def test_process_schema_fields_circular_reference_object(self):
+        """Test processing schema fields with circular references in objects"""
+        self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_WITH_OBJECT_REF_CIRCULAR
+
+        result = self.rest_source.process_schema_fields("#/components/schemas/User")
+
+        assert result is not None
+        assert len(result) == 3
+
+        # Find the profile field
+        profile_field = next(field for field in result if field.name.root == "profile")
+        assert profile_field.dataType == DataTypeTopic.UNKNOWN
+        assert profile_field.children is not None
+        assert len(profile_field.children) == 2
+
+        # Check that the circular reference is prevented
+        user_field_in_profile = next(
+            child for child in profile_field.children if child.name.root == "user"
+        )
+        # Should be None due to circular reference prevention
+        assert user_field_in_profile.children is None

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { MemoryRouter, Route } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import GlossaryVersion from './GlossaryVersion.component';
 
 /* eslint-disable max-len */
@@ -78,9 +77,12 @@ describe('GlossaryVersion', () => {
     render(
       <MemoryRouter
         initialEntries={[`/glossary/${glossaryName}/versions/${version}`]}>
-        <Route path="/glossary/:glossaryName/versions/:version">
-          <GlossaryVersion isGlossary />
-        </Route>
+        <Routes>
+          <Route
+            element={<GlossaryVersion isGlossary />}
+            path="/glossary/:glossaryName/versions/:version"
+          />
+        </Routes>
       </MemoryRouter>
     );
 

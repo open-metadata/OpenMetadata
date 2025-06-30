@@ -12,7 +12,7 @@
  */
 
 import { findByTestId, render } from '@testing-library/react';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityFeedEditor from './ActivityFeedEditor';
 

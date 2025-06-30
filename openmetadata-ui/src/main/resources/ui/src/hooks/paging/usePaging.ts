@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import qs from 'qs';
 import {
   Dispatch,
   SetStateAction,
@@ -18,7 +17,6 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useHistory } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -26,17 +24,23 @@ import {
 } from '../../constants/constants';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
-import useCustomLocation from '../useCustomLocation/useCustomLocation';
+import { useTableFilters } from '../useTableFilters';
+
+type FilterState = Record<
+  string,
+  string | boolean | string[] | null | undefined
+>;
 
 interface CursorState {
   cursorType: CursorType | null;
   cursorValue?: string;
 }
 
-interface PagingHistoryStateData {
-  cursorData: CursorState;
-  currentPage: number | null;
-  pageSize: number | null;
+interface PagingUrlParams {
+  cursorType?: CursorType;
+  cursorValue?: string;
+  currentPage?: string;
+  pageSize?: number;
 }
 
 export interface UsePagingInterface {
@@ -51,48 +55,59 @@ export interface UsePagingInterface {
   pageSize: number;
   handlePageSizeChange: (page: number) => void;
   showPagination: boolean;
-  pagingCursor: PagingHistoryStateData;
+  pagingCursor: PagingUrlParams;
 }
+
 export const usePaging = (
   defaultPageSize = PAGE_SIZE_BASE
 ): UsePagingInterface => {
-  // Extract initial values from history state if present
-  const history = useHistory();
-  const location = useCustomLocation();
-  const historyState = location.state as any;
-  const initialPageSize = historyState?.pageSize ?? defaultPageSize;
-  const initialCurrentPage = historyState?.cursorData?.cursorType
-    ? historyState.currentPage
-    : INITIAL_PAGING_VALUE;
+  const { filters: urlParams, setFilters: updateUrlParams } = useTableFilters({
+    cursorType: undefined,
+    cursorValue: undefined,
+    currentPage: String(INITIAL_PAGING_VALUE),
+    pageSize: String(defaultPageSize),
+  });
+
+  const initialPageSize = Number(urlParams.pageSize) || defaultPageSize;
+  const initialCurrentPage =
+    Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
 
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState<number>(initialCurrentPage);
   const [pageSize, setPageSize] = useState<number>(initialPageSize);
 
-  const pagingCursorHistoryState: PagingHistoryStateData = {
-    cursorData: historyState?.cursorData,
-    currentPage: historyState?.currentPage,
-    pageSize: historyState?.pageSize,
-  };
+  const pagingCursorUrlParams: PagingUrlParams = useMemo(
+    () => ({
+      cursorType: urlParams.cursorType,
+      cursorValue: urlParams.cursorValue,
+      currentPage: urlParams.currentPage,
+      pageSize: Number(urlParams.pageSize) || defaultPageSize,
+    }),
+    [
+      urlParams.cursorType,
+      urlParams.cursorValue,
+      urlParams.currentPage,
+      urlParams.pageSize,
+      defaultPageSize,
+    ]
+  );
 
   const handlePageSize = useCallback(
     (page: number) => {
       setPageSize(page);
       setCurrentPage(INITIAL_PAGING_VALUE);
-      const searchParams = qs.stringify(
-        qs.parse(location.search, { ignoreQueryPrefix: true }),
-        { addQueryPrefix: true }
-      );
-      // Update location state to persist pageSize for navigation
-      history.replace({
-        state: {
-          pageSize: page,
-        },
-        search: searchParams,
+
+      // Update URL params, removing cursor data since they're invalid with new page size
+      updateUrlParams({
+        pageSize: String(page),
+        currentPage: String(INITIAL_PAGING_VALUE),
+        cursorType: null,
+        cursorValue: null,
       });
     },
-    [setPageSize, setCurrentPage, history, location]
+    [setPageSize, setCurrentPage, updateUrlParams]
   );
+
   const paginationVisible = useMemo(() => {
     return paging.total > pageSize || pageSize !== defaultPageSize;
   }, [defaultPageSize, paging, pageSize]);
@@ -103,23 +118,24 @@ export const usePaging = (
       cursorData?: CursorState,
       pageSize?: number
     ) => {
-      const searchParams = qs.stringify(
-        qs.parse(location.search, { ignoreQueryPrefix: true }),
-        { addQueryPrefix: true }
-      );
       setCurrentPage(page);
+
+      const urlUpdate: Partial<PagingUrlParams> = {
+        currentPage: String(page),
+      };
+
       if (cursorData) {
-        history.replace({
-          state: {
-            cursorData,
-            currentPage: page,
-            pageSize,
-          },
-          search: searchParams,
-        });
+        urlUpdate.cursorType = cursorData.cursorType ?? undefined;
+        urlUpdate.cursorValue = cursorData.cursorValue;
       }
+
+      if (pageSize) {
+        urlUpdate.pageSize = pageSize;
+      }
+
+      updateUrlParams(urlUpdate as FilterState);
     },
-    [setCurrentPage, history, location]
+    [setCurrentPage, updateUrlParams, currentPage]
   );
 
   return {
@@ -130,6 +146,6 @@ export const usePaging = (
     pageSize,
     handlePageSizeChange: handlePageSize,
     showPagination: paginationVisible,
-    pagingCursor: pagingCursorHistoryState,
+    pagingCursor: pagingCursorUrlParams,
   };
 };

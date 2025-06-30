@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TestCase } from '../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
@@ -85,6 +84,8 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   testCasePermission: MOCK_PERMISSIONS,
   setTestCasePermission: jest.fn(),
   setIsPermissionLoading: jest.fn(),
+  isTabExpanded: false,
+  setIsTabExpanded: jest.fn(),
 };
 jest.mock('./useTestCase.store', () => ({
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
@@ -96,22 +97,22 @@ jest.mock('../../../rest/testAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockTestCaseData })),
   updateTestCaseById: jest.fn(),
 }));
-const mockHistory = {
-  push: jest.fn(),
-};
+
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest
     .fn()
     .mockImplementation(() => ({ state: { breadcrumbData: [] } }));
 });
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: () => mockHistory,
   useParams: () => ({
     fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
     tab: TestCasePageTabs.TEST_CASE_RESULTS,
   }),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
   jest
@@ -175,7 +176,7 @@ describe('IncidentManagerDetailPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('onClick of same tab, should not call history.push', async () => {
+  it('onClick of same tab, should not call navigate', async () => {
     await act(async () => {
       render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
     });
@@ -185,7 +186,7 @@ describe('IncidentManagerDetailPage', () => {
       fireEvent.click(testCaseResult);
     });
 
-    expect(mockHistory.push).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("should render no permission message if user doesn't have permission", async () => {

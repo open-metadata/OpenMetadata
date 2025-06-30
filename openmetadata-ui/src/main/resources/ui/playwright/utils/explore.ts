@@ -154,3 +154,39 @@ export const validateBucketsForIndex = async (page: Page, index: string) => {
     ).toBeGreaterThan(0);
   });
 };
+
+export const selectSortOrder = async (page: Page, sortOrder: string) => {
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.getByTestId('sorting-dropdown-label').click();
+  await page.waitForSelector(`role=menuitem[name="${sortOrder}"]`, {
+    state: 'visible',
+  });
+  await page.getByRole('menuitem', { name: sortOrder }).click();
+
+  await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
+    sortOrder
+  );
+
+  await page.getByTestId('sort-order-button').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+export const verifyEntitiesAreSorted = async (page: Page) => {
+  const entityNames = await page.$$eval(
+    '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]',
+    (elements) => elements.map((el) => el.textContent?.trim() ?? '')
+  );
+
+  // Normalize for case insensitivity, but retain punctuation
+  const normalize = (str: string) => str.toLowerCase().trim();
+
+  // Sort using ASCII-based string comparison (ES behavior)
+  const sortedEntityNames = [...entityNames].sort((a, b) => {
+    const normA = normalize(a);
+    const normB = normalize(b);
+
+    return normA < normB ? -1 : normA > normB ? 1 : 0;
+  });
+
+  expect(entityNames).toEqual(sortedEntityNames);
+};

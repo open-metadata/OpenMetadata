@@ -23,7 +23,7 @@ import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcru
 
 export interface DataAssetsVersionHeaderProps {
   breadcrumbLinks: TitleBreadcrumbProps['titleLinks'];
-  version: string;
+  version?: string;
   deleted: boolean;
   displayName: string;
   serviceName?: string;

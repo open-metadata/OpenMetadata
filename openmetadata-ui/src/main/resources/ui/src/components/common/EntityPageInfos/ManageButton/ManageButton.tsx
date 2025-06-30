@@ -16,7 +16,7 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -114,7 +114,7 @@ const ManageButton: FC<ManageButtonProps> = ({
     [editDisplayNamePermission, onEditDisplayName, deleted]
   );
 
-  const renderDropdownContainer = useCallback((menus) => {
+  const renderDropdownContainer = useCallback((menus: React.ReactNode) => {
     return <div data-testid="manage-dropdown-list-container">{menus}</div>;
   }, []);
 

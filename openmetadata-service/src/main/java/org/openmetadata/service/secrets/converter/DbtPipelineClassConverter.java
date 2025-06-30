@@ -21,7 +21,7 @@ import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtLocalConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `DbtPipeline` object. */
 public class DbtPipelineClassConverter extends ClassConverter {

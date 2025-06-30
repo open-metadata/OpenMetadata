@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { act, render } from '@testing-library/react';
-import React from 'react';
+import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
+import { getSampleDataByTopicId } from '../../../rest/topicsAPI';
 import SampleDataWithMessages from './SampleDataWithMessages';
 
 const mockSampleData = {
@@ -47,18 +47,24 @@ describe('Test SampleData Component', () => {
     );
   });
 
-  it('Should render no data placeholder if no data available', () => {
-    act(() => {
-      const { getByTestId } = render(
+  it('Should render no data placeholder if no data available', async () => {
+    (getSampleDataByTopicId as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        sampleData: undefined,
+      })
+    );
+
+    await act(async () => {
+      render(
         <SampleDataWithMessages entityId="" entityType={EntityType.TOPIC} />,
         {
           wrapper: MemoryRouter,
         }
       );
-
-      const noDataPlaceHolder = getByTestId('no-data-placeholder');
-
-      expect(noDataPlaceHolder).toBeInTheDocument();
     });
+
+    const noDataPlaceHolder = screen.getByTestId('no-data-placeholder');
+
+    expect(noDataPlaceHolder).toBeInTheDocument();
   });
 });

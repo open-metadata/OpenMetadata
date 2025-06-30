@@ -13,14 +13,7 @@
 import { AxiosError } from 'axios';
 import { pick } from 'lodash';
 import QueryString from 'qs';
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import { useParams } from 'react-router-dom';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DataQualityPageParams } from '../../components/DataQuality/DataQuality.interface';
 import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -33,6 +26,7 @@ import {
 } from '../../rest/dataQualityDashboardAPI';
 import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   DataQualityContextInterface,
   DataQualityPageTabs,
@@ -43,7 +37,9 @@ export const DataQualityContext = createContext<DataQualityContextInterface>(
 );
 
 const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
-  const { tab: activeTab } = useParams<{ tab: DataQualityPageTabs }>();
+  const { tab: activeTab = DataQualityPageTabs.TABLES } = useRequiredParams<{
+    tab: DataQualityPageTabs;
+  }>();
   const location = useCustomLocation();
   const params = useMemo(() => {
     const search = location.search;

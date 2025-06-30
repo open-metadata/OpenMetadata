@@ -13,7 +13,7 @@
 
 import { Modal, Tabs, TabsProps } from 'antd';
 import { isEmpty, sortBy, toString } from 'lodash';
-import { default as React, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CommonWidgetType,

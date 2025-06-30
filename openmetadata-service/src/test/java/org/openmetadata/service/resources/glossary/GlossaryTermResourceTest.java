@@ -103,6 +103,7 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -116,7 +117,6 @@ import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
@@ -502,8 +502,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     GlossaryTerm g2t5 = createTerm(glossary2, null, "g2t5");
     assertEquals(Status.DRAFT, g2t5.getStatus());
     waitForTaskToBeCreated(g2t5.getFullyQualifiedName());
-    assertEquals(
-        Status.IN_REVIEW, getEntity(g2t5.getId(), authHeaders(USER1.getName())).getStatus());
+    g2t5 = getEntity(g2t5.getId(), authHeaders(USER1.getName()));
+    assertEquals(Status.IN_REVIEW, g2t5.getStatus());
     assertApprovalTask(g2t5, TaskStatus.Open); // A Request Approval task is opened
 
     String origJson = JsonUtils.pojoToJson(g2t5);
@@ -517,7 +517,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Due to the Glossary Workflow changing the Status from 'DRAFT' to 'IN_REVIEW' as a
     // GovernanceBot, two changes are created.
-    assertEquals(g2t5.getVersion(), previousVersion + 0.1);
+    assertEquals(g2t5.getVersion(), Math.round((previousVersion + 0.1) * 10.0) / 10.0);
     assertTrue(
         g2t5.getReviewers().containsAll(newReviewers)
             && newReviewers.containsAll(g2t5.getReviewers()));

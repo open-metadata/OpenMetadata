@@ -14,7 +14,7 @@
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { GeneratedBy } from '../../../generated/entity/feed/thread';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';

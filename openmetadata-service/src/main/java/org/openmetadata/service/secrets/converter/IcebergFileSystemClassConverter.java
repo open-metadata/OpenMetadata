@@ -17,7 +17,7 @@ import java.util.List;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.credentials.AzureCredentials;
 import org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `IcebergConnection` object. */
 public class IcebergFileSystemClassConverter extends ClassConverter {

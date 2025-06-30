@@ -41,12 +41,23 @@ class BaseConnection(ABC, Generic[S, C]):
     """
 
     service_connection: S
+    _client: Optional[C]
 
     def __init__(self, service_connection: S) -> None:
         self.service_connection = service_connection
+        self._client = None
+
+    @property
+    def client(self) -> C:
+        """
+        Return the main client/engine/connection object for this service.
+        """
+        if self._client is None:
+            self._client = self._get_client()
+        return self._client
 
     @abstractmethod
-    def get_client(self) -> C:
+    def _get_client(self) -> C:
         """
         Return the main client/engine/connection object for this service.
         """
@@ -60,4 +71,10 @@ class BaseConnection(ABC, Generic[S, C]):
     ) -> TestConnectionResult:
         """
         Test the connection to the service.
+        """
+
+    @abstractmethod
+    def get_connection_dict(self) -> dict:
+        """
+        Return the connection dictionary for this service.
         """

@@ -13,7 +13,7 @@
 
 import { Button } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useCallback, useMemo } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityUtils';

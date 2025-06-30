@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { t } from 'i18next';
 import { isEmpty, omit } from 'lodash';
 import { EntityTags } from 'Models';
-import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
@@ -36,6 +34,7 @@ import { PageType } from '../generated/system/ui/uiCustomization';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ContainerDetailPageTabProps } from './ContainerDetailsClassBase';
+import { t } from './i18next/LocalUtil';
 
 const getUpdatedContainerColumnTags = (
   containerColumn: Column,

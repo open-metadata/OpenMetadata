@@ -1003,8 +1003,7 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/column"
-      },
-      "default": null
+      }
     },
     "tableConstraints": {
       "description": "Table constraints.",

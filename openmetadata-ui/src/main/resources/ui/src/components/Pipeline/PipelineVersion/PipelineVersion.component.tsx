@@ -14,9 +14,8 @@
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import React, { FC, useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { FC, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -31,9 +30,11 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
 import { getUpdatedPipelineTasks } from '../../../utils/PipelineVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
@@ -63,8 +64,8 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   versionHandler,
   entityPermissions,
 }: PipelineVersionProp) => {
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -93,7 +94,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   }, [currentVersionData]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.PIPELINE,
         currentVersionData.fullyQualifiedName ?? '',
@@ -137,7 +138,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        accessor: 'tags',
         width: 272,
         render: (tags) => (
           <TagsViewer
@@ -150,7 +150,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        accessor: 'tags',
         width: 272,
         render: (tags) => (
           <TagsViewer sizeCap={-1} tags={getFilterTags(tags || []).Glossary} />
@@ -309,7 +308,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.PIPELINE}
         versionHandler={versionHandler}
         versionList={versionList}

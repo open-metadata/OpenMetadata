@@ -15,9 +15,9 @@ import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -28,7 +28,6 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
-  PAGE_SIZE,
 } from '../../constants/constants';
 import { DUMMY_DATABASE_SCHEMA_TABLES_DETAILS } from '../../constants/Database.constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
@@ -72,7 +71,7 @@ function SchemaTablesTab({
   isCustomizationPage = false,
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [tableData, setTableData] = useState<Array<Table>>([]);
   const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const { permissions } = usePermissionProvider();
@@ -92,7 +91,7 @@ function SchemaTablesTab({
     handlePageSizeChange,
     handlePageChange,
     pagingCursor,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging();
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
@@ -135,7 +134,10 @@ function SchemaTablesTab({
 
   const handleShowDeletedTables = (value: boolean) => {
     setFilters({ showDeletedTables: value });
-    handlePageChange(INITIAL_PAGING_VALUE);
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   };
 
   const getSchemaTables = useCallback(
@@ -175,7 +177,6 @@ function SchemaTablesTab({
           pageSize
         );
       }
-      handlePageChange(currentPage);
     },
     [paging, getSchemaTables, handlePageChange]
   );
@@ -225,7 +226,7 @@ function SchemaTablesTab({
   );
 
   const handleEditTable = () => {
-    history.push({
+    navigate({
       pathname: getEntityBulkEditPath(
         EntityType.DATABASE_SCHEMA,
         decodedDatabaseSchemaFQN
@@ -241,11 +242,10 @@ function SchemaTablesTab({
       return;
     }
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      if (pagingCursor?.cursorData?.cursorType) {
-        // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
+      if (pagingCursor?.cursorType && pagingCursor?.cursorValue) {
+        // Fetch data if cursorType is present in URL params with cursor Value to handle browser back navigation
         getSchemaTables({
-          [pagingCursor?.cursorData?.cursorType]:
-            pagingCursor?.cursorData?.cursorValue,
+          [pagingCursor.cursorType]: pagingCursor.cursorValue,
         });
       } else {
         // Otherwise, just fetch the data without cursor value
@@ -261,8 +261,11 @@ function SchemaTablesTab({
   ]);
 
   useEffect(() => {
-    setFilters({ showDeletedTables: databaseSchemaDetails.deleted ?? false });
-  }, [databaseSchemaDetails.deleted]);
+    setFilters({
+      showDeletedTables:
+        tableFilters.showDeletedTables ?? databaseSchemaDetails.deleted,
+    });
+  }, [databaseSchemaDetails.deleted, tableFilters.showDeletedTables]);
 
   return (
     <TableAntd

@@ -15,7 +15,6 @@
 import Icon from '@ant-design/icons';
 import { Col, Row, Typography } from 'antd';
 import { get, isEmpty, isUndefined } from 'lodash';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
@@ -64,7 +63,7 @@ import { Domain } from '../generated/entity/domains/domain';
 import { EntityReference } from '../generated/tests/testCase';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import { stringToHTML } from './StringsUtils';
 
@@ -112,7 +111,7 @@ export const getTitle = (
   }
 
   return sourceUrl ? (
-    <Link target="_blank" to={{ pathname: sourceUrl }}>
+    <Link target="_blank" to={sourceUrl}>
       <div className="d-flex items-center">
         <Text
           className="entity-title text-link-color font-medium m-r-xss"
@@ -394,7 +393,7 @@ export const getEntityChildDetails = (
 
   switch (entityType) {
     case EntityType.TABLE:
-      heading = i18n.t('label.schema');
+      heading = t('label.schema');
       childComponent = (
         <ColumnSummaryList
           entityInfo={entityInfo as Table}
@@ -405,13 +404,13 @@ export const getEntityChildDetails = (
 
       break;
     case EntityType.TOPIC:
-      heading = i18n.t('label.schema');
+      heading = t('label.schema');
       childComponent = isEmpty(
         (entityInfo as Topic).messageSchema?.schemaFields
       ) ? (
         <Typography.Text data-testid="no-data-message">
           <Typography.Text className="no-data-chip-placeholder">
-            {i18n.t('message.no-data-available')}
+            {t('message.no-data-available')}
           </Typography.Text>
         </Typography.Text>
       ) : (
@@ -426,7 +425,7 @@ export const getEntityChildDetails = (
 
       break;
     case EntityType.PIPELINE:
-      heading = i18n.t('label.task-plural');
+      heading = t('label.task-plural');
       headingTestId = 'tasks-header';
       childComponent = (
         <SummaryList
@@ -461,7 +460,7 @@ export const getEntityChildDetails = (
               <Typography.Text
                 className="summary-panel-section-title"
                 data-testid="charts-header">
-                {i18n.t('label.chart-plural')}
+                {t('label.chart-plural')}
               </Typography.Text>
             </Col>
             <Col span={24}>
@@ -479,7 +478,7 @@ export const getEntityChildDetails = (
               <Typography.Text
                 className="summary-panel-section-title"
                 data-testid="data-model-header">
-                {i18n.t('label.data-model-plural')}
+                {t('label.data-model-plural')}
               </Typography.Text>
             </Col>
             <Col span={24}>
@@ -490,7 +489,7 @@ export const getEntityChildDetails = (
       );
 
     case EntityType.MLMODEL:
-      heading = i18n.t('label.feature-plural');
+      heading = t('label.feature-plural');
       headingTestId = 'features-header';
       childComponent = (
         <SummaryList
@@ -505,7 +504,7 @@ export const getEntityChildDetails = (
       break;
 
     case EntityType.CONTAINER:
-      heading = i18n.t('label.schema');
+      heading = t('label.schema');
       childComponent = (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
@@ -519,7 +518,7 @@ export const getEntityChildDetails = (
       break;
 
     case EntityType.DASHBOARD_DATA_MODEL:
-      heading = i18n.t('label.column-plural');
+      heading = t('label.column-plural');
       headingTestId = 'column-header';
       childComponent = (
         <ColumnSummaryList
@@ -531,7 +530,7 @@ export const getEntityChildDetails = (
 
       break;
     case EntityType.STORED_PROCEDURE:
-      heading = i18n.t('label.code');
+      heading = t('label.code');
       headingTestId = 'code-header';
       childComponent = (
         <SchemaEditor
@@ -552,7 +551,7 @@ export const getEntityChildDetails = (
 
       break;
     case EntityType.SEARCH_INDEX:
-      heading = i18n.t('label.field-plural');
+      heading = t('label.field-plural');
       headingTestId = 'fields-header';
       childComponent = (
         <SummaryList
@@ -597,7 +596,7 @@ export const getEntityChildDetails = (
 
       break;
     case EntityType.DATABASE:
-      heading = i18n.t('label.schema');
+      heading = t('label.schema');
       childComponent = (
         <SummaryList
           entityType={SummaryEntityType.SCHEMAFIELD}
@@ -611,7 +610,7 @@ export const getEntityChildDetails = (
 
       break;
     case EntityType.CHART:
-      heading = i18n.t('label.dashboard-plural');
+      heading = t('label.dashboard-plural');
       headingTestId = 'dashboard-header';
       childComponent = (
         <SummaryList

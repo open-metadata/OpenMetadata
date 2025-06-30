@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
@@ -297,8 +296,10 @@ describe('Test EntityTable Component', () => {
       paging: { total: 0 },
     });
 
-    render(<SchemaTable />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const entityTable = await screen.findByTestId('entity-table');

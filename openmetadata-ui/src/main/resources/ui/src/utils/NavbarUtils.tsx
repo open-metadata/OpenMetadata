@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Typography } from 'antd';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { HELP_ITEMS_ENUM, SupportItem } from '../constants/Navbar.constants';
@@ -56,7 +55,7 @@ const getHelpDropdownLabel = (item: SupportItem, version?: string) => {
     return (
       <a
         className="no-underline"
-        href={item.link}
+        href={item.link?.replace('{{currentVersion}}', version ?? '')}
         rel="noreferrer"
         target="_blank">
         {getHelpDropdownLabelContentRenderer(item, version)}

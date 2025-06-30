@@ -152,7 +152,7 @@ const mockPagingCursor = {
     cursorType: CursorType.AFTER,
     cursorValue: 'mockCursorValue',
   },
-  currentPage: 1,
+  currentPage: '1',
   pageSize: 10,
 };
 const mockPagingInfoObj = {

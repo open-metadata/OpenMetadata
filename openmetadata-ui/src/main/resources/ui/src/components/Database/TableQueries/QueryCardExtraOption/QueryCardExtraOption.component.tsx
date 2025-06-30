@@ -11,30 +11,29 @@
  *  limitations under the License.
  */
 import { Button, Dropdown, MenuProps, Space, Tag, Tooltip } from 'antd';
+import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import Qs from 'qs';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ReactComponent as ThumbsUpFilled } from '../../../../assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../../../assets/svg/thumbs-up-outline.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { pluralize } from '../../../../utils/CommonUtils';
-import { QueryVoteType } from '../TableQueries.interface';
-import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
-
-import { AxiosError } from 'axios';
-import Qs from 'qs';
-import { useHistory } from 'react-router-dom';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { deleteQuery } from '../../../../rest/queryAPI';
+import { pluralize } from '../../../../utils/CommonUtils';
 import queryClassBase from '../../../../utils/QueryClassBase';
 import { getQueryPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
+import { QueryVoteType } from '../TableQueries.interface';
 import './query-card-extra-option.style.less';
+import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 
 const QueryCardExtraOption = ({
   permission,
@@ -45,7 +44,7 @@ const QueryCardExtraOption = ({
 }: QueryCardExtraOptionProps) => {
   const { EditAll, EditQueries, Delete } = permission;
   const { fqn: datasetFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const QueryHeaderButton = queryClassBase.getQueryHeaderActionsButtons();
   const { currentUser } = useApplicationStore();
   const { t } = useTranslation();
@@ -66,7 +65,7 @@ const QueryCardExtraOption = ({
   };
 
   const onExpandClick = useCallback(() => {
-    history.push({
+    navigate({
       search: Qs.stringify({ query: query.id }),
       pathname: getQueryPath(datasetFQN, query.id ?? ''),
     });

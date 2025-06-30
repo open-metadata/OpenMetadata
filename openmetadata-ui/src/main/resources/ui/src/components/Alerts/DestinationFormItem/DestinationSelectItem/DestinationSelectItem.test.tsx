@@ -14,14 +14,13 @@
 import {
   act,
   findByRole,
+  fireEvent,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { Form } from 'antd';
 import { isString } from 'lodash';
-import React from 'react';
 import DestinationSelectItem from './DestinationSelectItem';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
@@ -57,9 +56,11 @@ jest.mock('antd', () => {
 
 describe('DestinationSelectItem component', () => {
   it('should show internal tab by default in the dropdown', async () => {
-    await act(async () => {
-      render(<DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />);
-    });
+    render(
+      <Form initialValues={{ destinations: [{}] }}>
+        <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
+      </Form>
+    );
 
     const id = MOCK_DESTINATION_SELECT_ITEM_PROPS.id;
     const selectorKey = MOCK_DESTINATION_SELECT_ITEM_PROPS.selectorKey;
@@ -71,13 +72,23 @@ describe('DestinationSelectItem component', () => {
       'combobox'
     );
 
+    // Handle click and dropdown rendering
     await act(async () => {
-      userEvent.click(categorySelect);
+      fireEvent.focus(categorySelect);
+      fireEvent.keyDown(categorySelect, {
+        key: 'ArrowDown',
+        code: 'ArrowDown',
+      });
     });
 
-    await waitForElement(() =>
-      screen.findByTestId(`destination-category-dropdown-${selectorKey}`)
-    );
+    // Wait for the dropdown to be rendered in the portal
+    await waitFor(async () => {
+      expect(
+        await screen.findByTestId(
+          `destination-category-dropdown-${selectorKey}`
+        )
+      ).toBeInTheDocument();
+    });
 
     expect(
       await screen.findByTestId('Admins-internal-option')
@@ -113,7 +124,11 @@ describe('DestinationSelectItem component', () => {
     const selectorKey = MOCK_DESTINATION_SELECT_ITEM_PROPS.selectorKey;
 
     await act(async () => {
-      render(<DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />);
+      render(
+        <Form initialValues={{ destinations: [{}] }}>
+          <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
+        </Form>
+      );
     });
 
     const categorySelect = await findByRole(
@@ -121,16 +136,21 @@ describe('DestinationSelectItem component', () => {
       'combobox'
     );
 
+    // Handle initial focus and state updates
     await act(async () => {
-      userEvent.click(categorySelect);
+      fireEvent.focus(categorySelect);
+      fireEvent.keyDown(categorySelect, {
+        key: 'ArrowDown',
+        code: 'ArrowDown',
+      });
     });
 
-    await waitForElement(() =>
-      screen.findByTestId(`destination-category-dropdown-${selectorKey}`)
-    );
-    screen.debug(
-      await screen.findByTestId(`destination-category-dropdown-${selectorKey}`)
-    );
+    // Wait for the dropdown to be rendered in the portal
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`destination-category-dropdown-${selectorKey}`)
+      ).toBeInTheDocument();
+    });
 
     expect(
       await screen.findByTestId('Email-external-option')
@@ -153,13 +173,17 @@ describe('DestinationSelectItem component', () => {
     const id = MOCK_DESTINATION_SELECT_ITEM_PROPS.id;
 
     await act(async () => {
-      render(<DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />);
+      render(
+        <Form initialValues={{ destinations: [{}] }}>
+          <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
+        </Form>
+      );
     });
 
     const removeFieldButton = screen.getByTestId(`remove-destination-${id}`);
 
     await act(async () => {
-      userEvent.click(removeFieldButton);
+      fireEvent.click(removeFieldButton);
     });
 
     expect(MOCK_DESTINATION_SELECT_ITEM_PROPS.remove).toHaveBeenCalledWith(id);

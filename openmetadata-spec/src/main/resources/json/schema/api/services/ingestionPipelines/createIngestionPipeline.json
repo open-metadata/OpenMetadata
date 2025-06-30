@@ -52,6 +52,10 @@
     "domain" : {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"
+    },
+    "processingEngine": {
+      "description": "The processing engine responsible for executing the ingestion pipeline logic.",
+      "$ref": "../../../type/entityReference.json"
     }
   },
   "required": [

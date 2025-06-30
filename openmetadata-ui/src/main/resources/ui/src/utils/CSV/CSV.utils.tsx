@@ -20,7 +20,6 @@ import {
   startCase,
 } from 'lodash';
 import { parse } from 'papaparse';
-import React from 'react';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';

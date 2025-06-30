@@ -18,7 +18,7 @@ import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.datalake.AzureConfig;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.datalake.S3Config;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `DatalakeConnection` object. */
 public class DatalakeConnectionClassConverter extends ClassConverter {

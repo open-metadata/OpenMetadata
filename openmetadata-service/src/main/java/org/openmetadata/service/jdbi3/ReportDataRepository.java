@@ -4,8 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.ReportData.ReportDataType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData> {

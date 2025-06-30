@@ -50,7 +50,7 @@ from metadata.utils.constants import THREE_MIN
 
 
 class MySQLConnection(BaseConnection[MysqlConnection, Engine]):
-    def get_client(self) -> Engine:
+    def _get_client(self) -> Engine:
         """
         Return the SQLAlchemy Engine for MySQL.
         """
@@ -77,6 +77,12 @@ class MySQLConnection(BaseConnection[MysqlConnection, Engine]):
             get_connection_args_fn=get_connection_args_common,
         )
 
+    def get_connection_dict(self) -> dict:
+        """
+        Return the connection dictionary for this service.
+        """
+        raise NotImplementedError("get_connection_dict is not implemented for MySQL")
+
     def test_connection(
         self,
         metadata: OpenMetadata,
@@ -94,7 +100,7 @@ class MySQLConnection(BaseConnection[MysqlConnection, Engine]):
         }
         return test_connection_db_schema_sources(
             metadata=metadata,
-            engine=self.get_client(),
+            engine=self.client,
             service_connection=self.service_connection,
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,

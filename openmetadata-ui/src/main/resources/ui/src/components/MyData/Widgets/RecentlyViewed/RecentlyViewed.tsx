@@ -14,7 +14,7 @@
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as RecentlyViewedEmptyIcon } from '../../../../assets/svg/recently-viewed-no-data-placeholder.svg';

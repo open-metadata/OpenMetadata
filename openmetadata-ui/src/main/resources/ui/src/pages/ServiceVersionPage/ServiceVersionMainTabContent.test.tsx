@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -69,6 +68,21 @@ jest.mock(
   '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
+
+jest.mock('../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([
+    {
+      title: 'label.owner-plural',
+      dataIndex: 'owners',
+      key: 'owners',
+      width: 180,
+      render: () => <div data-testid="owner-label">OwnerLabel</div>,
+    },
+  ]),
+  domainTableObject: jest.fn().mockReturnValue([]),
+  dataProductTableObject: jest.fn().mockReturnValue([]),
+  tagTableObject: jest.fn().mockReturnValue([]),
+}));
 
 const mockPagingHandler = jest.fn();
 const mockData: Database[] = [
@@ -156,7 +170,7 @@ describe('ServiceVersionMainTabContent tests', () => {
 
     const entityTable = screen.getByTestId('service-children-table');
     const entityName = screen.getByText('ecommerce_db');
-    const entityOwner = screen.getByText('ProfilePicture');
+    const entityOwner = screen.getByText('OwnerLabel');
     const entityDescription = screen.getByTestId('viewer-container');
 
     expect(entityTable).toBeInTheDocument();

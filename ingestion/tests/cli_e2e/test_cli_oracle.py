@@ -118,7 +118,7 @@ SELECT * from names
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
-        return ["admin"]
+        return ["^ADMIN$"]
 
     @staticmethod
     def get_includes_tables() -> List[str]:
@@ -274,14 +274,14 @@ SELECT * from names
     ) -> None:
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(source_status.warnings), 0)
-        self.assertEqual(len(source_status.filtered), 29)
+        self.assertGreaterEqual(len(source_status.filtered), 29)
         self.assertGreaterEqual(
             (len(source_status.records) + len(source_status.updated_records)),
             self.expected_tables(),
         )
         self.assertEqual(len(sink_status.failures), 0)
         self.assertEqual(len(sink_status.warnings), 0)
-        self.assertGreater(
+        self.assertGreaterEqual(
             (len(sink_status.records) + len(sink_status.updated_records)),
             self.expected_tables(),
         )

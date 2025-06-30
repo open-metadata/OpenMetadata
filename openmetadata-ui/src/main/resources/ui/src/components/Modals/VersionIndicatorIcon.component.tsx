@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import { VersionIndicatorInterface } from './VersionIndicatorIcon.interface';
 
 export const VersionIndicatorIcon = ({

@@ -31,6 +31,8 @@ export interface UseTestCaseStoreInterface {
   reset: () => void;
   dqLineageData: EntityLineageResponse | undefined;
   setDqLineageData: (data: EntityLineageResponse | undefined) => void;
+  isTabExpanded: boolean;
+  setIsTabExpanded: (isTabExpanded: boolean) => void;
 }
 export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   testCase: undefined,
@@ -39,6 +41,7 @@ export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   isPermissionLoading: true,
   showAILearningBanner: false,
   testCasePermission: undefined,
+  isTabExpanded: true,
   setTestCase: (testCase: TestCase) => {
     set({ testCase });
   },
@@ -59,7 +62,15 @@ export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   setDqLineageData: (data: EntityLineageResponse | undefined) => {
     set({ dqLineageData: data });
   },
+  setIsTabExpanded: (isTabExpanded: boolean) => {
+    set({ isTabExpanded });
+  },
   reset: () => {
-    set({ testCase: undefined, isLoading: true, showAILearningBanner: false });
+    set({
+      testCase: undefined,
+      isLoading: true,
+      showAILearningBanner: false,
+      isTabExpanded: true,
+    });
   },
 }));

@@ -30,6 +30,9 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    ProcessingEngine,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import TableConfig
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
@@ -70,6 +73,7 @@ class SamplerInterface(ABC):
         sample_query: Optional[str] = None,
         storage_config: Optional[DataStorageConfig] = None,
         sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        processing_engine: Optional[ProcessingEngine] = None,
         **__,
     ):
         self.ometa_client = ometa_client
@@ -84,6 +88,7 @@ class SamplerInterface(ABC):
         self.sample_limit = sample_data_count
         self.partition_details = partition_details
         self.storage_config = storage_config
+        self.processing_engine = processing_engine
 
         self.service_connection_config = service_connection_config
         self.connection = get_ssl_connection(self.service_connection_config)
@@ -101,6 +106,7 @@ class SamplerInterface(ABC):
         storage_config: Optional[DataStorageConfig] = None,
         default_sample_config: Optional[SampleConfig] = None,
         default_sample_data_count: int = SAMPLE_DATA_DEFAULT_COUNT,
+        processing_engine: Optional[ProcessingEngine] = None,
         **kwargs,
     ) -> "SamplerInterface":
         """Create sampler"""
@@ -137,6 +143,7 @@ class SamplerInterface(ABC):
             sample_query=sample_query,
             storage_config=storage_config,
             sample_data_count=sample_data_count,
+            processing_engine=processing_engine,
             **kwargs,
         )
 

@@ -14,7 +14,7 @@
 import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -23,7 +23,7 @@ import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/R
 import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
-import { NO_DATA, PAGE_SIZE } from '../../constants/constants';
+import { NO_DATA } from '../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS,
@@ -68,7 +68,7 @@ function APIEndpointsTab({
     pageSize,
     handlePagingChange,
     handlePageSizeChange,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging();
   const { filters, setFilters } = useTableFilters({
     showDeletedEndpoints: false,
   });

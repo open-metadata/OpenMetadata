@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from 'i18next';
 import WelcomeScreenSrc from '../../assets/img/welcome-screen.png';
 import MonogramSrc, {
   ReactComponent as Monogram,
 } from '../../assets/svg/logo-monogram.svg';
 import LogoSrc, { ReactComponent as Logo } from '../../assets/svg/logo.svg';
+import { t } from '../i18next/LocalUtil';
 
 class BrandClassBase {
   public getMonogram() {

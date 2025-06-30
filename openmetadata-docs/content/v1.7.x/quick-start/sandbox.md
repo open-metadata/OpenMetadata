@@ -1,5 +1,5 @@
 ---
-title: Sandbox
+title: Sandbox Quickstart | OpenMetadata Sandbox Environment
 slug: /quick-start/sandbox
 ---
 
