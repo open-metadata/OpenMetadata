@@ -30,11 +30,6 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.event.pull_request.head.ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Switch to branch (if manual trigger)
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          git checkout ${{ github.event.inputs.branch }}
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -64,13 +59,15 @@ jobs:
 
       - name: Commit and push changes
         if: steps.git-check.outputs.changes == 'true'
+        id: commit-changes
         run: |
           git add openmetadata-ui/src/main/resources/ui/src/generated/
           git commit -m "Update generated TypeScript types"
           git push --force-with-lease
+          echo "committed=true" >> $GITHUB_OUTPUT
 
       - name: Create PR comment about auto-update
-        if: steps.git-check.outputs.changes == 'true' && github.event_name == 'pull_request'
+        if: steps.commit-changes.outputs.committed == 'true' && github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
