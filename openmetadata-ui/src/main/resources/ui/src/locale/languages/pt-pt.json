@@ -2151,7 +2151,10 @@
     "team-no-asset": "Sua equipa não possui ativos.",
     "test-case-schedule-description": "The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.",
     "test-connection-cannot-be-triggered": "Não é possível acionar o teste de conexão.",
-    "test-connection-taking-too-long": "O teste de conexão está demorando muito. Por favor, tente novamente.",
+    "test-connection-taking-too-long": {
+      "default": "Por favor, assegure-se de que o {{service_type}} está configurado para permitir ligações",
+      "withIp": " a partir de {{ip}}"
+    },
     "test-your-connection-before-creating-service": "Teste suas conexões antes de criar o serviço",
     "testing-your-connection-may-take-two-minutes": "Testar suas conexões pode levar até 2 minutos",
     "this-action-is-not-allowed-for-deleted-entities": "Esta ação não é permitida para entidades excluídas.",

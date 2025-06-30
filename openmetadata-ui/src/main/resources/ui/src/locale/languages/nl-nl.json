@@ -2151,7 +2151,10 @@
     "team-no-asset": "Je team heeft geen assets.",
     "test-case-schedule-description": "The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.",
     "test-connection-cannot-be-triggered": "Testconnectie kan niet worden geactiveerd.",
-    "test-connection-taking-too-long": "De testconnectie duurt te lang. Probeer het opnieuw.",
+    "test-connection-taking-too-long": {
+      "default": "Zorg ervoor dat {{service_type}} is geconfigureerd om verbindingen toe te staan",
+      "withIp": " vanaf {{ip}}"
+    },
     "test-your-connection-before-creating-service": "Test je connecties voordat je de service maakt",
     "testing-your-connection-may-take-two-minutes": "Het testen van je connecties kan tot 2 minuten duren",
     "this-action-is-not-allowed-for-deleted-entities": "Deze actie is niet toegestaan voor verwijderde entiteiten.",
