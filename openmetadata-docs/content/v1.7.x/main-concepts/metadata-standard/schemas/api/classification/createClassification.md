@@ -1,5 +1,5 @@
 ---
-title: createClassification
+title: Create Classification | OpenMetadata Classification API
 slug: /main-concepts/metadata-standard/schemas/api/classification/createclassification
 ---
 

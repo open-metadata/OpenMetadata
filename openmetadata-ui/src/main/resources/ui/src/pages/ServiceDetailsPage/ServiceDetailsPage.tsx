@@ -20,7 +20,7 @@ import {
   ServicesUpdateRequest,
   ServiceTypes,
 } from 'Models';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -28,7 +28,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -37,6 +37,7 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
 import DataModelTable from '../../components/Dashboard/DataModel/DataModels/DataModelsTable';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
@@ -144,6 +145,7 @@ import {
 } from '../../utils/StringsUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
 import { ServicePageData } from './ServiceDetailsPage.interface';
 import ServiceMainTabContent from './ServiceMainTabContent';
@@ -156,7 +158,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => airflowInformation,
     [airflowInformation]
   );
-  const { serviceCategory, tab } = useParams<{
+  const { serviceCategory, tab } = useRequiredParams<{
     serviceCategory: ServiceTypes;
     tab: string;
   }>();
@@ -170,7 +172,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN]
   );
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { isAdminUser } = useAuth();
   const ingestionPagingInfo = usePaging();
   const collateAgentPagingInfo = usePaging();
@@ -316,7 +318,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         getEntityTypeFromServiceCategory(serviceCategory),
         decodedServiceFQN,
         servicePermission,
-        serviceDetails
+        serviceDetails,
+        navigate
       ),
     [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
     // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options
@@ -354,7 +357,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceCategory, decodedServiceFQN]);
 
   const goToEditConnection = useCallback(() => {
-    history.push(
+    navigate(
       getEditConnectionPath(serviceCategory ?? '', decodedServiceFQN ?? '')
     );
   }, [serviceCategory, decodedServiceFQN]);
@@ -369,7 +372,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           subTab = ServiceAgentSubTabs.METADATA;
         }
 
-        history.push({
+        navigate({
           pathname: getServiceDetailsPath(
             decodedServiceFQN,
             serviceCategory,
@@ -767,7 +770,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } catch (error) {
       // Error
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);
@@ -971,7 +974,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [saveUpdatedServiceData, serviceDetails]
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as ServicesType;
 
     setServiceDetails((data) => ({
@@ -1039,7 +1042,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const versionHandler = useCallback(() => {
     currentVersion &&
-      history.push(
+      navigate(
         getServiceVersionPath(
           serviceCategory,
           decodedServiceFQN,
@@ -1086,7 +1089,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     (isSoftDelete?: boolean) => {
       if (!isSoftDelete) {
         removeAutoPilotStatus(serviceDetails.fullyQualifiedName ?? '');
-        history.push(
+        navigate(
           getSettingPath(
             GlobalSettingsMenuCategory.SERVICES,
             getServiceRouteFromServiceType(serviceCategory)

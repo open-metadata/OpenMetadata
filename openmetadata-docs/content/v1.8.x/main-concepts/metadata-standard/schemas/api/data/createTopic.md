@@ -1,5 +1,5 @@
 ---
-title: createTopic
+title: Create Topic API | OpenMetadata Topic API
 slug: /main-concepts/metadata-standard/schemas/api/data/createtopic
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: summaryCard
+title: Summary Card Schema | OpenMetadata Summary Cards
 slug: /main-concepts/metadata-standard/schemas/datainsight/custom/summarycard
 ---
 

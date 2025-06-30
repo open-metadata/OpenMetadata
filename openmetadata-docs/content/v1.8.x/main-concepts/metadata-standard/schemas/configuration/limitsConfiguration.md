@@ -1,5 +1,5 @@
 ---
-title: limitsConfiguration
+title: Limits Configuration | OpenMetadata Limits Config
 slug: /main-concepts/metadata-standard/schemas/configuration/limitsconfiguration
 ---
 

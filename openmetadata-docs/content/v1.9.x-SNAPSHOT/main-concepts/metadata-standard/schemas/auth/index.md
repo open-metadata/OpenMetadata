@@ -1,5 +1,5 @@
 ---
-title: index
+title: Auth Schemas | OpenMetadata Authentication
 slug: /main-concepts/metadata-standard/schemas/auth
 ---
 

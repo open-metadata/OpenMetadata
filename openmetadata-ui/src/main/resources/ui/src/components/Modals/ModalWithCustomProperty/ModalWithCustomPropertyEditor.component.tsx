@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Modal, Typography } from 'antd';
-import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-
 import { AxiosError } from 'axios';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';

@@ -13,7 +13,7 @@
 import { Card, Typography } from 'antd';
 import { capitalize, toString } from 'lodash';
 import { Bucket } from 'Models';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getServiceLogo,

@@ -1,5 +1,5 @@
 ---
-title: kinesisConnection
+title: Kinesis Connection | OpenMetadata Kinesis
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/kinesisconnection
 ---
 

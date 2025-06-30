@@ -1,5 +1,5 @@
 ---
-title: index
+title: Ingestion Pipelines API | OpenMetadata Ingestion Pipelines
 slug: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines
 ---
 

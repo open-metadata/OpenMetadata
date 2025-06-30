@@ -1,5 +1,5 @@
 ---
-title: index
+title: External Automator Config | OpenMetadata Entity Applications
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator
 ---
 

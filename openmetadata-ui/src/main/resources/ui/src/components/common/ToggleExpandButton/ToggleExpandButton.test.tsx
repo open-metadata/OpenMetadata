@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import ToggleExpandButton from './ToggleExpandButton';
 import { ToggleExpandButtonProps } from './ToggleExpandButton.interface';
 
@@ -54,7 +52,7 @@ describe('ToggleExpandButton component', () => {
 
     expect(toggleButton).toBeInTheDocument();
 
-    await act(async () => userEvent.click(toggleButton));
+    fireEvent.click(toggleButton);
 
     expect(mockToggleExpandAll).toHaveBeenCalledTimes(1);
   });

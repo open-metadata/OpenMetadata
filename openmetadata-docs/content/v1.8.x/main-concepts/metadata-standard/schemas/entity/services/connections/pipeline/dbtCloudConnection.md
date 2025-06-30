@@ -1,5 +1,5 @@
 ---
-title: dbtCloudConnection
+title: dbt Cloud Connection | OpenMetadata dbt Cloud
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/dbtcloudconnection
 ---
 

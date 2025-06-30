@@ -12,7 +12,7 @@
  */
 
 import { Typography } from 'antd';
-import React, { FunctionComponent, useEffect, useRef } from 'react';
+import { FunctionComponent, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getExplorePath } from '../../utils/RouterUtils';

@@ -1,5 +1,5 @@
 ---
-title: truststoreConfig
+title: Trust Store Config | OpenMetadata Trust Store
 slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/truststoreconfig
 ---
 

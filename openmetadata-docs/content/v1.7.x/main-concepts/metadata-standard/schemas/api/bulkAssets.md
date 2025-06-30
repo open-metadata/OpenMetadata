@@ -1,5 +1,5 @@
 ---
-title: bulkAssets
+title: Bulk Assets API | OpenMetadata Bulk Asset Management
 slug: /main-concepts/metadata-standard/schemas/api/bulkassets
 ---
 

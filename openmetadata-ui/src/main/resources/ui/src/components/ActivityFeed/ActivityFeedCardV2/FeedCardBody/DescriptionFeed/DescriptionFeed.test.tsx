@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import {
   MOCK_DESCRIPTION_FEED_1,
   MOCK_DESCRIPTION_FEED_2,

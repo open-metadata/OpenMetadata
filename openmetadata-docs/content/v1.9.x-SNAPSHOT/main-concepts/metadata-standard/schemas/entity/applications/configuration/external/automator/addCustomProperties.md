@@ -1,5 +1,5 @@
 ---
-title: addCustomProperties
+title: Add Custom Properties | OpenMetadata Custom Properties
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/addcustomproperties
 ---
 

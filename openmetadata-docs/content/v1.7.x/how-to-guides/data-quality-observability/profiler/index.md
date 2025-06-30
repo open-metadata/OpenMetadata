@@ -1,5 +1,5 @@
 ---
-title: Data Profiler
+title: Data Profiler | OpenMetadata Data Profiling Guide
 slug: /how-to-guides/data-quality-observability/profiler
 ---
 
