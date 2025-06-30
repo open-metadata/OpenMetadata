@@ -505,6 +505,10 @@ export interface TestCaseDefinitions {
     computePassedFailedRowCount?: boolean;
     parameterValues?:             TestCaseParameterValue[];
     /**
+     * Tags to apply
+     */
+    tags?: TagLabel[];
+    /**
      * Fully qualified name of the test definition.
      */
     testDefinition?: string;
