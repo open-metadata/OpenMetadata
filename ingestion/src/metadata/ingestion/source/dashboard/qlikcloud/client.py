@@ -12,6 +12,7 @@
 REST Auth & Client for QlikCloud
 """
 import json
+import re
 import traceback
 from typing import Dict, Iterable, List, Optional
 
@@ -23,12 +24,14 @@ from metadata.ingestion.source.dashboard.qlikcloud.constants import (
     APP_LOADMODEL_REQ,
     CREATE_SHEET_SESSION,
     GET_LOADMODEL_LAYOUT,
+    GET_SCRIPT,
     GET_SHEET_LAYOUT,
     OPEN_DOC_REQ,
 )
 from metadata.ingestion.source.dashboard.qlikcloud.models import (
     QlikApp,
     QlikAppResponse,
+    QlikScriptResult,
     QlikSpace,
     QlikSpaceResponse,
 )
@@ -173,12 +176,18 @@ class QlikCloudClient:
             models = self._websocket_send_request(GET_LOADMODEL_LAYOUT, response=True)
             data_models = QlikDataModelResult(**models)
             layout = data_models.result.qLayout
+            parsed_datamodels = []
             if isinstance(layout, list):
                 tables = []
                 for layout in data_models.result.qLayout:
                     tables.extend(layout.value.tables)
-                return tables
-            return layout.tables
+                parsed_datamodels.extend(tables)
+            else:
+                parsed_datamodels.extend(layout.tables)
+            script_tables = self.get_script_tables()
+            if script_tables:
+                parsed_datamodels.extend(script_tables)
+            return parsed_datamodels
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard datamodels")
@@ -204,3 +213,26 @@ class QlikCloudClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the space list")
+
+    def get_script_tables(self) -> Optional[List[QlikTable]]:
+        """Get script tables from the dashboard script"""
+        script_tables = []
+        try:
+            script_response = self._websocket_send_request(GET_SCRIPT, response=True)
+            script_result = QlikScriptResult(**script_response)
+            if script_result.result.qScript:
+                script_value = script_result.result.qScript
+                matches = re.findall(
+                    r'FROM\s+["\']?([a-zA-Z0-9_.]+)["\']?', script_value, re.IGNORECASE
+                )
+                if isinstance(matches, list):
+                    for table in matches:
+                        table_name = table.split(".")[-1]
+                        script_tables.append(QlikTable(tableName=table_name))
+            if not script_tables:
+                logger.warning("No script tables found")
+            return script_tables
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the script tables")
+        return script_tables
