@@ -17,6 +17,7 @@ import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
   editCreatedProperty,
+  verifyCustomPropertyInAdvancedSearch,
 } from '../../utils/customProperty';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
@@ -64,6 +65,18 @@ test.describe('Custom properties without custom property config', () => {
           });
 
           await editCreatedProperty(page, propertyName);
+
+          await verifyCustomPropertyInAdvancedSearch(
+            page,
+            propertyName.toUpperCase(), // displayName is in uppercase
+            entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
+          );
+
+          await settingClick(
+            page,
+            entity.entityApiType as SettingOptionsType,
+            true
+          );
 
           await deleteCreatedProperty(page, propertyName);
         });

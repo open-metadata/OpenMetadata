@@ -1,5 +1,5 @@
 ---
-title: Redshift
+title: Redshift Connector | OpenMetadata AWS Data Warehouse
 slug: /connectors/database/redshift
 ---
 

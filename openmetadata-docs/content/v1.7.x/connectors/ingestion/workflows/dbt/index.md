@@ -1,5 +1,5 @@
 ---
-title: dbt Workflow
+title: dbt Workflow | OpenMetadata Data Build Tool Integration
 slug: /connectors/ingestion/workflows/dbt
 ---
 
@@ -20,6 +20,14 @@ Configure the dbt Workflow from the UI.
   bold="Run dbt Workflow Externally"
   href="/connectors/ingestion/workflows/dbt/run-dbt-workflow-externally"%}
 Configure the dbt Workflow from the CLI.
+{%/inlineCallout%}
+
+{%inlineCallout
+  icon="celebration"
+  bold="Auto Ingest DBT Artifacts (dbt-core)"
+  href="/connectors/ingestion/workflows/dbt/auto-ingest-dbt-core"%}
+Configure the auto dbt ingestion for dbt-core.
+
 {%/inlineCallout%}
 
 {%/inlineCalloutContainer%}

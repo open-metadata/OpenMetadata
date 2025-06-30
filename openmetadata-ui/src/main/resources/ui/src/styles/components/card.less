@@ -12,8 +12,8 @@
  */
 
 @import (reference) url('../variables.less');
-@import (reference) url('antd/dist/antd.variable.less');
 @import (reference) url('../fonts.less');
+@import (reference) url('antd/dist/antd.variable.less');
 
 .scrollable-card-body-sm() {
   max-height: calc(100% - @card-head-height-sm - @card-padding-base-sm);
@@ -40,6 +40,36 @@
 .card-padding-0 {
   .ant-card-body {
     padding: 0;
+  }
+}
+
+.card-padding-xss {
+  > .ant-card-body {
+    padding: @padding-xss;
+  }
+}
+
+.card-padding-xs {
+  > .ant-card-body {
+    padding: @padding-xs;
+  }
+}
+
+.card-padding-sm {
+  > .ant-card-body {
+    padding: @padding-sm;
+  }
+}
+
+.card-padding-md {
+  > .ant-card-body {
+    padding: @padding-md;
+  }
+}
+
+.card-padding-lg {
+  > .ant-card-body {
+    padding: @padding-lg;
   }
 }
 

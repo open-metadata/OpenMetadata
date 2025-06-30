@@ -136,8 +136,7 @@
 @box-shadow-base: 0px 2px 10px rgba(0, 0, 0, 0.12);
 @button-box-shadow-default: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
 @button-box-shadow-hover: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
-@button-box-shadow-focus: 0px 1px 2px 0px rgba(10, 13, 18, 0.05),
-  0px 0px 0px 4px #f4ebff;
+@button-box-shadow-focus: 0px 0px 0px 4px rgba(209, 233, 255, 1);
 @button-box-shadow-disabled: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
 @button-box-shadow-grey: 0px 1px 2px 0px rgba(10, 13, 18, 0.05),
   0px 0px 0px 4px #f5f5f5;
@@ -228,7 +227,7 @@
 @tab-height: 60px;
 
 @entity-details-tab-height: calc(
-  100vh - @data-asset-header-height - @tab-height - @om-navbar-height - @size-md
+  100vh - @data-asset-header-height - @tab-height - @om-navbar-height - @size-xs
 );
 @entity-version-page-tabs-height: calc(
   100vh - @data-asset-header-height-versions-page - @tab-height -
@@ -274,9 +273,9 @@
 
 @welcome-page-height: calc(100vh - 112px);
 
-@profile-page-sidebar: calc(100vh - @om-navbar-height - 40px);
+@profile-page-sidebar: calc(100vh - @om-navbar-height - 20px);
 @profile-entity-details-tab-height: calc(@profile-page-sidebar - 64px);
-@user-profile-page-panel-height: calc(100vh - @om-navbar-height - 108px);
+@user-profile-page-panel-height: calc(100vh - @om-navbar-height - 88px);
 
 //  48px - navbar height
 @welcome-page-height: calc(100vh - 48px - @om-navbar-height);

@@ -17,15 +17,9 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, toString } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -65,6 +59,7 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -95,14 +90,16 @@ const DataProductsDetailsPage = ({
   isVersionsView = false,
   onUpdate,
   onDelete,
+  isFollowing,
+  isFollowingLoading,
+  handleFollowingClick,
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } =
-    useParams<{ tab: string; version: string }>();
+    useRequiredParams<{ tab: string; version: string }>();
   const { fqn: dataProductFqn } = useFqn();
-
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
@@ -195,6 +192,12 @@ const DataProductsDetailsPage = ({
         setAssetCount(res.data.hits.total.value ?? 0);
       } catch (error) {
         setAssetCount(0);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.asset-plural-lowercase'),
+          })
+        );
       }
     }
   };
@@ -306,8 +309,8 @@ const DataProductsDetailsPage = ({
   const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
-      color: data.color ? data.color : undefined,
-      iconURL: data.iconURL ? data.iconURL : undefined,
+      color: data.color ?? undefined,
+      iconURL: data.iconURL ?? undefined,
     };
     const updatedDetails = {
       ...dataProduct,
@@ -337,7 +340,9 @@ const DataProductsDetailsPage = ({
             activeKey
           );
 
-      history.replace(path);
+      navigate(path, {
+        replace: true,
+      });
     }
   };
 
@@ -350,12 +355,15 @@ const DataProductsDetailsPage = ({
           toString(dataProduct.version)
         );
 
-    history.push(path);
+    navigate(path);
   };
 
-  const handleAssetClick = useCallback((asset) => {
-    setPreviewAsset(asset);
-  }, []);
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   const handelExtensionUpdate = useCallback(
     async (updatedDataProduct: DataProduct) => {
@@ -487,6 +495,7 @@ const DataProductsDetailsPage = ({
             breadcrumb={breadcrumbs}
             entityData={{ ...dataProduct, displayName, name }}
             entityType={EntityType.DATA_PRODUCT}
+            handleFollowingClick={handleFollowingClick}
             icon={
               dataProduct.style?.iconURL ? (
                 <img
@@ -506,6 +515,8 @@ const DataProductsDetailsPage = ({
                 />
               )
             }
+            isFollowing={isFollowing}
+            isFollowingLoading={isFollowingLoading}
             serviceName=""
             titleColor={dataProduct.style?.color}
           />

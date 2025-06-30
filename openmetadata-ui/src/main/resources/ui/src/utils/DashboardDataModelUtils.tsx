@@ -12,7 +12,6 @@
  */
 import { Card } from 'antd';
 
-import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
@@ -99,12 +98,13 @@ export const getDashboardDataModelDetailPageTabs = ({
             children: (
               <Card>
                 <SchemaEditor
-                  editorClass="custom-code-mirror-theme full-screen-editor-height"
+                  editorClass="custom-query-editor custom-code-mirror-theme full-screen-editor-height"
                   mode={{ name: CSMode.SQL }}
                   options={{
                     styleActiveLine: false,
                     readOnly: true,
                   }}
+                  refreshEditor={activeTab === EntityTabs.SQL}
                   value={dataModelData?.sql}
                 />
               </Card>

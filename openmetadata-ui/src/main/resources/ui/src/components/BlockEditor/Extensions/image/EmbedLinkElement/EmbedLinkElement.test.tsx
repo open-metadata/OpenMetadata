@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileType } from '../../../BlockEditor.interface';
 import EmbedLinkElement from './EmbedLinkElement';

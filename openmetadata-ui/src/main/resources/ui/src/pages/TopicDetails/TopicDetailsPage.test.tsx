@@ -12,7 +12,6 @@
  */
 
 import { findByText, render } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TopicDetailsPageComponent from './TopicDetailsPage.component';
 
@@ -28,10 +27,14 @@ jest.mock('../../rest/topicsAPI', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest
-    .fn()
-    .mockReturnValue({ topicFQN: 'sample_kafka.sales', tab: 'schema' }),
-  useHistory: jest.fn(),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => ({
+    topicFQN: 'sample_kafka.sales',
+    tab: 'schema',
+  })),
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({

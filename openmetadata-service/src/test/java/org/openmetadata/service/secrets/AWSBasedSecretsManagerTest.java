@@ -28,9 +28,9 @@ import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.util.JsonUtils;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AWSBasedSecretsManagerTest extends ExternalSecretsManagerTest {

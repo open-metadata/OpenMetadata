@@ -1,5 +1,6 @@
 ---
-title: Usage Query Filtering
+title: Usage Query Filtering | OpenMetadata Usage Workflow
+description: Learn to filter and customize query sets in OpenMetadata usage workflows. Master data ingestion connectors with step-by-step filtering techniques.
 slug: /connectors/ingestion/workflows/usage/filter-query-set
 ---
 

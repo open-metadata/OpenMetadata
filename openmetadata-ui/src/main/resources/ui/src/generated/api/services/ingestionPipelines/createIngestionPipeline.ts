@@ -40,7 +40,11 @@ export interface CreateIngestionPipeline {
      */
     owners?:      EntityReference[];
     pipelineType: PipelineType;
-    provider?:    ProviderType;
+    /**
+     * The processing engine responsible for executing the ingestion pipeline logic.
+     */
+    processingEngine?: EntityReference;
+    provider?:         ProviderType;
     /**
      * Control if we want to flag the workflow as failed if we encounter any processing errors.
      */
@@ -138,6 +142,8 @@ export enum LogLevels {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * The processing engine responsible for executing the ingestion pipeline logic.
  *
  * Link to the service for which ingestion pipeline is ingesting the metadata.
  *
@@ -503,6 +509,7 @@ export interface Pipeline {
      * level metrics.
      */
     computeTableMetrics?: boolean;
+    processingEngine?:    ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
@@ -683,6 +690,10 @@ export interface Pipeline {
      */
     searchAcrossDatabases?: boolean;
     /**
+     * Regex to only fetch tags that matches the pattern.
+     */
+    tagFilterPattern?: FilterPattern;
+    /**
      * Application configuration
      */
     appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
@@ -755,6 +766,8 @@ export interface Pipeline {
  * Regex to only fetch search indexes that matches the pattern.
  *
  * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch tags that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -832,6 +845,11 @@ export interface CollateAIAppConfig {
     sendToAdmins?:            boolean;
     sendToTeams?:             boolean;
     /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
      * Number of threads to use for reindexing
      */
     consumerThreads?: number;
@@ -881,6 +899,11 @@ export interface CollateAIAppConfig {
      * Whether the AutoPilot Workflow should be active or not.
      */
     active?: boolean;
+    /**
+     * Enter the retention period for Activity Threads of type = 'Conversation' records in days
+     * (e.g., 30 for one month, 60 for two months).
+     */
+    activityThreadsRetentionPeriod?: number;
     /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
@@ -1798,7 +1821,7 @@ export interface Operation {
     /**
      * Type of operation to perform
      */
-    type: Type;
+    type: OperationType;
 }
 
 /**
@@ -1840,10 +1863,41 @@ export interface ReverseIngestionConfig {
 /**
  * Type of operation to perform
  */
-export enum Type {
+export enum OperationType {
     UpdateDescription = "UPDATE_DESCRIPTION",
     UpdateOwner = "UPDATE_OWNER",
     UpdateTags = "UPDATE_TAGS",
+}
+
+/**
+ * Processing Engine Configuration. If not provided, the Native Engine will be used by
+ * default.
+ *
+ * Configuration for the native metadata ingestion engine
+ *
+ * This schema defines the configuration for a Spark Engine runner.
+ */
+export interface ProcessingEngine {
+    /**
+     * The type of the engine configuration
+     */
+    type: ProcessingEngineType;
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    config?: { [key: string]: any };
+    /**
+     * Spark Connect Remote URL.
+     */
+    remote?: string;
+}
+
+/**
+ * The type of the engine configuration
+ */
+export enum ProcessingEngineType {
+    Native = "Native",
+    Spark = "Spark",
 }
 
 /**
@@ -2536,6 +2590,16 @@ export interface ConfigClass {
      */
     connection?: ConfigConnection;
     /**
+     * Tableau API version. If not provided, the version will be used from the tableau server.
+     *
+     * Sigma API version.
+     *
+     * OpenMetadata server API version to use.
+     *
+     * Airbyte API version.
+     */
+    apiVersion?: string;
+    /**
      * Types of methods used to authenticate to the tableau instance
      *
      * Choose Auth Config Type.
@@ -2551,6 +2615,11 @@ export interface ConfigClass {
      * Pagination limit used for Alation APIs pagination
      */
     paginationLimit?: number;
+    /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
     /**
      * Tableau Site Name.
      */
@@ -2666,13 +2735,9 @@ export interface ConfigClass {
      */
     spaceTypes?: SpaceType[];
     /**
-     * Sigma API version.
-     *
-     * OpenMetadata server API version to use.
-     *
-     * Airbyte API version.
+     * Billing Project ID
      */
-    apiVersion?: string;
+    billingProjectId?: string;
     /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
@@ -2857,6 +2922,10 @@ export interface ConfigClass {
      * Table name to fetch the query history.
      */
     queryHistoryTable?: string;
+    /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?: string;
     /**
      * License to connect to DB2.
      */
@@ -5122,6 +5191,7 @@ export enum KafkaSecurityProtocol {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",

@@ -130,7 +130,7 @@ export interface AppScheduleClass {
  */
 export enum ScheduleTimeline {
     Custom = "Custom",
-    Daily = " Daily",
+    Daily = "Daily",
     Hourly = "Hourly",
     Monthly = "Monthly",
     None = "None",

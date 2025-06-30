@@ -1,5 +1,5 @@
 ---
-title: AWS EKS Deployment
+title: AWS EKS Deployment | OpenMetadata Kubernetes Guide
 slug: /deployment/kubernetes/eks
 collate: false
 ---

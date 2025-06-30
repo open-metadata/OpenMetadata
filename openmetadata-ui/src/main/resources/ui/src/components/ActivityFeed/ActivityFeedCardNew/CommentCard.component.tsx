@@ -13,13 +13,7 @@
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
@@ -81,7 +75,7 @@ const CommentCard = ({
 
   const [, , user] = useUserProfile({
     permission: true,
-    name: feed.updatedBy ?? '',
+    name: post.from ?? '',
   });
 
   const onEditPost = () => {
@@ -134,22 +128,23 @@ const CommentCard = ({
       className={classNames('d-flex justify-start relative reply-card', {
         'reply-card-border-bottom': !isLastReply,
       })}
+      data-testid="feed-reply-card"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div className="profile-picture m-r-xs">
-        <UserPopOverCard userName={feed.updatedBy ?? ''}>
+        <UserPopOverCard userName={post.from ?? ''}>
           <div className="d-flex items-center">
-            <ProfilePicture key={feed.id} name={feed.updatedBy!} width="32" />
+            <ProfilePicture key={post.id} name={post.from ?? ''} width="32" />
           </div>
         </UserPopOverCard>
       </div>
       <div className="w-full">
         <div className="d-flex items-center gap-2 flex-wrap">
           <Typography.Text className="activity-feed-user-name reply-card-user-name">
-            <UserPopOverCard userName={feed.updatedBy ?? ''}>
+            <UserPopOverCard userName={post.from ?? ''}>
               <Link
                 className="reply-card-user-name"
-                to={getUserPath(feed.updatedBy ?? '')}>
+                to={getUserPath(post.from ?? '')}>
                 {getEntityName(user)}
               </Link>
             </UserPopOverCard>

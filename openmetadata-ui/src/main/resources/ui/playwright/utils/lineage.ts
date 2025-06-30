@@ -236,6 +236,30 @@ export const performExpand = async (
   }
 };
 
+export const performCollapse = async (
+  page: Page,
+  node: EntityClass,
+  upstream: boolean,
+  hiddenEntity: EntityClass[]
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const handleDirection = upstream ? 'left' : 'right';
+  const collapseBtn = page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`.react-flow__handle-${handleDirection}`)
+    .getByTestId('minus-icon');
+
+  await collapseBtn.click();
+
+  for (const entity of hiddenEntity) {
+    const hiddenNodeFqn = get(entity, 'entityResponseData.fullyQualifiedName');
+    const hiddenNode = page.locator(
+      `[data-testid="lineage-node-${hiddenNodeFqn}"]`
+    );
+
+    await expect(hiddenNode).not.toBeVisible();
+  }
+};
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const name = get(node, 'entityResponseData.name');
@@ -702,4 +726,35 @@ export const verifyColumnLineageInCSV = async (
   );
 
   expect(matchingRow).toBeDefined(); // Ensure a matching row exists
+};
+
+export const verifyLineageConfig = async (page: Page) => {
+  await page.click('[data-testid="lineage-config"]');
+  await page.waitForSelector('.ant-modal-content', {
+    state: 'visible',
+  });
+
+  await page.getByTestId('field-upstream').fill('-1');
+  await page.getByTestId('field-downstream').fill('-1');
+  await page.getByTestId('field-nodes-per-layer').fill('3');
+
+  await page.getByText('OK').click();
+
+  await expect(
+    page.getByText('Upstream Depth size cannot be less than 0')
+  ).toBeVisible();
+  await expect(
+    page.getByText('Downstream Depth size cannot be less than 0')
+  ).toBeVisible();
+  await expect(
+    page.getByText('Nodes Per Layer size cannot be less than 5')
+  ).toBeVisible();
+
+  await page.getByTestId('field-upstream').fill('0');
+  await page.getByTestId('field-downstream').fill('0');
+  await page.getByTestId('field-nodes-per-layer').fill('5');
+
+  const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
+  await page.getByText('OK').click();
+  await saveRes;
 };

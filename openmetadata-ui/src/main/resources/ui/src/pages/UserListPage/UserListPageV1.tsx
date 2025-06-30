@@ -15,9 +15,9 @@ import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, noop } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Redirect, useHistory, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -58,13 +58,14 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { commonUserDetailColumns } from '../../utils/Users.util';
 import './user-list-page-v1.less';
 
 const UserListPageV1 = () => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: GlobalSettingOptions }>();
-  const history = useHistory();
+  const { tab } = useRequiredParams<{ tab: GlobalSettingOptions }>();
+  const navigate = useNavigate();
   const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
   const { isAdminUser } = useAuth();
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
@@ -241,9 +242,9 @@ const UserListPageV1 = () => {
   }, [pageSize, isAdminPage, searchValue, isDeleted]);
 
   const handleAddNewUser = () => {
-    history.push({
-      pathname: ROUTES.CREATE_USER,
+    navigate(ROUTES.CREATE_USER, {
       state: { isAdminPage },
+      replace: false,
     });
   };
 
@@ -348,34 +349,18 @@ const UserListPageV1 = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <PageLayoutV1 pageTitle={t('label.user-plural')}>
-        <Row>
-          <Col className="w-full d-flex justify-end">
-            <span>
-              <Switch
-                checked={isDeleted}
-                data-testid="show-deleted"
-                onClick={handleShowDeletedUserChange}
-              />
-              <span className="m-l-xs">{t('label.deleted')}</span>
-            </span>
-          </Col>
-          <Col className="mt-24" span={24}>
-            <ErrorPlaceHolder
-              className="border-none"
-              heading={t('label.user')}
-              permission={isAdminUser}
-              permissionValue={t('label.create-entity', {
-                entity: t('label.user'),
-              })}
-              type={ERROR_PLACEHOLDER_TYPE.CREATE}
-              onClick={handleAddNewUser}
-            />
-          </Col>
-        </Row>
-      </PageLayoutV1>
+      <ErrorPlaceHolder
+        className="border-none m-y-md"
+        heading={t('label.user')}
+        permission={isAdminUser}
+        permissionValue={t('label.create-entity', {
+          entity: t('label.user'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleAddNewUser}
+      />
     ),
-    [isAdminUser, isDeleted]
+    [isAdminUser]
   );
 
   const emptyPlaceHolderText = useMemo(() => {
@@ -425,15 +410,28 @@ const UserListPageV1 = () => {
     );
   }, [isAdminPage, searchValue]);
 
+  const tablePlaceholder = useMemo(() => {
+    return isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue ? (
+      errorPlaceHolder
+    ) : (
+      <FilterTablePlaceHolder placeholderText={emptyPlaceHolderText} />
+    );
+  }, [
+    userList,
+    isDeleted,
+    isDataLoading,
+    searchValue,
+    errorPlaceHolder,
+    emptyPlaceHolderText,
+  ]);
+
   if (
-    ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(tab)
+    ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(
+      tab as GlobalSettingOptions
+    )
   ) {
     // This component is not accessible for the given tab
-    return <Redirect to={ROUTES.NOT_FOUND} />;
-  }
-
-  if (isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue) {
-    return errorPlaceHolder;
+    return <Navigate to={ROUTES.NOT_FOUND} />;
   }
 
   return (
@@ -495,11 +493,7 @@ const UserListPageV1 = () => {
             }
             loading={isDataLoading}
             locale={{
-              emptyText: (
-                <FilterTablePlaceHolder
-                  placeholderText={emptyPlaceHolderText}
-                />
-              ),
+              emptyText: tablePlaceholder,
             }}
             pagination={false}
             rowKey="id"

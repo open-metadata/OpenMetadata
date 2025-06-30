@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useCallback, useEffect, useState } from 'react';
-import { Redirect, Route, Switch, useHistory, useParams } from 'react-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { SUPPORTED_BULK_IMPORT_EDIT_ENTITY } from '../../constants/BulkImport.constant';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -19,11 +19,12 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import { useFqn } from '../../hooks/useFqn';
 import BulkEntityImportPage from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const EntityImportRouter = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
-  const { entityType } = useParams<{ entityType: ResourceEntity }>();
+  const { entityType } = useRequiredParams<{ entityType: ResourceEntity }>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
   const [entityPermission, setEntityPermission] = useState(
@@ -31,6 +32,9 @@ const EntityImportRouter = () => {
   );
 
   const fetchResourcePermission = useCallback(async () => {
+    if (!entityType) {
+      return;
+    }
     try {
       setIsLoading(true);
       const entityPermission = await getEntityPermissionByFqn(entityType, fqn);
@@ -44,7 +48,7 @@ const EntityImportRouter = () => {
     if (fqn && SUPPORTED_BULK_IMPORT_EDIT_ENTITY.includes(entityType)) {
       fetchResourcePermission();
     } else {
-      history.push(ROUTES.NOT_FOUND);
+      navigate(ROUTES.NOT_FOUND);
     }
   }, [fqn, entityType]);
 
@@ -53,16 +57,12 @@ const EntityImportRouter = () => {
   }
 
   return (
-    <Switch>
+    <Routes>
       {entityPermission.EditAll && (
-        <Route
-          exact
-          component={BulkEntityImportPage}
-          path={[ROUTES.ENTITY_IMPORT, ROUTES.BULK_EDIT_ENTITY_WITH_FQN]}
-        />
+        <Route element={<BulkEntityImportPage />} path="*" />
       )}
-      <Redirect to={ROUTES.NOT_FOUND} />
-    </Switch>
+      <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />
+    </Routes>
   );
 };
 

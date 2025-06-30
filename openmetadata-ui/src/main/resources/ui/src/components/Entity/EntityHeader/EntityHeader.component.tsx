@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { getEntityLinkFromType } from '../../../utils/EntityUtils';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -38,6 +38,9 @@ interface Props {
   showName?: boolean;
   nameClassName?: string;
   displayNameClassName?: string;
+  handleFollowingClick?: () => void;
+  isFollowingLoading?: boolean;
+  isFollowing?: boolean;
   showOnlyDisplayName?: boolean;
 }
 
@@ -53,8 +56,11 @@ export const EntityHeader = ({
   badge,
   titleColor,
   showName = true,
+  isFollowingLoading,
   nameClassName = '',
   displayNameClassName = '',
+  handleFollowingClick,
+  isFollowing,
   showOnlyDisplayName = false,
 }: Props) => {
   return (
@@ -74,7 +80,10 @@ export const EntityHeader = ({
         deleted={entityData.deleted}
         displayName={entityData.displayName}
         displayNameClassName={displayNameClassName}
+        handleFollowingClick={handleFollowingClick}
         icon={icon}
+        isFollowing={isFollowing}
+        isFollowingLoading={isFollowingLoading}
         link={
           titleIsLink && entityData.fullyQualifiedName && entityType
             ? getEntityLinkFromType(entityData.fullyQualifiedName, entityType)

@@ -90,15 +90,15 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.CSVExportException;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -216,7 +216,7 @@ public class LineageRepository {
     // Add Service Level Lineage
     EntityReference fromService = fromEntity.getService();
     EntityReference toService = toEntity.getService();
-    if (Boolean.FALSE.equals(fromService.getId().equals(toService.getId()))) {
+    if (!fromService.getId().equals(toService.getId())) {
       LineageDetails serviceLineageDetails =
           getOrCreateLineageDetails(
               fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists);
@@ -300,7 +300,8 @@ public class LineageRepository {
 
     if (existingRelation != null) {
       LineageDetails lineageDetails =
-          JsonUtils.readValue(existingRelation.getJson(), LineageDetails.class);
+          JsonUtils.readValue(existingRelation.getJson(), LineageDetails.class)
+              .withPipeline(entityLineageDetails.getPipeline());
       if (!childRelationExists) {
         lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() + 1);
       }
@@ -313,6 +314,7 @@ public class LineageRepository {
         .withUpdatedAt(entityLineageDetails.getUpdatedAt())
         .withUpdatedBy(entityLineageDetails.getUpdatedBy())
         .withSource(LineageDetails.Source.CHILD_ASSETS)
+        .withPipeline(entityLineageDetails.getPipeline())
         .withAssetEdges(1);
   }
 
@@ -372,7 +374,7 @@ public class LineageRepository {
     EsLineageData lineageData =
         new EsLineageData()
             .withDocId(getDocumentIdWithFqn(fromEntity, toEntity, lineageDetails))
-            .withDocUniqueId(getDocumentUniqueId(fromEntity, toEntity, lineageDetails))
+            .withDocUniqueId(getDocumentUniqueId(fromEntity, toEntity))
             .withFromEntity(buildEntityRefLineage(fromEntity));
     if (lineageDetails != null) {
       // Add Pipeline Details
@@ -406,16 +408,8 @@ public class LineageRepository {
     }
   }
 
-  public static String getDocumentUniqueId(
-      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    if (lineageDetails != null && !nullOrEmpty(lineageDetails.getPipeline())) {
-      EntityReference ref = lineageDetails.getPipeline();
-      return String.format(
-          "%s--->%s:%s--->%s",
-          fromEntity.getId(), ref.getType(), ref.getId().toString(), toEntity.getId().toString());
-    } else {
-      return String.format("%s--->%s", fromEntity.getId().toString(), toEntity.getId().toString());
-    }
+  public static String getDocumentUniqueId(EntityReference fromEntity, EntityReference toEntity) {
+    return String.format("%s--->%s", fromEntity.getId().toString(), toEntity.getId().toString());
   }
 
   public static void addPipelineDetails(EsLineageData lineageData, EntityReference pipelineRef) {
@@ -423,7 +417,8 @@ public class LineageRepository {
       lineageData.setPipeline(null);
     } else {
       Pair<String, Map<String, Object>> pipelineOrStoredProcedure =
-          getPipelineOrStoredProcedure(pipelineRef, List.of("changeDescription"));
+          getPipelineOrStoredProcedure(
+              pipelineRef, List.of("changeDescription", "incrementalChangeDescription"));
       lineageData.setPipelineEntityType(pipelineOrStoredProcedure.getLeft());
       lineageData.setPipeline(pipelineOrStoredProcedure.getRight());
     }
@@ -1084,7 +1079,7 @@ public class LineageRepository {
 
   private void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity, lineageDetails);
+    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),

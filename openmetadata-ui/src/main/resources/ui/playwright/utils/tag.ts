@@ -24,6 +24,7 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
   descriptionBox,
+  descriptionBoxReadOnly,
   getApiContext,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
@@ -78,6 +79,7 @@ export const visitClassificationPage = async (
   );
 
   await fetchTags;
+  await page.waitForLoadState('networkidle');
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
     { state: 'detached' }
@@ -91,9 +93,7 @@ export const addAssetsToTag = async (
   tag: TagClass,
   otherAsset?: EntityClass[]
 ) => {
-  const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
-  await res;
 
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
@@ -334,9 +334,7 @@ export const verifyTagPageUI = async (
   limitedAccess = false
 ) => {
   await redirectToHomePage(page);
-  const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
-  await res;
 
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
@@ -346,7 +344,9 @@ export const verifyTagPageUI = async (
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
   );
-  await expect(page.getByText(tag.data.description)).toBeVisible();
+  await expect(page.locator(descriptionBoxReadOnly)).toContainText(
+    tag.data.description
+  );
 
   await expect(
     page.getByTestId('data-classification-add-button')
@@ -361,8 +361,9 @@ export const verifyTagPageUI = async (
     `/api/v1/classifications/name/*`
   );
   await page.getByRole('link', { name: classificationName }).click();
-  classificationTable;
+  await classificationTable;
 
+  const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await page.getByTestId(tag.data.name).click();
   await res;
 
@@ -489,7 +490,10 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
   await adminPage.fill('[data-testid="icon-url"]', NEW_TAG.icon);
   await adminPage.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
-  await adminPage.click('[data-testid="add-domain"]');
+
+  await adminPage.click(
+    '[data-testid="modal-container"] [data-testid="add-domain"]'
+  );
   await adminPage
     .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
     .click();

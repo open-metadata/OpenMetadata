@@ -125,6 +125,7 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -140,7 +141,6 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -193,6 +193,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     create = createRequest(test, 2).withTeams(List.of(TEAM21.getId()));
     USER_TEAM21 = createEntity(create, ADMIN_AUTH_HEADERS);
     USER2_REF = USER2.getEntityReference();
+
+    // USER3 with no roles for permission testing
+    create = createRequest(test, 3).withRoles(List.of());
+    USER3 = createEntity(create, ADMIN_AUTH_HEADERS);
+    USER3_REF = USER3.getEntityReference();
 
     Set<String> userFields = Entity.getEntityFields(User.class);
     userFields.remove("authenticationMechanism");

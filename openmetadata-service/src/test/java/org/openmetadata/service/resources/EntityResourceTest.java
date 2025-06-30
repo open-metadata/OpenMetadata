@@ -182,6 +182,8 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -218,7 +220,6 @@ import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
@@ -229,7 +230,6 @@ import org.openmetadata.service.util.DeleteEntityMessage;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
@@ -291,6 +291,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference USER1_REF;
   public static User USER2;
   public static EntityReference USER2_REF;
+  public static User USER3; // User with no roles for permission testing
+  public static EntityReference USER3_REF;
   public static User USER_TEAM21;
   public static User BOT_USER;
   public static EntityReference DEFAULT_BOT_ROLE_REF;
@@ -388,6 +390,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static TestDefinition TEST_DEFINITION1;
   public static TestDefinition TEST_DEFINITION2;
   public static TestDefinition TEST_DEFINITION3;
+  public static TestDefinition TEST_DEFINITION4;
+  public static TestDefinition TEST_DEFINITION5;
 
   public static DataInsightChart DI_CHART1;
 
@@ -1730,10 +1734,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     fieldUpdated(change, "displayName", "displayName", "updatedDisplayName");
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Updating non-empty description and non-empty displayName is ignored for bot users
-    request.withDescription("updatedDescription2").withDisplayName("updatedDisplayName2");
+    // Updating non-empty description is ignored for bot users
+    request.withDescription("updatedDescription2");
     change = getChangeDescription(entity, NO_CHANGE);
     updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, NO_CHANGE, change);
+
+    // Updating non-empty display name is allowed for bot users
+    // revert to the last committed description, so only displayName is new
+    request.withDescription("updatedDescription").withDisplayName("updatedDisplayName2");
+    change = getChangeDescription(entity, MINOR_UPDATE);
+    fieldUpdated(change, "displayName", "updatedDisplayName", "updatedDisplayName2");
+    updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -2743,7 +2754,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws HttpResponseException {
     WebTarget target =
         getResource(
-            String.format("search/query?q=&index=%s&from=0&deleted=false&size=50", indexName));
+            String.format("search/query?q=&index=%s&from=0&deleted=false&size=1000", indexName));
     String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     SearchResponse response = null;
     try {

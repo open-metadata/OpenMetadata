@@ -50,4 +50,5 @@ export enum TokenType {
     PasswordReset = "PASSWORD_RESET",
     PersonalAccessToken = "PERSONAL_ACCESS_TOKEN",
     RefreshToken = "REFRESH_TOKEN",
+    SupportToken = "SUPPORT_TOKEN",
 }

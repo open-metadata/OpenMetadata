@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { capitalize } from 'lodash';
 import { FC } from 'react';
+import { NavigateFunction } from 'react-router-dom';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
@@ -51,6 +52,18 @@ import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+import { EntityTypeName } from './EntityUtils';
+import {
+  FormattedAPIServiceType,
+  FormattedDashboardServiceType,
+  FormattedDatabaseServiceType,
+  FormattedMessagingServiceType,
+  FormattedMetadataServiceType,
+  FormattedMlModelServiceType,
+  FormattedPipelineServiceType,
+  FormattedSearchServiceType,
+  FormattedStorageServiceType,
+} from './EntityUtils.interface';
 import {
   getApplicationDetailsPath,
   getDomainDetailsPath,
@@ -73,6 +86,30 @@ import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 class EntityUtilClassBase {
+  serviceTypeLookupMap: Map<string, string>;
+
+  constructor() {
+    this.serviceTypeLookupMap = this.createNormalizedLookupMap({
+      ...FormattedMlModelServiceType,
+      ...FormattedMetadataServiceType,
+      ...FormattedPipelineServiceType,
+      ...FormattedSearchServiceType,
+      ...FormattedDatabaseServiceType,
+      ...FormattedDashboardServiceType,
+      ...FormattedMessagingServiceType,
+      ...FormattedAPIServiceType,
+      ...FormattedStorageServiceType,
+    });
+  }
+
+  private createNormalizedLookupMap<T extends Record<string, string>>(
+    obj: T
+  ): Map<string, string> {
+    return new Map(
+      Object.entries(obj).map(([key, value]) => [key.toLowerCase(), value])
+    );
+  }
+
   public getEntityLink(
     indexType: string,
     fullyQualifiedName: string,
@@ -408,24 +445,36 @@ class EntityUtilClassBase {
       | ServicesType
       | Database
       | DatabaseSchema
-      | APICollection
+      | APICollection,
+    navigate: NavigateFunction
   ): ItemType[] {
     const isEntityDeleted = _entityDetails?.deleted ?? false;
     switch (_entityType) {
       case EntityType.TABLE:
         return [
-          ...ExtraTableDropdownOptions(_fqn, _permission, isEntityDeleted),
+          ...ExtraTableDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
         ];
       case EntityType.DATABASE:
         return [
-          ...ExtraDatabaseDropdownOptions(_fqn, _permission, isEntityDeleted),
+          ...ExtraDatabaseDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
         ];
       case EntityType.DATABASE_SCHEMA:
         return [
           ...ExtraDatabaseSchemaDropdownOptions(
             _fqn,
             _permission,
-            isEntityDeleted
+            isEntityDeleted,
+            navigate
           ),
         ];
       case EntityType.DATABASE_SERVICE:
@@ -433,12 +482,39 @@ class EntityUtilClassBase {
           ...ExtraDatabaseServiceDropdownOptions(
             _fqn,
             _permission,
-            isEntityDeleted
+            isEntityDeleted,
+            navigate
           ),
         ];
       default:
         return [];
     }
+  }
+
+  public getServiceTypeLookupMap(): Map<string, string> {
+    return this.serviceTypeLookupMap;
+  }
+
+  public getEntityTypeLookupMap(): Map<string, string> {
+    return this.createNormalizedLookupMap(EntityTypeName);
+  }
+
+  public getFormattedEntityType(entityType: string): string {
+    const normalizedKey = entityType?.toLowerCase();
+
+    return (
+      this.getEntityTypeLookupMap().get(normalizedKey) || capitalize(entityType)
+    );
+  }
+
+  public getFormattedServiceType(serviceType: string): string {
+    const normalizedKey = serviceType.toLowerCase();
+
+    return (
+      this.getServiceTypeLookupMap().get(normalizedKey) ??
+      this.getEntityTypeLookupMap().get(normalizedKey) ??
+      serviceType
+    );
   }
 }
 

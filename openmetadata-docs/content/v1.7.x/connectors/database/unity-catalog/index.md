@@ -1,5 +1,5 @@
 ---
-title: Unity Catalog
+title: Unity Catalog Connector | OpenMetadata Data Governance
 slug: /connectors/database/unity-catalog
 ---
 

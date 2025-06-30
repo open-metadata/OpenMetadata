@@ -880,15 +880,23 @@ class LookerSource(DashboardServiceSource):
                 self._parsed_views[view_name] = sql_query
                 for from_table_name in lineage_parser.source_tables:
                     # Process column level lineage
-                    column_lineage = [
-                        (
-                            source_col.raw_name,
-                            target_col.raw_name,
-                        )
-                        for source_col, target_col in lineage_parser.column_lineage
-                        or []
-                        if source_col.parent == from_table_name
-                    ]
+                    column_lineage = []
+                    for column_tuple in lineage_parser.column_lineage or []:
+                        if (
+                            column_tuple
+                            and hasattr(column_tuple[0], "parent")
+                            and column_tuple[0].parent == from_table_name
+                        ):
+                            column_lineage.append(
+                                (
+                                    column_tuple[0].raw_name
+                                    if hasattr(column_tuple[0], "raw_name")
+                                    else column_tuple[0],
+                                    column_tuple[-1].raw_name
+                                    if hasattr(column_tuple[-1], "raw_name")
+                                    else column_tuple[-1],
+                                )
+                            )
                     yield self.build_lineage_request(
                         source=str(from_table_name),
                         db_service_name=db_service_name,

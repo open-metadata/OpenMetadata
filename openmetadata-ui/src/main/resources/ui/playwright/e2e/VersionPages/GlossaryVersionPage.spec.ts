@@ -187,6 +187,7 @@ test('GlossaryTerm', async ({ page }) => {
     });
 
     await page.reload();
+    await page.waitForLoadState('networkidle');
     const versionPageResponse = page.waitForResponse(
       `/api/v1/glossaryTerms/${term2.responseData.id}/versions/0.2`
     );
@@ -199,14 +200,10 @@ test('GlossaryTerm', async ({ page }) => {
       )
     ).toBeVisible();
 
-    await page.waitForLoadState('networkidle');
-
     const glossaryTermsRes = page.waitForResponse(
       '/api/v1/glossaryTerms/name/**'
     );
     await page.getByRole('dialog').getByRole('img').click();
-
-    await page.waitForLoadState('networkidle');
     await glossaryTermsRes;
 
     await addMultiOwner({
@@ -219,10 +216,10 @@ test('GlossaryTerm', async ({ page }) => {
     });
 
     await page.reload();
+    await page.waitForLoadState('networkidle');
+
     await page.click('[data-testid="version-button"]');
     await versionPageResponse;
-
-    await page.waitForLoadState('networkidle');
 
     const diffLocator = page.locator(
       '[data-testid="glossary-reviewer"] [data-testid="diff-added"]'

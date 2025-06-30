@@ -80,6 +80,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
@@ -95,7 +96,6 @@ import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -511,19 +511,19 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     TestSuite testSuite6 =
         testSuiteResourceTest.createBasicTestSuite(createTestSuite6, ADMIN_AUTH_HEADERS);
 
-    MessageParser.EntityLink TABLE4_LINK =
-        new MessageParser.EntityLink(Entity.TABLE, TABLES.get(4).getFullyQualifiedName());
-    MessageParser.EntityLink TABLE6_LINK =
-        new MessageParser.EntityLink(Entity.TABLE, TABLES.get(6).getFullyQualifiedName());
+    MessageParser.EntityLink TABLE4_COLUMN_LINK =
+        MessageParser.EntityLink.parse(
+            String.format("<#E::table::%s::columns::c1>", TABLES.get(4).getFullyQualifiedName()));
+    MessageParser.EntityLink TABLE6_COLUMN_LINK =
+        MessageParser.EntityLink.parse(
+            String.format("<#E::table::%s::columns::c1>", TABLES.get(6).getFullyQualifiedName()));
     CreateTestCase create4 = testCaseResourceTest.createRequest(test);
     CreateTestCase create6 = testCaseResourceTest.createRequest(test, 2);
     create4
-        .withEntityLink(TABLE4_LINK.getLinkString())
-        .withTestSuite(testSuite4.getFullyQualifiedName())
+        .withEntityLink(TABLE4_COLUMN_LINK.getLinkString())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     create6
-        .withEntityLink(TABLE6_LINK.getLinkString())
-        .withTestSuite(testSuite6.getFullyQualifiedName())
+        .withEntityLink(TABLE6_COLUMN_LINK.getLinkString())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     TestCase testCase4 = testCaseResourceTest.createEntity(create4, ADMIN_AUTH_HEADERS);
     TestCase testCase6 = testCaseResourceTest.createEntity(create6, ADMIN_AUTH_HEADERS);

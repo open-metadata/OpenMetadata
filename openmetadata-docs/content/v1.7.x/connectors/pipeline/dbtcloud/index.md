@@ -1,5 +1,5 @@
 ---
-title: dbt Cloud
+title: dbt Cloud Connector | OpenMetadata Pipeline Integration
 slug: /connectors/pipeline/dbtcloud
 ---
 

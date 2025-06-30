@@ -461,6 +461,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     )
                     logger.error(error)
                     self.status.failed_profiler(error, traceback.format_exc())
+                    break
 
         # If we've exhausted all retries without success, return a tuple of None values
         return None, None, None

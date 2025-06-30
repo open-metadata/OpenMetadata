@@ -31,7 +31,7 @@
     <json-smart.version>2.5.2</json-smart.version>
     <aws.sdk.version>2.31.1</aws.sdk.version>
     <bedrock.runtime.version>2.31.1</bedrock.runtime.version>
-    <jetty.version>11.0.24</jetty.version>
+    <jetty.version>11.0.25</jetty.version>
     <logback-core.version>1.5.18</logback-core.version>
     <logback-classic.version>1.5.18</logback-classic.version>
   </properties>
@@ -792,6 +792,11 @@
       <version>5.9</version>
     </dependency>
     <dependency>
+      <groupId>commons-beanutils</groupId>
+      <artifactId>commons-beanutils</artifactId>
+      <version>1.11.0</version>
+    </dependency>
+    <dependency>
       <groupId>com.onelogin</groupId>
       <artifactId>java-saml</artifactId>
       <version>${java.saml}</version>
@@ -942,6 +947,11 @@
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.http.servlet-api</artifactId>
       <version>2.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.opensearch.client</groupId>
+      <artifactId>opensearch-rest-high-level-client</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -1139,9 +1149,11 @@
           <outputPath>${basedir}/target/classes/assets</outputPath>
           <outputFormat>JSONANDYAML</outputFormat>
           <resourcePackages>
+            <package>org.openmetadata.service</package>
             <package>org.openmetadata.service.resources</package>
           </resourcePackages>
           <prettyPrint>true</prettyPrint>
+          <contextId>default</contextId>
           <openAPI>
             <info>
               <title>OpenMetadata APIs</title>
@@ -1149,40 +1161,14 @@
               <description>Common types and API definition for OpenMetadata</description>
               <contact>
                 <name>OpenMetadata</name>
-                <url>https://open-metadata.org/</url>
-                <email>dev@open-metadata.org</email>
+                <url>https://open-metadata.org</url>
+                <email>openmetadata-dev@googlegroups.com</email>
               </contact>
               <license>
                 <name>Apache 2.0</name>
-                <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
+                <url>https://www.apache.org/licenses/LICENSE-2.0</url>
               </license>
             </info>
-            <servers>
-              <server>
-                <url>/api</url>
-                <description>Current Host</description>
-              </server>
-              <server>
-                <url>http://localhost:8585/api</url>
-                <description>Endpoint URL</description>
-              </server>
-            </servers>
-            <components>
-              <securitySchemes>
-                <securityScheme>
-                  <key>BearerAuth</key>
-                  <securityScheme>
-                    <type>http</type>
-                    <scheme>bearer</scheme>
-                  </securityScheme>
-                </securityScheme>
-              </securitySchemes>
-            </components>
-            <security>
-              <securityRequirement>
-                <name>BearerAuth</name>
-              </securityRequirement>
-            </security>
           </openAPI>
         </configuration>
         <executions>

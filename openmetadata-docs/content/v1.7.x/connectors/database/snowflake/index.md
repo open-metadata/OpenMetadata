@@ -1,5 +1,5 @@
 ---
-title: Snowflake
+title: Snowflake Connector | OpenMetadata Cloud Data Warehouse
 slug: /connectors/database/snowflake
 ---
 
@@ -8,7 +8,7 @@ name="Snowflake"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data", "Reverse Metadata (Collate Only)"]
-unavailableFeatures=["Owners"]
+unavailableFeatures=[]
 / %}
 
 

@@ -279,7 +279,13 @@ test.describe('Glossary tests', () => {
           type: 'Users',
         });
 
-        await assignTag(page, 'PersonalData.Personal', 'Add', 'tabs');
+        await assignTag(
+          page,
+          'PersonalData.Personal',
+          'Add',
+          EntityTypeEndpoint.Glossary,
+          'tabs'
+        );
       });
 
       await test.step('Update Glossary Term', async () => {
@@ -995,6 +1001,8 @@ test.describe('Glossary tests', () => {
   });
 
   test('Request description task for Glossary', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const user1 = new UserClass();
@@ -1024,11 +1032,9 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
 
-      const viewerContainerText = await page.textContent(
-        '[data-testid="viewer-container"]'
-      );
-
-      expect(viewerContainerText).toContain('Updated description');
+      await expect(
+        page.locator('[data-testid="viewer-container"]')
+      ).toContainText('Updated description');
     } finally {
       await glossary1.delete(apiContext);
       await afterAction();

@@ -24,13 +24,7 @@ import {
   Typography,
 } from 'antd';
 import { isEmpty, isEqual, isUndefined, map, omitBy } from 'lodash';
-import React, {
-  ReactElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DESTINATION_DROPDOWN_TABS,
@@ -116,7 +110,7 @@ function DestinationSelectItem({
     [];
 
   const handleTabChange = useCallback(
-    (key) => {
+    (key: string) => {
       setActiveTab(key);
       setDestinationOptions(getFilteredDestinationOptions(key, selectedSource));
     },
@@ -352,7 +346,7 @@ function DestinationSelectItem({
                           {`${t('label.status')}:`}
                         </Typography.Text>
                         <Typography.Text className="font-medium text-sm m-l-xss">
-                          {statusLabel}
+                          {`${destinationStatusDetails?.statusCode} ${statusLabel} ${destinationStatusDetails?.reason}`}
                         </Typography.Text>
                       </>
                     }

@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.commons.lang3.tuple.Pair;
@@ -24,8 +25,8 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ResultList;
 import os.org.opensearch.action.bulk.BulkRequest;
@@ -269,8 +270,6 @@ public interface SearchClient {
   DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
-  Response suggest(SearchRequest request) throws IOException;
-
   void createEntity(String indexName, String docId, String doc);
 
   void createEntities(String indexName, List<Map<String, String>> docsAndIds) throws IOException;
@@ -315,6 +314,13 @@ public interface SearchClient {
       String indexName,
       Pair<String, String> fieldAndValue,
       Map<String, Object> entityRelationshipData);
+
+  void reindexWithEntityIds(
+      List<String> sourceIndices,
+      String destinationIndex,
+      String pipelineName,
+      String entityType,
+      List<UUID> entityIds);
 
   Response listDataInsightChartResult(
       Long startTs,

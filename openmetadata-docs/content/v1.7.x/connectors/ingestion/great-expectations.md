@@ -1,5 +1,5 @@
 ---
-title: Great Expectations
+title: Great Expectations | OpenMetadata Data Quality Integration
 slug: /connectors/ingestion/great-expectations
 ---
 

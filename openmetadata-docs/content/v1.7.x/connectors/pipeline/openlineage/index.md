@@ -1,5 +1,5 @@
 ---
-title: OpenLineage
+title: OpenLineage | OpenMetadata Data Lineage Pipeline
 slug: /connectors/pipeline/openlineage
 ---
 

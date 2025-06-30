@@ -1,5 +1,5 @@
 ---
-title: MySQL
+title: MySQL Connector | OpenMetadata Database Integration Guide
 slug: /connectors/database/mysql
 ---
 

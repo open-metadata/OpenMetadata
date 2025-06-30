@@ -1,5 +1,5 @@
 ---
-title: Keycloak SSO
+title: Keycloak SSO | OpenMetadata Security Integration
 slug: /deployment/security/keycloak
 collate: false
 ---

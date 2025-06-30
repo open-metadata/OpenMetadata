@@ -1,5 +1,5 @@
 ---
-title: ADLS Datalake
+title: ADLS Datalake | OpenMetadata Database Connector Guide
 slug: /connectors/database/adls-datalake
 ---
 

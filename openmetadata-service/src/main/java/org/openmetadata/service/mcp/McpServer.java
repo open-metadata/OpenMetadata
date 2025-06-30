@@ -1,42 +1,37 @@
 package org.openmetadata.service.mcp;
 
-import static org.openmetadata.service.search.SearchUtil.searchMetadata;
-
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.DispatcherType;
-import jakarta.servlet.Filter;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.mcp.tools.GlossaryTermTool;
-import org.openmetadata.service.mcp.tools.GlossaryTool;
-import org.openmetadata.service.mcp.tools.PatchEntityTool;
-import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
+import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.security.auth.CatalogSecurityContext;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class McpServer {
   private JwtFilter jwtFilter;
   private Authorizer authorizer;
   private Limits limits;
+  protected DefaultToolContext toolContext;
+  protected DefaultPromptsContext promptsContext;
 
-  public McpServer() {}
+  public McpServer(DefaultToolContext toolContext, DefaultPromptsContext promptsContext) {
+    this.toolContext = toolContext;
+    this.promptsContext = promptsContext;
+  }
 
   public void initializeMcpServer(
       Environment environment,
@@ -47,6 +42,30 @@ public class McpServer {
         new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
     this.authorizer = authorizer;
     this.limits = limits;
+    MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    McpAuthFilter authFilter =
+        new McpAuthFilter(
+            new JwtFilter(
+                config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration()));
+    List<McpSchema.Tool> tools = getTools();
+    List<McpSchema.Prompt> prompts = getPrompts();
+    addSSETransport(contextHandler, authFilter, tools, prompts);
+    addStreamableHttpServlet(contextHandler, authFilter, tools, prompts);
+  }
+
+  protected List<McpSchema.Tool> getTools() {
+    return toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json");
+  }
+
+  protected List<McpSchema.Prompt> getPrompts() {
+    return promptsContext.loadPromptsDefinitionsFromJson("json/data/mcp/prompts.json");
+  }
+
+  private void addSSETransport(
+      MutableServletContextHandler contextHandler,
+      McpAuthFilter authFilter,
+      List<McpSchema.Tool> tools,
+      List<McpSchema.Prompt> prompts) {
     McpSchema.ServerCapabilities serverCapabilities =
         McpSchema.ServerCapabilities.builder()
             .tools(true)
@@ -54,152 +73,69 @@ public class McpServer {
             .resources(true, true)
             .build();
 
-    HttpServletSseServerTransportProvider transport =
-        new HttpServletSseServerTransportProvider("/mcp/messages", "/mcp/sse");
+    HttpServletSseServerTransportProvider sseTransport =
+        new HttpServletSseServerTransportProvider(new ObjectMapper(), "/mcp/messages", "/mcp/sse");
+
     McpSyncServer server =
-        io.modelcontextprotocol.server.McpServer.sync(transport)
-            .serverInfo("openmetadata-mcp", "0.1.0")
+        io.modelcontextprotocol.server.McpServer.sync(sseTransport)
+            .serverInfo("openmetadata-mcp-sse", "0.1.0")
             .capabilities(serverCapabilities)
             .build();
+    addToolsToServer(server, tools);
+    addPromptsToServer(server, prompts);
 
-    // Add resources, prompts, and tools to the MCP server
-    addTools(server);
+    // SSE transport for MCP
+    ServletHolder servletHolderSSE = new ServletHolder(sseTransport);
+    contextHandler.addServlet(servletHolderSSE, "/mcp/*");
 
-    MutableServletContextHandler contextHandler = environment.getApplicationContext();
-    ServletHolder servletHolder = new ServletHolder(transport);
-    contextHandler.addServlet(servletHolder, "/mcp/*");
-
-    McpAuthFilter authFilter =
-        new McpAuthFilter(
-            new JwtFilter(
-                config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration()));
     contextHandler.addFilter(
-        new FilterHolder((Filter) authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
+        new FilterHolder(authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
   }
 
-  public void addTools(McpSyncServer server) {
-    try {
-      LOG.info("Loading tool definitions...");
-      List<Map<String, Object>> cachedTools = loadToolsDefinitionsFromJson();
-      if (cachedTools == null || cachedTools.isEmpty()) {
-        LOG.error("No tool definitions were loaded!");
-        throw new RuntimeException("Failed to load tool definitions");
-      }
-      LOG.info("Successfully loaded {} tool definitions", cachedTools.size());
+  private void addStreamableHttpServlet(
+      MutableServletContextHandler contextHandler,
+      McpAuthFilter authFilter,
+      List<McpSchema.Tool> tools,
+      List<McpSchema.Prompt> prompts) {
+    // Streamable HTTP servlet for MCP
+    MCPStreamableHttpServlet streamableHttpServlet =
+        new MCPStreamableHttpServlet(
+            jwtFilter, authorizer, limits, toolContext, promptsContext, tools, prompts);
+    ServletHolder servletHolderStreamableHttp = new ServletHolder(streamableHttpServlet);
+    contextHandler.addServlet(servletHolderStreamableHttp, "/mcp");
 
-      for (Map<String, Object> toolDef : cachedTools) {
-        try {
-          String name = (String) toolDef.get("name");
-          String description = (String) toolDef.get("description");
-          Map<String, Object> schema = JsonUtils.getMap(toolDef.get("parameters"));
-          server.addTool(getTool(JsonUtils.pojoToJson(schema), name, description));
-        } catch (Exception e) {
-          LOG.error("Error processing tool definition: {}", toolDef, e);
-        }
-      }
-      LOG.info("Initializing request handlers...");
-    } catch (Exception e) {
-      LOG.error("Error during server startup", e);
-      throw new RuntimeException("Failed to start MCP server", e);
+    contextHandler.addFilter(
+        new FilterHolder(authFilter), "/mcp", EnumSet.of(DispatcherType.REQUEST));
+  }
+
+  public void addToolsToServer(McpSyncServer server, List<McpSchema.Tool> tools) {
+    for (McpSchema.Tool tool : tools) {
+      server.addTool(getTool(tool));
     }
   }
 
-  protected List<Map<String, Object>> loadToolsDefinitionsFromJson() {
-    String json = getJsonFromFile("json/data/mcp/tools.json");
-    return loadToolDefinitionsFromJson(json);
-  }
-
-  protected static String getJsonFromFile(String path) {
-    try {
-      return CommonUtil.getResourceAsStream(McpServer.class.getClassLoader(), path);
-    } catch (Exception ex) {
-      LOG.error("Error loading JSON file: {}", path, ex);
-      return null;
+  public void addPromptsToServer(McpSyncServer server, List<McpSchema.Prompt> tools) {
+    for (McpSchema.Prompt pm : tools) {
+      server.addPrompt(getPrompt(pm));
     }
   }
 
-  @SuppressWarnings("unchecked")
-  public List<Map<String, Object>> loadToolDefinitionsFromJson(String json) {
-    try {
-      LOG.info("Loaded tool definitions, content length: {}", json.length());
-      LOG.info("Raw tools.json content: {}", json);
-
-      JsonNode toolsJson = JsonUtils.readTree(json);
-      JsonNode toolsArray = toolsJson.get("tools");
-
-      if (toolsArray == null || !toolsArray.isArray()) {
-        LOG.error("Invalid MCP tools file format. Expected 'tools' array.");
-        return new ArrayList<>();
-      }
-
-      List<Map<String, Object>> tools = new ArrayList<>();
-      for (JsonNode toolNode : toolsArray) {
-        String name = toolNode.get("name").asText();
-        Map<String, Object> toolDef = JsonUtils.convertValue(toolNode, Map.class);
-        tools.add(toolDef);
-        LOG.info("Tool found: {} with definition: {}", name, toolDef);
-      }
-
-      LOG.info("Found {} tool definitions", tools.size());
-      return tools;
-    } catch (Exception e) {
-      LOG.error("Error loading tool definitions: {}", e.getMessage(), e);
-      throw e;
-    }
-  }
-
-  private McpServerFeatures.SyncToolSpecification getTool(
-      String schema, String toolName, String description) {
-    McpSchema.Tool tool = new McpSchema.Tool(toolName, description, schema);
-
+  private McpServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
     return new McpServerFeatures.SyncToolSpecification(
         tool,
         (exchange, arguments) -> {
           McpSchema.Content content =
-              new McpSchema.TextContent(JsonUtils.pojoToJson(runMethod(toolName, arguments)));
+              new McpSchema.TextContent(
+                  JsonUtils.pojoToJson(
+                      toolContext.callTool(authorizer, jwtFilter, limits, tool.name(), arguments)));
           return new McpSchema.CallToolResult(List.of(content), false);
         });
   }
 
-  protected Object runMethod(String toolName, Map<String, Object> params) {
-    CatalogSecurityContext securityContext =
-        jwtFilter.getCatalogSecurityContext((String) params.get("Authorization"));
-    LOG.info(
-        "Catalog Principal: {} is trying to call the tool: {}",
-        securityContext.getUserPrincipal().getName(),
-        toolName);
-    Object result;
-    try {
-      switch (toolName) {
-        case "search_metadata":
-          result = searchMetadata(params);
-          break;
-        case "get_entity_details":
-          result = EntityUtil.getEntityDetails(params);
-          break;
-        case "create_glossary":
-          result = new GlossaryTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_glossary_term":
-          result = new GlossaryTermTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "patch_entity":
-          result = new PatchEntityTool().execute(authorizer, securityContext, params);
-          break;
-        default:
-          result = Map.of("error", "Unknown function: " + toolName);
-          break;
-      }
-
-      return result;
-    } catch (AuthorizationException ex) {
-      LOG.error("Authorization error: {}", ex.getMessage());
-      return Map.of(
-          "error", String.format("Authorization error: %s", ex.getMessage()), "statusCode", 403);
-    } catch (Exception ex) {
-      LOG.error("Error executing tool: {}", ex.getMessage());
-      return Map.of(
-          "error", String.format("Error executing tool: %s", ex.getMessage()), "statusCode", 500);
-    }
+  private McpServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
+    return new McpServerFeatures.SyncPromptSpecification(
+        prompt,
+        (exchange, arguments) ->
+            promptsContext.callPrompt(jwtFilter, prompt.name(), arguments).getResult());
   }
 }

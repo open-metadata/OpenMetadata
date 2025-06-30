@@ -12,13 +12,7 @@
  */
 
 import { Button, Divider, Popover, Tooltip, Typography } from 'antd';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
@@ -149,7 +143,6 @@ const UserProfileTeams = ({
                     borderRadius: '5px',
                   }}>
                   <TeamsSelectableNew
-                    filterJoinable
                     handleDropdownChange={handleDropdownChange}
                     maxValueCount={3}
                     ref={teamsSelectableRef}

@@ -64,6 +64,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AppException;
+import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -132,6 +133,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           getEntitiesFromSeedData(
               APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
       loadDefaultApplications(createAppsReq);
+      ApplicationContext.initialize();
     } catch (Exception ex) {
       LOG.error("Failed in Create App Requests", ex);
     }

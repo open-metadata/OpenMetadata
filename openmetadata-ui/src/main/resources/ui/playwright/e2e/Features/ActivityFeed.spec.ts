@@ -38,7 +38,6 @@ import {
   visitOwnProfilePage,
 } from '../../utils/common';
 import { addOwner, updateDescription } from '../../utils/entity';
-import { clickOnLogo } from '../../utils/sidebar';
 import {
   checkTaskCountInActivityFeed,
   createDescriptionTask,
@@ -52,8 +51,11 @@ const entity = new TableClass();
 const entity2 = new TableClass();
 const entity3 = new TableClass();
 const entity4 = new TableClass();
+const entity5 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
+const user3 = new UserClass();
+const user4 = new UserClass();
 const adminUser = new UserClass();
 
 const test = base.extend<{ page: Page }>({
@@ -76,8 +78,11 @@ test.describe('Activity feed', () => {
     await entity2.create(apiContext);
     await entity3.create(apiContext);
     await entity4.create(apiContext);
+    await entity5.create(apiContext);
     await user1.create(apiContext);
     await user2.create(apiContext);
+    await user3.create(apiContext);
+    await user4.create(apiContext);
 
     await afterAction();
   });
@@ -88,8 +93,11 @@ test.describe('Activity feed', () => {
     await entity2.delete(apiContext);
     await entity3.delete(apiContext);
     await entity4.delete(apiContext);
+    await entity5.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
+    await user3.delete(apiContext);
+    await user4.delete(apiContext);
     await adminUser.delete(apiContext);
 
     await afterAction();
@@ -112,32 +120,34 @@ test.describe('Activity feed', () => {
   test('Emoji reaction on feed should be working fine', async ({ page }) => {
     await removeLandingBanner(page);
 
-    await test.step('Add Emoji reaction', async () => {
-      // Assign reaction for latest feed
-      await reactOnFeed(page);
+    // Assign reaction for latest feed
+    await reactOnFeed(page, 1);
 
-      // Verify if reaction is working or not
-      for (const emoji of REACTION_EMOJIS) {
-        await expect(
-          page.locator(
-            '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child [data-testid="feed-reaction-container"]'
-          )
-        ).toContainText(emoji);
-      }
-    });
+    // Verify if reaction is working or not
+    for (const emoji of REACTION_EMOJIS) {
+      await expect(
+        page.locator(
+          '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child [data-testid="feed-reaction-container"]'
+        )
+      ).toContainText(emoji);
+    }
+  });
 
-    await test.step('Remove Emoji reaction from feed', async () => {
-      // Remove reaction for latest feed
-      await reactOnFeed(page);
+  test('Remove Emoji reaction from feed', async ({ page }) => {
+    await removeLandingBanner(page);
+    // Add reaction for latest feed
+    await reactOnFeed(page, 2);
 
-      // Verify if reaction is removed or not
-      const feedReactionContainer = page
-        .locator('[data-testid="message-container"]')
-        .nth(1)
-        .locator('[data-testid="feed-reaction-container"]');
+    // Remove reaction for 2nd feed
+    await reactOnFeed(page, 2);
 
-      await expect(feedReactionContainer).toHaveCount(1);
-    });
+    // Verify if reaction is removed or not
+    const feedReactionContainers = page
+      .locator('[data-testid="message-container"]')
+      .nth(2)
+      .locator('[data-testid="feed-reaction-container"]');
+
+    await expect(feedReactionContainers).toHaveCount(1);
   });
 
   test('Assigned task should appear to task tab', async ({ page }) => {
@@ -159,9 +169,11 @@ test.describe('Activity feed', () => {
     await page.getByTestId('request-entity-tags').click();
 
     // create tag task
+    const openTaskAfterTagResponse = page.waitForResponse(TASK_OPEN_FETCH_LINK);
     await createTagTask(page, { ...value, tag: 'PII.None' });
+    await openTaskAfterTagResponse;
 
-    await clickOnLogo(page);
+    await redirectToHomePage(page);
 
     const taskResponse = page.waitForResponse(
       '/api/v1/feed?type=Task&filterType=OWNER&taskStatus=Open&userId=*'
@@ -241,6 +253,26 @@ test.describe('Activity feed', () => {
     await expect(
       page.locator('.right-container [data-testid="feed-replies"]')
     ).toContainText('Reply message');
+  });
+
+  test('Should be able to open and close emoji container in feed editor', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await visitOwnProfilePage(page);
+    await page.waitForLoadState('networkidle');
+
+    const commentInput = page.locator('[data-testid="comments-input-field"]');
+    commentInput.click();
+
+    await page.locator('.textarea-emoji-control').click();
+
+    await expect(page.locator('#textarea-emoji')).toBeVisible();
+
+    // Click on the main content area which is outside the emoji container
+    await page.locator('.center-container').click();
+
+    await expect(page.locator('#textarea-emoji')).not.toBeVisible();
   });
 
   test('Update Description Task on Columns', async ({ page }) => {
@@ -365,6 +397,58 @@ test.describe('Activity feed', () => {
     await checkTaskCountInActivityFeed(page, 0, 1);
   });
 
+  test('Replies should be visible in the task feed', async ({ page }) => {
+    const value: TaskDetails = {
+      term: entity2.entity.displayName,
+      assignee: user1.responseData.name,
+    };
+    await redirectToHomePage(page);
+
+    await entity2.visitEntityPage(page);
+
+    await page.getByTestId('request-description').click();
+
+    await createDescriptionTask(page, value);
+
+    // Task 1 - Update Description right panel check
+    const descriptionTask = await page.getByTestId('task-title').innerText();
+
+    expect(descriptionTask).toContain('Request to update description');
+
+    // check initial replies count
+    await expect(page.getByTestId('replies-count')).not.toBeVisible();
+
+    for (let i = 0; i < 10; i++) {
+      const commentInput = page.locator('[data-testid="comments-input-field"]');
+      commentInput.click();
+
+      await page.fill(
+        '[data-testid="editor-wrapper"] .ql-editor',
+        `Reply message ${i}`
+      );
+      const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
+      await page.getByTestId('send-button').click({ force: true });
+      await sendReply;
+    }
+
+    await page.reload();
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'hidden',
+    });
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByTestId('feed-reply-card')).toHaveCount(10);
+
+    for (let i = 0; i < 10; i++) {
+      await expect(
+        page.locator('.right-container [data-testid="feed-replies"]')
+      ).toContainText(`Reply message ${i}`);
+    }
+
+    // check replies count in feed card
+    await expect(page.getByTestId('replies-count')).toHaveText('10 Replies');
+  });
+
   test('Open and Closed Task Tab with approve from Task Feed Card', async ({
     page,
   }) => {
@@ -481,21 +565,91 @@ test.describe('Activity feed', () => {
     );
   });
 
-  test('Check Task Filter in Landing Page Widget', async ({ browser }) => {
+  test('User 1 mentions user 2 and user 2 sees correct usernames in feed replies', async ({
+    browser,
+  }) => {
     const { page: page1, afterAction: afterActionUser1 } =
-      await performUserLogin(browser, user1);
+      await performUserLogin(browser, adminUser);
     const { page: page2, afterAction: afterActionUser2 } =
       await performUserLogin(browser, user2);
 
-    await base.step('Create and Assign Task to User 2', async () => {
+    await test.step('User 1 mentions user 2 in a feed reply', async () => {
+      // Add mention comment in feed mentioning user2
+      await addMentionCommentInFeed(page1, user2.responseData.name);
+
+      await page1.locator('[data-testid="closeDrawer"]').click();
+
+      await afterActionUser1();
+    });
+
+    await test.step('User 2 logs in and checks @Mentions tab', async () => {
+      await redirectToHomePage(page2);
+      await page2.waitForLoadState('networkidle');
+
+      const fetchMentionsFeedResponse = page2.waitForResponse(
+        '/api/v1/feed?filterType=MENTIONS&userId=*'
+      );
+      await page2
+        .locator('[data-testid="activity-feed-widget"]')
+        .locator('text=@Mentions')
+        .click();
+
+      await fetchMentionsFeedResponse;
+
+      // Verify the mention appears in the feed
+      await expect(
+        page2.locator('[data-testid="message-container"]').first()
+      ).toBeVisible();
+
+      // Click on the feed to open replies
+      await page2.locator('[data-testid="reply-count"]').first().click();
+
+      await page2.waitForSelector('.ant-drawer-content', {
+        state: 'visible',
+      });
+
+      // Verify the feed reply card shows correct usernames
+      await expect(
+        page2.locator('[data-testid="feed-reply-card"]').first()
+      ).toBeVisible();
+
+      // Check that the reply shows the correct username (user1 who made the mention)
+      await expect(
+        page2
+          .locator('[data-testid="feed-reply-card"] .reply-card-user-name')
+          .first()
+      ).toContainText(adminUser.responseData.displayName);
+
+      // Check that the mention text contains user2's name
+      await expect(
+        page2
+          .locator(
+            '[data-testid="feed-replies"] [data-testid="markdown-parser"]'
+          )
+          .first()
+      ).toContainText(`@${user2.responseData.name}`);
+
+      await page2.locator('[data-testid="closeDrawer"]').click();
+
+      await afterActionUser2();
+    });
+  });
+
+  test('Check Task Filter in Landing Page Widget', async ({ browser }) => {
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, user1);
+    const { page: page2, afterAction: afterActionUser3 } =
+      await performUserLogin(browser, user3);
+
+    await base.step('Create and Assign Task to User 3', async () => {
       await redirectToHomePage(page1);
       await entity.visitEntityPage(page1);
 
-      // Create task for the user 2
+      // Create task for the user 3
       await page1.getByTestId('request-description').click();
       await createDescriptionTask(page1, {
         term: entity.entity.displayName,
-        assignee: user2.responseData.name,
+        assignee: user3.responseData.name,
       });
 
       await afterActionUser1();
@@ -507,11 +661,14 @@ test.describe('Activity feed', () => {
 
       // Create task for the user 1
       await page2.getByTestId('request-entity-tags').click();
+      const openTaskAfterTagResponse =
+        page2.waitForResponse(TASK_OPEN_FETCH_LINK);
       await createTagTask(page2, {
         term: entity.entity.displayName,
         tag: 'PII.None',
         assignee: user1.responseData.name,
       });
+      await openTaskAfterTagResponse;
 
       await redirectToHomePage(page2);
       const taskResponse = page2.waitForResponse(
@@ -524,6 +681,7 @@ test.describe('Activity feed', () => {
         .click();
 
       await taskResponse;
+      await page2.waitForLoadState('networkidle');
 
       await expect(
         page2.locator(
@@ -551,7 +709,7 @@ test.describe('Activity feed', () => {
       await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
 
       await expect(
-        page2.getByText(user2.responseData.displayName).first()
+        page2.getByText(user3.responseData.displayName).first()
       ).toBeVisible();
 
       // Check the Task based on Created by me task filter
@@ -572,21 +730,23 @@ test.describe('Activity feed', () => {
       await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
 
       await expect(
-        page2.getByText(user2.responseData.displayName).first()
+        page2.getByText(user3.responseData.displayName).first()
       ).toBeVisible();
 
-      await afterActionUser2();
+      await afterActionUser3();
     });
   });
 
   test('Verify feed count', async ({ page }) => {
     await redirectToHomePage(page);
-    await entity.visitEntityPage(page);
+    await entity5.visitEntityPage(page);
     await page.getByTestId('request-description').click();
     await createDescriptionTask(page, {
-      term: entity.entity.displayName,
-      assignee: user1.responseData.name,
+      term: entity5.entity.displayName,
+      assignee: user4.responseData.name,
     });
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await page.waitForLoadState('networkidle');
 
     await expect(page.getByTestId('left-panel-task-count')).toHaveText('1');
   });
@@ -658,7 +818,10 @@ base.describe('Activity feed with Data Consumer User', () => {
       await page1.getByTestId('request-entity-tags').click();
 
       // create tag task
+      const openTaskAfterTagResponse =
+        page1.waitForResponse(TASK_OPEN_FETCH_LINK);
       await createTagTask(page1, { ...value, tag: 'PII.None' });
+      await openTaskAfterTagResponse;
 
       // Should only see the close button
       expect(page1.locator('[data-testid="close-button"]')).toBeVisible();
@@ -676,10 +839,10 @@ base.describe('Activity feed with Data Consumer User', () => {
         '[data-testid="editor-wrapper"] .ql-editor',
         'Closing the task with comment'
       );
-      await page1
-        .locator('.activity-feed-editor-send-btn')
-        .scrollIntoViewIfNeeded();
+
+      const commentPostResponse = page1.waitForResponse('/api/v1/feed/*/posts');
       await page1.locator('.activity-feed-editor-send-btn').click();
+      await commentPostResponse;
       const commentWithCloseTask = page1.waitForResponse(
         '/api/v1/feed/tasks/*/close'
       );
@@ -775,7 +938,12 @@ base.describe('Activity feed with Data Consumer User', () => {
       await page1.getByTestId('request-entity-tags').click();
 
       // create tag task
+      const openTaskAfterTagResponse =
+        page1.waitForResponse(TASK_OPEN_FETCH_LINK);
       await createTagTask(page1, value, false);
+      await openTaskAfterTagResponse;
+
+      await page1.waitForLoadState('networkidle');
 
       // Should only see the close, add and comment button
       expect(
@@ -825,7 +993,11 @@ base.describe('Activity feed with Data Consumer User', () => {
         await tagsTask.click();
         await entityPageTaskTab;
 
-        expect(page2.getByText('no diff available').first()).toBeVisible();
+        await page2.waitForLoadState('networkidle');
+
+        await expect(
+          page2.getByText('no diff available').first()
+        ).toBeVisible();
 
         // Should see the add_close dropdown and comment button
         await expect(

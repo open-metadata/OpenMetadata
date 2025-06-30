@@ -12,7 +12,6 @@
  */
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
-import React from 'react';
 import '../../../../test/unit/mocks/recharts.mock';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';

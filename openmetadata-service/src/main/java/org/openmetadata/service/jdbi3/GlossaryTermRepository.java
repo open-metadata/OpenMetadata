@@ -64,6 +64,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
+import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -85,6 +86,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -99,7 +101,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -324,16 +325,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
 
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
-
+    EntityRepository<?> glossaryRepository = Entity.getEntityRepository(Entity.GLOSSARY);
+    EntityInterface glossary =
+        glossaryRepository.getByName(
+            null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
-    checkMutuallyExclusive(request.getGlossaryTags());
+    checkMutuallyExclusive(glossary.getTags());
 
     BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
     if (dryRun
-        && (CommonUtil.nullOrEmpty(request.getGlossaryTags())
+        && (CommonUtil.nullOrEmpty(glossary.getTags())
             || CommonUtil.nullOrEmpty(request.getAssets()))) {
       // Nothing to Validate
       return result
@@ -365,7 +369,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             asset.getFullyQualifiedName(),
             FullyQualifiedName.buildHash(asset.getFullyQualifiedName()),
             allAssetTags,
-            request.getGlossaryTags(),
+            glossary.getTags(),
             false);
         success.add(new BulkResponse().withRequest(ref));
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -388,11 +392,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Apply the tags of glossary to the glossary term
     if (!dryRun
         && CommonUtil.nullOrEmpty(result.getFailedRequest())
-        && (!(term.getTags().isEmpty() && request.getGlossaryTags().isEmpty()))) {
+        && (!(term.getTags().isEmpty() && glossary.getTags().isEmpty()))) {
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
       daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
-      applyTags(getUniqueTags(request.getGlossaryTags()), term.getFullyQualifiedName());
+      applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
 
       searchRepository.updateEntity(term.getEntityReference());
     }
@@ -413,7 +417,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public BulkOperationResult validateGlossaryTagsAddition(
-      UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
+      UUID glossaryTermId, ValidateGlossaryTagsRequest request) {
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
 
     List<TagLabel> glossaryTagsToValidate = request.getGlossaryTags();
@@ -436,7 +440,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         new HashSet<>(
             daoCollection.tagUsageDAO().getTargetFQNHashForTag(term.getFullyQualifiedName()));
     Map<String, EntityReference> targetFQNFromES =
-        getGlossaryUsageFromES(term.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+        getGlossaryUsageFromES(term.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
+    // Inclusion of soft deleted assets as well
+    targetFQNFromES.putAll(
+        getGlossaryUsageFromES(term.getFullyQualifiedName(), targetFQNHashesFromDb.size(), true));
 
     for (String fqnHash : targetFQNHashesFromDb) {
       // Update Result Processed
@@ -490,7 +497,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return result;
   }
 
-  protected Map<String, EntityReference> getGlossaryUsageFromES(String glossaryFqn, int size) {
+  protected Map<String, EntityReference> getGlossaryUsageFromES(
+      String glossaryFqn, int size, boolean softDeleted) {
     try {
       String key = "_source";
       SearchRequest searchRequest =
@@ -505,7 +513,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               .withFetchSource(true)
               .withTrackTotalHits(false)
               .withSortFieldParam("_score")
-              .withDeleted(false)
+              .withDeleted(softDeleted)
               .withSortOrder("desc")
               .withIncludeSourceFields(new ArrayList<>());
       Response response = searchRepository.search(searchRequest, null);
@@ -787,7 +795,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     // List of entity references tagged with the glossary term
     Map<String, EntityReference> targetFQNFromES =
-        getGlossaryUsageFromES(original.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+        getGlossaryUsageFromES(
+            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
     List<EntityReference> childrenTerms =
         searchRepository.getEntitiesContainingFQNFromES(
             original.getFullyQualifiedName(),
@@ -800,7 +809,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     for (EntityReference child : childrenTerms) {
       targetFQNFromES.putAll( // List of entity references tagged with the children term
-          getGlossaryUsageFromES(child.getFullyQualifiedName(), targetFQNHashesFromDb.size()));
+          getGlossaryUsageFromES(
+              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false));
       searchRepository.updateEntity(child); // update es index of child term
       searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
     }

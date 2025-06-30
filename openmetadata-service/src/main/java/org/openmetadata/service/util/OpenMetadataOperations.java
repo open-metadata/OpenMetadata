@@ -64,7 +64,9 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -140,7 +142,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
-            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines'");
+            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines', "
+            + "'dbServiceCleanup', 'relationshipCleanup'");
+    LOG.info(
+        "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
   }
 
@@ -709,6 +714,77 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "relationshipCleanup",
+      description =
+          "Cleans up orphaned entity relationships where referenced entities no longer exist, "
+              + "and broken service hierarchy entities. By default, runs in dry-run mode to only identify orphaned relationships.")
+  public Integer cleanupOrphanedRelationships(
+      @Option(
+              names = {"--delete"},
+              description =
+                  "Actually delete the orphaned relationships and broken entities. Without this flag, the command only identifies orphaned relationships (dry-run mode).",
+              defaultValue = "false")
+          boolean delete,
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "1000",
+              description = "Number of relationships to process in each batch.")
+          int batchSize,
+      @Option(
+              names = {"--skip-hierarchy-cleanup"},
+              description =
+                  "Skip the service hierarchy cleanup and only perform generic relationship cleanup.",
+              defaultValue = "false")
+          boolean skipHierarchyCleanup) {
+    try {
+      boolean dryRun = !delete;
+      LOG.info(
+          "Running Entity Relationship Cleanup. Dry run: {}, Batch size: {}, Skip hierarchy cleanup: {}",
+          dryRun,
+          batchSize,
+          skipHierarchyCleanup);
+      parseConfig();
+
+      if (skipHierarchyCleanup) {
+        // Only perform relationship cleanup
+        LOG.info("=== Entity Relationship Cleanup Only ===");
+        EntityRelationshipCleanup cleanup = new EntityRelationshipCleanup(collectionDAO, dryRun);
+        EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(batchSize);
+
+        LOG.info("Total relationships scanned: {}", result.getTotalRelationshipsScanned());
+        LOG.info("Orphaned relationships found: {}", result.getOrphanedRelationshipsFound());
+        LOG.info("Relationships deleted: {}", result.getRelationshipsDeleted());
+
+        if (dryRun && result.getOrphanedRelationshipsFound() > 0) {
+          LOG.info("To actually delete these orphaned relationships, run with --delete");
+          return 1;
+        }
+      } else {
+        // Perform comprehensive cleanup (relationships + hierarchies)
+        EntityRelationshipCleanupUtil comprehensiveCleanup =
+            dryRun
+                ? EntityRelationshipCleanupUtil.forDryRun(collectionDAO, batchSize)
+                : EntityRelationshipCleanupUtil.forActualCleanup(collectionDAO, batchSize);
+
+        EntityRelationshipCleanupUtil.CleanupResult result =
+            comprehensiveCleanup.performComprehensiveCleanup();
+        comprehensiveCleanup.printComprehensiveResults(result);
+
+        if (dryRun && result.getTotalEntitiesDeleted() > 0) {
+          LOG.info(
+              "To actually delete these orphaned relationships and broken entities, run with --delete");
+          return 1;
+        }
+      }
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup orphaned relationships due to ", e);
+      return 1;
+    }
+  }
+
   @Command(name = "reindex", description = "Re Indexes data into search engine from command line.")
   public Integer reIndex(
       @Option(
@@ -762,6 +838,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
               description = "Maximum number of retries for failed search requests.")
           int retries,
       @Option(
+              names = {"--auto-tune"},
+              defaultValue = "false",
+              description =
+                  "Enable automatic performance tuning based on cluster capabilities and database entity count. When enabled, overrides manual parameter settings.")
+          boolean autoTune,
+      @Option(
               names = {"--entities"},
               defaultValue = "'all'",
               description =
@@ -769,7 +851,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           String entityStr) {
     try {
       LOG.info(
-          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
+          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}, Auto-tune: {}",
           entityStr,
           batchSize,
           payloadSize,
@@ -780,7 +862,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           backOff,
           maxBackOff,
           maxRequests,
-          retries);
+          retries,
+          autoTune);
       parseConfig();
       CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);
@@ -804,7 +887,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           backOff,
           maxBackOff,
           maxRequests,
-          retries);
+          retries,
+          autoTune);
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
@@ -843,7 +927,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       int backOff,
       int maxBackOff,
       int maxRequests,
-      int retries) {
+      int retries,
+      boolean autoTune) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App app = appRepository.getByName(null, appName, appRepository.getFields("id"));
 
@@ -859,7 +944,19 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withInitialBackoff(backOff)
             .withMaxBackoff(maxBackOff)
             .withMaxConcurrentRequests(maxRequests)
-            .withMaxRetries(retries);
+            .withMaxRetries(retries)
+            .withAutoTune(autoTune);
+
+    // Log auto-tune behavior
+    if (autoTune) {
+      LOG.info(
+          "Auto-tune enabled: SearchIndexApp will analyze cluster capabilities and optimize parameters automatically");
+      LOG.info("Manual parameter settings will be overridden by auto-tuned values based on:");
+      LOG.info("  - OpenSearch/ElasticSearch cluster stats and settings");
+      LOG.info("  - Database entity counts");
+      LOG.info("  - Available cluster resources and capacity");
+      LOG.info("  - Request compression benefits (JSON payloads will be gzip compressed)");
+    }
 
     // Trigger Application
     long currentTime = System.currentTimeMillis();
@@ -1137,6 +1234,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             new SubstitutingSourceProvider(
                 new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
             configFilePath);
+    IndexMappingLoader.init(config.getElasticSearchConfiguration());
     Fernet.getInstance().setFernetKey(config);
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
     if (dataSourceFactory == null) {
@@ -1196,6 +1294,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setCollectionDAO(collectionDAO);
     Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
+    ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+    DatasourceConfig.initialize(connType.label);
   }
 
   private void promptUserForDelete() {
@@ -1267,6 +1367,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public static void printToAsciiTable(
       List<String> columns, List<List<String>> rows, String emptyText) {
     LOG.info(new AsciiTable(columns, rows, true, "", emptyText).render());
+  }
+
+  private void performServiceHierarchyCleanup(boolean dryRun) {
+    ServiceHierarchyCleanup hierarchyCleanup = new ServiceHierarchyCleanup(collectionDAO, dryRun);
+    ServiceHierarchyCleanup.HierarchyCleanupResult result =
+        hierarchyCleanup.performHierarchyCleanup();
+    hierarchyCleanup.printCleanupResults(result);
   }
 
   private void printChangeLog() {

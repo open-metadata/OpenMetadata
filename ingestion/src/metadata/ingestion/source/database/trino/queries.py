@@ -20,7 +20,7 @@ TRINO_SQL_STATEMENT = textwrap.dedent(
       "user" as user_name,
       "started" as start_time,
       "end" as end_time
-    from "system"."runtime"."queries"
+    from {query_history_table}
     WHERE "query" NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND "query" NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     AND CAST("started" AS date)  >= date_parse('{start_time}', '%Y-%m-%d %H:%i:%s')

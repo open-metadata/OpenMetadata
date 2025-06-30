@@ -19,11 +19,12 @@ export type ExploreTreeNode = {
   key: string;
   children?: ExploreTreeNode[];
   isLeaf?: boolean;
-  icon?: JSX.Element | SvgComponent;
+  icon?: JSX.Element | SvgComponent | ReactNode;
   data?: TreeNodeData;
   count?: number;
   totalCount?: number;
   type?: string | null;
+  tooltip?: string;
 };
 
 export type ExploreTreeProps = {

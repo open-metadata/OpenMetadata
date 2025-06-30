@@ -114,7 +114,7 @@ export const deleteBot = async (page: Page) => {
 
   await toastNotification(page, /deleted successfully!/);
 
-  await expect(page.getByTestId('page-layout-v1')).not.toContainText(botName);
+  await expect(page.locator('.ant-table-tbody')).not.toContainText(botName);
 };
 
 export const updateBotDetails = async (page: Page) => {

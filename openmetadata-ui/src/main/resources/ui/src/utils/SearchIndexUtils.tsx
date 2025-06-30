@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { uniqueId } from 'lodash';
-import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
@@ -33,6 +31,7 @@ import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import SearchIndexFieldsTab from '../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
+import { t } from './i18next/LocalUtil';
 import { SearchIndexDetailPageTabProps } from './SearchIndexDetailsClassBase';
 
 // eslint-disable-next-line max-len
@@ -157,6 +156,7 @@ export const getSearchIndexDetailsTabs = ({
       key: EntityTabs.SEARCH_INDEX_SETTINGS,
       children: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.SEARCH_INDEX_SETTINGS}
           sqlQuery={JSON.stringify(searchIndexDetails?.searchIndexSettings)}
           title={t('label.search-index-setting-plural')}
         />

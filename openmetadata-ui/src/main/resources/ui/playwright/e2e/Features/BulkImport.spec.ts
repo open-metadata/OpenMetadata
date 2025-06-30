@@ -209,7 +209,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -238,7 +238,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // Fill table and columns details
         await fillRowDetails(
@@ -268,7 +268,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         await fillRecursiveColumnDetails(
           {
@@ -287,7 +287,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 16, 'ArrowLeft');
+        await pressKeyXTimes(page, 19, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -320,7 +320,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 18, 'ArrowLeft');
+        await pressKeyXTimes(page, 19, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -478,7 +478,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // Fill table and columns details
         await fillRowDetails(
@@ -508,7 +508,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         await fillRecursiveColumnDetails(
           {
@@ -527,7 +527,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 16, 'ArrowLeft');
+        await pressKeyXTimes(page, 17, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -694,7 +694,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // Fill table columns details
         await fillRecursiveColumnDetails(
@@ -714,7 +714,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 16, 'ArrowLeft');
+        await pressKeyXTimes(page, 17, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -744,7 +744,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // fill second table columns details
         await fillRecursiveColumnDetails(
@@ -794,6 +794,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Table', async ({ page }) => {
+    test.slow(true);
+
     const tableEntity = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
@@ -857,7 +859,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 8, 'ArrowLeft');
+        await pressKeyXTimes(page, 9, 'ArrowLeft');
 
         await fillColumnDetails(columnDetails2, page);
 

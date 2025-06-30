@@ -1,5 +1,5 @@
 ---
-title: Tableau
+title: Tableau Connector | OpenMetadata Integration Guide
 slug: /connectors/dashboard/tableau
 ---
 

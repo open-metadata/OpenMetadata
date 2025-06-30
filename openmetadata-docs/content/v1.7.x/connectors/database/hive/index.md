@@ -1,5 +1,5 @@
 ---
-title: Hive
+title: Hive Connector | OpenMetadata Big Data Integration Guide
 slug: /connectors/database/hive
 ---
 
