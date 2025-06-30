@@ -84,3 +84,11 @@ class QlikAppResponse(BaseModel):
 
     apps: Optional[List[QlikApp]] = Field(None, alias="data")
     links: Optional[QlikLinks] = None
+
+
+class QlikScript(BaseModel):
+    qScript: Optional[str] = None
+
+
+class QlikScriptResult(BaseModel):
+    result: Optional[QlikScript] = QlikScript()
