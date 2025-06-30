@@ -64,3 +64,9 @@ GET_LOADMODEL_LAYOUT = {
     "id": 5,
     "jsonrpc": "2.0",
 }
+GET_SCRIPT = {
+    "handle": 3,
+    "method": "GetScript",
+    "id": 1,
+    "jsonrpc": "2.0",
+}
