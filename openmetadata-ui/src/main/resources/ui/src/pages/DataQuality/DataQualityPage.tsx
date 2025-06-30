@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import TestCaseFormV1 from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -119,6 +120,15 @@ const DataQualityPage = () => {
           />
         </Col>
       </Row>
+      <TestCaseFormV1
+        isDrawer
+        drawerProps={{
+          title: t('label.add-entity', {
+            entity: t('label.test-case'),
+          }),
+          open: false,
+        }}
+      />
     </DataQualityProvider>
   );
 };
