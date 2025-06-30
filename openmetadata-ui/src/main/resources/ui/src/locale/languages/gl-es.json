@@ -1678,6 +1678,7 @@
     "cron-dow-validation-failure": "A parte DOW debe ser >= 0 e <= 6",
     "cron-less-than-hour-message": "Horario Cron demasiado frecuente. Escolle intervalos de polo menos 1 hora.",
     "curated-assets-no-data-message": "Non se atoparon activos curados",
+    "curated-assets-widget-title-placeholder": "Introduza un título para o seu widget, Ex: Táboas Recomendadas",
     "current-offset-description": "The current offset of the event subscription.",
     "custom-classification-name-dbt-tags": "Nome da clasificación personalizada de OpenMetadata para etiquetas dbt",
     "custom-favicon-url-path-message": "Ruta URL para o icono favicon.",

@@ -15,7 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Form, Input, Modal, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusSquare } from '../../../../../assets/svg/plus-square.svg';
 import { VALIDATION_MESSAGES } from '../../../../../constants/constants';
@@ -177,7 +177,7 @@ const CuratedAssetsModal = ({
             <Input
               autoFocus
               data-testid="title-input"
-              placeholder="Enter a title for your widget, Ex: Recommended Tables"
+              placeholder={t('message.curated-assets-widget-title-placeholder')}
             />
           </Form.Item>
           <SelectAssetTypeField

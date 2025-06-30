@@ -73,33 +73,6 @@ jest.mock('../../../../../utils/QueryBuilderUtils', () => ({
   getJsonTreeFromQueryFilter: jest.fn().mockReturnValue({}),
 }));
 
-//   ...jest.requireActual('antd'),
-//   Form: {
-//     ...jest.requireActual('antd').Form,
-//     useFormInstance: jest.fn().mockReturnValue({
-//       getFieldValue: jest.fn().mockReturnValue('{}'),
-//       setFieldValue: jest.fn(),
-//     }),
-//     useWatch: jest.fn().mockReturnValue(['table']),
-//   },
-//   Col: jest
-//     .fn()
-//     .mockImplementation(({ children, className }) => (
-//       <div className={className}>{children}</div>
-//     )),
-//   Row: jest
-//     .fn()
-//     .mockImplementation(({ children, className }) => (
-//       <div className={className}>{children}</div>
-//     )),
-//   Input: jest
-//     .fn()
-//     .mockImplementation(() => <input data-testid="hidden-input" />),
-//   Skeleton: jest
-//     .fn()
-//     .mockImplementation(() => <div data-testid="skeleton">Skeleton</div>),
-// }));
-
 const mockFetchEntityCount = jest.fn();
 const mockSelectedAssetsInfo = {
   resourceCount: 0,

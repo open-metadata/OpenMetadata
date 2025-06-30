@@ -1678,6 +1678,7 @@
     "cron-dow-validation-failure": "Haftanın Günü (DOW) bölümü >= 0 ve <= 6 olmalıdır",
     "cron-less-than-hour-message": "Cron zamanlaması çok sık. Lütfen en az 1 saatlik aralıklar seçin.",
     "curated-assets-no-data-message": "Seçili varlıklar için veri bulunamadı",
+    "curated-assets-widget-title-placeholder": "Widget'ınız için bir başlık girin, Örn: Önerilen Tablolar",
     "current-offset-description": "Olay aboneliğinin mevcut ofseti.",
     "custom-classification-name-dbt-tags": "dbt etiketleri için özel OpenMetadata Sınıflandırma adı ",
     "custom-favicon-url-path-message": "Favicon simgesi için URL yolu.",

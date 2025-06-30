@@ -1678,6 +1678,7 @@
     "cron-dow-validation-failure": "DOW-deel moet >= 0 en <= 6 zijn",
     "cron-less-than-hour-message": "Cron schedule too frequent. Please choose at least 1-hour intervals.",
     "curated-assets-no-data-message": "Geen gegevens beschikbaar voor geselecteerde assets",
+    "curated-assets-widget-title-placeholder": "Voer een titel in voor uw widget, bijv.: Aanbevolen tabellen",
     "current-offset-description": "The current offset of the event subscription.",
     "custom-classification-name-dbt-tags": "Aangepaste OpenMetadata-classificatienaam voor dbt-tags",
     "custom-favicon-url-path-message": "URL-pad voor het favicon-pictogram.",
