@@ -2131,7 +2131,10 @@
     "team-no-asset": "تیم شما هیچ دارایی ندارد.",
     "test-case-schedule-description": "آزمون‌های کیفیت داده می‌توانند به صورت دوره‌ای برنامه‌ریزی شوند. منطقه زمانی به صورت UTC است.",
     "test-connection-cannot-be-triggered": "اتصال تست نمی‌تواند اجرا شود.",
-    "test-connection-taking-too-long": "تست اتصال زمان زیادی طول می‌کشد. لطفاً دوباره تلاش کنید.",
+    "test-connection-taking-too-long": {
+      "default": "لطفاً اطمینان حاصل کنید که {{service_type}} به درستی برای اجازه اتصال پیکربندی شده است",
+      "withIp": " از {{ip}}"
+    },
     "test-your-connection-before-creating-service": "اتصالات خود را قبل از ایجاد سرویس تست کنید.",
     "testing-your-connection-may-take-two-minutes": "تست اتصالات شما ممکن است تا ۲ دقیقه طول بکشد.",
     "this-action-is-not-allowed-for-deleted-entities": "این اقدام برای موجودیت‌های حذف شده مجاز نیست.",

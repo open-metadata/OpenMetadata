@@ -325,7 +325,7 @@ describe('Test Connection Component', () => {
     });
 
     expect(
-      await screen.findByText('message.test-connection-taking-too-long')
+      screen.getByText('message.test-connection-taking-too-long.default')
     ).toBeInTheDocument();
 
     // 59 since it will make this amount of call, and after timeout it should not make more api calls

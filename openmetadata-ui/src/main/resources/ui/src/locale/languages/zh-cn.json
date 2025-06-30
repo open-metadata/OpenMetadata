@@ -2131,7 +2131,10 @@
     "team-no-asset": "您的团队没有任何资产",
     "test-case-schedule-description": "数据质控测试可按所需频率安排运行, 时区为 UTC",
     "test-connection-cannot-be-triggered": "连接测试无法被触发",
-    "test-connection-taking-too-long": "连接测试超时, 请重新测试",
+    "test-connection-taking-too-long": {
+      "default": "请确保 {{service_type}} 已配置为允许连接",
+      "withIp": " 来自 {{ip}}"
+    },
     "test-your-connection-before-creating-service": "在创建服务之前测试您的连接",
     "testing-your-connection-may-take-two-minutes": "连接测试可能最多需要 2 分钟",
     "this-action-is-not-allowed-for-deleted-entities": "已删除的实体不允许执行此操作",

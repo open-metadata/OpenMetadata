@@ -89,7 +89,10 @@ import {
   ListDataModelParams,
 } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
-import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
+import {
+  getIngestionPipelines,
+  getPipelineServiceHostIp,
+} from '../../rest/ingestionPipelineAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
 import { getPipelines } from '../../rest/pipelineAPI';
 import { searchQuery } from '../../rest/searchAPI';
@@ -177,6 +180,25 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [workflowStatesData, setWorkflowStatesData] =
     useState<WorkflowStatesData>();
   const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(true);
+  const [hostIp, setHostIp] = useState<string>();
+
+  const fetchHostIp = async () => {
+    try {
+      const { status, data } = await getPipelineServiceHostIp();
+      if (status === 200) {
+        setHostIp(data?.ip);
+      }
+    } catch {
+      setHostIp(undefined);
+    }
+  };
+
+  useEffect(() => {
+    if (isAirflowAvailable) {
+      fetchHostIp();
+    }
+  }, [isAirflowAvailable]);
+
   const USERId = currentUser?.id ?? '';
   const {
     paging: collateAgentPaging,
@@ -1300,6 +1322,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
                 <TestConnection
                   connectionType={serviceDetails?.serviceType ?? ''}
                   getData={() => connectionDetails}
+                  hostIp={hostIp}
                   isTestingDisabled={isTestingDisabled}
                   serviceCategory={serviceCategory as ServiceCategory}
                   serviceName={serviceDetails?.name}
@@ -1332,6 +1355,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     statusFilter,
     typeFilter,
     extraInfoData,
+    hostIp,
   ]);
 
   const tabs: TabsProps['items'] = useMemo(() => {
