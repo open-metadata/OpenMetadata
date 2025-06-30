@@ -646,13 +646,6 @@ export const TestCases = () => {
           </Space>
         </Form>
       </Col>
-      {/* <Col span={24}>
-          <SummaryPanel
-            showAdditionalSummary
-            isLoading={isTestCaseSummaryLoading}
-            testSummary={testCaseSummary}
-          />
-        </Col> */}
       <Col span={24}>
         <PieChartSummaryPanel
           isLoading={isTestCaseSummaryLoading}
