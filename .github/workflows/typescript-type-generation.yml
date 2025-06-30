@@ -1,7 +1,8 @@
 name: TypeScript Type Generation
 
 on:
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-ui/src/main/resources/ui/src/generated/**"
@@ -20,6 +21,7 @@ concurrency:
 jobs:
   generate-types:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     permissions:
       contents: write
       pull-requests: write
