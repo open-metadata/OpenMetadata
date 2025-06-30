@@ -297,8 +297,8 @@ const CuratedAssetsWidget = ({
           icon={
             <CuratedAssetsEmptyIcon
               data-testid="curated-assets-empty-icon"
-              height={SIZE.X_SMALL}
-              width={SIZE.X_SMALL}
+              height={SIZE.LARGE}
+              width={SIZE.LARGE}
             />
           }
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
@@ -364,7 +364,7 @@ const CuratedAssetsWidget = ({
 
   const entityList = useMemo(
     () => (
-      <div className="entity-list-body no-scrollbar">
+      <div className="entity-list-body no-scrollbar h-full w-full">
         {data.length > 0
           ? data.map((item) => (
               <div
