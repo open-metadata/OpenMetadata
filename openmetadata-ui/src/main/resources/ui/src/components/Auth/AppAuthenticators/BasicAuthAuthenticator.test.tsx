@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, render } from '@testing-library/react';
-import React, { createRef } from 'react';
+import { createRef } from 'react';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { AccessTokenResponse } from '../../../rest/auth-API';
 

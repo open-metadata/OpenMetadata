@@ -12,7 +12,6 @@
  */
 /* eslint-disable i18next/no-literal-string */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { getListTestCaseBySearch } from '../../../../rest/testAPI';

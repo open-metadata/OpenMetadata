@@ -24,7 +24,6 @@
  */
 
 import classNames from 'classnames';
-import React from 'react';
 import { ReactComponent as NoDataFoundPlaceHolderIcon } from '../../../assets/svg/ic-task-empty.svg';
 import { NoDataPlaceholderProps } from './placeholder.interface';
 

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import { entries, isNumber, isString, omit, startCase } from 'lodash';
-import React, { Fragment } from 'react';
+import { entries, isNumber, omit, startCase } from 'lodash';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TooltipProps } from 'recharts';
@@ -39,11 +39,15 @@ const TestSummaryCustomTooltip = (
     return null;
   }
 
+  const isThread = (value: unknown): value is Thread => {
+    return typeof value === 'object' && value !== null && 'task' in value;
+  };
+
   const tooltipRender = ([key, value]: [
     key: string,
     value: string | number | Thread
   ]) => {
-    if (key === 'task' && !isString(value) && !isNumber(value)) {
+    if (isThread(value)) {
       return value?.task ? (
         <Fragment key={`item-${key}`}>
           <li

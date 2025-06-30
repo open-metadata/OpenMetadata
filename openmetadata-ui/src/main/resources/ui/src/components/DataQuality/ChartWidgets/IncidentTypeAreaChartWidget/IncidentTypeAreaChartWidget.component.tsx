@@ -13,7 +13,7 @@
 import { Card, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, last } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchCountOfIncidentStatusTypeByDays } from '../../../../rest/dataQualityDashboardAPI';
 import { CustomAreaChartData } from '../../../Visualisations/Chart/Chart.interface';

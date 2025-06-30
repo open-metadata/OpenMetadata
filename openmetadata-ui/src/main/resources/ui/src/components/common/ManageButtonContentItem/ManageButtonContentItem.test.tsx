@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { ReactComponent as Icon } from '../../../assets/svg/teams-grey.svg';
 import { ManageButtonItemLabel } from './ManageButtonContentItem.component';

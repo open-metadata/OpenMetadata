@@ -13,7 +13,7 @@
 
 import { Checkbox, Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import { Status } from '../../../generated/entity/data/glossaryTerm';
