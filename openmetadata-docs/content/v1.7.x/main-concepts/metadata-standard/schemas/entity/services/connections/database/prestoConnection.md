@@ -1,5 +1,5 @@
 ---
-title: prestoConnection
+title: Presto Connection | OpenMetadata Presto Database Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/prestoconnection
 ---
 

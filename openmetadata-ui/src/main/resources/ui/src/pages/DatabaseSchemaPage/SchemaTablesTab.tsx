@@ -15,9 +15,9 @@ import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -71,7 +71,7 @@ function SchemaTablesTab({
   isCustomizationPage = false,
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [tableData, setTableData] = useState<Array<Table>>([]);
   const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const { permissions } = usePermissionProvider();
@@ -226,7 +226,7 @@ function SchemaTablesTab({
   );
 
   const handleEditTable = () => {
-    history.push({
+    navigate({
       pathname: getEntityBulkEditPath(
         EntityType.DATABASE_SCHEMA,
         decodedDatabaseSchemaFQN

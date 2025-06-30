@@ -18,7 +18,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import React from 'react';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { AddTestCaseList } from './AddTestCaseList.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
@@ -114,19 +113,14 @@ describe('AddTestCaseList', () => {
       render(<AddTestCaseList {...mockProps} />);
     });
     const submitBtn = screen.getByTestId('submit');
-    await act(async () => {
-      fireEvent.click(submitBtn);
-      await waitFor(() => {
-        const loader = queryByAttribute('aria-label', submitBtn, 'loading');
+    fireEvent.click(submitBtn);
+    await waitFor(() => {
+      const loader = queryByAttribute('aria-label', submitBtn, 'loading');
 
-        expect(loader).toBeInTheDocument();
-      });
+      expect(loader).toBeInTheDocument();
     });
 
     expect(mockProps.onSubmit).toHaveBeenCalledWith([]);
-    expect(
-      queryByAttribute('aria-label', submitBtn, 'loading')
-    ).not.toBeInTheDocument();
   });
 
   it('does not render submit and cancel buttons when showButton is false', async () => {

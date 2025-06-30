@@ -1,5 +1,5 @@
 ---
-title: apiService
+title: API Service Schema | OpenMetadata API Services
 slug: /main-concepts/metadata-standard/schemas/entity/services/apiservice
 ---
 

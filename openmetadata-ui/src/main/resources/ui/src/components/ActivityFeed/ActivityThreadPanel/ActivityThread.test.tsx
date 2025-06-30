@@ -16,7 +16,6 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityThread from './ActivityThread';
 import { mockThreadData } from './ActivityThread.mock';

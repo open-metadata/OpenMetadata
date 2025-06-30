@@ -1,5 +1,5 @@
 ---
-title: cockroachConnection
+title: Cockroach Connection | OpenMetadata Cockroach
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cockroachconnection
 ---
 

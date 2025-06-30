@@ -14,22 +14,15 @@ import { CheckOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as IconStruct } from '../../../../assets/svg/ic-inherited-roles.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
 import { ReactComponent as RoleIcon } from '../../../../assets/svg/ic-roles.svg';
 import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg';
 import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
-
-import React, {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import {
   LIGHT_GREEN_COLOR,
   TERM_ADMIN,
@@ -38,7 +31,6 @@ import {
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import i18n from '../../../../utils/i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -176,10 +168,9 @@ export const UserProfileIcon = () => {
   );
 
   const teamLabelRenderer = useCallback(
-    (item) => (
+    (item: EntityReference) => (
       <Link
         className="ant-typography-ellipsis-custom text-sm m-b-0 p-0"
-        component={Typography.Link}
         to={getTeamAndUserDetailsPath(item.name as string)}>
         {getEntityName(item)}
       </Link>
@@ -248,7 +239,7 @@ export const UserProfileIcon = () => {
           <div className="text-base-color d-flex items-center gap-2">
             <RoleIcon height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.role-plural')}
+              {t('label.role-plural')}
             </span>
           </div>
         ),
@@ -271,7 +262,7 @@ export const UserProfileIcon = () => {
           <div className="d-flex items-center gap-2">
             <IconStruct className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.inherited-role-plural')}
+              {t('label.inherited-role-plural')}
             </span>
           </div>
         ),
@@ -295,7 +286,7 @@ export const UserProfileIcon = () => {
           <div className="d-flex items-center gap-2">
             <PersonaIcon className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.persona-plural')}
+              {t('label.persona-plural')}
             </span>
           </div>
         ),
@@ -318,7 +309,7 @@ export const UserProfileIcon = () => {
           <div className="d-flex items-center gap-2">
             <TeamIcon className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.team-plural')}
+              {t('label.team-plural')}
             </span>
           </div>
         ),
@@ -336,7 +327,7 @@ export const UserProfileIcon = () => {
             type="text"
             onClick={onLogoutHandler}>
             <LogoutIcon height={20} width={20} />
-            {i18n.t('label.logout')}
+            {t('label.logout')}
           </Button>
         ),
         type: 'group',

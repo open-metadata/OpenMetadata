@@ -15,7 +15,6 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import React from 'react';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './user-tag.less';
 import { UserTags, UserTagSize } from './UserTag.interface';

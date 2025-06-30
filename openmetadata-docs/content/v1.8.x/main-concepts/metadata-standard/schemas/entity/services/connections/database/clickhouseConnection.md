@@ -1,5 +1,5 @@
 ---
-title: clickhouseConnection
+title: ClickHouse Connection | OpenMetadata ClickHouse
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/clickhouseconnection
 ---
 

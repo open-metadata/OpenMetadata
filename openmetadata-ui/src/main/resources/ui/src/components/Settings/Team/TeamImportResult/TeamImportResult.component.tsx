@@ -12,7 +12,7 @@
  */
 import { Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import { ReactComponent as FailBadgeIcon } from '../../../../assets/svg/fail-badge.svg';

@@ -12,7 +12,7 @@
  */
 import { Editor } from '@tiptap/react';
 import { Button, Space, Tooltip } from 'antd';
-import React, { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
 import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconAddColumnAfter } from '../../../assets/svg/ic-format-add-column-after.svg';

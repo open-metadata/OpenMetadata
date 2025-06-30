@@ -1,5 +1,5 @@
 ---
-title: index
+title: Metadata Ingestion | OpenMetadata Metadata Ingestion Overview
 slug: /main-concepts/metadata-standard/schemas/metadataingestion
 ---
 

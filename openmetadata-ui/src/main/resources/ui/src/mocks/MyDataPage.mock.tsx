@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';

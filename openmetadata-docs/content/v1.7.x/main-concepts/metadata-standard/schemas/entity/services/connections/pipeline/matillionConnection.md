@@ -1,5 +1,5 @@
 ---
-title: matillionConnection
+title: Matillion Connection | OpenMetadata Matillion
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/matillionconnection
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: tableUsageCount
+title: tableUsageCount | OpenMetadata Table Usage Count
 slug: /main-concepts/metadata-standard/schemas/type/tableusagecount
 ---
 

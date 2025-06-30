@@ -10,11 +10,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -148,7 +148,7 @@ public class ChangeSummarizer<T extends EntityInterface> {
                     keysToDelete.add(
                         FullyQualifiedName.build(fieldChange.getName(), name, nestedField));
                   });
-        } catch (UnhandledServerException e) {
+        } catch (JsonParsingException e) {
           LOG.warn("Error processing deleted fields", e);
         }
       }

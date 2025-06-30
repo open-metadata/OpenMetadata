@@ -1,5 +1,5 @@
 ---
-title: teamHierarchy
+title: Team Hierarchy | OpenMetadata Team Hierarchy
 slug: /main-concepts/metadata-standard/schemas/entity/teams/teamhierarchy
 ---
 

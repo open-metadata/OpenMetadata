@@ -12,6 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { LazyLog } from '@melloware/react-logviewer';
 import {
   Badge,
   Button,
@@ -24,9 +25,8 @@ import {
   Typography,
 } from 'antd';
 import { capitalize, isEmpty, isNil } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LazyLog } from 'react-lazylog';
 import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
 import { StepStats } from '../../../../generated/entity/applications/appRunRecord';
 import { getEntityStatsData } from '../../../../utils/ApplicationUtils';

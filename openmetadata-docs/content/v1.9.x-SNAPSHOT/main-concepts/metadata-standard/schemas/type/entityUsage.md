@@ -1,5 +1,5 @@
 ---
-title: entityUsage
+title: Entity Usage | OpenMetadata Entity Usage Information
 slug: /main-concepts/metadata-standard/schemas/type/entityusage
 ---
 

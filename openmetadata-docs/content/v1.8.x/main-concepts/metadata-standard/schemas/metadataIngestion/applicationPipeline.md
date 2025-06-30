@@ -1,5 +1,5 @@
 ---
-title: applicationPipeline
+title: applicationPipeline | OpenMetadata Application Pipeline
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/applicationpipeline
 ---
 

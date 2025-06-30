@@ -1,5 +1,5 @@
 ---
-title: profile
+title: Profile Schema | OpenMetadata Profile Schema Details
 slug: /main-concepts/metadata-standard/schemas/type/profile
 ---
 

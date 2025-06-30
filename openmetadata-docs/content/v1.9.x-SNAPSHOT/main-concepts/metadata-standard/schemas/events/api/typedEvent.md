@@ -1,5 +1,5 @@
 ---
-title: typedEvent
+title: Typed Event Schema | OpenMetadata Typed Event Details
 slug: /main-concepts/metadata-standard/schemas/events/api/typedevent
 ---
 

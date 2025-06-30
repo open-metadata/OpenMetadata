@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen, within } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_DOMAIN } from '../../../mocks/Domains.mock';
 import DomainVersion from './DomainVersion.component';
@@ -80,11 +79,11 @@ const MOCK_VERSION = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     fqn: 'Domain1',
     version: 0.4,
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../rest/domainAPI', () => ({

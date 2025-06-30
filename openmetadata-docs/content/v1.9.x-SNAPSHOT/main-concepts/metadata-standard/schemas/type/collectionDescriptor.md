@@ -1,5 +1,5 @@
 ---
-title: collectionDescriptor
+title: collectionDescriptor | OpenMetadata Collection Descriptor
 slug: /main-concepts/metadata-standard/schemas/type/collectiondescriptor
 ---
 

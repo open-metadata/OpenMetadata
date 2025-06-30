@@ -1,5 +1,5 @@
 ---
-title: index
+title: UI Schema | OpenMetadata UI Schema Overview
 slug: /main-concepts/metadata-standard/schemas/system/ui
 ---
 

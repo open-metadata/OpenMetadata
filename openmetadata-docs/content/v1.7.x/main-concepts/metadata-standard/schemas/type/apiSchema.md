@@ -1,5 +1,5 @@
 ---
-title: apiSchema
+title: API Schema | OpenMetadata API Schema Details
 slug: /main-concepts/metadata-standard/schemas/type/apischema
 ---
 

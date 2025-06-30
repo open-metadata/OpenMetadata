@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ConnectionStepCard from '../../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { fetchOMStatus } from '../../rest/miscAPI';

@@ -12,7 +12,6 @@
  */
 import { Button, Modal } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';

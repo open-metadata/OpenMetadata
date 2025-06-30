@@ -1,5 +1,5 @@
 ---
-title: index
+title: Entity Utilities | OpenMetadata Entity Utilities Overview
 slug: /main-concepts/metadata-standard/schemas/entity/utils
 ---
 

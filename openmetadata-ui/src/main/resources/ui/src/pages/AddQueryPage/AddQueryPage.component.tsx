@@ -14,9 +14,9 @@ import { Button, Form, FormProps, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -50,7 +50,6 @@ import {
   getEntityName,
 } from '../../utils/EntityUtils';
 import { getField } from '../../utils/formUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -67,6 +66,7 @@ const AddQueryPage = () => {
   const [table, setTable] = useState<Table>();
   const [initialOptions, setInitialOptions] = useState<DefaultOptionType[]>();
   const [isSaving, setIsSaving] = useState(false);
+  const navigate = useNavigate();
 
   const fetchEntityDetails = async () => {
     try {
@@ -144,7 +144,7 @@ const AddQueryPage = () => {
   }, [table]);
 
   const handleCancelClick = () => {
-    history.back();
+    navigate(-1);
   };
 
   const handleSubmit: FormProps['onFinish'] = async (values): Promise<void> => {
@@ -336,8 +336,4 @@ const AddQueryPage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-entity', {
-    entity: i18n.t('label.query'),
-  })
-)(AddQueryPage);
+export default withPageLayout(AddQueryPage);

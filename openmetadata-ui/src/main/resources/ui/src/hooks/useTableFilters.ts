@@ -13,7 +13,7 @@
 import { isArray, isEmpty, isNil } from 'lodash';
 import qs, { ParsedQs } from 'qs';
 import { useMemo } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useLocationSearch } from './LocationSearch/useLocationSearch';
 import useCustomLocation from './useCustomLocation/useCustomLocation';
 
@@ -24,7 +24,7 @@ type FilterState = Record<
 
 export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const searchQuery = useLocationSearch<ParsedQs>();
 
   const parseFiltersFromUrl = (): T => {
@@ -72,11 +72,16 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
         mergedQueryParams[key] = value.join(',');
       }
     });
-    history.replace({
-      search: qs.stringify(mergedQueryParams, {
-        addQueryPrefix: true,
-      }),
-    });
+    navigate(
+      {
+        search: qs.stringify(mergedQueryParams, {
+          addQueryPrefix: true,
+        }),
+      },
+      {
+        replace: true,
+      }
+    );
   };
 
   const filters = useMemo(

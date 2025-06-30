@@ -417,3 +417,54 @@ class QlikCloudUnitTest(TestCase):
             == SHARED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
             + PERSONAL_APP_DASHBOARD_IN_MOCK_DASHBOARDS
         )
+
+    @pytest.mark.order(9)
+    def test_get_script_tables(self):
+        """Test the get_script_tables method that extracts table names from Qlik scripts"""
+        # Mock script content with FROM clauses
+        mock_script = """
+        LOAD * FROM 'mock_schema.sales_data';
+        LOAD column1, column2 FROM database.schema.customers;
+        LEFT JOIN products ON sales_data.product_id = products.id;
+        """
+
+        mock_script_response = {"result": {"qScript": mock_script}}
+
+        with patch.object(
+            QlikCloudClient,
+            "_websocket_send_request",
+            return_value=mock_script_response,
+        ):
+            script_tables = self.qlikcloud.client.get_script_tables()
+
+            # Expected table names extracted from the script
+            expected_table_names = ["sales_data", "customers"]
+
+            # Verify that we got the expected number of tables
+            assert len(script_tables) == len(
+                expected_table_names
+            ), f"Expected {len(expected_table_names)} tables, but got {len(script_tables)}"
+
+            # Verify table names are correctly extracted
+            actual_table_names = [table.tableName for table in script_tables]
+            for expected_name in expected_table_names:
+                assert (
+                    expected_name in actual_table_names
+                ), f"Expected table '{expected_name}' not found in {actual_table_names}"
+
+    @pytest.mark.order(10)
+    def test_get_script_tables_empty(self):
+        """Test the get_script_tables method with empty script"""
+        mock_script_response = {"result": {"qScript": ""}}
+
+        with patch.object(
+            QlikCloudClient,
+            "_websocket_send_request",
+            return_value=mock_script_response,
+        ):
+            script_tables = self.qlikcloud.client.get_script_tables()
+
+            # Should return empty list for empty script
+            assert (
+                len(script_tables) == 0
+            ), f"Expected 0 tables for empty script, but got {len(script_tables)}"

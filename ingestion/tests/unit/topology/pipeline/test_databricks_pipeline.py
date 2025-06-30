@@ -13,17 +13,20 @@ Databricks Pipeline utils tests
 """
 
 import json
+import uuid
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
     Task,
     TaskStatus,
 )
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -33,8 +36,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
 )
@@ -67,6 +76,7 @@ mock_databricks_config = {
                 "type": "DatabricksPipeline",
                 "token": "random_token",
                 "hostPort": "localhost:443",
+                "connectionTimeout": 120,
                 "connectionArguments": {
                     "http_path": "sql/1.0/endpoints/path",
                 },
@@ -198,6 +208,36 @@ EXPECTED_PIPELINE_STATUS = [
 
 PIPELINE_LIST = [DataBrickPipelineDetails(**data) for data in mock_data]
 
+EXPECTED_PIPELINE_LINEAGE = AddLineageRequest(
+    edge=EntitiesEdge(
+        fromEntity=EntityReference(
+            id="cced5342-12e8-45fb-b50a-918529d43ed1", type="table"
+        ),
+        toEntity=EntityReference(
+            id="6f5ad342-12e8-45fb-b50a-918529d43ed1", type="table"
+        ),
+        lineageDetails=LineageDetails(
+            columnsLineage=[
+                ColumnLineage(
+                    fromColumns=[
+                        FullyQualifiedEntityName(
+                            root="local_table.dev.table_1.column_1"
+                        )
+                    ],
+                    toColumn=FullyQualifiedEntityName(
+                        root="local_table.dev.table_2.column_2"
+                    ),
+                )
+            ],
+            pipeline=EntityReference(
+                id="1fa49082-a32c-4e71-ba4a-6a111b489ed6",
+                type="pipeline",
+            ),
+            source="PipelineLineage",
+        ),
+    )
+)
+
 
 class DatabricksPipelineTests(TestCase):
     """
@@ -224,6 +264,9 @@ class DatabricksPipelineTests(TestCase):
         self.databricks.context.get().__dict__[
             "pipeline_service"
         ] = MOCK_PIPELINE_SERVICE.name.root
+        self.databricks.metadata = OpenMetadata(
+            config.workflowConfig.openMetadataServerConfig
+        )
 
     @patch(
         "metadata.ingestion.source.database.databricks.client.DatabricksClient.list_jobs"
@@ -256,3 +299,141 @@ class DatabricksPipelineTests(TestCase):
             )
         ]
         self.assertEqual(pipeline_status, EXPECTED_PIPELINE_STATUS)
+
+    def test_databricks_pipeline_lineage(self):
+        self.databricks.context.get().__dict__["pipeline"] = "11223344"
+        self.databricks.context.get().__dict__[
+            "pipeline_service"
+        ] = "databricks_pipeline_test"
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="11223344",
+            fullyQualifiedName="databricks_pipeline_test.11223344",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+
+        # Create source and target tables
+        mock_source_table = Table(
+            id="cced5342-12e8-45fb-b50a-918529d43ed1",
+            name="table_1",
+            fullyQualifiedName="local_table.dev.table_1",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[
+                Column(
+                    name="column_1",
+                    fullyQualifiedName="local_table.dev.table_1.column_1",
+                    dataType="VARCHAR",
+                )
+            ],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        mock_target_table = Table(
+            id="6f5ad342-12e8-45fb-b50a-918529d43ed1",
+            name="table_2",
+            fullyQualifiedName="local_table.dev.table_2",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[
+                Column(
+                    name="column_2",
+                    fullyQualifiedName="local_table.dev.table_2.column_2",
+                    dataType="VARCHAR",
+                )
+            ],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        with patch.object(self.databricks.metadata, "get_by_name") as mock_get_by_name:
+
+            def get_by_name_side_effect(entity, fqn):
+                if entity == Pipeline:
+                    if fqn == "databricks_pipeline_test.11223344":
+                        return mock_pipeline
+                elif entity == Table:
+                    if "table_1" in fqn:
+                        return mock_source_table
+                    elif "table_2" in fqn:
+                        return mock_target_table
+                return None
+
+            mock_get_by_name.side_effect = get_by_name_side_effect
+
+            with patch.object(
+                self.databricks.client, "get_table_lineage"
+            ) as mock_get_table_lineage:
+                mock_get_table_lineage.return_value = [
+                    {
+                        "source_table_full_name": "local_table.dev.table_1",
+                        "target_table_full_name": "local_table.dev.table_2",
+                    }
+                ]
+                with patch.object(
+                    self.databricks.client, "get_column_lineage"
+                ) as mock_get_column_lineage:
+                    mock_get_column_lineage.return_value = [
+                        ("column_1", "column_2"),
+                        ("column_3", "column_4"),
+                    ]
+                    lineage_details = list(
+                        self.databricks.yield_pipeline_lineage_details(
+                            DataBrickPipelineDetails(**mock_data[0])
+                        )
+                    )[0].right
+                    self.assertEqual(
+                        lineage_details.edge.fromEntity.id,
+                        EXPECTED_PIPELINE_LINEAGE.edge.fromEntity.id,
+                    )
+                    self.assertEqual(
+                        lineage_details.edge.toEntity.id,
+                        EXPECTED_PIPELINE_LINEAGE.edge.toEntity.id,
+                    )
+                    self.assertEqual(
+                        lineage_details.edge.lineageDetails.columnsLineage,
+                        EXPECTED_PIPELINE_LINEAGE.edge.lineageDetails.columnsLineage,
+                    )
+
+        with patch.object(self.databricks.metadata, "get_by_name") as mock_get_by_name:
+
+            def get_by_name_side_effect(entity, fqn):
+                if entity == Pipeline:
+                    if fqn == "databricks_pipeline_test.11223344":
+                        return mock_pipeline
+                elif entity == Table:
+                    if "table_1" in fqn:
+                        return mock_source_table
+                    elif "table_2" in fqn:
+                        return mock_target_table
+                return None
+
+            mock_get_by_name.side_effect = get_by_name_side_effect
+
+            with patch.object(
+                self.databricks.client, "get_table_lineage"
+            ) as mock_get_table_lineage:
+                mock_get_table_lineage.return_value = [
+                    {
+                        "source_table_full_name": "local_table.dev.table_1",
+                        "target_table_full_name": "local_table.dev.table_2",
+                    }
+                ]
+                with patch.object(
+                    self.databricks.client, "get_column_lineage"
+                ) as mock_get_column_lineage:
+                    mock_get_column_lineage.return_value = []  # No column lineage
+                    lineage_details = list(
+                        self.databricks.yield_pipeline_lineage_details(
+                            DataBrickPipelineDetails(**mock_data[0])
+                        )
+                    )[0].right
+                    self.assertEqual(
+                        lineage_details.edge.fromEntity.id,
+                        EXPECTED_PIPELINE_LINEAGE.edge.fromEntity.id,
+                    )
+                    self.assertEqual(
+                        lineage_details.edge.toEntity.id,
+                        EXPECTED_PIPELINE_LINEAGE.edge.toEntity.id,
+                    )
+                    self.assertEqual(
+                        lineage_details.edge.lineageDetails.columnsLineage,
+                        [],
+                    )

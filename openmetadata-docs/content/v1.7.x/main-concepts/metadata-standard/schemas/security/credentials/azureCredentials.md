@@ -1,5 +1,5 @@
 ---
-title: azureCredentials
+title: azureCredentials | OpenMetadata Azure Credentials
 slug: /main-concepts/metadata-standard/schemas/security/credentials/azurecredentials
 ---
 

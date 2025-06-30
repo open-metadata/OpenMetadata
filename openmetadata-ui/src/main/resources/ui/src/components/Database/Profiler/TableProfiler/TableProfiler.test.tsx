@@ -13,7 +13,6 @@
 
 // Library imports
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 // internal imports
 import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/data-quality.svg';
@@ -34,15 +33,13 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
 
 // mock library imports
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
   Link: jest
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
   useParams: jest.fn().mockReturnValue({
     fqn: 'sample_data.ecommerce_db.shopify.dim_address',
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 const mockDQTabComponent = () => <div>mock Data Quality TabComponent</div>;
 const mockColumnProfilerTabComponent = () => (

@@ -1,5 +1,5 @@
 ---
-title: mariaDBConnection
+title: MariaDB Connection | OpenMetadata MariaDB
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mariadbconnection
 ---
 

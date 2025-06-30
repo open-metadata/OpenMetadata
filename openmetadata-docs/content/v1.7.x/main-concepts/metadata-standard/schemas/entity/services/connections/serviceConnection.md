@@ -1,5 +1,5 @@
 ---
-title: serviceConnection
+title: Service Connection | OpenMetadata Service Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/serviceconnection
 ---
 

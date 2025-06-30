@@ -1,5 +1,5 @@
 ---
-title: function
+title: Function Schema | OpenMetadata Function Schema Details
 slug: /main-concepts/metadata-standard/schemas/type/function
 ---
 

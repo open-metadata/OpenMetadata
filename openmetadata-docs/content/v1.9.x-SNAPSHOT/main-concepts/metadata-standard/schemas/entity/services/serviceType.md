@@ -1,5 +1,5 @@
 ---
-title: serviceType
+title: Service Type | OpenMetadata Service Types
 slug: /main-concepts/metadata-standard/schemas/entity/services/servicetype
 noindex: true
 nofollow: true

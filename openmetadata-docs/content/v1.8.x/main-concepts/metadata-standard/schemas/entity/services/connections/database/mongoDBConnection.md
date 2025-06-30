@@ -1,5 +1,5 @@
 ---
-title: mongoDBConnection
+title: MongoDB Connection | OpenMetadata MongoDB
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mongodbconnection
 ---
 

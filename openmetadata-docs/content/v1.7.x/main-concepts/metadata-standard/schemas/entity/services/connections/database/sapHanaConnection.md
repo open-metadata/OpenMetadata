@@ -1,5 +1,5 @@
 ---
-title: sapHanaConnection
+title: SAP HANA Connection | OpenMetadata SAP HANA
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/saphanaconnection
 ---
 

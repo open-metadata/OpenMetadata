@@ -1,5 +1,5 @@
 ---
-title: oidcClientConfig
+title: oidcClientConfig | OpenMetadata OIDC Client Config
 slug: /main-concepts/metadata-standard/schemas/security/client/oidcclientconfig
 ---
 

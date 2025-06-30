@@ -1,5 +1,5 @@
 ---
-title: teradataConnection
+title: Teradata Connection | OpenMetadata Teradata
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/teradataconnection
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: customMetric
+title: customMetric | OpenMetadata Custom Metric
 slug: /main-concepts/metadata-standard/schemas/tests/custommetric
 ---
 

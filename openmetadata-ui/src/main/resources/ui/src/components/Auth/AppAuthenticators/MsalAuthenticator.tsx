@@ -16,7 +16,7 @@ import {
   InteractionStatus,
 } from '@azure/msal-browser';
 import { useAccount, useMsal } from '@azure/msal-react';
-import React, {
+import {
   forwardRef,
   Fragment,
   ReactNode,
@@ -60,7 +60,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
           // Use login with redirect for normal window context
           await instance.loginRedirect(msalLoginRequest);
         }
-      } catch (error) {
+      } catch {
         handleFailedLogin();
       }
     };
@@ -150,7 +150,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
           handleSuccessfulLogin(user);
         }
-      } catch (error) {
+      } catch {
         handleFailedLogin();
       }
     };

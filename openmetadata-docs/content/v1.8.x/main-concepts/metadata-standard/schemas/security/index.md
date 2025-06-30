@@ -1,5 +1,5 @@
 ---
-title: index
+title: Security Schema | OpenMetadata Security Schema Overview
 slug: /main-concepts/metadata-standard/schemas/security
 ---
 

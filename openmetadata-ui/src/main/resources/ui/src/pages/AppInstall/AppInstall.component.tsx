@@ -15,9 +15,9 @@ import { RJSFSchema } from '@rjsf/utils';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -57,7 +57,7 @@ import './app-install.less';
 
 const AppInstall = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
@@ -122,11 +122,11 @@ const AppInstall = () => {
   }, [fqn]);
 
   const onCancel = () => {
-    history.push(getMarketPlaceAppDetailsPath(fqn));
+    navigate(getMarketPlaceAppDetailsPath(fqn));
   };
 
   const goToAppPage = () => {
-    history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
+    navigate(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
   const installApp = async (data: CreateAppRequest) => {

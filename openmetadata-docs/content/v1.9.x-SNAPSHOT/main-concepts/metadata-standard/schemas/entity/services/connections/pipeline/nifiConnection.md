@@ -1,5 +1,5 @@
 ---
-title: nifiConnection
+title: Nifi Connection | OpenMetadata Apache Nifi Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/nificonnection
 ---
 

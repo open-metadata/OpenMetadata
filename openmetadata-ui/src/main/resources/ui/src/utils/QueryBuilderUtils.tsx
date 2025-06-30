@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
-import { t } from 'i18next';
-import { isUndefined } from 'lodash';
-import React from 'react';
 import {
-  FieldGroup,
+  FieldOrGroup,
   Fields,
+  OldJsonItem,
+  OldJsonTree,
   RenderSettings,
-} from 'react-awesome-query-builder';
+} from '@react-awesome-query-builder/antd';
+import { Button } from 'antd';
+import { isBoolean, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -30,6 +30,7 @@ import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
+import { t } from './i18next/LocalUtil';
 import { generateUUID } from './StringsUtils';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
@@ -63,23 +64,22 @@ export const resolveFieldType = (
 
   // Traverse nested subfields if there are more parts
   for (let i = 1; i < fieldParts.length; i++) {
-    // First check if a more specific path exists (e.g., "expert.name" as a direct subfield)
-    if (i === 1 && (currentField as FieldGroup)?.subfields) {
+    if (i === 1 && (currentField as any)?.subfields) {
       // Join the remaining parts and check if it exists as a single subfield
       const remainingPath = fieldParts.slice(1).join('.');
-      const remainingField = (currentField as FieldGroup).subfields[
-        remainingPath
-      ];
+      const remainingField = (currentField as any).subfields[remainingPath];
       if (remainingField?.type) {
         return remainingField.type;
       }
     }
 
     // If no specific path found, continue with normal traversal
-    if (!(currentField as FieldGroup)?.subfields?.[fieldParts[i]]) {
+    if (!(currentField as any)?.subfields?.[fieldParts[i]]) {
       return undefined; // Subfield not found
     }
-    currentField = (currentField as FieldGroup).subfields[fieldParts[i]];
+    currentField = (currentField as any).subfields[
+      fieldParts[i]
+    ] as FieldOrGroup;
   }
 
   return currentField?.type;
@@ -94,7 +94,9 @@ export const getSelectEqualsNotEqualsProperties = (
   const id = generateUUID();
   const isEqualNotEqualOp = ['equal', 'not_equal'].includes(operator);
   const valueType = isEqualNotEqualOp
-    ? ['text']
+    ? isBoolean(value)
+      ? ['boolean']
+      : ['text']
     : Array.isArray(value)
     ? ['multiselect']
     : ['select'];
@@ -388,7 +390,7 @@ export const getJsonTreePropertyFromQueryFilter = (
 export const getJsonTreeFromQueryFilter = (
   queryFilter: QueryFilterInterface,
   fields?: Fields
-) => {
+): OldJsonTree => {
   try {
     const id1 = generateUUID();
     const id2 = generateUUID();
@@ -409,13 +411,12 @@ export const getJsonTreeFromQueryFilter = (
           ),
           id: id2,
           path: [id1, id2],
-        },
+        } as OldJsonItem,
       },
       id: id1,
-      path: [id1],
     };
   } catch {
-    return {};
+    return {} as OldJsonTree;
   }
 };
 

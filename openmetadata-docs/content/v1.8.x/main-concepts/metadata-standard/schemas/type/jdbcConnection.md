@@ -1,5 +1,5 @@
 ---
-title: jdbcConnection
+title: jdbcConnection | OpenMetadata JDBC Connection
 slug: /main-concepts/metadata-standard/schemas/type/jdbcconnection
 ---
 

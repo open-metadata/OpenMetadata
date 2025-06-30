@@ -1,5 +1,5 @@
 ---
-title: azureSQLConnection
+title: Azure SQL Connection | OpenMetadata Azure SQL
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/azuresqlconnection
 ---
 

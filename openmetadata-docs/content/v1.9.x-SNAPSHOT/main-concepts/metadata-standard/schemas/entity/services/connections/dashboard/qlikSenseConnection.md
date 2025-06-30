@@ -1,5 +1,5 @@
 ---
-title: qlikSenseConnection
+title: Qlik Sense Connection | OpenMetadata Qlik Sense
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/qliksenseconnection
 ---
 

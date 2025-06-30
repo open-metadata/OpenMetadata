@@ -1,5 +1,5 @@
 ---
-title: enumConfig
+title: Enum Config | OpenMetadata Enum Config Details
 slug: /main-concepts/metadata-standard/schemas/type/customproperties/enumconfig
 ---
 

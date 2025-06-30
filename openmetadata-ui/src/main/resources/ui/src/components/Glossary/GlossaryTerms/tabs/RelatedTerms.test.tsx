@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import React from 'react';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCK_PERMISSIONS,
@@ -31,6 +30,10 @@ jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
 
 jest.mock('../../../../utils/TableColumn.util', () => ({
   ownerTableObject: jest.fn().mockReturnValue({}),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 describe('RelatedTerms', () => {

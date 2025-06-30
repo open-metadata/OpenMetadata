@@ -1,5 +1,5 @@
 ---
-title: index
+title: Storage Connections | OpenMetadata Storage
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage
 ---
 

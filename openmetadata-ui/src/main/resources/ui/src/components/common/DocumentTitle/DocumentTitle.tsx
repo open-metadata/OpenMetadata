@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 

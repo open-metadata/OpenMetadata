@@ -1,5 +1,5 @@
 ---
-title: metastoreConfig
+title: Metastore Config | OpenMetadata Metastore
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/deltalake/metastoreconfig
 ---
 

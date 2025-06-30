@@ -1,5 +1,5 @@
 ---
-title: dorisConnection
+title: Doris Connection | OpenMetadata Doris Database Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/dorisconnection
 ---
 

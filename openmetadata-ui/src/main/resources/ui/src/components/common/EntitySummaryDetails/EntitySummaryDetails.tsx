@@ -13,11 +13,11 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space } from 'antd';
-import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
+import Tooltip from 'antd/lib/tooltip';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined, lowerCase, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -41,11 +41,7 @@ export interface GetInfoElementsProps {
   allowTeamOwner?: boolean;
 }
 
-const InfoIcon = ({
-  content,
-}: {
-  content: React.ReactNode | RenderFunction;
-}): JSX.Element => (
+const InfoIcon = ({ content }: { content: React.ReactNode }): JSX.Element => (
   <Tooltip title={content}>
     <Icon
       alt="info-secondary"

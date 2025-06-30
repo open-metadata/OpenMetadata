@@ -12,7 +12,6 @@
  */
 
 import { render, waitFor } from '@testing-library/react';
-import React from 'react';
 import { useParams } from 'react-router-dom';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
@@ -69,7 +68,7 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
+  useNavigate: jest.fn().mockReturnValue({ push: jest.fn() }),
   useParams: jest
     .fn()
     .mockReturnValue({ fqn: 'api.collection.v1', tab: 'api_endpoint' }),

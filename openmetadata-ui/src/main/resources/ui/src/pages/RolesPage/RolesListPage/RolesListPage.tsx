@@ -15,9 +15,9 @@ import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -63,7 +63,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import './roles-list.less';
 
 const RolesListPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -104,7 +104,7 @@ const RolesListPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.ACCESS,
-        t('label.role-plural')
+        t('label.role-plural').toString()
       ),
     []
   );
@@ -112,7 +112,7 @@ const RolesListPage = () => {
   const columns: ColumnsType<Role> = useMemo(() => {
     return [
       {
-        title: t('label.name'),
+        title: t('label.name').toString(),
         dataIndex: 'name',
         width: '200px',
         key: 'name',
@@ -126,7 +126,7 @@ const RolesListPage = () => {
         ),
       },
       {
-        title: t('label.description'),
+        title: t('label.description').toString(),
         dataIndex: 'description',
         key: 'description',
         render: (_, record) =>
@@ -137,7 +137,7 @@ const RolesListPage = () => {
           ),
       },
       {
-        title: t('label.policy-plural'),
+        title: t('label.policy-plural').toString(),
         dataIndex: 'policies',
         width: '250px',
         key: 'policies',
@@ -198,7 +198,7 @@ const RolesListPage = () => {
         },
       },
       {
-        title: t('label.action-plural'),
+        title: t('label.action-plural').toString(),
         dataIndex: 'actions',
         width: '80px',
         align: 'center',
@@ -210,7 +210,7 @@ const RolesListPage = () => {
               title={
                 deleteRolePermission
                   ? t('label.delete-entity', {
-                      entity: t('label.role-plural'),
+                      entity: t('label.role-plural').toString(),
                     })
                   : NO_PERMISSION_FOR_ACTION
               }>
@@ -253,7 +253,7 @@ const RolesListPage = () => {
   }, [fetchRoles]);
 
   const handleAddRole = () => {
-    history.push(ROUTES.ADD_ROLE);
+    navigate(ROUTES.ADD_ROLE);
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
@@ -271,7 +271,7 @@ const RolesListPage = () => {
   }, [pageSize]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.role-plural')}>
+    <PageLayoutV1 pageTitle={t('label.role-plural').toString()}>
       <Row
         className="roles-list-container"
         data-testid="roles-list-container"
@@ -288,7 +288,7 @@ const RolesListPage = () => {
                 data-testid="add-role"
                 type="primary"
                 onClick={handleAddRole}>
-                {t('label.add-entity', { entity: t('label.role') })}
+                {t('label.add-entity', { entity: t('label.role').toString() })}
               </Button>
             )}
           </Space>
@@ -313,7 +313,7 @@ const RolesListPage = () => {
               emptyText: (
                 <ErrorPlaceHolder
                   className="border-none"
-                  heading={t('label.role')}
+                  heading={t('label.role').toString()}
                   permission={addRolePermission}
                   permissionValue={t('label.create-entity', {
                     entity: t('label.role'),
@@ -332,10 +332,10 @@ const RolesListPage = () => {
               afterDeleteAction={handleAfterDeleteAction}
               allowSoftDelete={false}
               deleteMessage={t('message.are-you-sure-delete-entity', {
-                entity: getEntityName(selectedRole),
+                entity: getEntityName(selectedRole).toString(),
               })}
               entityId={selectedRole.id}
-              entityName={getEntityName(selectedRole)}
+              entityName={getEntityName(selectedRole).toString()}
               entityType={EntityType.ROLE}
               visible={!isUndefined(selectedRole)}
               onCancel={() => setSelectedRole(undefined)}

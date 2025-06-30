@@ -1,5 +1,5 @@
 ---
-title: bucketDetails
+title: Bucket Details | OpenMetadata Bucket Details
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/powerbi/bucketdetails
 ---
 

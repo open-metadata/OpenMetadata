@@ -1,5 +1,5 @@
 ---
-title: index
+title: Security Secrets | OpenMetadata Security Secrets Details
 slug: /main-concepts/metadata-standard/schemas/security/secrets
 ---
 

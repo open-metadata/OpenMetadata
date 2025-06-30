@@ -1,5 +1,5 @@
 ---
-title: assetCertification
+title: assetCertification | OpenMetadata Asset Certification
 slug: /main-concepts/metadata-standard/schemas/type/assetcertification
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: sqliteConnection
+title: SQLite Connection | OpenMetadata SQLite Database Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/sqliteconnection
 ---
 

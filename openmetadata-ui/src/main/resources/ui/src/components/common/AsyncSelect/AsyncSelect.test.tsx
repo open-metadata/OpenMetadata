@@ -12,7 +12,6 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DefaultOptionType } from 'antd/lib/select';
-import React from 'react';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AsyncSelect, PagingResponse } from './AsyncSelect';
 

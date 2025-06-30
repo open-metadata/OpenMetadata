@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import TestConnectionModal from './TestConnectionModal';
 
 jest.mock('../../InlineAlert/InlineAlert', () => {
@@ -134,9 +132,7 @@ describe('TestConnectionModal', () => {
 
     expect(tryAgainButton).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(tryAgainButton);
-    });
+    fireEvent.click(tryAgainButton);
 
     expect(mockOnTestConnection).toHaveBeenCalled();
   });

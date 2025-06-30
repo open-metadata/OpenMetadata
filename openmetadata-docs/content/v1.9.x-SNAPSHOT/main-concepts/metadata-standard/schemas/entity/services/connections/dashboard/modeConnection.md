@@ -1,5 +1,5 @@
 ---
-title: modeConnection
+title: Mode Connection | OpenMetadata Mode Dashboard Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/modeconnection
 ---
 

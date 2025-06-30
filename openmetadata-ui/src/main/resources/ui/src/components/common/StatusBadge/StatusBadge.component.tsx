@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons';
 import classNames from 'classnames';
-import React from 'react';
 import { AllStatusTypes, icons } from '../../../constants/StatusBadge.constant';
 import './status-badge.less';
 import { StatusBadgeProps } from './StatusBadge.interface';

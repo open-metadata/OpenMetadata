@@ -1,5 +1,5 @@
 ---
-title: sklearnConnection
+title: Sklearn Connection | OpenMetadata Sklearn
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/sklearnconnection
 ---
 

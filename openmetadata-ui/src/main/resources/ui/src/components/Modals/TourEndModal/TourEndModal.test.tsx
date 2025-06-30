@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import TourEndModal from './TourEndModal';
 
 const mockOnSave = jest.fn();
@@ -28,7 +26,7 @@ describe('TourEndModal', () => {
 
     expect(screen.getByTestId('modal-container')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.explore-now' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.explore-now' }));
 
     expect(mockOnSave).toHaveBeenCalled();
 

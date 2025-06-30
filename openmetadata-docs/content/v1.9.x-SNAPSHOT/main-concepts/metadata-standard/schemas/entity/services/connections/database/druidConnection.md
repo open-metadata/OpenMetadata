@@ -1,5 +1,5 @@
 ---
-title: druidConnection
+title: Druid Connection | OpenMetadata Druid Database Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/druidconnection
 ---
 

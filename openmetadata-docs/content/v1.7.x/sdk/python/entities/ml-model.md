@@ -1,5 +1,5 @@
 ---
-title: ML Model
+title: ML Model | OpenMetadata Machine Learning Model SDK
 slug: /sdk/python/entities/ml-model
 ---
 

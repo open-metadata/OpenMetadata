@@ -1,5 +1,5 @@
 ---
-title: indexingError
+title: indexingError | OpenMetadata Indexing Error
 slug: /main-concepts/metadata-standard/schemas/system/indexingerror
 ---
 

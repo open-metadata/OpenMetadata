@@ -1,5 +1,5 @@
 ---
-title: resourcePermission
+title: Resource Permission | OpenMetadata Resource Permissions
 slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/resourcepermission
 ---
 

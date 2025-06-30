@@ -1,5 +1,5 @@
 ---
-title: emailAlertConfig
+title: emailAlertConfig | OpenMetadata Email Alert Config
 slug: /main-concepts/metadata-standard/schemas/events/emailalertconfig
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: reaction
+title: Reaction Schema | OpenMetadata Reaction Schema Information
 slug: /main-concepts/metadata-standard/schemas/type/reaction
 ---
 

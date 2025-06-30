@@ -1,5 +1,5 @@
 ---
-title: Releases
+title: Latest Release | OpenMetadata Release Notes and Versions
 slug: /releases
 ---
 

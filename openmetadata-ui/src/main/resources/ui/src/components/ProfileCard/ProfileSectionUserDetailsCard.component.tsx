@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Modal, Popover, Typography } from 'antd';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';

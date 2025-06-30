@@ -1,5 +1,5 @@
 ---
-title: userApprovalTask
+title: userApprovalTask | OpenMetadata User Approval Task
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/usertask/userapprovaltask
 ---
 

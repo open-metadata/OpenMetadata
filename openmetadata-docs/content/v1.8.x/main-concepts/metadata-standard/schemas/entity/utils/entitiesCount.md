@@ -1,5 +1,5 @@
 ---
-title: entitiesCount
+title: entitiesCount | OpenMetadata Entity Count
 slug: /main-concepts/metadata-standard/schemas/entity/utils/entitiescount
 ---
 

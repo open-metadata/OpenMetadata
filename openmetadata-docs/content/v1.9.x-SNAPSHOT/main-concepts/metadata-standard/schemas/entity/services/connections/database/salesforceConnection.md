@@ -1,5 +1,5 @@
 ---
-title: salesforceConnection
+title: Salesforce Connection | OpenMetadata Salesforce
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/salesforceconnection
 ---
 

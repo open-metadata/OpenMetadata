@@ -1,5 +1,5 @@
 ---
-title: index
+title: User Task Node | OpenMetadata User Task Node Information
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/usertask
 ---
 

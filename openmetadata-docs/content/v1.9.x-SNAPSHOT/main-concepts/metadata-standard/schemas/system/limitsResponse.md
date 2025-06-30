@@ -1,5 +1,5 @@
 ---
-title: limitsResponse
+title: limitsResponse | OpenMetadata Limits Response
 slug: /main-concepts/metadata-standard/schemas/system/limitsresponse
 ---
 

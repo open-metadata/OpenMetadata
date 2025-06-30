@@ -1,5 +1,5 @@
 ---
-title: csvFile
+title: CSV File Schema | OpenMetadata CSV File Details
 slug: /main-concepts/metadata-standard/schemas/type/csvfile
 ---
 

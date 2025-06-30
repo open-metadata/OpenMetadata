@@ -1,5 +1,5 @@
 ---
-title: jwtAuth
+title: JWT Auth | OpenMetadata JSON Web Token Authentication
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/jwtauth
 ---
 

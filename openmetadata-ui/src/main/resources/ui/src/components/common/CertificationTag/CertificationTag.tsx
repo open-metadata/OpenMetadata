@@ -12,7 +12,7 @@
  */
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CertificationIcon } from '../../../assets/svg/ic-certification.svg';
 import { AssetCertification } from '../../../generated/entity/data/table';

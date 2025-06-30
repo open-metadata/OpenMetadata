@@ -1,5 +1,5 @@
 ---
-title: usageRequest
+title: usageRequest | OpenMetadata Usage Request
 slug: /main-concepts/metadata-standard/schemas/type/usagerequest
 ---
 

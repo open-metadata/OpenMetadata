@@ -1,5 +1,5 @@
 ---
-title: index
+title: End Event Node | OpenMetadata End Event Node Description
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/endevent
 ---
 

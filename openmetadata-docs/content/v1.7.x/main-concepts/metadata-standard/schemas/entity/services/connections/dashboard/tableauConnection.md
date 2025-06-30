@@ -1,5 +1,5 @@
 ---
-title: tableauConnection
+title: Tableau Connection | OpenMetadata Tableau
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/tableauconnection
 ---
 

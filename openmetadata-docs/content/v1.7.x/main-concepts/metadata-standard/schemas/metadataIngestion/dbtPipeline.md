@@ -1,5 +1,5 @@
 ---
-title: dbtPipeline
+title: dbt Pipeline | OpenMetadata dbt Pipeline Information
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtpipeline
 ---
 

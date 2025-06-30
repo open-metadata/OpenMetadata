@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ReactionOperation } from '../../enums/reactions.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { ReactionType } from '../../generated/type/reaction';

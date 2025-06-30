@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import DomainTypeSelectForm from './DomainTypeSelectForm.component';
 
 // Mock the onSubmit and onCancel functions
