@@ -37,9 +37,10 @@ export const DataQualityContext = createContext<DataQualityContextInterface>(
 );
 
 const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
-  const { tab: activeTab = DataQualityPageTabs.TABLES } = useRequiredParams<{
-    tab: DataQualityPageTabs;
-  }>();
+  const { tab: activeTab = DataQualityPageTabs.TEST_CASES } =
+    useRequiredParams<{
+      tab: DataQualityPageTabs;
+    }>();
   const location = useCustomLocation();
   const params = useMemo(() => {
     const search = location.search;

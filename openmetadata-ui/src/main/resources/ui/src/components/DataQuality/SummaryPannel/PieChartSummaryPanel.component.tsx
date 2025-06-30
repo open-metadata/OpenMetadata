@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BLUE_2,

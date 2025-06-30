@@ -12,7 +12,6 @@
  */
 import { Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import { SummaryPieChartCardProps } from '../SummaryPanel.interface';

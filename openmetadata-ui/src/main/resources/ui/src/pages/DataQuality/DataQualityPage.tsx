@@ -15,7 +15,7 @@ import { Button, Card, Col, Row, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -31,10 +31,8 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {
-  const {
-    tab: activeTab = (DataQualityClassBase.getDefaultActiveTab() =
-      DataQualityClassBase.getDefaultActiveTab()),
-  } = useRequiredParams<{ tab: DataQualityPageTabs }>();
+  const { tab: activeTab = DataQualityClassBase.getDefaultActiveTab() } =
+    useRequiredParams<{ tab: DataQualityPageTabs }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -63,27 +61,6 @@ const DataQualityPage = () => {
       navigate(getDataQualityPagePath(activeKey as DataQualityPageTabs));
     }
   };
-
-  const renderTabComponent = useMemo(() => {
-    const currentTab = DataQualityClassBase.getDataQualityTab().find(
-      (tabItem) => tabItem.key === activeTab
-    );
-
-    if (!currentTab) {
-      return (
-        <Navigate
-          replace
-          to={getDataQualityPagePath(
-            DataQualityClassBase.getDefaultActiveTab()
-          )}
-        />
-      );
-    }
-
-    const TabComponent = currentTab.component;
-
-    return <TabComponent />;
-  }, [activeTab]);
 
   return (
     <DataQualityProvider>

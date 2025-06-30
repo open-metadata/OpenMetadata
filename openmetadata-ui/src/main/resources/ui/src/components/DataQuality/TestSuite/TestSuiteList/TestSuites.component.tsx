@@ -271,9 +271,7 @@ export const TestSuites = () => {
   };
 
   const handleSubTabChange = (e: RadioChangeEvent) => {
-    history.replace(
-      getDataQualityPagePath(tab, e.target.value as DataQualitySubTabs)
-    );
+    navigate(getDataQualityPagePath(tab, e.target.value as DataQualitySubTabs));
   };
 
   useEffect(() => {

@@ -25,9 +25,7 @@ const testSuitePermission = {
   EditDisplayName: true,
   EditCustomFields: true,
 };
-const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
-  tab?: DataQualityPageTabs;
-};
+
 const mockLocation = {
   search: '',
 };

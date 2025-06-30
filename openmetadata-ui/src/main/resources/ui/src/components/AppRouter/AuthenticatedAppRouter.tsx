@@ -537,6 +537,22 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
             />
           </AdminProtectedRoute>
         }
+        path={ROUTES.DATA_QUALITY_WITH_SUB_TAB}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_SUITE,
+              permissions
+            )}>
+            <DataQualityPage
+              pageTitle={t('label.add-entity', {
+                entity: t('label.data-quality'),
+              })}
+            />
+          </AdminProtectedRoute>
+        }
         path={ROUTES.DATA_QUALITY_WITH_TAB}
       />
       <Route
