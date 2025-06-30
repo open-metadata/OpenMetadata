@@ -1,5 +1,5 @@
 ---
-title: Java SDK
+title: Java SDK | OpenMetadata Java SDK Documentation
 slug: /sdk/java
 ---
 
