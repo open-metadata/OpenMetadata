@@ -36,6 +36,13 @@ jest.mock('../../HeaderTheme/HeaderTheme', () => {
   };
 });
 
+// Mock AllWidgetsContent component
+jest.mock('../AllWidgetsContent/AllWidgetsContent', () => {
+  return function MockAllWidgetsContent() {
+    return <div data-testid="all-widgets-content">All Widgets Content</div>;
+  };
+});
+
 // Mock Ant Design Modal to avoid portal issues in tests
 jest.mock('antd', () => {
   const antd = jest.requireActual('antd');
@@ -114,12 +121,14 @@ describe('CustomiseHomeModal Component', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       const allWidgetsOption = screen.getByTestId('sidebar-option-all-widgets');
+      const headerThemeOption = screen.getByTestId(
+        'sidebar-option-header-theme'
+      );
+
       fireEvent.click(allWidgetsOption);
 
       expect(allWidgetsOption).toHaveClass('active');
-      expect(screen.getByTestId('sidebar-option-header-theme')).not.toHaveClass(
-        'active'
-      );
+      expect(headerThemeOption).not.toHaveClass('active');
     });
   });
 
@@ -179,11 +188,11 @@ describe('CustomiseHomeModal Component', () => {
 
       // Switch to another sidebar option and back
       const allWidgetsOption = screen.getByTestId('sidebar-option-all-widgets');
-      fireEvent.click(allWidgetsOption);
-
       const headerThemeOption = screen.getByTestId(
         'sidebar-option-header-theme'
       );
+
+      fireEvent.click(allWidgetsOption);
       fireEvent.click(headerThemeOption);
 
       // Color should still be maintained
@@ -201,15 +210,17 @@ describe('CustomiseHomeModal Component', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('should call onBackgroundColorUpdate and onClose when apply button is clicked', () => {
+    it('should call onBackgroundColorUpdate and onClose when apply button is clicked with color change', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
+
+      // Change color first
+      const colorChangeButton = screen.getByTestId('color-change-button');
+      fireEvent.click(colorChangeButton);
 
       const applyButton = screen.getByTestId('apply-btn');
       fireEvent.click(applyButton);
 
-      expect(mockOnBackgroundColorUpdate).toHaveBeenCalledWith(
-        DEFAULT_HEADER_BG_COLOR
-      );
+      expect(mockOnBackgroundColorUpdate).toHaveBeenCalledWith('#ff0000');
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
@@ -228,7 +239,7 @@ describe('CustomiseHomeModal Component', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('should call onBackgroundColorUpdate with currentBackgroundColor when apply is clicked without changes', () => {
+    it('should NOT call onBackgroundColorUpdate when apply is clicked without color changes', () => {
       const customColor = '#abcdef';
       render(
         <CustomiseHomeModal
@@ -240,8 +251,8 @@ describe('CustomiseHomeModal Component', () => {
       const applyButton = screen.getByTestId('apply-btn');
       fireEvent.click(applyButton);
 
-      expect(mockOnBackgroundColorUpdate).toHaveBeenCalledWith(customColor);
-      expect(mockOnClose).toHaveBeenCalledTimes(1);
+      // Should NOT call onBackgroundColorUpdate because color didn't change
+      expect(mockOnBackgroundColorUpdate).not.toHaveBeenCalled();
     });
 
     it('should not call onBackgroundColorUpdate when cancel is clicked', () => {
@@ -267,11 +278,50 @@ describe('CustomiseHomeModal Component', () => {
 
       render(<CustomiseHomeModal {...propsWithoutCallback} />);
 
+      // Change color first to trigger the condition
+      const colorChangeButton = screen.getByTestId('color-change-button');
+      fireEvent.click(colorChangeButton);
+
       const applyButton = screen.getByTestId('apply-btn');
 
       // Should not throw error when callback is undefined
       expect(() => fireEvent.click(applyButton)).not.toThrow();
       expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should enable apply button when color is changed', () => {
+      render(<CustomiseHomeModal {...defaultProps} />);
+
+      // Change color
+      const colorChangeButton = screen.getByTestId('color-change-button');
+      fireEvent.click(colorChangeButton);
+
+      const applyButton = screen.getByTestId('apply-btn');
+
+      expect(applyButton).not.toBeDisabled();
+    });
+  });
+
+  describe('Content Switching', () => {
+    it('should show header theme component by default', () => {
+      render(<CustomiseHomeModal {...defaultProps} />);
+
+      expect(screen.getByTestId('header-theme-component')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('all-widgets-content')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should show all widgets content when all-widgets option is clicked', () => {
+      render(<CustomiseHomeModal {...defaultProps} />);
+
+      const allWidgetsOption = screen.getByTestId('sidebar-option-all-widgets');
+      fireEvent.click(allWidgetsOption);
+
+      expect(screen.getByTestId('all-widgets-content')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('header-theme-component')
+      ).not.toBeInTheDocument();
     });
   });
 });

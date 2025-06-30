@@ -154,6 +154,7 @@ const CustomiseHomeModal = ({
               className={`sidebar-option text-md font-semibold border-radius-xs cursor-pointer d-flex flex-wrap items-center
           ${isWidgetItem ? 'sidebar-widget-item' : ''}
           ${selectedKey === item.key ? 'active' : ''}`}
+              data-testid={`sidebar-option-${item.key}`}
               key={item.key}
               onClick={() => handleSidebarClick(item.key)}>
               <span>{item.label}</span>
