@@ -138,7 +138,7 @@ export const clickOutside = async (page: Page) => {
       x: 0,
       y: 0,
     },
-  }); // with this action left menu bar is getting opened
+  });
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
