@@ -14,9 +14,9 @@
 import { Checkbox, Form, Modal } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
@@ -45,7 +45,7 @@ const ChangeParentHierarchy = ({
   onCancel,
 }: ChangeParentHierarchyProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = Form.useForm();
   const { socket } = useWebSocketConnector();
   const [loadingState, setLoadingState] = useState({
@@ -90,12 +90,12 @@ const ChangeParentHierarchy = ({
       // Redirect to the new fully qualified name path if available
       if (response.fullyQualifiedName) {
         const glossaryPath = getGlossaryPath(response.fullyQualifiedName);
-        history.replace(glossaryPath);
+        navigate(glossaryPath);
       } else {
         onCancel();
       }
     },
-    [onCancel, history]
+    [onCancel, navigate]
   );
 
   const handleMoveJobUpdate = useCallback(

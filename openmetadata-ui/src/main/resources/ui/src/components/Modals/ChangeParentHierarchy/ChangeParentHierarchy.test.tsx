@@ -34,6 +34,12 @@ const mockSocket = {
   off: jest.fn(),
 };
 
+const mockNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+}));
+
 jest.mock('../../../context/WebSocketProvider/WebSocketProvider', () => ({
   useWebSocketConnector: jest.fn(() => ({ socket: mockSocket })),
 }));
