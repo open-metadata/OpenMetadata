@@ -37,7 +37,6 @@ import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
-import io.swagger.v3.oas.annotations.security.SecuritySchemes;
 import io.swagger.v3.oas.annotations.servers.Server;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
@@ -164,11 +163,11 @@ import org.quartz.SchedulerException;
       @Server(url = "http://localhost:8585/api", description = "Endpoint URL")
     },
     security = @SecurityRequirement(name = "BearerAuth"))
-  @SecurityScheme(
-      name = "BearerAuth",
-      type = SecuritySchemeType.HTTP,
-      scheme = "bearer",
-      bearerFormat = "JWT")
+@SecurityScheme(
+    name = "BearerAuth",
+    type = SecuritySchemeType.HTTP,
+    scheme = "bearer",
+    bearerFormat = "JWT")
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
@@ -326,7 +325,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     try {
       if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
         Class<?> mcpServerClass = Class.forName("org.openmetadata.mcp.McpServer");
-        McpServerProvider mcpServer = (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
+        McpServerProvider mcpServer =
+            (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
         mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
         LOG.info("MCP Server registered successfully");
       }

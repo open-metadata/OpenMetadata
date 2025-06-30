@@ -12,14 +12,14 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.tools.DefaultToolContext;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.apps.McpServerProvider;
 
 @Slf4j
 public class McpServer implements McpServerProvider {

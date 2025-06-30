@@ -10,17 +10,17 @@ import org.openmetadata.service.security.Authorizer;
  * The actual implementation will be in openmetadata-mcp module.
  */
 public interface McpServerProvider {
-    /**
-     * Initialize and register the MCP server with the application.
-     * 
-     * @param environment Dropwizard environment
-     * @param authorizer Security authorizer
-     * @param limits Request limits
-     * @param config Application configuration
-     */
-    void initializeMcpServer(
-            Environment environment, 
-            Authorizer authorizer, 
-            Limits limits, 
-            OpenMetadataApplicationConfig config);
+  /**
+   * Initialize and register the MCP server with the application.
+   *
+   * @param environment Dropwizard environment
+   * @param authorizer Security authorizer
+   * @param limits Request limits
+   * @param config Application configuration
+   */
+  void initializeMcpServer(
+      Environment environment,
+      Authorizer authorizer,
+      Limits limits,
+      OpenMetadataApplicationConfig config);
 }
