@@ -1,5 +1,5 @@
 ---
-title: filterPattern
+title: filterPattern | OpenMetadata Filter Pattern
 slug: /main-concepts/metadata-standard/schemas/type/filterpattern
 ---
 

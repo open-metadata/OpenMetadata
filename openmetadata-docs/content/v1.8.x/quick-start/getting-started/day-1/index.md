@@ -1,5 +1,5 @@
 ---
-title: Day 1
+title: Day 1 Getting Started | OpenMetadata Day 1 Guide
 slug: /quick-start/getting-started/day-1
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: OpenMetadata SDK
+title: OpenMetadata SDK | OpenMetadata Software Development Kit
 slug: /sdk
 ---
 

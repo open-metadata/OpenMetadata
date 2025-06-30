@@ -1,5 +1,5 @@
 ---
-title: entityRelationship
+title: entityRelationship | OpenMetadata Entity Relationship
 slug: /main-concepts/metadata-standard/schemas/type/entityrelationship
 ---
 

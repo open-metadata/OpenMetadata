@@ -1,5 +1,5 @@
 ---
-title: lifeCycle
+title: Life Cycle | OpenMetadata Life Cycle Details
 slug: /main-concepts/metadata-standard/schemas/type/lifecycle
 ---
 

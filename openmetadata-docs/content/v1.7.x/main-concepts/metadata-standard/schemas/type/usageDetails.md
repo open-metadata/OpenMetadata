@@ -1,5 +1,5 @@
 ---
-title: usageDetails
+title: usageDetails | OpenMetadata Usage Details
 slug: /main-concepts/metadata-standard/schemas/type/usagedetails
 ---
 

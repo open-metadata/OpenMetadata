@@ -1,5 +1,5 @@
 ---
-title: include
+title: Include Schema | OpenMetadata Include Schema Overview
 slug: /main-concepts/metadata-standard/schemas/type/include
 noindex: true
 nofollow: true

@@ -1,5 +1,5 @@
 ---
-title: schema
+title: Schema Details | OpenMetadata Schema Detailed Information
 slug: /main-concepts/metadata-standard/schemas/type/schema
 ---
 

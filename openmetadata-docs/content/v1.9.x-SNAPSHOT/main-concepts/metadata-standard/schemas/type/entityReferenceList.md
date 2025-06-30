@@ -1,5 +1,5 @@
 ---
-title: entityReferenceList
+title: entityReferenceList | OpenMetadata Entity Reference List
 slug: /main-concepts/metadata-standard/schemas/type/entityreferencelist
 ---
 

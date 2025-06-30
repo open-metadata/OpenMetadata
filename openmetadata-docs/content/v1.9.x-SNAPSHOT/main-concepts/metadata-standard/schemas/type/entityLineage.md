@@ -1,5 +1,5 @@
 ---
-title: entityLineage
+title: entityLineage | OpenMetadata Entity Lineage
 slug: /main-concepts/metadata-standard/schemas/type/entitylineage
 ---
 
