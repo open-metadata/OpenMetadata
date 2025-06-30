@@ -2132,7 +2132,10 @@
     "team-no-asset": "O teu equipo non ten ningún activo.",
     "test-case-schedule-description": "As probas de calidade de datos poden programarse para executarse coa frecuencia desexada. A zona horaria está en UTC.",
     "test-connection-cannot-be-triggered": "Non se pode iniciar a conexión de proba.",
-    "test-connection-taking-too-long": "A conexión de proba está tardando demasiado. Inténtao de novo.",
+    "test-connection-taking-too-long": {
+      "default": "Asegúrese de que {{service_type}} estea configurado para permitir conexións",
+      "withIp": " dende {{ip}}"
+    },
     "test-your-connection-before-creating-service": "Proba as túas conexións antes de crear o servizo",
     "testing-your-connection-may-take-two-minutes": "A proba das túas conexións pode levar ata 2 minutos",
     "this-action-is-not-allowed-for-deleted-entities": "Esta acción non está permitida para entidades eliminadas.",

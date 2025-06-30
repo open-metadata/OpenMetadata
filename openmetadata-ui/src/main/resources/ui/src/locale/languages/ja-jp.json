@@ -2132,7 +2132,10 @@
     "team-no-asset": "あなたのチームはアセットを持っていません。",
     "test-case-schedule-description": "The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.",
     "test-connection-cannot-be-triggered": "Test connection cannot be triggered.",
-    "test-connection-taking-too-long": "The test connection is taking too long. Please try again.",
+    "test-connection-taking-too-long": {
+      "default": "{{service_type}} が接続を許可するように構成されていることを確認してください",
+      "withIp": " {{ip}} から"
+    },
     "test-your-connection-before-creating-service": "サービスを作成する前に接続テストをしてください。",
     "testing-your-connection-may-take-two-minutes": "Testing your connections may take up-to 2 minutes",
     "this-action-is-not-allowed-for-deleted-entities": "This action is not allowed for deleted entities.",
