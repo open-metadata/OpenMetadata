@@ -24,7 +24,6 @@ import {
   FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
   TEST_CONNECTION_FAILURE_MESSAGE,
-  TEST_CONNECTION_INFO_MESSAGE,
   TEST_CONNECTION_INITIAL_MESSAGE,
   TEST_CONNECTION_PROGRESS_PERCENTAGE,
   TEST_CONNECTION_SUCCESS_MESSAGE,
@@ -71,6 +70,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   onValidateFormRequiredFields,
   shouldValidateForm = true,
   showDetails = true,
+  hostIp,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -328,7 +328,15 @@ const TestConnection: FC<TestConnectionProps> = ({
         );
 
         if (!isWorkflowCompleted) {
-          setMessage(TEST_CONNECTION_INFO_MESSAGE);
+          let message = t('message.test-connection-taking-too-long.default', {
+            service_type: serviceType,
+          });
+          if (hostIp) {
+            message += t('message.test-connection-taking-too-long.withIp', {
+              ip: hostIp,
+            });
+          }
+          setMessage(message);
           setIsConnectionTimeout(true);
         }
 
@@ -496,10 +504,12 @@ const TestConnection: FC<TestConnectionProps> = ({
       <TestConnectionModal
         errorMessage={errorMessage}
         handleCloseErrorMessage={handleCloseErrorMessage}
+        hostIp={hostIp}
         isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
         progress={progress}
+        serviceType={serviceType}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={handleCancelTestConnectionModal}
