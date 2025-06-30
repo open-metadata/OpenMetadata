@@ -225,10 +225,12 @@ POSTGRES_GET_STORED_PROCEDURES = """
         proargtypes AS argument_types,
         prorettype::regtype AS return_type,
         prosrc AS definition,
-        'StoredProcedure' as procedure_type
+        'StoredProcedure' as procedure_type,
+        obj_description(pg_proc.oid, 'pg_proc') AS description
     FROM pg_proc
     JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
-    WHERE prokind = 'p';
+    WHERE prokind = 'p'
+    and pg_namespace.nspname = '{schema_name}';
 """
 
 POSTGRES_GET_FUNCTIONS = """
@@ -238,11 +240,12 @@ SELECT
     proargtypes AS argument_types,
     prorettype :: regtype AS return_type,
     prosrc AS definition,
-    'Function' as procedure_type
+    'Function' as procedure_type,
+    obj_description(pg_proc.oid, 'pg_proc') AS description
 FROM
     pg_proc
     JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
 WHERE
     prokind = 'f'
-    and pg_namespace.nspname NOT IN ('pg_catalog', 'information_schema');
+    and pg_namespace.nspname = '{schema_name}';
 """
