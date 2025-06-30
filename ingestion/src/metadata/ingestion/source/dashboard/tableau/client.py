@@ -41,6 +41,7 @@ from metadata.ingestion.source.dashboard.tableau.queries import (
     TALEAU_GET_CUSTOM_SQL_QUERY,
 )
 from metadata.utils.logger import ometa_logger
+from metadata.utils.ssl_manager import SSLManager
 
 logger = ometa_logger()
 
@@ -80,10 +81,12 @@ class TableauClient:
         config,
         verify_ssl: Union[bool, str],
         pagination_limit: int,
+        ssl_manager: Optional[SSLManager] = None,
     ):
         self.tableau_server = Server(str(config.hostPort), use_server_version=True)
         if config.apiVersion:
             self.tableau_server.version = config.apiVersion
+        print("verify_ssl", verify_ssl)
         self.tableau_server.add_http_options({"verify": verify_ssl})
         self.tableau_server.auth.sign_in(tableau_server_auth)
         self.config = config
@@ -91,6 +94,7 @@ class TableauClient:
         self.custom_sql_table_queries: Dict[str, List[str]] = {}
         self.owner_cache: Dict[str, TableauOwner] = {}
         self.all_projects: List[ProjectItem] = []
+        self.ssl_manager = ssl_manager
 
     @cached_property
     def server_info(self) -> Callable:
@@ -414,3 +418,11 @@ class TableauClient:
 
     def sign_out(self) -> None:
         self.tableau_server.auth.sign_out()
+        self.cleanup()
+
+    def cleanup(self) -> None:
+        """
+        Clean up temporary SSL files if they exist
+        """
+        if self.ssl_manager:
+            self.ssl_manager.cleanup_temp_files()
