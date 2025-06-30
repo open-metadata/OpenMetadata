@@ -144,7 +144,21 @@ public class SearchIndexEndToEndTest {
             .withName("SearchIndexingApplication")
             .withAppConfiguration(JsonUtils.convertValue(jobData, Object.class));
 
-    searchIndexApp.init(testApp);
+    // Use reflection to set jobData directly to avoid ApplicationContext initialization
+    try {
+      java.lang.reflect.Field jobDataField = SearchIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(searchIndexApp, jobData);
+
+      java.lang.reflect.Field sinkField = SearchIndexApp.class.getDeclaredField("searchIndexSink");
+      sinkField.setAccessible(true);
+      sinkField.set(searchIndexApp, mockSink);
+
+      // Initialize stats to avoid NPE
+      searchIndexApp.initializeTotalRecords(jobData.getEntities());
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to set fields via reflection", e);
+    }
     webSocketMessages.clear();
 
     List<EntityInterface> entities = new ArrayList<>();
@@ -288,7 +302,21 @@ public class SearchIndexEndToEndTest {
             .withName("SearchIndexingApplication")
             .withAppConfiguration(JsonUtils.convertValue(jobData, Object.class));
 
-    searchIndexApp.init(testApp);
+    // Use reflection to set jobData directly to avoid ApplicationContext initialization
+    try {
+      java.lang.reflect.Field jobDataField = SearchIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(searchIndexApp, jobData);
+
+      java.lang.reflect.Field sinkField = SearchIndexApp.class.getDeclaredField("searchIndexSink");
+      sinkField.setAccessible(true);
+      sinkField.set(searchIndexApp, mockSink);
+
+      // Initialize stats to avoid NPE
+      searchIndexApp.initializeTotalRecords(jobData.getEntities());
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to set fields via reflection", e);
+    }
     webSocketMessages.clear();
 
     List<EntityInterface> batch1 = createMockEntities(5);
@@ -373,7 +401,21 @@ public class SearchIndexEndToEndTest {
             .withName("SearchIndexingApplication")
             .withAppConfiguration(JsonUtils.convertValue(jobData, Object.class));
 
-    searchIndexApp.init(testApp);
+    // Use reflection to set jobData directly to avoid ApplicationContext initialization
+    try {
+      java.lang.reflect.Field jobDataField = SearchIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(searchIndexApp, jobData);
+
+      java.lang.reflect.Field sinkField = SearchIndexApp.class.getDeclaredField("searchIndexSink");
+      sinkField.setAccessible(true);
+      sinkField.set(searchIndexApp, mockSink);
+
+      // Initialize stats to avoid NPE
+      searchIndexApp.initializeTotalRecords(jobData.getEntities());
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to set fields via reflection", e);
+    }
 
     try {
       java.lang.reflect.Field sinkField = SearchIndexApp.class.getDeclaredField("searchIndexSink");
