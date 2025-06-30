@@ -1915,6 +1915,7 @@
     "no-data-quality-test-case": "通过将质量测试添加到此表中来增强数据可靠性。我们的逐步指南将向您展示如何开始, <0>{{explore}}</0>",
     "no-data-yet": "还没有数据",
     "no-default-persona": "没有默认人物",
+    "no-description-available": "没有描述",
     "no-domain-assigned-to-entity": "没有为{{entity}}分配任何域",
     "no-domain-available": "没有可供配置的域, 点击<0>{{link}}</0>添加域",
     "no-entity-activity-message": "{{entity}}上还没有任何活动, 单击开始对话",

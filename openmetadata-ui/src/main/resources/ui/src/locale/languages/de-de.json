@@ -1915,6 +1915,7 @@
     "no-data-quality-test-case": "Erhöhen Sie die Zuverlässigkeit Ihrer Daten, indem Sie Qualitätstests für diesen Tabelle hinzufügen. Unser Schritt-für-Schritt-Leitfaden wird Ihnen zeigen, wie Sie beginnen, <0>{{explore}}</0>",
     "no-data-yet": "Noch keine Daten",
     "no-default-persona": "Keine Standardpersona",
+    "no-description-available": "Keine Beschreibung verfügbar.",
     "no-domain-assigned-to-entity": "Es sind keine Domänen der {{entity}} zugewiesen.",
     "no-domain-available": "Es sind keine Domänen zur Konfiguration verfügbar. Klicken Sie auf <0>{{link}}</0>, um Domänen hinzuzufügen.",
     "no-entity-activity-message": "Es gibt noch keine Aktivität auf {{entity}}. Starten Sie ein Gespräch, indem Sie auf das",

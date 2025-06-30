@@ -1915,6 +1915,7 @@
     "no-data-quality-test-case": "הגדר ניסויים כדי לשפר את נטילות הנתונים שלך. מדריךנו יציג את הדרך להתחיל, <0>{{explore}}</0>",
     "no-data-yet": "אין נתונים עד כה",
     "no-default-persona": "אין פרסונה ברירת מחדל",
+    "no-description-available": "אין תיאור זמין.",
     "no-domain-assigned-to-entity": "לא הוקצו תחומים ל-{{entity}}",
     "no-domain-available": "לא קיימים תחומים להגדרה. לחץ על <0>{{link}}</0> כדי להוסיף תחומים",
     "no-entity-activity-message": "אין פעילות ב-{{entity}} עדיין. התחל שיחה על ידי לחיצה על ה",

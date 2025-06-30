@@ -13,6 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Card, Typography } from 'antd';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import { PageType } from '../../../../generated/system/ui/page';
@@ -32,6 +33,7 @@ const WidgetCard = ({
   isSelected,
   onSelectWidget,
 }: WidgetCardProps) => {
+  const { t } = useTranslation();
   const { currentPageType } = useCustomizeStore();
 
   const widgetImage = useMemo(() => {
@@ -86,7 +88,7 @@ const WidgetCard = ({
         <Typography.Paragraph
           className="widget-desc m-t-xs text-xs font-regular"
           data-testid="widget-description">
-          {widget.description ?? 'No description available.'}
+          {widget.description ?? t('message.no-description-available')}
         </Typography.Paragraph>
       </div>
     </Card>

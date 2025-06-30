@@ -1915,6 +1915,7 @@
     "no-data-quality-test-case": "Aumenta la confiabilidad de tus datos agregando pruebas de calidad a esta tabla. Nuestro guía paso a paso te mostrará cómo empezar, <0>{{explore}}</0>",
     "no-data-yet": "Aún no hay datos",
     "no-default-persona": "No hay persona predeterminada",
+    "no-description-available": "No hay descripción disponible.",
     "no-domain-assigned-to-entity": "No se han asignado dominios a {{entity}}",
     "no-domain-available": "No hay dominios disponibles para configurar. Haz clic en <0>{{link}}</0> para agregar dominios",
     "no-entity-activity-message": "Todavía no hay actividad en {{entity}}. Inicia una conversación haciendo clic en",

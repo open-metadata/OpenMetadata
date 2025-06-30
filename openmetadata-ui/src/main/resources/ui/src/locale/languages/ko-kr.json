@@ -1915,6 +1915,7 @@
     "no-data-quality-test-case": "이 테이블에 대해 구성된 데이터 품질 테스트가 없는 것 같습니다. 데이터 품질 테스트를 설정하는 방법을 알아보려면 <0>{{explore}}</0>",
     "no-data-yet": "아직 데이터가 없습니다",
     "no-default-persona": "\t기본 페르소나가 없습니다",
+    "no-description-available": "설명 없음",
     "no-domain-assigned-to-entity": "{{entity}}에 할당된 도메인이 없습니다",
     "no-domain-available": "구성할 수 있는 도메인이 없습니다. 도메인을 추가하려면 <0>{{link}}</0>를 클릭하세요",
     "no-entity-activity-message": "아직 {{entity}}에 대한 활동이 없습니다. 다음을 클릭하여 대화를 시작하세요",

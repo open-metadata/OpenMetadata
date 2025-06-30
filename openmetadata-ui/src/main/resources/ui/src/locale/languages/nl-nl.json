@@ -1915,6 +1915,7 @@
     "no-data-quality-test-case": "Verhoog de betrouwbaarheid van uw data door kwaliteitstests toe te voegen aan deze tabel. Onze stap-voor-stapgids zal u laten zien hoe u begint, <0>{{explore}}</0>",
     "no-data-yet": "Er is nog geen data",
     "no-default-persona": "Geen standaardpersoon",
+    "no-description-available": "Geen beschrijving beschikbaar.",
     "no-domain-assigned-to-entity": "Geen domeinen zijn toegewezen aan {{entity}}",
     "no-domain-available": "Er zijn geen domeinen beschikbaar om te configureren. Klik op <0>{{link}}</0> om domeinen toe te voegen",
     "no-entity-activity-message": "Er is nog geen activiteit op de {{entity}}. Start een gesprek door te klikken op de",
