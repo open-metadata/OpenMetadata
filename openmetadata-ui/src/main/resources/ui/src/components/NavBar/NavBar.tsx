@@ -41,6 +41,7 @@ import {
   DEFAULT_DOMAIN_VALUE,
   LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
+  ONE_HOUR_MS,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';

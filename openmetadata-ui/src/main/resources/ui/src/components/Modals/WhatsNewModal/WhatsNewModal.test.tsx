@@ -20,7 +20,6 @@ import {
 } from '@testing-library/react';
 import axios from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import React from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
 import WhatsNewModal from './WhatsNewModal';

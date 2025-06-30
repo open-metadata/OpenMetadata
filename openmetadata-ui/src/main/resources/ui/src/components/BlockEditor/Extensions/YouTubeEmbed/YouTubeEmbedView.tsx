@@ -12,7 +12,6 @@
  */
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import classNames from 'classnames';
-import React from 'react';
 import './youtube-embed.less';
 
 const YouTubeEmbedView = ({ node, selected }: NodeViewProps) => {

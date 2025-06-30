@@ -24,13 +24,8 @@ import {
 import axios from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
-import { t } from 'i18next';
-import React, {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import { FunctionComponent, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
@@ -61,7 +56,7 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
   visible,
 }: WhatsNewModalProps) => {
   const { theme, appVersion } = useApplicationStore();
-
+  const { t } = useTranslation();
   const [versions, setVersions] = useState<ExternalVersionData[]>([]);
   const [activeVersion, setActiveVersion] =
     useState<ExternalVersionData | null>(null);
