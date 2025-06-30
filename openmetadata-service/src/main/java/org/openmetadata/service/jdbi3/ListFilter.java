@@ -78,7 +78,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
-    return assignee == null ? "" : String.format("assignee = '%s'", assignee);
+    return assignee == null ? "" : "assignee = :assignee";
   }
 
   private String getCreatedByCondition() {
@@ -95,12 +95,12 @@ public class ListFilter extends Filter<ListFilter> {
     String workflowDefinitionId = queryParams.get("workflowDefinitionId");
     return workflowDefinitionId == null
         ? ""
-        : String.format("workflowDefinitionId = '%s'", workflowDefinitionId);
+        : "workflowDefinitionId = :workflowDefinitionId";
   }
 
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
-    return entityLinkStr == null ? "" : String.format("entityLink = '%s'", entityLinkStr);
+    return entityLinkStr == null ? "" : "entityLink = :entityLink";
   }
 
   private String getAgentTypeCondition() {
@@ -109,9 +109,9 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.agentType') = '%s'", agentType);
+        return "JSON_EXTRACT(json, '$.agentType') = :agentType";
       } else {
-        return String.format("json->>'agentType' = '%s'", agentType);
+        return "json->>'agentType' = :agentType";
       }
     }
   }
@@ -122,9 +122,9 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.provider') = '%s'", provider);
+        return "JSON_EXTRACT(json, '$.provider') = :provider";
       } else {
-        return String.format("json->>'provider' = '%s'", provider);
+        return "json->>'provider' = :provider";
       }
     }
   }
@@ -135,9 +135,9 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.alertType') = '%s'", alertType);
+        return "JSON_EXTRACT(json, '$.alertType') = :alertType";
       } else {
-        return String.format("json->>'alertType' = '%s'", alertType);
+        return "json->>'alertType' = :alertType";
       }
     }
   }
@@ -146,7 +146,7 @@ public class ListFilter extends Filter<ListFilter> {
     String testFailureStatus = queryParams.get("testCaseResolutionStatusType");
     return testFailureStatus == null
         ? ""
-        : String.format("testCaseResolutionStatusType = '%s'", testFailureStatus);
+        : "testCaseResolutionStatusType = :testCaseResolutionStatusType";
   }
 
   public String getIncludeCondition(String tableName) {
@@ -191,15 +191,16 @@ public class ListFilter extends Filter<ListFilter> {
       String entityTypeCondition =
           nullOrEmpty(entityType)
               ? ""
-              : String.format("AND entity_relationship.toEntity='%s'", entityType);
+              : "AND entity_relationship.toEntity = :entityType";
       return String.format(
           "(%s NOT IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' %s AND relation=10))",
           entityIdColumn, entityTypeCondition);
     } else {
+      // Store domainId in queryParams to ensure it's available for parameter binding
       return String.format(
-          "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
+          "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId = :domainId AND "
               + "relation=10))",
-          entityIdColumn, domainId);
+          entityIdColumn);
     }
   }
 
@@ -286,19 +287,22 @@ public class ListFilter extends Filter<ListFilter> {
       // EntityLink gets validated in the resource layer
       // EntityLink entityLinkParsed = EntityLink.parse(entityLink);
       // filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
-      conditions.add(
-          includeAllTests
-              ? String.format(
-                  "(entityFQN LIKE '%s%s%%' OR entityFQN = '%s')",
-                  escape(entityFQN), Entity.SEPARATOR, escapeApostrophe(entityFQN))
-              : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN)));
+      if (includeAllTests) {
+        // For LIKE patterns, we need to escape special characters and add to queryParams
+        queryParams.put("entityFQNLike", escape(entityFQN) + Entity.SEPARATOR + "%");
+        conditions.add("(entityFQN LIKE :entityFQNLike OR entityFQN = :entityFQN)");
+      } else {
+        conditions.add("entityFQN = :entityFQN");
+      }
     }
 
     if (testSuiteId != null) {
+      // Use parameterized values for entity types and relation ordinal
+      queryParams.put("testCaseEntity", Entity.TEST_CASE);
+      queryParams.put("testSuiteEntity", Entity.TEST_SUITE);
+      queryParams.put("containsRelation", String.valueOf(Relationship.CONTAINS.ordinal()));
       conditions.add(
-          String.format(
-              "id IN (SELECT toId FROM entity_relationship WHERE fromId=:testSuiteId AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-              Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE));
+          "id IN (SELECT toId FROM entity_relationship WHERE fromId=:testSuiteId AND toEntity=:testCaseEntity AND relation=:containsRelation AND fromEntity=:testSuiteEntity)");
     }
 
     if (status != null) {
@@ -372,25 +376,37 @@ public class ListFilter extends Filter<ListFilter> {
     queryParams.put("typePrefix", typePrefix);
     return tableName == null
         ? "webhookType LIKE :typePrefix"
-        : tableName + ".webhookType LIKE typePrefix";
+        : tableName + ".webhookType LIKE :typePrefix";
   }
 
   private String getPipelineTypePrefixCondition(String tableName, String pipelineType) {
-    pipelineType = escape(pipelineType);
-    String inCondition = getInConditionFromString(pipelineType);
+    // For IN clauses with multiple values, we need to handle them differently
+    // Split the comma-separated values and create individual parameters
+    String[] types = pipelineType.split(",");
+    List<String> paramNames = new ArrayList<>();
+    
+    for (int i = 0; i < types.length; i++) {
+      String paramName = "pipelineType" + i;
+      queryParams.put(paramName, escape(types[i].trim()));
+      paramNames.add(":" + paramName);
+    }
+    
+    String inClause = "(" + String.join(", ", paramNames) + ")";
+    
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       return tableName == null
-          ? String.format("pipelineType IN (%s)", inCondition)
-          : String.format(
-              "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
-              tableName, inCondition);
+          ? "pipelineType IN " + inClause
+          : tableName + ".JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN " + inClause;
     }
     return tableName == null
-        ? String.format("pipelineType IN (%s)", inCondition)
-        : String.format("%s.json->>'pipelineType' IN (%s)", tableName, inCondition);
+        ? "pipelineType IN " + inClause
+        : tableName + ".json->>'pipelineType' IN " + inClause;
   }
 
+  // This method is no longer needed as we handle IN clauses with parameters
+  @Deprecated
   private String getInConditionFromString(String condition) {
+    // WARNING: This method is vulnerable to SQL injection and should not be used
     return Arrays.stream(condition.split(","))
         .map(s -> String.format("'%s'", s))
         .collect(Collectors.joining(","));

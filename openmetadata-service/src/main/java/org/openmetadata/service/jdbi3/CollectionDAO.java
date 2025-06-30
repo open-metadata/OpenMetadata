@@ -2082,12 +2082,13 @@ public interface CollectionDAO {
     }
 
     default List<String> listThreadsByTaskAssignee(String taskAssigneesId) {
-      String condition = String.format(" WHERE taskAssigneesIds LIKE '%%%s%%'", taskAssigneesId);
-      return listThreadsByTaskAssigneesId(condition);
+      // Use parameterized query to prevent SQL injection
+      String pattern = "%" + taskAssigneesId + "%";
+      return listThreadsByTaskAssigneesIdParam(pattern);
     }
 
-    @SqlQuery("SELECT json FROM thread_entity <cond>")
-    List<String> listThreadsByTaskAssigneesId(@Define("cond") String cond);
+    @SqlQuery("SELECT json FROM thread_entity WHERE taskAssigneesIds LIKE :taskAssigneesIdPattern")
+    List<String> listThreadsByTaskAssigneesIdParam(@Bind("taskAssigneesIdPattern") String taskAssigneesIdPattern);
 
     @SqlQuery(
         "SELECT entityLink, type, taskStatus, COUNT(id) as count "
@@ -3736,29 +3737,43 @@ public interface CollectionDAO {
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
     default void updateTagPrefix(int source, String oldPrefix, String newPrefix) {
-      String update =
-          String.format(
-              "UPDATE tag_usage SET tagFQN = REPLACE(tagFQN, '%s.', '%s.'), tagFQNHash = REPLACE(tagFQNHash, '%s.', '%s.') WHERE source = %s AND tagFQNHash LIKE '%s.%%'",
-              escapeApostrophe(oldPrefix),
-              escapeApostrophe(newPrefix),
-              FullyQualifiedName.buildHash(oldPrefix),
-              FullyQualifiedName.buildHash(newPrefix),
-              source,
-              FullyQualifiedName.buildHash(oldPrefix));
-      updateTagPrefixInternal(update);
+      updateTagPrefixParam(
+          source,
+          oldPrefix + ".",
+          newPrefix + ".", 
+          FullyQualifiedName.buildHash(oldPrefix) + ".",
+          FullyQualifiedName.buildHash(newPrefix) + ".",
+          FullyQualifiedName.buildHash(oldPrefix) + ".%"
+      );
     }
+
+    @SqlUpdate("UPDATE tag_usage SET tagFQN = REPLACE(tagFQN, :oldPrefix, :newPrefix), tagFQNHash = REPLACE(tagFQNHash, :oldPrefixHash, :newPrefixHash) WHERE source = :source AND tagFQNHash LIKE :likePattern")
+    void updateTagPrefixParam(
+        @Bind("source") int source,
+        @Bind("oldPrefix") String oldPrefix,
+        @Bind("newPrefix") String newPrefix,
+        @Bind("oldPrefixHash") String oldPrefixHash,
+        @Bind("newPrefixHash") String newPrefixHash,
+        @Bind("likePattern") String likePattern
+    );
 
     default void updateTargetFQNHashPrefix(
         int source, String oldTargetFQNHashPrefix, String newTargetFQNHashPrefix) {
-      String update =
-          String.format(
-              "UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, '%s.', '%s.') WHERE source = %s AND targetFQNHash LIKE '%s.%%'",
-              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix),
-              FullyQualifiedName.buildHash(newTargetFQNHashPrefix),
-              source,
-              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix));
-      updateTagPrefixInternal(update);
+      updateTargetFQNHashPrefixParam(
+          source,
+          FullyQualifiedName.buildHash(oldTargetFQNHashPrefix) + ".",
+          FullyQualifiedName.buildHash(newTargetFQNHashPrefix) + ".",
+          FullyQualifiedName.buildHash(oldTargetFQNHashPrefix) + ".%"
+      );
     }
+
+    @SqlUpdate("UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, :oldHash, :newHash) WHERE source = :source AND targetFQNHash LIKE :likePattern")
+    void updateTargetFQNHashPrefixParam(
+        @Bind("source") int source,
+        @Bind("oldHash") String oldHash,
+        @Bind("newHash") String newHash,
+        @Bind("likePattern") String likePattern
+    );
 
     default void rename(int source, String oldFQN, String newFQN) {
       renameInternal(source, oldFQN, newFQN, newFQN); // First rename tagFQN from oldFQN to newFQN
@@ -3784,6 +3799,7 @@ public interface CollectionDAO {
         @Bind("newFQN") String newFQN,
         @BindFQN("newFQNHash") String newFQNHash);
 
+    @Deprecated // Vulnerable to SQL injection - use updateTagPrefixParam instead
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
 
