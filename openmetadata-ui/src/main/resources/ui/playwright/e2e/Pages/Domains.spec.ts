@@ -417,6 +417,7 @@ test.describe('Domains', () => {
     // Follow domain
     await followEntity(page, EntityTypeEndpoint.Domain);
     await redirectToHomePage(page);
+    await page.waitForLoadState('networkidle');
 
     // Check that the followed domain is shown in the following widget
     await expect(
@@ -426,10 +427,14 @@ test.describe('Domains', () => {
       page.locator('[data-testid="following-widget"]')
     ).toContainText(subDomain.data.displayName);
 
-    await sidebarClick(page, SidebarItem.DOMAIN);
-    await selectDomain(page, domain.data);
-    await selectSubDomain(page, domain.data, subDomain.data);
-    await verifyDomain(page, subDomain.data, domain.data, false);
+    const subDomainRes = page.waitForResponse('/api/v1/domains/name/*');
+    await page
+      .locator('[data-testid="following-widget"]')
+      .getByText(subDomain.data.displayName)
+      .click();
+
+    await subDomainRes;
+
     // Unfollow domain
     await unFollowEntity(page, EntityTypeEndpoint.Domain);
     await redirectToHomePage(page);
@@ -443,7 +448,6 @@ test.describe('Domains', () => {
     ).not.toContainText(subDomain.data.displayName);
 
     await sidebarClick(page, SidebarItem.DOMAIN);
-    await selectDomain(page, domain.data);
     await selectSubDomain(page, domain.data, subDomain.data);
     await verifyDomain(page, subDomain.data, domain.data, false);
 
@@ -901,11 +905,18 @@ test.describe('Data Consumer Domain Ownership', () => {
       'Check domain management permissions for data consumer owner',
       async () => {
         await sidebarClick(dataConsumerPage, SidebarItem.DOMAIN);
-        await selectDomain(dataConsumerPage, testResources.domainForTest.data);
 
-        await dataConsumerPage.locator('[data-testid="loader"]').waitFor({
-          state: 'detached',
-        });
+        const permissionRes = dataConsumerPage.waitForResponse(
+          '/api/v1/permissions/domain/*'
+        );
+        await dataConsumerPage
+          .getByRole('menuitem', {
+            name: testResources.domainForTest.data.displayName,
+          })
+          .locator('span')
+          .click();
+
+        await permissionRes;
 
         await dataConsumerPage.getByTestId('domain-details-add-button').click();
 
