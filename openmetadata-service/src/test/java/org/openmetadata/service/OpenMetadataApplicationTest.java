@@ -244,7 +244,7 @@ public abstract class OpenMetadataApplicationTest {
             config,
             forceMigrations);
     // Initialize search repository
-    SearchRepository searchRepository = new SearchRepository(getEsConfig());
+    SearchRepository searchRepository = new SearchRepository(getEsConfig(), 50);
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
@@ -296,7 +296,7 @@ public abstract class OpenMetadataApplicationTest {
 
   private void createIndices() {
     ElasticSearchConfiguration esConfig = getEsConfig();
-    SearchRepository searchRepository = new SearchRepository(esConfig);
+    SearchRepository searchRepository = new SearchRepository(esConfig, 50);
     LOG.info("creating indexes.");
     searchRepository.createIndexes();
   }

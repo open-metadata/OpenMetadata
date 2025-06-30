@@ -1249,7 +1249,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     jdbi = JdbiUtils.createAndSetupJDBI(dataSourceFactory);
 
-    searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
+    searchRepository =
+        new SearchRepository(
+            config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
 
     // Initialize secrets manager
     secretsManager =
