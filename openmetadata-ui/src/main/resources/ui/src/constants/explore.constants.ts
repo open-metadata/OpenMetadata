@@ -45,7 +45,7 @@ export const tableSortingFields: SortingField[] = [
   },
   {
     name: i18n.t('label.name'),
-    value: 'displayName.keyword',
+    value: 'name.keyword',
   },
   {
     name: i18n.t('label.weekly-usage'),
@@ -65,7 +65,7 @@ export const entitySortingFields = [
   },
   {
     name: i18n.t('label.name'),
-    value: 'displayName.keyword',
+    value: 'name.keyword',
   },
   { name: i18n.t('label.relevance'), value: '_score' },
   {
@@ -77,7 +77,7 @@ export const entitySortingFields = [
 export const tagSortingFields = [
   {
     name: i18n.t('label.name'),
-    value: 'displayName.keyword',
+    value: 'name.keyword',
   },
   { name: i18n.t('label.relevance'), value: '_score' },
   {
