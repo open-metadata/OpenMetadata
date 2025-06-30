@@ -81,6 +81,7 @@ import spark from '../assets/img/service-icon-spark.png';
 import spline from '../assets/img/service-icon-spline.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import sqlite from '../assets/img/service-icon-sqlite.png';
+import ssas from '../assets/img/service-icon-ssas.png';
 import superset from '../assets/img/service-icon-superset.png';
 import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
@@ -209,6 +210,7 @@ export const TERADATA = teradata;
 export const FLINK = flink;
 export const REST_SERVICE = restService;
 export const COCKROACH = cockroach;
+export const SSAS = ssas;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -429,6 +431,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Cockroach,
   SearchServiceType.OpenSearch,
   PipelineServiceType.Ssis,
+  DatabaseServiceType.Ssas,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
