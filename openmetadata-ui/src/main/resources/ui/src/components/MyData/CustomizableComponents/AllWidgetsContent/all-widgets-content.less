@@ -18,12 +18,14 @@
     border: 2px solid transparent;
     background-color: @grey-100;
     border-radius: @border-radius-sm;
-    padding: @padding-sm;
     cursor: pointer;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 
     &.selected {
-      border: 2px solid @blue-9;
+      border: 3px solid @blue-9;
     }
   }
 }

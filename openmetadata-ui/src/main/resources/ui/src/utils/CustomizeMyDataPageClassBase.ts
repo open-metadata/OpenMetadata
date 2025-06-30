@@ -12,16 +12,16 @@
  */
 
 import { FC } from 'react';
-import ActivityFeedImg from '../assets/img/activity-feed.png';
+import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
 import AnnouncementImg from '../assets/img/announcement.png';
-import DataAssetsImg from '../assets/img/data-assets.png';
-import FollowingImg from '../assets/img/following.png';
-import KPISmallImg from '../assets/img/kpi-small.png';
+import DataAssetsImg from '../assets/img/data-assets-widget.png';
+import FollowingImg from '../assets/img/following-widget.png';
+import KPISmallImg from '../assets/img/kpi-widget.png';
 import KPIImg from '../assets/img/kpi.png';
-import MyDataImg from '../assets/img/my-data.png';
+import MyDataImg from '../assets/img/my-data-widget.png';
 import RecentViewsImg from '../assets/img/recent-views.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
-import TotalAssetsImg from '../assets/img/total-assets.png';
+import TotalAssetsImg from '../assets/img/total-assets-widget.png';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
 import AnnouncementsWidget, {
   AnnouncementsWidgetProps,

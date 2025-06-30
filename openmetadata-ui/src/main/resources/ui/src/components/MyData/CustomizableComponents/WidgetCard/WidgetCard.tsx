@@ -12,8 +12,13 @@
  */
 import Icon from '@ant-design/icons';
 import { Card, Typography } from 'antd';
+import { useMemo } from 'react';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
+import { PageType } from '../../../../generated/system/ui/page';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
+import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
+import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import './widget-card.less';
 
 interface WidgetCardProps {
@@ -27,28 +32,63 @@ const WidgetCard = ({
   isSelected,
   onSelectWidget,
 }: WidgetCardProps) => {
+  const { currentPageType } = useCustomizeStore();
+
+  const widgetImage = useMemo(() => {
+    switch (currentPageType) {
+      case PageType.Glossary:
+      case PageType.GlossaryTerm:
+        return customizeDetailPageClassBase.getGlossaryWidgetImageFromKey(
+          widget.fullyQualifiedName,
+          1
+        );
+      case PageType.LandingPage:
+        return customizePageClassBase.getWidgetImageFromKey(
+          widget.fullyQualifiedName,
+          1
+        );
+      default:
+        return customizeDetailPageClassBase.getDetailPageWidgetImageFromKey(
+          widget.fullyQualifiedName,
+          1
+        );
+    }
+  }, [currentPageType, widget]);
+
   const handleClick = () => {
     onSelectWidget?.(widget.id ?? '');
   };
 
   return (
     <Card
-      className={`widget-card ${isSelected ? 'selected' : ''}`}
+      className={`widget-card h-full d-flex flex-col ${
+        isSelected ? 'selected' : ''
+      }`}
       data-testid="widget-card"
       onClick={handleClick}>
-      <div className="widget-card-content d-flex justify-between items-center">
-        <Typography.Text strong>{widget.name}</Typography.Text>
+      <div className="widget-card-content d-flex justify-between items-center flex-1">
+        <img
+          alt={widget.name}
+          className="h-full w-full"
+          data-testid="widget-image"
+          src={widgetImage}
+        />
         {isSelected && (
           <div className="check-box bg-white border-radius-sm p-sm d-flex items-center justify-center">
             <Icon className="check-icon" component={CheckIcon} />
           </div>
         )}
       </div>
-      <Typography.Paragraph
-        className="widget-desc m-t-xs"
-        data-testid="widget-description">
-        {widget.description ?? 'No description available.'}
-      </Typography.Paragraph>
+      <div className="p-t-md p-x-sm">
+        <Typography.Text className="text-sm font-medium">
+          {widget.name}
+        </Typography.Text>
+        <Typography.Paragraph
+          className="widget-desc m-t-xs text-xs font-regular"
+          data-testid="widget-description">
+          {widget.description ?? 'No description available.'}
+        </Typography.Paragraph>
+      </div>
     </Card>
   );
 };

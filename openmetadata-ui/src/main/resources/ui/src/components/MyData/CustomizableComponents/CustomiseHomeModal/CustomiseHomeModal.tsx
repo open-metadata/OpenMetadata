@@ -55,7 +55,8 @@ const CustomiseHomeModal = ({
       setWidgets(
         data.filter(
           (widget) =>
-            widget.fullyQualifiedName !== LandingPageWidgetKeys.ANNOUNCEMENTS
+            widget.fullyQualifiedName !== LandingPageWidgetKeys.ANNOUNCEMENTS &&
+            widget.fullyQualifiedName !== LandingPageWidgetKeys.RECENTLY_VIEWED
         )
       );
     } catch (error) {

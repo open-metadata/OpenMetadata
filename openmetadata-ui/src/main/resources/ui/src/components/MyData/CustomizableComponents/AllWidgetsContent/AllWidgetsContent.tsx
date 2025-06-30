@@ -34,6 +34,7 @@ const AllWidgetsContent = forwardRef<HTMLDivElement, AllWidgetsContentProps>(
 
         return (
           <Col
+            className="d-flex"
             data-widget-key={widget.fullyQualifiedName}
             key={widget.id}
             lg={8}
