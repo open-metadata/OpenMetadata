@@ -36,16 +36,16 @@ const WidgetCard = ({
       className={`widget-card ${isSelected ? 'selected' : ''}`}
       data-testid="widget-card"
       onClick={handleClick}>
-      <div className="widget-card-content">
+      <div className="widget-card-content d-flex justify-between items-center">
         <Typography.Text strong>{widget.name}</Typography.Text>
         {isSelected && (
-          <div className="check-box bg-white">
+          <div className="check-box bg-white border-radius-sm p-sm d-flex items-center justify-center">
             <Icon className="check-icon" component={CheckIcon} />
           </div>
         )}
       </div>
       <Typography.Paragraph
-        className="widget-desc"
+        className="widget-desc m-t-xs"
         data-testid="widget-description">
         {widget.description ?? 'No description available.'}
       </Typography.Paragraph>

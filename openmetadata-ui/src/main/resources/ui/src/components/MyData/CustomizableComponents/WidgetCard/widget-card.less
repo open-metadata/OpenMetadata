@@ -15,29 +15,18 @@
 
 .widget-card {
   &.selected {
-    border: 2px solid #175cd3;
-  }
-
-  .widget-card-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    border: 2px solid @blue-9;
   }
 
   .check-box {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    border: 1px solid #ebeef2;
-    border-radius: 12px;
-    padding: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    top: @size-xs;
+    right: @size-xs;
+    border: 1px solid @border-light;
 
     .check-icon {
-      color: #175cd3;
-      font-size: 24px;
+      color: @blue-9;
+      font-size: @size-lg;
       svg {
         fill: none;
       }
@@ -45,7 +34,6 @@
   }
 
   .widget-desc {
-    margin-top: 8px;
-    color: #888;
+    color: @grey-500;
   }
 }
