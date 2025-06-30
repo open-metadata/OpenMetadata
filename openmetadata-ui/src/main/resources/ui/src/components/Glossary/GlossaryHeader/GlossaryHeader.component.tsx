@@ -376,11 +376,6 @@ const GlossaryHeader = ({
               setShowActions(false);
             },
           },
-        ] as ItemType[])
-      : []),
-
-    ...(!isGlossary
-      ? ([
           {
             label: (
               <ManageButtonItemLabel
