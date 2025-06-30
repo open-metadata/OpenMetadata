@@ -14,13 +14,15 @@
 import { Alert, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
+
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import i18n from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
@@ -28,8 +30,8 @@ const TeamsSelectable = ({
   showTeamsAlert,
   onSelectionChange,
   filterJoinable,
-  placeholder = t('label.search-for-type', {
-    type: t('label.team-plural-lowercase'),
+  placeholder = i18n.t('label.search-for-type', {
+    type: i18n.t('label.team-plural-lowercase'),
   }),
   selectedTeams,
   maxValueCount,
@@ -37,7 +39,7 @@ const TeamsSelectable = ({
   const [noTeam, setNoTeam] = useState<boolean>(false);
   const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
+  const { t } = useTranslation();
   const onChange = (newValue: { label: string; value: string }[]) => {
     onSelectionChange &&
       onSelectionChange(

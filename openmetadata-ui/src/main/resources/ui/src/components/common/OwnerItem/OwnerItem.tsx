@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { OwnerType } from '../../../enums/user.enum';

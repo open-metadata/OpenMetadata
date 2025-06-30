@@ -14,3 +14,6 @@
 export const URL_JOIN_SLACK = 'https://slack.open-metadata.org';
 export const URL_OPEN_METADATA_DOCS = 'https://docs.open-metadata.org/';
 export const URL_GITHUB_REPO = 'https://github.com/open-metadata/OpenMetadata';
+
+export const URL_OM_RELEASE_UPDATES =
+  'https://open-metadata.org/product-updates#{{currentVersion}}';

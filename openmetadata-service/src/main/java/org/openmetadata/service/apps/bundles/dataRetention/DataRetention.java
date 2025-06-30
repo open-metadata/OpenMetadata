@@ -20,13 +20,14 @@ import org.openmetadata.schema.entity.applications.configuration.internal.DataRe
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
@@ -99,6 +100,18 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("change_events", new StepStats());
     entityStats.withAdditionalProperty("consumers_dlq", new StepStats());
     entityStats.withAdditionalProperty("activity_threads", new StepStats());
+
+    // Add stats for relationship and hierarchy cleanup
+    entityStats.withAdditionalProperty("orphaned_relationships", new StepStats());
+    entityStats.withAdditionalProperty("broken_database_entities", new StepStats());
+    entityStats.withAdditionalProperty("broken_dashboard_entities", new StepStats());
+    entityStats.withAdditionalProperty("broken_api_entities", new StepStats());
+    entityStats.withAdditionalProperty("broken_messaging_entities", new StepStats());
+    entityStats.withAdditionalProperty("broken_pipeline_entities", new StepStats());
+    entityStats.withAdditionalProperty("broken_storage_entities", new StepStats());
+    entityStats.withAdditionalProperty("broken_mlmodel_entities", new StepStats());
+    entityStats.withAdditionalProperty("broken_search_entities", new StepStats());
+
     retentionStats.setEntityStats(entityStats);
   }
 
@@ -107,6 +120,11 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.warn("DataRetentionConfiguration is null. Skipping cleanup.");
       return;
     }
+
+    // Clean up orphaned relationships and broken service hierarchies
+    LOG.info("Starting cleanup for orphaned relationships and broken service hierarchies.");
+    cleanOrphanedRelationshipsAndHierarchies();
+
     int retentionPeriod = config.getChangeEventRetentionPeriod();
     LOG.info("Starting cleanup for change events with retention period: {} days.", retentionPeriod);
     cleanChangeEvents(retentionPeriod);
@@ -159,6 +177,46 @@ public class DataRetention extends AbstractNativeApplication {
         () -> eventSubscriptionDAO.deleteConsumersDlqInBatches(cutoffMillis, BATCH_SIZE));
 
     LOG.info("Change events cleanup complete.");
+  }
+
+  @Transaction
+  private void cleanOrphanedRelationshipsAndHierarchies() {
+    LOG.info("Initiating orphaned relationships and broken service hierarchies cleanup.");
+
+    try {
+      // Perform comprehensive cleanup using the reusable utility
+      EntityRelationshipCleanupUtil cleanup =
+          EntityRelationshipCleanupUtil.forActualCleanup(collectionDAO, BATCH_SIZE);
+      EntityRelationshipCleanupUtil.CleanupResult result = cleanup.performComprehensiveCleanup();
+
+      // Update stats for orphaned relationships
+      updateStats(
+          "orphaned_relationships", result.getRelationshipResult().getRelationshipsDeleted(), 0);
+
+      // Update stats for each service type
+      for (Map.Entry<String, Integer> entry :
+          result.getHierarchyResult().getDeletedEntitiesByService().entrySet()) {
+        String serviceName = entry.getKey();
+        int deletedCount = entry.getValue();
+        String statsKey = "broken_" + serviceName.toLowerCase() + "_entities";
+        updateStats(statsKey, deletedCount, 0);
+      }
+
+      LOG.info(
+          "Cleanup completed - Relationships: {}, Hierarchies: {}",
+          result.getRelationshipResult().getRelationshipsDeleted(),
+          result.getHierarchyResult().getTotalBrokenDeleted());
+
+    } catch (Exception ex) {
+      LOG.error("Failed to clean orphaned relationships and hierarchies", ex);
+      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+
+      if (failureDetails == null) {
+        failureDetails = new HashMap<>();
+        failureDetails.put("message", ex.getMessage());
+        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+      }
+    }
   }
 
   private void executeWithStatsTracking(String entity, Supplier<Integer> deleteFunction) {

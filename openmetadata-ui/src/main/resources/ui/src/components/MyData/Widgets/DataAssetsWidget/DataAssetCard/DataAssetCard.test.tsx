@@ -12,7 +12,6 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Bucket } from 'Models';
-import React from 'react';
 import { getExplorePath } from '../../../../../utils/RouterUtils';
 import DataAssetCard from './DataAssetCard.component';
 

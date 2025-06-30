@@ -13,11 +13,10 @@
 
 /* eslint-disable max-len */
 
-import incidentManagerSampleData from '../../../assets/img/incidentManagerSampleData.png';
-import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
+import { CarousalData } from './FeaturesCarousel.interface';
 
-export const COOKIE_VERSION = 'VERSION_1_7_5'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_8_1'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -25,963 +24,6 @@ export const COOKIE_VERSION = 'VERSION_1_7_5'; // To be changed with each releas
 const CollateIconWithLinkMD = `[![Collate](${collateIcon})](https://www.getcollate.io/)`;
 
 export const WHATS_NEW = [
-  {
-    id: 25,
-    version: 'v1.4.0',
-    description: 'Released on 21st May 2024.',
-    features: [
-      {
-        title: 'Automations',
-        description:
-          'We have introduced Automations to easily maintain high-quality metadata at scale. The Automations streamline governance processes from ownership assignments to tagging, ensuring compliance and consistency. We have added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/zdh4yzHw4w0',
-      },
-      {
-        title: 'Bulk Upload Data Assets',
-        description:
-          'We have added support for bulk uploading data assets. Users can bulk upload database, schema, and table entities from a CSV file for quick edition or creation. The inline editor helps to validate and update the data assets before importing. Save time by bulk uploading data assets.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/CXxDdS6AifY',
-      },
-      {
-        title: 'Data Quality Widget',
-        description:
-          'A new Data Quality Widget has been added. It lists the summary of data quality tests belonging to a user or their team. Customize your Collate landing page to suit your requirements.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/Kakfa-lYGOU',
-      },
-      {
-        title: 'Lineage Layers',
-        description:
-          'The lineage view in OpenMetadata has been improved. All the nodes are expanded by default. A new ‘Layers’ button has been introduced. Users can choose to view the column level lineage. In the Data Observability View, the data quality results are displayed, such as Success, Aborted, or Failed. The pipeline status displays the last execution run.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/wtBMeLvA6Sw',
-      },
-      {
-        title: 'Column Lineage Search',
-        description:
-          'You can search lineage by column names. You can accurately trace the upstream and downstream nodes by column. OpenMetadata helps you to easily trace and visualize how data is transformed and where it is used in your organization.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/KZdVb8DiHJs',
-      },
-      {
-        title: 'Custom Properties',
-        description:
-          'OpenMetadata has been empowering users to enrich the data assets by extending their attributes with custom properties. Custom Properties now allow linking other assets in the platform, such as Tables, Dashboards, etc. To enable this, create a Custom Property as an Entity Reference or Entity Reference List.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/lZoSeKkErBk',
-      },
-      {
-        title: 'Custom Theme',
-        description:
-          "OpenMetadata previously supported uploading your company logo, monogram, and favicon to customize the platform's appearance according to your brand identity. Now, you can take it a step further by customizing the theme with colors that perfectly align with your company's branding.",
-        isImage: false,
-        path: 'https://www.youtube.com/embed/-NiU1flBHs0',
-      },
-      {
-        title: 'Data Quality Filters',
-        description:
-          'We have improved the filters for data quality. Now you have additional filtering options for test suites and test cases.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/UNOHvBMVcYM',
-      },
-      {
-        title: 'Data Profiler',
-        description:
-          'A global profiler configuration page has been implemented for the data profiler. This allows Admins to exclude certain metric computations for specific data types. Navigate to Settings > Preferences > Profiler Configuration to define the metrics to compute based on column data types.',
-        isImage: true,
-        path: profilerConfigPage,
-      },
-      {
-        title: 'Incident Manager',
-        description:
-          'Based on the latest failed test cases, a sample of failed rows will be displayed in the Incident Manager. Users can quickly verify the cause of failure based on this sample data. The failed sample data will be deleted once the issue is resolved. This is a Collate only feature.',
-        isImage: true,
-        path: incidentManagerSampleData,
-      },
-    ],
-    changeLogs: {
-      ['Backward Incompatible Changes']: `
-Tooling:
--   Metadata Backup/Recovery is deprecated. No further support will be provided.
--   Users are advised to use database native tools to backup and store it in their object store for recovery.
--   bootstrap/bootstrap_storage.sh has been deprecated in favor of bootstrap/openmetadata-ops.sh
-
-UI:
--   Activity has been improved. New update specific cards display critical information such as data quality test case updates, description, tag update or removal.
--   For Lineage, the Expand All button has been removed. A new Layers button is introduced at the bottom left corner. With the Layers button, you can add Column Level Lineage or Data Observability details to your Lineage view.
--   View Definition is now renamed as Schema Definition.
--   Adding Glossary Term view is improved. Now we show glossary terms hierarchically enabling a better understanding of how the terms are setup while adding it to a table or dashboard.
--  For Classification, users can set classification to be mutually exclusive only **at the time of creation**. Once created, you cannot change it back to mutually non-exclusive or vice-versa. This is to prevent conflicts of adding multiple tags that belong to same classification and later turning the mutually exclusive flag back to true.
-
-API:
--   Table Schema's ViewDefinition is now renamed to SchemaDefinition to capture Tables' Create Schema.
--   Bulk Import API now creates entities if they are not present during the import.
--   Table's TestSuite is migrated to EntityReference. Previously it used to store entire payload of TestSuite.
-`,
-      [`Automations ${CollateIconWithLinkMD}`]: `-  Easily maintain high-quality metadata at scale with automations. The Automations streamline governance processes from ownership assignments to tagging, ensuring compliance and consistency.
--   You can update the properties of your assets by filtering by service, owner, domain, or any other supported property from the advanced search.
--   Easily see which assets have been selected by jumping to the Explore page in one click.
--   For tables, data models, topics, and search indexes, you can apply the action to their columns or fields.
--   We added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.`,
-
-      [`Bulk Upload Data Assets  ${CollateIconWithLinkMD}`]: `-   Bulk upload/download database, schema, and table entities from/into a CSV file for quick edition or creation.
--   Supports an inline editor to validate/update assets before performing the upload.`,
-
-      'Data Quality Improvements': `-   The Table schema page now shows the Data Quality tests for each column.
--   Improved filtering options for test suite and test cases.
--   We have improved how the UI fetches the Data Quality details for improved performance.
--   We now compute Unique and Count in the same query to avoid inconsistency due to the high frequency of data insertion.
--   Fixed the issue with removing the test case description upon the test case display name change.
--   Support has been added for an empty string as a missing count.`,
-
-      'Data Profiler': `-   Implemented a global profiler configuration page, allowing admin to exclude certain metric computations for specific data types.
--   Added profiler support for Redshift complex types and DynamoDB.
--   Fixed an issue with performing sum operations for large values in profiler ingestion.
--   Fixed the histogram unit's issues with scientific notation.`,
-
-      'Incident Manager': `-   We now display a sample of failed rows for the latest failed test cases. Once the issue is resolved, the failed sample will be deleted. ${CollateIconWithLinkMD}
--   Fixed the Date time filter for the Incident Manager.
--   Notifications are sent for the tasks created by the Incident Manager.`,
-
-      'Lineage Improvements': `-   OpenMetadata already supports Column-level lineage, and now we have introduced Task-level lineage for Pipelines, Chart-level lineage for Dashboards, Feature-level lineage for ML Models, Field-level lineage for Topics, and columns for dashboard Data Models.
--   Automated column-level lineage is now supported for Tableau, Superset, QlikCloud, and QlikSense between Data Models and Tables.
--   The child nodes in a lineage graph are sorted in alphabetical order.
--   Improved the log of failed-to-parse queries.
--   Fixed an issue with automated column-level lineage overwriting the pipeline lineage and manual column lineage.
--   Snowflake & Databricks now supports automated lineage between external tables and their origin storage container.
--   Lineage can be exported as a CSV file.
--   OpenMetadata spark agent now supports automated lineage between tables and their origin storage container.
--   Fixed an issue with parsing lineage queries for Redshift.
--   Now, we support pipeline as an edge between any two entity types.
--   We now parse PowerBi DAX files for lineage.
--   Support has been added for dynamic tables.`,
-
-      'Data Insights': `- Previously, the data insights reports displayed only the percentage coverage of ownership and description. Now, users can drill down to view the data assets with no owner or description.
--   Improved the UX for data insight filters.`,
-
-      [`Cost Analysis ${CollateIconWithLinkMD}`]: `-   Lifecycle data for Cost Analysis has been implemented for BigQuery, Snowflake, and Redshift.`,
-
-      'Custom Theme': `-   Previously supported adding logo, monogram, and favicon to your OpenMetadata instance.
--   Now, it supports customizing the theme with colors to suit your company branding.`,
-
-      [`Landing Page Widgets ${CollateIconWithLinkMD}`]: `-  Added a Data Quality Widget to list the summary of data quality tests belonging to a user or their team.`,
-
-      'Ingestion Performance Improvements': `-   Bigquery, Redshift, and Snowflake now support incremental metadata ingestions by scanning DML operations on the query history.
--   Database Services now support parallelizing the metadata ingestion at each schema.`,
-
-      Connectors: `-   Now supports a new connector for [QlikCloud](https://www.qlik.com/us/products/qlik-cloud).
--   New Kafka Connect connector
--   We now parse complex protobuf schemas for Kafka
--   Improved model storage ingestion for Sagemaker and Mlflow.
--   Added an option to include or exclude drafts from dashboards.
--   Added an option to include or exclude paused pipelines in Airflow.
--   Revamped SSL support to allow users to upload the required certificates directly in the UI.
--   The character support has been enhanced for tag ingestion to include /.
--   In the Oracle connector, we rolled back to use all_ tables instead of dba_.
--   Added support for Azure auth in Trino.
--   For QlikSense, we have added an option to disable SSL validation.`,
-
-      'Custom Properties': `-   Custom Properties now allow linking other assets in the platform, such as Tables, Dashboards, etc. To enable this, create a Custom Property as an Entity Reference or Entity Reference List.`,
-
-      'Health Check': `-   Introduced the OpenMetadata Status page to do a Health Check on the setup information.
-
--   Helps identify missing or outdated credential information for ingestion pipeline, SSO, migration, and related issues.
-
--   Validates JWT authentication tokens for ingestion bots.`,
-
-      Glossary: `-   The glossary term parent can now be changed from the Details page.
--   On the data assets page, glossary terms are displayed by hierarchy.`,
-
-      'Alerts & Notification Improvements': `-   The Activity Feed provides more contextual information, removing the need to move to entity pages.
--   Alerts give more accurate information about the entity, as well as conversations and tasks.`,
-
-      Localization: `-   Fixed localization issues in the confirmation logic for the delete function.
--   Fixed the search index language configuration.`,
-
-      Roles: `
--   Now, roles can be inherited from the user configuration in SSO.`,
-
-      Search: `-   You can now filter by assets without a description or an owner.
--   Improved the match results for search results.`,
-
-      Others: `-   The description is auto-expanded when the data asset has no data and has the space to accommodate a lengthy description.
--   User email IDs have been masked and are only visible to Admins.
--   Users can filter Queries by owner, tag, and creation date in the UI.
--   Added a button in the Query Editor to copy the Query.
--   Improved Elasticsearch re-indexing.
--   Improved the charts based on custom metrics.
--   Improved the usage of the refresh token.
--   Redundant scroll bars have been removed from the UI.
--   Improved the bot role binding to provide more control over which roles are passed to the system bots.`,
-    },
-  },
-  {
-    id: 26,
-    version: 'v1.4.1',
-    description: `Released on 27th May 2024.`,
-    note: "In 1.4.1, we provide migration fixes on top of the 1.4.0 release. Don't miss out the release highlights!",
-    features: [
-      {
-        title: 'Automations',
-        description:
-          'We have introduced Automations to easily maintain high-quality metadata at scale. The Automations streamline governance processes from ownership assignments to tagging, ensuring compliance and consistency. We have added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/zdh4yzHw4w0',
-      },
-      {
-        title: 'Bulk Upload Data Assets',
-        description:
-          'We have added support for bulk uploading data assets. Users can bulk upload database, schema, and table entities from a CSV file for quick edition or creation. The inline editor helps to validate and update the data assets before importing. Save time by bulk uploading data assets.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/CXxDdS6AifY',
-      },
-      {
-        title: 'Data Quality Widget',
-        description:
-          'A new Data Quality Widget has been added. It lists the summary of data quality tests belonging to a user or their team. Customize your Collate landing page to suit your requirements.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/Kakfa-lYGOU',
-      },
-      {
-        title: 'Lineage Layers',
-        description:
-          'The lineage view in OpenMetadata has been improved. All the nodes are expanded by default. A new ‘Layers’ button has been introduced. Users can choose to view the column level lineage. In the Data Observability View, the data quality results are displayed, such as Success, Aborted, or Failed. The pipeline status displays the last execution run.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/wtBMeLvA6Sw',
-      },
-      {
-        title: 'Column Lineage Search',
-        description:
-          'You can search lineage by column names. You can accurately trace the upstream and downstream nodes by column. OpenMetadata helps you to easily trace and visualize how data is transformed and where it is used in your organization.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/KZdVb8DiHJs',
-      },
-      {
-        title: 'Custom Properties',
-        description:
-          'OpenMetadata has been empowering users to enrich the data assets by extending their attributes with custom properties. Custom Properties now allow linking other assets in the platform, such as Tables, Dashboards, etc. To enable this, create a Custom Property as an Entity Reference or Entity Reference List.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/lZoSeKkErBk',
-      },
-      {
-        title: 'Custom Theme',
-        description:
-          "OpenMetadata previously supported uploading your company logo, monogram, and favicon to customize the platform's appearance according to your brand identity. Now, you can take it a step further by customizing the theme with colors that perfectly align with your company's branding.",
-        isImage: false,
-        path: 'https://www.youtube.com/embed/-NiU1flBHs0',
-      },
-      {
-        title: 'Data Quality Filters',
-        description:
-          'We have improved the filters for data quality. Now you have additional filtering options for test suites and test cases.',
-        isImage: false,
-        path: 'https://www.youtube.com/embed/UNOHvBMVcYM',
-      },
-      {
-        title: 'Data Profiler',
-        description:
-          'A global profiler configuration page has been implemented for the data profiler. This allows Admins to exclude certain metric computations for specific data types. Navigate to Settings > Preferences > Profiler Configuration to define the metrics to compute based on column data types.',
-        isImage: true,
-        path: profilerConfigPage,
-      },
-      {
-        title: 'Incident Manager',
-        description:
-          'Based on the latest failed test cases, a sample of failed rows will be displayed in the Incident Manager. Users can quickly verify the cause of failure based on this sample data. The failed sample data will be deleted once the issue is resolved. This is a Collate only feature.',
-        isImage: true,
-        path: incidentManagerSampleData,
-      },
-    ],
-    changeLogs: {
-      ['Backward Incompatible Changes']: `
-Tooling:
--   Metadata Backup/Recovery is deprecated. No further support will be provided.
--   Users are advised to use database native tools to backup and store it in their object store for recovery.
--   bootstrap/bootstrap_storage.sh has been deprecated in favor of bootstrap/openmetadata-ops.sh
-
-UI:
--   Activity has been improved. New update specific cards display critical information such as data quality test case updates, description, tag update or removal.
--   For Lineage, the Expand All button has been removed. A new Layers button is introduced at the bottom left corner. With the Layers button, you can add Column Level Lineage or Data Observability details to your Lineage view.
--   View Definition is now renamed as Schema Definition.
--   Adding Glossary Term view is improved. Now we show glossary terms hierarchically enabling a better understanding of how the terms are setup while adding it to a table or dashboard.
--  For Classification, users can set classification to be mutually exclusive only **at the time of creation**. Once created, you cannot change it back to mutually non-exclusive or vice-versa. This is to prevent conflicts of adding multiple tags that belong to same classification and later turning the mutually exclusive flag back to true.
-
-API:
--   Table Schema's ViewDefinition is now renamed to SchemaDefinition to capture Tables' Create Schema.
--   Bulk Import API now creates entities if they are not present during the import.
--   Table's TestSuite is migrated to EntityReference. Previously it used to store entire payload of TestSuite.
-`,
-      [`Automations ${CollateIconWithLinkMD}`]: `-  Easily maintain high-quality metadata at scale with automations. The Automations streamline governance processes from ownership assignments to tagging, ensuring compliance and consistency.
--   You can update the properties of your assets by filtering by service, owner, domain, or any other supported property from the advanced search.
--   Easily see which assets have been selected by jumping to the Explore page in one click.
--   For tables, data models, topics, and search indexes, you can apply the action to their columns or fields.
--   We added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.`,
-
-      [`Bulk Upload Data Assets  ${CollateIconWithLinkMD}`]: `-   Bulk upload/download database, schema, and table entities from/into a CSV file for quick edition or creation.
--   Supports an inline editor to validate/update assets before performing the upload.`,
-
-      'Data Quality Improvements': `-   The Table schema page now shows the Data Quality tests for each column.
--   Improved filtering options for test suite and test cases.
--   We have improved how the UI fetches the Data Quality details for improved performance.
--   We now compute Unique and Count in the same query to avoid inconsistency due to the high frequency of data insertion.
--   Fixed the issue with removing the test case description upon the test case display name change.
--   Support has been added for an empty string as a missing count.`,
-
-      'Data Profiler': `-   Implemented a global profiler configuration page, allowing admin to exclude certain metric computations for specific data types.
--   Added profiler support for Redshift complex types and DynamoDB.
--   Fixed an issue with performing sum operations for large values in profiler ingestion.
--   Fixed the histogram unit's issues with scientific notation.`,
-
-      'Incident Manager': `-   We now display a sample of failed rows for the latest failed test cases. Once the issue is resolved, the failed sample will be deleted. ${CollateIconWithLinkMD}
--   Fixed the Date time filter for the Incident Manager.
--   Notifications are sent for the tasks created by the Incident Manager.`,
-
-      'Lineage Improvements': `-   OpenMetadata already supports Column-level lineage, and now we have introduced Task-level lineage for Pipelines, Chart-level lineage for Dashboards, Feature-level lineage for ML Models, Field-level lineage for Topics, and columns for dashboard Data Models.
--   Automated column-level lineage is now supported for Tableau, Superset, QlikCloud, and QlikSense between Data Models and Tables.
--   The child nodes in a lineage graph are sorted in alphabetical order.
--   Improved the log of failed-to-parse queries.
--   Fixed an issue with automated column-level lineage overwriting the pipeline lineage and manual column lineage.
--   Snowflake & Databricks now supports automated lineage between external tables and their origin storage container.
--   Lineage can be exported as a CSV file.
--   OpenMetadata spark agent now supports automated lineage between tables and their origin storage container.
--   Fixed an issue with parsing lineage queries for Redshift.
--   Now, we support pipeline as an edge between any two entity types.
--   We now parse PowerBi DAX files for lineage.
--   Support has been added for dynamic tables.`,
-
-      'Data Insights': `- Previously, the data insights reports displayed only the percentage coverage of ownership and description. Now, users can drill down to view the data assets with no owner or description.
--   Improved the UX for data insight filters.`,
-
-      [`Cost Analysis ${CollateIconWithLinkMD}`]: `-   Lifecycle data for Cost Analysis has been implemented for BigQuery, Snowflake, and Redshift.`,
-
-      'Custom Theme': `-   Previously supported adding logo, monogram, and favicon to your OpenMetadata instance.
--   Now, it supports customizing the theme with colors to suit your company branding.`,
-
-      [`Landing Page Widgets ${CollateIconWithLinkMD}`]: `-  Added a Data Quality Widget to list the summary of data quality tests belonging to a user or their team.`,
-
-      'Ingestion Performance Improvements': `-   Bigquery, Redshift, and Snowflake now support incremental metadata ingestions by scanning DML operations on the query history.
--   Database Services now support parallelizing the metadata ingestion at each schema.`,
-
-      Connectors: `-   Now supports a new connector for [QlikCloud](https://www.qlik.com/us/products/qlik-cloud).
--   New Kafka Connect connector
--   We now parse complex protobuf schemas for Kafka
--   Improved model storage ingestion for Sagemaker and Mlflow.
--   Added an option to include or exclude drafts from dashboards.
--   Added an option to include or exclude paused pipelines in Airflow.
--   Revamped SSL support to allow users to upload the required certificates directly in the UI.
--   The character support has been enhanced for tag ingestion to include /.
--   In the Oracle connector, we rolled back to use all_ tables instead of dba_.
--   Added support for Azure auth in Trino.
--   For QlikSense, we have added an option to disable SSL validation.`,
-
-      'Custom Properties': `-   Custom Properties now allow linking other assets in the platform, such as Tables, Dashboards, etc. To enable this, create a Custom Property as an Entity Reference or Entity Reference List.`,
-
-      'Health Check': `-   Introduced the OpenMetadata Status page to do a Health Check on the setup information.
-
--   Helps identify missing or outdated credential information for ingestion pipeline, SSO, migration, and related issues.
-
--   Validates JWT authentication tokens for ingestion bots.`,
-
-      Glossary: `-   The glossary term parent can now be changed from the Details page.
--   On the data assets page, glossary terms are displayed by hierarchy.`,
-
-      'Alerts & Notification Improvements': `-   The Activity Feed provides more contextual information, removing the need to move to entity pages.
--   Alerts give more accurate information about the entity, as well as conversations and tasks.`,
-
-      Localization: `-   Fixed localization issues in the confirmation logic for the delete function.
--   Fixed the search index language configuration.`,
-
-      Roles: `
--   Now, roles can be inherited from the user configuration in SSO.`,
-
-      Search: `-   You can now filter by assets without a description or an owner.
--   Improved the match results for search results.`,
-
-      Others: `-   The description is auto-expanded when the data asset has no data and has the space to accommodate a lengthy description.
--   User email IDs have been masked and are only visible to Admins.
--   Users can filter Queries by owner, tag, and creation date in the UI.
--   Added a button in the Query Editor to copy the Query.
--   Improved Elasticsearch re-indexing.
--   Improved the charts based on custom metrics.
--   Improved the usage of the refresh token.
--   Redundant scroll bars have been removed from the UI.
--   Improved the bot role binding to provide more control over which roles are passed to the system bots.
--   Implemented a fix for SSL migration.`,
-    },
-  },
-  {
-    id: 27,
-    version: 'v1.4.2',
-    description: `Released on 10th June 2024.`,
-    features: [],
-    changeLogs: {
-      Enhancements: `-  In OpenMetadata, we support connecting the data assets to the knowledge articles. The knowledge articles that are pulled from the Alation connector have image URLs. We have enhanced the Alation connector to download and display the images in the Knowledge Articles.
--   Test cases can now be filtered by Service, Tag, and Tier.`,
-      Changes: `-   One team or multiple users can be selected as reviewers for a Glossary term.,
--   Updated the openmetadata.yaml to remove WebAnalyticsHandler.,
--   Add appType as part of the schema in the ingestion pipeline.,
--   We now sanitize the Activity Feed editor content.`,
-      Improvements: `-   Fixed the lineage view for tables with many columns.
--   Fixed an issue with updating the lineage edge descriptions.
--   Fixed an issue with Null Schema Field.
--   Fixed the glossary term review process issues.
--   Fixed the Kafka SSL connection arguments.
--   Fixed an issue with dbt ingestion pipeline that was occurring due to non enum values.
--   Fixed an issue with Announcements.
--   Fixed redirection issues for Tags and Glossary Terms.
--   Fixed a minor issue with filtering the Profiler.
--   Fixed the registration Issue with Event Handlers.
--   Fixed the sign-in issues with SAML.
--   Fixed issues with partition migration with Redshift services.
--   Fixed an issue with the Quicksight connector.
--   Fixed some minor issues with the user Profile page.
--   Fixed some issues with the Teams page.`,
-    },
-  },
-  {
-    id: 28,
-    version: 'v1.4.3',
-    description: `Released on 15th June 2024.`,
-    features: [],
-    changeLogs: {
-      Improvements: `- Fixed User Signup Flow Issue missing authorize.
--   Fixed vulnerabilities for azure-identity and msal4j.`,
-    },
-  },
-  {
-    id: 29,
-    version: 'v1.4.4',
-    description: `Released on 3rd July 2024.`,
-    features: [],
-    changeLogs: {
-      Improvements: `-   Introduced SSL for Salesforce.
--   Fixed the claim mappings and usernames.
--   Fixed issues in Salesforce connector.
--   FIxed issues in Alation connector.
--   Verified for changes in new env for claim mapping.`,
-    },
-  },
-  {
-    id: 30,
-    version: 'v1.4.5',
-    description: `Released on 9th July 2024.`,
-    features: [],
-    changeLogs: {
-      Improvements: `-   Improve query filtering with prepared statements.
--   Big fix in regex to match test case when using sampled data.
--   Bug fix in global profiler config for Snowflake, Redshift, and BigQuery.
--   Bug fix for Arg mismatch for DataModels in QlikSense.`,
-    },
-  },
-  {
-    id: 31,
-    version: 'v1.4.6',
-    description: `Released on 29th July 2024.`,
-    features: [],
-    changeLogs: {
-      Improvements: `-   Fixed test case summary updates
--   Fixed Test Suite indexing
--   Fix repeated alerts being sent after no changes in the Entity
--   Fixed table import
--   Fixed an issue handling users with capital letters
--   Centralize OIDC flow handling
--   Fixed Ingestion Pipeline alert URL`,
-    },
-  },
-  {
-    id: 32,
-    version: 'v1.4.7',
-    description: `Released on 7th August 2024.`,
-    features: [],
-    changeLogs: {
-      Improvements: `-   Resolved issue with Azure login related to email principal claims.`,
-    },
-  },
-  {
-    id: 33,
-    version: 'v1.4.8',
-    description: `Released on 21st August 2024.`,
-    features: [],
-    changeLogs: {
-      Improvements: `-   Fix Entity listing API.
--   Fix user profile task listing.
--   Fix import/export UI flow ${CollateIconWithLinkMD}.
--   Improve SAML logging backend.
--   Add Unity Catalog Lineage Dialect.
--   Clean idle connections during ingestion.
--   Fix Databricks Describe Table during metadata ingestion.
--   Glossary Upload now shows permissions errors for non-owners.
--   Fix task not showing in the right panel after clicking, in the Activity Feed.
--   Support multiple dbt run_results.json for a single manifest for improved performance.`,
-    },
-  },
-  {
-    id: 43,
-    version: 'v1.5.0',
-    description: `Released on 26th August 2024.`,
-    features: [
-      {
-        title: `Data Observability with Anomaly Detection (Collate)`,
-        description: `OpenMetadata has been driving innovation in Data Quality in Open Source. Many organizations are taking advantage of the following Data Quality features to achieve better-quality data
-
-1.  A Native Profiler to understand the shape of the data, freshness, completeness, volume, and ability to add your own metrics, including column level profiler over time-series and dashboards
-
-2.  No-code data quality tests, deploy, collect results back to see it in a dashboard all within OpenMetadata
-
-3.  Create alerts and get notified of Test results through email, Slack, NSteams, GChat, and Webhook
-
-4.  Incident Manager to collaborate around test failures and visibility to downstream consumers of failures from upstream
-
-In 1.5.0, we are bringing in Anomaly Detection based on AI to predict when an anomaly happens based on our learning historical data and automatically sending notifications to the owners of the table to warn them of the impending incidents.`,
-        isImage: false,
-        path: 'https://www.youtube.com/embed/BPuNC8vPcsw',
-      },
-      {
-        title: 'Enhanced Data Quality Dashboard (Collate)',
-        description: `We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume. When there are issues, the new dashboard makes it easier to understand the Data Quality coverage of your tables and the possible impact each test failure has by organizing tests into different groups.`,
-        isImage: false,
-        path: 'https://www.youtube.com/embed/bXcQBtZuyoU',
-      },
-      {
-        title: 'Freshness Data Quality Tests (Collate)',
-        description: `Working with old data can lead to making wrong decisions. With the new Freshness test, you can validate that your data arrives at the right time. Freshness tests are a critical part of any data team's toolset. Bringing these tests together with lineage information and the Incident Manager, your team will be able to quickly detect issues related to missing data or stuck pipelines.`,
-        isImage: false,
-        path: 'https://www.youtube.com/embed/QRcR3m9cCGo',
-      },
-      {
-        title: 'Data Diff Data Quality Tests',
-        description: `Data quality checks are important not only within a single table but also between different tables. These data diff checks can ensure key data remains unchanged after transformation, or conversely, ensure that the transformations were actually performed.
-
-We are introducing the table difference data quality test to validate that multiple appearances of the same information remain consistent. Note that the test allows you to specify which column to use as a key and which columns you want to compare, and even add filters in the data to give you more control over multiple use cases.`,
-        isImage: false,
-        path: 'https://www.youtube.com/embed/oxZVS_UGrE4',
-      },
-      {
-        title: 'Domains RBAC & Subdomains',
-        description: `OpenMetadata introduced Domains & Data Products in 1.3.0. Since then, many large organizations have started using Domains & Data Products to achieve better ownership and collaboration around domains that can span multiple teams.
-
-In the 1.5.0 release, we added support for subdomains. This will help teams to organize into multiple subdomains within each domain.
-
-**RBAC for Domains:**
-
-With the 1.5.0 release, we are adding more stricter controls around Domain. Now teams/data assets/glossaries and classification can have domain concepts and can get a policy such that only users within a domain can access the data within a domain. Domain owners can use data products as a way to publish data products and showcase publicly available data assets from a specific domain.
-
-This will help large companies to use a single OpenMetadata platform to unify all of their data and teams but also provide more stringent controls to segment the data between domains.`,
-        isImage: false,
-        path: 'https://www.youtube.com/embed/r-_HaewjgTQ',
-      },
-      {
-        title: 'Improved Explore Page & Data Asset Widget',
-        description: `OpenMetadata, with its simple UI/UX and data collaboration features, is becoming more attractive to non-technical users as well. Data Governance teams are using OpenMetadata to add glossary terms and policies around metadata. Teams using Collate SaaS product are taking advantage of our Automations feature to gain productivity in their governance tasks.
-
-Our new improved navigation on the Explore page will help users navigate hierarchically and find the data they are looking for. Users will see the data assets now grouped by service name -> database -> schema -> tables/stored procedures.
-
-We are also making the discovery of data more accessible for users introducing a data asset widget, which will group the assets by platform type. This will help users find their data if they are working on a specific platform such as Looker or Snowflake they can easily click on that icon and get to the data.`,
-        isImage: false,
-        path: 'https://www.youtube.com/embed/45ekUIRO1Ec',
-      },
-      {
-        title: 'API as Data Asset',
-        description: `The Internet runs using APIs, both producing and consuming data. Organizations today run many microservices and REST APIs to capture data from their users and update a transaction database in the backend.
-
-On top of the many supported connectors across Databases, Dashboards, ML Models, etc. We believe that providing support for API Services as data assets will help to get the full picture of how the data is coming through from various services and landing into databases, going to warehouses and BI tools.
-
-In 1.5.0 we are introducing APIs as another first-class entity. Teams can now capture API requests and responses payloads and use our column level lineage to capture the relation between APIs and any other asset in the platform.`,
-        isImage: false,
-        path: 'https://www.youtube.com/embed/b9wrVnM3u80',
-      },
-    ],
-    changeLogs: {
-      ['Backward Incompatible Changes']: `**Multi Owners:**
-
-- OpenMetadata allows a single user or a team to be tagged as owners for any data assets. In Release 1.5.0, we allow users to tag multiple individual owners or a single team. This will allow organizations to add ownership to multiple individuals without necessarily needing to create a team around them like previously.
-- This is a backward incompatible change, if you are using APIs, please make sure the owner field is now changed to "owners"
-
-**Import/Export Format:**
-
-- To support the multi-owner format, we have now changed how we export and import the CSV file in glossary, services, database, schema, table, etc. The new format will be
-
-    user:userName;team:TeamName
-
-    **If you are importing an older file, please make sure to make this change.**
-
-**Pydantic V2:**
-
-- The core of OpenMetadata are the JSON Schemas that define the metadata standard. These schemas are automatically translated into Java, Typescript, and Python code with Pydantic classes.
-- In this release, we have [migrated](https://docs.pydantic.dev/latest/migration/) the codebase from Pydantic V1 to Pydantic V2.
-
-**Deployment Related Changes (OSS only):**
-
-- **\`./bootstrap/bootstrap_storage.sh\` removed**
-- OpenMetadata community has built rolling upgrades to database schema and the data to make upgrades easier. This tool is now called as \`./bootstrap/openmetadata-ops.sh\` and has been part of our releases since 1.3. The bootstrap_storage.sh doesn't support new native schemas in OpenMetadata. Hence, we have deleted this tool from this release.
-- While upgrading, please refer to our Upgrade Notes in the documentation. Always follow the best practices provided there.
-
-**Database Connection Pooling:**
-
-- OpenMetadata uses Jdbi to handle database-related operations such as read/write/delete. In this release, we introduced additional configs to help with connection pooling, allowing the efficient use of a database with low resources.
-
-- Please update the defaults if your cluster is running at a large scale to scale up the connections efficiently.
-
-- For the new configuration, please refer to the [doc](https://docs.open-metadata.org/latest/deployment/database-connection-pooling) here
-
-**Data Insights:**
-
-- The Data Insights application is meant to give you a quick glance at your data's state and allow you to take action based on the information you receive. To continue pursuing this objective, the application was completely refactored to allow customizability.
-- Part of this refactor was making Data Insights an internal application, no longer relying on an external pipeline. This means triggering Data Insights from the Python SDK will no longer be possible.
-- With this change you will need to **run a backfill on the Data Insights** for the last couple of days since the Data Assets data changed.
-
-**New Explore Page:**
-
-- Explore page displays hierarchically organized data assets by grouping them into services > database > schema > tables/stored procedures. This helps users organically find the data asset they are looking for based on a known database or schema they were using. This is a new feature and changes the way the Explore page was built in previous releases.
-
-**Connector Schema Changes:**
-
-In the latest release, several updates and enhancements have been made to the JSON schema across various connectors. These changes aim to improve security, configurability, and expand integration capabilities. Here's a detailed breakdown of the updates.
-
--   **KafkaConnect:** Added \`schemaRegistryTopicSuffixName\` to enhance topic configuration flexibility for schema registries.
--   **GCS Datalake:** Introduced \`bucketNames\` field, allowing users to specify targeted storage buckets within the Google Cloud Storage environment.
--   **OpenLineage:** Added \`saslConfig\` to enhance security by enabling SASL (Simple Authentication and Security Layer) configuration.
--   **Salesforce:** Added \`sslConfig\` to strengthen the security layer for Salesforce connections by supporting SSL.
--   **DeltaLake:** Updated schema by moving \`metastoreConnection\` to a newly created \`metastoreConfig.json\` file. Additionally, introduced \`configSource\` to better define source configurations, with new support for \`metastoreConfig.json\` and \`storageConfig.json\`.
--   **Iceberg:** RestCatalog: Removed \`clientId\` and \`clientSecret\` as mandatory fields, making the schema more flexible for different authentication methods.
--   **DBT:** Cloud Pipelines: Added as a new connector to support cloud-native data transformation workflows using DBT.
--   **Looker:** Expanded support to include connections using GitLab integration, offering more flexible and secure version control.
--   **Tableau:** Enhanced support by adding capabilities for connecting with \`TableauPublishedDatasource\` and \`TableauEmbeddedDatasource\`, providing more granular control over data visualization and reporting.
-
-**Include DDL:**
-
-- During the Database Metadata ingestion, we can optionally pick up the DDL for both tables and views. During the metadata ingestion, we use the view DDLs to generate the View Lineage.
-- To reduce the processing time for out-of-the-box workflows, we are disabling the include DDL by default, whereas before, it was enabled, which potentially led to long-running workflows.
-
-**Secrets Manager**
-Starting with the release 1.5.0, the JWT Token for the bots will be sent to the Secrets Manager if you configured one. It won't appear anymore in your dag_generated_configs in Airflow.
-
-**Python SDK**
-The \`metadata insight\` command has been removed. Since Data Insights application was moved to be an internal system application instead of relying on external pipelines the SDK command to run the pipeline was removed.`,
-      [`Data Observability with Anomaly Detection ${CollateIconWithLinkMD}`]: `OpenMetadata has been driving innovation in Data Quality in Open Source. Many organizations are taking advantage of the following Data Quality features to achieve better-quality data
-
-1.  A Native Profiler to understand the shape of the data, freshness, completeness, volume, and ability to add your own metrics, including column level profiler over time-series and dashboards
-
-2.  No-code data quality tests, deploy, collect results back to see it in a dashboard all within OpenMetadata
-
-3.  Create alerts and get notified of Test results through email, Slack, NSteams, GChat, and Webhook
-
-4.  Incident Manager to collaborate around test failures and visibility to downstream consumers of failures from upstream\
-In 1.5.0, we are bringing in Anomaly Detection based on AI to predict when an anomaly happens based on our learning historical data and automatically sending notifications to the owners of the table to warn them of the impending incidents.`,
-      [`Enhanced Data Quality Dashboard ${CollateIconWithLinkMD}`]: `We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume. When there are issues, the new dashboard makes it easier to understand the Data Quality coverage of your tables and the possible impact each test failure has by organizing tests into different groups.`,
-      [`Freshness Data Quality Tests ${CollateIconWithLinkMD}`]: `Working with old data can lead to making wrong decisions. With the new Freshness test, you can validate that your data arrives at the right time. Freshness tests are a critical part of any data team's toolset. Bringing these tests together with lineage information and the Incident Manager, your team will be able to quickly detect issues related to missing data or stuck pipelines.`,
-      ['Data Diff Data Quality Tests']: `Data quality checks are important not only within a single table but also between different tables. These data diff checks can ensure key data remains unchanged after transformation, or conversely, ensure that the transformations were actually performed.
-
-We are introducing the **table difference** data quality test to validate that multiple appearances of the same information remain **consistent**. Note that the test allows you to specify which column to use as a key and which columns you want to compare, and even add filters in the data to give you more control over multiple use cases.`,
-      ['Domains RBAC & Subdomains']: `OpenMetadata introduced Domains & Data Products in 1.3.0. Since then, many large organizations have started using Domains & Data Products to achieve better ownership and collaboration around domains that can span multiple teams.
-
-In the 1.5.0 release, we added support for subdomains. This will help teams to organize into multiple subdomains within each domain.
-
-**RBAC for Domains:**
-
-With the 1.5.0 release, we are adding more stricter controls around Domain. Now teams/data assets/glossaries and classification can have domain concepts and can get a policy such that only users within a domain can access the data within a domain. Domain owners can use data products as a way to publish data products and showcase publicly available data assets from a specific domain.
-
-This will help large companies to use a single OpenMetadata platform to unify all of their data and teams but also provide more stringent controls to segment the data between domains.`,
-      ['Improved Explore Page & Data Asset Widget']: `OpenMetadata, with its simple UI/UX and data collaboration features, is becoming more attractive to non-technical users as well. Data Governance teams are using OpenMetadata to add glossary terms and policies around metadata. Teams using Collate SaaS product are taking advantage of our Automations feature to gain productivity in their governance tasks.
-
-Our new improved navigation on the Explore page will help users navigate hierarchically and find the data they are looking for. Users will see the data assets now grouped by service name -> database -> schema -> tables/stored procedures.
-
-We are also making the discovery of data more accessible for users introducing a data asset widget, which will group the assets by platform type. This will help users find their data if they are working on a specific platform such as Looker or Snowflake they can easily click on that icon and get to the data.`,
-      [`Pipeline Status Widget ${CollateIconWithLinkMD}`]: `We are also adding another widget you can use to customize the Landing Page of the User Personas in your organization.
-
-With the Pipeline Status widget, Data Engineers can easily track the pipelines that are not behaving as expected. This widget, together with the obervability alerts that are already in place, will help your teams jump even faster to solving any issues in the platform.`,
-      ['API as Data Asset']: `The Internet runs using APIs, both producing and consuming data. Organizations today run many microservices and REST APIs to capture data from their users and update a transaction database in the backend.
-
-On top of the many supported connectors across Databases, Dashboards, ML Models, etc. We believe that providing support for API Services as data assets will help to get the full picture of how the data is coming through from various services and landing into databases, going to warehouses and BI tools.
-
-In 1.5.0 we are introducing APIs as another first-class entity. Teams can now capture API requests and responses payloads and use our column level lineage to capture the relation between APIs and any other asset in the platform.`,
-      ['Glossary Improvements']: `OpenMetadata supports multiple glossaries, an import/export and review process, and bulk asset tagging with glossary terms. Many teams are taking advantage of these features, and with an amazing open-source community, we are receiving great feedback on improving glossary functionality.
-
-Here are some of the improvements coming in 1.5.0
-
-1.  Glossary Reviewers can be teams
-
-2.  Updating a glossary will enforce a re-review
-
-3.  Renaming the Glossary Term while it's under review will keep the task associated with it open.`,
-      [`Data Insights ${CollateIconWithLinkMD}`]: `The Data Insights application is meant to give you a quick glance of your data's state and allow you to take action based on the information you receive.
-
-To continue pursuing this objective, the application was completely refactored to allow customizability. This is achieved by the possibility of now creating custom dashboards. On this release you can create charts based on your data assets metadata based on your needs.`,
-      ['Ingestion Connectors']: `1.  **Apache Flink** as a Pipeline Connector
-
-2.  **SAP ERP**, after a long and successful collaboration with our community and SAP experts
-
-3.  **Teradata** as a community contribution from [gbpy](https://github.com/gpby) to broaden the integration capabilities for enterprise-scale analytics and data management.
-
-4.  **GCS Storage Connector** as a community contribution from [Matt Chamberlin](https://github.com/MChamberlin)
-5.  **Synapse Connector** ${CollateIconWithLinkMD}`,
-    },
-  },
-  {
-    id: 44,
-    version: 'v1.5.2',
-    description: `Released on 2nd September 2024.`,
-    features: [],
-    changeLogs: {
-      Improvements: `-   [Fix]: Resolved issue with lineage lookup for long Fully Qualified Names (FQNs), ensuring accurate lineage tracking and display.
--   [Improve]: Fixed the 'Edit Reviewers' permission issue, allowing correct permission management for editing reviewers.
--   [Improve]: Addressed email update issues to ensure that email addresses are properly updated throughout the system.
--   [Improve]: Fixed the delete lineage functionality to handle cases where override lineage is enabled, preventing errors and ensuring consistency.
--   [Improve]: Added support for the 'Edit Assign' button in the Incident Manager, allowing for easier assignment changes.
--   [Improve]: Introduced a resizable layout for the glossary page, improving usability and adaptability to different screen sizes.
--   [Improve]: Enhanced the display of tier tags with improved styling for better visibility and distinction.
--   [Improve]: Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
--   [Improve]: Added custom properties support in Data Product`,
-    },
-  },
-  {
-    id: 45,
-    version: 'v1.5.3',
-    description: `Released on 10th September 2024.`,
-    features: [],
-    changeLogs: {
-      Improvements: `-   Added resizable columns for custom properties
--   Added support for automated ingestion of Tableau data source tags and description
--   Improved "follow data" landing page module performance
--   Improved search result suggestion by showing display name instead of FQN
--   Fixed Cost Analysis issue when service has no connection
--   Improved PII classification for JSON data types
--   Fixed issue with expand all operation on terms page
--   Fixed feed freezing when large images are part of the feed results
--   Fixed dbt run_results file name with dbt cloud connection
--   Cleaned Argo logs artifacts ${CollateIconWithLinkMD}
--   Shipped VertexAI Connector ${CollateIconWithLinkMD}
--   Fixed automator lineage propagation issues with possible None entities ${CollateIconWithLinkMD}`,
-    },
-  },
-  {
-    id: 46,
-    version: 'v1.5.4',
-    description: `Released on 12th September 2024.`,
-    features: [],
-    changeLogs: {
-      Improvements: `-   Hotfix to the Term Aggregation size on Data Insights
--   ES pagination with error handling
--   Updated Domain in Docker Compose & Docs
--   Fix Classification API returns Table class for restore
--   Fix Redshift View Def regex_replace Error
--   Make ingestion pipeline APIs public
--   Fix token limitations using config ${CollateIconWithLinkMD}
--   Updating the domain PRINCIPAL DOMAIN
--   Fix Automator pagination ${CollateIconWithLinkMD}
--   Fix MetaPilot push for no constraint ${CollateIconWithLinkMD}
--   Glossary list selector for bulk import
--   Unable to access import glossary page`,
-    },
-  },
-  {
-    id: 47,
-    version: 'v1.5.5',
-    description: `Released on 23rd September 2024.`,
-    features: [],
-    changeLogs: {
-      Improvements: `-   **Minor**: Made the type optional in ES Response.
--   **Feature**: Added support for refresh tokens with multiple tabs open.
--   **Fix**: Resolved issue of overriding user info after login.
--   **Minor**: Updated the custom property entities data model, along with the data product and database schema icons.
--   **Fix**: Ensured Teams and Owner fields are correctly passed in the policy API call.
--   **Improvement**: Enhanced PII logging information.
--   **Fix**: Addressed the paginate_es issue in OpenSearch.
--   **Feature**: Decrypted JWT internally for system health checks.
--   **Minor**: Implemented multithreading in View Lineage Processing.
--   **Improvement**: Improved search relevancy.
--   **Fix**: Resolved issue with owners patch.
--   **Fix (Data Quality)**: Fixed Snowflake data diff issue.
--   **Minor**: Updated Presidio Analyzer version and validated support for legal entities.
--   **Feature**: Added validations for Salesforce connection.
--   **Feature**: Allowed PII Processor to operate without storing sample data.
--   **Minor**: Added seconds to the human-readable format scale for test case graphs.
--   **Fix**: Added missing field in glossary term.
--   **Fix**: Excluded defaultPersona if not present in personas.
--   **Fix**: Resolved team export issue.
--   **Fix**: Updated Python lineage SDK to work with UUID and FQN models.
--   **Fix**: Fixed LDAP login issue.
--   **Fix**: Column sizing of data quality and pipeline widget ${CollateIconWithLinkMD}
--   **Fix**: Export with new line in description ${CollateIconWithLinkMD}
--   **Minor**: Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
-`,
-    },
-  },
-  {
-    id: 48,
-    version: 'v1.5.6',
-    description: 'Released on 3rd October 2024.',
-    features: [],
-    changeLogs: {
-      Improvements: `-   **Minor**: MSTR connector import fix.
--   **Minor**: Show displayName for database and databaseSchema in explore tree.
--   **Minor**: Allow PowerBI datamodel children in col.lineage.
--   **Fix**: Manifest is not parsed correctly on dbt versionless.
--   **Minor**: Fixed lineage & queries in dbt.
--   **Improvement**: Added DBT tests with versionless and fixed v7 parsing.
--   **Minor**: Reset displayName to avoid being persisted.
--   **Fix**: Fixed incorrect @Schema implementations in Swagger annotations.
--   **Fix**: Resolved type null exception on user feed.
--   **Fix**: Addressed missing cast to str.
--   **Minor**: DI Missing Dashboard Description Status.
--   **Fix**: SAML redirect leads to 404 page on UI.
--   **Minor**: Fixed General Profiler Bugs.
--   **Improvement**: Change time format for the created_at of the DBT cloud pipeline status.
--   **Minor**: Fixed role page size from 10 to 50.
--   **Fix**: Search Indexing Fixes.
--   **Improvement**: Collate API with Knowledge Center routes ${CollateIconWithLinkMD}.`,
-    },
-  },
-  {
-    id: 49,
-    version: 'v1.5.7',
-    description: 'Released on 17th October 2024.',
-    features: [],
-    changeLogs: {
-      Improvements: `-   **Feature**: Add table-type custom property.
--   **Feature**: support Persian language option
--   **Feature**: Postgres stored procedures support.
--   **Feature**: Allow Custom Property Update in Glossary Bulk Import/export.
--   **Improvement**: Remove table details from table level Import/Export, allowing updates only for column details.
--   **MINOR**: looker exclude version.
--   **MINOR**: Add deleteEntityByFQNPrefix.
--   **MINOR**: Reduce lineage response size.
--   **MINOR**: Updated pyiceberg version to 0.5.1
--   **MINOR**: Fix dark border shown in navbar on UI.
--   **MINOR**: Add column case sensitivity parameter.
--   **MINOR**: Pagination with search on service page.
--   **MINOR**: Added loader in activity feed open and closed count.
--   **MINOR**: Superset get primitive datatype in case of array, struct.
--   **MINOR**: fix term references validation msg on glossary import.
--   **MINOR**: supported search filter and only all show in case of all node value selected.
--   **Fix**: Fix PinotDB Ingestion.
--   **Fix**: MSAL popup auth issue.
--   **Fix**: Fix Alerts for Test Suites.
--   **Fix**: Added Glue Pipeline Lineage.
--   **Fix**: ClassGraph performance issue.
--   **Fix**: Superset query for mysql con.
--   **Fix**: Empty Connection Overwrite Logic.
--   **Fix**: Couchbase columns not fetched fix.
--   **Fix**: Quicksight Ingestion Error handled.
--   **Fix**: DBT Manifest and Run results parsing.
--   **Fix**: Increase MAX_AGGREGATE_SIZE in search.
--   **Fix**: Add display name field in the advanced search filter.
--   **Fix**: On dashboard soft delete, chart should not be visible.
--   **Fix**: Fix the automator page breaking when no source is selected.
--   **Fix**: Salesforce table description from label if not through query.
--   **Fix**: Add Import/export support for table type custom property in glossary.
--   **Fix**: Fix exception in search due to exception in database.displayName and databaseSchema.aggregation.
--   **MINOR**: Knowledge Center publicationDate mismatch error ${CollateIconWithLinkMD}
--   **MINOR**: Add owner label for knowledge center right panel ${CollateIconWithLinkMD}
--   **Fix**: Automator pagination & improvments ${CollateIconWithLinkMD}
--   **Fix**: ArchiveLog to FALSE for test connection ${CollateIconWithLinkMD}
--   **Fix**: Knowledge Page deletion is not deleting from the search index ${CollateIconWithLinkMD}`,
-    },
-  },
-  {
-    id: 50,
-    version: 'v1.5.8',
-    description: 'Released on 24th October 2024.',
-    features: [],
-    changeLogs: {
-      Improvements: `- **Fix**: Hive Meta store connection issue.
-- **Fix**: Live index is on test suite creation.
-- **Minor**: Supported total unique user count on the Team page.
-- **Fix**: Issues in zh language search index mapping.
-- **Minor**: Add location path to a table entity.
-- **Fix**: LocationPath Index.
-- **Fix**: Mode dashboard ingestion API call.
-- **Fix**: Task deserialization in Airflow metadata ingestion.
-- **Fix**: Mode test connection returns data in dict instead of JSON.
-- **Minor**: Do not include soft deleted assets in the Data Insight.
-- **Fix**: Web analytic activity being reset.
-- **Fix**: Quicksight lineage source.
-- **Fix**: Add Azure Token Base Authentication
-`,
-    },
-  },
-  {
-    id: 51,
-    version: 'v1.5.9',
-    description: 'Released on 29th October 2024.',
-    features: [],
-    changeLogs: {
-      Improvements: `- **Minor**: Prepare App Framework to handle application limits.
-- **Minor**: Add Query Builder widget.
-- **Fix**: Revamp MetaPilot as Collate AI and add limits ${CollateIconWithLinkMD}
-- **Fix**: Implemented a fix on EntityLink for names with brackets.
-`,
-    },
-  },
-  {
-    id: 52,
-    version: 'v1.5.10',
-    description: 'Released on 31st October 2024.',
-    features: [],
-    changeLogs: {
-      Improvements: `- **Fix**: Encoding issue for teams search query.
-- **Fix**: Disable empty rule for query builder widget.
-- **Fix**: Unable to add more enum values for enum cp.
-- **Fix**: Navigate to listing for deleting a service.
-`,
-    },
-  },
-  {
-    id: 53,
-    version: 'v1.5.11',
-    description: 'Released on 15th November 2024.',
-    features: [],
-    changeLogs: {
-      Improvements: `- **Improvement**: Parallelize the search indexing process.
-- **Fix**: Return s3 endpoint as str() instead of Url.
-- **Improvement**: Databricks query run optimisation.
-- **Fix**: Make Export CSV Async API, websocket to push data back.
-- **Improvement**: Add Column Value to be At Expected Location Test.
-- **Fix**: User count doesn't update on adding to the team while using search.
-- **Improvement**: Added support for lineage default depth settings.
-- **Fix**: Materialised View Lineage.
-- **Improvement**: Add PowerBI Report Server Connector ${CollateIconWithLinkMD}
-- **Improvement**: Mask SQL Queries in Usage & Lineage Workflow.
-- **Fix**: Sample data overlapping issue.
-- **Fix**: Checkmark saves wrong custom property field
-`,
-    },
-  },
-  {
-    id: 54,
-    version: 'v1.5.12',
-    description: 'Released on 25th November 2024.',
-    features: [],
-    changeLogs: {
-      Improvements: `- **Improvement**: Added async apis for csv import.
-- **Improvement**: Skip domain check for bots and admin
-- **Improvement**: MYSQL lineage and usage.
-- **Minor**: Added Lineage Field back to SearchLineage.
-- **Fix**: Database is missing from the search dropdown
-- **Fix**: Bad Representation of owners.
-- **Fix**: The Daily Active Users Summary Card in Data Insights.
-- **Fix**: The processing of URL Encoded Assets in Data Insights.
-- **Fix**: Column Level Lineage export.
-- **Fix**: Store procedure yielding by adding Try/Except.
-- **Fix**: Lineage export when there is no column / pipeline edge.
-`,
-    },
-  },
-  {
-    id: 55,
-    version: 'v1.5.15',
-    description: 'Released on 16th December 2024.',
-    features: [],
-    changeLogs: {
-      Improvements: `
-- **Minor**: Domain Policy Update to be non-system.
-- **Fix**: Query builder state issue.
-- **Fix**: Downloading of application logs.
-- **Minor**: DBT v12 Model Changes.`,
-    },
-  },
   {
     id: 56,
     version: 'v1.6.0',
@@ -1082,7 +124,7 @@ And in Collate, we are bringing four ETL, dashboarding and ML tools: **Matillion
         isImage: false,
         path: '',
       },
-    ],
+    ] as CarousalData[],
     changeLogs: {
       ['Backward Incompatible Changes']: `
 
@@ -1226,7 +268,7 @@ And in Collate, we are bringing four ETL, dashboarding and ML tools: **Matillion
         isImage: false,
         path: '',
       },
-    ],
+    ] as CarousalData[],
     changeLogs: {
       ['Backward Incompatible Changes']: `
 
@@ -1598,7 +640,7 @@ OpenMetadata’s AutoPilot makes onboarding effortless:
 
 With Collate AI Agents in AutoPilot, it’s like adding expert team members who streamline metadata management—accelerating onboarding, improving governance, and freeing your team to focus on higher-value tasks.`,
         isImage: false,
-        path: 'https://www.youtube.com/embed/mn4edHpHZWo',
+        path: 'https://www.youtube.com/embed/PKvKWZ8vseU',
       },
       {
         title:
@@ -1660,9 +702,9 @@ With the new Reverse Metadata feature, you can automatically push centralized me
 
 This seamless, two-way metadata synchronization enables powerful governance use-cases—such as automating data masking policies in Snowflake based on centrally managed tags—and turns Collate into a single source of truth at the heart of your end-to-end automated governance strategy.`,
         isImage: false,
-        path: 'https://www.youtube.com/embed/3RVTwfbgvLQ',
+        path: 'https://www.youtube.com/embed/EWYDfhCgW8k',
       },
-    ],
+    ] as CarousalData[],
     changeLogs: {
       ['Breaking changes']: `### Removing Support for Python 3.8
 
@@ -1888,6 +930,115 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 - Default boost score and improve fqn parsing.
 - OpenSearch by default limits the number of characters, if the field is very large then the limit gets exceeded. 
 - Handled spaces in database, schema, table, and column names across all connectors for reverse metadata. ${CollateIconWithLinkMD}
+`,
+    },
+  },
+  {
+    id: 74,
+    version: 'v1.8.0',
+    description: 'Released on 22nd June 2025.',
+    features: [
+      {
+        title: `🚀 OpenMetadata MCP Server — Generative-AI-Ready Metadata Providing Rich Data Context
+`,
+        description: `OpenMetadata 1.8 debuts an enterprise-grade MCP server built natively on top of our unified knowledge graph. This new service exposes a single, high-performance API layer that lets any Large Language Model—or any downstream application—pull rich, policy-aware context about your data in real time.
+
+MCP Server:
+
+•	**One graph, One endpoint:** The MCP server surfaces every entity, relationship, data quality, lineage and governance  you’ve already enriched in OpenMetadata.
+•	**LLM-friendly responses:** JSON schemas are optimized for semantic search and RAG workflows, so your chatbots and copilots can ground answers in trustworthy, up-to-date metadata.
+•	**Enterprise-ready controls:** Provides real-time KPIs on asset distribution, metadata coverage (descriptions, ownership), tiering, and PII tagging to proactively improve data governance.
+•   **Zero-friction adoption:** It ships with OpenMetadata—just enable the service, grab an API key, and start querying from Claude, Cursor, ChatGPT etc..
+
+With MCP, every data consumer—from analysts in a BI tool to autonomous agents writing SQL—can instantly understand tables, lineage, quality, and ownership without leaving their workflow.
+	`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/m96F-7gXvfo',
+      },
+      {
+        title: `SCIM Provisioning for Okta & Azure AD — Hands-free User & Group Management`,
+        isCollate: true,
+        description: `Collate 1.8 extends our SSO portfolio with native SCIM 2.0 support, starting with Okta and Azure Active Directory. Enterprises can now manage the full user-lifecycle directly from their Identity Provider—no more CSV uploads or manual role assignments
+
+• **Automated onboarding & off-boarding:** The Tier Agent analyzes usage patterns and lineage to automatically identify the business-critical data assets within your organization.
+• **Consistent governance:** The Documentation Agent automatically generates accurate descriptions of your data assets and powers a seamless Text2SQL chat experience.
+• **Standards-based interoperability:**  Built on the SCIM specification so future IdPs (JumpCloud, OneLogin, etc.) can be added with minimal effort.
+Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stack—letting security teams sleep easy while data users get frictionless access.`,
+        isImage: false,
+      },
+    ] as CarousalData[],
+    changeLogs: {
+      ['Breaking changes']: `
+
+• **Java 21**: OpenMetadata Server upgraded to use Java 21
+• **CreateTestCase Model**: testSuite field from createTestCase models has been removed. 
+• **DropWizard 4.x**: OpenMetadata Server upgraded to use  latest DropWizard 4.x framework for serving APIs.`,
+      ['Improvements']: `
+- Large column pagination to improve page loading in Tables and Dashboard Data Model
+- Ownership functionality for Classification
+- Support Certifications for Data assets
+- Export PDF for custom dashboards improvements ${CollateIconWithLinkMD}
+- Support for running application under sub path (#1558)`,
+      ['Fixes']: `- Explore page deleted filter, shows Knowledge page articles
+- Add support for trino reverse metadata (#1707)
+- Automator for empty description entities & children (#1714)
+- List all incidents column & tables (#1691)
+- Review activity handling (#1654)
+- Clean description from WAII (#1652)
+- Auto Tier w/ followers serialization (#1649)
+- Import failing on database service due to double encoding (#1642)
+- Handled spaces in database, schema, table, and column names across all connectors for reverse metadata 
+- Collate AI Doc to check description root (#1599)
+- Toggle Ingestion Runner postgres SQL (#1596)
+- Permission placeholders for knowledge center (#1585)
+- Clean fqn or search or hash params from Pendo location (#1569)
+- Data asset widget add UI / UX improvement (#1579)
+- Styles for add automator form (#1578)
+- Fix app config handling (#1572)
+- Knowledge center card in entity page not containing data (#1564)
+- Improve handling of app resource init for preview apps (#1521)
+- Tree dropdown for glossary terms inside quick link form (#1561)
+- Stitch Validation Error (#1553)
+- Trigger argo workflows with ad-hoc config (#1345)
+- Query card styles for query page (#1518)
+- Port raiseOnError to Collate (#1509)
+- Handle logging and exception handling for hybrid (#1514)`,
+    },
+  },
+  {
+    id: 75,
+    version: 'v1.8.1',
+    description: 'Released on 30th June 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- REST service process nested objects inside array dtype in schema.
+- Throw an error on query filter parsing and an error on column test case.
+- Display object column type.
+- Add support for adding tags in test case form.
+- Add Postgres SP and UDF descriptions.
+- Enhance AutomatorTestCaseField with tag and glossary support. ${CollateIconWithLinkMD}`,
+      Fixes: `- Cache to have immutable entities.
+- Remove edit permission from version page.
+- Table pagination count issue in the Schema page.
+- Version link and fetch logic with 1 hour wait time.
+- Tableau Lineage in multiple schema model.
+- Soft deleted entities are not removed rom system, so relations are still valid if there is entry in DB.
+- Custom properties display issue in advanced search.
+- Image was not rendering correctly in description editor.
+- Handle sampler SQA sessions.
+- Typo on query cost record index.
+- Reply count being shown as 0 in task feed card.
+- Pagination state lost after multiple back navigations in table list view.
+- query_cost_record_search_index Search exception for elasticsearch instance.
+- Search functionality for domain edit in user profile.
+- Username issue in comments card.
+- Quickcloud get script tables.
+- Added Databricks pipeline Lineage.
+- Add parquet alternate filetypes in table fileformat. 
+- Snowflake reverse ingestion. ${CollateIconWithLinkMD}
+- Typo for Chart preview. ${CollateIconWithLinkMD}
+- Update version link for Collate. ${CollateIconWithLinkMD}
+- Sorting issue for charts. ${CollateIconWithLinkMD}
 `,
     },
   },

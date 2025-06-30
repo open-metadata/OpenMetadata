@@ -15,9 +15,9 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -34,6 +34,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
@@ -62,8 +63,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   dataProducts,
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -81,7 +82,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     );
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.DASHBOARD,
         currentVersionData.fullyQualifiedName ?? '',
@@ -106,7 +107,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         dataIndex: 'name',
         key: 'name',
         render: (text, record) => (
-          <Link target="_blank" to={{ pathname: text }}>
+          <Link target="_blank" to={text}>
             <Space>
               <span>{getEntityName(record)}</span>
 
@@ -293,7 +294,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.DASHBOARD}
         versionHandler={versionHandler}
         versionList={versionList}
