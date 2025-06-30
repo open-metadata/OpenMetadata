@@ -1,5 +1,5 @@
 ---
-title: Python SDK Entities
+title: Python SDK Entities | OpenMetadata Python Entities
 slug: /sdk/python/entities
 noindex: true
 nofollow: true
