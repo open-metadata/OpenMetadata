@@ -1678,6 +1678,7 @@
     "cron-dow-validation-failure": "DOW भाग >= 0 आणि <= 6 असणे आवश्यक आहे",
     "cron-less-than-hour-message": "क्रॉन वेळापत्रक खूप वारंवार आहे. कृपया किमान 1-तास अंतर निवडा.",
     "curated-assets-no-data-message": "क्युरेटेड ॲसेट्स सापडले नाहीत",
+    "curated-assets-widget-title-placeholder": "तुमच्या विजेटसाठी शीर्षक प्रविष्ट करा, उदा: शिफारस केलेल्या टेबल्स",
     "current-offset-description": "The current offset of the event subscription.",
     "custom-classification-name-dbt-tags": "dbt टॅगसाठी सानुकूल OpenMetadata वर्गीकरण नाव",
     "custom-favicon-url-path-message": "फेविकॉन आयकॉनसाठी URL पथ.",

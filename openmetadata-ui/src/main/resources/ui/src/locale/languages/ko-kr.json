@@ -1678,6 +1678,7 @@
     "cron-dow-validation-failure": "요일(DOW) 부분은 0 이상 6 이하여야 합니다",
     "cron-less-than-hour-message": "Cron 일정이 너무 빈번합니다. 최소 1시간 간격으로 선택해 주세요.",
     "curated-assets-no-data-message": "선별된 자산을 찾을 수 없습니다",
+    "curated-assets-widget-title-placeholder": "위젯의 제목을 입력하세요, 예: 추천 테이블",
     "current-offset-description": "이벤트 구독의 현재 오프셋입니다.",
     "custom-classification-name-dbt-tags": "dbt 태그를 위한 사용자 정의 OpenMetadata 분류 이름",
     "custom-favicon-url-path-message": "파비콘 아이콘의 URL 경로입니다.",

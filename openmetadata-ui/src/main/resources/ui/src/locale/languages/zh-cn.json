@@ -1678,6 +1678,7 @@
     "cron-dow-validation-failure": "DOW 部分必须 >= 0 且 <= 6",
     "cron-less-than-hour-message": "Cron schedule too frequent. Please choose at least 1-hour intervals.",
     "curated-assets-no-data-message": "暂无精选资产的数据",
+    "curated-assets-widget-title-placeholder": "请输入您的小组件标题，例如：推荐表",
     "current-offset-description": "The current offset of the event subscription.",
     "custom-classification-name-dbt-tags": "dbt 标签的自定义 OpenMetadata 分类名称",
     "custom-favicon-url-path-message": "网站 Favicon 指向的 URL 地址",

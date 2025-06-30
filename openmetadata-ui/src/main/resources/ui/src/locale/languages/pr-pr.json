@@ -1678,6 +1678,7 @@
     "cron-dow-validation-failure": "بخش DOW باید >= 0 و <= 6 باشد",
     "cron-less-than-hour-message": "Cron schedule too frequent. Please choose at least 1-hour intervals.",
     "curated-assets-no-data-message": "هیچ دارایی انتخاب شده‌ای یافت نشد",
+    "curated-assets-widget-title-placeholder": "یک عنوان برای ویجت خود وارد کنید، مثال: جداول پیشنهادی",
     "current-offset-description": "The current offset of the event subscription.",
     "custom-classification-name-dbt-tags": "نام دسته‌بندی سفارشی OpenMetadata برای برچسب‌های dbt",
     "custom-favicon-url-path-message": "مسیر URL برای آیکون favicon.",

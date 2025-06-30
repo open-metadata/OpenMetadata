@@ -1678,6 +1678,7 @@
     "cron-dow-validation-failure": "ส่วน DOW ต้องเป็น >= 0 และ <= 6",
     "cron-less-than-hour-message": "กำหนดการ Cron บ่อยเกินไป กรุณาเลือกช่วงเวลาอย่างน้อย 1 ชั่วโมง",
     "curated-assets-no-data-message": "ไม่พบข้อมูลทรัพย์สินที่คัดเลือก",
+    "curated-assets-widget-title-placeholder": "กรอกชื่อวิดเจ็ตของคุณ เช่น: ตารางที่แนะนำ",
     "current-offset-description": "The current offset of the event subscription.",
     "custom-classification-name-dbt-tags": "ชื่อการจำแนกประเภท OpenMetadata ที่กำหนดเองสำหรับแท็ก dbt",
     "custom-favicon-url-path-message": "เส้นทาง URL สำหรับไอคอน favicon",
