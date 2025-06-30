@@ -13,7 +13,6 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
 import { SuggestionType } from '../../../generated/entity/feed/suggestion';

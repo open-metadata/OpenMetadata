@@ -17,9 +17,9 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
@@ -68,6 +68,7 @@ import {
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -83,7 +84,7 @@ const GlossaryHeader = ({
   updateVote,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const { currentUser } = useApplicationStore();
   const {
@@ -94,10 +95,10 @@ const GlossaryHeader = ({
     type: entityType,
   } = useGenericContext<GlossaryTerm>();
 
-  const { version } = useParams<{
+  const { version, id } = useRequiredParams<{
     version: string;
+    id: string;
   }>();
-  const { id } = useParams<{ id: string }>();
   const { showModal } = useEntityExportModalProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -211,7 +212,7 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    history.push(getEntityImportPath(EntityType.GLOSSARY_TERM, fqn));
+    navigate(getEntityImportPath(EntityType.GLOSSARY_TERM, fqn));
 
   const handleVersionClick = async () => {
     let path: string;
@@ -229,7 +230,7 @@ const GlossaryHeader = ({
           );
     }
 
-    history.push(path);
+    navigate(path);
   };
 
   const handleDelete = async () => {

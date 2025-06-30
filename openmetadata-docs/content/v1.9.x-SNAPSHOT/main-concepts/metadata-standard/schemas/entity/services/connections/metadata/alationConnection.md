@@ -1,5 +1,5 @@
 ---
-title: alationConnection
+title: Alation Connection | OpenMetadata Alation
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/alationconnection
 ---
 

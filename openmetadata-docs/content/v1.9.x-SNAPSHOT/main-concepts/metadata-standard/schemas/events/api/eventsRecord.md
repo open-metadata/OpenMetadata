@@ -1,5 +1,5 @@
 ---
-title: eventsRecord
+title: eventsRecord | OpenMetadata Events Record
 slug: /main-concepts/metadata-standard/schemas/events/api/eventsrecord
 ---
 

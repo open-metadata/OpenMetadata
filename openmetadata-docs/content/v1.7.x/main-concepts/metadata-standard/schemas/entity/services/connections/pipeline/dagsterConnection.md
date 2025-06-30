@@ -1,5 +1,5 @@
 ---
-title: dagsterConnection
+title: Dagster Connection | OpenMetadata Dagster
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/dagsterconnection
 ---
 

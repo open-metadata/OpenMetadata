@@ -12,7 +12,6 @@
  */
 
 import { filter, startCase } from 'lodash';
-import React from 'react';
 import {
   SubscriptionCategory,
   SubscriptionType,

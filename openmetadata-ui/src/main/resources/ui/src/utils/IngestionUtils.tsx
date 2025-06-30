@@ -14,7 +14,6 @@
 import { Typography } from 'antd';
 import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
-import React from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,

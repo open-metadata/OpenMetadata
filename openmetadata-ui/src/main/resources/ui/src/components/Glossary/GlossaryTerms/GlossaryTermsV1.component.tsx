@@ -12,16 +12,11 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { t } from 'i18next';
+
 import { isEmpty } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -56,6 +51,7 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -87,9 +83,12 @@ const GlossaryTermsV1 = ({
   isTabExpanded,
   toggleTabExpanded,
 }: GlossaryTermsV1Props) => {
-  const { tab, version } = useParams<{ tab: EntityTabs; version: string }>();
+  const { tab, version } = useRequiredParams<{
+    tab: EntityTabs;
+    version: string;
+  }>();
   const { fqn: glossaryFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModalVisible] = useState(false);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -100,6 +99,7 @@ const GlossaryTermsV1 = ({
   const { permissions } = useGenericContext<GlossaryTerm>();
   const childGlossaryTerms = glossaryChildTerms ?? [];
   const { customizedPage, isLoading } = useCustomPages(PageType.GlossaryTerm);
+  const { t } = useTranslation();
 
   const assetPermissions = useMemo(() => {
     const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
@@ -114,11 +114,14 @@ const GlossaryTermsV1 = ({
   }, [tab]);
 
   const activeTabHandler = (tab: string) => {
-    history.replace({
-      pathname: version
-        ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
-        : getGlossaryTermDetailsPath(glossaryFqn, tab),
-    });
+    navigate(
+      {
+        pathname: version
+          ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
+          : getGlossaryTermDetailsPath(glossaryFqn, tab),
+      },
+      { replace: true }
+    );
   };
 
   const handleFeedCount = useCallback((data: FeedCounts) => {

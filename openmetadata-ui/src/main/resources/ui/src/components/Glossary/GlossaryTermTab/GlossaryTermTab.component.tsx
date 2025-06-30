@@ -18,6 +18,7 @@ import {
   Checkbox,
   Col,
   Dropdown,
+  MenuProps,
   Modal,
   Row,
   Space,
@@ -29,17 +30,11 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
@@ -120,7 +115,7 @@ import {
 } from './GlossaryTermTab.interface';
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -582,7 +577,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return expandedRowKeys.length === expandableKeys.length;
   }, [expandedRowKeys, expandableKeys]);
 
-  const statusDropdownMenu = useMemo(
+  const statusDropdownMenu: MenuProps = useMemo(
     () => ({
       items: [
         {
@@ -644,7 +639,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   );
 
   const handleEditGlossary = () => {
-    history.push({
+    navigate({
       pathname: getEntityBulkEditPath(
         EntityType.GLOSSARY_TERM,
         activeGlossary?.fullyQualifiedName ?? ''

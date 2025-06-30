@@ -1035,6 +1035,7 @@ export const createDescriptionTaskForGlossary = async (
   }
 
   if (addDescription) {
+    await page.locator(descriptionBox).clear();
     await page
       .locator(descriptionBox)
       .fill(value.description ?? 'Updated description');
