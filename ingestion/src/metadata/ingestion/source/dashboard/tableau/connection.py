@@ -64,17 +64,19 @@ def get_connection(connection: TableauConnection) -> TableauClient:
         )
 
 
-def set_verify_ssl(connection: TableauConnection) -> tuple[Union[bool, str], Optional[SSLManager]]:
+def set_verify_ssl(
+    connection: TableauConnection,
+) -> tuple[Union[bool, str], Optional[SSLManager]]:
     """
     Set verify ssl based on connection configuration
     ref: https://tableau.github.io/server-client-python/docs/sign-in-out#handling-ssl-certificates-for-tableau-server
     """
     if connection.verifySSL.value == "no-ssl":
         return None, None
-    
+
     if connection.verifySSL.value == "ignore":
         return False, None
-    
+
     if connection.verifySSL.value == "validate":
         # Use SSLManager to create temporary certificate files
         if not connection.sslConfig:
@@ -82,14 +84,14 @@ def set_verify_ssl(connection: TableauConnection) -> tuple[Union[bool, str], Opt
                 "SSL Config is required when verifySSL is set to 'validate'. "
                 "Please provide CA certificate, SSL certificate, or SSL key."
             )
-        
+
         # Create SSLManager to handle certificate files
         ssl_manager = SSLManager(
             ca=connection.sslConfig.root.caCertificate,
             cert=connection.sslConfig.root.sslCertificate,
             key=connection.sslConfig.root.sslKey,
         )
-        
+
         # Return the CA certificate file path for verification
         # If no CA certificate is provided, use default verification
         if ssl_manager.ca_file_path:
@@ -97,9 +99,11 @@ def set_verify_ssl(connection: TableauConnection) -> tuple[Union[bool, str], Opt
         else:
             # If no CA certificate is provided but SSL is enabled, use default verification
             return True, ssl_manager
-    
-    # Default case - should not reach here
-    return None, None
+
+    raise ValueError(
+        f"Unsupported verifySSL value: {connection.verifySSL.value}. "
+        "Expected one of ['no-ssl', 'ignore', 'validate']."
+    )
 
 
 def test_connection(

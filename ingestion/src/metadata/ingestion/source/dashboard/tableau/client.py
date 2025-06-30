@@ -86,7 +86,6 @@ class TableauClient:
         self.tableau_server = Server(str(config.hostPort), use_server_version=True)
         if config.apiVersion:
             self.tableau_server.version = config.apiVersion
-        print("verify_ssl", verify_ssl)
         self.tableau_server.add_http_options({"verify": verify_ssl})
         self.tableau_server.auth.sign_in(tableau_server_auth)
         self.config = config
