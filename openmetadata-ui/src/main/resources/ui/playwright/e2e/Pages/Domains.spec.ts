@@ -412,6 +412,8 @@ test.describe('Domains', () => {
     await selectDomain(page, domain.data);
     // Create sub domain
     await createSubDomain(page, subDomain.data);
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
     await selectSubDomain(page, domain.data, subDomain.data);
     await verifyDomain(page, subDomain.data, domain.data, false);
     // Follow domain

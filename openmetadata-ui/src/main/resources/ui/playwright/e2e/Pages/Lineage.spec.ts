@@ -260,7 +260,7 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await searchRes;
 
   const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-  await page.click(`[data-testid="node-suggestion-${tableServiceFqn}"]`);
+  await page.click(`[data-testid="node-suggestion-${topicServiceFqn}"]`);
   await lineageRes;
 
   const tableServiceNode = page.locator(
