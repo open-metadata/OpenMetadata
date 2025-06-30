@@ -1,5 +1,5 @@
 ---
-title: ssoAuth
+title: SSO Auth Schema | OpenMetadata Single Sign-On
 slug: /main-concepts/metadata-standard/schemas/auth/ssoauth
 ---
 

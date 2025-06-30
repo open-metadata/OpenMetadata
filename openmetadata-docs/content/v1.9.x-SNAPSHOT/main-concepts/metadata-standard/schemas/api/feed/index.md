@@ -1,5 +1,5 @@
 ---
-title: index
+title: Feed API | OpenMetadata Feed API Endpoint Documentation
 slug: /main-concepts/metadata-standard/schemas/api/feed
 ---
 

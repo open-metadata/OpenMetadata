@@ -1,5 +1,5 @@
 ---
-title: createWorkflow
+title: Create Workflow API | OpenMetadata Workflow API Guide
 slug: /main-concepts/metadata-standard/schemas/api/automations/createworkflow
 ---
 

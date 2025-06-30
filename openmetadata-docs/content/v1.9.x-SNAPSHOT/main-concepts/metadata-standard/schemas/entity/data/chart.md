@@ -1,5 +1,5 @@
 ---
-title: chart
+title: Chart Schema | OpenMetadata Chart Schema and API Guide
 slug: /main-concepts/metadata-standard/schemas/entity/data/chart
 ---
 

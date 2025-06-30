@@ -1,5 +1,5 @@
 ---
-title: createUser
+title: Create User API | OpenMetadata API for User Management
 slug: /main-concepts/metadata-standard/schemas/api/teams/createuser
 ---
 

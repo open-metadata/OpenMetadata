@@ -1,5 +1,5 @@
 ---
-title: createTestSuite
+title: Create Test Suite | OpenMetadata Test Suite API
 slug: /main-concepts/metadata-standard/schemas/api/tests/createtestsuite
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: createPipelineService
+title: Create Pipeline Service | OpenMetadata Pipeline Service
 slug: /main-concepts/metadata-standard/schemas/api/services/createpipelineservice
 ---
 

@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Affix, Button, Card, Skeleton, Space, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
@@ -147,7 +147,6 @@ const GithubStarCard = () => {
 
         <ButtonGroup className="github-action-button-group">
           <Link
-            component={Typography.Link}
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,
@@ -160,7 +159,6 @@ const GithubStarCard = () => {
           </Link>
 
           <Link
-            component={Typography.Link}
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,

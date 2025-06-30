@@ -1,5 +1,5 @@
 ---
-title: Observability Alerts
+title: Observability Alerts | OpenMetadata Alerting Guide
 slug: /how-to-guides/data-quality-observability/observability/alerts
 ---
 
@@ -10,7 +10,7 @@ OpenMetadata provides a native way to get alerted in case of test case failure a
 To set up an alert on a test case or test suite, navigate to the observability menu and select `Alerts` and click on `Add Alert`.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/profiler/alerts-menu.png"
+  src="/images/v1.9/features/ingestion/workflows/profiler/alerts-menu.png"
   alt="Alerts Menu"
   caption="Alerts Menu"
  /%}
@@ -21,7 +21,7 @@ The first will be to select a source. For data quality you have 2 relevant optio
 - `Test Suite`: it will trigger an alert for any test case event linked to the test suite. This is a great way to group alerts and reducing notification fatigue
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/profiler/alert-source-selection.png"
+  src="/images/v1.9/features/ingestion/workflows/profiler/alert-source-selection.png"
   alt="Alerts Menu"
   caption="Alerts Menu"
  /%}
@@ -33,7 +33,7 @@ The first will be to select a source. For data quality you have 2 relevant optio
 You can filter alerts based on specific condition to narrow down which test suite/test case should trigger an alert. This is interesting for user to dispatch alerts to different channels/users.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/profiler/alerts-filter.png"
+  src="/images/v1.9/features/ingestion/workflows/profiler/alerts-filter.png"
   alt="Alerts Menu"
   caption="Alerts Menu"
  /%}
@@ -42,7 +42,7 @@ You can filter alerts based on specific condition to narrow down which test suit
 Trigger section will allow you set the condition for which an alert should be triggered
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/profiler/alerts-trigger.png"
+  src="/images/v1.9/features/ingestion/workflows/profiler/alerts-trigger.png"
   alt="Alerts Menu"
   caption="Alerts Menu"
  /%}
@@ -53,7 +53,7 @@ In the destination section you will be able to select between `internal` and `ex
 - `external`: allow you to select an external destination such as a slack or teams channel  
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/profiler/alerts-destination.png"
+  src="/images/v1.9/features/ingestion/workflows/profiler/alerts-destination.png"
   alt="Alerts Menu"
   caption="Alerts Menu"
  /%}

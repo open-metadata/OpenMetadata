@@ -1,5 +1,5 @@
 ---
-title: airbyteConnection
+title: Airbyte Connection | OpenMetadata Airbyte
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/airbyteconnection
 ---
 

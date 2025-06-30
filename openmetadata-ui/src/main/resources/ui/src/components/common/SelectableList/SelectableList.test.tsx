@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { SelectableList } from './SelectableList.component';
 
 const mockFetchOptions = jest
@@ -137,14 +136,13 @@ describe('SelectableList Component Test', () => {
       />
     );
 
-    await act(async () => {
-      const testItem = await screen.findByText('CustomRenderer');
+    const testItem = await screen.findByText(
+      'CustomRenderer',
+      {},
+      { timeout: 3000 }
+    );
 
-      expect(testItem).toBeInTheDocument();
-    });
-
-    expect(mockCustomTagRenderer).toHaveBeenCalled();
-
+    expect(testItem).toBeInTheDocument();
     expect(mockCustomTagRenderer).toHaveBeenCalledWith({
       displayName: 'test',
       id: '1',
@@ -222,11 +220,9 @@ describe('SelectableList Component Test', () => {
       />
     );
 
-    await act(async () => {
-      const userTag = await screen.findByText('test2');
+    const userTag = await screen.findByText('test2');
 
-      expect(userTag).toBeInTheDocument();
-    });
+    expect(userTag).toBeInTheDocument();
 
     const removeIcon = screen.queryAllByTestId('remove-owner');
 

@@ -1,5 +1,5 @@
 ---
-title: jobStatus
+title: Job Status | OpenMetadata API for Job Status Information
 slug: /main-concepts/metadata-standard/schemas/entity/applications/jobstatus
 ---
 

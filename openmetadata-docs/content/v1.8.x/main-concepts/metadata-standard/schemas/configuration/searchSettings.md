@@ -1,5 +1,5 @@
 ---
-title: searchSettings
+title: Search Settings | OpenMetadata Search Config
 slug: /main-concepts/metadata-standard/schemas/configuration/searchsettings
 ---
 

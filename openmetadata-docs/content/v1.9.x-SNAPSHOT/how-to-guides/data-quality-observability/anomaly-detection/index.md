@@ -38,7 +38,7 @@ The **Anomaly Detection** feature in Collate helps ensure data quality by automa
 Users can manually configure tests for specific data points if they want to maintain tight control over their data quality checks. For instance, you can specify that a value must stay between 10 and 100. This method is useful for data that has well-understood constraints or when precise validation rules are required.
 
 {% image
-  src="/images/v1.9how-to-guides/anomaly-detection/set-up-anomaly-detection-2.png"
+  src="/images/v1.9/how-to-guides/anomaly-detection/set-up-anomaly-detection-2.png"
   alt="Manual Configuration of Tests"
   caption="Manual Configuration of Tests"
  /%}
@@ -54,7 +54,7 @@ For more complex or evolving datasets, Collate offers **dynamic assertions**. Th
   - **Efficiency**: Focus on genuine anomalies instead of managing static tests that may quickly become outdated as data evolves.
 
 {% image
-  src="/images/v1.9how-to-guides/anomaly-detection/set-up-anomaly-detection-3.png"
+  src="/images/v1.9/how-to-guides/anomaly-detection/set-up-anomaly-detection-3.png"
   alt="Dynamic Assertions"
   caption="Dynamic Assertions"
  /%}
@@ -66,7 +66,7 @@ When an anomaly is detected, Collate automatically generates incidents, includin
 - **Example**: If sales data suddenly shows an abnormal spike or drop, Collate will notify you, allowing you to investigate potential causes such as system malfunctions or external influences.
 
 {% image
-  src="/images/v1.9how-to-guides/anomaly-detection/set-up-anomaly-detection-4.png"
+  src="/images/v1.9/how-to-guides/anomaly-detection/set-up-anomaly-detection-4.png"
   alt="Incidents and Notifications"
   caption="Incidents and Notifications"
  /%}

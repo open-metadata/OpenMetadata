@@ -1,5 +1,5 @@
 ---
-title: revokePersonalToken
+title: Revoke Personal Token | OpenMetadata Token Revocation
 slug: /main-concepts/metadata-standard/schemas/auth/revokepersonaltoken
 ---
 

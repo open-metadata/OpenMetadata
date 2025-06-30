@@ -62,7 +62,7 @@ OIDC_CALLBACK: ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
 docker compose --env-file ~/openmetadata_auth0.env up -d
 ```
 
-{% partial file="/v1.9deployment/configure-ingestion.md" /%}
+{% partial file="/v1.9/deployment/configure-ingestion.md" /%}
 
 
 {% inlineCalloutContainer %}

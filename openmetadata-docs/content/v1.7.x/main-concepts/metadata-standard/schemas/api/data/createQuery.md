@@ -1,5 +1,5 @@
 ---
-title: createQuery
+title: Create Query API | OpenMetadata Query API
 slug: /main-concepts/metadata-standard/schemas/api/data/createquery
 ---
 

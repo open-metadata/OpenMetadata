@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { TestCases } from './TestCases.component';
@@ -25,10 +24,7 @@ const testCasePermission = {
   EditDisplayName: true,
   EditCustomFields: true,
 };
-const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
-  tab?: DataQualityPageTabs;
-};
-const mockUseHistory = { push: jest.fn() };
+
 const mockLocation = { search: '' };
 
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -67,8 +63,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 jest.mock('react-router-dom', () => {
   return {
     ...jest.requireActual('react-router-dom'),
-    useParams: jest.fn().mockImplementation(() => mockUseParam),
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+    useNavigate: jest.fn().mockReturnValue(jest.fn()),
   };
 });
 jest.mock('../../common/NextPrevious/NextPrevious', () => {
@@ -147,7 +142,7 @@ describe('TestCases component', () => {
     expect(mockGetListTestCase).toHaveBeenCalledWith({
       fields: ['testCaseResult', 'testSuite', 'incidentId'],
       includeAllTests: true,
-      limit: 10,
+      limit: 15,
       offset: 0,
       q: undefined,
       testCaseStatus: undefined,
@@ -165,7 +160,7 @@ describe('TestCases component', () => {
     expect(mockSearchQuery).toHaveBeenCalledWith({
       fields: ['testCaseResult', 'testSuite', 'incidentId'],
       includeAllTests: true,
-      limit: 10,
+      limit: 15,
       offset: 0,
       q: '*sale*',
       testCaseStatus: undefined,

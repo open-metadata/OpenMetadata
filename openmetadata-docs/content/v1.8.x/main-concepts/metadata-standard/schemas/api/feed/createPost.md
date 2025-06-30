@@ -1,5 +1,5 @@
 ---
-title: createPost
+title: Create Post API | OpenMetadata API for Creating Posts
 slug: /main-concepts/metadata-standard/schemas/api/feed/createpost
 ---
 

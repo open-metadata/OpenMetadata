@@ -1,5 +1,5 @@
 ---
-title: createDashboard
+title: Create Dashboard API | OpenMetadata Dashboard API
 slug: /main-concepts/metadata-standard/schemas/api/data/createdashboard
 ---
 
