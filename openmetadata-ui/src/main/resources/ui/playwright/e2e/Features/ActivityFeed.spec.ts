@@ -356,7 +356,7 @@ test.describe('Activity feed', () => {
     await page.getByTestId('request-description').click();
 
     await createDescriptionTask(page, value);
-
+    await page.waitForLoadState('networkidle');
     // Task 1 - Update Description right panel check
     const descriptionTask = await page.getByTestId('task-title').innerText();
 
