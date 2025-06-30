@@ -1,7 +1,7 @@
 name: TypeScript Type Generation
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
       - "openmetadata-spec/src/main/resources/json/schema/**"
