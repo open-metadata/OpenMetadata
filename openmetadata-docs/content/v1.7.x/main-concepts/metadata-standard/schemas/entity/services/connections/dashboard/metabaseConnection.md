@@ -1,5 +1,5 @@
 ---
-title: metabaseConnection
+title: Metabase Connection | OpenMetadata Metabase
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/metabaseconnection
 ---
 

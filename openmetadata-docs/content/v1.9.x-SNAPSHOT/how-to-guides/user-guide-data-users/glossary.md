@@ -10,7 +10,7 @@ slug: /how-to-guides/guide-for-data-users/glossary
 - Click on the checkmark to save the changes.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/glossary1.png"
+src="/images/v1.9/how-to-guides/discovery/glossary1.png"
 alt="Add Glossary Terms"
 caption="Add Glossary Terms"
 /%}
@@ -18,7 +18,7 @@ caption="Add Glossary Terms"
 You can view all the associated glossary terms in the right panel.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/glossary2.png"
+src="/images/v1.9/how-to-guides/discovery/glossary2.png"
 alt="Add Glossary Terms"
 caption="Add Glossary Terms"
 /%}
@@ -28,13 +28,13 @@ caption="Add Glossary Terms"
 If **Tags** are associated with a **Glossary Term**, then applying that glossary term to a data asset, will also automatically apply the associated tags to that data asset. For example, the glossary term ‘Account’ has a PII.Sensitive tag associated with it. When you add a glossary term to a data asset, the associated tags also get added.
 
 {% image
-src="/images/v1.9how-to-guides/governance/tag5.png"
+src="/images/v1.9/how-to-guides/governance/tag5.png"
 alt="Glossary Term and Associated Tags"
 caption="Glossary Term and Associated Tags"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/governance/tag6.png"
+src="/images/v1.9/how-to-guides/governance/tag6.png"
 alt="Glossary Term and Tag gets Added to the Data Asset"
 caption="Glossary Term and Tag gets Added to the Data Asset"
 /%}

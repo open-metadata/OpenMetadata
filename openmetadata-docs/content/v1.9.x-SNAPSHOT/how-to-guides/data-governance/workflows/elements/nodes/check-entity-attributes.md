@@ -20,4 +20,4 @@ We can see an example of this node's configuration below, where we define that i
 - That the **Owners** attribute is set.
 - That the **Description** attribute is set.
 
-{% image src="/images/v1.9how-to-guides/governance/workflows-check-entity-attributes.png" alt="check-entity-attributes" /%}
+{% image src="/images/v1.9/how-to-guides/governance/workflows-check-entity-attributes.png" alt="check-entity-attributes" /%}

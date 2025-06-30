@@ -25,7 +25,7 @@ Configure and schedule dbt Cloud metadata and profiler workflows from the OpenMe
 - [Troubleshooting](/connectors/pipeline/dbtcloud/troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dbtcloud/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dbtcloud/yaml"} /%}
 
 ## Requirements
 
@@ -49,12 +49,12 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
 ## Metadata Ingestion
 
 {% partial 
-    file="/v1.9connectors/metadata-ingestion-ui.md" 
+    file="/v1.9/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "DBTCloud", 
-        selectServicePath: "/images/v1.9connectors/dbtcloud/select-service.png",
-        addNewServicePath: "/images/v1.9connectors/dbtcloud/add-new-service.png",
-        serviceConnectionPath: "/images/v1.9connectors/dbtcloud/service-connection.png",
+        selectServicePath: "/images/v1.9/connectors/dbtcloud/select-service.png",
+        addNewServicePath: "/images/v1.9/connectors/dbtcloud/add-new-service.png",
+        serviceConnectionPath: "/images/v1.9/connectors/dbtcloud/service-connection.png",
     } 
 /%}
 
@@ -80,11 +80,11 @@ Make sure you have the necessary permissions on the token to run graphql queries
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -96,7 +96,7 @@ Steps to retrieve and display the lineage information for a DBT Cloud service. N
 By successfully completing these steps, the lineage information for the service will be displayed.
 
 {% image
-  src="/images/v1.9connectors/dbtcloud/lineage.png"
+  src="/images/v1.9/connectors/dbtcloud/lineage.png"
   alt="DBT Cloud Lineage" /%}
 
 ### Missing Lineage

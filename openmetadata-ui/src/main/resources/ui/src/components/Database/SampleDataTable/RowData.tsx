@@ -13,7 +13,7 @@
 
 import { Typography } from 'antd';
 import { isNil, isObject, noop } from 'lodash';
-import React, { Fragment, useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import SchemaModal from '../../Modals/SchemaModal/SchemaModal';
 import { SampleDataType } from './SampleData.interface';

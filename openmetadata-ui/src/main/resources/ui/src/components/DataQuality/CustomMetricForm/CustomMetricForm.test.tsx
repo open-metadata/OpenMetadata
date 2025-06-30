@@ -12,7 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import { Form } from 'antd';
-import React from 'react';
 import CustomMetricForm from './CustomMetricForm.component';
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {

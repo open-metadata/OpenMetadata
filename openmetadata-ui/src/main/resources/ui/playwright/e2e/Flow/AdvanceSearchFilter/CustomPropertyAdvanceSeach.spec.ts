@@ -28,7 +28,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const dashboardEntity = new DashboardClass();
 const propertyName = `pwCustomPropertyDashboardTest${uuid()}`;
-const propertyValue = 'dashboardcustomproperty';
+const propertyValue = `dashboardcustomproperty_${uuid()}`;
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
@@ -125,7 +125,12 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
 
       const ruleLocator = page.locator('.rule').nth(0);
 
-      await page.getByTitle('Custom Properties').click();
+      // Perform click on rule field
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Custom Properties'
+      );
 
       await selectOption(
         page,
@@ -136,10 +141,18 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
       // Select Custom Property Field when we want filter
       await page
         .locator(
-          '.group--children .rule--field .ant-select-selector .ant-select-selection-search'
+          '.group--children .rule--field .ant-select-selector .ant-select-selection-search .ant-select-selection-search-input'
         )
-        .click();
+        .fill(propertyName);
       await page.getByTitle(propertyName).click();
+
+      await page
+        .locator('.rule--operator .ant-select-selection-search-input')
+        .click();
+      await page.waitForSelector(`.ant-select-dropdown:visible`, {
+        state: 'visible',
+      });
+      await page.click(`.ant-select-dropdown:visible [title="=="]`);
 
       // type custom property value based, on which the filter should be made on dashboard
       await page
@@ -152,6 +165,12 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
 
       await applyAdvanceFilter;
 
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       // Validate if filter dashboard appeared
 
       await expect(
@@ -159,6 +178,10 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
       ).toContainText(
         `extension.dashboard.${propertyName} = '${propertyValue}'`
       );
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await expect(
         page.getByTestId('entity-header-display-name')

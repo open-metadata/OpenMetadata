@@ -1,5 +1,5 @@
 ---
-title: schedule
+title: Schedule Schema | OpenMetadata Schedule Schema Details
 slug: /main-concepts/metadata-standard/schemas/type/schedule
 ---
 
