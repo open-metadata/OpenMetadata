@@ -92,7 +92,7 @@ describe('WidgetCard', () => {
 
       const description = screen.getByTestId('widget-description');
 
-      expect(description).toHaveTextContent('No description available.');
+      expect(description).toHaveTextContent('message.no-description-available');
     });
 
     it('should render widget card content structure correctly', () => {
