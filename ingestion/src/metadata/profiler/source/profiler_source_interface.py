@@ -18,6 +18,11 @@ from typing import Optional
 
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
+    ProcessingEngine,
+)
+from metadata.generated.schema.metadataIngestion.engine.nativeEngineConfig import (
+    NativeEngineConfiguration,
+    Type,
 )
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 
@@ -43,6 +48,10 @@ class ProfilerSourceInterface(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def get_processing_engine(config: DatabaseServiceProfilerPipeline):
+    def get_processing_engine(
+        config: DatabaseServiceProfilerPipeline,
+    ) -> ProcessingEngine:
         """Get the processing engine based on the configuration."""
-        return "Native"
+        return config.processingEngine or ProcessingEngine(
+            root=NativeEngineConfiguration(type=Type.Native)
+        )

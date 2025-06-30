@@ -157,7 +157,8 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools~=70.0",
     "shapely",
-    "collate-data-diff",
+    "collate-data-diff>=0.11.6",
+    "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     # TODO: Remove one once we have updated datadiff version
     "snowflake-connector-python>=3.13.1,<4.0.0",
     "mysql-connector-python>=8.0.29;python_version<'3.9'",
@@ -237,11 +238,12 @@ plugins: Dict[str, Set[str]] = {
         *COMMONS["datalake"],
     },
     "deltalake": {
-        "delta-spark<=2.3.0",
-        "deltalake~=0.17,<0.20",
+        "delta-spark>=3.0.0,<4.0.0",
+        "deltalake>=0.19.0,<0.20",
+        "pyspark==3.5.6",
     },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
-    "deltalake-storage": {"deltalake~=0.17"},
-    "deltalake-spark": {"delta-spark<=2.3.0"},
+    "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
+    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {"pydoris==1.0.2"},
     "druid": {"pydruid>=0.6.5"},

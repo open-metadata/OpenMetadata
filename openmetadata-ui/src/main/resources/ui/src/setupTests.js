@@ -116,3 +116,13 @@ jest.mock('./utils/ToastUtils', () => ({
 jest.mock('./components/ActivityFeed/FeedEditor/FeedEditor.tsx', () => ({
   FeedEditor: jest.fn().mockImplementation(() => 'FeedEditor'),
 }));
+/**
+ * Global mock for TableColumn.util to prevent ownerTableObject errors
+ */
+jest.mock('./utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([]),
+  domainTableObject: jest.fn().mockReturnValue([]),
+  dataProductTableObject: jest.fn().mockReturnValue([]),
+  tagTableObject: jest.fn().mockReturnValue([]),
+  columnFilterIcon: jest.fn(),
+}));

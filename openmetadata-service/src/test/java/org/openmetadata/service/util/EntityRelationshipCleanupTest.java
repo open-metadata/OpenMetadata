@@ -86,7 +86,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void test_cleanupWithValidRelationships_shouldFindNoOrphans() {
     cleanup = new EntityRelationshipCleanup(collectionDAO, true); // dry-run mode
-    EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(100);
     assertNotNull(result);
     assertTrue(result.getTotalRelationshipsScanned() >= 0);
   }
@@ -98,7 +98,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
     UUID tableId = tableToDelete.getId();
     collectionDAO.tableDAO().delete(tableId);
     cleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(100);
     assertNotNull(result);
     assertTrue(
         result.getOrphanedRelationshipsFound() > 0,
@@ -120,13 +120,14 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void test_actualCleanup_shouldDeleteOrphanedRelationships() {
     EntityRelationshipCleanup dryRunCleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult dryRunResult = dryRunCleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult dryRunResult = dryRunCleanup.performCleanup(100);
 
     int orphansFoundInDryRun = dryRunResult.getOrphanedRelationshipsFound();
 
     if (orphansFoundInDryRun > 0) {
       EntityRelationshipCleanup actualCleanup = new EntityRelationshipCleanup(collectionDAO, false);
-      EntityRelationshipCleanup.CleanupResult actualResult = actualCleanup.performCleanup(100);
+      EntityRelationshipCleanup.EntityCleanupResult actualResult =
+          actualCleanup.performCleanup(100);
 
       assertNotNull(actualResult);
       assertTrue(
@@ -138,7 +139,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
 
       EntityRelationshipCleanup verificationCleanup =
           new EntityRelationshipCleanup(collectionDAO, true);
-      EntityRelationshipCleanup.CleanupResult verificationResult =
+      EntityRelationshipCleanup.EntityCleanupResult verificationResult =
           verificationCleanup.performCleanup(100);
 
       assertEquals(
@@ -152,7 +153,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void test_paginationWithLargeBatchSize() {
     cleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(10000);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(10000);
     assertNotNull(result);
     assertTrue(result.getTotalRelationshipsScanned() >= 0);
   }
@@ -161,7 +162,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void test_paginationWithSmallBatchSize() {
     cleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(10);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(10);
     assertNotNull(result);
     assertTrue(result.getTotalRelationshipsScanned() >= 0);
   }
@@ -182,7 +183,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
             Relationship.CONTAINS.ordinal(),
             null);
     cleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(100);
     assertTrue(
         result.getOrphanedRelationshipsFound() > 0,
         "Should detect manually created orphaned relationship");
@@ -197,7 +198,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
     assertTrue(foundSpecificOrphan, "Should find the specific orphaned relationship created");
 
     EntityRelationshipCleanup actualCleanup = new EntityRelationshipCleanup(collectionDAO, false);
-    EntityRelationshipCleanup.CleanupResult cleanupResult = actualCleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult cleanupResult = actualCleanup.performCleanup(100);
 
     assertTrue(
         cleanupResult.getRelationshipsDeleted() > 0, "Should delete the orphaned relationship");
@@ -208,7 +209,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   void test_validationOfExistingRelationships() {
     long relationshipCountBefore = collectionDAO.relationshipDAO().getTotalRelationshipCount();
     cleanup = new EntityRelationshipCleanup(collectionDAO, false);
-    EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(100);
     long relationshipCountAfter = collectionDAO.relationshipDAO().getTotalRelationshipCount();
     long expectedCount = relationshipCountBefore - result.getRelationshipsDeleted();
     assertEquals(
@@ -239,7 +240,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_dryRun() {
     EntityRelationshipCleanup dryRunCleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = dryRunCleanup.performCleanup(500);
+    EntityRelationshipCleanup.EntityCleanupResult result = dryRunCleanup.performCleanup(500);
     assertNotNull(result, "Cleanup result should not be null");
     assertTrue(result.getTotalRelationshipsScanned() >= 0, "Should scan some relationships");
   }
@@ -260,13 +261,13 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
             null);
 
     EntityRelationshipCleanup dryRunCleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult dryRunResult = dryRunCleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult dryRunResult = dryRunCleanup.performCleanup(100);
 
     assertNotNull(dryRunResult, "Dry-run result should not be null");
     assertTrue(dryRunResult.getOrphanedRelationshipsFound() > 0, "Should find orphaned data");
 
     EntityRelationshipCleanup actualCleanup = new EntityRelationshipCleanup(collectionDAO, false);
-    EntityRelationshipCleanup.CleanupResult cleanupResult = actualCleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult cleanupResult = actualCleanup.performCleanup(100);
 
     assertNotNull(cleanupResult, "Cleanup result should not be null");
     assertTrue(cleanupResult.getRelationshipsDeleted() > 0, "Should delete orphaned relationships");
@@ -276,7 +277,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_noOrphanedData() {
     EntityRelationshipCleanup cleanup1 = new EntityRelationshipCleanup(collectionDAO, false);
-    EntityRelationshipCleanup.CleanupResult result = cleanup1.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup1.performCleanup(100);
     assertNotNull(result, "Cleanup result should not be null");
     assertEquals(
         0,
@@ -288,7 +289,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_smallBatchSize() {
     EntityRelationshipCleanup cleanup1 = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = cleanup1.performCleanup(10);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup1.performCleanup(10);
 
     assertNotNull(result, "Cleanup result should not be null");
     assertTrue(result.getTotalRelationshipsScanned() >= 0, "Should scan relationships");
@@ -298,7 +299,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_largeBatchSize() {
     EntityRelationshipCleanup cleanup1 = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = cleanup1.performCleanup(10000);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup1.performCleanup(10000);
 
     assertNotNull(result, "Cleanup result should not be null");
     assertTrue(result.getTotalRelationshipsScanned() >= 0, "Should scan relationships");
@@ -323,7 +324,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
     }
 
     EntityRelationshipCleanup cleanup1 = new EntityRelationshipCleanup(collectionDAO, false);
-    EntityRelationshipCleanup.CleanupResult result = cleanup1.performCleanup(2);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup1.performCleanup(2);
 
     assertNotNull(result, "Cleanup result should not be null");
     assertTrue(
@@ -336,11 +337,13 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   void test_relationshipCleanupCommand_validationOfParameters() {
 
     EntityRelationshipCleanup minBatchCleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult minBatchResult = minBatchCleanup.performCleanup(1);
+    EntityRelationshipCleanup.EntityCleanupResult minBatchResult =
+        minBatchCleanup.performCleanup(1);
 
     assertNotNull(minBatchResult, "Minimum batch size result should not be null");
     EntityRelationshipCleanup defaultCleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult defaultResult = defaultCleanup.performCleanup(1000);
+    EntityRelationshipCleanup.EntityCleanupResult defaultResult =
+        defaultCleanup.performCleanup(1000);
 
     assertNotNull(defaultResult, "Default batch size result should not be null");
   }
@@ -349,7 +352,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void test_commandIntegrationValidation() {
     EntityRelationshipCleanup cleanup1 = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = cleanup1.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup1.performCleanup(100);
 
     assertNotNull(result, "Command integration result should not be null");
     assertTrue(result.getTotalRelationshipsScanned() >= 0, "Should scan relationships");
@@ -362,7 +365,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
 
     // Run cleanup on current database
     cleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(100);
 
     assertNotNull(result);
     assertTrue(result.getTotalRelationshipsScanned() >= 0);
@@ -372,7 +375,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void test_commandBehavior_defaultDryRunWithNoOrphans() {
     EntityRelationshipCleanup dryRunCleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = dryRunCleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult result = dryRunCleanup.performCleanup(100);
 
     assertNotNull(result);
 
@@ -399,7 +402,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
             null);
 
     EntityRelationshipCleanup dryRunCleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = dryRunCleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult result = dryRunCleanup.performCleanup(100);
 
     assertNotNull(result);
 
@@ -431,7 +434,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
             null);
 
     EntityRelationshipCleanup deleteCleanup = new EntityRelationshipCleanup(collectionDAO, false);
-    EntityRelationshipCleanup.CleanupResult result = deleteCleanup.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult result = deleteCleanup.performCleanup(100);
 
     assertNotNull(result);
     assertTrue(result.getRelationshipsDeleted() > 0, "Should have deleted orphaned relationships");
@@ -443,7 +446,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
     int customBatchSize = 50;
 
     EntityRelationshipCleanup cleanup = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(customBatchSize);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(customBatchSize);
 
     assertNotNull(result);
     assertTrue(result.getTotalRelationshipsScanned() >= 0);
@@ -453,10 +456,11 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void test_commandBehavior_flagSemantics() {
     EntityRelationshipCleanup defaultBehavior = new EntityRelationshipCleanup(collectionDAO, true);
-    EntityRelationshipCleanup.CleanupResult defaultResult = defaultBehavior.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult defaultResult =
+        defaultBehavior.performCleanup(100);
 
     EntityRelationshipCleanup deleteBehavior = new EntityRelationshipCleanup(collectionDAO, false);
-    EntityRelationshipCleanup.CleanupResult deleteResult = deleteBehavior.performCleanup(100);
+    EntityRelationshipCleanup.EntityCleanupResult deleteResult = deleteBehavior.performCleanup(100);
 
     assertNotNull(defaultResult);
     assertNotNull(deleteResult);
