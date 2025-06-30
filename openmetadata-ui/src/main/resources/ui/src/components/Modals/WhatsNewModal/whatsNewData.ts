@@ -1015,6 +1015,7 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - Throw an error on query filter parsing and an error on column test case.
 - Display object column type.
 - Add support for adding tags in test case form.
+- Add Postgres SP and UDF descriptions.
 - Enhance AutomatorTestCaseField with tag and glossary support. ${CollateIconWithLinkMD}`,
       Fixes: `- Cache to have immutable entities.
 - Remove edit permission from version page.
@@ -1026,12 +1027,14 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - Image was not rendering correctly in description editor.
 - Handle sampler SQA sessions.
 - Typo on query cost record index.
-- Alphabetical sort order support for display name.
 - Reply count being shown as 0 in task feed card.
 - Pagination state lost after multiple back navigations in table list view.
 - query_cost_record_search_index Search exception for elasticsearch instance.
 - Search functionality for domain edit in user profile.
 - Username issue in comments card.
+- Quickcloud get script tables.
+- Added Databricks pipeline Lineage.
+- Add parquet alternate filetypes in table fileformat. 
 - Snowflake reverse ingestion. ${CollateIconWithLinkMD}
 - Typo for Chart preview. ${CollateIconWithLinkMD}
 - Update version link for Collate. ${CollateIconWithLinkMD}
