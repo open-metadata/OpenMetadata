@@ -139,7 +139,6 @@ export const clickOutside = async (page: Page) => {
       y: 0,
     },
   }); // with this action left menu bar is getting opened
-  await page.mouse.move(1280, 0); // moving out side left menu bar to avoid random failure due to left menu bar
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
