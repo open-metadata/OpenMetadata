@@ -39,7 +39,10 @@ import {
   getSuggestionsList,
   updateSuggestionStatus,
 } from '../../../rest/suggestionsAPI';
-import { getSuggestionByType } from '../../../utils/Suggestion/SuggestionUtils';
+import {
+  getSuggestionByType,
+  getUniqueSuggestions,
+} from '../../../utils/Suggestion/SuggestionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   SuggestionAction,
@@ -72,6 +75,24 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   const refreshEntity = useRef<(suggestion: Suggestion) => void>();
   const { permissions } = usePermissionProvider();
 
+  const updateAndReturnSuggestionDependencies = useCallback(
+    (newSuggestions: Suggestion[]) => {
+      const mergedSuggestions = getUniqueSuggestions(
+        suggestions,
+        newSuggestions
+      );
+      const { allUsersList, groupedSuggestions } =
+        getSuggestionByType(mergedSuggestions);
+
+      setSuggestions(mergedSuggestions);
+      setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
+      setSuggestionsByUser(groupedSuggestions);
+
+      return mergedSuggestions;
+    },
+    [suggestions]
+  );
+
   const fetchSuggestions = useCallback(
     async (limit?: number) => {
       setLoading(true);
@@ -81,22 +102,9 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
           limit: limit ?? suggestionLimit,
         });
 
-        // Merge new suggestions with existing ones, removing duplicates by ID
-        setSuggestions((prevSuggestions) => {
-          const existingIds = new Set(prevSuggestions.map((s) => s.id));
-          const newSuggestions = data.filter((s) => !existingIds.has(s.id));
-          const mergedSuggestions = [...prevSuggestions, ...newSuggestions];
-
-          // Update grouped suggestions with merged data
-          const { allUsersList, groupedSuggestions } =
-            getSuggestionByType(mergedSuggestions);
-          setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
-          setSuggestionsByUser(groupedSuggestions);
-          setSuggestionLimit(paging.total);
-          setSuggestionPendingCount(paging.total - PAGE_SIZE);
-
-          return mergedSuggestions;
-        });
+        updateAndReturnSuggestionDependencies(data);
+        setSuggestionLimit(paging.total);
+        setSuggestionPendingCount(paging.total - PAGE_SIZE);
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -108,7 +116,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoading(false);
       }
     },
-    [entityFqn, suggestionLimit]
+    [entityFqn, suggestionLimit, updateAndReturnSuggestionDependencies]
   );
 
   const fetchSuggestionsByUserId = useCallback(
@@ -120,21 +128,8 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
           limit: limit ?? suggestionLimit,
         });
 
-        // Merge new suggestions with existing ones, removing duplicates by ID
-        setSuggestions((prevSuggestions) => {
-          const existingIds = new Set(prevSuggestions.map((s) => s.id));
-          const newSuggestions = data.filter((s) => !existingIds.has(s.id));
-          const mergedSuggestions = [...prevSuggestions, ...newSuggestions];
-
-          // Update grouped suggestions with merged data
-          const { allUsersList, groupedSuggestions } =
-            getSuggestionByType(mergedSuggestions);
-          setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
-          setSuggestionsByUser(groupedSuggestions);
-          setSuggestionPendingCount(suggestionLimit - mergedSuggestions.length);
-
-          return mergedSuggestions;
-        });
+        const mergedSuggestions = updateAndReturnSuggestionDependencies(data);
+        setSuggestionPendingCount(suggestionLimit - mergedSuggestions.length);
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -146,7 +141,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoading(false);
       }
     },
-    [entityFqn, suggestionLimit]
+    [entityFqn, suggestionLimit, updateAndReturnSuggestionDependencies]
   );
 
   const acceptRejectSuggestion = useCallback(
