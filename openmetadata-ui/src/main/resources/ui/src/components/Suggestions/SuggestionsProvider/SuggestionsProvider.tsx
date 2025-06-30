@@ -80,13 +80,23 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
           entityFQN: entityFqn,
           limit: limit ?? suggestionLimit,
         });
-        setSuggestions(data);
 
-        const { allUsersList, groupedSuggestions } = getSuggestionByType(data);
-        setSuggestionLimit(paging.total);
-        setSuggestionPendingCount(paging.total - PAGE_SIZE);
-        setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
-        setSuggestionsByUser(groupedSuggestions);
+        // Merge new suggestions with existing ones, removing duplicates by ID
+        setSuggestions((prevSuggestions) => {
+          const existingIds = new Set(prevSuggestions.map((s) => s.id));
+          const newSuggestions = data.filter((s) => !existingIds.has(s.id));
+          const mergedSuggestions = [...prevSuggestions, ...newSuggestions];
+
+          // Update grouped suggestions with merged data
+          const { allUsersList, groupedSuggestions } =
+            getSuggestionByType(mergedSuggestions);
+          setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
+          setSuggestionsByUser(groupedSuggestions);
+          setSuggestionLimit(paging.total);
+          setSuggestionPendingCount(paging.total - PAGE_SIZE);
+
+          return mergedSuggestions;
+        });
       } catch (err) {
         showErrorToast(
           err as AxiosError,

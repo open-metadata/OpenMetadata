@@ -16,6 +16,7 @@ import { SuggestionType } from '../../../generated/entity/feed/suggestion';
 import { mockEntityPermissions } from '../../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import {
   approveRejectAllSuggestions,
+  getSuggestionsByUserId,
   getSuggestionsList,
   updateSuggestionStatus,
 } from '../../../rest/suggestionsAPI';
@@ -46,6 +47,9 @@ jest.mock('../../../hooks/useFqn', () => ({
 jest.mock('../../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve()),
   getSuggestionsByUserId: jest.fn().mockImplementation(() => Promise.resolve()),
+  fetchSuggestionsByUserId: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve()),
   approveRejectAllSuggestions: jest.fn(),
   updateSuggestionStatus: jest.fn(),
 }));
@@ -190,10 +194,6 @@ describe('SuggestionsProvider', () => {
   });
 
   it('calls fetchSuggestionsByUserId when button is clicked', async () => {
-    const { getSuggestionsByUserId } = await import(
-      '../../../rest/suggestionsAPI'
-    );
-
     render(
       <SuggestionsProvider>
         <TestComponent />

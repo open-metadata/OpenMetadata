@@ -22,6 +22,7 @@ const table = new TableClass();
 const table2 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
+const user3 = new UserClass();
 let entityLinkList: string[];
 
 test.describe('Description Suggestions Table Entity', () => {
@@ -38,6 +39,7 @@ test.describe('Description Suggestions Table Entity', () => {
     );
     await user1.create(apiContext);
     await user2.create(apiContext);
+    await user3.create(apiContext);
 
     // Create suggestions for both users
     for (const entityLink of entityLinkList) {
@@ -49,10 +51,11 @@ test.describe('Description Suggestions Table Entity', () => {
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
-    await table.delete(apiContext);
-    await table2.delete(apiContext);
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
+    // await table.delete(apiContext);
+    // await table2.delete(apiContext);
+    // await user1.delete(apiContext);
+    // await user2.delete(apiContext);
+    // await user3.delete(apiContext);
     await afterAction();
   });
 
@@ -219,20 +222,36 @@ test.describe('Description Suggestions Table Entity', () => {
     await afterAction();
   });
 
-  test('Fetch All Pending Suggestions', async ({ browser }) => {
+  test('Fetch on avatar click  and then all Pending Suggestions', async ({
+    browser,
+  }) => {
     const { page, afterAction } = await performAdminLogin(browser);
     const { afterAction: afterAction2, apiContext: apiContext2 } =
       await performUserLogin(browser, user1);
     const { afterAction: afterAction3, apiContext: apiContext3 } =
       await performUserLogin(browser, user2);
+    const { afterAction: afterAction4, apiContext: apiContext4 } =
+      await performUserLogin(browser, user3);
 
     for (const entityLink of entityLinkList) {
       await createTableDescriptionSuggestions(apiContext2, entityLink);
       await createTableDescriptionSuggestions(apiContext3, entityLink);
+      await createTableDescriptionSuggestions(apiContext4, entityLink);
     }
 
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
+
+    const avatarSuggestion = page.waitForResponse(
+      `/api/v1/suggestions?entityFQN=*userId=*`
+    );
+    await page
+      .getByTestId('asset-description-container')
+      .getByTestId('profile-avatar')
+      .nth(0)
+      .click();
+
+    await avatarSuggestion;
 
     await expect(page.getByTestId('more-suggestion-button')).toBeVisible();
 
@@ -252,6 +271,7 @@ test.describe('Description Suggestions Table Entity', () => {
     await afterAction();
     await afterAction2();
     await afterAction3();
+    await afterAction4();
   });
 
   test('Should fetch initial 10 suggestions on entity change from table1 to table2', async ({
