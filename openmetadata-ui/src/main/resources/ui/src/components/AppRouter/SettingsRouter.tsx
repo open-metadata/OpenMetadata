@@ -60,7 +60,6 @@ import UserListPageV1 from '../../pages/UserListPage/UserListPageV1';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
-  getSettingPath,
   getSettingPathRelative,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
@@ -355,7 +354,7 @@ const SettingsRouter = () => {
             <PersonaDetailsPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(GlobalSettingOptions.PERSONA, '', true)}
+        path={getSettingPathRelative(GlobalSettingOptions.PERSONA, '', true)}
       />
       {/* Roles route start
        * Do not change the order of these route
