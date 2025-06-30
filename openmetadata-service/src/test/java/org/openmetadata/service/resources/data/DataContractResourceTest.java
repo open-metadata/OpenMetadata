@@ -66,7 +66,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @Execution(ExecutionMode.CONCURRENT)
-class DataContractResourceTest extends OpenMetadataApplicationTest {
+public class DataContractResourceTest extends OpenMetadataApplicationTest {
   private static final String C1 = "id";
   private static final String C2 = "name";
   private static final String C3 = "description";
@@ -229,7 +229,7 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   /**
    * Creates a unique data contract request for testing with Table
    */
-  private CreateDataContract createDataContractRequest(String name, Table table) {
+  public CreateDataContract createDataContractRequest(String name, Table table) {
     String uniqueSuffix =
         UUID.randomUUID().toString().replace("-", "")
             + "_"

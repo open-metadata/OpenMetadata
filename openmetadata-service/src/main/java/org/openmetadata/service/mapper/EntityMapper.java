@@ -12,6 +12,7 @@ import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rules.RuleEngine;
 
 public interface EntityMapper<T extends EntityInterface, C extends CreateEntity> {
   T createToEntity(C create, String user);
@@ -33,6 +34,8 @@ public interface EntityMapper<T extends EntityInterface, C extends CreateEntity>
     entity.setUpdatedBy(updatedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setReviewers(request.getReviewers());
+
+    RuleEngine.getInstance().evaluate(entity);
     return entity;
   }
 

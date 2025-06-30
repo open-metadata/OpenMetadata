@@ -2,7 +2,7 @@ package org.openmetadata.service.rules;
 
 import org.openmetadata.schema.type.SemanticsRule;
 
-public class RuleValidationException extends RuntimeException {
+public class RuleValidationException extends IllegalArgumentException {
 
   public RuleValidationException(SemanticsRule rule, String message) {
     super(formatMessage(rule, message));

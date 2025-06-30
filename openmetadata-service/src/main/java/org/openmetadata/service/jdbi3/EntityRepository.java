@@ -190,6 +190,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
+import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -609,6 +610,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setUpdatedBy(updatedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setReviewers(request.getReviewers());
+
+    RuleEngine.getInstance().evaluate(entity);
     return entity;
   }
 
@@ -1040,6 +1043,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void prepareInternal(T entity, boolean update) {
+    RuleEngine.getInstance().evaluate(entity);
     validateTags(entity);
     prepare(entity, update);
     setFullyQualifiedName(entity);
@@ -2820,7 +2824,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(addedOwners) && nullOrEmpty(removedOwners)) {
       return;
     }
-    validateOwners(addedOwners);
     removeOwners(ownedEntity, removedOwners);
     storeOwners(ownedEntity, newOwners);
   }
@@ -2863,16 +2866,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public static List<EntityReference> validateOwners(List<EntityReference> owners) {
     if (nullOrEmpty(owners)) {
       return null;
-    }
-
-    long teamCount = owners.stream().filter(owner -> owner.getType().equals(TEAM)).count();
-    long userCount = owners.size() - teamCount;
-
-    if (teamCount > 1 || (teamCount > 0 && userCount > 0)) {
-      throw new IllegalArgumentException(
-          teamCount > 1
-              ? CatalogExceptionMessage.onlyOneTeamAllowed()
-              : CatalogExceptionMessage.noTeamAndUserComboAllowed());
     }
 
     return owners.stream()
