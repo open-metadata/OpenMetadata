@@ -33,7 +33,7 @@ import org.openmetadata.service.search.SearchRepository;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class SearchIndexCompressionIntegrationTest extends OpenMetadataApplicationTest {
+class SearchIndexCompressionIntegrationTest extends OpenMetadataApplicationTest {
 
   private SearchRepository searchRepository;
   private SearchIndexApp searchIndexApp;
@@ -106,7 +106,7 @@ public class SearchIndexCompressionIntegrationTest extends OpenMetadataApplicati
     LOG.info("=== Testing SearchClusterMetrics with Real Cluster ===");
 
     SearchClusterMetrics metrics =
-        SearchClusterMetrics.fetchClusterMetrics(searchRepository, 1000L);
+        SearchClusterMetrics.fetchClusterMetrics(searchRepository, 1000L, 50);
     assertNotNull(metrics, "Cluster metrics should be fetched successfully");
     metrics.logRecommendations();
     assertTrue(metrics.getTotalNodes() > 0, "Should detect at least 1 node");

@@ -125,7 +125,17 @@ public class OmAppJobListener implements JobListener {
                 EntityReference.class));
       }
 
-      if (jobException == null
+      // Check if the job was stopped/interrupted
+      if (runRecord.getStatus() == AppRunRecord.Status.STOPPED
+          || runRecord.getStatus() == AppRunRecord.Status.STOP_IN_PROGRESS) {
+        runRecord.withStatus(AppRunRecord.Status.STOPPED);
+        SuccessContext context = new SuccessContext();
+        if (runRecord.getSuccessContext() != null) {
+          context = runRecord.getSuccessContext();
+        }
+        context.setStats(jobStats);
+        runRecord.setSuccessContext(context);
+      } else if (jobException == null
           && !(runRecord.getStatus() == AppRunRecord.Status.FAILED
               || runRecord.getStatus() == AppRunRecord.Status.ACTIVE_ERROR)) {
         runRecord.withStatus(AppRunRecord.Status.SUCCESS);

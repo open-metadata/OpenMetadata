@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.secrets;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -125,6 +126,10 @@ public class SecretsManagerUpdateService {
                   service.getName(),
                   repository.getServiceType()));
       repository.getDao().update(service);
+    } catch (EntityNotFoundException e) {
+      LOG.warn(
+          "Service entity {} not found during secrets migration. Skipping.",
+          serviceEntityInterface.getId());
     } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
@@ -217,6 +222,8 @@ public class SecretsManagerUpdateService {
       secretManager.encryptAuthenticationMechanism(
           botUser.getName(), user.getAuthenticationMechanism());
       userRepository.getDao().update(user);
+    } catch (EntityNotFoundException e) {
+      LOG.warn("Bot user {} not found during secrets migration. Skipping.", botUser.getId());
     } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
@@ -232,6 +239,11 @@ public class SecretsManagerUpdateService {
               ingestionPipelineRepository.getDao().listCount(new ListFilter()),
               null)
           .getData();
+    } catch (EntityNotFoundException entityNotFoundException) {
+      LOG.error(
+          "Failed to retrieve ingestion pipelines. Entity not found: {}",
+          entityNotFoundException.getMessage());
+      return Collections.emptyList();
     } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
@@ -260,6 +272,10 @@ public class SecretsManagerUpdateService {
       oldSecretManager.decryptIngestionPipeline(ingestionPipeline);
       secretManager.encryptIngestionPipeline(ingestionPipeline);
       ingestionPipelineRepository.getDao().update(ingestion);
+    } catch (EntityNotFoundException e) {
+      LOG.warn(
+          "Ingestion pipeline {} not found during secrets migration. Skipping.",
+          ingestionPipeline.getId());
     } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
@@ -272,6 +288,8 @@ public class SecretsManagerUpdateService {
       workflowObject = oldSecretManager.decryptWorkflow(workflowObject);
       workflowObject = secretManager.encryptWorkflow(workflowObject);
       ingestionPipelineRepository.getDao().update(workflowObject);
+    } catch (EntityNotFoundException e) {
+      LOG.warn("Workflow {} not found during secrets migration. Skipping.", workflow.getId());
     } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
