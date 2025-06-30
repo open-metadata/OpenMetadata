@@ -19,7 +19,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusSquare } from '../../../../../assets/svg/plus-square.svg';
 import { VALIDATION_MESSAGES } from '../../../../../constants/constants';
-import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   CuratedAssetsFormSelectedAssetsInfo,
   getSelectedResourceCount,
@@ -28,7 +27,10 @@ import { AdvanceSearchProvider } from '../../../../Explore/AdvanceSearchProvider
 import { AdvancedAssetsFilterField } from '../AdvancedAssetsFilterField/AdvancedAssetsFilterField.component';
 import { SelectAssetTypeField } from '../SelectAssetTypeField/SelectAssetTypeField.component';
 import './curated-assets-modal.less';
-import { CuratedAssetsModalProps } from './CuratedAssetsModal.interface';
+import {
+  CuratedAssetsConfig,
+  CuratedAssetsModalProps,
+} from './CuratedAssetsModal.interface';
 
 const CuratedAssetsModal = ({
   curatedAssetsData,
@@ -38,18 +40,26 @@ const CuratedAssetsModal = ({
   isOpen,
 }: CuratedAssetsModalProps) => {
   const { t } = useTranslation();
-  const [form] = useForm<IngestionPipeline>();
+  const [form] = useForm<CuratedAssetsConfig>();
   const [selectedAssetsInfo, setSelectedAssetsInfo] =
     useState<CuratedAssetsFormSelectedAssetsInfo>({
       resourceCount: 0,
       resourcesWithNonZeroCount: [],
     });
 
-  const selectedResource = form.getFieldValue('resources');
+  const initialValues = useMemo(
+    () => ({
+      ...(curatedAssetsData || {}),
+      resources: [...(curatedAssetsData?.resources || [])],
+    }),
+    [curatedAssetsData]
+  );
 
-  const queryFilter = form.getFieldValue('queryFilter');
+  const selectedResource = Form.useWatch('resources', form);
 
-  const title = form.getFieldValue(['title']);
+  const queryFilter = Form.useWatch('queryFilter', form);
+
+  const title = Form.useWatch('title', form);
 
   const disableSave = useMemo(() => {
     return (
@@ -139,16 +149,6 @@ const CuratedAssetsModal = ({
     [handleCancel, disableSave, form, t]
   );
 
-  const initialValues = useMemo(
-    () => ({
-      ...(curatedAssetsData || {}),
-      resources: [...(curatedAssetsData?.resources || [])],
-      queryFilter: curatedAssetsData?.queryFilter,
-      title: curatedAssetsData?.title,
-    }),
-    [curatedAssetsData]
-  );
-
   return (
     <Modal
       centered
@@ -164,7 +164,7 @@ const CuratedAssetsModal = ({
       onCancel={handleCancel}
     >
       <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
-        <Form<IngestionPipeline>
+        <Form<CuratedAssetsConfig>
           data-testid="curated-assets-form"
           form={form}
           id="curated-assets-form"
@@ -173,13 +173,10 @@ const CuratedAssetsModal = ({
           validateMessages={VALIDATION_MESSAGES}
           onFinish={handleSave}
         >
-          <Form.Item
-            data-testid="title-input"
-            label="Widget's Title"
-            name="title"
-          >
+          <Form.Item label="Widget's Title" name="title">
             <Input
               autoFocus
+              data-testid="title-input"
               placeholder="Enter a title for your widget, Ex: Recommended Tables"
             />
           </Form.Item>

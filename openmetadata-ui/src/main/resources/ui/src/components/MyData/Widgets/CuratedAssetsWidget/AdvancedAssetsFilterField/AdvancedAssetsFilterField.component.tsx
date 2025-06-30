@@ -22,6 +22,8 @@ import React, {
 } from 'react';
 import {
   Builder,
+  Config,
+  ImmutableTree,
   JsonTree,
   Query,
   Utils as QbUtils,
@@ -31,6 +33,7 @@ import { IngestionPipeline } from '../../../../../generated/entity/services/inge
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   AlertMessage,
+  CuratedAssetsFormSelectedAssetsInfo,
   getExploreURLWithFilters,
   getModifiedQueryFilterWithSelectedAssets,
 } from '../../../../../utils/CuratedAssetsUtils';
@@ -43,8 +46,12 @@ export const AdvancedAssetsFilterField = ({
   fetchEntityCount,
   selectedAssetsInfo,
 }: {
-  fetchEntityCount: any;
-  selectedAssetsInfo: any;
+  fetchEntityCount: (args: {
+    countKey: string;
+    selectedResource: string[];
+    queryFilter: string;
+  }) => Promise<void>;
+  selectedAssetsInfo: CuratedAssetsFormSelectedAssetsInfo;
 }) => {
   const { fqn } = useFqn();
   const { t } = useTranslation();
@@ -75,7 +82,7 @@ export const AdvancedAssetsFilterField = ({
   );
 
   const handleChange = useCallback(
-    (nTree: any, nConfig: any) => {
+    (nTree: ImmutableTree, nConfig: Config) => {
       onTreeUpdate(nTree, nConfig);
       const queryFilter = {
         query: elasticSearchFormat(nTree, nConfig),

@@ -60,6 +60,7 @@ import EntityListSkeleton from '../../../common/Skeleton/MyData/EntityListSkelet
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import './curated-assets-widget.less';
 import CuratedAssetsModal from './CuratedAssetsModal/CuratedAssetsModal';
+import { CuratedAssetsConfig } from './CuratedAssetsModal/CuratedAssetsModal.interface';
 
 const CuratedAssetsWidget = ({
   isEditView,
@@ -77,7 +78,7 @@ const CuratedAssetsWidget = ({
   const { config } = useAdvanceSearch();
 
   const curatedAssetsData = useMemo(() => {
-    let curatedAssetsConfig = null;
+    let curatedAssetsConfig: CuratedAssetsConfig | null | undefined = null;
 
     currentLayout?.forEach((layout: WidgetConfig) => {
       if (layout.i === widgetKey) {
@@ -230,7 +231,7 @@ const CuratedAssetsWidget = ({
     []
   );
 
-  const renderHeader = useMemo(
+  const header = useMemo(
     () => (
       <Row className="curated-assets-header" justify="space-between">
         <Col className="d-flex items-center h-full min-h-8">
@@ -288,7 +289,7 @@ const CuratedAssetsWidget = ({
     [isEditView, title, menuItemsList, handleModalOpen]
   );
 
-  const renderEmptyState = useMemo(
+  const emptyState = useMemo(
     () => (
       <div className="flex-center h-full">
         <ErrorPlaceHolder
@@ -319,7 +320,7 @@ const CuratedAssetsWidget = ({
     [t, handleModalOpen]
   );
 
-  const renderNoDataState = useMemo(
+  const noDataState = useMemo(
     () => (
       <div className="flex-center h-full">
         <ErrorPlaceHolder
@@ -342,7 +343,7 @@ const CuratedAssetsWidget = ({
     [t]
   );
 
-  const renderFooter = useMemo(() => {
+  const footer = useMemo(() => {
     return (
       <Row className="curated-assets-footer">
         <Divider className="mb-0 mt-0" />
@@ -361,7 +362,7 @@ const CuratedAssetsWidget = ({
     );
   }, [t, handleModalOpen, viewMoreCount, queryURL]);
 
-  const renderEntityList = useMemo(
+  const entityList = useMemo(
     () => (
       <div className="entity-list-body no-scrollbar">
         {data.length > 0
@@ -411,7 +412,7 @@ const CuratedAssetsWidget = ({
                 </div>
               </div>
             ))
-          : renderNoDataState}
+          : noDataState}
       </div>
     ),
     [data]
@@ -428,11 +429,11 @@ const CuratedAssetsWidget = ({
           loading={Boolean(isLoading)}
         >
           <>
-            {renderHeader}
+            {header}
             {isEmpty(data) && isEmpty(selectedResource)
-              ? renderEmptyState
-              : renderEntityList}
-            {!isEmpty(data) && renderFooter}
+              ? emptyState
+              : entityList}
+            {!isEmpty(data) && footer}
           </>
         </EntityListSkeleton>
       </Card>

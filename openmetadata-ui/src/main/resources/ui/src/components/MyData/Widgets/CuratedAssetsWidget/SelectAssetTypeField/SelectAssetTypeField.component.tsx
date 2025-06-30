@@ -20,20 +20,26 @@ import { CURATED_ASSETS_LIST } from '../../../../../constants/AdvancedSearch.con
 import { getSourceOptionsFromResourceList } from '../../../../../utils/Alerts/AlertsUtil';
 import {
   AlertMessage,
+  CuratedAssetsFormSelectedAssetsInfo,
   getExploreURLWithFilters,
 } from '../../../../../utils/CuratedAssetsUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { CuratedAssetsConfig } from '../CuratedAssetsModal/CuratedAssetsModal.interface';
 
 export const SelectAssetTypeField = ({
   fetchEntityCount,
   selectedAssetsInfo,
 }: {
-  fetchEntityCount: any;
-  selectedAssetsInfo: any;
+  fetchEntityCount: (args: {
+    countKey: string;
+    selectedResource: string[];
+    shouldUpdateResourceList: boolean;
+  }) => Promise<void>;
+  selectedAssetsInfo: CuratedAssetsFormSelectedAssetsInfo;
 }) => {
   const { t } = useTranslation();
-  const form = Form.useFormInstance<any>();
+  const form = Form.useFormInstance<CuratedAssetsConfig>();
 
   const { config, onChangeSearchIndex } = useAdvanceSearch();
   const [isCountLoading, setIsCountLoading] = useState<boolean>(false);

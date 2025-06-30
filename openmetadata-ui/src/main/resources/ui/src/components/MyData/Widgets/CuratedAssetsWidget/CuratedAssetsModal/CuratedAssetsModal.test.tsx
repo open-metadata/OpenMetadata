@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { Form, FormInstance } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import CuratedAssetsModal from './CuratedAssetsModal';
@@ -104,7 +105,52 @@ describe('CuratedAssetsModal', () => {
     expect(mockOnCancel).toHaveBeenCalled();
   });
 
+  it('disables save button when isSaveButtonDisabled is true', () => {
+    const propsWithDisabledSave = {
+      ...defaultProps,
+      isSaveButtonDisabled: true,
+    };
+
+    render(<CuratedAssetsModal {...propsWithDisabledSave} />);
+
+    const saveButton = screen.getByTestId('saveButton');
+
+    expect(saveButton).toBeDisabled();
+  });
+
+  it('disables save button when required fields are empty', () => {
+    const setFieldValue = jest.fn();
+    const getFieldValue = jest.fn();
+    jest.spyOn(Form, 'useFormInstance').mockImplementation(
+      () =>
+        ({
+          setFieldValue,
+          getFieldValue,
+        } as unknown as FormInstance)
+    );
+
+    const useWatchMock = jest.spyOn(Form, 'useWatch');
+    useWatchMock.mockImplementation(() => []);
+    render(<CuratedAssetsModal {...defaultProps} />);
+
+    const saveButton = screen.getByTestId('saveButton');
+
+    expect(saveButton).toBeDisabled();
+  });
+
   it('calls onSave when save button is clicked', async () => {
+    const setFieldValue = jest.fn();
+    const getFieldValue = jest.fn();
+    jest.spyOn(Form, 'useFormInstance').mockImplementation(
+      () =>
+        ({
+          setFieldValue,
+          getFieldValue,
+        } as unknown as FormInstance)
+    );
+
+    const useWatchMock = jest.spyOn(Form, 'useWatch');
+    useWatchMock.mockImplementation(() => ['table']);
     render(
       <CuratedAssetsModal
         {...defaultProps}
@@ -124,28 +170,20 @@ describe('CuratedAssetsModal', () => {
     expect(mockOnSave).toHaveBeenCalled();
   });
 
-  it('disables save button when required fields are empty', () => {
-    render(<CuratedAssetsModal {...defaultProps} />);
+  it('enables save button when all required fields are filled', async () => {
+    const setFieldValue = jest.fn();
+    const getFieldValue = jest.fn();
+    jest.spyOn(Form, 'useFormInstance').mockImplementation(
+      () =>
+        ({
+          setFieldValue,
+          getFieldValue,
+        } as unknown as FormInstance)
+    );
 
-    const saveButton = screen.getByTestId('saveButton');
+    const useWatchMock = jest.spyOn(Form, 'useWatch');
+    useWatchMock.mockImplementation(() => ['table']);
 
-    expect(saveButton).toBeDisabled();
-  });
-
-  it('disables save button when isSaveButtonDisabled is true', () => {
-    const propsWithDisabledSave = {
-      ...defaultProps,
-      isSaveButtonDisabled: true,
-    };
-
-    render(<CuratedAssetsModal {...propsWithDisabledSave} />);
-
-    const saveButton = screen.getByTestId('saveButton');
-
-    expect(saveButton).toBeDisabled();
-  });
-
-  it('enables save button when all required fields are filled', () => {
     render(
       <CuratedAssetsModal
         {...defaultProps}
@@ -154,12 +192,13 @@ describe('CuratedAssetsModal', () => {
           resources: ['table'],
           queryFilter: '{"query":{"bool":{"must":[]}}}',
         }}
+        isSaveButtonDisabled={false}
       />
     );
 
     const saveButton = screen.getByTestId('saveButton');
 
-    expect(saveButton).not.toBeDisabled();
+    expect(saveButton).toBeEnabled();
   });
 
   it('renders title input field', () => {

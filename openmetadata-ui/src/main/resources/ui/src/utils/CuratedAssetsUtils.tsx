@@ -44,7 +44,7 @@ export const AlertMessage = ({
   assetCount,
   href = '#',
 }: {
-  assetCount: number;
+  assetCount?: number;
   href?: string;
 }) => {
   const { t } = useTranslation();

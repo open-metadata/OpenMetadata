@@ -196,16 +196,8 @@ const defaultProps = {
       isDraggable: true,
       config: {
         title: 'Test Widget',
-        sourceConfig: {
-          config: {
-            appConfig: {
-              resources: {
-                type: ['table'],
-                queryFilter: '{}',
-              },
-            },
-          },
-        },
+        resources: ['table'],
+        queryFilter: '{}',
       },
     } as WidgetConfig,
   ],
@@ -291,16 +283,8 @@ describe('CuratedAssetsWidget', () => {
         {
           ...defaultProps.currentLayout[0],
           config: {
-            sourceConfig: {
-              config: {
-                appConfig: {
-                  resources: {
-                    type: ['table'],
-                    queryFilter: '{}',
-                  },
-                },
-              },
-            },
+            resources: ['table'],
+            queryFilter: '{}',
           },
         } as WidgetConfig,
       ],
