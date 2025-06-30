@@ -2151,7 +2151,10 @@
     "team-no-asset": "Ihr Team hat keine Vermögenswerte.",
     "test-case-schedule-description": "Die Datenqualitätstests können mit der gewünschten Häufigkeit geplant werden. Die Zeitzone ist UTC.",
     "test-connection-cannot-be-triggered": "Die Testverbindung kann nicht ausgelöst werden.",
-    "test-connection-taking-too-long": "Die Testverbindung dauert zu lange. Bitte versuchen Sie es erneut.",
+    "test-connection-taking-too-long": {
+      "default": "Bitte stellen Sie sicher, dass {{service_type}} so konfiguriert ist, dass Verbindungen erlaubt sind",
+      "withIp": " von {{ip}}"
+    },
     "test-your-connection-before-creating-service": "Testen Sie Ihre Verbindungen, bevor Sie den Dienst erstellen",
     "testing-your-connection-may-take-two-minutes": "Das Testen Ihrer Verbindungen kann bis zu 2 Minuten dauern",
     "this-action-is-not-allowed-for-deleted-entities": "Diese Aktion ist für gelöschte Entitäten nicht erlaubt.",

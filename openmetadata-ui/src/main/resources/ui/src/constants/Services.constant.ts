@@ -447,10 +447,6 @@ export const TEST_CONNECTION_TESTING_MESSAGE = i18n.t(
   'message.testing-your-connection-may-take-two-minutes'
 );
 
-export const TEST_CONNECTION_INFO_MESSAGE = i18n.t(
-  'message.test-connection-taking-too-long'
-);
-
 export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(
   'message.connection-test-warning'
 );
