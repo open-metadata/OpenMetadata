@@ -168,7 +168,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private void createOrUpdateDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
-    ElasticSearchConfiguration config = searchRepository.getElasticSearchConfiguration();
+    ElasticSearchConfiguration config = searchRepository.getSearchConfiguration();
     String language =
         config != null && config.getSearchIndexMappingLanguage() != null
             ? config.getSearchIndexMappingLanguage().value()
