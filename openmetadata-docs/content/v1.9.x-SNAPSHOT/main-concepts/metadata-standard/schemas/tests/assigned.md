@@ -1,5 +1,5 @@
 ---
-title: assigned
+title: Test Assigned | OpenMetadata Test Assigned Details
 slug: /main-concepts/metadata-standard/schemas/tests/assigned
 ---
 

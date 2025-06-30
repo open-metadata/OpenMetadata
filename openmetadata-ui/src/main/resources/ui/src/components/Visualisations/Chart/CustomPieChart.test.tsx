@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import React from 'react';
 import { CHART_BASE_SIZE } from '../../../constants/Chart.constants';
 import { TEXT_GREY_MUTED } from '../../../constants/constants';
 import CustomPieChart from './CustomPieChart.component';

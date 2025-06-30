@@ -14,7 +14,7 @@
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
 import { toNumber } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   KPI_WIDGET_GRAPH_BG_COLORS,

@@ -1,5 +1,5 @@
 ---
-title: gitlabCredentials
+title: gitlabCredentials | OpenMetadata GitLab Credentials
 slug: /main-concepts/metadata-standard/schemas/security/credentials/gitlabcredentials
 ---
 

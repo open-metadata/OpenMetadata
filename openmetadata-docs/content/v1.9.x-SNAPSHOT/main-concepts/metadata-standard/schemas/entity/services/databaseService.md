@@ -1,5 +1,5 @@
 ---
-title: databaseService
+title: Database Service | OpenMetadata Database Service
 slug: /main-concepts/metadata-standard/schemas/entity/services/databaseservice
 ---
 

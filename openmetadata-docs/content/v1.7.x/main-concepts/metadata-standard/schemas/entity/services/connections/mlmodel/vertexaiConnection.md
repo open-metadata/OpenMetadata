@@ -1,5 +1,5 @@
 ---
-title: vertexaiConnection
+title: Vertex AI Connection | OpenMetadata Vertex AI
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/vertexaiconnection
 ---
 

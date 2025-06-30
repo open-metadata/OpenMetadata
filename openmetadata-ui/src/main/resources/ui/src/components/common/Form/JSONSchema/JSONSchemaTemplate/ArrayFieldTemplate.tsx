@@ -16,7 +16,7 @@ import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { Fragment, FunctionComponent } from 'react';
+import { Fragment, FunctionComponent } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../../../assets/svg/ic-delete.svg';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ConfigProvider } from 'antd';
-import React, { FC, ReactNode, useEffect } from 'react';
+import { FC, ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_THEME } from '../../constants/Appearance.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';

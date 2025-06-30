@@ -13,7 +13,7 @@
 import { Button, Card, Space, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { split } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { CSMode } from '../../../enums/codemirror.enum';

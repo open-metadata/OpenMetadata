@@ -14,7 +14,7 @@ import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { isEmpty } from 'lodash';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { App } from '../../../../generated/entity/applications/app';
