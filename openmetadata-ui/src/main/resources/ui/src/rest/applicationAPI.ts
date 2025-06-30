@@ -15,6 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { DataInsightLatestRun } from '../components/Settings/Applications/AppDetails/AppDetails.interface';
 import { AgentType, App } from '../generated/entity/applications/app';
+import { AppLogRecord } from '../generated/entity/applications/appLogRecord';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
 import { PipelineStatus } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -99,6 +100,17 @@ export const getExternalApplicationRuns = async (
 export const getLatestApplicationRuns = async (appName: string) => {
   const response = await APIClient.get<DataInsightLatestRun>(
     `${BASE_URL}/name/${getEncodedFqn(appName)}/logs`
+  );
+
+  return response.data;
+};
+
+export const getApplicationRunById = async (
+  appRunId: string,
+  appName: string
+): Promise<PagingResponse<AppLogRecord[]>> => {
+  const response = await APIClient.get<PagingResponse<AppLogRecord[]>>(
+    `${BASE_URL}/name/${getEncodedFqn(appName)}/runs/${appRunId}/logs`
   );
 
   return response.data;

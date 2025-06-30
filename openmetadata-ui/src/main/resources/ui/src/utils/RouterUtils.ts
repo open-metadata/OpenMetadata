@@ -18,6 +18,7 @@ import {
   IN_PAGE_SEARCH_ROUTES,
   LOG_ENTITY_NAME,
   LOG_ENTITY_TYPE,
+  LOG_RUN_ID,
   PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
@@ -421,13 +422,18 @@ export const getTestSuiteIngestionPath = (
 export const getLogsViewerPath = (
   logEntityType: string,
   logEntityName: string,
-  ingestionName: string
+  ingestionName: string,
+  logRunId?: string
 ) => {
   let path = ROUTES.LOGS;
 
   path = path.replace(LOG_ENTITY_TYPE, logEntityType);
   path = path.replace(LOG_ENTITY_NAME, logEntityName);
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(ingestionName));
+
+  if (logRunId) {
+    path = path.replace(LOG_RUN_ID, logRunId);
+  }
 
   return path;
 };

@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.app.App;
@@ -18,6 +19,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataRetentionConfiguration;
 import org.openmetadata.schema.system.EntityStats;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -33,6 +35,8 @@ import org.quartz.JobExecutionContext;
 @Slf4j
 public class DataRetention extends AbstractNativeApplication {
   private static final int BATCH_SIZE = 10_000;
+  private static final String APP_RECORDS = "appRecords";
+  private static final long DAY_MILLIS = 1_000 * 60 * 60 * 24;
 
   private DataRetentionConfiguration dataRetentionConfiguration;
   private final CollectionDAO.EventSubscriptionDAO eventSubscriptionDAO;
@@ -40,7 +44,7 @@ public class DataRetention extends AbstractNativeApplication {
   private JobExecutionContext jobExecutionContext;
 
   private AppRunRecord.Status internalStatus = AppRunRecord.Status.COMPLETED;
-  private Map<String, Object> failureDetails = null;
+  private IndexingError failureDetails = null;
 
   private final FeedRepository feedRepository;
   private final CollectionDAO.FeedDAO feedDAO;
@@ -58,7 +62,7 @@ public class DataRetention extends AbstractNativeApplication {
     this.dataRetentionConfiguration =
         JsonUtils.convertValue(app.getAppConfiguration(), DataRetentionConfiguration.class);
     if (CommonUtil.nullOrEmpty(this.dataRetentionConfiguration)) {
-      LOG.warn("No retention policy configuration provided. Cleanup tasks will not run.");
+      logger.warn("No retention policy configuration provided. Cleanup tasks will not run.");
     }
   }
 
@@ -71,7 +75,7 @@ public class DataRetention extends AbstractNativeApplication {
       executeCleanup(dataRetentionConfiguration);
 
       jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, retentionStats);
-      updateRecordToDbAndNotify(null);
+      updateRecordToDbAndNotify();
 
       if (internalStatus == AppRunRecord.Status.ACTIVE_ERROR
           || internalStatus == AppRunRecord.Status.FAILED) {
@@ -82,11 +86,12 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("DataRetention job failed.", ex);
       internalStatus = AppRunRecord.Status.FAILED;
 
-      failureDetails = new HashMap<>();
-      failureDetails.put("message", ex.getMessage());
-      failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+      failureDetails =
+          new IndexingError()
+              .withMessage(ex.getMessage())
+              .withStackTrace(ExceptionUtils.getStackTrace(ex));
 
-      updateRecordToDbAndNotify(ex);
+      updateRecordToDbAndNotify();
     }
   }
 
@@ -129,12 +134,43 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info("Starting cleanup for change events with retention period: {} days.", retentionPeriod);
     cleanChangeEvents(retentionPeriod);
 
+      int appRecordsRetentionPeriod = config.getAppRecordsRetentionPeriod();
+      logger.info(
+              String.format(
+                      "Starting cleanup for app records with retention period: %s days.",
+                      appRecordsRetentionPeriod));
+      cleanAppRecords(appRecordsRetentionPeriod);
+
     int threadRetentionPeriod = config.getActivityThreadsRetentionPeriod();
     LOG.info(
         "Starting cleanup for activity threads with retention period: {} days.",
         threadRetentionPeriod);
     cleanActivityThreads(threadRetentionPeriod);
   }
+
+    @Transaction
+    private void cleanAppRecords(int appLogRetentionPeriod) {
+        long end = System.currentTimeMillis() - (appLogRetentionPeriod * DAY_MILLIS);
+        StepStats stepStats = new StepStats().withFailedRecords(0).withSuccessRecords(0);
+        retentionStats.getEntityStats().getAdditionalProperties().put(APP_RECORDS, stepStats);
+        int result;
+        do {
+            Pair<Long, Long> range =
+                    collectionDAO.appExtensionTimeSeriesDao().getBatchToDelete(BATCH_SIZE, end);
+            result =
+                    collectionDAO
+                            .appExtensionTimeSeriesDao()
+                            .cleanTimeseriesBatch(range.getLeft(), range.getRight());
+            stepStats.setSuccessRecords(stepStats.getSuccessRecords() + result);
+            stepStats.setTotalRecords(stepStats.getSuccessRecords());
+            if (result > 0) {
+                logger.info(
+                        String.format(
+                                "Cleaned %s app logs for range %s to %s",
+                                result, range.getLeft(), range.getRight()));
+            }
+        } while (result > 0);
+    }
 
   @Transaction
   private void cleanActivityThreads(int retentionPeriod) {
@@ -159,7 +195,8 @@ public class DataRetention extends AbstractNativeApplication {
 
   @Transaction
   private void cleanChangeEvents(int retentionPeriod) {
-    LOG.info("Initiating change events cleanup: Retention = {} days.", retentionPeriod);
+    logger.info(
+        String.format("Initiating change events cleanup: Retention = %d days.", retentionPeriod));
     long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
 
     executeWithStatsTracking(
@@ -212,9 +249,11 @@ public class DataRetention extends AbstractNativeApplication {
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
       if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+        failureDetails =
+                new IndexingError()
+                        .withMessage(ex.getMessage())
+                        .withStackTrace(ExceptionUtils.getStackTrace(ex));
+
       }
     }
   }
@@ -234,9 +273,10 @@ public class DataRetention extends AbstractNativeApplication {
         internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
         if (failureDetails == null) {
-          failureDetails = new HashMap<>();
-          failureDetails.put("message", ex.getMessage());
-          failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+          failureDetails =
+              new IndexingError()
+                  .withMessage(ex.getMessage())
+                  .withStackTrace(ExceptionUtils.getStackTrace(ex));
         }
         break;
       }
@@ -270,13 +310,12 @@ public class DataRetention extends AbstractNativeApplication {
     jobStats.setFailedRecords(jobStats.getFailedRecords() + failureCount);
   }
 
-  private void updateRecordToDbAndNotify(Exception error) {
+  private void updateRecordToDbAndNotify() {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
     appRecord.setStatus(internalStatus);
 
     if (failureDetails != null) {
-      appRecord.setFailureContext(
-          new FailureContext().withAdditionalProperty("failure", failureDetails));
+      appRecord.setFailureContext(new FailureContext().withFailure(failureDetails));
     }
 
     if (WebSocketManager.getInstance() != null) {
