@@ -15,13 +15,7 @@ import { Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';

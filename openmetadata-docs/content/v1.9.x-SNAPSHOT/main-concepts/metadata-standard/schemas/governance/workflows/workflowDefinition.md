@@ -1,5 +1,5 @@
 ---
-title: workflowDefinition
+title: workflowDefinition | OpenMetadata Workflow Definition
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/workflowdefinition
 ---
 

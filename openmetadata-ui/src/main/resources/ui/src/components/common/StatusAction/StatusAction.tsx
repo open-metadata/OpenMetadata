@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Button } from 'antd';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseCircleIcon } from '../../../assets/svg/close-circle-white.svg';
 import { ReactComponent as TickCircleIcon } from '../../../assets/svg/tick-circle-white.svg';

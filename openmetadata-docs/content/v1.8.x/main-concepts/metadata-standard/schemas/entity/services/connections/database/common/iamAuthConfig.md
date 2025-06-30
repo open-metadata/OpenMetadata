@@ -1,5 +1,5 @@
 ---
-title: iamAuthConfig
+title: IAM Auth Config | OpenMetadata IAM Authentication Config
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/iamauthconfig
 ---
 
