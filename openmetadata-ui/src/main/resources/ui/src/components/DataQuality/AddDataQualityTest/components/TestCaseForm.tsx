@@ -23,11 +23,12 @@ import {
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { t } from 'i18next';
+
 import { isEmpty, isEqual, snakeCase } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
@@ -60,6 +61,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import {
   TestCaseFormProps,
   TestCaseFormType,
@@ -72,9 +74,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   onCancel,
   table,
 }) => {
-  const history = useHistory();
-  const { dashboardType } = useParams<{ dashboardType: string }>();
-
+  const navigate = useNavigate();
+  const { dashboardType } = useRequiredParams<{ dashboardType: string }>();
+  const { t } = useTranslation();
   const { fqn: decodedEntityFQN } = useFqn();
   const { activeColumnFqn } = useMemo(() => {
     const param = location.search;
@@ -297,7 +299,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       setCurrentColumnType(selectedColumn?.dataType);
     }
     if (selectedColumn) {
-      history.push({
+      navigate({
         search: Qs.stringify({
           activeColumnFqn: selectedColumn?.fullyQualifiedName,
         }),

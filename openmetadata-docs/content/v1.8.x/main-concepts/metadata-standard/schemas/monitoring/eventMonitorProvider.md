@@ -1,5 +1,5 @@
 ---
-title: eventMonitorProvider
+title: eventMonitorProvider | OpenMetadata Event Monitor Provider
 slug: /main-concepts/metadata-standard/schemas/monitoring/eventmonitorprovider
 noindex: true
 nofollow: true

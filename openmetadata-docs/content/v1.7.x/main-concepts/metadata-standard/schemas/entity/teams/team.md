@@ -1,5 +1,5 @@
 ---
-title: team
+title: Team | OpenMetadata Team API and Management
 slug: /main-concepts/metadata-standard/schemas/entity/teams/team
 ---
 

@@ -24,7 +24,7 @@ import {
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import moment from 'moment';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {

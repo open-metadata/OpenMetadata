@@ -19,7 +19,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import Users from '../../components/Settings/Users/Users.component';
 import { ROUTES } from '../../constants/constants';
@@ -33,7 +32,7 @@ jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
 );
 
 const mockUpdateCurrentUser = jest.fn();
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../hooks/useApplicationStore', () => {
   return {
@@ -45,9 +44,7 @@ jest.mock('../../hooks/useApplicationStore', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
@@ -217,7 +214,7 @@ describe.skip('Test the User Page', () => {
       fireEvent.click(screen.getByText('UserComponentAfterDeleteActionButton'));
     });
 
-    expect(mockPush).toHaveBeenCalledWith(ROUTES.HOME);
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.HOME);
   });
 });
 

@@ -14,7 +14,7 @@
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
