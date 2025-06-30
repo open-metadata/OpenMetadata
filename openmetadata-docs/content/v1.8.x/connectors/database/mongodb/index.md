@@ -1,5 +1,6 @@
 ---
 title: MongoDB Connector | OpenMetadata NoSQL Database Integration
+description: Connect MongoDB to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction for seamless integration.
 slug: /connectors/database/mongodb
 ---
 
