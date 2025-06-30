@@ -1,5 +1,5 @@
 ---
-title: githubCredentials
+title: githubCredentials | OpenMetadata GitHub Credentials
 slug: /main-concepts/metadata-standard/schemas/security/credentials/githubcredentials
 ---
 

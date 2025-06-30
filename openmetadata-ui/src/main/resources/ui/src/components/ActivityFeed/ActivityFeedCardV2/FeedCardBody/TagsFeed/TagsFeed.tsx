@@ -13,7 +13,7 @@
 
 import { Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
 import { ReactComponent as DeletedIcon } from '../../../../../assets/svg/deleted-icon.svg';
 

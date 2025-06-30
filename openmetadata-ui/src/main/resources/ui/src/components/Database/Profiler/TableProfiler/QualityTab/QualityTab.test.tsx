@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
@@ -33,7 +32,6 @@ const mockTable = {
   name: 'test-table',
 };
 
-const mockPush = jest.fn();
 const mockUseTableProfiler = {
   tableProfiler: MOCK_TABLE,
   onSettingButtonClick: jest.fn(),
@@ -77,10 +75,8 @@ jest.mock('../../../../../hooks/useFqn', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../../../rest/tableAPI', () => ({
@@ -212,10 +208,8 @@ describe('QualityTab', () => {
   });
 
   it('should call limitWrapper', async () => {
-    await act(async () => {
-      render(<QualityTab />);
-      fireEvent.click(await screen.findByTestId('profiler-add-table-test-btn'));
-    });
+    render(<QualityTab />);
+    fireEvent.click(await screen.findByTestId('profiler-add-table-test-btn'));
 
     expect(LimitWrapper).toHaveBeenCalledWith(
       expect.objectContaining({ resource: 'dataQuality' }),

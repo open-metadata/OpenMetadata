@@ -1,5 +1,5 @@
 ---
-title: connectionBasicType
+title: Connection Basic Type | OpenMetadata Connection Types
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/connectionbasictype
 ---
 

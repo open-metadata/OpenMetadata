@@ -13,7 +13,7 @@
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, uniqWith } from 'lodash';
 
-import React, {
+import {
   createContext,
   ReactNode,
   useCallback,

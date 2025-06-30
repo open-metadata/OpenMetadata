@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   mockedGlossaryTerms,
@@ -28,6 +27,7 @@ jest.mock('react-router-dom', () => ({
     tab: 'terms',
     version: 'glossaryVersion',
   })),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock(

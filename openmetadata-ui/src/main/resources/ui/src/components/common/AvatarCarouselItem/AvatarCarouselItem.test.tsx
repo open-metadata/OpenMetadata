@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import React from 'react';
 import { EntityReference } from '../../../generated/entity/type';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import AvatarCarouselItem from './AvatarCarouselItem';
