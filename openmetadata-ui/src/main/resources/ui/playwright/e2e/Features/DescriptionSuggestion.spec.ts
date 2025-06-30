@@ -51,11 +51,11 @@ test.describe('Description Suggestions Table Entity', () => {
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
-    // await table.delete(apiContext);
-    // await table2.delete(apiContext);
-    // await user1.delete(apiContext);
-    // await user2.delete(apiContext);
-    // await user3.delete(apiContext);
+    await table.delete(apiContext);
+    await table2.delete(apiContext);
+    await user1.delete(apiContext);
+    await user2.delete(apiContext);
+    await user3.delete(apiContext);
     await afterAction();
   });
 
@@ -266,7 +266,7 @@ test.describe('Description Suggestions Table Entity', () => {
       .getByTestId('profile-avatar');
 
     // Click the first avatar
-    await expect(allAvatarSuggestion).toHaveCount(3);
+    await expect(allAvatarSuggestion).toHaveCount(4);
 
     await afterAction();
     await afterAction2();

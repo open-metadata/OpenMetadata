@@ -80,6 +80,7 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
       <Carousel
         afterChange={(current) => setCurrentSlide(current)}
         dots={false}
+        infinite={false}
         slidesToShow={avatarList.length < 3 ? avatarList.length : 3}>
         {avatarList.map((avatar, index) => (
           <AvatarCarouselItem
