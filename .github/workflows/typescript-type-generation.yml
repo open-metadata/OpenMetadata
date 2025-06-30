@@ -91,9 +91,9 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-          ⚠️**Generated types need to be updated.**
-          The generated TypeScript types cannot be automatically committed from a forked repository.
-          Please run the type generation locally and commit the changes manually.
+            ⚠️**Generated types need to be updated.**
+            The generated TypeScript types cannot be automatically committed from a forked repository.
+            Please run the type generation locally and commit the changes manually.
 
             To generate the types locally, run:
             ```bash
