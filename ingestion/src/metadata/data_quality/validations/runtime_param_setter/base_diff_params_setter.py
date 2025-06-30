@@ -43,8 +43,10 @@ class ServiceSpecPatch:
     def get_data_diff_class(self) -> Type["BaseTableParameter"]:
         return import_from_module(self.service_spec.data_diff)
 
-    def get_connection_class(self) -> Type[BaseConnection]:
-        return import_from_module(self.service_spec.connection_class)
+    def get_connection_class(self) -> Optional[Type[BaseConnection]]:
+        if self.service_spec.connection_class:
+            return import_from_module(self.service_spec.connection_class)
+        return None
 
 
 class BaseTableParameter:
@@ -111,6 +113,12 @@ class BaseTableParameter:
 
         try:
             connection_class = service_spec_patch.get_connection_class()
+            if not connection_class:
+                return (
+                    str(get_connection(service_connection_config).url)
+                    if service_connection_config
+                    else None
+                )
             connection = connection_class(service_connection_config)
             return connection.get_connection_dict()
         except (ValueError, AttributeError, NotImplementedError):
