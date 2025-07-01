@@ -25,11 +25,13 @@ import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
+import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
-import { ROUTES } from './constants';
+import { DataInsightTabs } from '../interface/data-insight.interface';
+import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
@@ -85,6 +87,16 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         dataTestId: `app-bar-item-${SidebarItem.OBSERVABILITY_ALERT}`,
       },
     ],
+  },
+  {
+    key: ROUTES.DATA_INSIGHT,
+    title: i18next.t('label.insight-plural'),
+    redirect_url: ROUTES.DATA_INSIGHT_WITH_TAB.replace(
+      PLACEHOLDER_ROUTE_TAB,
+      DataInsightTabs.DATA_ASSETS
+    ),
+    icon: InsightsIcon,
+    dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
     key: ROUTES.DOMAIN,
