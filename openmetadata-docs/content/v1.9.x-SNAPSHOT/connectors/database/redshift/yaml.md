@@ -81,7 +81,7 @@ This is a sample config for Redshift:
 
 {% codeInfo srNumber=1 %}
 
-**username**: Specify the User to connect to Snoflake. It should have enough privileges to read all the metadata.
+**username**: Specify the User to connect to Redshift. It should have enough privileges to read all the metadata.
 
 {% /codeInfo %}
 
@@ -166,16 +166,16 @@ source:
       type: Redshift
 ```
 ```yaml {% srNumber=1 %}
-      username: username
+      username: username  # REQUIRED
 ```
 ```yaml {% srNumber=2 %}
       password: password
 ```
 ```yaml {% srNumber=3 %}
-      database: dev
+      database: dev  # REQUIRED - database name
 ```
 ```yaml {% srNumber=4 %}
-      hostPort: cluster.name.region.redshift.amazonaws.com:5439
+      hostPort: cluster.name.region.redshift.amazonaws.com:5439  # REQUIRED - format: host:port
 ```
 ```yaml {% srNumber=5 %}
       # ingestAllDatabases: true
