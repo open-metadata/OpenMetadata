@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 import {
+  fireEvent,
   queryByTestId,
   render,
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ROUTES } from '../../../../constants/constants';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import MarketPlaceAppDetails from './MarketPlaceAppDetails.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockShowErrorToast = jest.fn();
 let mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
 let mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
@@ -36,9 +35,7 @@ let mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
@@ -122,11 +119,11 @@ describe('MarketPlaceAppDetails component', () => {
     expect(appName).not.toBeInTheDocument();
 
     // actions check
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', { name: 'left label.browse-app-plural' })
     );
 
-    expect(mockPush).toHaveBeenCalledWith(ROUTES.MARKETPLACE);
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.MARKETPLACE);
   });
 
   it('should show install button disabled', async () => {
@@ -175,9 +172,9 @@ describe('MarketPlaceAppDetails component', () => {
 
     // app install action check
     // making install button enable by rejecting promise in getApplicationByName
-    userEvent.click(screen.getByRole('button', { name: 'label.install' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.install' }));
 
-    expect(mockPush).toHaveBeenCalledWith('app install path');
+    expect(mockNavigate).toHaveBeenCalledWith('app install path');
   });
 
   it("should render the correct support email url with 'mailto:' schema", async () => {

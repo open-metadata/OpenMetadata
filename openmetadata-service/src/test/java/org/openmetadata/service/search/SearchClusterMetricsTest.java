@@ -1,290 +1,240 @@
-/*
- *  Copyright 2021 Collate
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-
 package org.openmetadata.service.search;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 
-@ExtendWith(MockitoExtension.class)
-class SearchClusterMetricsTest {
+public class SearchClusterMetricsTest {
 
   @Mock private SearchRepository searchRepository;
-  @Mock private ElasticSearchClient elasticSearchClient;
   @Mock private OpenSearchClient openSearchClient;
-
-  private static final long TOTAL_ENTITIES = 1000000L;
+  @Mock private ElasticSearchClient elasticSearchClient;
 
   @BeforeEach
   void setUp() {
-    lenient().when(searchRepository.getSearchClient()).thenReturn(elasticSearchClient);
-    lenient()
-        .when(searchRepository.getSearchType())
-        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    MockitoAnnotations.openMocks(this);
   }
 
   @Test
-  void testFetchClusterMetrics_WithDatabaseConnectionLimit_ElasticSearch() {
-    Integer maxDbConnections = 100;
-    when(searchRepository.getDatabaseMaxPoolSize()).thenReturn(maxDbConnections);
-    setupElasticSearchMocks();
-    SearchClusterMetrics metrics =
-        SearchClusterMetrics.fetchClusterMetrics(searchRepository, TOTAL_ENTITIES);
-    int expectedReservedConnections = (int) (maxDbConnections * 0.6); // 60% reserved = 60
-    int expectedMaxProducerThreads = maxDbConnections - expectedReservedConnections; // 40
+  void testExtractCpuPercent_NumericValue() throws Exception {
+    // Test OpenSearch < 2.19 format with direct numeric value
+    Map<String, Object> cpu = new HashMap<>();
+    cpu.put("percent", 75.5);
 
-    assertTrue(
-        metrics.getRecommendedProducerThreads() <= expectedMaxProducerThreads,
-        String.format(
-            "Producer threads (%d) should not exceed max allowed (%d) based on DB connections",
-            metrics.getRecommendedProducerThreads(), expectedMaxProducerThreads));
-
-    assertTrue(
-        metrics.getRecommendedProducerThreads() >= 5,
-        "Producer threads should be at least 5 for functionality");
+    Double result = invokeExtractCpuPercent(cpu);
+    assertEquals(75.5, result);
   }
 
   @Test
-  void testFetchClusterMetrics_WithDatabaseConnectionLimit_OpenSearch() {
-    Integer maxDbConnections = 50;
-    when(searchRepository.getDatabaseMaxPoolSize()).thenReturn(maxDbConnections);
+  void testExtractCpuPercent_MapValue() throws Exception {
+    // Test OpenSearch 2.19+ format with map containing value
+    Map<String, Object> cpu = new HashMap<>();
+    Map<String, Object> percentMap = new HashMap<>();
+    percentMap.put("value", 65.3);
+    cpu.put("percent", percentMap);
+
+    Double result = invokeExtractCpuPercent(cpu);
+    assertEquals(65.3, result);
+  }
+
+  @Test
+  void testExtractCpuPercent_MapWithAlternativeKeys() throws Exception {
+    // Test with different key names in the map
+    Map<String, Object> cpu = new HashMap<>();
+    Map<String, Object> percentMap = new HashMap<>();
+    percentMap.put("usage", 45.2);
+    cpu.put("percent", percentMap);
+
+    Double result = invokeExtractCpuPercent(cpu);
+    assertEquals(45.2, result);
+  }
+
+  @Test
+  void testExtractCpuPercent_InvalidValue() throws Exception {
+    // Test with invalid value type
+    Map<String, Object> cpu = new HashMap<>();
+    cpu.put("percent", "invalid");
+
+    Double result = invokeExtractCpuPercent(cpu);
+    assertEquals(50.0, result); // Should return default value
+  }
+
+  @Test
+  void testExtractLongValue_ValidNumber() throws Exception {
+    Map<String, Object> map = new HashMap<>();
+    map.put("heap_max_bytes", 1073741824L); // 1GB
+
+    Long result = invokeExtractLongValue(map, "heap_max_bytes", 0L);
+    assertEquals(1073741824L, result);
+  }
+
+  @Test
+  void testExtractLongValue_IntegerNumber() throws Exception {
+    Map<String, Object> map = new HashMap<>();
+    map.put("count", 42);
+
+    Long result = invokeExtractLongValue(map, "count", 0L);
+    assertEquals(42L, result);
+  }
+
+  @Test
+  void testExtractLongValue_MissingKey() throws Exception {
+    Map<String, Object> map = new HashMap<>();
+
+    Long result = invokeExtractLongValue(map, "missing_key", 100L);
+    assertEquals(100L, result); // Should return default value
+  }
+
+  @Test
+  void testExtractIntValue_ValidNumber() throws Exception {
+    Map<String, Object> map = new HashMap<>();
+    map.put("count", 10);
+
+    Integer result = invokeExtractIntValue(map, "count", 0);
+    assertEquals(10, result);
+  }
+
+  @Test
+  void testExtractIntValue_LongNumber() throws Exception {
+    Map<String, Object> map = new HashMap<>();
+    map.put("count", 42L);
+
+    Integer result = invokeExtractIntValue(map, "count", 0);
+    assertEquals(42, result);
+  }
+
+  @Test
+  void testExtractIntValue_InvalidType() throws Exception {
+    Map<String, Object> map = new HashMap<>();
+    map.put("count", "not a number");
+
+    Integer result = invokeExtractIntValue(map, "count", 5);
+    assertEquals(5, result); // Should return default value
+  }
+
+  @Test
+  void testFetchOpenSearchMetrics_WithLinkedHashMapResponse() throws Exception {
+    // Test handling of OpenSearch 2.19 response with LinkedHashMap
+    Map<String, Object> clusterStats = createMockClusterStats();
+    Map<String, Object> nodesStats = createMockNodesStats();
+    Map<String, Object> clusterSettings = createMockClusterSettings();
+
     when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
     when(searchRepository.getSearchClient()).thenReturn(openSearchClient);
-
-    setupOpenSearchMocks();
+    when(openSearchClient.clusterStats()).thenReturn(clusterStats);
+    when(openSearchClient.nodesStats()).thenReturn(nodesStats);
+    when(openSearchClient.clusterSettings()).thenReturn(clusterSettings);
 
     SearchClusterMetrics metrics =
-        SearchClusterMetrics.fetchClusterMetrics(searchRepository, TOTAL_ENTITIES);
-    int expectedReservedConnections = (int) (maxDbConnections * 0.6); // 60% reserved = 30
-    int expectedMaxProducerThreads = maxDbConnections - expectedReservedConnections; // 20
+        SearchClusterMetrics.fetchClusterMetrics(searchRepository, 1000, 50);
 
-    assertTrue(
-        metrics.getRecommendedProducerThreads() <= expectedMaxProducerThreads,
-        String.format(
-            "Producer threads (%d) should not exceed max allowed (%d) based on DB connections",
-            metrics.getRecommendedProducerThreads(), expectedMaxProducerThreads));
-
-    assertTrue(
-        metrics.getRecommendedProducerThreads() >= 5,
-        "Producer threads should be at least 5 for functionality");
+    assertNotNull(metrics);
+    assertTrue(metrics.getHeapSizeBytes() > 0);
+    assertTrue(metrics.getTotalNodes() > 0);
   }
 
   @Test
-  void testFetchClusterMetrics_WithNullDatabaseConnection_UsesDefaultFallback() {
-    when(searchRepository.getDatabaseMaxPoolSize()).thenReturn(null);
-    setupElasticSearchMocks();
-    SearchClusterMetrics metrics =
-        SearchClusterMetrics.fetchClusterMetrics(searchRepository, TOTAL_ENTITIES);
-    int defaultMaxDbConnections = 50;
-    int expectedReservedConnections = (int) (defaultMaxDbConnections * 0.6); // 30
-    int expectedMaxProducerThreads = defaultMaxDbConnections - expectedReservedConnections; // 20
-    assertTrue(
-        metrics.getRecommendedProducerThreads() <= expectedMaxProducerThreads,
-        String.format(
-            "Producer threads (%d) should not exceed max allowed (%d) using default fallback",
-            metrics.getRecommendedProducerThreads(), expectedMaxProducerThreads));
+  void testGetConservativeDefaults() throws Exception {
+    // Test conservative defaults use JVM heap values
+    Method method =
+        SearchClusterMetrics.class.getDeclaredMethod("getConservativeDefaults", long.class);
+    method.setAccessible(true);
+
+    SearchClusterMetrics metrics = (SearchClusterMetrics) method.invoke(null, 100000L);
+
+    assertNotNull(metrics);
+    assertTrue(metrics.getHeapSizeBytes() > 0); // Should use JVM heap
+    assertEquals(1, metrics.getTotalNodes());
+    assertEquals(0, metrics.getTotalShards());
+    assertEquals(50.0, metrics.getCpuUsagePercent());
+    assertTrue(metrics.getMemoryUsagePercent() >= 0);
   }
 
-  @Test
-  void testFetchClusterMetrics_WithSmallDatabasePool_EnsuresMinimumThreads() {
-    Integer maxDbConnections = 10;
-    when(searchRepository.getDatabaseMaxPoolSize()).thenReturn(maxDbConnections);
-    setupElasticSearchMocks();
-    SearchClusterMetrics metrics =
-        SearchClusterMetrics.fetchClusterMetrics(searchRepository, TOTAL_ENTITIES);
-    assertEquals(
-        5,
-        metrics.getRecommendedProducerThreads(),
-        "Should enforce minimum of 5 producer threads even with small DB pool");
+  // Helper methods to invoke private static methods using reflection
+  private Double invokeExtractCpuPercent(Map<String, Object> cpu) throws Exception {
+    Method method = SearchClusterMetrics.class.getDeclaredMethod("extractCpuPercent", Map.class);
+    method.setAccessible(true);
+    return (Double) method.invoke(null, cpu);
   }
 
-  @Test
-  void testConservativeDefaults_WithDatabaseConnectionLimit() {
-    Integer maxDbConnections = 80;
-    when(searchRepository.getDatabaseMaxPoolSize()).thenReturn(maxDbConnections);
-
-    try {
-      when(elasticSearchClient.clusterStats())
-          .thenThrow(new RuntimeException("Cluster unavailable"));
-    } catch (Exception e) {
-      // This shouldn't happen in the test setup
-    }
-    SearchClusterMetrics metrics =
-        SearchClusterMetrics.fetchClusterMetrics(searchRepository, TOTAL_ENTITIES);
-    int expectedReservedConnections = (int) (maxDbConnections * 0.6); // 48
-    int expectedMaxProducerThreads = maxDbConnections - expectedReservedConnections; // 32
-
-    assertTrue(
-        metrics.getRecommendedProducerThreads() <= expectedMaxProducerThreads,
-        String.format(
-            "Conservative defaults producer threads (%d) should not exceed max allowed (%d)",
-            metrics.getRecommendedProducerThreads(), expectedMaxProducerThreads));
-
-    assertTrue(
-        metrics.getRecommendedProducerThreads() >= 5,
-        "Conservative defaults should maintain minimum functionality");
+  private Long invokeExtractLongValue(Map<String, Object> map, String key, long defaultValue)
+      throws Exception {
+    Method method =
+        SearchClusterMetrics.class.getDeclaredMethod(
+            "extractLongValue", Map.class, String.class, long.class);
+    method.setAccessible(true);
+    return (Long) method.invoke(null, map, key, defaultValue);
   }
 
-  @Test
-  void testConservativeDefaults_WithNullDatabaseConnection() {
-    // Given: No database connection info and cluster metrics fail
-    when(searchRepository.getDatabaseMaxPoolSize()).thenReturn(null);
-    try {
-      when(elasticSearchClient.clusterStats())
-          .thenThrow(new RuntimeException("Cluster unavailable"));
-    } catch (Exception e) {
-      // This shouldn't happen in the test setup
-    }
-
-    // When: Fetch cluster metrics (should fallback to conservative defaults)
-    SearchClusterMetrics metrics =
-        SearchClusterMetrics.fetchClusterMetrics(searchRepository, TOTAL_ENTITIES);
-
-    // Then: Should use default fallback of 50 connections for conservative defaults
-    int defaultMaxDbConnections = 50;
-    int expectedReservedConnections = (int) (defaultMaxDbConnections * 0.6); // 30
-    int expectedMaxProducerThreads = defaultMaxDbConnections - expectedReservedConnections; // 20
-
-    assertTrue(
-        metrics.getRecommendedProducerThreads() <= expectedMaxProducerThreads,
-        "Conservative defaults with null DB config should use fallback limits");
-
-    assertTrue(
-        metrics.getRecommendedProducerThreads() >= 5,
-        "Conservative defaults should maintain minimum functionality");
+  private Integer invokeExtractIntValue(Map<String, Object> map, String key, int defaultValue)
+      throws Exception {
+    Method method =
+        SearchClusterMetrics.class.getDeclaredMethod(
+            "extractIntValue", Map.class, String.class, int.class);
+    method.setAccessible(true);
+    return (Integer) method.invoke(null, map, key, defaultValue);
   }
 
-  @Test
-  void testReservationLogic_SixtyPercentReservation() {
-    Integer maxDbConnections = 100;
-    when(searchRepository.getDatabaseMaxPoolSize()).thenReturn(maxDbConnections);
-    setupElasticSearchMocks();
-    SearchClusterMetrics metrics =
-        SearchClusterMetrics.fetchClusterMetrics(searchRepository, TOTAL_ENTITIES);
-    assertTrue(
-        metrics.getRecommendedProducerThreads() <= 40,
-        "Should reserve 60% of connections for user traffic");
+  private Map<String, Object> createMockClusterStats() {
+    Map<String, Object> stats = new HashMap<>();
+    Map<String, Object> nodes = new HashMap<>();
+    nodes.put("count", 1);
+    stats.put("nodes", nodes);
+
+    Map<String, Object> indices = new HashMap<>();
+    Map<String, Object> shards = new HashMap<>();
+    shards.put("total", 10);
+    indices.put("shards", shards);
+    stats.put("indices", indices);
+
+    return stats;
   }
 
-  private void setupElasticSearchMocks() {
-    try {
-      Map<String, Object> clusterStats = new HashMap<>();
-      Map<String, Object> nodesStats = new HashMap<>();
-      Map<String, Object> clusterSettings = new HashMap<>();
+  private Map<String, Object> createMockNodesStats() {
+    Map<String, Object> stats = new HashMap<>();
+    Map<String, Object> nodes = new HashMap<>();
+    Map<String, Object> node1 = new HashMap<>();
 
-      // Mock cluster stats
-      Map<String, Object> nodes = new HashMap<>();
-      nodes.put("count", 3);
-      clusterStats.put("nodes", nodes);
+    // OS stats
+    Map<String, Object> os = new HashMap<>();
+    Map<String, Object> cpu = new HashMap<>();
+    // Simulate OpenSearch 2.19 format with LinkedHashMap
+    Map<String, Object> cpuPercent = new HashMap<>();
+    cpuPercent.put("value", 25.0);
+    cpu.put("percent", cpuPercent);
+    os.put("cpu", cpu);
+    node1.put("os", os);
 
-      Map<String, Object> indices = new HashMap<>();
-      indices.put("shards", 15);
-      clusterStats.put("indices", indices);
+    // JVM stats
+    Map<String, Object> jvm = new HashMap<>();
+    Map<String, Object> mem = new HashMap<>();
+    mem.put("heap_used_in_bytes", 536870912L); // 512MB
+    mem.put("heap_max_in_bytes", 1073741824L); // 1GB
+    jvm.put("mem", mem);
+    node1.put("jvm", jvm);
 
-      // Mock node stats
-      Map<String, Object> nodeMap = new HashMap<>();
-      Map<String, Object> nodeDetails = new HashMap<>();
+    nodes.put("node1", node1);
+    stats.put("nodes", nodes);
 
-      Map<String, Object> os = new HashMap<>();
-      Map<String, Object> cpu = new HashMap<>();
-      cpu.put("percent", 50.0);
-      os.put("cpu", cpu);
-      nodeDetails.put("os", os);
-
-      Map<String, Object> jvm = new HashMap<>();
-      Map<String, Object> mem = new HashMap<>();
-      mem.put("heap_used_in_bytes", 2L * 1024 * 1024 * 1024); // 2GB
-      mem.put("heap_max_in_bytes", 8L * 1024 * 1024 * 1024); // 8GB
-      jvm.put("mem", mem);
-      nodeDetails.put("jvm", jvm);
-
-      nodeMap.put("node1", nodeDetails);
-      nodesStats.put("nodes", nodeMap);
-
-      // Mock cluster settings (empty for simplicity)
-      clusterSettings.put("persistent", new HashMap<>());
-      clusterSettings.put("transient", new HashMap<>());
-
-      lenient().when(elasticSearchClient.clusterStats()).thenReturn(clusterStats);
-      lenient().when(elasticSearchClient.nodesStats()).thenReturn(nodesStats);
-      lenient().when(elasticSearchClient.clusterSettings()).thenReturn(clusterSettings);
-
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to setup ElasticSearch mocks", e);
-    }
+    return stats;
   }
 
-  private void setupOpenSearchMocks() {
-    try {
-      Map<String, Object> clusterStats = new HashMap<>();
-      Map<String, Object> nodesStats = new HashMap<>();
-      Map<String, Object> clusterSettings = new HashMap<>();
-
-      // Mock cluster stats
-      Map<String, Object> nodes = new HashMap<>();
-      nodes.put("count", 2);
-      clusterStats.put("nodes", nodes);
-
-      Map<String, Object> indices = new HashMap<>();
-      Map<String, Object> shards = new HashMap<>();
-      shards.put("total", 10);
-      indices.put("shards", shards);
-      clusterStats.put("indices", indices);
-
-      // Mock node stats
-      Map<String, Object> nodeMap = new HashMap<>();
-      Map<String, Object> nodeDetails = new HashMap<>();
-
-      Map<String, Object> os = new HashMap<>();
-      Map<String, Object> cpu = new HashMap<>();
-      cpu.put("percent", 30.0);
-      os.put("cpu", cpu);
-      nodeDetails.put("os", os);
-
-      Map<String, Object> jvm = new HashMap<>();
-      Map<String, Object> mem = new HashMap<>();
-      mem.put("heap_used_in_bytes", 1L * 1024 * 1024 * 1024); // 1GB
-      mem.put("heap_max_in_bytes", 4L * 1024 * 1024 * 1024); // 4GB
-      jvm.put("mem", mem);
-      nodeDetails.put("jvm", jvm);
-
-      nodeMap.put("node1", nodeDetails);
-      nodesStats.put("nodes", nodeMap);
-
-      // Mock cluster settings
-      clusterSettings.put("persistent", new HashMap<>());
-      clusterSettings.put("transient", new HashMap<>());
-
-      lenient().when(openSearchClient.clusterStats()).thenReturn(clusterStats);
-      lenient().when(openSearchClient.nodesStats()).thenReturn(nodesStats);
-      lenient().when(openSearchClient.clusterSettings()).thenReturn(clusterSettings);
-
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to setup OpenSearch mocks", e);
-    }
+  private Map<String, Object> createMockClusterSettings() {
+    Map<String, Object> settings = new HashMap<>();
+    Map<String, Object> persistent = new HashMap<>();
+    persistent.put("http.max_content_length", "100mb");
+    settings.put("persistent", persistent);
+    return settings;
   }
 }

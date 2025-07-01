@@ -1,5 +1,5 @@
 ---
-title: synapseConnection
+title: Synapse Connection | OpenMetadata Synapse
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/synapseconnection
 ---
 

@@ -25,7 +25,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { compact, isEmpty, isUndefined, map, trim } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';

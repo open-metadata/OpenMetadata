@@ -1,5 +1,5 @@
 ---
-title: Quickstart
+title: Quickstart | OpenMetadata Quickstart Guide
 slug: /quick-start
 description: The easiest way to deploy and use OpenMetadata
 ---
