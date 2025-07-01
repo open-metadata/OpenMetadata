@@ -37,7 +37,6 @@ import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
-import io.swagger.v3.oas.annotations.security.SecuritySchemes;
 import io.swagger.v3.oas.annotations.servers.Server;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
@@ -75,6 +74,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -99,9 +99,6 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.mcp.McpServer;
-import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
-import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -165,13 +162,11 @@ import org.quartz.SchedulerException;
       @Server(url = "http://localhost:8585/api", description = "Endpoint URL")
     },
     security = @SecurityRequirement(name = "BearerAuth"))
-@SecuritySchemes({
-  @SecurityScheme(
-      name = "BearerAuth",
-      type = SecuritySchemeType.HTTP,
-      scheme = "bearer",
-      bearerFormat = "JWT")
-})
+@SecurityScheme(
+    name = "BearerAuth",
+    type = SecuritySchemeType.HTTP,
+    scheme = "bearer",
+    bearerFormat = "JWT")
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
@@ -328,9 +323,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     try {
       if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
-        McpServer mcpServer = new McpServer(new DefaultToolContext(), new DefaultPromptsContext());
+        Class<?> mcpServerClass = Class.forName("org.openmetadata.mcp.McpServer");
+        McpServerProvider mcpServer =
+            (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
         mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+        LOG.info("MCP Server registered successfully");
       }
+    } catch (ClassNotFoundException ex) {
+      LOG.info("MCP module not found in classpath, skipping MCP server initialization");
     } catch (Exception ex) {
       LOG.error("Error initializing MCP server", ex);
     }

@@ -34,6 +34,11 @@
       <artifactId>openmetadata-service</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-mcp</artifactId>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
 
   <properties>
