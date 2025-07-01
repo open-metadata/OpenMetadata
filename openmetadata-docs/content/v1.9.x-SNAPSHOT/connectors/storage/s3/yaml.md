@@ -167,7 +167,7 @@ source:
   serviceConnection:
     config:
       type: S3
-      awsConfig:
+      awsConfig:  # REQUIRED - AWS authentication configuration
 ```
 
 {% partial file="/v1.9/connectors/yaml/common/aws-config.md" /%}

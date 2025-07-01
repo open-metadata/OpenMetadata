@@ -251,13 +251,13 @@ source:
       type: PowerBI
 ```
 ```yaml {% srNumber=1 %}
-      clientId: clientId
+      clientId: clientId  # REQUIRED - Azure AD application client ID
 ```
 ```yaml {% srNumber=2 %}
-      clientSecret: secret
+      clientSecret: secret  # REQUIRED - Azure AD application client secret
 ```
 ```yaml {% srNumber=3 %}
-      tenantId: tenant
+      tenantId: tenant  # REQUIRED - Azure AD tenant ID
 ```
 ```yaml {% srNumber=4 %}
       # scope:
