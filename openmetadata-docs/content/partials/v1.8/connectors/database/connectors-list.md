@@ -41,6 +41,7 @@
 {% connectorInfoCard name="SingleStore" stage="PROD" href="/connectors/database/singlestore" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Snowflake" stage="PROD" href="/connectors/database/snowflake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SQLite" stage="PROD" href="/connectors/database/sqlite" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Ssas" stage="BETA" href="/connectors/database/ssas" platform="Collate" / %}
 {% connectorInfoCard name="Synapse" stage="PROD" href="/connectors/database/synapse" platform="Collate" / %}
 {% connectorInfoCard name="Teradata" stage="PROD" href="/connectors/database/teradata" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Trino" stage="PROD" href="/connectors/database/trino" platform="OpenMetadata" / %}
