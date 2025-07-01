@@ -18,6 +18,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -45,6 +46,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1370,5 +1372,50 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PUT);
     updater.moveAndStore();
     return updated;
+  }
+
+  @Override
+  public RestUtil.PutResponse<GlossaryTerm> createOrUpdateForImport(
+      UriInfo uriInfo, GlossaryTerm updated, String updatedBy) {
+
+    GlossaryTerm original = findByNameOrNull(updated.getFullyQualifiedName(), Include.ALL);
+
+    // Glossary term's parent can change which alters its FQN. If the FQN lookup fails, try
+    // locating the term by (glossary, name) combination.
+    if (original == null) {
+      try {
+        String existingTermString =
+            Entity.getCollectionDAO()
+                .glossaryTermDAO()
+                .getGlossaryTermByNameAndGlossaryIgnoreCase(
+                    updated.getGlossary().getFullyQualifiedName(), updated.getName());
+        if (existingTermString != null && !existingTermString.isEmpty()) {
+          original = JsonUtils.readValue(existingTermString, GlossaryTerm.class);
+        }
+      } catch (Exception ignored) {
+      }
+    }
+
+    if (original == null) {
+      return new RestUtil.PutResponse<>(
+          Response.Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
+    }
+
+    return updateForImport(uriInfo, original, updated, updatedBy);
+  }
+
+  @Override
+  public boolean isUpdateForImport(GlossaryTerm entity) {
+    if (super.isUpdateForImport(entity)) {
+      return true;
+    }
+
+    // A glossary term may have been moved to a different parent causing its FQN to change. So check
+    // with name field
+    return Entity.getCollectionDAO()
+            .glossaryTermDAO()
+            .getGlossaryTermCountIgnoreCase(
+                entity.getGlossary().getFullyQualifiedName(), entity.getName())
+        > 0;
   }
 }

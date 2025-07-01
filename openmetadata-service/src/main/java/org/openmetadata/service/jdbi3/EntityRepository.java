@@ -142,7 +142,6 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
@@ -1111,25 +1110,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final PutResponse<T> createOrUpdateForImport(
-      UriInfo uriInfo, T updated, String updatedBy) {
+  public PutResponse<T> createOrUpdateForImport(UriInfo uriInfo, T updated, String updatedBy) {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
-    // Glossary term's parent can change causing fqn to change, so we need to fetch by name to
-    // ensure
-    if (original == null && updated instanceof GlossaryTerm) {
-      try {
-        String existingTermString =
-            Entity.getCollectionDAO()
-                .glossaryTermDAO()
-                .getGlossaryTermByNameAndGlossaryIgnoreCase(
-                    ((GlossaryTerm) updated).getGlossary().getFullyQualifiedName(),
-                    updated.getName());
-        if (existingTermString != null && !existingTermString.isEmpty()) {
-          original = (T) JsonUtils.readValue(existingTermString, GlossaryTerm.class);
-        }
-      } catch (Exception ignored) {
-      }
-    }
     if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
@@ -1645,7 +1627,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  private T createNewEntity(T entity) {
+  protected T createNewEntity(T entity) {
     storeEntity(entity, false);
     storeExtension(entity);
     storeRelationshipsInternal(entity);
@@ -4623,5 +4605,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
     };
+  }
+
+  public boolean isUpdateForImport(T entity) {
+    return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null;
   }
 }

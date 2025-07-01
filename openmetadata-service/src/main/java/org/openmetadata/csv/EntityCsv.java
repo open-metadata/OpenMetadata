@@ -72,7 +72,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.StoredProcedureCode;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ApiStatus;
@@ -864,9 +863,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
         // In case of updating entity , prepareInternal as update=True
-        repository.prepareInternal(
-            entity,
-            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
         AsyncService.getInstance()
@@ -879,10 +877,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
-      responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
@@ -917,15 +913,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
         // In case of updating entity , prepareInternal as update=True
-        boolean update =
-            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null
-                || (entity instanceof GlossaryTerm glossaryTerm
-                    && Entity.getCollectionDAO()
-                            .glossaryTermDAO()
-                            .getGlossaryTermCountIgnoreCase(
-                                glossaryTerm.getGlossary().getFullyQualifiedName(),
-                                entity.getName())
-                        > 0);
+        boolean update = repository.isUpdateForImport(entity);
         repository.prepareInternal(entity, update);
         PutResponse<EntityInterface> response =
             repository.createOrUpdateForImport(null, entity, importedBy);
@@ -940,23 +928,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else {
       repository.setFullyQualifiedName(entity);
-      responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
-      // Glossary term's parent can change causing fqn to change, so we need to fetch by name to
-      // ensure
-      if (responseStatus.equals(Response.Status.CREATED) && entity instanceof GlossaryTerm) {
-        responseStatus =
-            Entity.getCollectionDAO()
-                        .glossaryTermDAO()
-                        .getGlossaryTermCountIgnoreCase(
-                            ((GlossaryTerm) entity).getGlossary().getFullyQualifiedName(),
-                            entity.getName())
-                    > 0
-                ? Response.Status.OK
-                : Response.Status.CREATED;
-      }
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
     }
 
@@ -1038,9 +1011,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
         // In case of updating entity , prepareInternal as update=True
-        repository.prepareInternal(
-            entity,
-            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
       } catch (Exception ex) {
@@ -1050,10 +1022,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
-      responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
