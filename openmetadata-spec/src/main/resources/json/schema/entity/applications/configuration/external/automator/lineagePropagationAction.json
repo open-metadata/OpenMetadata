@@ -10,6 +10,12 @@
       "type": "string",
       "enum": ["LineagePropagationAction"],
       "default": "LineagePropagationAction"
+    },
+    "propagationDirection": {
+      "description": "Direction of propagation in the lineage graph.",
+      "type": "string",
+      "enum": ["UPSTREAM", "DOWNSTREAM", "BOTH"],
+      "default": "DOWNSTREAM"
     }
   },
   "properties": {
@@ -18,6 +24,27 @@
       "description": "Application Type",
       "$ref": "#/definitions/lineagePropagationActionType",
       "default": "LineagePropagationAction"
+    },
+    "propagationDirection": {
+      "title": "Propagation Direction",
+      "description": "Direction to propagate metadata in the lineage graph. UPSTREAM propagates to parent entities, DOWNSTREAM propagates to child entities, BOTH propagates in both directions.",
+      "$ref": "#/definitions/propagationDirection"
+    },
+    "upstreamDepth": {
+      "title": "Upstream Depth",
+      "description": "Number of levels to propagate upstream in the lineage graph.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 1
+    },
+    "downstreamDepth": {
+      "title": "Downstream Depth",
+      "description": "Number of levels to propagate downstream in the lineage graph.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 1
     },
     "propagateDescription": {
       "title": "Propagate Description",

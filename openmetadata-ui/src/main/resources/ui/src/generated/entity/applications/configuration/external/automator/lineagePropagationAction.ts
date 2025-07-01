@@ -15,6 +15,19 @@
  */
 export interface LineagePropagationAction {
     /**
+     * Direction to propagate metadata in the lineage graph. UPSTREAM propagates to parent entities,
+     * DOWNSTREAM propagates to child entities, BOTH propagates in both directions.
+     */
+    propagationDirection?: PropagationDirection;
+    /**
+     * Number of levels to propagate upstream in the lineage graph.
+     */
+    upstreamDepth?: number;
+    /**
+     * Number of levels to propagate downstream in the lineage graph.
+     */
+    downstreamDepth?: number;
+    /**
      * Update descriptions, tags and Glossary Terms via lineage even if they are already defined
      * in the asset. By default, descriptions are only updated if they are not already defined
      * in the asset, and incoming tags are merged with the existing ones.
@@ -52,6 +65,15 @@ export interface LineagePropagationAction {
      * Application Type
      */
     type: LineagePropagationActionType;
+}
+
+/**
+ * Direction of propagation in the lineage graph.
+ */
+export enum PropagationDirection {
+    UPSTREAM = "UPSTREAM",
+    DOWNSTREAM = "DOWNSTREAM",
+    BOTH = "BOTH"
 }
 
 /**
