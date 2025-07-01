@@ -254,7 +254,7 @@ public class OSLineageGraphBuilder {
             NodeInformation nodeInformation = result.getNodes().get(fqnFromHash);
             nodeInformation.setPaging(
                 new LayerPaging().withEntityDownstreamCount((int) bucket.getDocCount()));
-            result.getNodes().put(bucket.getKeyAsString(), nodeInformation);
+            result.getNodes().put(fqnFromHash, nodeInformation);
           }
         }
 
