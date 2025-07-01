@@ -274,7 +274,6 @@ class TestAirflow(TestCase):
         self.assertEqual(get_schedule_interval(pipeline_data), "*/2 * * * *")
 
     def test_get_dag_owners_with_serialized_tasks(self):
-        # Test case with Airflow 2.10 style tasks (wrapped in __var)
         data = {
             "default_args": {"owner": "default_owner"},
             "tasks": [
