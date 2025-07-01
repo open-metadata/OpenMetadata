@@ -115,5 +115,3 @@ DROP INDEX IF EXISTS index_ingestion_pipeline_entity_deleted;
 
 CREATE INDEX idx_data_contract_entity_deleted_name_id ON data_contract_entity(deleted, name, id);
 DROP INDEX IF EXISTS index_data_contract_entity_deleted;
-
-CREATE INDEX idx_query_entity_deleted_checksum ON query_entity(deleted, checksum);

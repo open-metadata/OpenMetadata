@@ -901,6 +901,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       T entity = JsonUtils.readValue(json, entityClass);
       entities.add(entity);
     }
+
+    // Reverse the list BEFORE processing fields to get ascending order
+    // This is more efficient than the double SQL sort
+    Collections.reverse(entities);
+
     setFieldsInBulk(fields, entities);
     entities.forEach(entity -> withHref(uriInfo, entity));
 
@@ -910,8 +915,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String afterCursor;
     if (entities.size()
         > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      entities.remove(0);
-      beforeCursor = getCursorValue(entities.get(0));
+      entities.remove(0); // Remove first element which is the extra one fetched
+      beforeCursor = getCursorValue(entities.get(0)); // Get cursor from new first element
     }
     afterCursor = getCursorValue(entities.get(entities.size() - 1));
     return getResultList(entities, beforeCursor, afterCursor, total);
