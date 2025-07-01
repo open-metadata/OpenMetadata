@@ -1,5 +1,5 @@
 ---
-title: Airflow
+title: Airflow Connector | OpenMetadata Workflow Orchestration
 slug: /connectors/pipeline/airflow
 ---
 

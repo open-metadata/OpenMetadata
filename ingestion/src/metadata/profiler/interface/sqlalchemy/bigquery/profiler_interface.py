@@ -29,7 +29,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
         from sqlalchemy_bigquery import STRUCT
 
         columns_list = []
-        for key, value in columns.items():
+        for key, value in columns:
             if not isinstance(value, STRUCT):
                 col = Column(f"{parent}.{key}", value)
                 # pylint: disable=protected-access
@@ -38,7 +38,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
                 columns_list.append(col)
             else:
                 col = self._get_struct_columns(
-                    value.__dict__.get("_STRUCT_byname"), f"{parent}.{key}"
+                    value.__dict__.get("_STRUCT_fields"), f"{parent}.{key}"
                 )
                 columns_list.extend(col)
         return columns_list
@@ -53,7 +53,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
             if isinstance(column.type, STRUCT):
                 columns.extend(
                     self._get_struct_columns(
-                        column.type.__dict__.get("_STRUCT_byname"), column.name
+                        column.type.__dict__.get("_STRUCT_fields"), column.name
                     )
                 )
             else:

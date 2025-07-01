@@ -1,5 +1,5 @@
 ---
-title: BigTable
+title: BigTable Roles | Configure Access for OpenMetadata Connector
 slug: /connectors/database/bigtable/roles
 ---
 

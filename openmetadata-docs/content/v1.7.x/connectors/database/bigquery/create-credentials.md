@@ -1,5 +1,5 @@
 ---
-title: BigQuery
+title: BigQuery Connector | Set Up Credentials in OpenMetadata
 slug: /connectors/database/bigquery/create-credentials
 ---
 

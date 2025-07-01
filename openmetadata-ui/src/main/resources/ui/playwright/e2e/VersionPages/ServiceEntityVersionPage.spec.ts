@@ -53,6 +53,7 @@ const entities = [
 ];
 
 // use the admin user to login
+
 const adminUser = new UserClass();
 
 const test = base.extend<{ page: Page }>({
@@ -187,7 +188,7 @@ test.describe('Service Version pages', () => {
           type: 'Users',
         });
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -201,7 +202,7 @@ test.describe('Service Version pages', () => {
 
         await assignTier(page, 'Tier1', entity.endpoint);
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -242,7 +243,7 @@ test.describe('Service Version pages', () => {
 
           await expect(deletedBadge).toHaveText('Deleted');
 
-          const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
+          const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
           await page.locator('[data-testid="version-button"]').click();
           await versionDetailResponse;
 

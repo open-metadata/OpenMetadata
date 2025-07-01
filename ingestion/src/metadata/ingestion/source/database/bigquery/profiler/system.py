@@ -154,7 +154,7 @@ class BigQuerySystemMetricsSource(
                     "rowsAffected": getattr(q, rows_affected_field),
                 }
                 for q in query_results
-                if getattr(q, rows_affected_field) > 0
+                if getattr(q, rows_affected_field, -1) > 0
                 and q.project_id == project_id
                 and q.dataset_id == dataset_id
                 and q.table_name == table

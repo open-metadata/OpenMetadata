@@ -1,5 +1,5 @@
 ---
-title: Okta SSO
+title: Okta SSO | OpenMetadata Authentication Integration
 slug: /deployment/security/okta
 collate: false
 ---

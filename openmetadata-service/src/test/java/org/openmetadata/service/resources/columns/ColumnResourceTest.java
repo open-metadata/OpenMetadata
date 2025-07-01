@@ -467,12 +467,13 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
 
     assertNotNull(updatedColumn.getTags());
     assertEquals(2, updatedColumn.getTags().size());
+    // Sorted order of glossary terms
     assertEquals(
-        businessTermsGlossaryTerm.getFullyQualifiedName(),
+        technicalTermsGlossaryTerm.getFullyQualifiedName(),
         updatedColumn.getTags().get(0).getTagFQN());
     assertEquals(TagLabel.TagSource.GLOSSARY, updatedColumn.getTags().get(0).getSource());
     assertEquals(
-        technicalTermsGlossaryTerm.getFullyQualifiedName(),
+        businessTermsGlossaryTerm.getFullyQualifiedName(),
         updatedColumn.getTags().get(1).getTagFQN());
     assertEquals(TagLabel.TagSource.GLOSSARY, updatedColumn.getTags().get(1).getSource());
   }
@@ -1031,6 +1032,122 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
             .findFirst()
             .orElseThrow();
     assertNull(dimension1ColumnAfterDelete.getDescription());
+  }
+
+  @Test
+  void test_updateColumnWithDerivedTags(TestInfo test) throws IOException {
+    // Create a classification and tag
+    ClassificationResourceTest classificationTest = new ClassificationResourceTest();
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName("Tier" + test.getDisplayName().replaceAll("[^A-Za-z0-9]", ""))
+            .withDescription("Tier classification for data quality");
+    Classification tierClassification =
+        classificationTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
+
+    TagResourceTest tagTest = new TagResourceTest();
+    CreateTag createTag =
+        new CreateTag()
+            .withName("Tier1")
+            .withDescription("Tier 1 data")
+            .withClassification(tierClassification.getFullyQualifiedName());
+    Tag tierTag = tagTest.createEntity(createTag, ADMIN_AUTH_HEADERS);
+
+    // Create a glossary
+    GlossaryResourceTest glossaryTest = new GlossaryResourceTest();
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName("TestGlossaryTag" + test.getDisplayName().replaceAll("[^A-Za-z0-9]", ""))
+            .withDescription("Test glossary for derived tags");
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create a glossary term with the tier tag
+    GlossaryTermResourceTest glossaryTermTest = new GlossaryTermResourceTest();
+    CreateGlossaryTerm createGlossaryTerm =
+        new CreateGlossaryTerm()
+            .withName("CustomerData" + test.getDisplayName().replaceAll("[^A-Za-z0-9]", ""))
+            .withDescription("Customer data term")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withTags(
+                List.of(
+                    new TagLabel()
+                        .withTagFQN(tierTag.getFullyQualifiedName())
+                        .withName(tierTag.getName())
+                        .withDisplayName(tierTag.getDisplayName())
+                        .withSource(TagLabel.TagSource.CLASSIFICATION)
+                        .withState(TagLabel.State.CONFIRMED)));
+    GlossaryTerm glossaryTerm =
+        glossaryTermTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    String columnFQN = FullyQualifiedName.add(table.getFullyQualifiedName(), "id");
+
+    // Update column with the glossary term tag
+    UpdateColumn updateColumnWithTags =
+        new UpdateColumn()
+            .withTags(
+                List.of(
+                    new TagLabel()
+                        .withTagFQN(glossaryTerm.getFullyQualifiedName())
+                        .withName(glossaryTerm.getName())
+                        .withDisplayName(glossaryTerm.getDisplayName())
+                        .withSource(TagLabel.TagSource.GLOSSARY)
+                        .withState(TagLabel.State.CONFIRMED)));
+
+    Column updatedColumnWithTags = updateColumnByFQN(columnFQN, updateColumnWithTags);
+
+    // Verify that both the glossary term tag and its associated tier tag are present
+    assertNotNull(updatedColumnWithTags.getTags());
+    assertEquals(2, updatedColumnWithTags.getTags().size());
+
+    // Verify the glossary term tag
+    TagLabel glossaryTag =
+        updatedColumnWithTags.getTags().stream()
+            .filter(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY)
+            .findFirst()
+            .orElse(null);
+    assertNotNull(glossaryTag);
+    assertEquals(glossaryTerm.getFullyQualifiedName(), glossaryTag.getTagFQN());
+    assertEquals(TagLabel.LabelType.MANUAL, glossaryTag.getLabelType());
+
+    // Verify the derived tier tag
+    TagLabel derivedTag =
+        updatedColumnWithTags.getTags().stream()
+            .filter(tag -> tag.getSource() == TagLabel.TagSource.CLASSIFICATION)
+            .findFirst()
+            .orElse(null);
+    assertNotNull(derivedTag);
+    assertEquals(tierTag.getFullyQualifiedName(), derivedTag.getTagFQN());
+    assertEquals(TagLabel.LabelType.DERIVED, derivedTag.getLabelType());
+
+    // Verify persistence by getting the table again
+    Table persistedTable =
+        tableResourceTest.getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+    Column persistedColumn =
+        persistedTable.getColumns().stream()
+            .filter(c -> c.getName().equals("id"))
+            .findFirst()
+            .orElseThrow();
+
+    // Verify tags are still present in persisted data
+    assertNotNull(persistedColumn.getTags());
+    assertEquals(2, persistedColumn.getTags().size());
+
+    // Verify both manual and derived tags are present in persisted data
+    boolean hasGlossaryTag =
+        persistedColumn.getTags().stream()
+            .anyMatch(
+                tag ->
+                    tag.getSource() == TagLabel.TagSource.GLOSSARY
+                        && tag.getTagFQN().equals(glossaryTerm.getFullyQualifiedName()));
+    boolean hasDerivedTag =
+        persistedColumn.getTags().stream()
+            .anyMatch(
+                tag ->
+                    tag.getSource() == TagLabel.TagSource.CLASSIFICATION
+                        && tag.getTagFQN().equals(tierTag.getFullyQualifiedName())
+                        && tag.getLabelType() == TagLabel.LabelType.DERIVED);
+
+    assertTrue(hasGlossaryTag, "Glossary tag should be present in persisted data");
+    assertTrue(hasDerivedTag, "Derived tag should be present in persisted data");
   }
 
   private Column updateColumnByFQN(String columnFQN, UpdateColumn updateColumn, String entityType)

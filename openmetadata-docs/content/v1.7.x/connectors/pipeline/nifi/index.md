@@ -1,5 +1,5 @@
 ---
-title: Nifi
+title: Nifi Connector | OpenMetadata Data Pipeline Integration
 slug: /connectors/pipeline/nifi
 ---
 

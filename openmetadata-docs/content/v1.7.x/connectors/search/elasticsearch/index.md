@@ -1,5 +1,5 @@
 ---
-title: Elasticsearch
+title: Elasticsearch Connector | OpenMetadata Search Services
 slug: /connectors/search/elasticsearch
 ---
 

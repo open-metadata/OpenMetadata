@@ -1,5 +1,5 @@
 ---
-title: Amundsen
+title: Amundsen Connector | OpenMetadata Metadata Services
 slug: /connectors/metadata/amundsen
 ---
 

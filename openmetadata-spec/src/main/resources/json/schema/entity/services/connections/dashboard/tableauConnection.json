@@ -58,6 +58,14 @@
       "type": "string",
       "default": null
     },
+    "proxyURL": {
+      "expose": true,
+      "title": "Proxy URL",
+      "description": "Proxy URL for the tableau server. If not provided, the hostPort will be used. This is used to generate the dashboard & Chart URL.",
+      "type": "string",
+      "format": "uri",
+      "default": null
+    },
     "verifySSL": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
       "default": "no-ssl"

@@ -1,5 +1,5 @@
 ---
-title: Qlik Cloud
+title: Qlik Cloud Connector | OpenMetadata Dashboard Integration
 slug: /connectors/dashboard/qlikcloud
 ---
 

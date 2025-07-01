@@ -15,7 +15,6 @@ import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
-import { t } from 'i18next';
 import {
   get,
   isEmpty,
@@ -26,7 +25,7 @@ import {
   uniqWith,
 } from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
-import React, { MouseEvent as ReactMouseEvent } from 'react';
+import { MouseEvent as ReactMouseEvent } from 'react';
 import {
   Connection,
   Edge,
@@ -95,6 +94,7 @@ import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
+import { t } from './i18next/LocalUtil';
 import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -1417,7 +1417,10 @@ const processNodeArray = (
   return Object.values(nodes)
     .map((node: NodeData) => ({
       ...node.entity,
-      paging: node.paging,
+      paging: {
+        entityUpstreamCount: node.paging?.entityUpstreamCount ?? 0,
+        entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,
+      },
       upstreamExpandPerformed:
         (node.entity as LineageEntityReference).upstreamExpandPerformed !==
         undefined
@@ -1538,7 +1541,8 @@ export const parseLineageData = (
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
   // Process nodes
-  const nodesArray = processNodeArray(nodes, rootFqn);
+  const nodesArray = uniqWith(processNodeArray(nodes, rootFqn), isEqual);
+
   const processedNodes: LineageEntityReference[] = [...nodesArray];
 
   // Process edges

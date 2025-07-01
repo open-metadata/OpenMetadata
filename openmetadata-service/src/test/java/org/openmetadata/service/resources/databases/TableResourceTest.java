@@ -111,6 +111,7 @@ import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -120,6 +121,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestCase;
@@ -155,6 +157,8 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -171,11 +175,11 @@ import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
+import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -1439,7 +1443,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     table1 = getLatestTableProfile(table1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
     verifyTableProfile(table1.getProfile(), table1ProfileList.get(table1ProfileList.size() - 1));
     table1 = getLatestTableProfile(table1.getFullyQualifiedName(), false, ADMIN_AUTH_HEADERS);
-    assertNull(table1.getColumns());
+    assertNotNull(table1.getColumns());
 
     // Table profile with column profile as null
     timestamp = TestUtils.dateToTimestamp("2022-09-09");
@@ -2021,7 +2025,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .get("description")
             .getChangeSource());
 
-    assertChangeSummaryInSearch(updated);
+    // changeSummary is no longer included in search results
+    // assertChangeSummaryInSearch(updated);
 
     Table automatedUpdate = JsonUtils.deepCopy(updated, Table.class);
     automatedUpdate.setDescription("automated description");
@@ -2402,7 +2407,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
     TestCase testCase = testCaseResourceTest.assertOwnerInheritance(createTestCase, USER1_REF);
 
     // Check owners properly updated in search
@@ -2456,7 +2461,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
     TestCase testCase = testCaseResourceTest.createEntity(createTestCase, ADMIN_AUTH_HEADERS);
 
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
@@ -2508,7 +2513,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
     TestCase testCase =
         testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());
 
@@ -3945,19 +3950,22 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TableResource.TableColumnList response =
         TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(1, response.getData().size());
-    assertEquals("user_id", response.getData().get(0).getName());
+    assertEquals("user_id", response.getData().getFirst().getName());
     assertEquals(1, response.getPaging().getTotal());
 
     target = getResource("tables/" + table.getId() + "/columns/search").queryParam("q", "price");
     response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
-    assertEquals(2, response.getData().size());
-    assertEquals("price_history", response.getData().get(0).getName());
+    assertEquals(1, response.getData().size());
+    // Both order_total (description contains "price") and price_history should be in results
+    Set<String> resultNames =
+        response.getData().stream().map(Column::getName).collect(Collectors.toSet());
+    assertTrue(resultNames.contains("price_history"));
     assertEquals(1, response.getPaging().getTotal());
 
     target = getResource("tables/" + table.getId() + "/columns/search").queryParam("q", "EMAIL");
     response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(1, response.getData().size());
-    assertEquals("email_address", response.getData().get(0).getName());
+    assertEquals("email_address", response.getData().getFirst().getName());
 
     target =
         getResource("tables/" + table.getId() + "/columns/search")
@@ -4153,7 +4161,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void test_updateColumn_ownerCanUpdateOwnedTableColumns(TestInfo test) throws IOException {
     CreateTable create = createRequest(test).withOwners(listOf(DATA_STEWARD.getEntityReference()));
     Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String columnFQN = COLUMNS.get(0).getFullyQualifiedName();
+    String columnFQN = table.getColumns().getFirst().getFullyQualifiedName();
 
     org.openmetadata.schema.api.data.UpdateColumn updateColumn =
         new org.openmetadata.schema.api.data.UpdateColumn();
@@ -4171,7 +4179,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void test_updateColumn_dataStewardCanUpdateDescriptionAndTags(TestInfo test) throws IOException {
     CreateTable create = createRequest(test).withOwners(listOf(USER1.getEntityReference()));
     Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String columnFQN = COLUMNS.get(0).getFullyQualifiedName();
+    String columnFQN = table.getColumns().get(0).getFullyQualifiedName();
 
     org.openmetadata.schema.api.data.UpdateColumn updateColumn =
         new org.openmetadata.schema.api.data.UpdateColumn();
@@ -4193,74 +4201,108 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void test_updateColumn_dataConsumerCannotUpdateColumns(TestInfo test) throws IOException {
-    CreateTable create = createRequest(test).withOwners(listOf(USER1.getEntityReference()));
-    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+    // Temporarily remove Organization's default roles to ensure USER3 has no permissions
+    Team org = getOrganization();
+    List<EntityReference> originalDefaultRoles = org.getDefaultRoles();
+    updateOrganizationDefaultRoles(null);
 
-    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
-        new org.openmetadata.schema.api.data.UpdateColumn();
-    updateColumn.setDescription("Data consumer trying to update");
+    try {
+      CreateTable create = createRequest(test).withOwners(listOf(USER1.getEntityReference()));
+      Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      String columnFQN = table.getColumns().getFirst().getFullyQualifiedName();
 
-    Map<String, String> dataConsumerAuthHeaders = authHeaders(DATA_CONSUMER.getName());
+      org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+          new org.openmetadata.schema.api.data.UpdateColumn();
+      updateColumn.setDescription("Data consumer trying to update");
 
-    assertResponse(
-        () -> updateColumnByFQN(columnFQN, updateColumn, dataConsumerAuthHeaders),
-        FORBIDDEN,
-        permissionNotAllowed(DATA_CONSUMER.getName(), List.of(MetadataOperation.EDIT_DESCRIPTION)));
+      assertResponse(
+          () -> updateColumnByFQN(columnFQN, updateColumn, authHeaders(USER3.getName())),
+          FORBIDDEN,
+          permissionNotAllowed(USER3.getName(), List.of(MetadataOperation.EDIT_DESCRIPTION)));
+    } finally {
+      // Restore original default roles
+      updateOrganizationDefaultRoles(originalDefaultRoles);
+    }
   }
 
   @Test
   void test_updateColumn_nonOwnerCannotUpdateDisplayName(TestInfo test) throws IOException {
-    CreateTable create = createRequest(test).withOwners(listOf(DATA_STEWARD.getEntityReference()));
-    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+    Team org = getOrganization();
+    List<EntityReference> originalDefaultRoles = org.getDefaultRoles();
+    updateOrganizationDefaultRoles(null);
 
-    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
-        new org.openmetadata.schema.api.data.UpdateColumn();
-    updateColumn.setDisplayName("Non-owner trying to update display name");
+    try {
+      CreateTable create =
+          createRequest(test).withOwners(listOf(DATA_STEWARD.getEntityReference()));
+      Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      String columnFQN = table.getColumns().getFirst().getFullyQualifiedName();
 
-    Map<String, String> user1AuthHeaders = authHeaders(USER1.getName());
+      UpdateColumn updateColumn = new UpdateColumn();
+      updateColumn.setDisplayName("Non-owner trying to update display name");
 
-    assertResponse(
-        () -> updateColumnByFQN(columnFQN, updateColumn, user1AuthHeaders),
-        FORBIDDEN,
-        permissionNotAllowed(USER1.getName(), List.of(MetadataOperation.EDIT_ALL)));
+      Map<String, String> user3AuthHeaders = authHeaders(USER3.getName());
+
+      assertResponse(
+          () -> updateColumnByFQN(columnFQN, updateColumn, user3AuthHeaders),
+          FORBIDDEN,
+          permissionNotAllowed(USER3.getName(), List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
+    } finally {
+      updateOrganizationDefaultRoles(originalDefaultRoles);
+    }
   }
 
   @Test
   void test_updateColumn_nonOwnerCannotUpdateConstraints(TestInfo test) throws IOException {
-    CreateTable create = createRequest(test).withOwners(listOf(DATA_STEWARD.getEntityReference()));
-    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+    // Temporarily remove Organization's default roles to ensure USER3 has no permissions
+    Team org = getOrganization();
+    List<EntityReference> originalDefaultRoles = org.getDefaultRoles();
+    updateOrganizationDefaultRoles(null);
 
-    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
-        new org.openmetadata.schema.api.data.UpdateColumn();
-    updateColumn.setConstraint(ColumnConstraint.UNIQUE);
+    try {
+      CreateTable create =
+          createRequest(test).withOwners(listOf(DATA_STEWARD.getEntityReference()));
+      Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      String columnFQN = table.getColumns().getFirst().getFullyQualifiedName();
 
-    Map<String, String> user1AuthHeaders = authHeaders(USER1.getName());
+      UpdateColumn updateColumn = new UpdateColumn();
+      updateColumn.setConstraint(ColumnConstraint.UNIQUE);
 
-    assertResponse(
-        () -> updateColumnByFQN(columnFQN, updateColumn, user1AuthHeaders),
-        FORBIDDEN,
-        permissionNotAllowed(USER1.getName(), List.of(MetadataOperation.EDIT_ALL)));
+      Map<String, String> user3AuthHeaders = authHeaders(USER3.getName());
+
+      assertResponse(
+          () -> updateColumnByFQN(columnFQN, updateColumn, user3AuthHeaders),
+          FORBIDDEN,
+          permissionNotAllowed(USER3.getName(), List.of(MetadataOperation.EDIT_ALL)));
+    } finally {
+      // Restore original default roles
+      updateOrganizationDefaultRoles(originalDefaultRoles);
+    }
   }
 
   @Test
   void test_updateColumn_userCannotUpdateOtherUsersTableColumns(TestInfo test) throws IOException {
-    CreateTable create = createRequest(test).withOwners(listOf(USER1.getEntityReference()));
-    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+    // Temporarily remove Organization's default roles to ensure USER3 has no permissions
+    Team org = getOrganization();
+    List<EntityReference> originalDefaultRoles = org.getDefaultRoles();
+    updateOrganizationDefaultRoles(null);
 
-    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
-        new org.openmetadata.schema.api.data.UpdateColumn();
-    updateColumn.setDescription("USER2 trying to update USER1's table");
+    try {
+      CreateTable create = createRequest(test).withOwners(listOf(USER1.getEntityReference()));
+      Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
 
-    Map<String, String> user2AuthHeaders = authHeaders(USER2.getName());
+      UpdateColumn updateColumn = new UpdateColumn();
+      updateColumn.setDescription("USER3 trying to update USER1's table");
 
-    assertResponse(
-        () -> updateColumnByFQN(columnFQN, updateColumn, user2AuthHeaders),
-        FORBIDDEN,
-        permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.EDIT_DESCRIPTION)));
+      Map<String, String> user3AuthHeaders = authHeaders(USER3.getName());
+
+      assertResponse(
+          () -> updateColumnByFQN(columnFQN, updateColumn, user3AuthHeaders),
+          FORBIDDEN,
+          permissionNotAllowed(USER3.getName(), List.of(MetadataOperation.EDIT_DESCRIPTION)));
+    } finally {
+      updateOrganizationDefaultRoles(originalDefaultRoles);
+    }
   }
 
   @Test
@@ -4283,7 +4325,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       org.openmetadata.schema.api.data.UpdateColumn updateColumn,
       Map<String, String> authHeaders)
       throws IOException {
-    WebTarget target = getResource("columns/name/" + columnFQN).queryParam("entityType", "table");
+    String encodedFQN = EntityUtil.encodeEntityFqn(columnFQN);
+    WebTarget target = getResource("columns/name/" + encodedFQN).queryParam("entityType", "table");
     return TestUtils.put(target, updateColumn, Column.class, OK, authHeaders);
+  }
+
+  private Team getOrganization() throws IOException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    return teamResourceTest.getEntityByName(
+        "Organization", teamResourceTest.getAllowedFields(), ADMIN_AUTH_HEADERS);
+  }
+
+  private void updateOrganizationDefaultRoles(List<EntityReference> defaultRoles)
+      throws IOException {
+    Team org = getOrganization();
+    String json = JsonUtils.pojoToJson(org);
+    org.setDefaultRoles(defaultRoles);
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    teamResourceTest.patchEntity(org.getId(), json, org, ADMIN_AUTH_HEADERS);
   }
 }

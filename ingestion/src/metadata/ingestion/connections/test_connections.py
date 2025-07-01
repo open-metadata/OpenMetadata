@@ -38,7 +38,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import kill_active_connections
+from metadata.ingestion.source.connections_utils import kill_active_connections
 from metadata.profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import cli_logger

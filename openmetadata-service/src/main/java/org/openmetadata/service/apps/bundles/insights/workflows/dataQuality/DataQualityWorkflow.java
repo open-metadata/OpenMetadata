@@ -19,6 +19,7 @@ import org.openmetadata.schema.entity.applications.configuration.internal.DataQu
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
@@ -27,7 +28,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.util.ResultList;
@@ -120,14 +120,14 @@ public class DataQualityWorkflow {
           new OpenSearchIndexSink(
               searchRepository,
               totalRecords,
-              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
+              searchRepository.getSearchConfiguration().getPayLoadSize());
     } else {
       this.entityProcessor = new ElasticSearchEntityTimeSeriesProcessor(totalRecords);
       this.searchIndexSink =
           new ElasticSearchIndexSink(
               searchRepository,
               totalRecords,
-              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
+              searchRepository.getSearchConfiguration().getPayLoadSize());
     }
   }
 

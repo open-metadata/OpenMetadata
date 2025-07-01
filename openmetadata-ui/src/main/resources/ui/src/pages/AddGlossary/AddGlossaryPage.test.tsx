@@ -12,12 +12,8 @@
  */
 
 import { findByText, render } from '@testing-library/react';
-import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import AddGlossaryPage from './AddGlossaryPage.component';
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-}));
 
 jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
@@ -32,21 +28,18 @@ jest.mock('../../rest/glossaryAPI', () => ({
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
+
+const mockProps = {
+  pageTitle: 'add-glossary',
+};
 
 describe('Test AddGlossary component page', () => {
   it('AddGlossary component page should render', async () => {
-    const { container } = render(<AddGlossaryPage />);
+    const { container } = render(<AddGlossaryPage {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
 
     const addGlossary = await findByText(container, /AddGlossary.component/i);
 
