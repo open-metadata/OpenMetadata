@@ -12,17 +12,24 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { GlobalSettingOptions } from '../../constant/settings';
+import { SidebarItem } from '../../constant/sidebar';
+import { redirectToHomePage } from '../../utils/common';
+import { settingClick, sidebarClick } from '../../utils/sidebar';
+
+// Use admin authentication for all tests
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Online Users Feature', () => {
-  // Use admin authentication for all tests
-  test.use({ storageState: 'playwright/.auth/admin.json' });
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
+    await page.waitForLoadState('networkidle');
+  });
 
   test('Should show online users under Settings > Members > Online Users for admins', async ({
     page,
   }) => {
-    // Navigate directly to Online Users page
-    await page.goto('/settings/members/online-users');
-
     // Verify we're on the Online Users page
     await expect(
       page.getByRole('heading', { name: 'Online Users' })
@@ -36,13 +43,6 @@ test.describe('Online Users Feature', () => {
     await expect(page.getByText('Last Activity')).toBeVisible();
     await expect(page.getByText('Teams')).toBeVisible();
     await expect(page.getByText('Roles')).toBeVisible();
-  });
-
-  test('Should show time filter dropdown for online users', async ({
-    page,
-  }) => {
-    // Navigate to Online Users page
-    await page.goto('/settings/members/online-users');
 
     // Check for time filter dropdown (labeled as "Time window:")
     const timeWindowText = page.getByText('Time window:');
@@ -64,14 +64,14 @@ test.describe('Online Users Feature', () => {
     page,
   }) => {
     // First, navigate around to generate activity
-    await page.goto('/explore/tables');
-    await page.waitForTimeout(500);
+    await sidebarClick(page, SidebarItem.EXPLORE);
+    await page.waitForLoadState('networkidle');
 
-    await page.goto('/data-quality');
-    await page.waitForTimeout(500);
+    await sidebarClick(page, SidebarItem.DATA_QUALITY);
+    await page.waitForLoadState('networkidle');
 
-    // Now check online users
-    await page.goto('/settings/members/online-users');
+    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
+    await page.waitForLoadState('networkidle');
 
     // Admin user should appear in the online users list
     const adminLink = page.locator('a').filter({ hasText: 'admin' }).first();
@@ -85,9 +85,6 @@ test.describe('Online Users Feature', () => {
   });
 
   test('Should not show bots in online users list', async ({ page }) => {
-    // Navigate to Online Users page
-    await page.goto('/settings/members/online-users');
-
     // Verify bot users are not shown (ingestion-bot should not be visible)
     const tableRows = page.locator('tbody tr');
     const rowCount = await tableRows.count();
@@ -102,7 +99,6 @@ test.describe('Online Users Feature', () => {
 
   test('Should filter users by time window', async ({ page }) => {
     // Navigate to online users
-    await page.goto('/settings/members/online-users');
 
     // Wait for initial data to load
     await page.waitForSelector('.ant-spin-container', { state: 'attached' });
@@ -113,7 +109,7 @@ test.describe('Online Users Feature', () => {
 
     // Find the time filter dropdown by looking for the one that contains "Last"
     const timeFilterDropdown = page
-      .locator('.ant-select')
+      .getByTestId('time-window-select')
       .filter({ hasText: /Last \d+ hours|Last hour|Last \d+ days|All time/ });
 
     // Verify default filter is "Last 24 hours"
@@ -129,14 +125,13 @@ test.describe('Online Users Feature', () => {
     await expect(dropdownOptions.getByText('Last hour')).toBeVisible();
     await expect(dropdownOptions.getByText('Last 24 hours')).toBeVisible();
 
+    const onlineRes = page.waitForResponse(
+      '/api/v1/users/online?timeWindow=60&*'
+    );
+
     // Select a different time window
     await dropdownOptions.getByText('Last hour').click();
-
-    // Wait for filter to be applied
-    await page.waitForSelector('.ant-spin-spinning', {
-      state: 'hidden',
-      timeout: 10000,
-    });
+    await onlineRes;
 
     // Verify the filter has changed
     await expect(timeFilterDropdown).toContainText('Last hour');
@@ -155,11 +150,8 @@ test.describe('Online Users Feature', () => {
     const userPage = await userContext.newPage();
 
     try {
-      // Try to navigate to Online Users page
-      await userPage.goto('/settings/members/online-users');
-
-      // Wait for page to load
-      await userPage.waitForLoadState('domcontentloaded');
+      await settingClick(userPage, GlobalSettingOptions.ONLINE_USERS);
+      await userPage.waitForLoadState('networkidle');
 
       // Should see the permission denied message
       await expect(
@@ -174,21 +166,6 @@ test.describe('Online Users Feature', () => {
   });
 
   test('Should show correct last activity format', async ({ page }) => {
-    // Navigate to online users
-    await page.goto('/settings/members/online-users');
-
-    // Wait for table to finish loading (wait for spinner to disappear)
-    await page.waitForSelector('.ant-spin-spinning', {
-      state: 'hidden',
-      timeout: 10000,
-    });
-
-    // Wait for table rows to appear
-    await page.waitForSelector('tbody tr', { timeout: 10000 });
-
-    // Give a bit more time for data to populate
-    await page.waitForTimeout(500);
-
     // Check various time formats in the Last Activity column
     const activityCells = page.locator('tbody tr td:nth-child(2)');
     const count = await activityCells.count();
@@ -208,27 +185,5 @@ test.describe('Online Users Feature', () => {
       // Should contain either "Online now" or time format like "51 minutes ago"
       expect(text).toMatch(/(Online now|\d+\s+(minutes?|hours?|days?)\s+ago)/);
     }
-  });
-
-  test('Should navigate to Online Users from Members page', async ({
-    page,
-  }) => {
-    // Navigate to Settings Members page directly
-    await page.goto('/settings/members');
-
-    // Look for and click the Online Users card
-    const onlineUsersCard = page.locator('.ant-card').filter({
-      hasText: 'Online Users',
-    });
-
-    await expect(onlineUsersCard).toBeVisible();
-
-    await onlineUsersCard.click();
-
-    // Verify we're on the Online Users page
-    await expect(page).toHaveURL(/.*\/settings\/members\/online-users/);
-    await expect(
-      page.getByRole('heading', { name: 'Online Users' })
-    ).toBeVisible();
   });
 });

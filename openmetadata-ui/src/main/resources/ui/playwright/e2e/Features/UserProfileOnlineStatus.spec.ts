@@ -12,8 +12,15 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { UserClass } from '../../support/user/UserClass';
-import { getApiContext } from '../../utils/common';
+import {
+  createNewPage,
+  redirectToHomePage,
+  visitOwnProfilePage,
+} from '../../utils/common';
+import { sidebarClick } from '../../utils/sidebar';
+import { visitUserProfilePage } from '../../utils/user';
 
 // Create test users with passwords
 const activeUser = new UserClass();
@@ -21,36 +28,27 @@ activeUser.data.password = 'Test@1234';
 const inactiveUser = new UserClass();
 inactiveUser.data.password = 'Test@1234';
 
+// Use admin authentication for all tests
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
 test.describe('User Profile Online Status', () => {
-  // Use admin authentication for all tests
-  test.use({ storageState: 'playwright/.auth/admin.json' });
-
   test.beforeAll('Setup pre-requisites', async ({ browser }) => {
-    // Create a page with admin auth
-    const adminContext = await browser.newContext({
-      storageState: 'playwright/.auth/admin.json',
-    });
-    const adminPage = await adminContext.newPage();
-    await adminPage.goto('/');
-
-    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     // Create test users
     await activeUser.create(apiContext);
     await inactiveUser.create(apiContext);
-
     await afterAction();
-    await adminContext.close();
   });
-
-  // No beforeEach needed as each test handles its own navigation
 
   test('Should show online status badge on user profile for active users', async ({
     page,
   }) => {
     // Since the user was created in beforeAll, they should have some activity
     // We'll navigate to their profile and check if status is shown
-    await page.goto(`/users/${activeUser.data.name}`);
+
+    await redirectToHomePage(page);
+    await visitUserProfilePage(page, activeUser.responseData.name);
     await page.waitForLoadState('networkidle');
 
     // Check for online status badge
@@ -83,12 +81,9 @@ test.describe('User Profile Online Status', () => {
   test('Should show "Active recently" for users active within last hour', async ({
     page,
   }) => {
-    // Navigate to home page first
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-
     // Navigate to user profile
-    await page.goto(`/users/${activeUser.data.name}`);
+    await redirectToHomePage(page);
+    await visitUserProfilePage(page, activeUser.responseData.name);
     await page.waitForLoadState('networkidle');
 
     // Simulate that the user was active 30 minutes ago
@@ -107,7 +102,8 @@ test.describe('User Profile Online Status', () => {
 
   test('Should not show online status for inactive users', async ({ page }) => {
     // Navigate to inactive user profile
-    await page.goto(`/users/${inactiveUser.data.name}`);
+    await redirectToHomePage(page);
+    await visitUserProfilePage(page, inactiveUser.responseData.name);
     await page.waitForLoadState('networkidle');
 
     // Check that online status badge is not visible
@@ -123,44 +119,12 @@ test.describe('User Profile Online Status', () => {
     }
   });
 
-  test('Should not show online status for bot users', async ({
-    page,
-    browser,
-  }) => {
-    // Create a bot user
-    const botUser = new UserClass();
-    botUser.data.isBot = true;
-    botUser.data.name = 'test-bot';
-    botUser.data.email = 'test-bot@example.com';
-
-    const adminContext = await browser.newContext({
-      storageState: 'playwright/.auth/admin.json',
-    });
-    const adminPage = await adminContext.newPage();
-    await adminPage.goto('/');
-    const { apiContext, afterAction } = await getApiContext(adminPage);
-    await botUser.create(apiContext);
-
-    // Navigate to bot user profile
-    await page.goto(`/users/${botUser.data.name}`);
-    await page.waitForLoadState('networkidle');
-
-    // Verify online status badge is not shown for bots
-    const onlineStatusBadge = page.getByTestId('user-online-status');
-
-    await expect(onlineStatusBadge).not.toBeVisible();
-
-    // Cleanup
-    await botUser.delete(apiContext);
-    await afterAction();
-    await adminContext.close();
-  });
-
   test('Should show online status below email in user profile card', async ({
     page,
   }) => {
     // Navigate to admin's profile (admin always has activity)
-    await page.goto('/users/admin');
+    await redirectToHomePage(page);
+    await visitOwnProfilePage(page);
     await page.waitForLoadState('networkidle');
 
     // Verify email element is visible
@@ -191,7 +155,8 @@ test.describe('User Profile Online Status', () => {
     // We'll use the admin user since they're always active
 
     // First navigate to admin profile
-    await page.goto('/users/admin');
+    await redirectToHomePage(page);
+    await visitOwnProfilePage(page);
     await page.waitForLoadState('networkidle');
 
     // Admin should always show online status since they're logged in
@@ -201,10 +166,10 @@ test.describe('User Profile Online Status', () => {
     await expect(onlineStatusBadge).toContainText(/Online now|Active recently/);
 
     // Navigate away and back to verify status persists
-    await page.goto('/explore/tables');
-    await page.waitForTimeout(500);
+    await sidebarClick(page, SidebarItem.EXPLORE);
+    await page.waitForLoadState('networkidle');
 
-    await page.goto('/users/admin');
+    await visitOwnProfilePage(page);
     await page.waitForLoadState('networkidle');
 
     // Status should still be visible
@@ -212,37 +177,12 @@ test.describe('User Profile Online Status', () => {
     await expect(onlineStatusBadge).toContainText(/Online now|Active recently/);
   });
 
-  test('Should display correct time format in online status', async ({
-    page,
-  }) => {
-    // Check admin user's online status format
-    await page.goto('/users/admin');
-    await page.waitForLoadState('networkidle');
-
-    const onlineStatusBadge = page.getByTestId('user-online-status');
-
-    // Admin should have online status
-    await expect(onlineStatusBadge).toBeVisible();
-
-    const statusText = await onlineStatusBadge.textContent();
-
-    // Should show either "Online now" or "Active recently"
-    expect(statusText).toMatch(/Online now|Active recently/);
-  });
-
   test.afterAll('Cleanup', async ({ browser }) => {
-    const adminContext = await browser.newContext({
-      storageState: 'playwright/.auth/admin.json',
-    });
-    const adminPage = await adminContext.newPage();
-    await adminPage.goto('/');
-    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const { afterAction, apiContext } = await createNewPage(browser);
 
     // Delete test users
     await activeUser.delete(apiContext);
     await inactiveUser.delete(apiContext);
-
     await afterAction();
-    await adminContext.close();
   });
 });

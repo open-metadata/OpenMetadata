@@ -23,7 +23,6 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import moment from 'moment';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -49,7 +48,10 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import { isMaskedEmail } from '../../../../../utils/Users.util';
+import {
+  getUserOnlineStatus,
+  isMaskedEmail,
+} from '../../../../../utils/Users.util';
 import Chip from '../../../../common/Chip/Chip.component';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -105,38 +107,8 @@ const UserProfileDetails = ({
   );
 
   const onlineStatus = useMemo(() => {
-    // Don't show online status for bots
-    if (userData.isBot) {
-      return null;
-    }
-
-    // Use lastActivityTime if available, otherwise fall back to lastLoginTime
-    const activityTime = userData.lastActivityTime || userData.lastLoginTime;
-
-    if (!activityTime) {
-      return null;
-    }
-
-    const lastActivityMoment = moment(activityTime);
-    const now = moment();
-    const diffMinutes = now.diff(lastActivityMoment, 'minutes');
-
-    if (diffMinutes <= 5) {
-      return {
-        status: 'success' as const,
-        text: t('label.online-now'),
-        tooltip: t('label.last-activity-n-minutes-ago', { count: diffMinutes }),
-      };
-    } else if (diffMinutes <= 60) {
-      return {
-        status: 'success' as const,
-        text: t('label.active-recently'),
-        tooltip: t('label.last-activity-n-minutes-ago', { count: diffMinutes }),
-      };
-    }
-
-    return null;
-  }, [userData.lastActivityTime, userData.lastLoginTime, userData.isBot, t]);
+    return getUserOnlineStatus(userData, true);
+  }, [userData]);
 
   const onDisplayNameChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value),

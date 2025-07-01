@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Badge, Button, Modal, Popover, Typography } from 'antd';
-import moment from 'moment';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
@@ -19,7 +18,7 @@ import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
 import { User } from '../../generated/entity/teams/user';
-import { isMaskedEmail } from '../../utils/Users.util';
+import { getUserOnlineStatus, isMaskedEmail } from '../../utils/Users.util';
 
 import Icon from '@ant-design/icons';
 import { AxiosError } from 'axios';
@@ -90,36 +89,8 @@ const ProfileSectionUserDetailsCard = ({
   );
 
   const onlineStatus = useMemo(() => {
-    // Don't show online status for bots
-    if (userData.isBot) {
-      return null;
-    }
-
-    // Use lastActivityTime if available, otherwise fall back to lastLoginTime
-    const activityTime = userData.lastActivityTime || userData.lastLoginTime;
-
-    if (!activityTime) {
-      return null;
-    }
-
-    const lastActivityMoment = moment(activityTime);
-    const now = moment();
-    const diffMinutes = now.diff(lastActivityMoment, 'minutes');
-
-    if (diffMinutes <= 5) {
-      return {
-        status: 'success' as const,
-        text: t('label.online-now'),
-      };
-    } else if (diffMinutes <= 60) {
-      return {
-        status: 'success' as const,
-        text: t('label.active-recently'),
-      };
-    }
-
-    return null;
-  }, [userData.lastActivityTime, userData.lastLoginTime, userData.isBot, t]);
+    return getUserOnlineStatus(userData, false);
+  }, [userData]);
 
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {

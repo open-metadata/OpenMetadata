@@ -31,6 +31,7 @@ import {
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
@@ -86,7 +87,13 @@ const OnlineUsersPage = () => {
         // Use the new online users endpoint
         const response = await getOnlineUsers({
           timeWindow: timeWindow,
-          fields: 'profile,teams,roles,lastLoginTime,lastActivityTime',
+          fields: [
+            TabSpecificField.PROFILE,
+            TabSpecificField.TEAMS,
+            TabSpecificField.ROLES,
+            TabSpecificField.LAST_LOGIN_TIME,
+            TabSpecificField.LAST_ACTIVITY_TIME,
+          ].join(','),
           limit: pageSize,
           ...params,
         });
@@ -270,6 +277,7 @@ const OnlineUsersPage = () => {
               <Space>
                 <Typography.Text>{t('label.time-window')}:</Typography.Text>
                 <Select
+                  data-testid="time-window-select"
                   options={TIME_WINDOWS}
                   size="small"
                   style={{ width: 180 }}
