@@ -285,23 +285,6 @@ export const getUpdatedStateFromFormState = <T,>(
   }
 };
 
-export const checkDOWValidity = async (dow: string) => {
-  // Check if dow is valid if it is not a number between 0-6
-  const isDayValid = toNumber(dow) < 0 || toNumber(dow) > 6;
-
-  // Check if dow is a range and any of the values are not between 0-6
-  const isDayRangeValid =
-    dow.includes('-') &&
-    dow.split('-').some((d) => toNumber(d) < 0 || toNumber(d) > 6);
-
-  // If dow is not valid or dow range is not valid, throw an error
-  if (isDayValid || isDayRangeValid) {
-    return Promise.reject(t('message.cron-dow-validation-failure'));
-  }
-
-  return Promise.resolve();
-};
-
 export const cronValidator = async (_: RuleObject, value: string) => {
   const trimmedValue = value.trim();
 
@@ -359,8 +342,6 @@ export const cronValidator = async (_: RuleObject, value: string) => {
     if (isFrequencyInMinutes || isFrequencyInSeconds) {
       return Promise.reject(t('message.cron-less-than-hour-message'));
     }
-    // Check if dow is valid (0-6 range)
-    await checkDOWValidity(dayOfWeek);
 
     return Promise.resolve();
   } catch (error) {
