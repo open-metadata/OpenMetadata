@@ -414,23 +414,43 @@ class AirflowSource(PipelineServiceSource):
         - `owners`: Applied at the tasks. In Airflow's source code, DAG ownership is then a
           list joined with the owners of all the tasks.
 
-        We will pick the owner from the tasks that appears in most tasks.
+        We will pick the owner from the tasks that appears in most tasks,
+        or fall back to the default_args owner if available.
         """
         try:
-            if self.source_config.includeOwners:
-                task_owners = [
-                    task.get("owner")
-                    for task in data.get("tasks", [])
-                    if task.get("owner") is not None
-                ]
-                if task_owners:
-                    most_common_owner, _ = Counter(task_owners).most_common(1)[0]
-                    return most_common_owner
+            if not self.source_config.includeOwners:
+                return None
+
+            tasks = data.get("tasks", [])
+            task_owners = []
+
+            # Handle default_args.owner
+            default_owner = data.get("default_args", {}).get("owner")
+
+            for task in tasks:
+                # Flatten serialized task for Airflow 2.10+
+                task_data = task.get("__var") if isinstance(task, dict) and task.keys() == {"__var", "__type"} else task
+
+                owner = task_data.get("owner")
+                if not owner and default_owner:
+                    task_data["owner"] = default_owner
+                    owner = default_owner
+
+                if owner:
+                    task_owners.append(owner)
+
+            if task_owners:
+                most_common_owner, _ = Counter(task_owners).most_common(1)[0]
+                return most_common_owner
+
+            return default_owner
+
         except Exception as exc:
             self.status.warning(
-                data.get("dag_id"), f"Could not extract owner information due to {exc}"
+                data.get("dag_id", "<unknown_dag>"),
+                f"Could not extract owner information due to {exc}"
             )
-        return None
+            return None
 
     def get_pipeline_name(self, pipeline_details: SerializedDAG) -> str:
         """
