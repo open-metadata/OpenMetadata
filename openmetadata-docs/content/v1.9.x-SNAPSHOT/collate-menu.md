@@ -278,6 +278,10 @@ site_menu:
     url: /connectors/database/sqlite/yaml
   - category: Connectors / Database / SQLite / Troubleshooting
     url: /connectors/database/sqlite/troubleshooting
+  - category: Connectors / Database / SSAS
+    url: /connectors/database/ssas
+  - category: Connectors / Database / SSAS / Run Externally
+    url: /connectors/database/ssas/yaml
   - category: Connectors / Database / Synapse
     url: /connectors/database/synapse
   - category: Connectors / Database / Synapse / Run Externally
@@ -750,6 +754,13 @@ site_menu:
 
   - category: How-to Guides
     url: /how-to-guides
+
+  - category: How-to Guides / MCP
+    url: /how-to-guides/mcp
+  - category: How-to Guides / MCP / Getting Started with Claude Desktop
+    url: /how-to-guides/mcp/claude
+  - category: How-to Guides / MCP / Getting Started with Goose Desktop
+    url: /how-to-guides/mcp/goose
 
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
