@@ -168,7 +168,7 @@ source:
       #   personalAccessTokenSecret: personal_access_token_secret
 ```
 ```yaml {% srNumber=4 %}
-      hostPort: http://localhost
+      hostPort: http://localhost  # REQUIRED - Tableau Server URL
 ```
 ```yaml {% srNumber=5 %}
       siteName: site_name
