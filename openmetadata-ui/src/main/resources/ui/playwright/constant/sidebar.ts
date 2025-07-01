@@ -31,7 +31,8 @@ export enum SidebarItem {
 }
 
 export const SIDEBAR_LIST_ITEMS = {
-  [SidebarItem.DOMAINS]: [SidebarItem.DOMAIN, SidebarItem.DATA_PRODUCT],
+  [SidebarItem.DOMAIN]: [SidebarItem.DOMAINS, SidebarItem.DOMAINS],
+  [SidebarItem.DATA_PRODUCT]: [SidebarItem.DOMAINS, SidebarItem.DATA_PRODUCT],
   [SidebarItem.DATA_QUALITY]: [
     SidebarItem.OBSERVABILITY,
     SidebarItem.DATA_QUALITY,
