@@ -11,22 +11,28 @@
  *  limitations under the License.
  */
 
+import { Select } from 'antd';
+import { JWT_TOKEN_EXPIRY_OPTIONS } from '../constants/User.constants';
 import { JWTTokenExpiry } from '../generated/entity/teams/user';
 import {
   DATE_TIME_WEEKDAY_WITH_ORDINAL,
   formatDateTimeLong,
 } from './date-time/DateTimeUtils';
 
-export const getJWTTokenExpiryOptions = () => {
-  return Object.keys(JWTTokenExpiry).map((expiry) => {
-    const expiryValue = JWTTokenExpiry[expiry as keyof typeof JWTTokenExpiry];
-    const isHourOption = expiryValue === JWTTokenExpiry.OneHour;
+const { Option } = Select;
 
-    return {
-      label: isHourOption ? '1 hr' : `${expiryValue} days`,
-      value: expiryValue,
-    };
-  });
+export const getJWTTokenExpiryOptions = (filterUnlimited = false) => {
+  let finalOptions = JWT_TOKEN_EXPIRY_OPTIONS;
+
+  if (filterUnlimited) {
+    finalOptions = finalOptions.filter(
+      (option) => option.value !== JWTTokenExpiry.Unlimited
+    );
+  }
+
+  return finalOptions.map((option) => (
+    <Option key={option.value}>{option.label}</Option>
+  ));
 };
 
 /**

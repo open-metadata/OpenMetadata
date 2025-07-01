@@ -12,9 +12,42 @@
  */
 
 import { TokenType } from '../generated/auth/personalAccessToken';
+import { JWTTokenExpiry } from '../generated/entity/teams/user';
+import { t } from '../utils/i18next/LocalUtil';
 
 export const USER_DEFAULT_AUTHENTICATION_MECHANISM = {
   tokenType: TokenType.PersonalAccessToken,
 };
+
+export const JWT_TOKEN_EXPIRY_OPTIONS = [
+  {
+    label: t('label.1-hr'),
+    value: JWTTokenExpiry.OneHour,
+  },
+  {
+    label: t('label.1-day'),
+    value: JWTTokenExpiry.The1,
+  },
+  {
+    label: t('label.number-day-plural', { number: 7 }),
+    value: JWTTokenExpiry.The7,
+  },
+  {
+    label: t('label.number-day-plural', { number: 30 }),
+    value: JWTTokenExpiry.The30,
+  },
+  {
+    label: t('label.number-day-plural', { number: 60 }),
+    value: JWTTokenExpiry.The60,
+  },
+  {
+    label: t('label.number-day-plural', { number: 90 }),
+    value: JWTTokenExpiry.The90,
+  },
+  {
+    label: t('label.unlimited'),
+    value: JWTTokenExpiry.Unlimited,
+  },
+];
 
 export const MASKED_EMAIL = '********@masked.com';
