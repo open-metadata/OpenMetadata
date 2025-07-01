@@ -303,32 +303,70 @@ export const checkDOWValidity = async (dow: string) => {
 };
 
 export const cronValidator = async (_: RuleObject, value: string) => {
-  // Check if cron is valid and get the description
-  const description = cronstrue.toString(value.trim());
+  const trimmedValue = value.trim();
 
-  // Check if cron has a frequency of less than an hour
-  const isFrequencyInMinutes = /Every \d* *minute/.test(description);
-  const isFrequencyInSeconds = /Every \d* *second/.test(description);
-
-  if (isFrequencyInMinutes || isFrequencyInSeconds) {
-    return Promise.reject(t('message.cron-less-than-hour-message'));
+  // to avoid multiple validation errors
+  if (!trimmedValue) {
+    return;
   }
 
-  // Check if dow is other than 0-6
-  // Adding this manual check since cronstrue accepts 7 as a valid value for dow
-  // which is not a valid value for argo
-  const cronParts = value.trim().split(' ');
+  const cronParts = trimmedValue.split(' ');
 
-  // dow is at index 4 if there is no year field or seconds field
-  let dow = cronParts[4];
+  // Check if the cron expression has exactly 5 fields (standard Unix cron)
+
   if (cronParts.length !== 5) {
-    dow = cronParts[5];
+    return Promise.reject(t('message.cron-invalid-field-count'));
   }
 
-  // Check if dow is valid
-  await checkDOWValidity(dow);
+  // Validate that each field follows standard Unix cron format
+  const [minute, hour, dayOfMonth, month, dayOfWeek] = cronParts;
 
-  return Promise.resolve();
+  // Standard Unix cron validation patterns
+  const minutePattern =
+    /^(\*|[0-5]?[0-9](-[0-5]?[0-9])?(,\d+)*|\*\/[0-5]?[0-9])$/;
+  const hourPattern =
+    /^(\*|1?[0-9]|2[0-3](-1?[0-9]|2[0-3])?(,\d+)*|\*\/1?[0-9]|2[0-3])$/;
+  const dayOfMonthPattern =
+    /^(\*|[1-9]|[12][0-9]|3[01](-[1-9]|[12][0-9]|3[01])?(,\d+)*|\*\/[1-9]|[12][0-9]|3[01])$/;
+  const monthPattern =
+    /^(\*|[1-9]|1[0-2](-[1-9]|1[0-2])?(,\d+)*|\*\/[1-9]|1[0-2])$/;
+  const dayOfWeekPattern = /^(\*|[0-6](-[0-6])?(,\d+)*|\*\/[0-6])$/;
+
+  if (!minutePattern.test(minute)) {
+    return Promise.reject(t('message.cron-invalid-minute-field'));
+  }
+  if (!hourPattern.test(hour)) {
+    return Promise.reject(t('message.cron-invalid-hour-field'));
+  }
+  if (!dayOfMonthPattern.test(dayOfMonth)) {
+    return Promise.reject(t('message.cron-invalid-day-of-month-field'));
+  }
+  if (!monthPattern.test(month)) {
+    return Promise.reject(t('message.cron-invalid-month-field'));
+  }
+  if (!dayOfWeekPattern.test(dayOfWeek)) {
+    return Promise.reject(t('message.cron-invalid-day-of-week-field'));
+  }
+
+  try {
+    // Check if cron is valid and get the description
+    const description = cronstrue.toString(trimmedValue);
+
+    // Check if cron has a frequency of less than an hour
+    const isFrequencyInMinutes = /Every \d* *minute/.test(description);
+    const isFrequencyInSeconds = /Every \d* *second/.test(description);
+
+    if (isFrequencyInMinutes || isFrequencyInSeconds) {
+      return Promise.reject(t('message.cron-less-than-hour-message'));
+    }
+    // Check if dow is valid (0-6 range)
+    await checkDOWValidity(dayOfWeek);
+
+    return Promise.resolve();
+  } catch (error) {
+    // If cronstrue fails to parse, it's an invalid cron expression
+    return Promise.reject(t('message.cron-invalid-expression'));
+  }
 };
 
 export const getRaiseOnErrorFormField = (
