@@ -755,6 +755,13 @@ site_menu:
   - category: How-to Guides
     url: /how-to-guides
 
+  - category: How-to Guides / MCP
+    url: /how-to-guides/mcp
+  - category: How-to Guides / MCP / Getting Started with Claude Desktop
+    url: /how-to-guides/mcp/claude
+  - category: How-to Guides / MCP / Getting Started with Goose Desktop
+    url: /how-to-guides/mcp/goose
+
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
   - category: How-to Guides / Admin Guide / How to Ingest Metadata
