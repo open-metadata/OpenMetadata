@@ -2805,4 +2805,11 @@ public class OpenSearchClient implements SearchClient {
           entityRelationshipRequest);
     }
   }
+
+  @Override
+  public SearchEntityRelationshipResult searchSchemaEntityRelationshipForPrefix(
+      String schemaFqn, String queryFilter, boolean deleted) throws IOException {
+    return entityRelationshipGraphBuilder.getSchemaEntityRelationship(
+        schemaFqn, queryFilter, deleted);
+  }
 }

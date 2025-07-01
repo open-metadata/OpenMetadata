@@ -1422,4 +1422,42 @@ public class SearchRepository {
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
     return searchClient.searchEntityRelationship(entityRelationshipRequest);
   }
+
+  public int getEntityCountByFQNPrefixFromES(String entityFQN, String indexName) {
+    try {
+      String queryFilter =
+          String.format(
+              "{\"query\":{\"bool\":{\"must\":[{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}]}}}",
+              ReindexingUtil.escapeDoubleQuotes(entityFQN));
+
+      SearchRequest searchRequest =
+          new SearchRequest()
+              .withQuery("")
+              .withSize(0)
+              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+              .withFrom(0)
+              .withQueryFilter(queryFilter)
+              .withFetchSource(false)
+              .withTrackTotalHits(true)
+              .withDeleted(false);
+
+      Response response = search(searchRequest, null);
+      String json = (String) response.getEntity();
+      JsonNode hitsNode = JsonUtils.extractValue(json, "hits");
+      if (hitsNode != null && hitsNode.has("total")) {
+        JsonNode totalNode = hitsNode.get("total");
+        if (totalNode.has("value")) {
+          return totalNode.get("value").asInt();
+        }
+      }
+    } catch (Exception ex) {
+      LOG.error("Error while counting entities from ES for validation", ex);
+    }
+    return 0;
+  }
+
+  public SearchEntityRelationshipResult searchEntityRelationshipsForSchema(
+      String fqn, String queryFilter, boolean includeDeleted) throws IOException {
+    return searchClient.searchSchemaEntityRelationshipForPrefix(fqn, queryFilter, includeDeleted);
+  }
 }

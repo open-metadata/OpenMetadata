@@ -47,6 +47,7 @@ public interface SearchClient {
   String GLOBAL_SEARCH_ALIAS = "all";
   String DATA_ASSET_SEARCH_ALIAS = "dataAsset";
   String GLOSSARY_TERM_SEARCH_INDEX = "glossary_term_search_index";
+  String TABLE_SEARCH_INDEX = "table_search_index";
   String TAG_SEARCH_INDEX = "tag_search_index";
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
@@ -454,6 +455,9 @@ public interface SearchClient {
   default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
     // Default implementation does nothing as this is only needed for Elasticsearch
   }
+
+  SearchEntityRelationshipResult searchSchemaEntityRelationshipForPrefix(
+      String schemaFqn, String queryFilter, boolean deleted) throws IOException;
 
   SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;

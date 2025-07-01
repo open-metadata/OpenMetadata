@@ -51,6 +51,7 @@ import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -836,13 +837,10 @@ public class DatabaseSchemaResource
                     mediaType = "application/json",
                     schema = @Schema(implementation = SearchResponse.class)))
       })
-  public Response searchSchemaEntityRelationship(
+  public SearchEntityRelationshipResult searchSchemaEntityRelationship(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
-      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
-      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
-          int downstreamDepth,
       @Parameter(
               description =
                   "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
@@ -855,6 +853,6 @@ public class DatabaseSchemaResource
       throws IOException {
 
     return Entity.getSearchRepository()
-        .searchSchemaEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+        .searchEntityRelationshipsForSchema(fqn, queryFilter, deleted);
   }
 }

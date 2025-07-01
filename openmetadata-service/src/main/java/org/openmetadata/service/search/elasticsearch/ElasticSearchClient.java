@@ -2705,16 +2705,18 @@ public class ElasticSearchClient implements SearchClient {
 
     for (var nodeFromDownstream : result.getNodes().entrySet()) {
       if (upstreamResult.getNodes().containsKey(nodeFromDownstream.getKey())) {
-        var existingNode = upstreamResult.getNodes().get(nodeFromDownstream.getKey());
-        var existingPaging = existingNode.getPaging();
+        org.openmetadata.schema.type.entityRelationship.NodeInformation existingNode =
+            upstreamResult.getNodes().get(nodeFromDownstream.getKey());
+        LayerPaging existingPaging = existingNode.getPaging();
         existingPaging.setEntityDownstreamCount(
             nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
       }
     }
 
-    // since paging from downstream is merged into upstream, we can just put the upstream result
+    // Here we are merging everything from downstream paging into upstream paging
     result.getNodes().putAll(upstreamResult.getNodes());
     result.getUpstreamEdges().putAll(upstreamResult.getUpstreamEdges());
+    result.getDownstreamEdges().putAll(upstreamResult.getDownstreamEdges());
     return result;
   }
 
@@ -2735,5 +2737,12 @@ public class ElasticSearchClient implements SearchClient {
       return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
           entityRelationshipRequest);
     }
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchSchemaEntityRelationshipForPrefix(
+      String schemaFqn, String queryFilter, boolean deleted) throws IOException {
+    return entityRelationshipGraphBuilder.getSchemaEntityRelationship(
+        schemaFqn, queryFilter, deleted);
   }
 }
