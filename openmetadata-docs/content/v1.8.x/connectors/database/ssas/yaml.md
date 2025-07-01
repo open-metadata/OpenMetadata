@@ -26,7 +26,7 @@ Configure and schedule SSAS metadata and profiler workflows from the OpenMetadat
 
 {% partial file="/v1.8/connectors/python-requirements.md" /%}
 
-To run the SSIS ingestion, you will need to install:
+To run the SSAS ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[ssas]"
@@ -128,7 +128,7 @@ source:
 
 
 
-{% partial file="/v1.8/connectors/yaml/lineage.md" variables={connector: "mssql"} /%}
+{% partial file="/v1.8/connectors/yaml/lineage.md" variables={connector: "ssas"} /%}
 
 
 

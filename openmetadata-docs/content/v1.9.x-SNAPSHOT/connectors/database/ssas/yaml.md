@@ -1,7 +1,6 @@
 ---
-title: SSAS Connector | OpenMetadata SQL Server Integration Guide
-slug: /connectors/database/ssas
-collate: true
+title: Run the SSAS Connector Externally
+slug: /connectors/database/ssas/yaml
 ---
 
 {% connectorDetailsHeader
@@ -14,58 +13,123 @@ unavailableFeatures=["Owners", "Tags"]
 
 In this section, we provide guides and references to use the SSAS connector.
 
-Configure and schedule SSAS metadata and profiler workflows from the Collate UI:
+Configure and schedule SSAS metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-    - [Connection Details](#connection-details)
-- [Troubleshooting](/connectors/pipeline/ssas/troubleshooting)
 
-
-{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/ssas/yaml"} /%}
+{% partial file="/v1.8/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-To extract metadata from SSAS, ensure the following requirements are met:
 
-- **HTTP Access**: The SSAS service must be accessible via HTTP. You need to grant HTTP access to the SSAS instance.
-- **Authentication**: HTTP access should be secured using Basic Authentication. Make sure you have a valid username and password with sufficient privileges to access the required models.
-- **Model Deployment**: The SSAS models you want to ingest must be deployed and available in the SSAS instance.
-- **Documentation**: For detailed steps on enabling HTTP access and configuring authentication for SSAS, please refer to the official SSAS documentation: [SSAS HTTP Access Guide](http://www.abc.com)
+### Python Requirements
 
-These steps are necessary to allow the connector to communicate with your SSAS instance and retrieve metadata successfully.
+{% partial file="/v1.8/connectors/python-requirements.md" /%}
+
+To run the SSAS ingestion, you will need to install:
+
+```bash
+pip3 install "openmetadata-ingestion[ssas]"
+```
 
 
 ## Metadata Ingestion
 
-{% partial 
-  file="/v1.9/connectors/metadata-ingestion-ui.md" 
-  variables={
-    connector: "MSSQL", 
-    selectServicePath: "/images/v1.9/connectors/ssas/select-service.png",
-    addNewServicePath: "/images/v1.9/connectors/ssas/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9/connectors/ssas/service-connection.png",
-} 
-/%}
+All connectors are defined as JSON Schemas.
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/ssasConnection.json)
+you can find the structure to create a connection to SSAS.
 
-{% stepsContainer %}
-{% extraContent parentTagName="stepsContainer" %}
+In order to create and run a Metadata Ingestion workflow, we will follow
+the steps to create a YAML configuration able to connect to the source,
+process the Entities if needed, and reach the OpenMetadata server.
 
-#### Connection Details
+The workflow is modeled around the following
+[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
-- **HTTP Connection**: The HTTP endpoint (URL) for accessing your SSAS instance. This should be the address where your SSAS service is exposed for HTTP requests.
-- **Username**: The username for authenticating to the SSAS HTTP endpoint. This user must have sufficient privileges to access the required models and metadata.
-- **Password**: The password for the above username. The password is stored securely and used for Basic Authentication.
+### 1. Define the YAML Config
 
-**Example Connection JSON:**
+This is a sample config for SSAS:
 
 
-{% /extraContent %}
+{% codePreview %}
 
-{% partial file="/v1.9/connectors/test-connection.md" /%}
+{% codeInfoContainer %}
 
-{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
+#### Source Configuration - Service Connection
 
-{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
+{% codeInfo srNumber=1 %}
 
-{% /stepsContainer %}
+**httpConnection**: HTTP Link for SSAS ACCESS. Provide the HTTP endpoint used to access your SSAS instance.
 
+{% /codeInfo %}
+
+{% codeInfo srNumber=2 %}
+
+**username**: Username to connect to SSAS. This user should have sufficient privileges to read all the metadata.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=3 %}
+
+**password**: Password to connect to SSAS.
+
+{% /codeInfo %}
+
+
+{% partial file="/v1.8/connectors/yaml/database/source-config-def.md" /%}
+
+{% partial file="/v1.8/connectors/yaml/ingestion-sink-def.md" /%}
+
+{% partial file="/v1.8/connectors/yaml/workflow-config-def.md" /%}
+
+{% /codeInfoContainer %}
+
+{% codeBlock fileName="filename.yaml" %}
+
+```yaml {% isCodeBlock=true %}
+source:
+  type: ssas
+  serviceName: local_ssas
+  serviceConnection:
+    config:
+      type: SSAS
+      httpConnection: http://xxx.xxx.x.xx/test/msmdpump.dll
+      username: username
+      password: password
+```
+
+{% partial file="/v1.8/connectors/yaml/database/source-config.md" /%}
+
+{% partial file="/v1.8/connectors/yaml/ingestion-sink.md" /%}
+
+{% partial file="/v1.8/connectors/yaml/workflow-config.md" /%}
+
+{% /codeBlock %}
+
+{% /codePreview %}
+
+{% partial file="/v1.8/connectors/yaml/ingestion-cli.md" /%}
+> **Note for SSAS Lineage:**  
+> - The SSAS connector does **not** support view or query-based lineage extraction.  
+> - Instead, it supports **cross-database lineage**.  
+> - To enable cross-database lineage, you need to set the following options in your YAML under `sourceConfig.config`:
+>   - `processCrossDatabaseLineage: true`
+>   - `crossDatabaseServiceNames: [<list_of_other_database_service_names>]`
+> 
+> Example:
+> 
+> ```yaml
+> sourceConfig:
+>   config:
+>     type: DatabaseLineage
+>     processCrossDatabaseLineage: true
+>     crossDatabaseServiceNames: [local_mssql]
+> ```
+
+
+
+{% partial file="/v1.8/connectors/yaml/lineage.md" variables={connector: "ssas"} /%}
+
+
+
+You can learn more about how to ingest dbt models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).

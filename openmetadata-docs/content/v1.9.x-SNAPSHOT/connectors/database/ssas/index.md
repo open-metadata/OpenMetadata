@@ -30,7 +30,7 @@ To extract metadata from SSAS, ensure the following requirements are met:
 - **HTTP Access**: The SSAS service must be accessible via HTTP. You need to grant HTTP access to the SSAS instance.
 - **Authentication**: HTTP access should be secured using Basic Authentication. Make sure you have a valid username and password with sufficient privileges to access the required models.
 - **Model Deployment**: The SSAS models you want to ingest must be deployed and available in the SSAS instance.
-- **Documentation**: For detailed steps on enabling HTTP access and configuring authentication for SSAS, please refer to the official SSAS documentation: [SSAS HTTP Access Guide](http://www.abc.com)
+- **Documentation**: For detailed steps on enabling HTTP access and configuring authentication for SSAS, please refer to the official SSAS documentation: [SSAS HTTP Access Guide](https://learn.microsoft.com/en-us/analysis-services/instances/configure-http-access-to-analysis-services-on-iis-8-0?view=sql-analysis-services-2025)
 
 These steps are necessary to allow the connector to communicate with your SSAS instance and retrieve metadata successfully.
 
@@ -40,7 +40,7 @@ These steps are necessary to allow the connector to communicate with your SSAS i
 {% partial 
   file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "MSSQL", 
+    connector: "SSAS", 
     selectServicePath: "/images/v1.9/connectors/ssas/select-service.png",
     addNewServicePath: "/images/v1.9/connectors/ssas/add-new-service.png",
     serviceConnectionPath: "/images/v1.9/connectors/ssas/service-connection.png",
