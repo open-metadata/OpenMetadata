@@ -12,17 +12,43 @@
  */
 
 import { Select } from 'antd';
-import { JWT_TOKEN_EXPIRY_OPTIONS } from '../constants/User.constants';
+import { TOKEN_EXPIRY_NUMERIC_VALUES_IN_DAYS } from '../constants/User.constants';
 import { JWTTokenExpiry } from '../generated/entity/teams/user';
 import {
   DATE_TIME_WEEKDAY_WITH_ORDINAL,
   formatDateTimeLong,
 } from './date-time/DateTimeUtils';
+import { t } from './i18next/LocalUtil';
 
 const { Option } = Select;
 
+const getJWTTokenExpiryLabel = (expiry: JWTTokenExpiry) => {
+  switch (expiry) {
+    case JWTTokenExpiry.OneHour:
+      return t('label.1-hr');
+    case JWTTokenExpiry.The1:
+      return t('label.1-day');
+    case JWTTokenExpiry.The7:
+      return t('label.number-day-plural', { number: 7 });
+    case JWTTokenExpiry.The30:
+      return t('label.number-day-plural', { number: 30 });
+    case JWTTokenExpiry.The60:
+      return t('label.number-day-plural', { number: 60 });
+    case JWTTokenExpiry.The90:
+      return t('label.number-day-plural', { number: 90 });
+    case JWTTokenExpiry.Unlimited:
+      return t('label.unlimited');
+    default:
+      return expiry;
+  }
+};
+
 export const getJWTTokenExpiryOptions = (filterUnlimited = false) => {
-  let finalOptions = JWT_TOKEN_EXPIRY_OPTIONS;
+  let finalOptions = Object.values(JWTTokenExpiry).map((expiry) => ({
+    label: getJWTTokenExpiryLabel(expiry),
+    value: expiry,
+    numericValue: TOKEN_EXPIRY_NUMERIC_VALUES_IN_DAYS[expiry],
+  }));
 
   if (filterUnlimited) {
     finalOptions = finalOptions.filter(
@@ -30,7 +56,11 @@ export const getJWTTokenExpiryOptions = (filterUnlimited = false) => {
     );
   }
 
-  return finalOptions.map((option) => (
+  const sortedOptions = finalOptions.sort(
+    (a, b) => a.numericValue - b.numericValue
+  );
+
+  return sortedOptions.map((option) => (
     <Option key={option.value}>{option.label}</Option>
   ));
 };

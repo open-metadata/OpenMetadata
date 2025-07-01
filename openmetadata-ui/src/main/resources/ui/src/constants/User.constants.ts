@@ -13,41 +13,24 @@
 
 import { TokenType } from '../generated/auth/personalAccessToken';
 import { JWTTokenExpiry } from '../generated/entity/teams/user';
-import { t } from '../utils/i18next/LocalUtil';
 
 export const USER_DEFAULT_AUTHENTICATION_MECHANISM = {
   tokenType: TokenType.PersonalAccessToken,
 };
 
-export const JWT_TOKEN_EXPIRY_OPTIONS = [
-  {
-    label: t('label.1-hr'),
-    value: JWTTokenExpiry.OneHour,
-  },
-  {
-    label: t('label.1-day'),
-    value: JWTTokenExpiry.The1,
-  },
-  {
-    label: t('label.number-day-plural', { number: 7 }),
-    value: JWTTokenExpiry.The7,
-  },
-  {
-    label: t('label.number-day-plural', { number: 30 }),
-    value: JWTTokenExpiry.The30,
-  },
-  {
-    label: t('label.number-day-plural', { number: 60 }),
-    value: JWTTokenExpiry.The60,
-  },
-  {
-    label: t('label.number-day-plural', { number: 90 }),
-    value: JWTTokenExpiry.The90,
-  },
-  {
-    label: t('label.unlimited'),
-    value: JWTTokenExpiry.Unlimited,
-  },
-];
+// Mapping of JWTTokenExpiry enum to numeric values in days
+// This is used to sort the options in the JWTTokenExpiry dropdown
+export const TOKEN_EXPIRY_NUMERIC_VALUES_IN_DAYS: Record<
+  JWTTokenExpiry,
+  number
+> = {
+  [JWTTokenExpiry.OneHour]: 0.0417,
+  [JWTTokenExpiry.The1]: 1,
+  [JWTTokenExpiry.The7]: 7,
+  [JWTTokenExpiry.The30]: 30,
+  [JWTTokenExpiry.The60]: 60,
+  [JWTTokenExpiry.The90]: 90,
+  [JWTTokenExpiry.Unlimited]: Infinity,
+};
 
 export const MASKED_EMAIL = '********@masked.com';

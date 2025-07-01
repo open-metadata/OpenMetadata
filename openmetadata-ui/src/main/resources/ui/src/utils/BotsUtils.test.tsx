@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
-import { JWTTokenExpiry } from '../generated/entity/teams/user';
+import { render, screen } from '@testing-library/react';
 import { getJWTTokenExpiryOptions } from './BotsUtils';
 
 jest.mock('antd', () => ({
@@ -24,55 +23,16 @@ jest.mock('antd', () => ({
   },
 }));
 
-jest.mock('../constants/User.constants', () => ({
-  JWT_TOKEN_EXPIRY_OPTIONS: [
-    {
-      label: '1 hour',
-      value: JWTTokenExpiry.OneHour,
-    },
-    {
-      label: '1 day',
-      value: JWTTokenExpiry.The1,
-    },
-    {
-      label: '7 days',
-      value: JWTTokenExpiry.The7,
-    },
-    {
-      label: '30 days',
-      value: JWTTokenExpiry.The30,
-    },
-    {
-      label: '60 days',
-      value: JWTTokenExpiry.The60,
-    },
-    {
-      label: '90 days',
-      value: JWTTokenExpiry.The90,
-    },
-    {
-      label: 'Unlimited',
-      value: JWTTokenExpiry.Unlimited,
-    },
-  ],
-}));
-
 describe('getJWTTokenExpiryOptions', () => {
   it('should return all JWT token expiry options when filterUnlimited is false (default)', () => {
     const result = getJWTTokenExpiryOptions();
-    const { container } = render(<>{result}</>);
-
-    // Should contain all 7 options including Unlimited
-    expect(container.querySelectorAll('.ant-select-option')).toHaveLength(7);
+    render(<>{result}</>);
 
     // Check for specific options (using the actual translation keys from global mock)
-    expect(container.textContent).toContain('1 hour');
-    expect(container.textContent).toContain('1 day');
-    expect(container.textContent).toContain('7 days');
-    expect(container.textContent).toContain('30 days');
-    expect(container.textContent).toContain('60 days');
-    expect(container.textContent).toContain('90 days');
-    expect(container.textContent).toContain('Unlimited');
+    expect(screen.getByText('label.1-hr')).toBeInTheDocument();
+    expect(screen.getByText('label.1-day')).toBeInTheDocument();
+    expect(screen.getAllByText('label.number-day-plural')).toHaveLength(4);
+    expect(screen.getByText('label.unlimited')).toBeInTheDocument();
   });
 
   it('should return all JWT token expiry options when filterUnlimited is explicitly false', () => {
@@ -81,7 +41,7 @@ describe('getJWTTokenExpiryOptions', () => {
 
     // Should contain all 7 options including Unlimited
     expect(container.querySelectorAll('.ant-select-option')).toHaveLength(7);
-    expect(container.textContent).toContain('Unlimited');
+    expect(container.textContent).toContain('label.unlimited');
   });
 
   it('should filter out Unlimited option when filterUnlimited is true', () => {
@@ -92,15 +52,15 @@ describe('getJWTTokenExpiryOptions', () => {
     expect(container.querySelectorAll('.ant-select-option')).toHaveLength(6);
 
     // Check for specific options (using the actual translation keys from global mock)
-    expect(container.textContent).toContain('1 hour');
-    expect(container.textContent).toContain('1 day');
-    expect(container.textContent).toContain('7 days');
-    expect(container.textContent).toContain('30 days');
-    expect(container.textContent).toContain('60 days');
-    expect(container.textContent).toContain('90 days');
+    expect(container.textContent).toContain('label.1-hr');
+    expect(container.textContent).toContain('label.1-day');
+    expect(container.textContent).toContain('label.number-day-plural');
+    expect(container.textContent).toContain('label.number-day-plural');
+    expect(container.textContent).toContain('label.number-day-plural');
+    expect(container.textContent).toContain('label.number-day-plural');
 
     // Should NOT contain Unlimited
-    expect(container.textContent).not.toContain('Unlimited');
+    expect(container.textContent).not.toContain('label.unlimited');
   });
 
   it('should return Option components with correct key and content', () => {
@@ -116,13 +76,13 @@ describe('getJWTTokenExpiryOptions', () => {
     });
 
     // Check first option specifically (using actual translation keys)
-    expect(options[0].textContent).toBe('1 hour');
-    expect(options[1].textContent).toBe('1 day');
-    expect(options[2].textContent).toBe('7 days');
-    expect(options[3].textContent).toBe('30 days');
-    expect(options[4].textContent).toBe('60 days');
-    expect(options[5].textContent).toBe('90 days');
-    expect(options[6].textContent).toBe('Unlimited');
+    expect(options[0].textContent).toBe('label.1-hr');
+    expect(options[1].textContent).toBe('label.1-day');
+    expect(options[2].textContent).toBe('label.number-day-plural');
+    expect(options[3].textContent).toBe('label.number-day-plural');
+    expect(options[4].textContent).toBe('label.number-day-plural');
+    expect(options[5].textContent).toBe('label.number-day-plural');
+    expect(options[6].textContent).toBe('label.unlimited');
   });
 
   it('should maintain correct order of options', () => {
@@ -134,13 +94,13 @@ describe('getJWTTokenExpiryOptions', () => {
 
     // Check the order matches the expected order (using actual translation keys)
     expect(optionTexts).toEqual([
-      '1 hour',
-      '1 day',
-      '7 days',
-      '30 days',
-      '60 days',
-      '90 days',
-      'Unlimited',
+      'label.1-hr',
+      'label.1-day',
+      'label.number-day-plural',
+      'label.number-day-plural',
+      'label.number-day-plural',
+      'label.number-day-plural',
+      'label.unlimited',
     ]);
   });
 });
