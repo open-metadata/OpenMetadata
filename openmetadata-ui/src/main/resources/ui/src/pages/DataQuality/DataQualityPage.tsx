@@ -143,8 +143,8 @@ const DataQualityPage = () => {
             entity: t('label.test-case'),
           }),
           open: isTestCaseModalOpen,
-          onClose: handleCloseTestCaseModal,
         }}
+        onCancel={handleCloseTestCaseModal}
       />
     </DataQualityProvider>
   );
