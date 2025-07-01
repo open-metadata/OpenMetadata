@@ -1,6 +1,7 @@
 ---
 title: Run the SSAS Connector Externally
 slug: /connectors/database/ssas/yaml
+collate: true
 ---
 
 {% connectorDetailsHeader
