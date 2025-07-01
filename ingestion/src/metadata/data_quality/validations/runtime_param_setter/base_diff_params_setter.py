@@ -101,12 +101,11 @@ class BaseTableParameter:
 
     @staticmethod
     def _get_service_connection_config(
-        db_service: DatabaseService,
+        service_connection_config,
     ) -> Optional[Union[str, dict]]:
         """
         Get the connection dictionary for the service.
         """
-        service_connection_config = db_service.connection.config
         service_spec_patch = ServiceSpecPatch(
             ServiceType.Database, service_connection_config.type.value.lower()
         )
@@ -145,7 +144,9 @@ class BaseTableParameter:
             str: The url for the data diff service
         """
         source_url = (
-            BaseTableParameter._get_service_connection_config(db_service)
+            BaseTableParameter._get_service_connection_config(
+                db_service.connection.config
+            )
             if not override_url
             else override_url
         )
