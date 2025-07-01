@@ -11,15 +11,6 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Input, Row, Skeleton } from 'antd';
-import { debounce, isEmpty, isUndefined } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
 import {
   Builder,
   Config,
@@ -27,7 +18,10 @@ import {
   JsonTree,
   Query,
   Utils as QbUtils,
-} from 'react-awesome-query-builder';
+} from '@react-awesome-query-builder/antd';
+import { Col, Form, Input, Row, Skeleton } from 'antd';
+import { debounce, isEmpty, isUndefined } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useFqn } from '../../../../../hooks/useFqn';

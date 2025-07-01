@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchQuery } from '../rest/searchAPI';
 import {
@@ -39,7 +38,7 @@ jest.mock('./RouterUtils', () => ({
   getExplorePath: jest.fn().mockReturnValue('/explore'),
 }));
 
-jest.mock('react-awesome-query-builder', () => ({
+jest.mock('@react-awesome-query-builder/antd', () => ({
   Utils: {
     checkTree: jest.fn().mockReturnValue({}),
     loadTree: jest.fn().mockReturnValue({}),

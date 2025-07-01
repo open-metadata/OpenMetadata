@@ -12,11 +12,10 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
+import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import { Alert } from 'antd';
 import { isEmpty } from 'lodash';
 import Qs from 'qs';
-import React from 'react';
-import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { useTranslation } from 'react-i18next';
 import '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsModal/curated-assets-modal.less';
 import { CURATED_ASSETS_LIST } from '../constants/AdvancedSearch.constants';
