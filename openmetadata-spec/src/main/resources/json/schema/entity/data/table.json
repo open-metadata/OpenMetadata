@@ -170,7 +170,10 @@
         "BIT",
         "MONEY",
         "MEASURE HIDDEN",
-        "MEASURE VISIBLE"
+        "MEASURE VISIBLE",
+        "MEASURE",
+        "KPI",
+        "HEIRARCHY"
       ]
     },
     "constraint": {
@@ -667,7 +670,8 @@
       "enum": [
         "UPDATE",
         "INSERT",
-        "DELETE"
+        "DELETE",
+        "WRITE"
       ]
     },
     "systemProfile": {
