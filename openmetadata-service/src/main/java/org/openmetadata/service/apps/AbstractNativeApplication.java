@@ -219,7 +219,10 @@ public class AbstractNativeApplication implements NativeApplication {
                         new ApplicationPipeline()
                             .withSourcePythonClass(this.getApp().getSourcePythonClass())
                             .withAppConfig(config)
-                            .withAppPrivateConfig(this.getApp().getPrivateConfiguration())))
+                            .withAppPrivateConfig(
+                                this.getApp().getAppType() == AppType.External
+                                    ? new java.util.HashMap<>()
+                                    : this.getApp().getPrivateConfiguration())))
             .withAirflowConfig(
                 new AirflowConfig()
                     .withScheduleInterval(this.getApp().getAppSchedule().getCronExpression()))
