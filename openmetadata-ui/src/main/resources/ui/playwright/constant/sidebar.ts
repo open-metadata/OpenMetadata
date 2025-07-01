@@ -17,7 +17,9 @@ export enum SidebarItem {
   INCIDENT_MANAGER = 'incident-manager',
   OBSERVABILITY_ALERT = 'observability-alert',
   DATA_INSIGHT = 'data-insight',
+  DOMAINS = 'domains',
   DOMAIN = 'domain',
+  DATA_PRODUCT = 'data-product',
   GOVERNANCE = 'governance',
   GLOSSARY = 'glossary',
   TAGS = 'tags',
@@ -29,6 +31,7 @@ export enum SidebarItem {
 }
 
 export const SIDEBAR_LIST_ITEMS = {
+  [SidebarItem.DOMAINS]: [SidebarItem.DOMAIN, SidebarItem.DATA_PRODUCT],
   [SidebarItem.DATA_QUALITY]: [
     SidebarItem.OBSERVABILITY,
     SidebarItem.DATA_QUALITY,
