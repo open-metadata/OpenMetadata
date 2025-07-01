@@ -10,7 +10,7 @@ import java.util.List;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class LogicOps {
 

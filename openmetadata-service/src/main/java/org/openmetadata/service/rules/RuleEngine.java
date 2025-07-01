@@ -14,10 +14,10 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ContractStatus;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class RuleEngine {
@@ -48,14 +48,9 @@ public class RuleEngine {
     ArrayList<SemanticsRule> rulesToEvaluate = new ArrayList<>();
     if (!incomingOnly) {
       rulesToEvaluate.addAll(getEnabledEntitySemantics());
-      List<DataContract> entityContracts = loadEntityDataContractsSafely(facts);
-      if (!nullOrEmpty(entityContracts)) {
-        entityContracts.forEach(
-            contract -> {
-              if (contract.getStatus() == ContractStatus.Active) {
-                rulesToEvaluate.addAll(contract.getSemantics());
-              }
-            });
+      DataContract entityContract = getEntityDataContractSafely(facts);
+      if (entityContract != null && entityContract.getStatus() == ContractStatus.Active) {
+        rulesToEvaluate.addAll(entityContract.getSemantics());
       }
     }
     if (!nullOrEmpty(rules)) {
@@ -98,12 +93,12 @@ public class RuleEngine {
     }
   }
 
-  private List<DataContract> loadEntityDataContractsSafely(EntityInterface entity) {
+  private DataContract getEntityDataContractSafely(EntityInterface entity) {
     try {
-      return dataContractRepository.loadEntityDataContract(entity);
+      return dataContractRepository.loadEntityDataContract(entity.getEntityReference());
     } catch (Exception e) {
       LOG.debug("Failed to load data contracts for entity {}: {}", entity.getId(), e.getMessage());
-      return new ArrayList<>();
+      return null;
     }
   }
 }

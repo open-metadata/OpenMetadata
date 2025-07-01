@@ -27,12 +27,12 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.data.DataContractResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.util.JsonUtils;
 
 public class RuleEngineTests extends OpenMetadataApplicationTest {
 

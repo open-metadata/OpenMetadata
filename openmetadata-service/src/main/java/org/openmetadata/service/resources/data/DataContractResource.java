@@ -49,7 +49,9 @@ import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -57,6 +59,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/dataContracts")
@@ -232,6 +235,43 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @DefaultValue("non-deleted")
           Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+  }
+
+  @GET
+  @Path("/entity/")
+  @Operation(
+      operationId = "getDataContractByEntityId",
+      summary = "Get a data contract by its related Entity ID",
+      description = "Get a data contract by its related Entity ID.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContract.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Data contract for instance {id} is not found")
+      })
+  public DataContract getByEntityId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ID of the related Entity", schema = @Schema(type = "string"))
+          @QueryParam("entityId")
+          UUID entityId,
+      @Parameter(
+              description = "Entity Type to get the data contract for",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("entityType")
+          String entityType) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContextById(entityId));
+    return repository.loadEntityDataContract(
+        new EntityReference().withId(entityId).withType(entityType));
   }
 
   @GET

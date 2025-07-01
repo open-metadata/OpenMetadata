@@ -265,6 +265,14 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
   }
 
+  private DataContract getDataContractByEntityId(UUID entityId, String entityType)
+      throws HttpResponseException {
+    WebTarget target =
+        getCollection().queryParam("entityId", entityId).queryParam("entityType", entityType);
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+  }
+
   private DataContract updateDataContract(CreateDataContract create) throws IOException {
     WebTarget target = getCollection();
     Response response =
@@ -357,6 +365,21 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     DataContract created = createDataContract(create);
 
     DataContract retrieved = getDataContract(created.getId(), null);
+
+    assertEquals(created.getId(), retrieved.getId());
+    assertEquals(created.getName(), retrieved.getName());
+    assertEquals(created.getFullyQualifiedName(), retrieved.getFullyQualifiedName());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testGetDataContractByEntityId(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    DataContract retrieved =
+        getDataContractByEntityId(created.getId(), org.openmetadata.service.Entity.TABLE);
 
     assertEquals(created.getId(), retrieved.getId());
     assertEquals(created.getName(), retrieved.getName());

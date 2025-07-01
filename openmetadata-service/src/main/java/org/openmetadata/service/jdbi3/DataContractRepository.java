@@ -18,14 +18,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ContractStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.resources.data.DataContractResource;
@@ -154,12 +153,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return fieldNames;
   }
 
-  public List<DataContract> loadEntityDataContract(EntityInterface entity) {
-    ListFilter filter =
-        new ListFilter(Include.NON_DELETED)
-            .addQueryParam("status", ContractStatus.Active.value())
-            .addQueryParam("entity", entity.getId().toString());
-    return listAll(EntityUtil.Fields.EMPTY_FIELDS, filter);
+  public DataContract loadEntityDataContract(EntityReference entity) {
+    return JsonUtils.readValue(
+        getDaoCollection()
+            .dataContractDAO()
+            .getContractByEntityId(entity.getId().toString(), entity.getType()),
+        DataContract.class);
   }
 
   @Override
