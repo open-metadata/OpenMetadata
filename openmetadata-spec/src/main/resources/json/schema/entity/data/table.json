@@ -670,7 +670,8 @@
       "enum": [
         "UPDATE",
         "INSERT",
-        "DELETE"
+        "DELETE",
+        "WRITE"
       ]
     },
     "systemProfile": {
