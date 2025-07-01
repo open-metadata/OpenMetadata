@@ -30,7 +30,7 @@ export interface SuggestionsContextType {
   loadingReject: boolean;
   allSuggestionsUsers: EntityReference[];
   onUpdateActiveUser: (user?: EntityReference) => void;
-  fetchSuggestions: (limit?: number) => void;
+  fetchSuggestions: (limit?: number, skipMerge?: boolean) => void;
   fetchSuggestionsByUserId: (userId: string, limit?: number) => void;
   acceptRejectSuggestion: (
     suggestion: Suggestion,

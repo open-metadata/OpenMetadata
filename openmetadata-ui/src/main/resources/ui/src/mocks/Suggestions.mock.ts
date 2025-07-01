@@ -40,6 +40,23 @@ export const MOCK_SUGGESTIONS = [
   },
 ];
 
+export const MOCK_SUGGESTIONS_WITH_SAME_USER = [
+  {
+    id: '1',
+    description: 'Test suggestion1',
+    type: SuggestionType.SuggestDescription,
+    createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
+    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+  },
+  {
+    id: '2',
+    description: 'Test suggestion2',
+    type: SuggestionType.SuggestTagLabel,
+    createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
+    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+  },
+];
+
 export const mockSuggestion1: Suggestion = {
   id: '1',
   type: SuggestionType.SuggestDescription,

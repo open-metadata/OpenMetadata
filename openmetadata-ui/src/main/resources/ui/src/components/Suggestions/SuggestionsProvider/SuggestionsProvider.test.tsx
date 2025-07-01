@@ -12,7 +12,10 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SuggestionType } from '../../../generated/entity/feed/suggestion';
-import { MOCK_SUGGESTIONS } from '../../../mocks/Suggestions.mock';
+import {
+  MOCK_SUGGESTIONS,
+  MOCK_SUGGESTIONS_WITH_SAME_USER,
+} from '../../../mocks/Suggestions.mock';
 import { mockEntityPermissions } from '../../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import {
   approveRejectAllSuggestions,
@@ -33,6 +36,10 @@ const mockPagingResponse = {
 
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'mockFQN' }),
+}));
+
+jest.mock('../../../hooks/usePubSub', () => ({
+  usePub: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../rest/suggestionsAPI', () => ({
@@ -92,7 +99,7 @@ function TestComponent() {
       </button>
       <button
         onClick={() =>
-          acceptRejectSuggestion(MOCK_SUGGESTIONS[0], SuggestionAction.Reject)
+          acceptRejectSuggestion(MOCK_SUGGESTIONS[1], SuggestionAction.Reject)
         }>
         Reject One
       </button>
@@ -100,6 +107,9 @@ function TestComponent() {
         Fetch By User ID
       </button>
       <button onClick={() => fetchSuggestions(20)}>Fetch Suggestions</button>
+      <button onClick={() => fetchSuggestions(20, true)}>
+        Fetch Suggestions Skip Merge
+      </button>
       <div data-testid="suggestions-count">{contextSuggestions.length}</div>
       <div data-testid="loading-state">
         {loading ? 'loading' : 'not-loading'}
@@ -141,10 +151,10 @@ describe('SuggestionsProvider', () => {
       expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
     });
 
-    // Verify remaining state updates
+    // Verify remaining state updates - derived from useMemo
     expect(screen.getByTestId('users-count')).toHaveTextContent('2');
     expect(screen.getByTestId('suggestion-limit')).toHaveTextContent('25');
-    expect(screen.getByTestId('pending-count')).toHaveTextContent('15'); // 25 - 10
+    expect(screen.getByTestId('pending-count')).toHaveTextContent('22'); // 25 - 3
     expect(screen.getByTestId('grouped-users-count')).toHaveTextContent('2');
   });
 
@@ -163,6 +173,38 @@ describe('SuggestionsProvider', () => {
         entityFQN: 'mockFQN',
         limit: 20,
       });
+    });
+  });
+
+  it('handles fetchSuggestions with skipMerge parameter', async () => {
+    const newMockResponse = {
+      data: [MOCK_SUGGESTIONS[0]],
+      paging: { total: 15, after: null, before: null },
+    };
+
+    (getSuggestionsList as jest.Mock)
+      .mockResolvedValueOnce(mockPagingResponse) // Initial load
+      .mockResolvedValueOnce(newMockResponse); // Skip merge call
+
+    render(
+      <SuggestionsProvider>
+        <TestComponent />
+      </SuggestionsProvider>
+    );
+
+    // Wait for initial load
+    await waitFor(() => {
+      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+    });
+
+    const fetchSkipMergeBtn = screen.getByText('Fetch Suggestions Skip Merge');
+    fireEvent.click(fetchSkipMergeBtn);
+
+    await waitFor(() => {
+      // Should replace all suggestions, not merge
+      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('1');
+      expect(screen.getByTestId('suggestion-limit')).toHaveTextContent('15');
+      expect(screen.getByTestId('pending-count')).toHaveTextContent('14'); // 15 - 1
     });
   });
 
@@ -185,7 +227,7 @@ describe('SuggestionsProvider', () => {
 
     // Should update pending count correctly for user-specific fetch
     await waitFor(() => {
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('8'); // 10 - 2
+      expect(screen.getByTestId('pending-count')).toHaveTextContent('8'); // 10 - 2 (still 2 after merge)
     });
   });
 
@@ -226,6 +268,7 @@ describe('SuggestionsProvider', () => {
       // Should have original 3 + 1 new unique = 4 total
       expect(screen.getByTestId('suggestions-count')).toHaveTextContent('4');
       expect(screen.getByTestId('suggestion-limit')).toHaveTextContent('30');
+      expect(screen.getByTestId('pending-count')).toHaveTextContent('26'); // 30 - 4
     });
   });
 
@@ -300,16 +343,19 @@ describe('SuggestionsProvider', () => {
         MOCK_SUGGESTIONS[0],
         SuggestionAction.Accept
       );
-      expect(getSuggestionsList).toHaveBeenCalledTimes(1);
     });
 
-    // Should optimistically update suggestions count
+    // Should optimistically update suggestions count without refetch
     await waitFor(() => {
       expect(screen.getByTestId('suggestions-count')).toHaveTextContent('2');
+      expect(screen.getByTestId('pending-count')).toHaveTextContent('21'); // pending decreases by 1
     });
+
+    // Should only call initial fetch, no refetch after successful accept
+    expect(getSuggestionsList).toHaveBeenCalledTimes(1);
   });
 
-  it('handles acceptRejectSuggestion error and still refetch data', async () => {
+  it('handles acceptRejectSuggestion error gracefully', async () => {
     const error = new Error('Update failed');
     (updateSuggestionStatus as jest.Mock).mockRejectedValue(error);
 
@@ -319,56 +365,137 @@ describe('SuggestionsProvider', () => {
       </SuggestionsProvider>
     );
 
+    // Wait for initial load
+    await waitFor(() => {
+      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+    });
+
     const acceptBtn = screen.getByText('Accept One');
     fireEvent.click(acceptBtn);
 
     await waitFor(() => {
       expect(toastUtils.showErrorToast).toHaveBeenCalledWith(error);
-      // Should trigger refetch only on error for consistency
-      expect(getSuggestionsList).toHaveBeenCalledTimes(2);
     });
+
+    // Should still show original count on error (no optimistic update applied)
+    expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+    // Should only call initial fetch, no refetch on error
+    expect(getSuggestionsList).toHaveBeenCalledTimes(1);
   });
 
-  it('calls approveRejectAllSuggestions when button is clicked', () => {
+  it('handles acceptRejectAllSuggestions with active user', async () => {
     render(
       <SuggestionsProvider>
         <TestComponent />
       </SuggestionsProvider>
     );
 
-    const button = screen.getByText('Active User');
-    fireEvent.click(button);
+    // Wait for initial load
+    await waitFor(() => {
+      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+    });
+
+    // Set active user
+    const activeUserBtn = screen.getByText('Active User');
+    fireEvent.click(activeUserBtn);
 
     const acceptAllBtn = screen.getByText('Accept All');
     fireEvent.click(acceptAllBtn);
 
-    expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
-      '1',
-      'mockFQN',
-      SuggestionType.SuggestDescription,
-      SuggestionAction.Accept
-    );
+    await waitFor(() => {
+      expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
+        '1',
+        'mockFQN',
+        SuggestionType.SuggestDescription,
+        SuggestionAction.Accept
+      );
+      expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
+        '1',
+        'mockFQN',
+        SuggestionType.SuggestTagLabel,
+        SuggestionAction.Accept
+      );
+    });
+
+    // Should optimistically remove user's suggestions
+    await waitFor(() => {
+      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('1'); // Removed 2 user suggestions
+    });
   });
 
-  it('calls approveRejectAllSuggestions when reject button is clicked', () => {
+  it('handles acceptRejectAllSuggestions and refetches when suggestions become empty', async () => {
+    // Mock response with only user's suggestions
+    (getSuggestionsList as jest.Mock)
+      .mockResolvedValueOnce({
+        data: MOCK_SUGGESTIONS_WITH_SAME_USER,
+        paging: { total: 2, after: null, before: null },
+      })
+      .mockResolvedValueOnce({
+        data: [MOCK_SUGGESTIONS[2]], // Fresh suggestions
+        paging: { total: 5, after: null, before: null },
+      });
+
     render(
       <SuggestionsProvider>
         <TestComponent />
       </SuggestionsProvider>
     );
 
-    const button = screen.getByText('Active User');
-    fireEvent.click(button);
+    // Wait for initial load
+    await waitFor(() => {
+      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('2');
+    });
 
-    const rejectAll = screen.getByText('Reject All');
-    fireEvent.click(rejectAll);
+    // Set active user and accept all
+    const activeUserBtn = screen.getByText('Active User');
+    fireEvent.click(activeUserBtn);
 
-    expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
-      '1',
-      'mockFQN',
-      SuggestionType.SuggestDescription,
-      SuggestionAction.Reject
+    const acceptAllBtn = screen.getByText('Accept All');
+    fireEvent.click(acceptAllBtn);
+
+    await waitFor(() => {
+      // Should call fetchSuggestions with skipMerge=true when suggestions become empty
+      expect(getSuggestionsList).toHaveBeenCalledTimes(2);
+      expect(getSuggestionsList).toHaveBeenLastCalledWith({
+        entityFQN: 'mockFQN',
+        limit: 2,
+      });
+    });
+
+    // Should show fresh suggestions
+    await waitFor(() => {
+      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('1');
+    });
+  });
+
+  it('handles rejectRejectAllSuggestions correctly', async () => {
+    render(
+      <SuggestionsProvider>
+        <TestComponent />
+      </SuggestionsProvider>
     );
+
+    // Set active user
+    const activeUserBtn = screen.getByText('Active User');
+    fireEvent.click(activeUserBtn);
+
+    const rejectAllBtn = screen.getByText('Reject All');
+    fireEvent.click(rejectAllBtn);
+
+    await waitFor(() => {
+      expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
+        '1',
+        'mockFQN',
+        SuggestionType.SuggestDescription,
+        SuggestionAction.Reject
+      );
+      expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
+        '1',
+        'mockFQN',
+        SuggestionType.SuggestTagLabel,
+        SuggestionAction.Reject
+      );
+    });
   });
 
   it('handles edge case of empty suggestions response', async () => {
@@ -387,11 +514,11 @@ describe('SuggestionsProvider', () => {
       expect(screen.getByTestId('suggestions-count')).toHaveTextContent('0');
       expect(screen.getByTestId('users-count')).toHaveTextContent('0');
       expect(screen.getByTestId('suggestion-limit')).toHaveTextContent('0');
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('-10'); // 0 - 10
+      expect(screen.getByTestId('pending-count')).toHaveTextContent('0'); // 0 - 0
     });
   });
 
-  it('updates pending count correctly for fetchSuggestionsByUserId', async () => {
+  it('updates pending count correctly for fetchSuggestionsByUserId with duplicates', async () => {
     (getSuggestionsByUserId as jest.Mock).mockResolvedValue({
       data: [MOCK_SUGGESTIONS[0]], // Only 1 suggestion (duplicate)
     });
@@ -402,17 +529,17 @@ describe('SuggestionsProvider', () => {
       </SuggestionsProvider>
     );
 
-    // Wait for initial load (3 suggestions, limit 25, pending = 15)
+    // Wait for initial load (3 suggestions, limit 25, pending = 22)
     await waitFor(() => {
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('15');
+      expect(screen.getByTestId('pending-count')).toHaveTextContent('22');
     });
 
     const fetchByUserIdBtn = screen.getByText('Fetch By User ID');
     fireEvent.click(fetchByUserIdBtn);
 
     await waitFor(() => {
-      // After user fetch: still 3 suggestions (duplicate filtered), limit = 25, pending = 22
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('22');
+      // After user fetch: still 3 suggestions (duplicate filtered), pending updated based on limit - merged.length
+      expect(screen.getByTestId('pending-count')).toHaveTextContent('22'); // 25 - 3
     });
   });
 });

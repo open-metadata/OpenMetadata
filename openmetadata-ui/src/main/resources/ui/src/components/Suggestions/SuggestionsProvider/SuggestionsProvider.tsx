@@ -45,7 +45,6 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   SuggestionAction,
-  SuggestionDataByTypes,
   SuggestionsContextType,
 } from './SuggestionsProvider.interface';
 
@@ -53,47 +52,30 @@ export const SuggestionsContext = createContext({} as SuggestionsContextType);
 
 const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   const { t } = useTranslation();
+  const publish = usePub();
   const { fqn: entityFqn } = useFqn();
+  const { permissions } = usePermissionProvider();
   const [activeUser, setActiveUser] = useState<EntityReference>();
   const [loadingAccept, setLoadingAccept] = useState(false);
   const [loadingReject, setLoadingReject] = useState(false);
-
-  const [allSuggestionsUsers, setAllSuggestionsUsers] = useState<
-    EntityReference[]
-  >([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [suggestionsByUser, setSuggestionsByUser] = useState<
-    Map<string, SuggestionDataByTypes>
-  >(new Map());
-  const publish = usePub();
-
   const [loading, setLoading] = useState(false);
   const [suggestionLimit, setSuggestionLimit] = useState<number>(PAGE_SIZE);
   const [suggestionPendingCount, setSuggestionPendingCount] =
     useState<number>(0);
-  const { permissions } = usePermissionProvider();
 
-  // Optimized function to process and update all suggestion-related state in batch
-  const processSuggestions = useCallback(
-    (newSuggestions: Suggestion[]) => {
-      const mergedSuggestions = getUniqueSuggestions(
-        suggestions,
-        newSuggestions
-      );
-      const { allUsersList, groupedSuggestions } =
-        getSuggestionByType(mergedSuggestions);
-      const uniqueUsers = uniqWith(allUsersList, isEqual);
-      setSuggestions(mergedSuggestions);
-      setAllSuggestionsUsers(uniqueUsers);
-      setSuggestionsByUser(groupedSuggestions);
+  const { allSuggestionsUsers, suggestionsByUser } = useMemo(() => {
+    const { allUsersList, groupedSuggestions } =
+      getSuggestionByType(suggestions);
 
-      return mergedSuggestions;
-    },
-    [suggestions]
-  );
+    return {
+      allSuggestionsUsers: uniqWith(allUsersList, isEqual),
+      suggestionsByUser: groupedSuggestions,
+    };
+  }, [suggestions]);
 
   const fetchSuggestions = useCallback(
-    async (limit?: number) => {
+    async (limit?: number, skipMerge = false) => {
       setLoading(true);
       try {
         const { data, paging } = await getSuggestionsList({
@@ -101,9 +83,19 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
           limit: limit ?? suggestionLimit,
         });
 
-        processSuggestions(data);
+        let processedSuggestions: Suggestion[];
+
+        if (skipMerge) {
+          setSuggestions(data);
+          processedSuggestions = data;
+        } else {
+          const mergedSuggestions = getUniqueSuggestions(suggestions, data);
+          setSuggestions(mergedSuggestions);
+          processedSuggestions = mergedSuggestions;
+        }
+
         setSuggestionLimit(paging.total);
-        setSuggestionPendingCount(paging.total - PAGE_SIZE);
+        setSuggestionPendingCount(paging.total - processedSuggestions.length);
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -115,7 +107,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoading(false);
       }
     },
-    [entityFqn, suggestionLimit, processSuggestions]
+    [entityFqn, suggestionLimit, suggestions]
   );
 
   const fetchSuggestionsByUserId = useCallback(
@@ -127,7 +119,8 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
           limit: limit ?? suggestionLimit,
         });
 
-        const mergedSuggestions = processSuggestions(data);
+        const mergedSuggestions = getUniqueSuggestions(suggestions, data);
+        setSuggestions(mergedSuggestions);
         setSuggestionPendingCount(suggestionLimit - mergedSuggestions.length);
       } catch (err) {
         showErrorToast(
@@ -140,7 +133,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoading(false);
       }
     },
-    [entityFqn, suggestionLimit, processSuggestions]
+    [entityFqn, suggestionLimit, suggestions]
   );
 
   const acceptRejectSuggestion = useCallback(
@@ -151,14 +144,9 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         const updatedSuggestions = suggestions.filter(
           (s) => s.id !== suggestion.id
         );
-        const { allUsersList, groupedSuggestions } =
-          getSuggestionByType(updatedSuggestions);
-        const uniqueUsers = uniqWith(allUsersList, isEqual);
 
         setSuggestions(updatedSuggestions);
-        setAllSuggestionsUsers(uniqueUsers);
-        setSuggestionsByUser(groupedSuggestions);
-        setSuggestionPendingCount((prev) => prev - 1);
+        setSuggestionLimit((prev) => prev - 1);
 
         if (status === SuggestionAction.Accept) {
           publish('updateDetails', suggestion);
@@ -186,6 +174,10 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
 
   const acceptRejectAllSuggestions = useCallback(
     async (status: SuggestionAction) => {
+      if (!activeUser) {
+        return;
+      }
+
       if (status === SuggestionAction.Accept) {
         setLoadingAccept(true);
       } else {
@@ -197,7 +189,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
           SuggestionType.SuggestTagLabel,
         ].map((suggestionType) =>
           approveRejectAllSuggestions(
-            activeUser?.id ?? '',
+            activeUser.id ?? '',
             entityFqn,
             suggestionType,
             status
@@ -206,9 +198,24 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
 
         await Promise.allSettled(promises);
 
-        await fetchSuggestions();
+        const userSuggestionsToRemove = selectedUserSuggestions.combinedData;
+
+        const updatedSuggestions = suggestions.filter(
+          (s) =>
+            !userSuggestionsToRemove.some(
+              (userSuggestion) => userSuggestion.id === s.id
+            )
+        );
+
+        if (isEmpty(updatedSuggestions)) {
+          await fetchSuggestions(undefined, true);
+        } else {
+          setSuggestions(updatedSuggestions);
+          setSuggestionLimit(suggestionLimit - userSuggestionsToRemove.length);
+        }
+
         if (status === SuggestionAction.Accept) {
-          selectedUserSuggestions.combinedData.forEach((suggestion) => {
+          userSuggestionsToRemove.forEach((suggestion) => {
             publish('updateDetails', suggestion);
           });
         }
@@ -220,7 +227,15 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoadingReject(false);
       }
     },
-    [activeUser, entityFqn, selectedUserSuggestions, fetchSuggestions]
+    [
+      activeUser,
+      entityFqn,
+      selectedUserSuggestions,
+      suggestions,
+      suggestionLimit,
+      fetchSuggestions,
+      publish,
+    ]
   );
 
   useEffect(() => {

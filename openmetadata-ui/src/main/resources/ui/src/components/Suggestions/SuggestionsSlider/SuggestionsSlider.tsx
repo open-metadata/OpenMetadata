@@ -21,11 +21,9 @@ import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.int
 
 const SuggestionsSlider = () => {
   const {
-    suggestions,
     loading,
     suggestionPendingCount,
     fetchSuggestions,
-    suggestionLimit,
     selectedUserSuggestions,
     acceptRejectAllSuggestions,
     loadingAccept,
@@ -40,7 +38,7 @@ const SuggestionsSlider = () => {
         {t('label.suggested-description-plural')}
       </Typography.Text>
       <AvatarCarousel />
-      {suggestions.length !== 0 && suggestions.length !== suggestionLimit && (
+      {suggestionPendingCount > 0 && (
         <Button
           className="suggestion-pending-btn"
           data-testid="more-suggestion-button"
@@ -58,6 +56,7 @@ const SuggestionsSlider = () => {
             ghost
             className="text-xs text-primary font-medium"
             data-testid="accept-all-suggestions"
+            disabled={loadingAccept}
             icon={<CheckOutlined />}
             loading={loadingAccept}
             type="primary"
@@ -68,6 +67,7 @@ const SuggestionsSlider = () => {
             ghost
             className="text-xs text-primary font-medium"
             data-testid="reject-all-suggestions"
+            disabled={loadingReject}
             icon={<CloseOutlined />}
             loading={loadingReject}
             type="primary"
