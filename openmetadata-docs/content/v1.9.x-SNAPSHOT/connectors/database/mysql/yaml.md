@@ -444,31 +444,37 @@ source:
       type: Mysql
 ```
 ```yaml {% srNumber=1 %}
-      username: <username>
+      username: <username>  # REQUIRED
 ```
 ```yaml {% srNumber=2 %}
-      authType: 
-        password: <password>
+      authType:
+        password: <password>  # Basic Auth - most common
 ```
 ```yaml {% srNumber=3 %}
-      authType: 
-        awsConfig:
+      authType:
+        awsConfig:  # IAM Auth for AWS RDS MySQL
           awsAccessKeyId: access key id
           awsSecretAccessKey: access secret key
           awsRegion: aws region name
 ```
 ```yaml {% srNumber=4 %}
-      hostPort: <hostPort>
+      hostPort: <hostPort>  # REQUIRED - format: host:port
 ```
 ```yaml {% srNumber=5 %}
-      databaseSchema: schema
+      databaseSchema: schema  # Optional: restrict to single schema
+```
+```yaml {% srNumber=6 %}
+      databaseName: database_name  # Optional: custom name in OpenMetadata
+```
+```yaml {% srNumber=7 %}
+      useSlowLogs: false  # Optional: use slow logs for lineage (default: false)
 ```
 
-```yaml {% srNumber=6 %}
+```yaml {% srNumber=8 %}
       # connectionOptions:
       #   key: value
 ```
-```yaml {% srNumber=7 %}
+```yaml {% srNumber=9 %}
       # connectionArguments:
       #   key: value
 ```
