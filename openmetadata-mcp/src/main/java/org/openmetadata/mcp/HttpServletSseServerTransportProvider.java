@@ -26,16 +26,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @WebServlet(asyncSupported = true)
 public class HttpServletSseServerTransportProvider extends HttpServlet
     implements McpServerTransportProvider {
-  private static final Logger logger =
-      LoggerFactory.getLogger(HttpServletSseServerTransportProvider.class);
   public static final String UTF_8 = "UTF-8";
   public static final String APPLICATION_JSON = "application/json";
   public static final String FAILED_TO_SEND_ERROR_RESPONSE = "Failed to send error response: {}";
@@ -81,13 +79,13 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
   }
 
   @Override
-  public Mono<Void> notifyClients(String method, Map<String, Object> params) {
+  public Mono<Void> notifyClients(String method, Object params) {
     if (sessions.isEmpty()) {
-      logger.debug("No active sessions to broadcast message to");
+      LOG.debug("No active sessions to broadcast message to");
       return Mono.empty();
     }
 
-    logger.debug("Attempting to broadcast message to {} active sessions", sessions.size());
+    LOG.debug("Attempting to broadcast message to {} active sessions", sessions.size());
     return Flux.fromIterable(sessions.values())
         .flatMap(
             session ->
@@ -95,7 +93,7 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
                     .sendNotification(method, params)
                     .doOnError(
                         e ->
-                            logger.error(
+                            LOG.error(
                                 "Failed to send message to session {}: {}",
                                 session.getId(),
                                 e.getMessage()))
@@ -107,6 +105,28 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     handleSseEvent(request, response);
+  }
+
+  public Mono<Void> notifyClients(String method, Map<String, Object> params) {
+    if (sessions.isEmpty()) {
+      LOG.debug("No active sessions to broadcast message to");
+      return Mono.empty();
+    }
+
+    LOG.debug("Attempting to broadcast message to {} active sessions", sessions.size());
+    return Flux.fromIterable(sessions.values())
+        .flatMap(
+            session ->
+                session
+                    .sendNotification(method, params)
+                    .doOnError(
+                        e ->
+                            LOG.error(
+                                "Failed to send message to session {}: {}",
+                                session.getId(),
+                                e.getMessage()))
+                    .onErrorComplete())
+        .then();
   }
 
   private void handleSseEvent(HttpServletRequest request, HttpServletResponse response)
@@ -155,13 +175,13 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
           } catch (Exception e) {
-            log("SSE error", e);
+            LOG.error("SSE error", e);
           } finally {
             try {
               session.closeGracefully();
               asyncContext.complete();
             } catch (Exception e) {
-              log("Error closing long-lived SSE connection", e);
+              LOG.error("Error closing long-lived SSE connection", e);
             }
           }
         });
@@ -232,7 +252,7 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
 
       response.setStatus(HttpServletResponse.SC_OK);
     } catch (Exception e) {
-      logger.error("Error processing message: {}", e.getMessage());
+      LOG.error("Error processing message: {}", e.getMessage());
       try {
         McpError mcpError = new McpError(e.getMessage());
         response.setContentType(APPLICATION_JSON);
@@ -243,7 +263,7 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
         writer.write(jsonError);
         writer.flush();
       } catch (IOException ex) {
-        logger.error(FAILED_TO_SEND_ERROR_RESPONSE, ex.getMessage());
+        LOG.error(FAILED_TO_SEND_ERROR_RESPONSE, ex.getMessage());
         response.sendError(
             HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error processing message");
       }
@@ -253,7 +273,7 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
   @Override
   public Mono<Void> closeGracefully() {
     isClosing.set(true);
-    logger.debug("Initiating graceful shutdown with {} active sessions", sessions.size());
+    LOG.debug("Initiating graceful shutdown with {} active sessions", sessions.size());
 
     return Flux.fromIterable(sessions.values()).flatMap(McpServerSession::closeGracefully).then();
   }
@@ -293,7 +313,7 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
       this.sessionId = sessionId;
       this.asyncContext = asyncContext;
       this.writer = writer;
-      logger.debug("Session transport {} initialized with SSE writer", sessionId);
+      LOG.debug("Session transport {} initialized with SSE writer", sessionId);
     }
 
     @Override
@@ -303,9 +323,9 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
             try {
               String jsonText = objectMapper.writeValueAsString(message);
               sendEvent(writer, MESSAGE_EVENT_TYPE, jsonText);
-              logger.debug("Message sent to session {}", sessionId);
+              LOG.debug("Message sent to session {}", sessionId);
             } catch (Exception e) {
-              logger.error("Failed to send message to session {}: {}", sessionId, e.getMessage());
+              LOG.error("Failed to send message to session {}: {}", sessionId, e.getMessage());
               sessions.remove(sessionId);
               asyncContext.complete();
             }
@@ -321,13 +341,13 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
     public Mono<Void> closeGracefully() {
       return Mono.fromRunnable(
           () -> {
-            logger.debug("Closing session transport: {}", sessionId);
+            LOG.debug("Closing session transport: {}", sessionId);
             try {
               sessions.remove(sessionId);
               asyncContext.complete();
-              logger.debug("Successfully completed async context for session {}", sessionId);
+              LOG.debug("Successfully completed async context for session {}", sessionId);
             } catch (Exception e) {
-              logger.warn(
+              LOG.warn(
                   "Failed to complete async context for session {}: {}", sessionId, e.getMessage());
             }
           });
@@ -338,10 +358,9 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
       try {
         sessions.remove(sessionId);
         asyncContext.complete();
-        logger.debug("Successfully completed async context for session {}", sessionId);
+        LOG.debug("Successfully completed async context for session {}", sessionId);
       } catch (Exception e) {
-        logger.warn(
-            "Failed to complete async context for session {}: {}", sessionId, e.getMessage());
+        LOG.warn("Failed to complete async context for session {}: {}", sessionId, e.getMessage());
       }
     }
   }

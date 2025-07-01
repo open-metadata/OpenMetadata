@@ -110,7 +110,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   @Override
   public void init() throws ServletException {
     super.init();
-    log("MCP Streamable HTTP Servlet initialized");
+    LOG.info("MCP Streamable HTTP Servlet initialized");
   }
 
   @Override
@@ -131,7 +131,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
       try {
         connection.close();
       } catch (IOException e) {
-        log("Error closing SSE connection", e);
+        LOG.error("Error closing SSE connection", e);
       }
     }
 
@@ -173,7 +173,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
         handleSingleMessage(request, response, jsonNode, sessionId);
       }
     } catch (Exception e) {
-      log("Error handling POST request", e);
+      LOG.error("Error handling POST request", e);
       sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error");
     }
   }
@@ -225,17 +225,17 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
     try {
       if (isResponse) {
         processClientResponse(message, sessionId);
-        log("Processed client response for session: " + sessionId);
+        LOG.debug("Processed client response for session: " + sessionId);
       } else {
         processNotification(message, sessionId);
-        log("Processed client notification for session: " + sessionId);
+        LOG.debug("Processed client notification for session: " + sessionId);
       }
 
       response.setStatus(HttpServletResponse.SC_ACCEPTED);
       response.setContentLength(0);
 
     } catch (Exception e) {
-      log("Error processing response/notification", e);
+      LOG.error("Error processing response/notification", e);
       sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Failed to process message");
     }
   }
@@ -333,7 +333,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
             connection.close();
 
           } catch (Exception e) {
-            log("Error in SSE stream processing for request", e);
+            LOG.error("Error in SSE stream processing for request", e);
             try {
               // Send error response before closing
               Map<String, Object> errorResponse =
@@ -342,13 +342,13 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
               connection.sendEvent(objectMapper.writeValueAsString(errorResponse));
               connection.close();
             } catch (Exception ex) {
-              log("Error sending error response in SSE stream", ex);
+              LOG.error("Error sending error response in SSE stream", ex);
             }
           } finally {
             try {
               asyncContext.complete();
             } catch (Exception e) {
-              log("Error completing async context", e);
+              LOG.error("Error completing async context", e);
             }
             sseConnections.remove(connectionId);
           }
@@ -433,6 +433,9 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
     // TODO: This is good for now, but we can enhance this logic later, like tools/call can be long
     // running for our use case should be fine
     // Use SSE for requests that are streaming operations or have specific methods
+    if (sessionId == null) {
+      return false;
+    }
     MCPSession session = sessions.get(sessionId);
     return session != null;
   }
@@ -540,20 +543,20 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
             connection.close();
 
           } catch (Exception e) {
-            log("Error in SSE stream processing for batch", e);
+            LOG.error("Error in SSE stream processing for batch", e);
             try {
               Map<String, Object> errorResponse =
                   createErrorResponse(null, -32603, "Internal error: " + e.getMessage());
               connection.sendEvent(objectMapper.writeValueAsString(errorResponse));
               connection.close();
             } catch (Exception ex) {
-              log("Error sending error response in batch SSE stream", ex);
+              LOG.error("Error sending error response in batch SSE stream", ex);
             }
           } finally {
             try {
               asyncContext.complete();
             } catch (Exception e) {
-              log("Error completing async context for batch", e);
+              LOG.error("Error completing async context for batch", e);
             }
             sseConnections.remove(connectionId);
           }
@@ -687,7 +690,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
     response.setStatus(HttpServletResponse.SC_OK);
     response.getWriter().write(responseJson);
 
-    log("New session initialized: " + sessionId);
+    LOG.info("New session initialized: " + sessionId);
   }
 
   @Override
@@ -696,7 +699,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   }
 
   @Override
-  public Mono<Void> notifyClients(String method, Map<String, Object> params) {
+  public Mono<Void> notifyClients(String method, Object params) {
     if (sessions.isEmpty()) {
       LOG.debug("No active sessions to broadcast message to");
       return Mono.empty();
@@ -751,7 +754,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
       return state;
     }
 
-    public Mono<Void> sendNotification(String method, Map<String, Object> params) {
+    public Mono<Void> sendNotification(String method, Object params) {
       McpSchema.JSONRPCNotification jsonrpcNotification =
           new McpSchema.JSONRPCNotification(McpSchema.JSONRPC_VERSION, method, params);
       return Mono.fromRunnable(
@@ -836,7 +839,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
           response.put("error", createError(-32601, "Method not found: " + method));
       }
     } catch (Exception e) {
-      log("Error processing request: " + method, e);
+      LOG.error("Error processing request: " + method, e);
       response.put("error", createError(-32603, "Internal error: " + e.getMessage()));
     }
 
@@ -855,7 +858,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
 
   private void processNotification(JsonNode notification, String sessionId) {
     String method = notification.get("method").asText();
-    log("Received notification: " + method + " (session: " + sessionId + ")");
+    LOG.debug("Received notification: " + method + " (session: " + sessionId + ")");
 
     // Handle specific notifications
     switch (method) {
@@ -868,7 +871,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
         removeMCPSession(sessionId);
         break;
       default:
-        log("Unknown notification: " + method);
+        LOG.debug("Unknown notification: " + method);
     }
   }
 
@@ -944,7 +947,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
 
           connection.sendEvent(objectMapper.writeValueAsString(notification));
         } catch (IOException e) {
-          log("Error sending notification to session: " + sessionId, e);
+          LOG.error("Error sending notification to session: " + sessionId, e);
         }
       }
     }
