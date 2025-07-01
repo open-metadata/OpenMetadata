@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEqual } from 'lodash';
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { updateLoginTime, updateUserDetail } from '../rest/userAPI';
+import { updateUserDetail } from '../rest/userAPI';
 import { User } from './../generated/entity/teams/user';
 import { getImages } from './CommonUtils';
 import i18n from './i18next/LocalUtil';
@@ -89,13 +89,6 @@ export const checkIfUpdateRequired = async (
   existingUserDetails: User,
   newUser: OidcUser
 ): Promise<User> => {
-  try {
-    await updateLoginTime();
-  } catch {
-    // eslint-disable-next-line no-console
-    console.warn('Failed to update login time for user');
-  }
-
   const updatedUserData = getUserDataFromOidc(existingUserDetails, newUser);
 
   if (existingUserDetails.email !== updatedUserData.email) {
