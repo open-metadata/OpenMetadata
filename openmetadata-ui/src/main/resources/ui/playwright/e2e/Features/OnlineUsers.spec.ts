@@ -11,25 +11,68 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 
-// Use admin authentication for all tests
-test.use({ storageState: 'playwright/.auth/admin.json' });
+const adminUser = new UserClass();
+const dataConsumerUser = new UserClass();
+
+const test = base.extend<{
+  page: Page;
+  dataConsumerPage: Page;
+}>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+  dataConsumerPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await dataConsumerUser.login(page);
+    await use(page);
+    await page.close();
+  },
+});
+
+base.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.slow(true);
+
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+
+  await adminUser.create(apiContext);
+  await adminUser.setAdminRole(apiContext);
+  await dataConsumerUser.create(apiContext);
+
+  await afterAction();
+});
+
+base.afterAll('Cleanup', async ({ browser }) => {
+  test.slow(true);
+
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.delete(apiContext);
+  await dataConsumerUser.delete(apiContext);
+
+  await afterAction();
+});
 
 test.describe('Online Users Feature', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
-    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await page.waitForLoadState('networkidle');
   });
 
   test('Should show online users under Settings > Members > Online Users for admins', async ({
     page,
   }) => {
+    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
+    await page.waitForLoadState('networkidle');
+
     // Verify we're on the Online Users page
     await expect(
       page.getByRole('heading', { name: 'Online Users' })
@@ -85,6 +128,9 @@ test.describe('Online Users Feature', () => {
   });
 
   test('Should not show bots in online users list', async ({ page }) => {
+    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
+    await page.waitForLoadState('networkidle');
+
     // Verify bot users are not shown (ingestion-bot should not be visible)
     const tableRows = page.locator('tbody tr');
     const rowCount = await tableRows.count();
@@ -98,14 +144,8 @@ test.describe('Online Users Feature', () => {
   });
 
   test('Should filter users by time window', async ({ page }) => {
-    // Navigate to online users
-
-    // Wait for initial data to load
-    await page.waitForSelector('.ant-spin-container', { state: 'attached' });
-    await page.waitForSelector('.ant-spin-spinning', {
-      state: 'hidden',
-      timeout: 10000,
-    });
+    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
+    await page.waitForLoadState('networkidle');
 
     // Find the time filter dropdown by looking for the one that contains "Last"
     const timeFilterDropdown = page
@@ -141,31 +181,23 @@ test.describe('Online Users Feature', () => {
   });
 
   test('Non-admin users should not see Online Users page', async ({
-    browser,
+    dataConsumerPage,
   }) => {
     // Use the existing dataConsumer auth
-    const userContext = await browser.newContext({
-      storageState: 'playwright/.auth/dataConsumer.json',
-    });
-    const userPage = await userContext.newPage();
+    await redirectToHomePage(dataConsumerPage);
+    await sidebarClick(dataConsumerPage, SidebarItem.SETTINGS);
 
-    try {
-      await settingClick(userPage, GlobalSettingOptions.ONLINE_USERS);
-      await userPage.waitForLoadState('networkidle');
+    await dataConsumerPage.getByTestId('members').click();
+    await dataConsumerPage.waitForLoadState('networkidle');
 
-      // Should see the permission denied message
-      await expect(
-        userPage.getByText("You don't have necessary permissions.")
-      ).toBeVisible();
-      await expect(
-        userPage.getByText('Please check with the admin to get the permission.')
-      ).toBeVisible();
-    } finally {
-      await userContext.close();
-    }
+    await expect(
+      dataConsumerPage.getByTestId('members.online-users')
+    ).not.toBeVisible();
   });
 
   test('Should show correct last activity format', async ({ page }) => {
+    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
+    await page.waitForLoadState('networkidle');
     // Check various time formats in the Last Activity column
     const activityCells = page.locator('tbody tr td:nth-child(2)');
     const count = await activityCells.count();

@@ -74,6 +74,12 @@ export const updateUserDetail = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
+export const updateLoginTime = async () => {
+  const response = await APIClient.put(`/users/updateLoginTime`);
+
+  return response.data;
+};
+
 export const getUserByName = async (name: string, params?: ListParams) => {
   const response = await APIClient.get<User>(
     `/users/name/${getEncodedFqn(name)}`,

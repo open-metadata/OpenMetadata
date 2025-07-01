@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEqual } from 'lodash';
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { updateUserDetail } from '../rest/userAPI';
+import { updateLoginTime, updateUserDetail } from '../rest/userAPI';
 import { User } from './../generated/entity/teams/user';
 import { getImages } from './CommonUtils';
 import i18n from './i18next/LocalUtil';
@@ -89,8 +89,14 @@ export const checkIfUpdateRequired = async (
   existingUserDetails: User,
   newUser: OidcUser
 ): Promise<User> => {
+  try {
+    await updateLoginTime();
+  } catch {
+    // eslint-disable-next-line no-console
+    console.warn('Failed to update login time for user');
+  }
+
   const updatedUserData = getUserDataFromOidc(existingUserDetails, newUser);
-  let finalData = { ...existingUserDetails, lastLoginTime: Date.now() };
 
   if (existingUserDetails.email !== updatedUserData.email) {
     return existingUserDetails;
@@ -100,28 +106,28 @@ export const checkIfUpdateRequired = async (
     updatedUserData.profile?.images &&
     !matchUserDetails(existingUserDetails, updatedUserData, ['profile'])
   ) {
-    finalData = {
-      ...finalData,
+    const finalData = {
+      ...existingUserDetails,
       //   We want to override any profile information that is coming from the OIDC provider
       profile: {
         ...existingUserDetails.profile,
         ...updatedUserData.profile,
       },
     };
-  }
-  const jsonPatch = compare(existingUserDetails, finalData);
+    const jsonPatch = compare(existingUserDetails, finalData);
 
-  try {
-    const res = await updateUserDetail(existingUserDetails.id, jsonPatch);
+    try {
+      const res = await updateUserDetail(existingUserDetails.id, jsonPatch);
 
-    return res;
-  } catch (error) {
-    showErrorToast(
-      error as AxiosError,
-      i18n.t('server.entity-updating-error', {
-        entity: i18n.t('label.admin-profile'),
-      })
-    );
+      return res;
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        i18n.t('server.entity-updating-error', {
+          entity: i18n.t('label.admin-profile'),
+        })
+      );
+    }
   }
 
   return existingUserDetails;
