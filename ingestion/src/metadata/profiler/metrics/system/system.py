@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.profiler.metrics.core import SystemMetric
 from metadata.profiler.orm.registry import PythonDialects
 from metadata.utils.helpers import deep_size_of_dict
-from metadata.utils.importer import import_from_module
+from metadata.utils.importer import DynamicImportException, import_from_module
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.profiler_utils import QueryResult
@@ -157,7 +157,7 @@ class SystemMetricsRegistry:
             implementation = import_from_module(
                 f"metadata.profiler.metrics.system.{dialect.name.lower()}.system"
             )
-        except ImportError:
+        except DynamicImportException:
             logger.warning(f"No implementation found for {dialect.name.lower()}")
             return
         cls._registry[dialect.name.lower()] = implementation
