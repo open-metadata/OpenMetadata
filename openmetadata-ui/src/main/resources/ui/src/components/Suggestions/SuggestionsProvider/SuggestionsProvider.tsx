@@ -20,7 +20,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -72,10 +71,10 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   const [suggestionLimit, setSuggestionLimit] = useState<number>(PAGE_SIZE);
   const [suggestionPendingCount, setSuggestionPendingCount] =
     useState<number>(0);
-  const refreshEntity = useRef<(suggestion: Suggestion) => void>();
   const { permissions } = usePermissionProvider();
 
-  const updateAndReturnSuggestionDependencies = useCallback(
+  // Optimized function to process and update all suggestion-related state in batch
+  const processSuggestions = useCallback(
     (newSuggestions: Suggestion[]) => {
       const mergedSuggestions = getUniqueSuggestions(
         suggestions,
@@ -83,9 +82,9 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
       );
       const { allUsersList, groupedSuggestions } =
         getSuggestionByType(mergedSuggestions);
-
+      const uniqueUsers = uniqWith(allUsersList, isEqual);
       setSuggestions(mergedSuggestions);
-      setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
+      setAllSuggestionsUsers(uniqueUsers);
       setSuggestionsByUser(groupedSuggestions);
 
       return mergedSuggestions;
@@ -102,7 +101,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
           limit: limit ?? suggestionLimit,
         });
 
-        updateAndReturnSuggestionDependencies(data);
+        processSuggestions(data);
         setSuggestionLimit(paging.total);
         setSuggestionPendingCount(paging.total - PAGE_SIZE);
       } catch (err) {
@@ -116,7 +115,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoading(false);
       }
     },
-    [entityFqn, suggestionLimit, updateAndReturnSuggestionDependencies]
+    [entityFqn, suggestionLimit, processSuggestions]
   );
 
   const fetchSuggestionsByUserId = useCallback(
@@ -128,7 +127,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
           limit: limit ?? suggestionLimit,
         });
 
-        const mergedSuggestions = updateAndReturnSuggestionDependencies(data);
+        const mergedSuggestions = processSuggestions(data);
         setSuggestionPendingCount(suggestionLimit - mergedSuggestions.length);
       } catch (err) {
         showErrorToast(
@@ -141,31 +140,39 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoading(false);
       }
     },
-    [entityFqn, suggestionLimit, updateAndReturnSuggestionDependencies]
+    [entityFqn, suggestionLimit, processSuggestions]
   );
 
   const acceptRejectSuggestion = useCallback(
     async (suggestion: Suggestion, status: SuggestionAction) => {
       try {
         await updateSuggestionStatus(suggestion, status);
-        await fetchSuggestions();
+
+        const updatedSuggestions = suggestions.filter(
+          (s) => s.id !== suggestion.id
+        );
+        const { allUsersList, groupedSuggestions } =
+          getSuggestionByType(updatedSuggestions);
+        const uniqueUsers = uniqWith(allUsersList, isEqual);
+
+        setSuggestions(updatedSuggestions);
+        setAllSuggestionsUsers(uniqueUsers);
+        setSuggestionsByUser(groupedSuggestions);
+        setSuggestionPendingCount((prev) => prev - 1);
+
         if (status === SuggestionAction.Accept) {
-          // call component refresh function
           publish('updateDetails', suggestion);
         }
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
     },
-    [fetchSuggestions, refreshEntity]
+    [suggestions, publish, fetchSuggestions]
   );
 
-  const onUpdateActiveUser = useCallback(
-    (user?: EntityReference) => {
-      setActiveUser(user);
-    },
-    [suggestionsByUser]
-  );
+  const onUpdateActiveUser = useCallback((user?: EntityReference) => {
+    setActiveUser(user);
+  }, []);
 
   const selectedUserSuggestions = useMemo(() => {
     return (

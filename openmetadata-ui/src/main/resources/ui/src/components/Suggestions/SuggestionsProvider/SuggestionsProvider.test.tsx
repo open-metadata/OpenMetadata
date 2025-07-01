@@ -280,7 +280,7 @@ describe('SuggestionsProvider', () => {
     );
   });
 
-  it('handles acceptRejectSuggestion and refetches data', async () => {
+  it('handles acceptRejectSuggestion and updates state optimistically', async () => {
     render(
       <SuggestionsProvider>
         <TestComponent />
@@ -300,8 +300,12 @@ describe('SuggestionsProvider', () => {
         MOCK_SUGGESTIONS[0],
         SuggestionAction.Accept
       );
-      // Should trigger refetch
-      expect(getSuggestionsList).toHaveBeenCalledTimes(2);
+      expect(getSuggestionsList).toHaveBeenCalledTimes(1);
+    });
+
+    // Should optimistically update suggestions count
+    await waitFor(() => {
+      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('2');
     });
   });
 
@@ -320,7 +324,8 @@ describe('SuggestionsProvider', () => {
 
     await waitFor(() => {
       expect(toastUtils.showErrorToast).toHaveBeenCalledWith(error);
-      expect(getSuggestionsList).toHaveBeenCalledTimes(1);
+      // Should trigger refetch only on error for consistency
+      expect(getSuggestionsList).toHaveBeenCalledTimes(2);
     });
   });
 
