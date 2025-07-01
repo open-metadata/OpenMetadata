@@ -430,6 +430,7 @@ export const BETA_SERVICES = [
   SearchServiceType.OpenSearch,
   PipelineServiceType.Ssis,
   DashboardServiceType.ThoughtSpot,
+  DatabaseServiceType.Ssas,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
