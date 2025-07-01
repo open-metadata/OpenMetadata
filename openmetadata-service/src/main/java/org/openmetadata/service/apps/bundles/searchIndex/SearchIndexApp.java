@@ -791,30 +791,21 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private void reCreateIndexes(Set<String> entities) throws SearchIndexException {
+  private void reCreateIndexes(Set<String> entities) {
     for (String entityType : entities) {
       if (Boolean.FALSE.equals(jobData.getRecreateIndex())) {
         LOG.debug("RecreateIndex is false. Skipping index recreation for '{}'.", entityType);
         return;
       }
-
-      // Handle incorrect entity type name for query cost
-      String correctedEntityType = entityType;
-      if ("queryCostResult".equals(entityType)) {
-        LOG.warn("Found incorrect entity type 'queryCostResult', correcting to 'queryCostRecord'");
-        correctedEntityType = QUERY_COST_RECORD;
-      }
-
-      IndexMapping indexType = searchRepository.getIndexMapping(correctedEntityType);
+      IndexMapping indexType = searchRepository.getIndexMapping(entityType);
       if (indexType == null) {
         LOG.warn(
-            "No index mapping found for entityType '{}'. Skipping index recreation.",
-            correctedEntityType);
-        return;
+            "No index mapping found for entityType '{}'. Skipping index recreation.", entityType);
+        continue;
       }
       searchRepository.deleteIndex(indexType);
       searchRepository.createIndex(indexType);
-      LOG.info("Recreated index for entityType '{}'.", correctedEntityType);
+      LOG.info("Recreated index for entityType '{}'.", entityType);
     }
   }
 
