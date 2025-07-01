@@ -272,3 +272,25 @@ class TestAirflow(TestCase):
             }
         }
         self.assertEqual(get_schedule_interval(pipeline_data), "*/2 * * * *")
+
+    def test_get_dag_owners_with_serialized_tasks(self):
+        # Test case with Airflow 2.10 style tasks (wrapped in __var)
+        data = {
+            "default_args": {"owner": "default_owner"},
+            "tasks": [
+                {"__var": {"task_id": "t1"}, "__type": "EmptyOperator"},
+                {"__var": {"task_id": "t2"}, "__type": "EmptyOperator"},
+            ],
+        }
+        self.assertEqual("default_owner", self.airflow.fetch_dag_owners(data))
+
+        # If one task explicitly overrides owner
+        data = {
+            "default_args": {"owner": "default_owner"},
+            "tasks": [
+                {"__var": {"task_id": "t1"}, "__type": "EmptyOperator"},
+                {"__var": {"task_id": "t2", "owner": "overridden_owner"}, "__type": "EmptyOperator"},
+            ],
+        }
+        self.assertEqual("overridden_owner", self.airflow.fetch_dag_owners(data))
+
