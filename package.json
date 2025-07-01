@@ -1,1 +1,20 @@
-{}
+{
+  "name": "open-metadata",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=10.0.0",
+    "yarn": "^1.22.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-metadata/OpenMetadata.git"
+  },
+  "devDependencies": {
+    "quicktype": "20.0.27"
+  },
+  "scripts": {
+    "preinstall": "yarn global add node-gyp@10.0.1",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
