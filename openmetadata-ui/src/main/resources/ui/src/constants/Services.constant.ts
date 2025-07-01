@@ -429,6 +429,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Cockroach,
   SearchServiceType.OpenSearch,
   PipelineServiceType.Ssis,
+  DatabaseServiceType.Ssas,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

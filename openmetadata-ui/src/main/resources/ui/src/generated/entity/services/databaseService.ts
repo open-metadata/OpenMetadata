@@ -266,6 +266,8 @@ export interface DatabaseConnection {
  * Exasol Database Connection Config
  *
  * Cockroach Database Connection Config
+ *
+ * SSAS Metadata Database Connection Config
  */
 export interface ConfigClass {
     /**
@@ -516,6 +518,8 @@ export interface ConfigClass {
      * Password to connect to Azure Synapse.
      *
      * Password to connect to Exasol.
+     *
+     * Password
      */
     password?: string;
     /**
@@ -605,6 +609,8 @@ export interface ConfigClass {
      *
      * Username to connect to Cockroach. This user should have privileges to read all the
      * metadata in Cockroach.
+     *
+     * Username
      */
     username?: string;
     /**
@@ -934,6 +940,10 @@ export interface ConfigClass {
      * Client SSL/TLS settings.
      */
     tls?: SSLTLSSettings;
+    /**
+     * HTTP Link for SSAS ACCESS
+     */
+    httpConnection?: string;
 }
 
 /**
@@ -2064,6 +2074,7 @@ export enum ConfigType {
     SapHana = "SapHana",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
+    Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Trino = "Trino",
@@ -2185,6 +2196,7 @@ export enum DatabaseServiceType {
     SapHana = "SapHana",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
+    Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Trino = "Trino",

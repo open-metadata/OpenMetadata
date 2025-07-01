@@ -348,6 +348,10 @@ export interface ConfigClass {
     sourcePythonClass?:   string;
     connectionArguments?: { [key: string]: any };
     /**
+     * Connection timeout in seconds.
+     */
+    connectionTimeout?: number;
+    /**
      * Databricks compute resources URL.
      */
     httpPath?: string;
