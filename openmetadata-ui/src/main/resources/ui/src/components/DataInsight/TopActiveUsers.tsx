@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
@@ -27,9 +26,8 @@ import {
   formatTimeDurationFromSeconds,
 } from '../../utils/date-time/DateTimeUtils';
 import { getColumnSorter } from '../../utils/EntityUtils';
-import { getUserPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import Table from '../common/Table/Table';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
@@ -76,10 +74,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'userName',
         sorter: getColumnSorter<MostActiveUsers, 'userName'>('userName'),
         render: (userName: string) => (
-          <Space>
-            <ProfilePicture name={userName} width="24" />
-            <Link to={getUserPath(userName)}>{userName}</Link>
-          </Space>
+          <UserPopOverCard showUserName profileWidth={24} userName={userName} />
         ),
       },
       {

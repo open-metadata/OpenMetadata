@@ -133,7 +133,7 @@ export const TestSuites = () => {
         sortDirections: ['ascend', 'descend'],
         render: (name, record) => {
           return (
-            <Typography.Paragraph className="m-0" style={{ maxWidth: 580 }}>
+            <Typography.Paragraph className="m-0">
               {record.basic ? (
                 <Link
                   data-testid={name}
@@ -354,7 +354,7 @@ export const TestSuites = () => {
           }}
           pagination={false}
           scroll={{
-            x: true,
+            x: '100%',
           }}
           size="small"
         />
