@@ -10,7 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import { defineConfig } from 'vite';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
-interface Window {
-  BASE_PATH?: string;
-}
+export default defineConfig({
+  plugins: [react(), tsconfigPaths()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      process: 'process/browser',
+      Buffer: 'buffer',
+    },
+  },
+  server: {
+    port: 3000,
+    open: true,
+    proxy: {
+      '/api/': {
+        target: 'http://localhost:8585/',
+        changeOrigin: true,
+      },
+    },
+  },
+  build: {
+    outDir: 'build',
+  },
+});
