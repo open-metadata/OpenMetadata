@@ -13,6 +13,50 @@
 @import (reference) '../../../../styles/variables.less';
 
 .test-case-form-v1 {
+  .ant-form-item {
+    margin-bottom: @size-lg;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .ant-form-item-label > label {
+    color: @grey-800;
+    font-weight: @font-medium;
+    font-size: @font-size-base;
+  }
+
+  .select-table-card,
+  .test-type-card {
+    background-color: @grey-1;
+    border: 1px solid @grey-200;
+    border-radius: @border-radius-sm;
+    margin-bottom: @size-lg;
+
+    .ant-card-body {
+      padding: @size-sm @size-mlg @size-mlg;
+    }
+
+    .ant-form-item {
+      margin-bottom: @size-lg;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .ant-form-item-label > label {
+      color: @grey-800;
+      font-weight: @font-medium;
+      font-size: @font-size-base;
+    }
+  }
+
+  .test-type-card {
+    margin-bottom: 0;
+  }
+
   .test-level-section {
     margin-bottom: @size-lg;
 

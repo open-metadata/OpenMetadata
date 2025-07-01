@@ -13,7 +13,7 @@
 
 import { Button, Card, Col, Row, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -38,6 +38,19 @@ const DataQualityPage = () => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { testSuite: testSuitePermission } = permissions;
+
+  // Add state for modal open/close
+  const [isTestCaseModalOpen, setIsTestCaseModalOpen] = useState(false);
+
+  // Add handlers for modal
+  const handleOpenTestCaseModal = () => {
+    setIsTestCaseModalOpen(true);
+  };
+
+  const handleCloseTestCaseModal = () => {
+    setIsTestCaseModalOpen(false);
+  };
+
   const menuItems = useMemo(() => {
     const data = DataQualityClassBase.getDataQualityTab();
 
@@ -93,7 +106,10 @@ const DataQualityPage = () => {
                   )}
                 {activeTab === DataQualityPageTabs.TEST_CASES &&
                   testSuitePermission?.Create && (
-                    <Button data-testid="add-test-case-btn" type="primary">
+                    <Button
+                      data-testid="add-test-case-btn"
+                      type="primary"
+                      onClick={handleOpenTestCaseModal}>
                       {t('label.add-entity', {
                         entity: t('label.test-case'),
                       })}
@@ -126,7 +142,8 @@ const DataQualityPage = () => {
           title: t('label.add-entity', {
             entity: t('label.test-case'),
           }),
-          open: false,
+          open: isTestCaseModalOpen,
+          onClose: handleCloseTestCaseModal,
         }}
       />
     </DataQualityProvider>
