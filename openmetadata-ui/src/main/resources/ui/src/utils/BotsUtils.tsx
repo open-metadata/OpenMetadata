@@ -56,7 +56,10 @@ export const getJWTTokenExpiryOptions = (filterUnlimited = false) => {
     );
   }
 
-  const sortedOptions = finalOptions.toSorted(
+  // Create a new array to avoid mutating the original array
+  // spread is necessary to avoid the sonar issue:
+  // Array-mutating methods should not be used misleadingly typescript:S4043
+  const sortedOptions = [...finalOptions].sort(
     (a, b) => a.numericValue - b.numericValue
   );
 
