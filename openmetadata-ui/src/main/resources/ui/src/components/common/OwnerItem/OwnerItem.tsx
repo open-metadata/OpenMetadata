@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from 'antd';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -57,14 +58,16 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
         </div>
         <Link
           className={classNames(
-            'no-underline font-medium text-xs text-primary',
+            'truncate no-underline font-medium text-xs text-primary',
             className
           )}
           data-testid="owner-link"
           to={ownerPath}>
-          <span data-testid={getEntityName(owner)}>
+          <Typography.Text
+            data-testid={getEntityName(owner)}
+            ellipsis={{ tooltip: true }}>
             {ownerDisplayName ?? displayName}
-          </span>
+          </Typography.Text>
         </Link>
       </div>
     );

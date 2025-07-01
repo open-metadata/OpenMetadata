@@ -41,7 +41,6 @@ import io.swagger.v3.oas.annotations.security.SecuritySchemes;
 import io.swagger.v3.oas.annotations.servers.Server;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
-import jakarta.servlet.ServletRegistration;
 import jakarta.validation.Validation;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseFilter;
@@ -72,7 +71,6 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
@@ -212,7 +210,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
-    initializeSearchRepository(catalogConfig.getElasticSearchConfiguration());
+    initializeSearchRepository(catalogConfig);
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
@@ -396,10 +394,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  protected void initializeSearchRepository(ElasticSearchConfiguration esConfig) {
+  protected void initializeSearchRepository(OpenMetadataApplicationConfig config) {
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
-    SearchRepository searchRepository = new SearchRepository(esConfig);
+    SearchRepository searchRepository =
+        new SearchRepository(
+            config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
     Entity.setSearchRepository(searchRepository);
   }
 
@@ -460,53 +460,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
       // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
-      ServletRegistration.Dynamic samlRedirectServlet =
-          environment.servlets().addServlet("saml_login", new SamlLoginServlet());
-      samlRedirectServlet.addMapping("/api/v1/saml/login");
-      ServletRegistration.Dynamic samlReceiverServlet =
-          environment
-              .servlets()
-              .addServlet(
-                  "saml_acs",
-                  new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration()));
-      samlReceiverServlet.addMapping("/api/v1/saml/acs");
-      ServletRegistration.Dynamic samlMetadataServlet =
-          environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());
-      samlMetadataServlet.addMapping("/api/v1/saml/metadata");
-
-      // 1) SAML Login
-      ServletHolder samlLoginHolder = new ServletHolder();
-      samlLoginHolder.setName("saml_login");
-      samlLoginHolder.setServlet(new SamlLoginServlet());
-      contextHandler.addServlet(samlLoginHolder, "/api/v1/saml/login");
-
-      // 2) SAML Assertion Consumer (ACS)
-      ServletHolder samlAcsHolder = new ServletHolder();
-      samlAcsHolder.setName("saml_acs");
-      samlAcsHolder.setServlet(
-          new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration()));
-      contextHandler.addServlet(samlAcsHolder, "/api/v1/saml/acs");
-
-      // 3) SAML Metadata
-      ServletHolder samlMetadataHolder = new ServletHolder();
-      samlMetadataHolder.setName("saml_metadata");
-      samlMetadataHolder.setServlet(new SamlMetadataServlet());
-      contextHandler.addServlet(samlMetadataHolder, "/api/v1/saml/metadata");
-
-      // 4) SAML Token Refresh
-      ServletHolder samlRefreshHolder = new ServletHolder();
-      samlRefreshHolder.setName("saml_refresh_token");
-      samlRefreshHolder.setServlet(new SamlTokenRefreshServlet());
-      contextHandler.addServlet(samlRefreshHolder, "/api/v1/saml/refresh");
-
-      // 5) SAML Logout
-      ServletHolder samlLogoutHolder = new ServletHolder();
-      samlLogoutHolder.setName("saml_logout_token");
-      samlLogoutHolder.setServlet(
-          new SamlLogoutServlet(
-              catalogConfig.getAuthenticationConfiguration(),
-              catalogConfig.getAuthorizerConfiguration()));
-      contextHandler.addServlet(samlLogoutHolder, "/api/v1/saml/logout");
+      contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
+      contextHandler.addServlet(
+          new ServletHolder(
+              new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration())),
+          "/api/v1/saml/acs");
+      contextHandler.addServlet(
+          new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
+      contextHandler.addServlet(
+          new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
+      contextHandler.addServlet(
+          new ServletHolder(
+              new SamlLogoutServlet(
+                  catalogConfig.getAuthenticationConfiguration(),
+                  catalogConfig.getAuthorizerConfiguration())),
+          "/api/v1/saml/logout");
     }
   }
 

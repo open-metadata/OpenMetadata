@@ -10,7 +10,7 @@ OpenMetadata identifies PII data and auto tags or suggests the tags. It automati
 In the example below, the columns ‘last_name’ and ‘social security number’ are auto-tagged as PII-sensitive. This works using NLP as part of the profiler during ingestion.
 
 {% image
-src="/images/v1.6/how-to-guides/governance/auto1.png"
+src="/images/v1.9/how-to-guides/governance/auto1.png"
 alt="User_name and Social Security Number are Auto-Classified as PII Sensitive"
 caption="User_name and Social Security Number are Auto-Classified as PII Sensitive"
 /%}
@@ -18,7 +18,7 @@ caption="User_name and Social Security Number are Auto-Classified as PII Sensiti
 In the below example, the column ‘number_of_orders’ is also auto-tagged as Sensitive, even though the column name does not provide much information. 
 
 {% image
-src="/images/v1.6/how-to-guides/governance/auto2.png"
+src="/images/v1.9/how-to-guides/governance/auto2.png"
 alt="Column Name does not provide much information"
 caption="Column Name does not provide much information"
 /%}
@@ -26,7 +26,7 @@ caption="Column Name does not provide much information"
 When we look at the content of the column ‘number_of_orders’ in the Sample Data tab, it becomes clear that the auto-classification is based on the data in the column.
 
 {% image
-src="/images/v1.6/how-to-guides/governance/auto3.png"
+src="/images/v1.9/how-to-guides/governance/auto3.png"
 alt="Column Data provides information"
 caption="Column Data provides information"
 /%}
