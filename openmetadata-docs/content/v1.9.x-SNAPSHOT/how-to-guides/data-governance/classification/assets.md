@@ -12,7 +12,7 @@ slug: /how-to-guides/data-governance/classification/assets
 - Click on the checkmark to save the changes.
 
 {% image
-src="/images/v1.9how-to-guides/governance/tag7.png"
+src="/images/v1.9/how-to-guides/governance/tag7.png"
 alt="Add Tags to Classify Data Assets"
 caption="Add Tags to Classify Data Assets"
 /%}
@@ -23,13 +23,13 @@ The tagged data assets can be discovered right from the Classification page.
 - Click on the Usage number to view the tagged assets.
 
 {% image
-src="/images/v1.9how-to-guides/governance/tag2.png"
+src="/images/v1.9/how-to-guides/governance/tag2.png"
 alt="Usage: Number of Assets Tagged"
 caption="Usage: Number of Assets Tagged"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/governance/tag3.png"
+src="/images/v1.9/how-to-guides/governance/tag3.png"
 alt="Discover the Tagged Data Assets"
 caption="Discover the Tagged Data Assets"
 /%}

@@ -1,5 +1,5 @@
 ---
-title: edge
+title: edge | OpenMetadata Workflow Edge Element
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/edge
 ---
 

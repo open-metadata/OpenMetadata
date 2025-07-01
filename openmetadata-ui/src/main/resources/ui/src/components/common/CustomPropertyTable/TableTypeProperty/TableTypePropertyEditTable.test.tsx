@@ -12,7 +12,7 @@
  */
 import { TypeComputedProps } from '@inovua/reactdatagrid-community/types';
 import { act, render, screen } from '@testing-library/react';
-import React, { MutableRefObject } from 'react';
+import { MutableRefObject } from 'react';
 import TableTypePropertyEditTable from './TableTypePropertyEditTable';
 import { TableTypePropertyEditTableProps } from './TableTypePropertyEditTable.interface';
 

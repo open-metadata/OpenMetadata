@@ -12,13 +12,7 @@
  */
 import { isEmpty, isEqual, uniqBy } from 'lodash';
 import { DateRangeObject } from 'Models';
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import Loader from '../../components/common/Loader/Loader';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';

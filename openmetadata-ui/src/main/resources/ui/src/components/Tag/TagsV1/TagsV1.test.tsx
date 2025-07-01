@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import React from 'react';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import TagsV1 from './TagsV1.component';

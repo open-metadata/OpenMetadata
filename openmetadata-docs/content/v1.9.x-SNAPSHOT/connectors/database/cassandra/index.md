@@ -21,7 +21,7 @@ Configure and schedule Cassandra metadata workflows from the OpenMetadata UI:
 - [Enable Security](#securing-cassandra-connection-with-ssl-in-openmetadata)
 - [Troubleshooting](/connectors/database/cassandra/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cassandra/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cassandra/yaml"} /%}
 
 ## Requirements
 
@@ -32,12 +32,12 @@ To extract metadata using the Cassandra connector, ensure the user in the connec
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Cassandra", 
-    selectServicePath: "/images/v1.9connectors/cassandra/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/cassandra/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/cassandra/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/cassandra/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/cassandra/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/cassandra/service-connection.png",
 } 
 /%}
 
@@ -77,11 +77,11 @@ In order to integrate SSL in the Metadata Ingestion Config, the user will have t
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -92,9 +92,9 @@ To establish secure connections between OpenMetadata and a Cassandra database, y
 Under `Advanced Config`, after selecting the SSL mode, provide the CA certificate, SSL certificate and SSL key.
 
 {% image
-  src="/images/v1.9connectors/ssl_connection.png"
+  src="/images/v1.9/connectors/ssl_connection.png"
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

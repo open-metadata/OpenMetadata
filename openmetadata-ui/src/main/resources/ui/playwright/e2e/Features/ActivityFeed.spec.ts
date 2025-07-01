@@ -355,8 +355,11 @@ test.describe('Activity feed', () => {
 
     await page.getByTestId('request-description').click();
 
+    const openTaskAfterDescriptionResponse =
+      page.waitForResponse(TASK_OPEN_FETCH_LINK);
     await createDescriptionTask(page, value);
-
+    await openTaskAfterDescriptionResponse;
+    await page.waitForLoadState('networkidle');
     // Task 1 - Update Description right panel check
     const descriptionTask = await page.getByTestId('task-title').innerText();
 
@@ -563,6 +566,76 @@ test.describe('Activity feed', () => {
         await page.locator('[data-testid="closeDrawer"]').click();
       }
     );
+  });
+
+  test('User 1 mentions user 2 and user 2 sees correct usernames in feed replies', async ({
+    browser,
+  }) => {
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, adminUser);
+    const { page: page2, afterAction: afterActionUser2 } =
+      await performUserLogin(browser, user2);
+
+    await test.step('User 1 mentions user 2 in a feed reply', async () => {
+      // Add mention comment in feed mentioning user2
+      await addMentionCommentInFeed(page1, user2.responseData.name);
+
+      await page1.locator('[data-testid="closeDrawer"]').click();
+
+      await afterActionUser1();
+    });
+
+    await test.step('User 2 logs in and checks @Mentions tab', async () => {
+      await redirectToHomePage(page2);
+      await page2.waitForLoadState('networkidle');
+
+      const fetchMentionsFeedResponse = page2.waitForResponse(
+        '/api/v1/feed?filterType=MENTIONS&userId=*'
+      );
+      await page2
+        .locator('[data-testid="activity-feed-widget"]')
+        .locator('text=@Mentions')
+        .click();
+
+      await fetchMentionsFeedResponse;
+
+      // Verify the mention appears in the feed
+      await expect(
+        page2.locator('[data-testid="message-container"]').first()
+      ).toBeVisible();
+
+      // Click on the feed to open replies
+      await page2.locator('[data-testid="reply-count"]').first().click();
+
+      await page2.waitForSelector('.ant-drawer-content', {
+        state: 'visible',
+      });
+
+      // Verify the feed reply card shows correct usernames
+      await expect(
+        page2.locator('[data-testid="feed-reply-card"]').first()
+      ).toBeVisible();
+
+      // Check that the reply shows the correct username (user1 who made the mention)
+      await expect(
+        page2
+          .locator('[data-testid="feed-reply-card"] .reply-card-user-name')
+          .first()
+      ).toContainText(adminUser.responseData.displayName);
+
+      // Check that the mention text contains user2's name
+      await expect(
+        page2
+          .locator(
+            '[data-testid="feed-replies"] [data-testid="markdown-parser"]'
+          )
+          .first()
+      ).toContainText(`@${user2.responseData.name}`);
+
+      await page2.locator('[data-testid="closeDrawer"]').click();
+
+      await afterActionUser2();
+    });
   });
 
   test('Check Task Filter in Landing Page Widget', async ({ browser }) => {

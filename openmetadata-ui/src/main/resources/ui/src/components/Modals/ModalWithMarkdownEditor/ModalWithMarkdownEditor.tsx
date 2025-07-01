@@ -13,15 +13,13 @@
 
 import { Button, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FunctionComponent, useRef, useState } from 'react';
+import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './modal-with-markdown-editor.less';
-import {
-  EditorContentRef,
-  ModalWithMarkdownEditorProps,
-} from './ModalWithMarkdownEditor.interface';
+import { ModalWithMarkdownEditorProps } from './ModalWithMarkdownEditor.interface';
 
 export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorProps> =
   ({

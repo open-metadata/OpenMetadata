@@ -12,7 +12,6 @@
  */
 import { MailOutlined } from '@ant-design/icons';
 import { includes, isNil } from 'lodash';
-import React from 'react';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored-icon.svg';
 import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
 import { ReactComponent as MentionIcon } from '../assets/svg/ic-mentions.svg';

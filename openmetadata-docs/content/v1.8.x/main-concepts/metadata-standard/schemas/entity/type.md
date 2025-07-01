@@ -1,5 +1,5 @@
 ---
-title: type
+title: Type | OpenMetadata Entity Type Schema Details
 slug: /main-concepts/metadata-standard/schemas/entity/type
 ---
 

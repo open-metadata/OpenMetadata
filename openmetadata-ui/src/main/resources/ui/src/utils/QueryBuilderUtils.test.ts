@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Fields } from 'react-awesome-query-builder';
+import { Fields } from '@react-awesome-query-builder/antd';
 import { EntityType } from '../enums/entity.enum';
 import {
   QueryFieldInterface,
@@ -94,7 +94,6 @@ describe('getJsonTreeFromQueryFilter', () => {
         },
       },
       id: 'uuid1',
-      path: ['uuid1'],
     });
   });
 

@@ -1,5 +1,5 @@
 ---
-title: cloudConfig
+title: Cassandra Cloud Config | OpenMetadata Cassandra Cloud
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cassandra/cloudconfig
 ---
 

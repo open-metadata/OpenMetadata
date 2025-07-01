@@ -52,6 +52,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -200,6 +201,9 @@ public abstract class OpenMetadataApplicationTest {
     overrideElasticSearchConfig();
     overrideDatabaseConfig(sqlContainer);
 
+    // Init IndexMapping class
+    IndexMappingLoader.init(getEsConfig());
+
     // Migration overrides
     configOverrides.add(
         ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScriptsLocation));
@@ -245,7 +249,7 @@ public abstract class OpenMetadataApplicationTest {
             config,
             forceMigrations);
     // Initialize search repository
-    SearchRepository searchRepository = new SearchRepository(getEsConfig());
+    SearchRepository searchRepository = new SearchRepository(getEsConfig(), 50);
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
@@ -298,7 +302,7 @@ public abstract class OpenMetadataApplicationTest {
 
   private void createIndices() {
     ElasticSearchConfiguration esConfig = getEsConfig();
-    SearchRepository searchRepository = new SearchRepository(esConfig);
+    SearchRepository searchRepository = new SearchRepository(esConfig, 50);
     LOG.info("creating indexes.");
     searchRepository.createIndexes();
   }
