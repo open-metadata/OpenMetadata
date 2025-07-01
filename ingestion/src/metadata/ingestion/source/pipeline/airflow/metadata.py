@@ -428,7 +428,7 @@ class AirflowSource(PipelineServiceSource):
             default_owner = data.get("default_args", {}).get("owner")
 
             for task in tasks:
-                # Flatten serialized task for Airflow 2.10+
+                # Flatten serialized task
                 task_data = task.get("__var") if isinstance(task, dict) and task.keys() == {"__var", "__type"} else task
 
                 owner = task_data.get("owner")
@@ -447,8 +447,7 @@ class AirflowSource(PipelineServiceSource):
 
         except Exception as exc:
             self.status.warning(
-                data.get("dag_id", "<unknown_dag>"),
-                f"Could not extract owner information due to {exc}"
+                data.get("dag_id"), f"Could not extract owner information due to {exc}"
             )
             return None
 
