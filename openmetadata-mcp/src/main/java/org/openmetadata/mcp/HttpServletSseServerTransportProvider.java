@@ -164,24 +164,37 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
 
     executorService.submit(
         () -> {
-          // TODO: Handle session lifecycle and keepalive
+          // Handle session lifecycle and keepalive
           try {
-            while (sessions.containsKey(sessionId)) {
+            while (sessions.containsKey(sessionId) && !isClosing.get()) {
               // Send keepalive every 30 seconds
               Thread.sleep(30000);
-              writer.write(": keep-alive\n\n");
-              writer.flush();
+              if (!isClosing.get() && sessions.containsKey(sessionId)) {
+                writer.write(": keep-alive\n\n");
+                writer.flush();
+
+                // Check if client is still connected
+                if (writer.checkError()) {
+                  LOG.debug("Client disconnected for session: {}", sessionId);
+                  break;
+                }
+              }
             }
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            LOG.debug("Keepalive thread interrupted for session: {}", sessionId);
           } catch (Exception e) {
-            LOG.error("SSE error", e);
+            LOG.error("SSE error for session: {}", sessionId, e);
           } finally {
+            sessions.remove(sessionId);
             try {
               session.closeGracefully();
               asyncContext.complete();
+            } catch (IllegalStateException e) {
+              // AsyncContext already completed
+              LOG.debug("AsyncContext already completed for session: {}", sessionId);
             } catch (Exception e) {
-              LOG.error("Error closing long-lived SSE connection", e);
+              LOG.error("Error closing long-lived SSE connection for session: {}", sessionId, e);
             }
           }
         });
@@ -289,12 +302,16 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
 
   @Override
   public void destroy() {
+    isClosing.set(true);
+    LOG.info("Shutting down HttpServletSseServerTransportProvider");
+    if (executorService != null) {
+      executorService.shutdownNow();
+    }
     closeGracefully().block();
     if (executorService != null) {
-      executorService.shutdown();
       try {
-        if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-          executorService.shutdownNow();
+        if (!executorService.awaitTermination(2, TimeUnit.SECONDS)) {
+          LOG.warn("Executor service did not terminate within timeout");
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
