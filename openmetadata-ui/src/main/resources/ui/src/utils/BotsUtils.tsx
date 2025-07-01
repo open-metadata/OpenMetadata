@@ -56,7 +56,7 @@ export const getJWTTokenExpiryOptions = (filterUnlimited = false) => {
     );
   }
 
-  const sortedOptions = finalOptions.sort(
+  const sortedOptions = finalOptions.toSorted(
     (a, b) => a.numericValue - b.numericValue
   );
 
