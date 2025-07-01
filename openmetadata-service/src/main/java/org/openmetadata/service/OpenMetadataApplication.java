@@ -398,7 +398,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected void initializeSearchRepository(OpenMetadataApplicationConfig config) {
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
-    Integer databaseMaxSize = catalogConfig.getDataSourceFactory().getMaxSize();
+    Integer databaseMaxSize = config.getDataSourceFactory().getMaxSize();
     LOG.info(
         "AUTO-TUNE INIT: Initializing SearchRepository with database max pool size: {}",
         databaseMaxSize);

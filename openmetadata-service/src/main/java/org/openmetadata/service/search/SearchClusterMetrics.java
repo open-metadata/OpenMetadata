@@ -29,7 +29,6 @@ public class SearchClusterMetrics {
   public static SearchClusterMetrics fetchClusterMetrics(
       SearchRepository searchRepository, long totalEntities, int maxDbConnections) {
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
-    Integer maxDbConnections = searchRepository.getDatabaseMaxPoolSize();
 
     try {
       if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
@@ -178,7 +177,6 @@ public class SearchClusterMetrics {
 
     int maxProducerThreads = (maxDbConnections * 3) / 4; // 75% of connection pool
     int recommendedConcurrentRequests = maxProducerThreads;
-        Runtime.getRuntime().availableProcessors() * 8; // Increased multiplier for virtual threads
     int recommendedProducerThreads =
         Math.min(maxProducerThreads, 10 * totalNodes); // Reduced from 30 to 10 per node
 
@@ -189,23 +187,15 @@ public class SearchClusterMetrics {
     }
 
     // Consumers transform entities to search documents - lighter work than producers
-    int effectiveMaxDbConnections =
-        maxDbConnections != null ? maxDbConnections : 50; // fallback default
     // Can have many consumers since they're not DB-bound
     int recommendedConsumerThreads = 10 * totalNodes; // Reduced from 50 to 10 per node
-    int maxProducerThreads = Math.max(5, effectiveMaxDbConnections - reservedConnections);
-    recommendedProducerThreads = Math.min(recommendedProducerThreads, maxProducerThreads);
 
     // Only limit if memory is very high
     if (memoryUsagePercent > 80) {
       recommendedConsumerThreads = Math.max(10, recommendedConsumerThreads / 2);
     }
     recommendedConsumerThreads =
-        effectiveMaxDbConnections,
-        reservedConnections,
-        maxProducerThreads,
         Math.min(20, recommendedConsumerThreads); // Cap at 20 to prevent thread exhaustion
-        recommendedProducerThreads);
 
     int baseConcurrentRequests = totalNodes * 50;
     if (memoryUsagePercent > 80) {
@@ -440,9 +430,7 @@ public class SearchClusterMetrics {
         Map<String, Object> clusterSettings = null;
 
         // Get cluster settings based on search client type
-    int effectiveMaxDbConnections =
         if (searchClient instanceof OpenSearchClient) {
-    // Reserve 60% of connections for regular user traffic and other app components
           clusterSettings = ((OpenSearchClient) searchClient).clusterSettings();
         } else if (searchClient instanceof ElasticSearchClient) {
           clusterSettings = ((ElasticSearchClient) searchClient).clusterSettings();
@@ -463,7 +451,6 @@ public class SearchClusterMetrics {
       LOG.debug(
           "Could not fetch max content length from cluster, using default: {}", e.getMessage());
     }
-        conservativeThreads);
 
     return SearchClusterMetrics.builder()
         .availableProcessors(Runtime.getRuntime().availableProcessors())
