@@ -13,6 +13,10 @@
 @import (reference) '../../../../styles/variables.less';
 
 .test-case-form-v1 {
+  position: relative;
+  min-height: 100vh;
+  padding-bottom: 80px; // Space for fixed buttons
+
   .ant-form-item {
     margin-bottom: @size-lg;
 
@@ -28,7 +32,8 @@
   }
 
   .select-table-card,
-  .test-type-card {
+  .test-type-card,
+  .test-details-card {
     background-color: @grey-1;
     border: 1px solid @grey-200;
     border-radius: @border-radius-sm;
@@ -51,9 +56,17 @@
       font-weight: @font-medium;
       font-size: @font-size-base;
     }
+
+    .card-title {
+      color: @grey-800;
+      font-size: @size-md;
+      font-weight: @font-medium;
+      margin-bottom: @size-mlg;
+      line-height: 1.4;
+    }
   }
 
-  .test-type-card {
+  .test-details-card {
     margin-bottom: 0;
   }
 
@@ -73,5 +86,45 @@
       color: @error-color;
       font-size: @font-size-base;
     }
+  }
+
+  .test-case-form-actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: @white;
+    border-top: 1px solid @grey-200;
+    padding: @size-lg @size-xl;
+    display: flex;
+    justify-content: flex-end;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  // Drawer mode adjustments
+  &.drawer-mode {
+    min-height: auto;
+    padding-bottom: 0;
+
+    .test-case-form-actions {
+      display: none; // Hide actions in drawer mode, use drawer footer instead
+    }
+  }
+}
+
+// Drawer specific styles
+.drawer-form-content {
+  .test-case-form-v1 {
+    padding-bottom: 0;
+  }
+}
+
+.drawer-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+
+  .ant-space {
+    width: auto;
   }
 }

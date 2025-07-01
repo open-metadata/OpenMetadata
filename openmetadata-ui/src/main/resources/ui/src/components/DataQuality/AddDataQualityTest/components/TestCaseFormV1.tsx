@@ -10,29 +10,48 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Drawer, DrawerProps, Form, Select, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Drawer,
+  DrawerProps,
+  Form,
+  Select,
+  Space,
+  Typography,
+} from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
 import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-format-table.svg';
 import {
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
+import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { Table } from '../../../../generated/entity/data/table';
+import { TagLabel } from '../../../../generated/tests/testCase';
 import {
   EntityType,
   TestDefinition,
   TestPlatform,
 } from '../../../../generated/tests/testDefinition';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../../interface/FormUtils.interface';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
 import { getListTestDefinitions } from '../../../../rest/testAPI';
 import { filterSelectOptions } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { generateFormFields } from '../../../../utils/formUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCardGroup.interface';
@@ -45,7 +64,9 @@ export interface TestCaseFormV1Props {
   className?: string;
   table?: Table;
   onFormSubmit?: (values: FormValues) => void;
+  onCancel?: () => void;
   initialValues?: Partial<FormValues>;
+  loading?: boolean;
 }
 
 interface FormValues {
@@ -53,6 +74,11 @@ interface FormValues {
   selectedTable?: string;
   selectedColumn?: string;
   testTypeId?: string;
+  testName?: string;
+  description?: string;
+  tags?: TagLabel[];
+  glossaryTerms?: TagLabel[];
+  computePassedFailedRowCount?: boolean;
 }
 
 type TablesCache = Map<string, TableSearchSource>;
@@ -92,16 +118,6 @@ const convertSearchSourceToTable = (searchSource: TableSearchSource): Table =>
     columns: searchSource.columns || [],
   } as Table);
 
-/**
- * TestCaseFormV1 - An improved form component for creating test cases
- *
- * Features:
- * - Progressive test level selection (Table/Column)
- * - Smart table caching with column data
- * - Dynamic test type filtering based on column data types
- * - Efficient column selection without additional API calls
- * - Dynamic parameter form rendering based on selected test definition
- */
 const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   className,
   drawerProps,
@@ -109,8 +125,12 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   isDrawer = false,
   table,
   onFormSubmit,
+  onCancel,
+  loading: externalLoading = false,
 }) => {
+  const { t } = useTranslation();
   const [form] = useForm<FormValues>();
+  const [loading, setLoading] = useState(false);
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
   const [selectedTestDefinition, setSelectedTestDefinition] =
     useState<TestDefinition>();
@@ -123,11 +143,46 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const selectedTestLevel = Form.useWatch('testLevel', form);
   const selectedTable = Form.useWatch('selectedTable', form);
   const selectedColumn = Form.useWatch('selectedColumn', form);
-  const selectedTestType = Form.useWatch('testTypeId', form);
 
-  const handleSubmit = (values: FormValues) => {
-    onFormSubmit?.(values);
+  const handleSubmit = async (values: FormValues) => {
+    setLoading(true);
+    try {
+      await onFormSubmit?.(values);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleCancel = () => {
+    onCancel?.();
+  };
+
+  const isFormLoading = loading || externalLoading;
+
+  // Reusable action buttons component
+  const renderActionButtons = useMemo(
+    () => (
+      <Space size={16}>
+        <Button
+          data-testid="cancel-btn"
+          disabled={isFormLoading}
+          size="large"
+          onClick={handleCancel}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          data-testid="create-btn"
+          htmlType="submit"
+          loading={isFormLoading}
+          size="large"
+          type="primary"
+          onClick={() => form.submit()}>
+          {t('label.create')}
+        </Button>
+      </Space>
+    ),
+    [isFormLoading, handleCancel, form, t]
+  );
 
   const fetchTables = useCallback(async (searchValue = '', page = 1) => {
     try {
@@ -326,6 +381,103 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     return null;
   }, [selectedTestDefinition, selectedTableData]);
 
+  const isComputeRowCountFieldVisible = useMemo(() => {
+    return selectedTestDefinition?.supportsRowLevelPassedFailed ?? false;
+  }, [selectedTestDefinition]);
+
+  const testDetailsFormFields: FieldProp[] = useMemo(
+    () => [
+      {
+        name: 'testName',
+        required: false,
+        label: t('label.name'),
+        id: 'root/testName',
+        type: FieldTypes.TEXT,
+        placeholder: t('message.enter-test-case-name'),
+        rules: [
+          {
+            pattern: ENTITY_NAME_REGEX,
+            message: t('message.entity-name-validation'),
+          },
+          {
+            max: 256,
+            message: t('message.entity-maximum-size', {
+              entity: t('label.name'),
+              max: 256,
+            }),
+          },
+        ],
+        props: {
+          'data-testid': 'test-case-name',
+        },
+      },
+      {
+        name: 'description',
+        required: false,
+        label: t('label.description'),
+        id: 'root/description',
+        type: FieldTypes.DESCRIPTION,
+        props: {
+          'data-testid': 'description',
+          initialValue: initialValues?.description ?? '',
+          style: {
+            margin: 0,
+          },
+        },
+      },
+      {
+        name: 'tags',
+        required: false,
+        label: t('label.tag-plural'),
+        id: 'root/tags',
+        type: FieldTypes.TAG_SUGGESTION,
+        props: {
+          selectProps: {
+            'data-testid': 'tags-selector',
+          },
+        },
+      },
+      {
+        name: 'glossaryTerms',
+        required: false,
+        label: t('label.glossary-term-plural'),
+        id: 'root/glossaryTerms',
+        type: FieldTypes.TAG_SUGGESTION,
+        props: {
+          selectProps: {
+            'data-testid': 'glossary-terms-selector',
+          },
+          open: false,
+          hasNoActionButtons: true,
+          isTreeSelect: true,
+          tagType: TagSource.Glossary,
+          placeholder: t('label.select-field', {
+            field: t('label.glossary-term-plural'),
+          }),
+        },
+      },
+    ],
+    [initialValues?.description, initialValues?.tags, t]
+  );
+
+  const computeRowCountField: FieldProp[] = useMemo(
+    () => [
+      {
+        name: 'computePassedFailedRowCount',
+        label: t('label.compute-row-count'),
+        type: FieldTypes.SWITCH,
+        helperText: t('message.compute-row-count-helper-text'),
+        required: false,
+        props: {
+          'data-testid': 'compute-passed-failed-row-count',
+        },
+        id: 'root/computePassedFailedRowCount',
+        formItemLayout: FormItemLayout.HORIZONTAL,
+      },
+    ],
+    []
+  );
+
   const formContent = (
     <div
       className={classNames(
@@ -359,7 +511,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               showSearch
               api={fetchTables}
               placeholder="Select one or more table at a time"
-              size="large"
             />
           </Form.Item>
 
@@ -379,7 +530,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 loading={!selectedTableData}
                 options={columnOptions}
                 placeholder="Select a column"
-                size="large"
               />
             </Form.Item>
           )}
@@ -397,15 +547,29 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               options={testTypeOptions}
               placeholder="Select a test type"
               popupClassName="no-wrap-option"
-              size="large"
               onChange={handleTestDefinitionChange}
             />
           </Form.Item>
 
           {selectedTestDefinition && generateParamsField}
         </Card>
+
+        <Card className="test-details-card">
+          {generateFormFields(testDetailsFormFields)}
+
+          {isComputeRowCountFieldVisible &&
+            generateFormFields(computeRowCountField)}
+        </Card>
       </Form>
+
+      {!isDrawer && (
+        <div className="test-case-form-actions">{renderActionButtons}</div>
+      )}
     </div>
+  );
+
+  const drawerFooter = (
+    <div className="drawer-footer-actions">{renderActionButtons}</div>
   );
 
   if (isDrawer) {
@@ -413,10 +577,11 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
       <Drawer
         destroyOnClose
         open
+        footer={drawerFooter}
         placement="right"
         size="large"
         {...drawerProps}>
-        {formContent}
+        <div className="drawer-form-content">{formContent}</div>
       </Drawer>
     );
   }
