@@ -99,7 +99,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
-    key: ROUTES.DOMAIN,
+    key: 'domains',
     title: i18next.t('label.domain-plural'),
     icon: DomainsIcon,
     dataTestId: `app-bar-item-${SidebarItem.DOMAINS}`,
