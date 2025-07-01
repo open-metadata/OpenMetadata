@@ -118,7 +118,7 @@ export const DomainLabelV2 = <
         ) : null;
 
         return (
-          <div className="d-flex items-center gap-1" key={domain.id}>
+          <div className="d-flex w-max-full items-center gap-1" key={domain.id}>
             <Typography.Text className="self-center text-xs whitespace-nowrap">
               <DomainIcon
                 className="d-flex"
@@ -132,7 +132,8 @@ export const DomainLabelV2 = <
               domain,
               getEntityName(domain),
               true,
-              'text-primary domain-link'
+              'text-primary domain-link',
+              true
             )}
             {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
           </div>
