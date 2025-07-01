@@ -362,7 +362,6 @@ class RestSource(ApiServiceSource):
                         FieldModel(
                             name=key,
                             dataType=DataTypeTopic.UNKNOWN,
-                            dataTypeDisplay="OBJECT",
                             children=children,
                         )
                     )
