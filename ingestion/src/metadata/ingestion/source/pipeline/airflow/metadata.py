@@ -449,7 +449,7 @@ class AirflowSource(PipelineServiceSource):
             self.status.warning(
                 data.get("dag_id"), f"Could not extract owner information due to {exc}"
             )
-            return None
+        return None
 
     def get_pipeline_name(self, pipeline_details: SerializedDAG) -> str:
         """
