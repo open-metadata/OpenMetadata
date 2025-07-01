@@ -167,7 +167,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         showErrorToast(err as AxiosError);
       }
     },
-    [suggestions, publish, fetchSuggestions]
+    [suggestions, publish]
   );
 
   const onUpdateActiveUser = useCallback((user?: EntityReference) => {
