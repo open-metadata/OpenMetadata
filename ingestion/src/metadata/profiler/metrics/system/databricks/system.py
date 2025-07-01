@@ -21,9 +21,9 @@ SYSTEM_QUERY = textwrap.dedent(
     SELECT
         timestamp AS starttime,
         COALESCE(CAST({column1} AS BIGINT), 0) + COALESCE(CAST({column2} AS BIGINT), 0) AS rows,
-        {database} AS database,
-        {schema} AS schema,
-        {table} AS table
+        '{database}' AS database,
+        '{schema}' AS schema,
+        '{table}' AS table
     FROM (DESCRIBE HISTORY {database}.{schema}.{table})
     WHERE operation IN ({operations}) AND timestamp > DATEADD(day, -1, CURRENT_TIMESTAMP())
     """
@@ -34,14 +34,10 @@ SYSTEM_QUERY = textwrap.dedent(
 class DatabricksSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
     """Databricks system metrics computer"""
 
-    def __init__(
-        self,
-        session: Session,
-        runner: QueryRunner,
-    ):
+    def __init__(self, session: Session, runner: QueryRunner, catalog: str):
         self.session = session
         self.table = runner.table_name
-        self.database = runner.session.get_bind().url.database
+        self.database = catalog
         self.schema = runner.schema_name
 
     def _get_metrics_from_queries(
@@ -72,8 +68,8 @@ class DatabricksSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             self._get_query_results,
             self.session,
             SYSTEM_QUERY.format(
-                column1="operationMetrics.numUpdatedRows",
-                column2="operationMetrics.numTargetRowsUpdated",
+                column1="operationMetrics.numOutputRows",
+                column2="operationMetrics.numTargetRowsInserted",
                 database=self.database,
                 schema=self.schema,
                 table=self.table,

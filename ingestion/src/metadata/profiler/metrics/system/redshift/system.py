@@ -40,7 +40,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
 
     def get_inserts(self) -> List[SystemProfile]:
         queries = self.get_or_update_cache(
-            f"{self.database}.{self.schema}",
+            f"{self.database}.{self.schema}.{DatabaseDMLOperations.INSERT.value}",
             self._get_insert_queries,
             database=self.database,
             schema=self.schema,
@@ -49,7 +49,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
 
     def get_deletes(self) -> List[SystemProfile]:
         queries = self.get_or_update_cache(
-            f"{self.database}.{self.schema}",
+            f"{self.database}.{self.schema}.{DatabaseDMLOperations.DELETE.value}",
             self._get_delete_queries,
             database=self.database,
             schema=self.schema,
@@ -58,7 +58,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
 
     def get_updates(self) -> List[SystemProfile]:
         queries = self.get_or_update_cache(
-            f"{self.database}.{self.schema}",
+            f"{self.database}.{self.schema}.{DatabaseDMLOperations.UPDATE.value}",
             self._get_update_queries,
             database=self.database,
             schema=self.schema,

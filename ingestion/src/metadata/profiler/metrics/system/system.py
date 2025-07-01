@@ -17,6 +17,7 @@ from abc import ABC
 from collections import defaultdict
 from typing import Callable, Dict, Generic, List, Optional, Protocol, Type, TypeVar
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
@@ -27,6 +28,7 @@ from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.importer import import_from_module
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
+from metadata.utils.profiler_utils import QueryResult
 
 logger = profiler_logger()
 
@@ -47,7 +49,23 @@ class CacheProvider(ABC, Generic[T]):
     """Cache provider class to provide cache for system metrics"""
 
     def __init__(self):
-        self.cache = LRUCache[T](LRU_CACHE_SIZE)
+        self.cache = LRUCache[List[T]](LRU_CACHE_SIZE)
+
+    def __init_subclass__(cls, **kwargs):
+        """Ensure that subclasses properly initialize the cache"""
+        super().__init_subclass__(**kwargs)
+
+        # Store the original __init__ method
+        original_init = cls.__init__
+
+        def new_init(self, *args, **kwargs):
+            # Always call CacheProvider.__init__ first
+            CacheProvider.__init__(self)
+            # Then call the original __init__ if it exists and is not CacheProvider's
+            if original_init is not CacheProvider.__init__:
+                original_init(self, *args, **kwargs)
+
+        cls.__init__ = new_init
 
     def get_or_update_cache(
         self,
@@ -55,9 +73,10 @@ class CacheProvider(ABC, Generic[T]):
         get_queries_fn: Callable[..., List[T]],
         *args,
         **kwargs,
-    ):
+    ) -> List[T]:
         if cache_path in self.cache:
-            return self.cache.get(cache_path)
+            cached_result = self.cache.get(cache_path)
+            return cached_result if cached_result is not None else []
         result = get_queries_fn(*args, **kwargs)
         self.cache.put(cache_path, result)
         return result
@@ -65,6 +84,39 @@ class CacheProvider(ABC, Generic[T]):
 
 class SystemMetricsComputer(Protocol):
     """System metrics computer class to fetch system metrics for a given table."""
+
+    def _get_query_results(
+        self,
+        session: Session,
+        query,
+        operation,
+    ) -> List[QueryResult]:
+        """get query results either from cache or from the database
+
+        Args:
+            session (Session): session
+            query (_type_): query
+            operation (_type_): operation
+
+        Returns:
+            List[QueryResult]:
+        """
+        cursor = session.execute(text(query))
+        results = [
+            QueryResult(
+                database_name=row.database,
+                schema_name=row.schema,
+                table_name=row.table,
+                query_text=None,
+                query_type=operation,
+                start_time=row.starttime,
+                rows=row.rows,
+            )
+            for row in cursor
+            if (row.rows is not None) and (row.rows > 0)
+        ]
+
+        return results
 
     def get_system_metrics(self) -> List[SystemProfile]:
         """Return system metrics for a given table. Actual passed object can be a variety of types based
@@ -90,25 +142,25 @@ class SystemMetricsRegistry:
 
     @classmethod
     def register(cls, dialect: PythonDialects, implementation: Type):
-        cls._registry[dialect.value.lower()] = implementation
+        cls._registry[dialect.name.lower()] = implementation
 
     @classmethod
     def get(cls, dialect: PythonDialects) -> Optional[Type["SystemMetricsComputer"]]:
-        if dialect.value.lower() not in cls._registry:
+        if dialect.name.lower() not in cls._registry:
             cls._discover_implementation(dialect)
-        return cls._registry.get(dialect.value.lower())
+        return cls._registry.get(dialect.name.lower())
 
     @classmethod
     def _discover_implementation(cls, dialect: PythonDialects):
         """Auto-discover the implementation in the profiler metrics"""
         try:
             implementation = import_from_module(
-                f"metadata.profiler.metrics.system.{dialect.value.lower()}.system"
+                f"metadata.profiler.metrics.system.{dialect.name.lower()}.system"
             )
         except ImportError:
-            logger.warning(f"No implementation found for {dialect.value.lower()}")
+            logger.warning(f"No implementation found for {dialect.name.lower()}")
             return
-        cls._registry[dialect.value.lower()] = implementation
+        cls._registry[dialect.name.lower()] = implementation
 
 
 def register_system_metrics(

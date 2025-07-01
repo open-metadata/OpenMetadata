@@ -111,7 +111,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         self._table = self.sampler.raw_dataset
         self.create_session()
-        self.system_metrics_implementation = SystemMetricsRegistry.get(
+        self.system_metrics_class = SystemMetricsRegistry.get(
             self.session.get_bind().dialect
         )
 

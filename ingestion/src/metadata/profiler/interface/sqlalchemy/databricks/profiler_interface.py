@@ -58,6 +58,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,
+            catalog=self.service_connection_config.catalog,
         )
         return instance.get_system_metrics()
 
