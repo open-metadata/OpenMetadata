@@ -2133,7 +2133,10 @@
     "team-no-asset": "तुमच्या टीमकडे कोणतीही ॲसेट नाहीत.",
     "test-case-schedule-description": "डेटा गुणवत्ता चाचण्या इच्छित वारंवारतेवर चालवण्यासाठी वेळापत्रक करता येतात. टाइमझोन UTC मध्ये आहे.",
     "test-connection-cannot-be-triggered": "कनेक्शन चाचणी ट्रिगर केली जाऊ शकत नाही.",
-    "test-connection-taking-too-long": "कनेक्शन चाचणी खूप वेळ घेत आहे. कृपया पुन्हा प्रयत्न करा.",
+    "test-connection-taking-too-long": {
+      "default": "कृपया खात्री करा की {{service_type}} कनेक्शनसाठी कॉन्फिगर केले गेले आहे",
+      "withIp": " {{ip}} वरून"
+    },
     "test-your-connection-before-creating-service": "सेवा तयार करण्यापूर्वी तुमचे कनेक्शन चाचणी करा",
     "testing-your-connection-may-take-two-minutes": "तुमचे कनेक्शन चाचणी करण्यास 2 मिनिटे लागू शकतात",
     "this-action-is-not-allowed-for-deleted-entities": "मिटवलेल्या घटकांसाठी ही क्रिया अनुमत नाही.",

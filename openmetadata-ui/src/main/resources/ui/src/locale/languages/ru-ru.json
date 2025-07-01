@@ -2133,7 +2133,10 @@
     "team-no-asset": "У вашей команды нет объектов.",
     "test-case-schedule-description": "The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.",
     "test-connection-cannot-be-triggered": "Тестовое соединение не может быть запущено.",
-    "test-connection-taking-too-long": "Тестовое соединение занимает слишком много времени. Пожалуйста, попробуйте еще раз.",
+    "test-connection-taking-too-long": {
+      "default": "Пожалуйста, убедитесь, что {{service_type}} настроен на разрешение подключений",
+      "withIp": " с {{ip}}"
+    },
     "test-your-connection-before-creating-service": "Проверьте свои подключения перед созданием сервиса",
     "testing-your-connection-may-take-two-minutes": "Проверка подключений может занять до 2 минут.",
     "this-action-is-not-allowed-for-deleted-entities": "This action is not allowed for deleted entities.",

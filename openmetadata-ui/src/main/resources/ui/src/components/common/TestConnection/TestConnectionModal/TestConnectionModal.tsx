@@ -18,7 +18,7 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { FC } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
 import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
@@ -43,6 +43,8 @@ interface TestConnectionModalProps {
     subDescription?: string;
   };
   handleCloseErrorMessage: () => void;
+  serviceType?: string;
+  hostIp?: string;
 }
 
 const TestConnectionModal: FC<TestConnectionModalProps> = ({
@@ -57,9 +59,12 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   onTestConnection,
   errorMessage,
   handleCloseErrorMessage,
+  serviceType,
+  hostIp,
 }) => {
   const { t } = useTranslation();
 
+  const [message, setMessage] = useState<string>();
   const getConnectionStepResult = (step: TestConnectionStep) => {
     return testConnectionStepResult.find(
       (resultStep) => resultStep.name === step.name
@@ -69,6 +74,20 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   const getProgressFormat: ProgressProps['format'] = (progress) => {
     return <span data-testid="progress-bar-value">{`${progress}%`}</span>;
   };
+
+  useEffect(() => {
+    const msg = t('message.test-connection-taking-too-long.default', {
+      service_type: serviceType,
+    });
+    if (hostIp) {
+      const hostIpMessage =
+        msg +
+        t('message.test-connection-taking-too-long.withIp', { ip: hostIp });
+      setMessage(hostIpMessage);
+    } else {
+      setMessage(msg);
+    }
+  }, [hostIp]);
 
   return (
     <Modal
@@ -113,7 +132,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
               {t('label.connection-timeout')}
             </Typography.Title>
             <Typography.Text className="text-grey-muted">
-              {t('message.test-connection-taking-too-long')}
+              {message}
             </Typography.Text>
             <Button
               ghost

@@ -2133,7 +2133,10 @@
     "team-no-asset": "Takımınızın herhangi bir varlığı yok.",
     "test-case-schedule-description": "Veri kalitesi testleri istenen sıklıkta çalışacak şekilde zamanlanabilir. Saat dilimi UTC'dir.",
     "test-connection-cannot-be-triggered": "Bağlantı testi tetiklenemez.",
-    "test-connection-taking-too-long": "Bağlantı testi çok uzun sürüyor. Lütfen tekrar deneyin.",
+    "test-connection-taking-too-long": {
+      "default": "Lütfen {{service_type}}’in bağlantılara izin verecek şekilde yapılandırıldığından emin olun",
+      "withIp": " {{ip}} adresinden"
+    },
     "test-your-connection-before-creating-service": "Servisi oluşturmadan önce bağlantılarınızı test edin",
     "testing-your-connection-may-take-two-minutes": "Bağlantılarınızı test etmek 2 dakika kadar sürebilir",
     "this-action-is-not-allowed-for-deleted-entities": "Bu eylem silinmiş varlıklar için izin verilmez.",
