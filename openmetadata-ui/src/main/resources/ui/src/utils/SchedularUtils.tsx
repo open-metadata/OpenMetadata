@@ -13,6 +13,7 @@
 
 import { Select } from 'antd';
 import cronstrue from 'cronstrue/i18n';
+import { t } from 'i18next';
 import { isUndefined, toNumber, toString } from 'lodash';
 import { RuleObject } from 'rc-field-form/es/interface';
 import {
@@ -23,19 +24,18 @@ import {
 } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import {
   CRON_COMBINATIONS,
-  dayOfMonthPattern,
-  dayOfWeekPattern,
+  DAY_OF_MONTH_PATTERN,
+  DAY_OF_WEEK_PATTERN,
   DEFAULT_SCHEDULE_CRON_DAILY,
   DEFAULT_SCHEDULE_CRON_HOURLY,
   DEFAULT_SCHEDULE_CRON_MONTHLY,
   DEFAULT_SCHEDULE_CRON_WEEKLY,
-  hourPattern,
-  minutePattern,
-  monthPattern,
+  HOUR_PATTERN,
+  MINUTE_PATTERN,
+  MONTH_PATTERN,
 } from '../constants/Schedular.constants';
 import { CronTypes } from '../enums/Schedular.enum';
 import { FieldTypes, FormItemLayout } from '../interface/FormUtils.interface';
-import { t } from './i18next/LocalUtil';
 
 export const getScheduleOptionsFromSchedules = (
   scheduleOptions: string[]
@@ -309,21 +309,21 @@ export const cronValidator = async (_: RuleObject, value: string) => {
   // Validate that each field follows standard Unix cron format
   const [minute, hour, dayOfMonth, month, dayOfWeek] = cronParts;
 
-  if (!minutePattern.test(minute)) {
+  if (!MINUTE_PATTERN.test(minute)) {
     return Promise.reject(new Error(t('message.cron-invalid-minute-field')));
   }
-  if (!hourPattern.test(hour)) {
+  if (!HOUR_PATTERN.test(hour)) {
     return Promise.reject(new Error(t('message.cron-invalid-hour-field')));
   }
-  if (!dayOfMonthPattern.test(dayOfMonth)) {
+  if (!DAY_OF_MONTH_PATTERN.test(dayOfMonth)) {
     return Promise.reject(
       new Error(t('message.cron-invalid-day-of-month-field'))
     );
   }
-  if (!monthPattern.test(month)) {
+  if (!MONTH_PATTERN.test(month)) {
     return Promise.reject(new Error(t('message.cron-invalid-month-field')));
   }
-  if (!dayOfWeekPattern.test(dayOfWeek)) {
+  if (!DAY_OF_WEEK_PATTERN.test(dayOfWeek)) {
     return Promise.reject(
       new Error(t('message.cron-invalid-day-of-week-field'))
     );

@@ -102,15 +102,17 @@ export const DEFAULT_SCHEDULE_CRON_DAILY = '0 0 * * *';
 export const DEFAULT_SCHEDULE_CRON_WEEKLY = '0 0 * * 1';
 export const DEFAULT_SCHEDULE_CRON_MONTHLY = '0 0 1 * *';
 
-export const minutePattern = /^(\*(\/[0-5]?\d)?|[0-5]?\d(-[0-5]?\d)?(,\d+)*)$/;
+export const MINUTE_PATTERN =
+  /^(\*(\/\d+)?|([0-5]?\d)(-([0-5]?\d)(\/\d+)?)?(,([0-5]?\d)(-([0-5]?\d)(\/\d+)?)?)*)$/;
 
-export const hourPattern =
-  /^(\*|1?\d|2[0-3](-1?\d|2[0-3])?(,\d+)*|\*\/1?\d|2[0-3])$/;
+export const HOUR_PATTERN =
+  /^(\*(\/([01]?\d|2[0-3]))?|([01]?\d|2[0-3])(-([01]?\d|2[0-3])(\/\d+)?)?(,([01]?\d|2[0-3])(-([01]?\d|2[0-3])(\/\d+)?)?)*)$/;
 
-export const dayOfMonthPattern =
-  /^(\*(\/[1-9])?|([1-9]|[12]\d|3[01])(-([1-9]|[12]\d|3[01]))?(,\d+)*)$/;
+export const DAY_OF_MONTH_PATTERN =
+  /^(\*(\/\d+)?|([1-9]|[12]\d|3[01])(-([1-9]|[12]\d|3[01])(\/\d+)?)?(,([1-9]|[12]\d|3[01])(-([1-9]|[12]\d|3[01])(\/\d+)?)?)*)$/;
 
-export const monthPattern =
-  /^(\*|([1-9]|1[0-2])(-([1-9]|1[0-2]))?(,\d+)*|\*\/[1-9])$/;
+export const MONTH_PATTERN =
+  /^(\*(\/\d+)?|([1-9]|1[0-2])(-([1-9]|1[0-2])(\/\d+)?)?(,([1-9]|1[0-2])(-([1-9]|1[0-2])(\/\d+)?)?)*)$/;
 
-export const dayOfWeekPattern = /^(\*|[0-6](-[0-6])?(,\d+)*|\*\/[0-6])$/;
+export const DAY_OF_WEEK_PATTERN =
+  /^(\*(\/\d+)?|[0-6](-[0-6](\/\d+)?)?(,[0-6](-[0-6](\/\d+)?)?)*)$/;
