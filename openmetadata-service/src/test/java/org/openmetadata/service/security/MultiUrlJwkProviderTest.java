@@ -247,7 +247,6 @@ class MultiUrlJwkProviderTest {
       Jwk result = provider.get(EXTERNAL_KID);
       assertNotNull(result);
       assertEquals(EXTERNAL_KID, result.getId());
-
     }
   }
 }
