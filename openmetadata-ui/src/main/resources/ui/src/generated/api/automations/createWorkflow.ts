@@ -273,6 +273,8 @@ export interface RequestConnection {
  *
  * Cockroach Database Connection Config
  *
+ * SSAS Metadata Database Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -741,6 +743,8 @@ export interface ConfigClass {
      *
      * Password to connect to Exasol.
      *
+     * Password
+     *
      * Password to connect to Metabase.
      *
      * Password to connect to PowerBI report server.
@@ -841,6 +845,8 @@ export interface ConfigClass {
      *
      * Username to connect to Cockroach. This user should have privileges to read all the
      * metadata in Cockroach.
+     *
+     * Username
      *
      * Username to connect to Metabase. This user should have privileges to read all the
      * metadata in Metabase.
@@ -1229,6 +1235,10 @@ export interface ConfigClass {
      * Client SSL/TLS settings.
      */
     tls?: SSLTLSSettings;
+    /**
+     * HTTP Link for SSAS ACCESS
+     */
+    httpConnection?: string;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -3937,6 +3947,7 @@ export enum RESTType {
     Snowflake = "Snowflake",
     Spark = "Spark",
     Spline = "Spline",
+    Ssas = "SSAS",
     Ssis = "SSIS",
     Stitch = "Stitch",
     Superset = "Superset",

@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 Tag",
+    "1-hr": "1 Stunde",
     "aborted": "Abgebrochen",
     "accept": "Akzeptieren",
     "accept-all": "Alle akzeptieren",
@@ -937,6 +939,8 @@
     "november": "November",
     "null": "Null",
     "number": "Nummer",
+    "number-day-plural": "{{number}} Tage",
+    "number-hr-plural": "{{number}} Stunden",
     "number-of-object-plural": "Anzahl von Objekten",
     "number-of-retries": "Anzahl der Wiederholungen",
     "number-of-rows": "Anzahl der Zeilen",
@@ -1479,6 +1483,7 @@
     "uninstalled-lowercase": "deinstalliert",
     "unique": "Einzigartig",
     "unit-of-measurement": "Maßeinheit",
+    "unlimited": "Unbegrenzt",
     "unpause": "Fortsetzen",
     "unprocessed": "Unverarbeitet",
     "up-vote": "Upvote",
@@ -1755,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}} ist ungültig.",
     "entity-is-not-valid-url": "{{entity}} ist keine gültige URL.",
     "entity-maximum-size": "{{entity}} kann maximal {{max}} Zeichen haben.",
+    "entity-moved-successfully": "{{entity}} wurde erfolgreich verschoben",
     "entity-name-validation": "Der Name darf nur Buchstaben, Zahlen, Unterstriche, Bindestriche, Punkte, Klammern und kaufmännische Unds enthalten.",
     "entity-not-contain-whitespace": "{{entity}} darf keine Leerzeichen enthalten.",
     "entity-owned-by-name": "Diese Entität gehört {{entityOwner}}.",
