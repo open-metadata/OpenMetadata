@@ -37,6 +37,7 @@ const CustomiseLandingPageHeader = ({
   handleAddWidget,
   hideCustomiseButton = false,
   overlappedContainer = false,
+  onHomePage = false,
   backgroundColor,
   onBackgroundColorUpdate,
   placeholderWidgetKey,
@@ -187,6 +188,7 @@ const CustomiseLandingPageHeader = ({
           placeholderWidgetKey={placeholderWidgetKey}
           onBackgroundColorUpdate={onBackgroundColorUpdate}
           onClose={handleCloseCustomiseHomeModal}
+          onHomePage={onHomePage}
         />
       )}
     </div>

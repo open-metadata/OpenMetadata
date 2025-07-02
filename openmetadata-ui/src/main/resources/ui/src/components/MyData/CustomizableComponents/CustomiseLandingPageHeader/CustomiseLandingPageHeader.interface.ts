@@ -24,4 +24,5 @@ export interface CustomiseLandingPageHeaderProps {
   backgroundColor?: string;
   onBackgroundColorUpdate?: (color: string) => Promise<void>;
   placeholderWidgetKey?: string;
+  onHomePage?: boolean;
 }

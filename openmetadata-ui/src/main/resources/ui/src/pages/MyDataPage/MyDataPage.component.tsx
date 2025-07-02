@@ -216,6 +216,7 @@ const MyDataPage = () => {
       <div className="grid-wrapper">
         <CustomiseLandingPageHeader
           overlappedContainer
+          onHomePage
           // onBackgroundColorUpdate={handleBackgroundColorUpdate} TODO: Update this updation call when we get the api
         />
         <ReactGridLayout
