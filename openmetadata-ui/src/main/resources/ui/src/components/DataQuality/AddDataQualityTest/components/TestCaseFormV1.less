@@ -33,7 +33,8 @@
 
   .select-table-card,
   .test-type-card,
-  .test-details-card {
+  .test-details-card,
+  .scheduler-card {
     background-color: @grey-1;
     border: 1px solid @grey-200;
     border-radius: @border-radius-sm;
@@ -66,8 +67,15 @@
     }
   }
 
-  .test-details-card {
-    margin-bottom: 0;
+  .scheduler-card {
+    .selection-card {
+      background-color: @white;
+
+      &.selected,
+      &:hover {
+        background-color: @blue-22;
+      }
+    }
   }
 
   .test-level-section {
