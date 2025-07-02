@@ -220,6 +220,7 @@ export enum EntityTabs {
   DOCUMENTATION = 'documentation',
   DATA_PRODUCTS = 'data_products',
   SUBDOMAINS = 'subdomains',
+  CONTRACT = 'contract',
 }
 
 export enum EntityAction {
