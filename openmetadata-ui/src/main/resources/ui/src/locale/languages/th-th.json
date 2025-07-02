@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 วัน",
+    "1-hr": "1 ชั่วโมง",
     "aborted": "ยกเลิก",
     "accept": "ยอมรับ",
     "accept-all": "ยอมรับทั้งหมด",
@@ -937,6 +939,8 @@
     "november": "พฤศจิกายน",
     "null": "ค่าว่าง",
     "number": "หมายเลข",
+    "number-day-plural": "{{number}} วัน",
+    "number-hr-plural": "{{number}} ชั่วโมง",
     "number-of-object-plural": "จำนวนวัตถุ",
     "number-of-retries": "จำนวนครั้งที่ลองใหม่",
     "number-of-rows": "จำนวนแถว",
@@ -1479,6 +1483,7 @@
     "uninstalled-lowercase": "ถอนการติดตั้งแล้ว",
     "unique": "ไม่ซ้ำ",
     "unit-of-measurement": "หน่วยการวัด",
+    "unlimited": "ไม่จำกัด",
     "unpause": "เลิกหยุดชั่วคราว",
     "unprocessed": "Unprocessed",
     "up-vote": "โหวตขึ้น",
