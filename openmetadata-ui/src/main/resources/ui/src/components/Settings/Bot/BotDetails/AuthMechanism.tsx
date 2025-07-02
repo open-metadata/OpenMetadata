@@ -14,10 +14,9 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Divider, Input, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import { ReactComponent as CopyIcon } from '../../../../assets/svg/copy-right-squared.svg';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as CopyIcon } from '../../../../assets/svg/copy-right-squared.svg';
 import { ReactComponent as IconError } from '../../../../assets/svg/error.svg';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import { AuthenticationMechanism } from '../../../../generated/entity/teams/user';
