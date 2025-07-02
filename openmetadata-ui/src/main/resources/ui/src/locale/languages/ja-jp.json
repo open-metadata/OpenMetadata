@@ -1765,6 +1765,7 @@
     "entity-is-not-valid": "{{entity}}は正しくありません",
     "entity-is-not-valid-url": "{{entity}} is not valid url",
     "entity-maximum-size": "{{entity}} can be a maximum of {{max}} characters",
+    "entity-moved-successfully": "{{entity}}が正常に移動されました",
     "entity-name-validation": "Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.",
     "entity-not-contain-whitespace": "{{entity}}は空白を含んではいけません",
     "entity-owned-by-name": "このエンティティは{{entityOwner}}が所有しています",

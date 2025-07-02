@@ -1765,6 +1765,7 @@
     "entity-is-not-valid": "{{entity}} geçerli değil",
     "entity-is-not-valid-url": "{{entity}} geçerli bir url değil",
     "entity-maximum-size": "{{entity}} en fazla {{max}} karakter olabilir",
+    "entity-moved-successfully": "{{entity}} başarıyla taşındı",
     "entity-name-validation": "Ad yalnızca harf, rakam, alt çizgi, kısa çizgi, nokta, parantez ve ve işareti içerebilir.",
     "entity-not-contain-whitespace": "{{entity}} boşluk içermemelidir",
     "entity-owned-by-name": "Bu varlık {{entityOwner}} adlı kullanıcıya aittir",

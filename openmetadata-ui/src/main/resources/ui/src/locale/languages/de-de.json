@@ -1765,6 +1765,7 @@
     "entity-is-not-valid": "{{entity}} ist ungültig.",
     "entity-is-not-valid-url": "{{entity}} ist keine gültige URL.",
     "entity-maximum-size": "{{entity}} kann maximal {{max}} Zeichen haben.",
+    "entity-moved-successfully": "{{entity}} wurde erfolgreich verschoben",
     "entity-name-validation": "Der Name darf nur Buchstaben, Zahlen, Unterstriche, Bindestriche, Punkte, Klammern und kaufmännische Unds enthalten.",
     "entity-not-contain-whitespace": "{{entity}} darf keine Leerzeichen enthalten.",
     "entity-owned-by-name": "Diese Entität gehört {{entityOwner}}.",

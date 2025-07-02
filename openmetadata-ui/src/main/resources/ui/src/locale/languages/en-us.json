@@ -1765,6 +1765,7 @@
     "entity-is-not-valid": "{{entity}} is not valid",
     "entity-is-not-valid-url": "{{entity}} is not valid url",
     "entity-maximum-size": "{{entity}} can be a maximum of {{max}} characters",
+    "entity-moved-successfully": "{{entity}} moved successfully",
     "entity-name-validation": "Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.",
     "entity-not-contain-whitespace": "{{entity}} should not contain white space",
     "entity-owned-by-name": "This entity is owned by {{entityOwner}}",

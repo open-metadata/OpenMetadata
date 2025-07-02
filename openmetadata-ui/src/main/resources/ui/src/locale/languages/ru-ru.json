@@ -1765,6 +1765,7 @@
     "entity-is-not-valid": "{{entity}} недействителен",
     "entity-is-not-valid-url": "{{entity}} недействительный URL",
     "entity-maximum-size": "{{entity}} может содержать не более {{max}} символов",
+    "entity-moved-successfully": "{{entity}} успешно перемещен",
     "entity-name-validation": "Имя должно содержать только буквы, цифры, знаки подчеркивания, дефисы, точки, круглые скобки и амперсанды.",
     "entity-not-contain-whitespace": "{{entity}} не должно содержать пробелов",
     "entity-owned-by-name": "Этот объект принадлежит {{entityOwner}}",

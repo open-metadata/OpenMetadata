@@ -1765,6 +1765,7 @@
     "entity-is-not-valid": "{{entity}} معتبر نیست.",
     "entity-is-not-valid-url": "{{entity}} یک URL معتبر نیست.",
     "entity-maximum-size": "{{entity}} می‌تواند حداکثر {{max}} کاراکتر باشد.",
+    "entity-moved-successfully": "{{entity}} movido exitosamente",
     "entity-name-validation": "نام باید فقط شامل حروف، اعداد، زیرخط‌ها، خط تیره‌ها، نقاط، پرانتزها و آمپرسندها باشد.",
     "entity-not-contain-whitespace": "{{entity}} نباید شامل فاصله باشد.",
     "entity-owned-by-name": "این موجودیت متعلق به {{entityOwner}} است.",

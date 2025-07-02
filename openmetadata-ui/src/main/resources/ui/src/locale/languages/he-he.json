@@ -1765,6 +1765,7 @@
     "entity-is-not-valid": "{{entity}} אינו תקין",
     "entity-is-not-valid-url": "{{entity}} אינו כתובת URL תקינה",
     "entity-maximum-size": "{{entity}} יכול להכיל לכל היותר {{max}} תווים",
+    "entity-moved-successfully": "{{entity}} הועבר בהצלחה",
     "entity-name-validation": "שם חייב להכיל רק אותיות, מספרים, קו תחתון, מקפים, נקודות, סוגריים ו-אמפרסנדים.",
     "entity-not-contain-whitespace": "{{entity}} לא יכול להכיל רווח לבן",
     "entity-owned-by-name": "ישות זו שייכת ל-{{entityOwner}}",

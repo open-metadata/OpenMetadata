@@ -1765,6 +1765,7 @@
     "entity-is-not-valid": "{{entity}} não é válido",
     "entity-is-not-valid-url": "{{entity}} não é uma URL válida",
     "entity-maximum-size": "{{entity}} pode ter no máximo {{max}} caracteres",
+    "entity-moved-successfully": "{{entity}} movido com sucesso",
     "entity-name-validation": "O nome deve conter apenas letras, números, sublinhados, hífenes, pontos, parênteses e e-comercial.",
     "entity-not-contain-whitespace": "{{entity}} não deve conter espaços em branco",
     "entity-owned-by-name": "Esta entidade é propriedade de {{entityOwner}}",
