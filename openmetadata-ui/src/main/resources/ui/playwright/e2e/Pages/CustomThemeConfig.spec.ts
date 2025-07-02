@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { expect, Request } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
@@ -106,5 +106,47 @@ test.describe('Custom Theme Config Page', () => {
       'background-color',
       'rgb(21, 112, 239)'
     );
+  });
+
+  test('Should call customMonogramUrlPath only once after save if the monogram is not valid', async ({
+    page,
+  }) => {
+    let monogramUrlCallCount = 0;
+    const monogramRequests: Request[] = [];
+
+    // Track all network requests to the monogram URL
+    page.on('request', (request) => {
+      if (request.url().includes('custom-monogram.png')) {
+        monogramRequests.push(request);
+        monogramUrlCallCount++;
+      }
+    });
+
+    // Fill the monogram URL field
+    await page
+      .locator('[data-testid="customMonogramUrlPath"]')
+      .fill(config.monogram);
+
+    // Fill other required fields to make form valid
+    await page.locator('[data-testid="customLogoUrlPath"]').fill(config.logo);
+
+    // Wait for any initial image load requests to complete
+    await page.waitForTimeout(1000);
+
+    // Reset counter before save action
+    monogramUrlCallCount = 0;
+    monogramRequests.length = 0;
+
+    // Click save button and wait for API response
+    const saveResponse = page.waitForResponse('/api/v1/system/settings');
+    await page.locator('[data-testid="save-btn"]').click();
+    await saveResponse;
+
+    // Wait a bit more to catch any additional requests
+    await page.waitForTimeout(2000);
+
+    // Assert monogram URL was called at most once after save
+    expect(monogramUrlCallCount).toBeLessThanOrEqual(1);
+    expect(monogramRequests.length).toBeLessThanOrEqual(1);
   });
 });
