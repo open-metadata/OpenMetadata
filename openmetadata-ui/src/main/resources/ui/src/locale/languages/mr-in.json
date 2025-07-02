@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 दिवस",
+    "1-hr": "1 तास",
     "aborted": "निरस्त केले",
     "accept": "स्वीकार करा",
     "accept-all": "सर्व स्वीकार करा",
@@ -937,6 +939,8 @@
     "november": "नोव्हेंबर",
     "null": "नल",
     "number": "संख्या",
+    "number-day-plural": "{{number}} दिवस",
+    "number-hr-plural": "{{number}} तास",
     "number-of-object-plural": "वस्तूंची संख्या",
     "number-of-retries": "पुन्हा प्रयत्नांची संख्या",
     "number-of-rows": "पंक्तींची संख्या",
@@ -1479,6 +1483,7 @@
     "uninstalled-lowercase": "अनइंस्टॉल केले",
     "unique": "अद्वितीय",
     "unit-of-measurement": "मोजण्याचे एकक",
+    "unlimited": "अनिर्धारित",
     "unpause": "पुन्हा सुरू करा",
     "unprocessed": "प्रक्रिया न केलेले",
     "up-vote": "वर मत द्या",
@@ -1755,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}} वैध नाही",
     "entity-is-not-valid-url": "{{entity}} वैध URL नाही",
     "entity-maximum-size": "{{entity}} कमाल {{max}} वर्णांचे असू शकते",
+    "entity-moved-successfully": "{{entity}} यशस्वीरित्या हलविले गेले",
     "entity-name-validation": "नावात फक्त अक्षरे, संख्या, अंडरस्कोर्स, हायफन्स, पिरियड्स, कंस आणि अँपर्सँड्स असणे आवश्यक आहे.",
     "entity-not-contain-whitespace": "{{entity}} मध्ये पांढरी जागा नसावी",
     "entity-owned-by-name": "हा घटक {{entityOwner}} द्वारे मालकीचा आहे",
