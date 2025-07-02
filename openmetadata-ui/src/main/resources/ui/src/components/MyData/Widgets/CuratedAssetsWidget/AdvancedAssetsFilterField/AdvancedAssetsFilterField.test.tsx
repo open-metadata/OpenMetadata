@@ -147,9 +147,7 @@ describe('AdvancedAssetsFilterField', () => {
       </TestWrapper>
     );
 
-    expect(
-      screen.getByTestId('automator-conditions-container')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('advanced-filter-container')).toBeInTheDocument();
   });
 
   it('handles query changes correctly', () => {
@@ -180,9 +178,7 @@ describe('AdvancedAssetsFilterField', () => {
       </TestWrapper>
     );
 
-    expect(
-      screen.getByTestId('automator-conditions-container')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('advanced-filter-container')).toBeInTheDocument();
   });
 
   it('renders hidden form field for query filter', () => {
@@ -192,8 +188,47 @@ describe('AdvancedAssetsFilterField', () => {
       </TestWrapper>
     );
 
-    expect(
-      screen.getByTestId('automator-conditions-container')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('advanced-filter-container')).toBeInTheDocument();
+  });
+
+  it('does not show alert message when no filtered resource count', () => {
+    render(
+      <TestWrapper>
+        <AdvancedAssetsFilterField {...defaultProps} />
+      </TestWrapper>
+    );
+
+    expect(screen.queryByTestId('alert-message')).not.toBeInTheDocument();
+  });
+
+  it('handles empty query filter correctly', () => {
+    const TestWrapperWithEmptyFilter = ({
+      children,
+    }: {
+      children: React.ReactNode;
+    }) => {
+      const [form] = Form.useForm();
+
+      return (
+        <Form
+          form={form}
+          initialValues={{
+            queryFilter: '',
+            resources: ['table'],
+            title: 'Test Widget',
+          }}
+        >
+          {children}
+        </Form>
+      );
+    };
+
+    render(
+      <TestWrapperWithEmptyFilter>
+        <AdvancedAssetsFilterField {...defaultProps} />
+      </TestWrapperWithEmptyFilter>
+    );
+
+    expect(screen.getByTestId('advanced-filter-container')).toBeInTheDocument();
   });
 });

@@ -20,15 +20,6 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock(
-  '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
-  () => ({
-    AdvanceSearchProvider: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  })
-);
-
-jest.mock(
   '../AdvancedAssetsFilterField/AdvancedAssetsFilterField.component',
   () => ({
     AdvancedAssetsFilterField: jest
@@ -63,7 +54,6 @@ const defaultProps = {
   curatedAssetsConfig: null,
   onCancel: mockOnCancel,
   onSave: mockOnSave,
-  isSaveButtonDisabled: false,
   isOpen: true,
 };
 
@@ -102,19 +92,6 @@ describe('CuratedAssetsModal', () => {
     fireEvent.click(cancelButton);
 
     expect(mockOnCancel).toHaveBeenCalled();
-  });
-
-  it('disables save button when isSaveButtonDisabled is true', () => {
-    const propsWithDisabledSave = {
-      ...defaultProps,
-      isSaveButtonDisabled: true,
-    };
-
-    render(<CuratedAssetsModal {...propsWithDisabledSave} />);
-
-    const saveButton = screen.getByTestId('saveButton');
-
-    expect(saveButton).toBeDisabled();
   });
 
   it('disables save button when required fields are empty', () => {

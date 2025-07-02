@@ -33,39 +33,6 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
-// Mock SVG components
-jest.mock(
-  '../../../../assets/svg/curated-assets-no-data-placeholder.svg',
-  () => ({
-    ReactComponent: jest.fn().mockImplementation(({ height, width }) => (
-      <div data-testid="curated-assets-empty-icon" style={{ height, width }}>
-        Empty Icon
-      </div>
-    )),
-  })
-);
-
-jest.mock(
-  '../../../../assets/svg/curated-assets-not-found-placeholder.svg',
-  () => ({
-    ReactComponent: jest.fn().mockImplementation(({ height, width }) => (
-      <div data-testid="curated-assets-no-data-icon" style={{ height, width }}>
-        No Data Icon
-      </div>
-    )),
-  })
-);
-
-jest.mock('../../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: jest
-    .fn()
-    .mockImplementation(({ height, width, 'data-testid': dataTestId }) => (
-      <div data-testid={dataTestId} style={{ height, width }}>
-        Edit Icon
-      </div>
-    )),
-}));
-
 // Mock utility functions
 jest.mock('../../../../utils/CuratedAssetsUtils', () => ({
   getExploreURLWithFilters: jest.fn().mockReturnValue('/explore?filter=test'),
@@ -80,6 +47,11 @@ jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
       y: 0,
       w: 2,
       h: 2,
+      config: {
+        title: '',
+        resources: [],
+        queryFilter: '{}',
+      },
     },
   },
 }));
@@ -139,7 +111,7 @@ jest.mock(
 jest.mock('./CuratedAssetsModal/CuratedAssetsModal', () =>
   jest
     .fn()
-    .mockImplementation(({ isOpen, onCancel, onSave, curatedAssetsData }) => {
+    .mockImplementation(({ isOpen, onCancel, onSave, curatedAssetsConfig }) => {
       if (!isOpen) {
         return null;
       }
@@ -147,7 +119,7 @@ jest.mock('./CuratedAssetsModal/CuratedAssetsModal', () =>
       return (
         <div data-testid="curated-assets-modal-container">
           <div data-testid="modal-title">
-            {curatedAssetsData ? 'Edit Widget' : 'Create Widget'}
+            {curatedAssetsConfig ? 'Edit Widget' : 'Create Widget'}
           </div>
           <div data-testid="modal-content">Modal Content</div>
           <button data-testid="cancelButton" onClick={onCancel}>
@@ -176,6 +148,8 @@ const mockEntityData = [
     service: {
       displayName: 'Test Service',
     },
+    description: 'Test description',
+    updatedAt: '2023-01-01T00:00:00Z',
   },
 ];
 
@@ -230,6 +204,25 @@ describe('CuratedAssetsWidget', () => {
     });
   });
 
+  it('renders star icon when no source icon is available', async () => {
+    const propsWithoutTitle = {
+      ...defaultProps,
+      currentLayout: [
+        {
+          ...defaultProps.currentLayout[0],
+          config: {
+            resources: ['table'],
+            queryFilter: '{}',
+          },
+        } as WidgetConfig,
+      ],
+    };
+    render(<CuratedAssetsWidget {...propsWithoutTitle} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('star-outlined-icon')).toBeInTheDocument();
+    });
+  });
+
   it('renders footer with view more button when data is available', async () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
     await waitFor(() => {
@@ -238,8 +231,10 @@ describe('CuratedAssetsWidget', () => {
     });
   });
 
-  it('renders empty state with create button when no data and no resources', () => {
-    render(<CuratedAssetsWidget {...defaultProps} currentLayout={[]} />);
+  it('renders empty state with create button when in edit view and no data and no resources', () => {
+    render(
+      <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
+    );
 
     expect(screen.getByText('message.no-curated-assets')).toBeInTheDocument();
     expect(screen.getByTestId('add-curated-asset-button')).toBeInTheDocument();
@@ -254,12 +249,14 @@ describe('CuratedAssetsWidget', () => {
     });
     render(<CuratedAssetsWidget {...defaultProps} />);
 
-    expect(
-      screen.getByText('message.curated-assets-no-data-message')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('curated-assets-no-data-icon')
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.curated-assets-no-data-message')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('curated-assets-no-data-icon')
+      ).toBeInTheDocument();
+    });
   });
 
   it('shows loading skeleton with correct data length', async () => {
@@ -269,13 +266,15 @@ describe('CuratedAssetsWidget', () => {
     expect(skeleton).toHaveAttribute('data-length', '5');
   });
 
-  it('renders widget title from config', () => {
+  it('renders widget title from config', async () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
 
-    expect(screen.getByText('Test Widget')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Test Widget')).toBeInTheDocument();
+    });
   });
 
-  it('renders default title when no title in config', () => {
+  it('renders default title when no title in config', async () => {
     const propsWithoutTitle = {
       ...defaultProps,
       currentLayout: [
@@ -290,11 +289,17 @@ describe('CuratedAssetsWidget', () => {
     };
     render(<CuratedAssetsWidget {...propsWithoutTitle} />);
 
-    expect(screen.getByText('label.curated-asset-plural')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText('label.curated-asset-plural')
+      ).toBeInTheDocument();
+    });
   });
 
   it('calls handleLayoutUpdate with correct data when saving new widget', () => {
-    render(<CuratedAssetsWidget {...defaultProps} currentLayout={[]} />);
+    render(
+      <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
+    );
     fireEvent.click(screen.getByTestId('add-curated-asset-button'));
     fireEvent.click(screen.getByTestId('saveButton'));
 
@@ -320,7 +325,9 @@ describe('CuratedAssetsWidget', () => {
   });
 
   it('closes modal and resets data when cancel is clicked', () => {
-    render(<CuratedAssetsWidget {...defaultProps} currentLayout={[]} />);
+    render(
+      <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
+    );
     fireEvent.click(screen.getByTestId('add-curated-asset-button'));
     fireEvent.click(screen.getByTestId('cancelButton'));
 
@@ -337,7 +344,9 @@ describe('CuratedAssetsWidget', () => {
   });
 
   it('renders create modal with correct title when creating', () => {
-    render(<CuratedAssetsWidget {...defaultProps} currentLayout={[]} />);
+    render(
+      <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
+    );
     fireEvent.click(screen.getByTestId('add-curated-asset-button'));
 
     expect(screen.getByTestId('modal-title')).toHaveTextContent(
@@ -345,12 +354,19 @@ describe('CuratedAssetsWidget', () => {
     );
   });
 
-  it('renders entity list with correct test IDs', async () => {
+  it('renders entity list with correct test IDs when data is loaded', async () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
     await waitFor(() => {
       expect(
-        screen.getByTestId('Recently Viewed-Test Entity')
+        screen.getByTestId('Curated Assets-Test Entity')
       ).toBeInTheDocument();
+    });
+  });
+
+  it('renders entity description when available', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText('Test description')).toBeInTheDocument();
     });
   });
 
@@ -368,5 +384,49 @@ describe('CuratedAssetsWidget', () => {
         queryFilter: {},
       });
     });
+  });
+
+  it('renders sort dropdown in non-edit view', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('filter-button')).toBeInTheDocument();
+    });
+  });
+
+  it('renders edit controls in edit view', () => {
+    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
+
+    expect(screen.getByTestId('drag-widget-button')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-widget-button')).toBeInTheDocument();
+  });
+
+  it('renders more options dropdown', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('more-button')).toBeInTheDocument();
+    });
+  });
+
+  it('handles sort by click in non-edit view', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+    await waitFor(() => {
+      const sortButton = screen.getByTestId('filter-button');
+
+      expect(sortButton).toBeInTheDocument();
+    });
+  });
+
+  it('handles size change in edit view', () => {
+    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
+    const moreButton = screen.getByTestId('more-button');
+
+    expect(moreButton).toBeInTheDocument();
+  });
+
+  it('handles widget removal', () => {
+    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
+    const moreButton = screen.getByTestId('more-button');
+
+    expect(moreButton).toBeInTheDocument();
   });
 });

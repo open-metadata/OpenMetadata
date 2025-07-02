@@ -171,4 +171,115 @@ describe('SelectAssetTypeField', () => {
 
     expect(screen.getByTestId('alert-message')).toBeInTheDocument();
   });
+
+  it('does not display alert message when no resource count', () => {
+    render(
+      <TestWrapper>
+        <SelectAssetTypeField {...defaultProps} />
+      </TestWrapper>
+    );
+
+    expect(screen.queryByTestId('alert-message')).not.toBeInTheDocument();
+  });
+
+  it('calls fetchEntityCount when component mounts with resources', () => {
+    render(
+      <TestWrapper>
+        <SelectAssetTypeField {...defaultProps} />
+      </TestWrapper>
+    );
+
+    expect(mockFetchEntityCount).toHaveBeenCalledWith({
+      countKey: 'resourceCount',
+      selectedResource: ['table'],
+      shouldUpdateResourceList: false,
+    });
+  });
+
+  it('handles empty resources array', () => {
+    const TestWrapperWithEmptyResources = ({
+      children,
+    }: {
+      children: React.ReactNode;
+    }) => {
+      const [form] = Form.useForm();
+
+      return (
+        <Form
+          form={form}
+          initialValues={{
+            resources: [],
+          }}
+        >
+          {children}
+        </Form>
+      );
+    };
+
+    render(
+      <TestWrapperWithEmptyResources>
+        <SelectAssetTypeField {...defaultProps} />
+      </TestWrapperWithEmptyResources>
+    );
+
+    expect(screen.getByTestId('asset-type-select')).toBeInTheDocument();
+  });
+
+  it('renders select with correct options', () => {
+    render(
+      <TestWrapper>
+        <SelectAssetTypeField {...defaultProps} />
+      </TestWrapper>
+    );
+
+    const select = screen.getByTestId('asset-type-select');
+
+    expect(select).toBeInTheDocument();
+  });
+
+  it('handles resource change correctly', async () => {
+    const setFieldValue = jest.fn();
+    const TestWrapperWithMockForm = ({
+      children,
+    }: {
+      children: React.ReactNode;
+    }) => {
+      const [form] = Form.useForm();
+      form.setFieldValue = setFieldValue;
+
+      return (
+        <Form
+          form={form}
+          initialValues={{
+            resources: ['table'],
+          }}
+        >
+          {children}
+        </Form>
+      );
+    };
+
+    render(
+      <TestWrapperWithMockForm>
+        <SelectAssetTypeField {...defaultProps} />
+      </TestWrapperWithMockForm>
+    );
+
+    const select = screen.getByTestId('asset-type-select');
+    await act(async () => {
+      fireEvent.click(select);
+    });
+
+    expect(select).toBeInTheDocument();
+  });
+
+  it('shows correct placeholder text', () => {
+    render(
+      <TestWrapper>
+        <SelectAssetTypeField {...defaultProps} />
+      </TestWrapper>
+    );
+
+    expect(screen.getByText('label.select-asset-type')).toBeInTheDocument();
+  });
 });

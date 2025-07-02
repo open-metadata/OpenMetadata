@@ -170,12 +170,8 @@ export const AdvancedAssetsFilterField = ({
       <Form.Item hidden name="queryFilter">
         <Input />
       </Form.Item>
-      <Row className="automator-filter-form-field" gutter={[8, 8]}>
-        <Col
-          className="automator-conditions-container"
-          data-testid="automator-conditions-container"
-          span={24}
-        >
+      <Row className="advanced-filter-form-field" gutter={[8, 8]}>
+        <Col data-testid="advanced-filter-container" span={24}>
           <div className="ant-form-item-label advanced-filter-label">
             <label>{t('label.advance-filter')}</label>
           </div>

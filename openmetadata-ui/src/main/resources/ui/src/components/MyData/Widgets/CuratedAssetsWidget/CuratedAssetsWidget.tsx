@@ -327,7 +327,11 @@ const CuratedAssetsWidget = ({
       <Row className="curated-assets-header" justify="space-between">
         <Col className="d-flex items-center h-full min-h-8">
           <div className="d-flex h-6 w-6 m-r-sm">
-            {sourceIcon && title ? sourceIcon : <StarOutlinedIcon />}
+            {sourceIcon && title ? (
+              sourceIcon
+            ) : (
+              <StarOutlinedIcon data-testid="star-outlined-icon" />
+            )}
           </div>
 
           <Typography.Paragraph
