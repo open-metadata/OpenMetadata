@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 روز",
+    "1-hr": "1 ساعت",
     "aborted": "لغو شده",
     "accept": "پذیرفتن",
     "accept-all": "پذیرفتن همه",
@@ -937,6 +939,8 @@
     "november": "نوامبر",
     "null": "تهی",
     "number": "عدد",
+    "number-day-plural": "{{number}} روز",
+    "number-hr-plural": "{{number}} ساعت",
     "number-of-object-plural": "تعداد اشیا",
     "number-of-retries": "تعداد تلاش‌ها",
     "number-of-rows": "تعداد ردیف‌ها",
@@ -1479,6 +1483,7 @@
     "uninstalled-lowercase": "حذف شده",
     "unique": "منحصر به فرد",
     "unit-of-measurement": "واحد اندازه‌گیری",
+    "unlimited": "بدون محدودیت",
     "unpause": "ادامه",
     "unprocessed": "Unprocessed",
     "up-vote": "رای مثبت",
