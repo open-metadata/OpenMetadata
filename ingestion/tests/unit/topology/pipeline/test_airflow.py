@@ -274,8 +274,9 @@ class TestAirflow(TestCase):
         self.assertEqual(get_schedule_interval(pipeline_data), "*/2 * * * *")
 
     def test_get_dag_owners_with_serialized_tasks(self):
+        # Case 1: All tasks have no explicit owner → fallback to default_args
         data = {
-            "default_args": {"owner": "default_owner"},
+            "default_args": {"__var": {"owner": "default_owner"}},
             "tasks": [
                 {"__var": {"task_id": "t1"}, "__type": "EmptyOperator"},
                 {"__var": {"task_id": "t2"}, "__type": "EmptyOperator"},
@@ -283,13 +284,37 @@ class TestAirflow(TestCase):
         }
         self.assertEqual("default_owner", self.airflow.fetch_dag_owners(data))
 
-        # If one task explicitly overrides owner
+        # Case 2: One task explicitly overrides the owner → tie between two owners
         data = {
-            "default_args": {"owner": "default_owner"},
+            "default_args": {"__var": {"owner": "default_owner"}},
             "tasks": [
-                {"__var": {"task_id": "t1"}, "__type": "EmptyOperator"},
+                {
+                    "__var": {"task_id": "t1"},
+                    "__type": "EmptyOperator",
+                },  # uses default_owner
                 {
                     "__var": {"task_id": "t2", "owner": "overridden_owner"},
+                    "__type": "EmptyOperator",
+                },
+            ],
+        }
+        result = self.airflow.fetch_dag_owners(data)
+        self.assertIn(result, {"default_owner", "overridden_owner"})
+
+        # Case 3: One owner is majority -> must return that owner
+        data = {
+            "default_args": {"__var": {"owner": "default_owner"}},
+            "tasks": [
+                {
+                    "__var": {"task_id": "t1", "owner": "overridden_owner"},
+                    "__type": "EmptyOperator",
+                },
+                {
+                    "__var": {"task_id": "t2", "owner": "overridden_owner"},
+                    "__type": "EmptyOperator",
+                },
+                {
+                    "__var": {"task_id": "t3", "owner": "another_owner"},
                     "__type": "EmptyOperator",
                 },
             ],
