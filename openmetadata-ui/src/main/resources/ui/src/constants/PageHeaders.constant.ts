@@ -39,6 +39,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.user-plural'),
     subHeader: i18n.t('message.page-sub-header-for-users'),
   },
+  ONLINE_USERS: {
+    header: i18n.t('label.online-user-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-online-users'),
+  },
   PERSONAS: {
     header: i18n.t('label.persona-plural'),
     subHeader: i18n.t('message.page-sub-header-for-persona'),

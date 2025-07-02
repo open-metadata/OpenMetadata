@@ -76,6 +76,10 @@ const GlobalSettingCategoryPage = () => {
         navigate(getTeamsWithFqnPath(TeamType.Organization));
 
         break;
+      case GlobalSettingOptions.ONLINE_USERS:
+        navigate(getSettingPath(category, option));
+
+        break;
       case GlobalSettingOptions.SEARCH:
         if (category === GlobalSettingsMenuCategory.PREFERENCES) {
           navigate(

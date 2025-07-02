@@ -296,6 +296,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ADMINS}`,
             icon: AdminIcon,
           },
+          {
+            label: t('label.online-user-plural'),
+            description: t('message.page-sub-header-for-online-users'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ONLINE_USERS}`,
+            icon: UsersIcon,
+          },
         ],
       },
       {

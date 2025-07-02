@@ -50,6 +50,8 @@ const UserPage = () => {
           TabSpecificField.ROLES,
           TabSpecificField.TEAMS,
           TabSpecificField.PERSONAS,
+          TabSpecificField.LAST_ACTIVITY_TIME,
+          TabSpecificField.LAST_LOGIN_TIME,
           TabSpecificField.DEFAULT_PERSONA,
           TabSpecificField.DOMAINS,
         ],

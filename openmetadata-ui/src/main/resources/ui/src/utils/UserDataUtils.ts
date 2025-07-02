@@ -90,7 +90,6 @@ export const checkIfUpdateRequired = async (
   newUser: OidcUser
 ): Promise<User> => {
   const updatedUserData = getUserDataFromOidc(existingUserDetails, newUser);
-  let finalData = { ...existingUserDetails, lastLoginTime: Date.now() };
 
   if (existingUserDetails.email !== updatedUserData.email) {
     return existingUserDetails;
@@ -100,28 +99,28 @@ export const checkIfUpdateRequired = async (
     updatedUserData.profile?.images &&
     !matchUserDetails(existingUserDetails, updatedUserData, ['profile'])
   ) {
-    finalData = {
-      ...finalData,
+    const finalData = {
+      ...existingUserDetails,
       //   We want to override any profile information that is coming from the OIDC provider
       profile: {
         ...existingUserDetails.profile,
         ...updatedUserData.profile,
       },
     };
-  }
-  const jsonPatch = compare(existingUserDetails, finalData);
+    const jsonPatch = compare(existingUserDetails, finalData);
 
-  try {
-    const res = await updateUserDetail(existingUserDetails.id, jsonPatch);
+    try {
+      const res = await updateUserDetail(existingUserDetails.id, jsonPatch);
 
-    return res;
-  } catch (error) {
-    showErrorToast(
-      error as AxiosError,
-      i18n.t('server.entity-updating-error', {
-        entity: i18n.t('label.admin-profile'),
-      })
-    );
+      return res;
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        i18n.t('server.entity-updating-error', {
+          entity: i18n.t('label.admin-profile'),
+        })
+      );
+    }
   }
 
   return existingUserDetails;

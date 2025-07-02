@@ -40,6 +40,7 @@ import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
 import LineageConfigPage from '../../pages/LineageConfigPage/LineageConfigPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
 import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
+import OnlineUsersPage from '../../pages/OnlineUsersPage/OnlineUsersPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
 import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import AddPolicyPage from '../../pages/PoliciesPage/AddPolicyPage/AddPolicyPage';
@@ -500,6 +501,17 @@ const SettingsRouter = () => {
           </AdminProtectedRoute>
         }
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission>
+            <OnlineUsersPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.ONLINE_USERS
+        )}
       />
       <Route
         element={

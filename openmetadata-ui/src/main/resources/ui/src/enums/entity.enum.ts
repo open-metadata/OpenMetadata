@@ -162,6 +162,8 @@ export enum TabSpecificField {
   LOCATION = 'location',
   RELATED_METRICS = 'relatedMetrics',
   UI_CUSTOMIZATION = 'uiCustomization',
+  LAST_ACTIVITY_TIME = 'lastActivityTime',
+  LAST_LOGIN_TIME = 'lastLoginTime',
 }
 
 export enum FqnPart {

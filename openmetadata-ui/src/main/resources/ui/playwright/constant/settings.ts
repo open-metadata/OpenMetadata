@@ -90,6 +90,7 @@ export enum GlobalSettingOptions {
   OM_URL_CONFIG = 'om-url-config',
   SEARCH_SETTINGS = 'search-settings',
   DOMAINS = 'domains',
+  ONLINE_USERS = 'online-users',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -167,6 +168,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.ADMINS]: [
     GlobalSettingsMenuCategory.MEMBERS,
     `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ADMINS}`,
+  ],
+  [GlobalSettingOptions.ONLINE_USERS]: [
+    GlobalSettingsMenuCategory.MEMBERS,
+    `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ONLINE_USERS}`,
   ],
   [GlobalSettingOptions.PERSONA]: [GlobalSettingOptions.PERSONA],
 
