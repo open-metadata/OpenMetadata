@@ -1298,30 +1298,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();
   }
 
-  @PUT
-  @Path("/updateLoginTime")
-  @Operation(
-      operationId = "updateLoginTime",
-      summary = "Update Login Time for User",
-      description = "Update Login Time for User",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Returns the Status of the update",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = String.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response updateLoginTime(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    String userName = securityContext.getUserPrincipal().getName();
-    User user = repository.getByName(uriInfo, userName, getFields("id"));
-    repository.updateUserLastLoginTime(user, System.currentTimeMillis());
-    return Response.status(OK).entity("Login Time Updated Successfully.").build();
-  }
-
   @POST
   @Path("/refresh")
   @Operation(
