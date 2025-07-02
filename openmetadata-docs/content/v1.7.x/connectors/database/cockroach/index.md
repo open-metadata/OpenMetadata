@@ -90,9 +90,9 @@ Under `Advanced Config`, specify the SSL mode appropriate for your connection, s
 {% /note %}
 
 {% image
-  src="/images/v1.6/connectors/ssl_connection.png"
+  src="/images/v1.7/connectors/ssl_connection.png"
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.6/connectors/database/related.md" /%}
+{% partial file="/v1.7/connectors/database/related.md" /%}
