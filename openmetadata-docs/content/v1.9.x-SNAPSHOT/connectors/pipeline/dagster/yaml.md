@@ -95,7 +95,7 @@ source:
       type: Dagster
 ```
 ```yaml {% srNumber=1 %}
-        host: "https://<yourorghere>.dagster.cloud/prod" # or http://127.0.0.1:3000
+        host: "https://<yourorghere>.dagster.cloud/prod"  # REQUIRED - Dagster instance URL
 ```
 ```yaml {% srNumber=2 %}
         token: token

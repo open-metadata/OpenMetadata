@@ -60,7 +60,8 @@
         "SapErp",
         "Synapse",
         "Exasol",
-        "Cockroach"
+        "Cockroach",
+        "SSAS"
       ],
       "javaEnums": [
         {
@@ -200,6 +201,9 @@
         },
         {
           "name": "Cockroach"
+        },
+        {
+          "name": "SSAS"
         }
       ]
     },
@@ -344,6 +348,9 @@
             },
             {
               "$ref": "./connections/database/cockroachConnection.json"
+            },
+            {
+              "$ref": "./connections/database/ssasConnection.json"
             }
           ]
         }
