@@ -88,6 +88,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
       },
     ],
   },
+  // TODO: Remove this after new experience is fully complete
   {
     key: ROUTES.DATA_INSIGHT,
     title: i18next.t('label.insight-plural'),
@@ -99,8 +100,15 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
-    key: 'domains',
+    key: ROUTES.DOMAIN,
     title: i18next.t('label.domain-plural'),
+    icon: DomainsIcon,
+    dataTestId: `app-bar-item-${SidebarItem.DOMAINS}`,
+    redirect_url: ROUTES.DOMAIN,
+  },
+  {
+    key: ROUTES.DOMAINS,
+    title: `${i18next.t('label.domain-plural')} (New Experience)`,
     icon: DomainsIcon,
     dataTestId: `app-bar-item-${SidebarItem.DOMAINS}`,
     children: [
@@ -109,14 +117,14 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         title: i18next.t('label.domain'),
         redirect_url: ROUTES.DOMAIN,
         icon: DomainsIcon,
-        dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
+        dataTestId: `app-bar-item-${SidebarItem.DOMAINS}`,
       },
       {
-        key: ROUTES.DATA_PRODUCT,
+        key: ROUTES.DATA_PRODUCTS,
         title: i18next.t('label.data-product'),
-        redirect_url: ROUTES.DATA_PRODUCT,
+        redirect_url: ROUTES.DATA_PRODUCTS,
         icon: DataProductIcon,
-        dataTestId: `app-bar-item-data-product`,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_PRODUCTS}`,
       },
     ],
   },

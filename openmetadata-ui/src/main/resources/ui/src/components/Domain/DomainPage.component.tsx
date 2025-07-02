@@ -21,10 +21,8 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -34,10 +32,10 @@ import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
   getDomainByName,
+  getDomainList,
   patchDomains,
   removeFollower,
 } from '../../rest/domainAPI';
-import { searchQuery } from '../../rest/searchAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
@@ -76,32 +74,17 @@ const DomainPage = () => {
   const refreshDomains = useCallback(async () => {
     try {
       updateDomainLoading(true);
-
-      const response = await searchQuery({
-        query: '',
-        pageNumber: 1,
-        pageSize: ES_MAX_PAGE_SIZE,
-        searchIndex: SearchIndex.DOMAIN,
-        includeDeleted: false,
-        trackTotalHits: true,
-        fetchSource: true,
+      const { data } = await getDomainList({
+        limit: ES_MAX_PAGE_SIZE,
+        fields: 'parent',
       });
-
-      const domainsFromSearch = response.hits.hits.map(
-        (hit: { _source: Domain }) => hit._source
-      );
-
-      updateDomains(domainsFromSearch);
+      updateDomains(data);
     } catch {
       // silent fail
     } finally {
       updateDomainLoading(false);
     }
   }, []);
-
-  const refreshDomainsViaSearch = useCallback(async () => {
-    await refreshDomains();
-  }, [refreshDomains]);
 
   const [
     createDomainPermission,
@@ -127,7 +110,7 @@ const DomainPage = () => {
 
         setActiveDomain(response);
 
-        const updatedDomains = rootDomains.map((item: Domain) => {
+        const updatedDomains = rootDomains.map((item) => {
           if (item.name === response.name) {
             return response;
           } else {
