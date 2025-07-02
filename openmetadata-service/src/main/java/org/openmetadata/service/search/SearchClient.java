@@ -84,6 +84,18 @@ public interface SearchClient {
   String UPDATE_CERTIFICATION_SCRIPT =
       "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
 
+  String UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT =
+      "if (ctx._source.containsKey('tags')) { "
+          + "    for (int i = 0; i < ctx._source.tags.size(); i++) { "
+          + "        if (ctx._source.tags[i].containsKey('tagFQN') && "
+          + "            ctx._source.tags[i].containsKey('source') && "
+          + "            ctx._source.tags[i].source == 'Glossary' && "
+          + "            ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) { "
+          + "            ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN); "
+          + "        } "
+          + "    } "
+          + "}";
+
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].docUniqueId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
 
@@ -508,6 +520,9 @@ public interface SearchClient {
   default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
     // Default implementation does nothing as this is only needed for Elasticsearch
   }
+
+  void updateGlossaryTermByFqnPrefix(
+      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
 
   void updateColumnsInUpstreamLineage(
       String indexName, HashMap<String, String> originalUpdatedColumnFqnMap);

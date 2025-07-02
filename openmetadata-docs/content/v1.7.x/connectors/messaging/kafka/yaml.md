@@ -19,13 +19,13 @@ Configure and schedule Kafka metadata and profiler workflows from the OpenMetada
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-kafka-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.6/connectors/python-requirements.md" /%}
+{% partial file="/v1.7/connectors/python-requirements.md" /%}
 
 To run the Kafka ingestion, you will need to install:
 
@@ -138,11 +138,11 @@ following [link](https://docs.confluent.io/platform/current/clients/confluent-ka
 **supportsMetadataExtraction**: Supports Metadata Extraction. `supportsMetadataExtraction` supports boolean value either true or false.
 {% /codeInfo %}
 
-{% partial file="/v1.6/connectors/yaml/messaging/source-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/messaging/source-config-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -193,11 +193,11 @@ source:
       # supportsMetadataExtraction: true
 ```
 
-{% partial file="/v1.6/connectors/yaml/messaging/source-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/messaging/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -214,4 +214,4 @@ To establish secure connections between OpenMetadata and Kafka, in the `YAML` yo
             sslKey: "/path/to/your/ssl_key"
 ```
 
-{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}

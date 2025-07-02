@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 일",
+    "1-hr": "1 시간",
     "aborted": "중단됨",
     "accept": "수락",
     "accept-all": "모두 수락",
@@ -937,6 +939,8 @@
     "november": "11월",
     "null": "널",
     "number": "숫자",
+    "number-day-plural": "{{number}} 일",
+    "number-hr-plural": "{{number}} 시간",
     "number-of-object-plural": "객체 수",
     "number-of-retries": "재시도 횟수",
     "number-of-rows": "행 수",
@@ -1479,6 +1483,7 @@
     "uninstalled-lowercase": "제거됨",
     "unique": "고유",
     "unit-of-measurement": "측정 단위",
+    "unlimited": "무제한",
     "unpause": "일시 중지 해제",
     "unprocessed": "처리되지 않음",
     "up-vote": "추천",
@@ -1755,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}}이(가) 유효하지 않습니다",
     "entity-is-not-valid-url": "{{entity}}이(가) 유효한 URL이 아닙니다",
     "entity-maximum-size": "{{entity}}은(는) 최대 {{max}}자까지 가능합니다",
+    "entity-moved-successfully": "{{entity}}이(가) 성공적으로 이동되었습니다",
     "entity-name-validation": "이름은 문자, 숫자, 밑줄, 하이픈, 마침표, 괄호 및 앰퍼샌드만 포함해야 합니다.",
     "entity-not-contain-whitespace": "{{entity}}에는 공백이 포함되어서는 안 됩니다",
     "entity-owned-by-name": "이 엔티티는 {{entityOwner}}이(가) 소유하고 있습니다",
