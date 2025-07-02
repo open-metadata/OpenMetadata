@@ -112,17 +112,7 @@ const AuthMechanismForm: FC<Props> = ({
           className="w-full"
           data-testid="token-expiry"
           placeholder={t('message.select-token-expiration')}>
-          {isBot
-            ? getJWTTokenExpiryOptions().map((option) => (
-                <Option key={option.value}>{option.label}</Option>
-              ))
-            : getJWTTokenExpiryOptions()
-                .filter((option) => option.value !== 'Unlimited')
-                .map((filteredOption) => (
-                  <Option key={filteredOption.value}>
-                    {filteredOption.label}
-                  </Option>
-                ))}
+          {getJWTTokenExpiryOptions(!isBot)}
         </Select>
       </Form.Item>
 

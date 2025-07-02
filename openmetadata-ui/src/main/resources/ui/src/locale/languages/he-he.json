@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 יום",
+    "1-hr": "1 שעה",
     "aborted": "בוטל",
     "accept": "קבל",
     "accept-all": "Accept All",
@@ -937,6 +939,8 @@
     "november": "נובמבר",
     "null": "ריק",
     "number": "Number",
+    "number-day-plural": "{{number}} ימים",
+    "number-hr-plural": "{{number}} שעות",
     "number-of-object-plural": "מספר אובייקטים",
     "number-of-retries": "מספר ניסיונות מחדש",
     "number-of-rows": "מספר השורות",
@@ -1479,6 +1483,7 @@
     "uninstalled-lowercase": "uninstalled",
     "unique": "ייחודי",
     "unit-of-measurement": "יחידת מדידה",
+    "unlimited": "ללא מגבלה",
     "unpause": "בטל השהייה",
     "unprocessed": "Unprocessed",
     "up-vote": "Up Vote",

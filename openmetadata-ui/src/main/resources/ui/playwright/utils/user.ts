@@ -468,7 +468,7 @@ export const generateToken = async (page: Page) => {
 
   await page.click('[data-testid="token-expiry"]');
 
-  await page.locator('[title="1 hr"] div').click();
+  await page.locator('[title="1 hour"] div').click();
 
   await expect(page.locator('[data-testid="token-expiry"]')).toBeVisible();
 
@@ -491,9 +491,9 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
   await expect(page.locator('[data-testid="revoke-button"]')).not.toBeVisible();
 };
 
-export const updateExpiration = async (page: Page, expiry: number | string) => {
+export const updateExpiration = async (page: Page, expiry: number) => {
   await page.click('[data-testid="token-expiry"]');
-  await page.click(`text=${expiry} days`);
+  await page.click(`text=${expiry} day${expiry > 1 ? 's' : ''}`);
 
   const expiryDate = customFormatDateTime(
     getEpochMillisForFutureDays(expiry as number),
