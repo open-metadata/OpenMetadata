@@ -283,7 +283,7 @@ test.describe('Glossary tests', () => {
           page,
           'PersonalData.Personal',
           'Add',
-          undefined,
+          EntityTypeEndpoint.Glossary,
           'tabs'
         );
       });
@@ -932,11 +932,12 @@ test.describe('Glossary tests', () => {
       await glossaryTerm2.create(apiContext);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
 
       await changeTermHierarchyFromModal(
         page,
-        glossaryTerm1.data.displayName,
-        glossaryTerm2.data.displayName
+        glossaryTerm2.responseData.displayName,
+        glossaryTerm2.responseData.fullyQualifiedName
       );
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -962,6 +963,57 @@ test.describe('Glossary tests', () => {
     } finally {
       await glossaryTerm1.delete(apiContext);
       await glossaryTerm2.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Change glossary term hierarchy using menu options across glossary', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const glossary2 = new Glossary();
+    glossary1.data.terms = [glossaryTerm1];
+
+    try {
+      await glossary1.create(apiContext);
+      await glossary2.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+      await changeTermHierarchyFromModal(
+        page,
+        glossary2.responseData.displayName,
+        glossary2.responseData.fullyQualifiedName,
+        false
+      );
+
+      // Verify the term is no longer in the source glossary (glossary1)
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      await expect(
+        page.getByRole('cell', {
+          name: glossaryTerm1.responseData.displayName,
+        })
+      ).not.toBeVisible();
+
+      await selectActiveGlossary(page, glossary2.data.displayName);
+      // verify the term is moved to the destination glossary
+      await page.getByTestId('expand-collapse-all-button').click();
+
+      await expect(
+        page.getByRole('cell', {
+          name: glossaryTerm1.responseData.displayName,
+        })
+      ).toBeVisible();
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossary2.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
     }

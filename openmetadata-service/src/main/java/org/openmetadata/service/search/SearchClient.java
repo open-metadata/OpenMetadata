@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.commons.lang3.tuple.Pair;
@@ -24,8 +25,8 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ResultList;
 import os.org.opensearch.action.bulk.BulkRequest;
@@ -81,6 +82,18 @@ public interface SearchClient {
       "for (int i = 0; i < ctx._source.dataProducts.length; i++) { if (ctx._source.dataProducts[i].fullyQualifiedName == params.fqn) { ctx._source.dataProducts.remove(i) }}";
   String UPDATE_CERTIFICATION_SCRIPT =
       "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
+
+  String UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT =
+      "if (ctx._source.containsKey('tags')) { "
+          + "    for (int i = 0; i < ctx._source.tags.size(); i++) { "
+          + "        if (ctx._source.tags[i].containsKey('tagFQN') && "
+          + "            ctx._source.tags[i].containsKey('source') && "
+          + "            ctx._source.tags[i].source == 'Glossary' && "
+          + "            ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) { "
+          + "            ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN); "
+          + "        } "
+          + "    } "
+          + "}";
 
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].docUniqueId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
@@ -314,6 +327,13 @@ public interface SearchClient {
       Pair<String, String> fieldAndValue,
       Map<String, Object> entityRelationshipData);
 
+  void reindexWithEntityIds(
+      List<String> sourceIndices,
+      String destinationIndex,
+      String pipelineName,
+      String entityType,
+      List<UUID> entityIds);
+
   Response listDataInsightChartResult(
       Long startTs,
       Long endTs,
@@ -440,4 +460,7 @@ public interface SearchClient {
   default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
     // Default implementation does nothing as this is only needed for Elasticsearch
   }
+
+  void updateGlossaryTermByFqnPrefix(
+      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
 }

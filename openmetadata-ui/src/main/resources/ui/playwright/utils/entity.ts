@@ -263,6 +263,24 @@ export const addMultiOwner = async (data: {
     { state: 'detached' }
   );
 
+  const isClearButtonVisible = await page
+    .locator("[data-testid='select-owner-tabs']")
+    .getByTestId('clear-all-button')
+    .isVisible();
+
+  // If the user is not in the Users tab, switch to it
+  if (!isClearButtonVisible) {
+    await page
+      .locator("[data-testid='select-owner-tabs']")
+      .getByRole('tab', { name: 'Users' })
+      .click();
+
+    await page.waitForSelector(
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
+  }
+
   if (clearAll && isMultipleOwners) {
     await page.click('[data-testid="clear-all-button"]');
   }
@@ -452,8 +470,9 @@ export const assignTag = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
-  tagFqn?: string,
-  parentId = 'KnowledgePanel.Tags'
+  endpoint: string,
+  parentId = 'KnowledgePanel.Tags',
+  tagFqn?: string
 ) => {
   await page
     .getByTestId(parentId)
@@ -473,11 +492,13 @@ export const assignTag = async (
     { state: 'visible' }
   );
 
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+  await patchRequest;
 
   await expect(
     page

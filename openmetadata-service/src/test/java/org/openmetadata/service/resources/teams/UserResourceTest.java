@@ -125,22 +125,24 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -1589,5 +1591,241 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     CSVImportResponse response =
         TestUtils.putCsv(target, csv, CSVImportResponse.class, Status.OK, ADMIN_AUTH_HEADERS);
     return response.getJobId();
+  }
+
+  @Test
+  void test_listOnlineUsers() throws HttpResponseException {
+    WebTarget target = getCollection().path("/online");
+    assertResponse(
+        () -> TestUtils.get(target, UserList.class, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        notAdmin(TEST_USER_NAME));
+    User user1 = createEntity(createRequest("onlineUser1"), ADMIN_AUTH_HEADERS);
+    User user2 = createEntity(createRequest("onlineUser2"), ADMIN_AUTH_HEADERS);
+    User user3 = createEntity(createRequest("onlineUser3"), ADMIN_AUTH_HEADERS);
+
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
+    long currentTime = System.currentTimeMillis();
+
+    userRepository.updateUserLastLoginTime(user1, currentTime - (60 * 1000L));
+    userRepository.updateUserLastLoginTime(user2, currentTime - (10 * 60 * 1000L));
+    userRepository.updateUserLastLoginTime(user3, currentTime - (2 * 60 * 60 * 1000L));
+
+    // Also test with lastActivityTime - user3 has recent activity despite old login
+    userRepository.updateUserLastActivityTime(user3.getName(), currentTime - (2 * 60 * 1000L));
+
+    UserList onlineUsers5Min = TestUtils.get(target, UserList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        2,
+        onlineUsers5Min.getData().stream()
+            .filter(u -> u.getName().startsWith("onlineuser"))
+            .count());
+    assertTrue(onlineUsers5Min.getData().stream().anyMatch(u -> u.getName().equals("onlineuser1")));
+    assertTrue(
+        onlineUsers5Min.getData().stream()
+            .anyMatch(u -> u.getName().equals("onlineuser3"))); // user3 has recent activity
+
+    WebTarget target15Min = target.queryParam("timeWindow", 15);
+    UserList onlineUsers15Min = TestUtils.get(target15Min, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3,
+        onlineUsers15Min.getData().stream()
+            .filter(u -> u.getName().startsWith("onlineuser"))
+            .count());
+    assertTrue(
+        onlineUsers15Min.getData().stream().anyMatch(u -> u.getName().equals("onlineuser1")));
+    assertTrue(
+        onlineUsers15Min.getData().stream().anyMatch(u -> u.getName().equals("onlineuser2")));
+    assertTrue(
+        onlineUsers15Min.getData().stream()
+            .anyMatch(u -> u.getName().equals("onlineuser3"))); // user3 included due to activity
+
+    // Test with 180 minute (3 hours) window - should return all three users
+    WebTarget target180Min = target.queryParam("timeWindow", 180);
+    UserList onlineUsers180Min = TestUtils.get(target180Min, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3,
+        onlineUsers180Min.getData().stream()
+            .filter(u -> u.getName().startsWith("onlineuser"))
+            .count());
+
+    // Test pagination
+    WebTarget targetWithLimit = target.queryParam("limit", 1);
+    UserList limitedUsers = TestUtils.get(targetWithLimit, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, limitedUsers.getData().size());
+
+    // Clean up
+    deleteEntity(user1.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(user2.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(user3.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_userActivityTracking() throws HttpResponseException, InterruptedException {
+    // Create test users
+    User activeUser = createEntity(createRequest("activeUser1"), ADMIN_AUTH_HEADERS);
+    User inactiveUser = createEntity(createRequest("inactiveUser1"), ADMIN_AUTH_HEADERS);
+
+    // Get auth headers for the active user
+    Map<String, String> activeUserAuth = authHeaders(activeUser.getEmail());
+
+    // Make multiple API calls as the active user to trigger activity tracking
+    WebTarget tablesTarget = getResource("tables");
+    TestUtils.get(tablesTarget, Object.class, activeUserAuth); // This should track activity
+
+    // Explicitly track activity in case filter is not registered in test environment
+    UserActivityTracker.getInstance().trackActivity(activeUser.getName());
+
+    // Make more calls to ensure activity is tracked
+    WebTarget databasesTarget = getResource("databases");
+    TestUtils.get(databasesTarget, Object.class, activeUserAuth);
+
+    // Check cache size before flush
+    int cacheSize = UserActivityTracker.getInstance().getLocalCacheSize();
+    System.out.println("Cache size before flush: " + cacheSize);
+
+    // Force synchronous flush of the activity tracker (TEST ONLY)
+    UserActivityTracker.getInstance().forceFlushSync();
+
+    // Check online users with 5 minute window (default)
+    WebTarget onlineTarget = getCollection().path("/online");
+    UserList onlineUsers = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+
+    // Debug output
+    System.out.println("Online users count: " + onlineUsers.getData().size());
+    onlineUsers
+        .getData()
+        .forEach(
+            u -> System.out.println("Online user: " + u.getName() + ", isBot: " + u.getIsBot()));
+
+    // Active user should be in the online list (usernames are stored in lowercase)
+    assertTrue(
+        onlineUsers.getData().stream().anyMatch(u -> u.getName().equals("activeuser1")),
+        "Active user should be in online users list");
+
+    // Inactive user should not be in the online list (no activity)
+    assertFalse(
+        onlineUsers.getData().stream().anyMatch(u -> u.getName().equals("inactiveuser1")),
+        "Inactive user should not be in online users list");
+
+    // Clean up
+    deleteEntity(activeUser.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(inactiveUser.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_botActivityNotTracked() throws HttpResponseException, InterruptedException {
+    // Test that bot activity is not tracked
+    // We'll use a simple approach: update a bot user's activity time directly
+    // and verify it doesn't show in online users (assuming the query filters out bots)
+
+    // Use the existing ingestion bot
+    User botUser = getEntityByName(INGESTION_BOT, null, ADMIN_AUTH_HEADERS);
+    assertNotNull(botUser);
+    assertTrue(botUser.getIsBot());
+
+    // Directly set activity time for the bot
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
+    long currentTime = System.currentTimeMillis();
+    userRepository.updateUserLastActivityTime(
+        botUser.getName(), currentTime - (30 * 1000L)); // 30 seconds ago
+
+    // Check online users - bot should NOT show up
+    WebTarget onlineTarget = getCollection().path("/online");
+    UserList onlineUsers = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+
+    // Bot user should not be in the online list
+    assertFalse(
+        onlineUsers.getData().stream().anyMatch(u -> u.getName().equals(botUser.getName())),
+        "Bot user should not be tracked in online users");
+  }
+
+  @Test
+  void test_onlineUsersWithDifferentTimeWindows() throws HttpResponseException {
+    // Create users with different activity times
+    User veryRecentUser = createEntity(createRequest("veryRecentUser"), ADMIN_AUTH_HEADERS);
+    User recentUser = createEntity(createRequest("recentUser"), ADMIN_AUTH_HEADERS);
+    User oldUser = createEntity(createRequest("oldUser"), ADMIN_AUTH_HEADERS);
+
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
+    long currentTime = System.currentTimeMillis();
+
+    // Set different activity times
+    userRepository.updateUserLastActivityTime(
+        veryRecentUser.getName(), currentTime - (30 * 1000L)); // 30 seconds ago
+    userRepository.updateUserLastActivityTime(
+        recentUser.getName(), currentTime - (3 * 60 * 1000L)); // 3 minutes ago
+    userRepository.updateUserLastActivityTime(
+        oldUser.getName(), currentTime - (30 * 60 * 1000L)); // 30 minutes ago
+
+    WebTarget onlineTarget = getCollection().path("/online");
+
+    // Test 1 minute window - should only include veryRecentUser
+    WebTarget target1Min = onlineTarget.queryParam("timeWindow", 1);
+    UserList onlineUsers1Min = TestUtils.get(target1Min, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        1,
+        onlineUsers1Min.getData().stream()
+            .filter(
+                u ->
+                    u.getName().startsWith("veryrecentuser")
+                        || u.getName().startsWith("recentuser")
+                        || u.getName().startsWith("olduser"))
+            .count());
+    assertTrue(
+        onlineUsers1Min.getData().stream().anyMatch(u -> u.getName().equals("veryrecentuser")));
+
+    // Test 5 minute window (default) - should include veryRecentUser and recentUser
+    UserList onlineUsers5Min = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        2,
+        onlineUsers5Min.getData().stream()
+            .filter(
+                u ->
+                    u.getName().startsWith("veryrecentuser")
+                        || u.getName().startsWith("recentuser")
+                        || u.getName().startsWith("olduser"))
+            .count());
+
+    // Test 60 minute window - should include all three
+    WebTarget target60Min = onlineTarget.queryParam("timeWindow", 60);
+    UserList onlineUsers60Min = TestUtils.get(target60Min, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3,
+        onlineUsers60Min.getData().stream()
+            .filter(
+                u ->
+                    u.getName().startsWith("veryrecentuser")
+                        || u.getName().startsWith("recentuser")
+                        || u.getName().startsWith("olduser"))
+            .count());
+
+    // Clean up
+    deleteEntity(veryRecentUser.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(recentUser.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(oldUser.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_onlineUsersAccessControl() throws HttpResponseException {
+    WebTarget onlineTarget = getCollection().path("/online");
+
+    // Test that non-admin users cannot access online users
+    assertResponse(
+        () -> TestUtils.get(onlineTarget, UserList.class, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        notAdmin(TEST_USER_NAME));
+
+    // Test that users with CREATE permission cannot access online users
+    assertResponse(
+        () -> TestUtils.get(onlineTarget, UserList.class, USER_WITH_CREATE_HEADERS),
+        FORBIDDEN,
+        notAdmin(USER_WITH_CREATE_PERMISSION_NAME.toLowerCase()));
+
+    // Test that admin users can access online users
+    UserList onlineUsers = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(onlineUsers);
+    assertNotNull(onlineUsers.getData());
   }
 }

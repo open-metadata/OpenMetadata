@@ -13,7 +13,7 @@
 import { Progress, Skeleton, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isNumber, round } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { progressBarFormatter } from '../../../utils/ProgressBar/ProgressBar.utils';
 import './summary-card.style.less';
@@ -50,7 +50,7 @@ export const SummaryCard = ({
   }
 
   return (
-    <Space
+    <div
       className={classNames('summary-card', cardBackgroundClass, className)}
       data-testid="summary-card-container">
       <div
@@ -81,6 +81,6 @@ export const SummaryCard = ({
           width={65}
         />
       )}
-    </Space>
+    </div>
   );
 };

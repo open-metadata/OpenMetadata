@@ -169,7 +169,9 @@ test.describe('Activity feed', () => {
     await page.getByTestId('request-entity-tags').click();
 
     // create tag task
+    const openTaskAfterTagResponse = page.waitForResponse(TASK_OPEN_FETCH_LINK);
     await createTagTask(page, { ...value, tag: 'PII.None' });
+    await openTaskAfterTagResponse;
 
     await redirectToHomePage(page);
 
@@ -353,8 +355,11 @@ test.describe('Activity feed', () => {
 
     await page.getByTestId('request-description').click();
 
+    const openTaskAfterDescriptionResponse =
+      page.waitForResponse(TASK_OPEN_FETCH_LINK);
     await createDescriptionTask(page, value);
-
+    await openTaskAfterDescriptionResponse;
+    await page.waitForLoadState('networkidle');
     // Task 1 - Update Description right panel check
     const descriptionTask = await page.getByTestId('task-title').innerText();
 
@@ -413,6 +418,9 @@ test.describe('Activity feed', () => {
 
     expect(descriptionTask).toContain('Request to update description');
 
+    // check initial replies count
+    await expect(page.getByTestId('replies-count')).not.toBeVisible();
+
     for (let i = 0; i < 10; i++) {
       const commentInput = page.locator('[data-testid="comments-input-field"]');
       commentInput.click();
@@ -439,6 +447,9 @@ test.describe('Activity feed', () => {
         page.locator('.right-container [data-testid="feed-replies"]')
       ).toContainText(`Reply message ${i}`);
     }
+
+    // check replies count in feed card
+    await expect(page.getByTestId('replies-count')).toHaveText('10 Replies');
   });
 
   test('Open and Closed Task Tab with approve from Task Feed Card', async ({
@@ -557,6 +568,76 @@ test.describe('Activity feed', () => {
     );
   });
 
+  test('User 1 mentions user 2 and user 2 sees correct usernames in feed replies', async ({
+    browser,
+  }) => {
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, adminUser);
+    const { page: page2, afterAction: afterActionUser2 } =
+      await performUserLogin(browser, user2);
+
+    await test.step('User 1 mentions user 2 in a feed reply', async () => {
+      // Add mention comment in feed mentioning user2
+      await addMentionCommentInFeed(page1, user2.responseData.name);
+
+      await page1.locator('[data-testid="closeDrawer"]').click();
+
+      await afterActionUser1();
+    });
+
+    await test.step('User 2 logs in and checks @Mentions tab', async () => {
+      await redirectToHomePage(page2);
+      await page2.waitForLoadState('networkidle');
+
+      const fetchMentionsFeedResponse = page2.waitForResponse(
+        '/api/v1/feed?filterType=MENTIONS&userId=*'
+      );
+      await page2
+        .locator('[data-testid="activity-feed-widget"]')
+        .locator('text=@Mentions')
+        .click();
+
+      await fetchMentionsFeedResponse;
+
+      // Verify the mention appears in the feed
+      await expect(
+        page2.locator('[data-testid="message-container"]').first()
+      ).toBeVisible();
+
+      // Click on the feed to open replies
+      await page2.locator('[data-testid="reply-count"]').first().click();
+
+      await page2.waitForSelector('.ant-drawer-content', {
+        state: 'visible',
+      });
+
+      // Verify the feed reply card shows correct usernames
+      await expect(
+        page2.locator('[data-testid="feed-reply-card"]').first()
+      ).toBeVisible();
+
+      // Check that the reply shows the correct username (user1 who made the mention)
+      await expect(
+        page2
+          .locator('[data-testid="feed-reply-card"] .reply-card-user-name')
+          .first()
+      ).toContainText(adminUser.responseData.displayName);
+
+      // Check that the mention text contains user2's name
+      await expect(
+        page2
+          .locator(
+            '[data-testid="feed-replies"] [data-testid="markdown-parser"]'
+          )
+          .first()
+      ).toContainText(`@${user2.responseData.name}`);
+
+      await page2.locator('[data-testid="closeDrawer"]').click();
+
+      await afterActionUser2();
+    });
+  });
+
   test('Check Task Filter in Landing Page Widget', async ({ browser }) => {
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
@@ -583,11 +664,14 @@ test.describe('Activity feed', () => {
 
       // Create task for the user 1
       await page2.getByTestId('request-entity-tags').click();
+      const openTaskAfterTagResponse =
+        page2.waitForResponse(TASK_OPEN_FETCH_LINK);
       await createTagTask(page2, {
         term: entity.entity.displayName,
         tag: 'PII.None',
         assignee: user1.responseData.name,
       });
+      await openTaskAfterTagResponse;
 
       await redirectToHomePage(page2);
       const taskResponse = page2.waitForResponse(
@@ -737,7 +821,10 @@ base.describe('Activity feed with Data Consumer User', () => {
       await page1.getByTestId('request-entity-tags').click();
 
       // create tag task
+      const openTaskAfterTagResponse =
+        page1.waitForResponse(TASK_OPEN_FETCH_LINK);
       await createTagTask(page1, { ...value, tag: 'PII.None' });
+      await openTaskAfterTagResponse;
 
       // Should only see the close button
       expect(page1.locator('[data-testid="close-button"]')).toBeVisible();
@@ -854,7 +941,10 @@ base.describe('Activity feed with Data Consumer User', () => {
       await page1.getByTestId('request-entity-tags').click();
 
       // create tag task
+      const openTaskAfterTagResponse =
+        page1.waitForResponse(TASK_OPEN_FETCH_LINK);
       await createTagTask(page1, value, false);
+      await openTaskAfterTagResponse;
 
       await page1.waitForLoadState('networkidle');
 
@@ -906,7 +996,11 @@ base.describe('Activity feed with Data Consumer User', () => {
         await tagsTask.click();
         await entityPageTaskTab;
 
-        expect(page2.getByText('no diff available').first()).toBeVisible();
+        await page2.waitForLoadState('networkidle');
+
+        await expect(
+          page2.getByText('no diff available').first()
+        ).toBeVisible();
 
         // Should see the add_close dropdown and comment button
         await expect(

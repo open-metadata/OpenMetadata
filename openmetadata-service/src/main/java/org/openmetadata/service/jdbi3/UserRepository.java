@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -63,12 +64,14 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -78,7 +81,7 @@ import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
@@ -232,6 +235,55 @@ public class UserRepository extends EntityRepository<User> {
     userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
   }
 
+  @Transaction
+  public void updateUserLastActivityTime(String userName, long lastActivityTime) {
+    // Direct SQL update to minimize DB load - single query
+    // Updates only the lastActivityTime field in the JSON using JSON_SET
+    // This method is used for immediate updates (e.g., in tests)
+    // For production use, UserActivityTracker should be used for batch updates
+    String fqn = quoteName(userName.toLowerCase());
+
+    LOG.debug(
+        "Updating lastActivityTime for user: {} (fqn: {}) to: {}", userName, fqn, lastActivityTime);
+
+    // Use the custom DAO method for optimized update
+    // Note: @BindFQN will automatically hash the fqn, so we don't pre-hash it
+    ((UserDAO) daoCollection.userDAO()).updateLastActivityTime(fqn, lastActivityTime);
+  }
+
+  @Transaction
+  public void updateUsersLastActivityTimeBatch(Map<String, Long> userActivityMap) {
+    if (userActivityMap.isEmpty()) {
+      return;
+    }
+
+    // Bulk update all users' activity times in a single query
+    // This is much more efficient than individual updates
+    UserDAO userDAO = (UserDAO) daoCollection.userDAO();
+
+    // Build the CASE statement and collect nameHashes
+    StringBuilder caseBuilder = new StringBuilder();
+    List<String> nameHashes = new ArrayList<>();
+
+    for (Map.Entry<String, Long> entry : userActivityMap.entrySet()) {
+      String fqn = quoteName(entry.getKey().toLowerCase());
+      String fqnHash = FullyQualifiedName.buildHash(fqn);
+
+      nameHashes.add(fqnHash);
+      caseBuilder
+          .append("WHEN '")
+          .append(fqnHash)
+          .append("' THEN ")
+          .append(entry.getValue())
+          .append(" ");
+    }
+
+    if (!nameHashes.isEmpty()) {
+      String caseStatements = caseBuilder.toString();
+      userDAO.updateLastActivityTimeBulk(caseStatements, nameHashes);
+    }
+  }
+
   @Override
   public void storeRelationships(User user) {
     assignRoles(user, user.getRoles());
@@ -291,6 +343,12 @@ public class UserRepository extends EntityRepository<User> {
     user.setAuthenticationMechanism(
         fields.contains(AUTH_MECHANISM_FIELD) ? user.getAuthenticationMechanism() : null);
     user.withInheritedRoles(fields.contains(ROLES_FIELD) ? user.getInheritedRoles() : null);
+    user.setLastActivityTime(
+        fields.contains("lastActivityTime") ? user.getLastActivityTime() : null);
+    user.setLastLoginTime(fields.contains("lastLoginTime") ? user.getLastLoginTime() : null);
+    user.setPersonas(fields.contains("personas") ? user.getPersonas() : null);
+    user.setDefaultPersona(fields.contains("defaultPersona") ? user.getDefaultPersona() : null);
+    user.setDomains(fields.contains("domains") ? user.getDomains() : null);
   }
 
   @Override
@@ -742,7 +800,7 @@ public class UserRepository extends EntityRepository<User> {
           .forEach(
               teamRef -> {
                 EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
-                searchRepository.updateEntity(team);
+                searchRepository.updateEntityIndex(team);
               });
     }
 
