@@ -39,9 +39,9 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
+import java.net.URI;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
@@ -82,10 +82,6 @@ public class JwtFilter implements ContainerRequestFilter {
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
 
-  private static final List<String> DEFAULT_PUBLIC_KEY_URLS =
-      Arrays.asList(
-          "http://localhost:8585/api/v1/system/config/jwks",
-          "http://host.docker.internal:8585/api/v1/system/config/jwks");
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
           "v1/system/config/jwks",
@@ -120,16 +116,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
     ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
     for (String publicKeyUrlStr : authenticationConfiguration.getPublicKeyUrls()) {
-      publicKeyUrlsBuilder.add(new URL(publicKeyUrlStr));
+      publicKeyUrlsBuilder.add(URI.create(publicKeyUrlStr).toURL());
     }
-    // avoid users misconfiguration and add default publicKeyUrls
-    for (String publicKeyUrl : DEFAULT_PUBLIC_KEY_URLS) {
-      if (!authenticationConfiguration.getPublicKeyUrls().contains(publicKeyUrl)) {
-        publicKeyUrlsBuilder.add(new URL(publicKeyUrl));
-      }
-    }
-
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
+
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.allowedDomains = authorizerConfiguration.getAllowedDomains();
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();

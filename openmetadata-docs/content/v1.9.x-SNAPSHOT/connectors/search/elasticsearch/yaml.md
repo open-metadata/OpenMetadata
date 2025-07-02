@@ -138,12 +138,12 @@ source:
       type: ElasticSearch
 ```
 ```yaml {% srNumber=1 %}
-      hostPort: http://localhost:9200
+      hostPort: http://localhost:9200  # REQUIRED - Elasticsearch cluster URL
 ```
 ```yaml {% srNumber=2 %}
       authType:
-        username: elastic
-        password: my_own_password
+        username: elastic  # Basic auth username
+        password: my_own_password  # Basic auth password
 ```
 ```yaml {% srNumber=3 %}
         # apiKeyId: <api key id>
