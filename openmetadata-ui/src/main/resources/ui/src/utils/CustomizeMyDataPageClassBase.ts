@@ -22,6 +22,12 @@ import MyDataImg from '../assets/img/my-data-widget.png';
 import RecentViewsImg from '../assets/img/recent-views.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets-widget.png';
+import { ReactComponent as ActivityFeedIcon } from '../assets/svg/ic-activity-feed.svg';
+import { ReactComponent as DataAssetsIcon } from '../assets/svg/ic-data-assets.svg';
+import { ReactComponent as FollowingIcon } from '../assets/svg/ic-following-assets.svg';
+import { ReactComponent as KPIIcon } from '../assets/svg/ic-kpi-widget.svg';
+import { ReactComponent as MyDataIcon } from '../assets/svg/ic-my-data.svg';
+import { ReactComponent as TotalAssetsIcon } from '../assets/svg/ic-total-data-assets.svg';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
 import AnnouncementsWidget, {
   AnnouncementsWidgetProps,
@@ -218,6 +224,32 @@ class CustomizeMyDataPageClassBase {
       }
       default: {
         return '';
+      }
+    }
+  }
+
+  public getWidgetIconFromKey(widgetKey: string) {
+    switch (widgetKey) {
+      case LandingPageWidgetKeys.ACTIVITY_FEED: {
+        return ActivityFeedIcon;
+      }
+      case LandingPageWidgetKeys.DATA_ASSETS: {
+        return DataAssetsIcon;
+      }
+      case LandingPageWidgetKeys.MY_DATA: {
+        return MyDataIcon;
+      }
+      case LandingPageWidgetKeys.KPI: {
+        return KPIIcon;
+      }
+      case LandingPageWidgetKeys.TOTAL_DATA_ASSETS: {
+        return TotalAssetsIcon;
+      }
+      case LandingPageWidgetKeys.FOLLOWING: {
+        return FollowingIcon;
+      }
+      default: {
+        return null;
       }
     }
   }
