@@ -7,6 +7,7 @@ from typing import List, Optional, Tuple
 
 import sqlalchemy.orm
 from pydantic import TypeAdapter
+from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.ingestion.source.database.snowflake.models import (
@@ -16,10 +17,10 @@ from metadata.ingestion.source.database.snowflake.models import (
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
 from metadata.profiler.metrics.system.system import (
     CacheProvider,
-    EmptySystemMetricsSource,
-    SQASessionProvider,
     SystemMetricsComputer,
+    register_system_metrics,
 )
+from metadata.profiler.orm.registry import PythonDialects
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.collections import CaseInsensitiveString
 from metadata.utils.logger import profiler_logger
@@ -283,38 +284,30 @@ def get_snowflake_system_queries(
     return None
 
 
-class SnowflakeSystemMetricsSource(
-    SQASessionProvider, EmptySystemMetricsSource, CacheProvider[SnowflakeQueryLogEntry]
+@register_system_metrics(PythonDialects.Snowflake)
+class SnowflakeSystemMetricsComputer(
+    SystemMetricsComputer, CacheProvider[SnowflakeQueryLogEntry]
 ):
     """Snowflake system metrics source"""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, session: Session, runner: QueryRunner):
+        self.session = session
+        self.runner = runner
+        self.table = runner.table_name
+        self.database = runner.session.get_bind().url.database
+        self.schema = runner.schema_name
         self.resolver = SnowflakeTableResovler(
-            session=super().get_session(),
+            session=session,
         )
 
-    def get_kwargs(self, **kwargs):
-        runner: QueryRunner = kwargs.get("runner")
-        return {
-            "table": runner.table_name,
-            "database": runner.session.get_bind().url.database,
-            "schema": runner.schema_name,
-        }
-
-    def get_inserts(self, **kwargs) -> List[SystemProfile]:
-        database, schema, table = (
-            kwargs.get("database"),
-            kwargs.get("schema"),
-            kwargs.get("table"),
-        )
+    def get_inserts(self) -> List[SystemProfile]:
         return self.get_system_profile(
-            database,
-            schema,
-            table,
+            self.database,
+            self.schema,
+            self.table,
             list(
                 self.get_queries_by_operation(
-                    table,
+                    self.table,
                     [
                         DatabaseDMLOperations.INSERT,
                         DatabaseDMLOperations.MERGE,
@@ -325,19 +318,14 @@ class SnowflakeSystemMetricsSource(
             DmlOperationType.INSERT,
         )
 
-    def get_updates(self, **kwargs) -> List[SystemProfile]:
-        database, schema, table = (
-            kwargs.get("database"),
-            kwargs.get("schema"),
-            kwargs.get("table"),
-        )
+    def get_updates(self) -> List[SystemProfile]:
         return self.get_system_profile(
-            database,
-            schema,
-            table,
+            self.database,
+            self.schema,
+            self.table,
             list(
                 self.get_queries_by_operation(
-                    table,
+                    self.table,
                     [
                         DatabaseDMLOperations.UPDATE,
                         DatabaseDMLOperations.MERGE,
@@ -348,19 +336,14 @@ class SnowflakeSystemMetricsSource(
             DmlOperationType.UPDATE,
         )
 
-    def get_deletes(self, **kwargs) -> List[SystemProfile]:
-        database, schema, table = (
-            kwargs.get("database"),
-            kwargs.get("schema"),
-            kwargs.get("table"),
-        )
+    def get_deletes(self) -> List[SystemProfile]:
         return self.get_system_profile(
-            database,
-            schema,
-            table,
+            self.database,
+            self.schema,
+            self.table,
             list(
                 self.get_queries_by_operation(
-                    table,
+                    self.table,
                     [
                         DatabaseDMLOperations.DELETE,
                     ],
@@ -418,7 +401,7 @@ class SnowflakeSystemMetricsSource(
         queries = self.get_or_update_cache(
             table,
             SnowflakeQueryLogEntry.get_for_table,
-            session=super().get_session(),
+            session=self.session,
             tablename=table,
         )
         results = [
@@ -429,9 +412,3 @@ class SnowflakeSystemMetricsSource(
             for row in queries
         ]
         return [result for result in results if result is not None]
-
-
-class SnowflakeSystemMetricsComputer(
-    SystemMetricsComputer, SnowflakeSystemMetricsSource
-):
-    pass

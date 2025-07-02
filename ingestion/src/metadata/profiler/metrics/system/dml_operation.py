@@ -25,6 +25,7 @@ class DatabaseDMLOperations(Enum):
     UPDATE = "UPDATE"
     DELETE = "DELETE"
     MERGE = "MERGE"
+    WRITE = "WRITE"
 
 
 DML_OPERATION_MAP = {
@@ -32,4 +33,5 @@ DML_OPERATION_MAP = {
     DatabaseDMLOperations.MERGE.value: DmlOperationType.UPDATE.value,
     DatabaseDMLOperations.UPDATE.value: DmlOperationType.UPDATE.value,
     DatabaseDMLOperations.DELETE.value: DmlOperationType.DELETE.value,
+    DatabaseDMLOperations.WRITE.value: DmlOperationType.WRITE.value,
 }

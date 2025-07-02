@@ -13,15 +13,44 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+from typing import List, Type, cast
+
 from sqlalchemy import Column, inspect
 
+from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.metrics.system.bigquery.system import (
+    BigQuerySystemMetricsComputer,
+)
+from metadata.profiler.metrics.system.system import System
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.logger import profiler_interface_registry_logger
+
+logger = profiler_interface_registry_logger()
 
 
 class BigQueryProfilerInterface(SQAProfilerInterface):
     """BigQuery profiler interface"""
+
+    def _compute_system_metrics(
+        self,
+        metrics: Type[System],
+        runner: QueryRunner,
+        *args,
+        **kwargs,
+    ) -> List[SystemProfile]:
+        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
+        self.system_metrics_class = cast(
+            Type[BigQuerySystemMetricsComputer], self.system_metrics_class
+        )
+        instance = self.system_metrics_class(
+            session=self.session,
+            runner=runner,
+            usage_location=self.service_connection_config.usageLocation,
+        )
+        return instance.get_system_metrics()
 
     def _get_struct_columns(self, columns: dict, parent: str):
         """"""
