@@ -81,7 +81,7 @@ public class LogicOps {
           }
 
           List<EntityReference> refs =
-              JsonUtils.convertValue(args[1], new TypeReference<List<EntityReference>>() {});
+              JsonUtils.convertValue(args[0], new TypeReference<List<EntityReference>>() {});
           return refs.stream().filter(ref -> ref.getType().equals(type)).toList();
         });
 

@@ -40,11 +40,38 @@ public class RuleEngine {
     evaluate(facts, null, false);
   }
 
+  public void evaluateUpdate(EntityInterface original, EntityInterface updated) {
+    List<SemanticsRule> originalErrors = evaluateAndReturn(original, null, false);
+    List<SemanticsRule> updatedErrors = evaluateAndReturn(updated, null, false);
+
+    // If the updated entity is not fixing anything, throw a validation exception
+    if (!nullOrEmpty(updatedErrors) && updatedErrors.size() >= originalErrors.size()) {
+      raiseErroredRules(updatedErrors);
+    }
+  }
+
   public void evaluate(EntityInterface facts, List<SemanticsRule> rules) {
     evaluate(facts, rules, false);
   }
 
   public void evaluate(EntityInterface facts, List<SemanticsRule> rules, boolean incomingOnly) {
+    List<SemanticsRule> erroredRules = evaluateAndReturn(facts, rules, incomingOnly);
+    raiseErroredRules(erroredRules);
+
+  }
+
+  private void raiseErroredRules(List<SemanticsRule> erroredRules) {
+    if (!nullOrEmpty(erroredRules) && erroredRules.size() == 1) {
+      throw new RuleValidationException(
+          erroredRules.getFirst(), "Entity does not satisfy the rule");
+    }
+    if (!nullOrEmpty(erroredRules)) {
+      throw new RuleValidationException(erroredRules, "Entity does not satisfy multiple rules");
+    }
+  }
+
+  public List<SemanticsRule> evaluateAndReturn(
+      EntityInterface facts, List<SemanticsRule> rules, boolean incomingOnly) {
     ArrayList<SemanticsRule> rulesToEvaluate = new ArrayList<>();
     if (!incomingOnly) {
       rulesToEvaluate.addAll(getEnabledEntitySemantics());
@@ -58,9 +85,10 @@ public class RuleEngine {
     }
 
     if (nullOrEmpty(rulesToEvaluate)) {
-      return; // No rules to evaluate
+      return List.of(); // No rules to evaluate
     }
 
+    List<SemanticsRule> erroredRules = new ArrayList<>();
     rulesToEvaluate.forEach(
         rule -> {
           // Only evaluate the rule if it's a generic rule or the rule's entity type matches the
@@ -69,9 +97,15 @@ public class RuleEngine {
               || Entity.getEntityRepository(rule.getEntityType())
                   .getEntityClass()
                   .isInstance(facts)) {
-            validateRule(facts, rule);
+            try {
+              validateRule(facts, rule);
+            } catch (RuleValidationException e) {
+              erroredRules.add(rule);
+            }
           }
         });
+
+    return erroredRules;
   }
 
   private List<SemanticsRule> getEnabledEntitySemantics() {

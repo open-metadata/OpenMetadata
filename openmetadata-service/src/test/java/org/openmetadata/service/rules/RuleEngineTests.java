@@ -21,9 +21,11 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -35,12 +37,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.data.DataContractResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 public class RuleEngineTests extends OpenMetadataApplicationTest {
 
   private static TableResourceTest tableResourceTest;
   private static DataContractResourceTest dataContractResourceTest;
+  private static DomainResourceTest domainResourceTest;
 
   private static final String C1 = "id";
   private static final String C2 = "name";
@@ -57,6 +61,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     tableResourceTest = new TableResourceTest();
     tableResourceTest.setup(test);
     dataContractResourceTest = new DataContractResourceTest();
+    domainResourceTest = new DomainResourceTest();
   }
 
   Table getMockTable(TestInfo test) {
@@ -151,6 +156,32 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void testFilterByType(TestInfo test) {
+    Table table = getMockTable(test);
+
+    // No owners, should pass
+    RuleEngine.getInstance().evaluate(table);
+
+    SemanticsRule rule =
+        new SemanticsRule()
+            .withName("Owner should be a team")
+            .withDescription("Validates owners is a single team.")
+            .withRule(
+                "{\"==\":[{\"length\":[{\"filterReferenceByType\":[{\"var\":\"owners\"},\"team\"]}]},1]}");
+
+    // Single user ownership should fail the rule
+    table.withOwners(List.of(USER1_REF));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(rule), true));
+
+    // Single team ownership should pass the Semantics Rule
+    table.withOwners(List.of(TEAM11_REF));
+    RuleEngine.getInstance().evaluate(table, List.of(rule), true);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void testSingleGlossaryTermForTable(TestInfo test) {
     Table table = getMockTable(test);
 
@@ -204,7 +235,6 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     CreateTable tableReq =
         tableResourceTest
             .createRequest(test)
-            .withName(test.getDisplayName())
             .withOwners(List.of(USER1_REF, USER2_REF, TEAM11_REF))
             .withColumns(
                 List.of(
@@ -219,7 +249,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
         OWNERSHIP_RULE_EXC);
 
     // We can't PATCH a table breaking the ownership rule
-    CreateTable create = tableResourceTest.createRequest(test).withOwners(List.of(USER1_REF));
+    CreateTable create = tableResourceTest.createRequest(test.getDisplayName() + "_PATCH").withOwners(List.of(USER1_REF));
     Table table = tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     String tableJson = JsonUtils.pojoToJson(table);
     table.withOwners(List.of(USER1_REF, TEAM11_REF));
@@ -230,18 +260,9 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
         OWNERSHIP_RULE_EXC);
 
     // SECOND: Validate entity data contract rules
-    CreateTable createWithContract =
-        tableResourceTest
-            .createRequest(test)
-            .withDescription(null)
-            .withOwners(List.of(USER1_REF))
-            .withName(test.getDisplayName() + "_dataContract");
-    Table tableWithContract =
-        tableResourceTest.createEntity(createWithContract, ADMIN_AUTH_HEADERS);
-
     CreateDataContract createContractForTable =
         dataContractResourceTest
-            .createDataContractRequest(test.getDisplayName(), tableWithContract)
+            .createDataContractRequest(test.getDisplayName() + "_validate", table)
             .withStatus(ContractStatus.Active)
             .withSemantics(
                 List.of(
@@ -254,22 +275,109 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     DataContract dataContract = dataContractResourceTest.createDataContract(createContractForTable);
     assertNotNull(dataContract);
     assertNotNull(dataContract.getId());
-    assertEquals(tableWithContract.getId(), dataContract.getEntity().getId());
+    assertEquals(table.getId(), dataContract.getEntity().getId());
     assertEquals("table", dataContract.getEntity().getType());
 
     // The table has null description. If we try to update any other field instead of fixing the
     // description, it should fail
-    String tableJsonWithContract = JsonUtils.pojoToJson(tableWithContract);
-    tableWithContract.withOwners(List.of(TEAM11_REF));
+    String tableJsonWithContract = JsonUtils.pojoToJson(table);
+    table.withOwners(List.of(TEAM11_REF));
 
     assertResponse(
         () ->
             tableResourceTest.patchEntity(
-                tableWithContract.getId(),
+                table.getId(),
                 tableJsonWithContract,
-                tableWithContract,
+                table,
                 ADMIN_AUTH_HEADERS),
         Response.Status.BAD_REQUEST,
         "Rule [Description can't be empty] validation failed: Entity does not satisfy the rule. Rule context: Validates that the table has a description.");
+
+    // However, I can PATCH the table to add a proper description
+    table.withDescription("This is a valid description");
+    Table patched =
+        tableResourceTest.patchEntity(
+            table.getId(),
+            tableJsonWithContract,
+            table,
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(patched);
+    assertEquals("This is a valid description", patched.getDescription());
+    assertEquals(table.getOwners().getFirst().getId(), TEAM11_REF.getId());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void engineBlocksWrongTableCreationWithComplexSemantics(TestInfo test) throws IOException {
+
+    CreateDomain createDomain =
+        domainResourceTest
+            .createRequest(test)
+            .withName("Data")
+            .withDescription("Data domain")
+            .withOwners(List.of(USER1_REF));
+    Domain dataDomain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    CreateTable createWithContract =
+        tableResourceTest.createRequest(test).withDescription(null).withName(test.getDisplayName());
+    Table tableWithContract =
+        tableResourceTest.createEntity(createWithContract, ADMIN_AUTH_HEADERS);
+
+    CreateDataContract createContractForTable =
+        dataContractResourceTest
+            .createDataContractRequest(test.getDisplayName(), tableWithContract)
+            .withStatus(ContractStatus.Active)
+            .withSemantics(
+                List.of(
+                    new SemanticsRule()
+                        .withName("Description can't be empty")
+                        .withDescription("Validates that the table has a description.")
+                        .withRule("{ \"!!\": { \"var\": \"description\" } }"),
+                    new SemanticsRule()
+                        .withName("Owner should not be empty")
+                        .withDescription("Validates that the table has at least one owner.")
+                        .withRule("{ \"!!\": { \"var\": \"owners\" } }"),
+                    new SemanticsRule()
+                        .withName("Owner should be a team")
+                        .withDescription("Validates owners is a single team.")
+                        .withRule(
+                            "{\"==\":[{\"length\":[{\"filterReferenceByType\":[{\"var\":\"owners\"},\"team\"]}]},1]}"),
+                    new SemanticsRule()
+                        .withName("Domain should be Data")
+                        .withDescription("Validates that the table belongs to the 'Data' domain.")
+                        .withRule(
+                            "{\"and\":[{\"!!\":{\"var\":\"domain\"}},{\"==\":[{\"var\":\"domain.name\"},\"Data\"]}]}")));
+
+    dataContractResourceTest.createDataContract(createContractForTable);
+
+    // Table does indeed blow up
+    assertThrows(
+        RuleValidationException.class, () -> RuleEngine.getInstance().evaluate(tableWithContract));
+
+    String tableJsonWithContract = JsonUtils.pojoToJson(tableWithContract);
+    tableWithContract.withDescription("This is a valid description");
+
+    // Even if some rules failed, we should be able to patch the table since we're fixing one rule
+    Table patched =
+        tableResourceTest.patchEntity(
+            tableWithContract.getId(),
+            tableJsonWithContract,
+            tableWithContract,
+            ADMIN_AUTH_HEADERS);
+
+    // The patched table still blows up, since we've only fixed one rule
+    assertThrows(RuleValidationException.class, () -> RuleEngine.getInstance().evaluate(patched));
+
+    String patchedJson = JsonUtils.pojoToJson(patched);
+    patched.withOwners(List.of(TEAM11_REF));
+    patched.withDomain(dataDomain.getEntityReference());
+
+    // Now we're fixing everything in one go
+    Table fixedTable =
+        tableResourceTest.patchEntity(patched.getId(), patchedJson, patched, ADMIN_AUTH_HEADERS);
+
+    // Table is patched properly and is not blowing up anymore
+    assertNotNull(fixedTable);
+    RuleEngine.getInstance().evaluate(fixedTable);
   }
 }

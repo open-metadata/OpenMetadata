@@ -1043,7 +1043,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void prepareInternal(T entity, boolean update) {
-    RuleEngine.getInstance().evaluate(entity);
     validateTags(entity);
     prepare(entity, update);
     setFullyQualifiedName(entity);
@@ -1239,6 +1238,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepareInternal(updated, true);
+    RuleEngine.getInstance().evaluateUpdate(original, updated);
+
     // Validate and populate owners
     List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
     updated.setOwners(validatedOwners);
