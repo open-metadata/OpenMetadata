@@ -1,21 +1,14 @@
 CREATE INDEX idx_thread_type_resolved_createdAt ON thread_entity(type, resolved, createdAt DESC);
 CREATE INDEX idx_thread_entity_entityId ON thread_entity(entityId);
-ALTER TABLE thread_entity
-ADD COLUMN announcementStart BIGINT GENERATED ALWAYS AS (CAST(json #>> '{announcement,startTime}' AS BIGINT)) STORED,
-ADD COLUMN announcementEnd BIGINT GENERATED ALWAYS AS (CAST(json #>> '{announcement,endTime}' AS BIGINT)) STORED;
 
 CREATE INDEX idx_thread_entity_type_announcementDates ON thread_entity(type, announcementStart, announcementEnd);
 CREATE INDEX idx_thread_entity_createdBy_type ON thread_entity(createdBy, type);
 CREATE INDEX idx_thread_entity_type_taskStatus_createdAt ON thread_entity(type, taskStatus, createdAt DESC);
-DROP INDEX IF EXISTS thread_type_index;
-DROP INDEX IF EXISTS updated_at_index;
 
 CREATE INDEX idx_table_entity_deleted_fqnHash ON table_entity(deleted, fqnHash);
 CREATE INDEX idx_table_entity_name_id ON table_entity(name, id);
 
 DROP INDEX IF EXISTS index_table_entity_deleted;
-DROP INDEX IF EXISTS idx_table_entity_deleted_fqnHash_name_id;
-DROP INDEX IF EXISTS idx_table_entity_deleted_name;
 
 CREATE INDEX idx_dashboard_entity_deleted_name_id ON dashboard_entity(deleted, name, id);
 DROP INDEX IF EXISTS index_dashboard_entity_deleted;
