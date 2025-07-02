@@ -23,10 +23,15 @@ import {
 } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import {
   CRON_COMBINATIONS,
+  dayOfMonthPattern,
+  dayOfWeekPattern,
   DEFAULT_SCHEDULE_CRON_DAILY,
   DEFAULT_SCHEDULE_CRON_HOURLY,
   DEFAULT_SCHEDULE_CRON_MONTHLY,
   DEFAULT_SCHEDULE_CRON_WEEKLY,
+  hourPattern,
+  minutePattern,
+  monthPattern,
 } from '../constants/Schedular.constants';
 import { CronTypes } from '../enums/Schedular.enum';
 import { FieldTypes, FormItemLayout } from '../interface/FormUtils.interface';
@@ -303,17 +308,6 @@ export const cronValidator = async (_: RuleObject, value: string) => {
 
   // Validate that each field follows standard Unix cron format
   const [minute, hour, dayOfMonth, month, dayOfWeek] = cronParts;
-
-  // Standard Unix cron validation patterns
-  const minutePattern =
-    /^(\*|[0-5]?[0-9](-[0-5]?[0-9])?(,\d+)*|\*\/[0-5]?[0-9])$/;
-  const hourPattern =
-    /^(\*|1?[0-9]|2[0-3](-1?[0-9]|2[0-3])?(,\d+)*|\*\/1?[0-9]|2[0-3])$/;
-  const dayOfMonthPattern =
-    /^(\*|[1-9]|[12][0-9]|3[01](-[1-9]|[12][0-9]|3[01])?(,\d+)*|\*\/[1-9]|[12][0-9]|3[01])$/;
-  const monthPattern =
-    /^(\*|[1-9]|1[0-2](-[1-9]|1[0-2])?(,\d+)*|\*\/[1-9]|1[0-2])$/;
-  const dayOfWeekPattern = /^(\*|[0-6](-[0-6])?(,\d+)*|\*\/[0-6])$/;
 
   if (!minutePattern.test(minute)) {
     return Promise.reject(t('message.cron-invalid-minute-field'));
