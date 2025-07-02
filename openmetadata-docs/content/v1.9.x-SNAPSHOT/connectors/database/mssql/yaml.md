@@ -160,7 +160,7 @@ source:
       username: <username>
       password: <password>
       hostPort: <hostPort>
-      # database: <database>
+      database: <database>  # REQUIRED - database name
 ```
 ```yaml {% srNumber=8 %}
       # connectionOptions:
