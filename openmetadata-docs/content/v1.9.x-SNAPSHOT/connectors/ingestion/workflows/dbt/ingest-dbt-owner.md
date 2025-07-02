@@ -174,7 +174,7 @@ When the `Update Owners` toggle is enabled during the configuration of dbt inges
 If toggle is disabled during the configuration of dbt ingestion, dbt owners will only be updated for tables in OpenMetadata that currently have no owners. Existing owners will remain unchanged and will not be overwritten with dbt owners.
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/dbt-features/dbt-update-owners.webp"
+  src="/images/v1.9/features/ingestion/workflows/dbt/dbt-features/dbt-update-owners.webp"
   alt="update-dbt-owners"
   caption="Update dbt Owners"
  /%}
