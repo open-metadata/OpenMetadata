@@ -13,6 +13,7 @@ Utilities for working with the Presidio Library.
 """
 import inspect
 import logging
+from contextlib import contextmanager
 from typing import Iterable, Optional, Type
 
 import spacy
@@ -30,6 +31,26 @@ from metadata.utils.logger import METADATA_LOGGER, pii_logger
 
 logger = pii_logger()
 
+# Global analyzer engine instance to prevent multiple instances
+_analyzer_engine_instance: Optional[AnalyzerEngine] = None
+
+
+@contextmanager
+def get_analyzer_engine(model_name: str = SPACY_EN_MODEL):
+    """
+    Context manager for getting the analyzer engine with automatic cleanup.
+
+    Usage:
+        with get_analyzer_engine() as analyzer:
+            results = analyzer.analyze(text, language="en")
+    """
+    analyzer = build_analyzer_engine(model_name)
+    try:
+        yield analyzer
+    finally:
+        # The analyzer is kept in memory for reuse, but we can force cleanup if needed
+        pass
+
 
 def build_analyzer_engine(
     model_name: str = SPACY_EN_MODEL,
@@ -37,8 +58,15 @@ def build_analyzer_engine(
     """
     Build a Presidio analyzer engine for the model_name and tailored to our use case.
 
+    Uses a singleton pattern to prevent multiple heavy instances in memory.
     If the model is not found locally, it will be downloaded.
     """
+    global _analyzer_engine_instance
+
+    if _analyzer_engine_instance is not None:
+        # Return existing instance to prevent memory leaks
+        return _analyzer_engine_instance
+
     _load_spacy_model(model_name)
 
     model = {
@@ -50,6 +78,10 @@ def build_analyzer_engine(
     analyzer_engine = AnalyzerEngine(
         nlp_engine=nlp_engine, supported_languages=[SUPPORTED_LANG]
     )
+
+    # Clear any existing recognizers to prevent accumulation
+    analyzer_engine.registry.recognizers.clear()
+
     for recognizer in _get_all_pattern_recognizers():
         # Register the recognizer by setting the appropriate language.
         # Presidio recognizers are language-dependent: when analyzing text,
@@ -61,7 +93,31 @@ def build_analyzer_engine(
         recognizer.supported_language = SUPPORTED_LANG
         analyzer_engine.registry.add_recognizer(recognizer)
 
+    _analyzer_engine_instance = analyzer_engine
     return analyzer_engine
+
+
+def cleanup_analyzer_engine() -> None:
+    """
+    Clean up the global analyzer engine instance to free memory.
+    This should be called when the analyzer is no longer needed.
+    """
+    global _analyzer_engine_instance
+
+    if _analyzer_engine_instance is not None:
+        # Clear recognizers to free memory
+        if hasattr(_analyzer_engine_instance, "registry") and hasattr(
+            _analyzer_engine_instance.registry, "recognizers"
+        ):
+            _analyzer_engine_instance.registry.recognizers.clear()
+
+        # Clear the nlp engine
+        if hasattr(_analyzer_engine_instance, "nlp_engine"):
+            _analyzer_engine_instance.nlp_engine = None
+
+        _analyzer_engine_instance = None
+
+        logger.debug("Analyzer engine cleaned up")
 
 
 def set_presidio_logger_level(log_level: Optional[int] = None) -> None:

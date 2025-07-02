@@ -14,7 +14,6 @@ NER Scanner based on Presidio.
 Supported Entities https://microsoft.github.io/presidio/supported_entities/
 """
 import json
-import logging
 import traceback
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -22,12 +21,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, ConfigDict
 
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.pii.constants import PII, SPACY_EN_MODEL
+from metadata.pii.constants import PII
 from metadata.pii.models import TagAndConfidence
 from metadata.pii.ner import NEREntity
 from metadata.pii.scanners.base import BaseScanner
 from metadata.utils import fqn
-from metadata.utils.logger import METADATA_LOGGER, pii_logger
+from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
 SUPPORTED_LANG = "en"
@@ -56,33 +55,16 @@ class NERScanner(BaseScanner):
     """Based on https://microsoft.github.io/presidio/"""
 
     def __init__(self):
-        import spacy
-        from presidio_analyzer import AnalyzerEngine
-        from presidio_analyzer.nlp_engine.spacy_nlp_engine import SpacyNlpEngine
-
-        try:
-            spacy.load(SPACY_EN_MODEL)
-        except OSError:
-            logger.warning("Downloading en_core_web_md language model for the spaCy")
-            from spacy.cli import download
-
-            download(SPACY_EN_MODEL)
-            spacy.load(SPACY_EN_MODEL)
-
-        nlp_engine_model = NLPEngineModel(
-            lang_code=SUPPORTED_LANG, model_name=SPACY_EN_MODEL
+        from metadata.pii.algorithms.presidio_utils import (
+            build_analyzer_engine,
+            set_presidio_logger_level,
         )
 
         # Set the presidio logger to talk less about internal entities unless we are debugging
-        logging.getLogger(PRESIDIO_LOGGER).setLevel(
-            logging.INFO
-            if logging.getLogger(METADATA_LOGGER).level == logging.DEBUG
-            else logging.ERROR
-        )
+        set_presidio_logger_level()
 
-        self.analyzer = AnalyzerEngine(
-            nlp_engine=SpacyNlpEngine(models=[nlp_engine_model.model_dump()])
-        )
+        # Use the shared analyzer engine to prevent memory leaks
+        self.analyzer = build_analyzer_engine()
 
     @staticmethod
     def get_highest_score_label(
