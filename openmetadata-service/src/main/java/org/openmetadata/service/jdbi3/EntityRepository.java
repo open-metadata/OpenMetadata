@@ -2298,6 +2298,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityReference> ids = new ArrayList<>();
     ids.addAll(findFrom(entity1, entityType1, relationship, entity2));
     ids.addAll(findTo(entity1, entityType1, relationship, entity2));
+    // Sort the combined list to ensure consistent ordering
+    ids.sort(EntityUtil.compareEntityReference);
     return ids;
   }
 
