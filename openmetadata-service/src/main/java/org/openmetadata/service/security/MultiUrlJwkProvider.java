@@ -24,10 +24,12 @@ import com.google.common.cache.LoadingCache;
 import java.net.URL;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.service.exception.UnhandledServerException;
 
 final class MultiUrlJwkProvider implements JwkProvider {
-  private final List<UrlJwkProvider> urlJwkProviders;
+  private final List<JwkProvider> jwkProviders;
+  private final LocalJwkProvider localJwkProvider = new LocalJwkProvider();
   private final LoadingCache<String, Jwk> CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(10)
@@ -35,13 +37,18 @@ final class MultiUrlJwkProvider implements JwkProvider {
           .build(
               new CacheLoader<>() {
                 @Override
-                public Jwk load(String key) throws Exception {
+                public @NotNull Jwk load(@NotNull String key) throws Exception {
+                  try {
+                    return localJwkProvider.get(key);
+                  } catch (Exception ignored) {
+                    // ignore exception
+                  }
                   JwkException lastException =
                       new SigningKeyNotFoundException(
                           "JWT Token keyID doesn't match the configured keyID. This usually happens if you didn't configure "
                               + "proper publicKeyUrls under authentication configuration.",
                           null);
-                  for (UrlJwkProvider jwkProvider : urlJwkProviders) {
+                  for (JwkProvider jwkProvider : jwkProviders) {
                     try {
                       return jwkProvider.get(key);
                     } catch (JwkException e) {
@@ -53,7 +60,10 @@ final class MultiUrlJwkProvider implements JwkProvider {
               });
 
   public MultiUrlJwkProvider(List<URL> publicKeyUris) {
-    this.urlJwkProviders = publicKeyUris.stream().map(UrlJwkProvider::new).toList();
+    this.jwkProviders =
+        publicKeyUris.stream()
+            .map(UrlJwkProvider::new)
+            .collect(java.util.stream.Collectors.toList());
   }
 
   @Override
