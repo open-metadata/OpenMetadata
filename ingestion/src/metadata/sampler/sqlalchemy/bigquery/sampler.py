@@ -73,13 +73,6 @@ class BigQuerySampler(SQASampler):
             **kwargs,
         )
         self.raw_dataset_type: Optional[TableType] = entity.tableType
-        if self._table.__table__.schema and self.entity.database.name:
-            self._table.__table__.schema = (
-                f"{self.entity.database.name}.{self._table.__table__.schema}"
-            )
-            self._table.__table_args__[
-                "schema"
-            ] = f"{self.entity.database.name}.{self._table.__table_args__['schema']}"
 
     def set_tablesample(self, selectable: SqaTable):
         """Set the TABLESAMPLE clause for BigQuery
