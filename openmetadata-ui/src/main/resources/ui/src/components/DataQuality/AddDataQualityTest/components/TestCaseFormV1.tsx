@@ -106,6 +106,9 @@ import './TestCaseFormV1.less';
 // =============================================
 // CONSTANTS
 // =============================================
+const MAX_TEST_NAME_LENGTH = 256;
+const RANDOM_STRING_LENGTH = 4;
+
 const TEST_LEVEL_OPTIONS: SelectionOption[] = [
   {
     value: TestLevel.TABLE,
@@ -186,6 +189,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
 
   // Pipeline state
   const [canCreatePipeline, setCanCreatePipeline] = useState<boolean>(false);
+  const [isTestNameManuallyEdited, setIsTestNameManuallyEdited] =
+    useState<boolean>(false);
 
   // =============================================
   // HOOKS - Form Watches
@@ -289,6 +294,49 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     );
   }, [initialValues?.parameterValues]);
 
+  // Dynamic test name generation
+  const generateDynamicTestName = useCallback(() => {
+    const testType = selectedTestDefinition?.name || '';
+
+    // Don't generate if test type is missing
+    if (!testType) {
+      return '';
+    }
+
+    const randomString = cryptoRandomString({
+      length: RANDOM_STRING_LENGTH,
+      type: 'alphanumeric',
+    });
+
+    let dynamicName = '';
+
+    if (selectedTestLevel === TestLevel.TABLE) {
+      // Table level: tableName_testType_randomString
+      const tableName = selectedTableData?.name || selectedTable || 'table';
+      dynamicName = `${tableName}_${testType}_${randomString}`;
+    } else if (selectedTestLevel === TestLevel.COLUMN && selectedColumn) {
+      // Column level: columnName_testType_randomString
+      dynamicName = `${selectedColumn}_${testType}_${randomString}`;
+    }
+
+    // Replace spaces and special characters with underscores
+    let finalName = snakeCase(dynamicName);
+
+    // Check length limit
+    if (finalName.length > MAX_TEST_NAME_LENGTH) {
+      // Fallback to testType_randomString if too long
+      finalName = snakeCase(`${testType}_${randomString}`);
+    }
+
+    return finalName;
+  }, [
+    selectedTableData,
+    selectedTable,
+    selectedColumn,
+    selectedTestDefinition,
+    selectedTestLevel,
+  ]);
+
   // Form field configurations (grouped by form section)
   const testDetailsFormFields: FieldProp[] = useMemo(
     () => [
@@ -325,7 +373,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             },
           },
         ],
-        props: { 'data-testid': 'test-case-name' },
+        props: {
+          'data-testid': 'test-case-name',
+          onChange: () => setIsTestNameManuallyEdited(true),
+        },
       },
       {
         name: 'description',
@@ -367,7 +418,12 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         },
       },
     ],
-    [initialValues?.description, initialValues?.tags, existingTestCases, t]
+    [
+      initialValues?.description,
+      initialValues?.tags,
+      existingTestCases,
+      setIsTestNameManuallyEdited,
+    ]
   );
 
   const computeRowCountField: FieldProp[] = useMemo(
@@ -383,7 +439,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         formItemLayout: FormItemLayout.HORIZONTAL,
       },
     ],
-    [t]
+    []
   );
 
   const schedulerFormFields: FieldProp[] = useMemo(
@@ -398,7 +454,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         id: 'root/pipelineName',
       },
     ],
-    [t]
+    []
   );
 
   // =============================================
@@ -470,7 +526,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         </Button>
       </Space>
     ),
-    [isFormLoading, handleCancel, t, form]
+    [isFormLoading, handleCancel, form]
   );
 
   // API-related callbacks
@@ -600,18 +656,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const createTestCaseObj = useCallback(
     (value: FormValues): CreateTestCase => {
       const selectedDefinition = getSelectedTestDefinition();
-      const tableName =
-        selectedTableData?.name || selectedTable || table?.name || '';
       const columnName = selectedColumn;
 
-      const name =
-        value.testName?.trim() ||
-        `${replaceAllSpacialCharWith_(columnName ?? tableName)}_${snakeCase(
-          selectedTestType
-        )}_${cryptoRandomString({
-          length: 4,
-          type: 'alphanumeric',
-        })}`;
+      const name = value.testName?.trim() || generateDynamicTestName();
 
       const entityFqn =
         selectedTableData?.fullyQualifiedName ||
@@ -739,7 +786,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
       onFormSubmit,
       isDrawer,
       onCancel,
-      t,
     ]
   );
 
@@ -850,6 +896,48 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     testSuite?.fullyQualifiedName,
     selectedTable,
     checkExistingPipelines,
+  ]);
+
+  // Initialize manual edit flag based on initial values
+  useEffect(() => {
+    if (initialValues?.testName) {
+      setIsTestNameManuallyEdited(true);
+    } else {
+      // Reset manual edit flag when no initial values (new test case)
+      setIsTestNameManuallyEdited(false);
+    }
+  }, [initialValues?.testName]);
+
+  // Reset manual edit flag when drawer is opened for new test case
+  useEffect(() => {
+    if (isDrawer && !initialValues?.testName) {
+      setIsTestNameManuallyEdited(false);
+    }
+  }, [isDrawer, initialValues?.testName]);
+
+  // Auto-generate test name when inputs change
+  useEffect(() => {
+    if (
+      selectedTable &&
+      selectedTestDefinition &&
+      selectedTestLevel &&
+      !initialValues?.testName && // Only auto-generate if no initial value provided
+      !isTestNameManuallyEdited // Don't override if user has manually edited the name
+    ) {
+      const dynamicName = generateDynamicTestName();
+      if (dynamicName) {
+        form.setFieldValue('testName', dynamicName);
+      }
+    }
+  }, [
+    selectedTable,
+    selectedColumn,
+    selectedTestDefinition,
+    selectedTestLevel,
+    generateDynamicTestName,
+    form,
+    initialValues?.testName,
+    isTestNameManuallyEdited,
   ]);
 
   // =============================================
