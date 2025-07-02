@@ -150,44 +150,53 @@ export const TestCases = () => {
     }
   };
 
-  const fetchTestCases = async (
-    currentPage = INITIAL_PAGING_VALUE,
-    filters?: string[],
-    apiParams?: ListTestCaseParamsBySearch
-  ) => {
-    const updatedParams = getTestCaseFiltersValue(
-      params,
-      filters ?? selectedFilter
-    );
+  const fetchTestCases = useCallback(
+    async (
+      currentPage = INITIAL_PAGING_VALUE,
+      filters?: string[],
+      apiParams?: ListTestCaseParamsBySearch
+    ) => {
+      const updatedParams = getTestCaseFiltersValue(
+        params,
+        filters ?? selectedFilter
+      );
 
-    setIsLoading(true);
-    try {
-      const { data, paging } = await getListTestCaseBySearch({
-        ...updatedParams,
-        ...sortOptions,
-        ...apiParams,
-        testCaseStatus: isEmpty(params?.testCaseStatus)
-          ? undefined
-          : params?.testCaseStatus,
-        limit: pageSize,
-        includeAllTests: true,
-        fields: [
-          TabSpecificField.TEST_CASE_RESULT,
-          TabSpecificField.TESTSUITE,
-          TabSpecificField.INCIDENT_ID,
-        ],
-        q: searchValue ? `*${searchValue}*` : undefined,
-        offset: (currentPage - 1) * pageSize,
-      });
-      setTestCase(data);
-      handlePagingChange(paging);
-      handlePageChange(currentPage);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      setIsLoading(true);
+      try {
+        const { data, paging } = await getListTestCaseBySearch({
+          ...updatedParams,
+          ...sortOptions,
+          ...apiParams,
+          testCaseStatus: isEmpty(params?.testCaseStatus)
+            ? undefined
+            : params?.testCaseStatus,
+          limit: pageSize,
+          includeAllTests: true,
+          fields: [
+            TabSpecificField.TEST_CASE_RESULT,
+            TabSpecificField.TESTSUITE,
+            TabSpecificField.INCIDENT_ID,
+          ],
+          q: searchValue ? `*${searchValue}*` : undefined,
+          offset: (currentPage - 1) * pageSize,
+        });
+        setTestCase(data);
+        handlePagingChange(paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      params,
+      selectedFilter,
+      sortOptions,
+      pageSize,
+      searchValue,
+      handlePagingChange,
+    ]
+  );
 
   const sortTestCase = async (apiParams?: TestCaseSearchParams) => {
     const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
@@ -213,9 +222,13 @@ export const TestCases = () => {
     });
   };
 
-  const handlePagingClick = ({ currentPage }: PagingHandlerParams) => {
-    fetchTestCases(currentPage);
-  };
+  const handlePagingClick = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      handlePageChange(currentPage);
+      fetchTestCases(currentPage);
+    },
+    [handlePageChange, fetchTestCases]
+  );
 
   const handleFilterChange: FormProps<TestCaseSearchParams>['onValuesChange'] =
     (value?: TestCaseSearchParams) => {
@@ -438,10 +451,10 @@ export const TestCases = () => {
         getInitialOptions(key, true);
       }
       setSelectedFilter(updatedValue);
-      fetchTestCases(INITIAL_PAGING_VALUE, updatedValue);
+      fetchTestCases(currentPage, updatedValue);
       form.setFieldsValue(params);
     } else {
-      fetchTestCases(INITIAL_PAGING_VALUE);
+      fetchTestCases(currentPage);
     }
   };
 
@@ -454,7 +467,7 @@ export const TestCases = () => {
     } else {
       setIsLoading(false);
     }
-  }, [tab, testCasePermission, pageSize, params]);
+  }, [tab, testCasePermission, pageSize, params, currentPage]);
 
   const pagingData = useMemo(
     () => ({
