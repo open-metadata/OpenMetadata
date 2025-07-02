@@ -1,5 +1,6 @@
 ---
 title: DB2 Connector | OpenMetadata Database Integration Guide
+description: Connect OpenMetadata to your DB2 database with our comprehensive connector guide. Setup instructions, configuration options, and troubleshooting tips included.
 slug: /connectors/database/db2
 ---
 

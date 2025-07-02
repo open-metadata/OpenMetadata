@@ -1,5 +1,6 @@
 ---
 title: Iceberg Connector | OpenMetadata Data Lake Integration Guide
+description: Connect Apache Iceberg to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration, and metadata ingestion instructions.
 slug: /connectors/database/iceberg
 ---
 

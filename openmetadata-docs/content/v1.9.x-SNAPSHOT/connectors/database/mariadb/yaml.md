@@ -1,5 +1,6 @@
 ---
 title: Run the MariaDB Connector Externally
+description: Configure MariaDB database connectors in OpenMetadata with YAML examples. Step-by-step setup guide for seamless data catalog integration and metadata extraction.
 slug: /connectors/database/mariadb/yaml
 ---
 

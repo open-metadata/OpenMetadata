@@ -1,5 +1,6 @@
 ---
 title: Setup SAP ERP APIs | OpenMetadata Integration Guide
+description: Learn how to configure SAP ERP APIs with OpenMetadata's database connector. Step-by-step setup guide for seamless data integration and metadata management.
 slug: /connectors/database/sap-erp/setup-sap-apis
 ---
 # Setup SAP ERP APIs

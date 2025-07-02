@@ -1,5 +1,6 @@
 ---
 title: Presto Connector | OpenMetadata Distributed SQL Guide
+description: Connect Presto databases to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration examples, and metadata extraction tips.
 slug: /connectors/database/presto
 ---
 

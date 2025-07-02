@@ -1,5 +1,6 @@
 ---
 title: Impala Connector | OpenMetadata SQL-on-Hadoop Integration
+description: Connect Impala databases to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/database/impala
 ---
 

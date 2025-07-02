@@ -1,5 +1,6 @@
 ---
 title: Run the MongoDB Connector Externally
+description: Configure MongoDB database connections in OpenMetadata with YAML. Step-by-step setup guide, connection parameters, and examples for seamless data integration.
 slug: /connectors/database/mongodb/yaml
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Run the Redshift Connector Externally
+description: Configure OpenMetadata Redshift database connector with YAML - step-by-step setup guide, connection parameters, and best practices for data integration.
 slug: /connectors/database/redshift/yaml
 ---
 

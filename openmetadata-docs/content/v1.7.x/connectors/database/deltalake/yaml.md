@@ -1,5 +1,6 @@
 ---
 title: Run the Delta Lake Connector Externally
+description: Configure Delta Lake database connections in OpenMetadata with YAML. Step-by-step setup guide for seamless data catalog integration and metadata extraction.
 slug: /connectors/database/deltalake/yaml
 ---
 

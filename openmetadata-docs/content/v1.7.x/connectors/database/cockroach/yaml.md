@@ -1,5 +1,6 @@
 ---
 title: Run the Cockroach Connector Externally
+description: Configure CockroachDB connector in OpenMetadata using YAML. Step-by-step setup guide with examples to connect and extract metadata from CockroachDB.
 slug: /connectors/database/cockroach/yaml
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: S3 Datalake Connector Troubleshooting
+description: Resolve S3 DataLake connector issues in OpenMetadata with expert troubleshooting guides, common error fixes, and step-by-step solutions for seamless dat...
 slug: /connectors/database/s3-datalake/troubleshooting
 ---
 

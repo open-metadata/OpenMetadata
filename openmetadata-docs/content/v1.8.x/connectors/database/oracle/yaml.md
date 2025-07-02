@@ -1,5 +1,6 @@
 ---
 title: Run the Oracle Connector Externally
+description: Configure Oracle database connections in OpenMetadata with our comprehensive YAML setup guide. Step-by-step instructions for seamless data integration.
 slug: /connectors/database/oracle/yaml
 ---
 

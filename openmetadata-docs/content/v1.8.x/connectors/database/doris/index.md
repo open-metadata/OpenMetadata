@@ -1,5 +1,6 @@
 ---
 title: Doris Connector | OpenMetadata Database Integration Guide
+description: Learn how to connect Apache Doris database to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration, and metadata extra...
 slug: /connectors/database/doris
 ---
 

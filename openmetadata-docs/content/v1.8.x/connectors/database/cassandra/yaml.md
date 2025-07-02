@@ -1,5 +1,6 @@
 ---
 title: Run the Cassandra Connector Externally
+description: Learn how to configure Cassandra database connectors in OpenMetadata using YAML. Step-by-step setup guide with examples and best practices.
 slug: /connectors/database/cassandra/yaml
 ---
 

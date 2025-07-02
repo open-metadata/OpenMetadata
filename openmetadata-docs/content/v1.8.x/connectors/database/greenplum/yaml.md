@@ -1,5 +1,6 @@
 ---
 title: Run the Greenplum Connector Externally
+description: Configure OpenMetadata's Greenplum database connector with YAML. Step-by-step setup guide for seamless data integration and metadata extraction.
 slug: /connectors/database/greenplum/yaml
 ---
 

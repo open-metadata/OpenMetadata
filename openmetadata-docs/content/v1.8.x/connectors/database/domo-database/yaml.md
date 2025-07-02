@@ -1,5 +1,6 @@
 ---
 title: Run the Domo Database Connector Externally
+description: Configure OpenMetadata's Domo Database connector with YAML - complete setup guide, connection parameters, and authentication methods for seamless data integration.
 slug: /connectors/database/domo-database/yaml
 ---
 

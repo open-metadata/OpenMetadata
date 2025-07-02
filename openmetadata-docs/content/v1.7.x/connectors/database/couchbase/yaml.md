@@ -1,5 +1,6 @@
 ---
 title: Run the Couchbase Connector Externally
+description: Configure Couchbase database connections in OpenMetadata with YAML - step-by-step setup guide, authentication options, and connector configuration examples.
 slug: /connectors/database/couchbase/yaml
 ---
 

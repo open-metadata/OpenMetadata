@@ -1,5 +1,6 @@
 ---
 title: Run the Hive Connector Externally
+description: Configure Hive database connections in OpenMetadata with YAML. Step-by-step setup guide, authentication options, and connector configuration examples.
 slug: /connectors/database/hive/yaml
 ---
 

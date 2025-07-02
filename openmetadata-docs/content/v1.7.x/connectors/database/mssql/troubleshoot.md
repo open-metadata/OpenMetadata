@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting for MSSQL
+description: Fix MS SQL Server connection issues with OpenMetadata's comprehensive troubleshooting guide. Get step-by-step solutions for common database connector problems.
 slug: /connectors/database/mssql/troubleshooting
 ---
 

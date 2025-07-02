@@ -1,5 +1,6 @@
 ---
 title: Run the Clickhouse Connector Externally
+description: Configure ClickHouse database connections in OpenMetadata with YAML - step-by-step setup guide, configuration examples, and connector documentation.
 slug: /connectors/database/clickhouse/yaml
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Domo Database Connector Troubleshooting
+description: Troubleshoot Domo Database connector issues in OpenMetadata with expert solutions, common error fixes, and step-by-step debugging guides.
 slug: /connectors/database/domo-database/troubleshoot
 ---
 

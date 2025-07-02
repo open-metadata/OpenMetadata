@@ -1,5 +1,6 @@
 ---
 title: Run the DB2 Connector Externally
+description: Configure DB2 database connections in OpenMetadata with our comprehensive YAML setup guide. Step-by-step instructions and examples included.
 slug: /connectors/database/db2/yaml
 ---
 

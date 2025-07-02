@@ -1,5 +1,6 @@
 ---
 title: Run the Databricks Connector Externally
+description: Configure Databricks database connections in OpenMetadata with our comprehensive YAML guide. Step-by-step setup, authentication, and integration examples.
 slug: /connectors/database/databricks/yaml
 ---
 

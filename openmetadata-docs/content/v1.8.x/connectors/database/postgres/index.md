@@ -1,5 +1,6 @@
 ---
 title: PostgreSQL Connector | OpenMetadata Database Integration
+description: Set up OpenMetadata's PostgreSQL connector to seamlessly integrate your Postgres databases. Complete configuration guide with examples and best practices.
 slug: /connectors/database/postgres
 ---
 

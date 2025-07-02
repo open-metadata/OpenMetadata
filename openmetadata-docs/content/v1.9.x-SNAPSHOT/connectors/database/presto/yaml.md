@@ -1,5 +1,6 @@
 ---
 title: Run the Presto Connector Externally
+description: Configure Presto database connections in OpenMetadata with YAML. Step-by-step setup guide, authentication options, and connector configuration examples.
 slug: /connectors/database/presto/yaml
 ---
 

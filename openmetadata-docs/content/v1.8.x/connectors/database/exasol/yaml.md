@@ -1,5 +1,6 @@
 ---
 title: Run the Exasol Connector Externally
+description: Configure Exasol database connections in OpenMetadata using YAML. Step-by-step setup guide with examples for seamless data catalog integration.
 slug: /connectors/database/exasol/yaml
 ---
 

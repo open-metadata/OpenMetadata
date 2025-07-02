@@ -1,5 +1,6 @@
 ---
 title: Run the S3 Datalake Connector Externally
+description: Configure S3 Data Lake connectors in OpenMetadata using YAML. Step-by-step setup guide with examples for seamless data catalog integration.
 slug: /connectors/database/s3-datalake/yaml
 ---
 

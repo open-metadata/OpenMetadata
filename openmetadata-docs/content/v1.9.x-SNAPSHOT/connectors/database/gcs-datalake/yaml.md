@@ -1,5 +1,6 @@
 ---
 title: Run the GCS Datalake Connector Externally
+description: Configure OpenMetadata's GCS Datalake connector with YAML - step-by-step setup guide, connection parameters, and examples for Google Cloud Storage integration.
 slug: /connectors/database/gcs-datalake/yaml
 ---
 

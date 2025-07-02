@@ -1,5 +1,6 @@
 ---
 title: Run the Impala Connector Externally
+description: Configure Impala database connections in OpenMetadata with YAML. Complete setup guide with examples, authentication options, and best practices.
 slug: /connectors/database/impala/yaml
 ---
 

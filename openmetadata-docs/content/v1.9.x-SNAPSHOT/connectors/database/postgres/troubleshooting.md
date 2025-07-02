@@ -1,5 +1,6 @@
 ---
 title: PostgreSQL Connector Troubleshooting
+description: Solve PostgreSQL connector issues in OpenMetadata with our comprehensive troubleshooting guide. Fix connection errors, authentication problems, and more.
 slug: /connectors/database/postgres/troubleshooting
 ---
 

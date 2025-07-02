@@ -1,5 +1,6 @@
 ---
 title: Run the PostgreSQL Connector Externally
+description: Configure PostgreSQL database connections in OpenMetadata using YAML. Step-by-step setup guide with connector configuration examples and best practices.
 slug: /connectors/database/postgres/yaml
 ---
 

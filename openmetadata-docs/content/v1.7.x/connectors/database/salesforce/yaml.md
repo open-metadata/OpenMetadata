@@ -1,5 +1,6 @@
 ---
 title: Run the Salesforce Connector Externally
+description: Configure Salesforce database connectors with OpenMetadata using YAML. Step-by-step setup guide, configuration examples, and best practices included.
 slug: /connectors/database/salesforce/yaml
 ---
 

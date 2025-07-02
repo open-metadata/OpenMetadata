@@ -1,5 +1,6 @@
 ---
 title: Run the MSSQL Connector Externally
+description: Configure MS SQL Server database connections in OpenMetadata using YAML. Step-by-step setup guide with examples, authentication options, and troubleshooting tips.
 slug: /connectors/database/mssql/yaml
 ---
 

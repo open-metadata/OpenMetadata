@@ -1,5 +1,6 @@
 ---
 title: Run the Iceberg Connector Externally
+description: Configure OpenMetadata's Iceberg database connector with YAML setup guide. Learn connection parameters, authentication, and metadata extraction settings.
 slug: /connectors/database/iceberg/yaml
 ---
 

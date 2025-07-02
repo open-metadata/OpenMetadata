@@ -1,5 +1,6 @@
 ---
 title: Impala Connector Troubleshooting
+description: Fix Impala database connector issues with OpenMetadata's comprehensive troubleshooting guide. Get solutions for common errors and configuration problems.
 slug: /connectors/database/impala/troubleshooting
 ---
 

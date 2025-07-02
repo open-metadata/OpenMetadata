@@ -1,5 +1,6 @@
 ---
 title: Run the Doris Connector Externally
+description: Configure OpenMetadata's Doris database connector with YAML - step-by-step setup guide, connection parameters, and integration examples for seamless data cataloging.
 slug: /connectors/database/doris/yaml
 ---
 

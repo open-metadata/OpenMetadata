@@ -1,5 +1,6 @@
 ---
 title: Run the PinotDB Connector Externally
+description: Configure PinotDB connector in OpenMetadata using YAML. Step-by-step setup guide for Apache Pinot database integration with examples and best practices.
 slug: /connectors/database/pinotdb/yaml
 ---
 

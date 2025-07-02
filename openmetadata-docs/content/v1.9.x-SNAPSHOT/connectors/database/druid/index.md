@@ -1,5 +1,6 @@
 ---
 title: Druid Connector | OpenMetadata Real-Time Analytics Guide
+description: Connect Druid to OpenMetadata effortlessly with our database connector. Extract metadata, lineage, and usage insights from your Druid clusters seamlessly.
 slug: /connectors/database/druid
 ---
 

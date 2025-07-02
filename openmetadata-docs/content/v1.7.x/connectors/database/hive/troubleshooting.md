@@ -1,5 +1,6 @@
 ---
 title: Hive Connector Troubleshooting
+description: Resolve Hive connector issues quickly with OpenMetadata's comprehensive troubleshooting guide. Fix common database connection problems and errors step-by-step.
 slug: /connectors/database/hive/troubleshooting
 ---
 

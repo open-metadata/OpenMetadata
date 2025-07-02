@@ -1,5 +1,6 @@
 ---
 title: DeltaLake Connector | OpenMetadata Data Lake Integration
+description: Connect Delta Lake to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration options, and metadata extraction tips.
 slug: /connectors/database/deltalake
 ---
 

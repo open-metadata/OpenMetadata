@@ -1,5 +1,6 @@
 ---
 title: Run the Athena Connector Externally
+description: Configure DynamoDB database connectors in OpenMetadata using YAML. Complete setup guide with examples, authentication, and metadata extraction configurations.
 slug: /connectors/database/dynamodb/yaml
 ---
 

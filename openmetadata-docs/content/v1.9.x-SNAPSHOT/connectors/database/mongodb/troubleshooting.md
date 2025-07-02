@@ -1,5 +1,6 @@
 ---
 title: MongoDB Troubleshooting Guide | OpenMetadata Support
+description: Solve MongoDB connector issues in OpenMetadata with our comprehensive troubleshooting guide. Fix connection errors, authentication problems, and data in...
 slug: /connectors/database/mongodb/troubleshooting
 ---
 

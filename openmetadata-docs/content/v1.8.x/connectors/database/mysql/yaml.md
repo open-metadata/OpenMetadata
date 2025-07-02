@@ -1,5 +1,6 @@
 ---
 title: Run the MySQL Connector Externally
+description: Configure MySQL database connections in OpenMetadata using YAML. Step-by-step setup guide with examples, authentication options, and troubleshooting tips.
 slug: /connectors/database/mysql/yaml
 ---
 

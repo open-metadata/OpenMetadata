@@ -1,5 +1,6 @@
 ---
 title: Redshift Connector Troubleshooting
+description: Solve OpenMetadata Redshift connector issues fast with our comprehensive troubleshooting guide. Fix connection errors, authentication problems & more.
 slug: /connectors/database/redshift/troubleshooting
 ---
 

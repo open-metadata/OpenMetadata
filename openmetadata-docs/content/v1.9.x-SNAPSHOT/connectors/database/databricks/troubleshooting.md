@@ -1,5 +1,6 @@
 ---
 title: Databricks Connector Troubleshooting
+description: Solve Databricks connector issues in OpenMetadata with expert troubleshooting guides, common error fixes, and step-by-step solutions for seamless integration.
 slug: /connectors/database/databricks/troubleshooting
 ---
 
