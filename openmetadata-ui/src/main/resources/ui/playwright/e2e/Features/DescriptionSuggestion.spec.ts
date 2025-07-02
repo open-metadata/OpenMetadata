@@ -116,6 +116,8 @@ test.describe('Description Suggestions Table Entity', () => {
 
       await singleResolveResponse;
 
+      await expect(page.locator('.ant-badge [title="5"]')).toBeVisible();
+
       await expect(
         page.locator(
           `[data-row-key*=${table.columnsName[0]}] [data-testid="description"]`
@@ -142,6 +144,8 @@ test.describe('Description Suggestions Table Entity', () => {
         .click();
 
       await singleResolveResponse;
+
+      await expect(page.locator('.ant-badge [title="4"]')).toBeVisible();
 
       await expect(
         page.locator(
@@ -222,7 +226,7 @@ test.describe('Description Suggestions Table Entity', () => {
     await afterAction();
   });
 
-  test('Fetch on avatar click  and then all Pending Suggestions', async ({
+  test('Fetch on avatar click and then all Pending Suggestions button click', async ({
     browser,
   }) => {
     const { page, afterAction } = await performAdminLogin(browser);
@@ -267,6 +271,72 @@ test.describe('Description Suggestions Table Entity', () => {
 
     // Click the first avatar
     await expect(allAvatarSuggestion).toHaveCount(4);
+
+    await afterAction();
+    await afterAction2();
+    await afterAction3();
+    await afterAction4();
+  });
+
+  test('Should auto fetch more suggestions, when last user avatar is eliminated and there are more suggestions', async ({
+    browser,
+  }) => {
+    const { page, afterAction } = await performAdminLogin(browser);
+    const { afterAction: afterAction2, apiContext: apiContext2 } =
+      await performUserLogin(browser, user1);
+    const { afterAction: afterAction3, apiContext: apiContext3 } =
+      await performUserLogin(browser, user2);
+    const { afterAction: afterAction4, apiContext: apiContext4 } =
+      await performUserLogin(browser, user3);
+
+    for (const entityLink of entityLinkList) {
+      await createTableDescriptionSuggestions(apiContext2, entityLink);
+      await createTableDescriptionSuggestions(apiContext3, entityLink);
+      await createTableDescriptionSuggestions(apiContext4, entityLink);
+    }
+
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+
+    for (let index = 0; index < 3; index++) {
+      const avatarSuggestion = page.waitForResponse(
+        `/api/v1/suggestions?entityFQN=*userId=*`
+      );
+      await page
+        .getByTestId('asset-description-container')
+        .getByTestId('profile-avatar')
+        .nth(0)
+        .click();
+
+      await avatarSuggestion;
+
+      const fetchSuggestionResponse = page.waitForResponse(
+        '/api/v1/suggestions?entityFQN=*&limit=*'
+      );
+      const rejectAllSuggestionResponse = page.waitForResponse(
+        '/api/v1/suggestions/reject-all?userId=*&entityFQN=*&suggestionType=SuggestDescription'
+      );
+      await page.getByTestId('reject-all-suggestions').click();
+      await rejectAllSuggestionResponse;
+
+      const allAvatarSuggestion = page
+        .getByTestId('asset-description-container')
+        .getByTestId('profile-avatar');
+
+      // On last avatar accept/reject click, if there is still more suggestion pending. Then auto fetch them.
+      if (index !== 2) {
+        await expect(page.getByTestId('more-suggestion-button')).toBeVisible();
+        await expect(allAvatarSuggestion).toHaveCount(3 - (index + 1));
+      } else {
+        await fetchSuggestionResponse;
+
+        await expect(
+          page.getByTestId('more-suggestion-button')
+        ).not.toBeVisible();
+
+        await expect(allAvatarSuggestion).toHaveCount(1);
+      }
+    }
 
     await afterAction();
     await afterAction2();

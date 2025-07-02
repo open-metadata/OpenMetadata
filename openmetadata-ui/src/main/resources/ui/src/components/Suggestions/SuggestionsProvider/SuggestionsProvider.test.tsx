@@ -348,7 +348,7 @@ describe('SuggestionsProvider', () => {
     // Should optimistically update suggestions count without refetch
     await waitFor(() => {
       expect(screen.getByTestId('suggestions-count')).toHaveTextContent('2');
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('21'); // pending decreases by 1
+      expect(screen.getByTestId('pending-count')).toHaveTextContent('22'); // 25 - 3
     });
 
     // Should only call initial fetch, no refetch after successful accept
