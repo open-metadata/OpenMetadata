@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=10.0.0",
+    "node": ">=18.19.0",
     "yarn": "^1.22.0"
   },
   "repository": {
