@@ -429,7 +429,11 @@ class AirflowSource(PipelineServiceSource):
 
             for task in tasks:
                 # Flatten serialized task
-                task_data = task.get("__var") if isinstance(task, dict) and task.keys() == {"__var", "__type"} else task
+                task_data = (
+                    task.get("__var")
+                    if isinstance(task, dict) and task.keys() == {"__var", "__type"}
+                    else task
+                )
 
                 owner = task_data.get("owner")
                 if not owner and default_owner:

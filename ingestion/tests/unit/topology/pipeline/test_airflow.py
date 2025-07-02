@@ -288,8 +288,10 @@ class TestAirflow(TestCase):
             "default_args": {"owner": "default_owner"},
             "tasks": [
                 {"__var": {"task_id": "t1"}, "__type": "EmptyOperator"},
-                {"__var": {"task_id": "t2", "owner": "overridden_owner"}, "__type": "EmptyOperator"},
+                {
+                    "__var": {"task_id": "t2", "owner": "overridden_owner"},
+                    "__type": "EmptyOperator",
+                },
             ],
         }
         self.assertEqual("overridden_owner", self.airflow.fetch_dag_owners(data))
-
