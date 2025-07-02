@@ -268,7 +268,10 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
   private DataContract getDataContractByEntityId(UUID entityId, String entityType)
       throws HttpResponseException {
     WebTarget target =
-        getCollection().queryParam("entityId", entityId).queryParam("entityType", entityType);
+        getCollection()
+            .path("/entity")
+            .queryParam("entityId", entityId)
+            .queryParam("entityType", entityType);
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
     return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
   }
@@ -379,7 +382,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     DataContract created = createDataContract(create);
 
     DataContract retrieved =
-        getDataContractByEntityId(created.getId(), org.openmetadata.service.Entity.TABLE);
+        getDataContractByEntityId(table.getId(), org.openmetadata.service.Entity.TABLE);
 
     assertEquals(created.getId(), retrieved.getId());
     assertEquals(created.getName(), retrieved.getName());

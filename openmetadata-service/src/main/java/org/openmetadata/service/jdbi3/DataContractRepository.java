@@ -155,7 +155,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   public DataContract loadEntityDataContract(EntityReference entity) {
     return JsonUtils.readValue(
-        getDaoCollection()
+        daoCollection
             .dataContractDAO()
             .getContractByEntityId(entity.getId().toString(), entity.getType()),
         DataContract.class);

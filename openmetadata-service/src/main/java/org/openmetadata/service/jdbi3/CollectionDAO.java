@@ -2472,13 +2472,13 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    @ConnectionAwareSqlUpdate(
+    @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM data_contract_entity WHERE JSON_EXTRACT(json, '$.id') = :entityId AND JSON_EXTRACT(json, '$.type') = :entityType",
+            "SELECT json FROM data_contract_entity WHERE JSON_EXTRACT(json, '$.entity.id') = :entityId AND JSON_EXTRACT(json, '$.entity.type') = :entityType LIMIT 1",
         connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
+    @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM data_contract_entity WHERE json->>'id' = :entityId AND json->>'type' = :entityType",
+            "SELECT json FROM data_contract_entity WHERE json#>>'{entity,id}' = :entityId AND json#>>'{entity,type}' = :entityType LIMIT 1",
         connectionType = POSTGRES)
     String getContractByEntityId(
         @Bind("entityId") String entityId, @Bind("entityType") String entityType);

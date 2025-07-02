@@ -238,7 +238,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   }
 
   @GET
-  @Path("/entity/")
+  @Path("/entity")
   @Operation(
       operationId = "getDataContractByEntityId",
       summary = "Get a data contract by its related Entity ID",
@@ -263,7 +263,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           UUID entityId,
       @Parameter(
               description = "Entity Type to get the data contract for",
-              schema = @Schema(type = "string", example = FIELDS))
+              schema = @Schema(type = "string", example = Entity.TABLE))
           @QueryParam("entityType")
           String entityType) {
     authorizer.authorize(
