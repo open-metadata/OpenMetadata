@@ -67,7 +67,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
         createRequest(test, 1).withName("activityFeed").withFullyQualifiedName("activityFeed");
     ACTIVITY_FEED_KNOWLEDGE_PANEL = createEntity(createDoc, ADMIN_AUTH_HEADERS);
 
-    createDoc = createRequest(test, 12).withName("myData");
+    createDoc = createRequest(test, 11).withName("myData");
     MY_DATA_KNOWLEDGE_PANEL = createEntity(createDoc, ADMIN_AUTH_HEADERS);
   }
 
