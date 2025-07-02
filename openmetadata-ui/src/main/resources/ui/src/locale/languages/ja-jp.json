@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 日",
+    "1-hr": "1 時間",
     "aborted": "中断",
     "accept": "Accept",
     "accept-all": "Accept All",
@@ -937,6 +939,8 @@
     "november": "11月",
     "null": "Null",
     "number": "Number",
+    "number-day-plural": "{{number}} 日",
+    "number-hr-plural": "{{number}} 時間",
     "number-of-object-plural": "Number of Objects",
     "number-of-retries": "Number of Retries",
     "number-of-rows": "行数",
@@ -1479,6 +1483,7 @@
     "uninstalled-lowercase": "uninstalled",
     "unique": "ユニーク",
     "unit-of-measurement": "単位",
+    "unlimited": "無制限",
     "unpause": "再開",
     "unprocessed": "Unprocessed",
     "up-vote": "Up Vote",
@@ -1755,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}}は正しくありません",
     "entity-is-not-valid-url": "{{entity}} is not valid url",
     "entity-maximum-size": "{{entity}} can be a maximum of {{max}} characters",
+    "entity-moved-successfully": "{{entity}}が正常に移動されました",
     "entity-name-validation": "Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.",
     "entity-not-contain-whitespace": "{{entity}}は空白を含んではいけません",
     "entity-owned-by-name": "このエンティティは{{entityOwner}}が所有しています",

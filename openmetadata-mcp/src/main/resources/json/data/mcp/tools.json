@@ -1,0 +1,187 @@
+{
+  "tools": [
+    {
+      "name": "search_metadata",
+      "description": "Find your data and business terms in OpenMetadata. For example if the user asks to 'find tables that contain customers information', then 'customers' should be the query, and the entity_type should be 'table'. Here make sure to use 'Href' is available in result to create a hyperlink to the entity in OpenMetadata.",
+      "parameters": {
+        "description": "The search query to find metadata in the OpenMetadata catalog, entity type could be table, topic etc. Limit can be used to paginate on the data.",
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Keywords to use for searching."
+          },
+          "entity_type": {
+            "type": "string",
+            "description": "Optional entity type to filter results. The OpenMetadata entities are categorized as follows: Service Entities include databaseService, messagingService, apiService, dashboardService, pipelineService, storageService, mlmodelService, metadataService, and searchService; Data Asset Entities include apiCollection, apiEndpoint, table, storedProcedure, database, databaseSchema, dashboard, dashboardDataModel, pipeline, chart, topic, searchIndex, mlmodel, and container; User Entities include user and team; Domain entities include domain and dataProduct; and Governance entities include metric, glossary, and glossaryTerm."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of results to return. Default is 10. Try to keep this number low unless the user asks for more."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "get_entity_details",
+      "description": "Get detailed information about a specific entity",
+      "parameters": {
+        "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "description": "Type of entity"
+          },
+          "fqn": {
+            "type": "string",
+            "description": "Fully qualified name of the entity"
+          }
+        },
+        "required": [
+          "entity_type",
+          "fqn"
+        ]
+      }
+    },
+    {
+      "name": "create_glossary_term",
+      "description": "Creates a new Glossary Term. Note that a glossary term must be part of a Glossary, so the glossary must be specified in the parameters. If you can't find the right glossary to use, respond back to the user to create a new Glossary first. Note that you can help the user to create the Glossary as well. If you don't find any Glossary that could be related, please list to the user the available Glossaries so users can choose if they want to create or reuse something. Also, note that glossary terms can be hierarchical: for example, a glossary term 'Accounts' can have a child term 'Credit Account', 'Savings Account', etc. So if you find any terms that can be related, it might make sense to create a new term as a child of an existing term.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "glossary": {
+            "type": "string",
+            "description": "Glossary in which the term belongs. This should be its fully qualified name."
+          },
+          "parentTerm": {
+            "type": "string",
+            "description": "Optional parent term for the new term. This should be its fully qualified name defined as <glossary>.<term>. If the Glossary Term has other parents, the Fully Qualified Name will be <glossary>.<parent>...<term>. If not provided, the term will be created at the root level of the glossary."
+          },
+          "name": {
+            "type": "string",
+            "description": "Glossary Term name."
+          },
+          "description": {
+            "type": "string",
+            "description": "Glossary Term description."
+          },
+          "owners": {
+            "type": "array",
+            "description": "Glossary Term owner. This could be an OpenMetadata User or Team. If you don't know who the owner is, you can leave this empty, but let the user know that they can add owners later.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "glossary",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "create_glossary",
+      "description": "Creates a new Glossary. A Glossary is a collection of terms that are used to define the business vocabulary of an organization. Typically, similar terms are grouped together in a Glossary. For example, a Glossary names 'Marketing' could contain terms like 'Campaign', 'Lead', 'Opportunity', etc.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Glossary Term name."
+          },
+          "description": {
+            "type": "string",
+            "description": "Glossary Term description."
+          },
+          "owners": {
+            "type": "array",
+            "description": "Glossary Term owner. This could be an OpenMetadata User or Team. If you don't know who the owner is, you can leave this empty, but let the user know that they can add owners later.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "Glossary Term owner. This could be an OpenMetadata User or Team. If you don't know who the owner is, you can leave this empty, but let the user know that they can add owners later.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mutuallyExclusive": {
+            "type": "boolean",
+            "description": "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to tag an entity. When mutually exclusive is `false`, multiple terms from this group can be used to tag an entity. This is an important setting. If you are not sure, ask the user to clarify. If the user doesn't know, set it to `false`.",
+            "default": false
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "mutuallyExclusive"
+        ]
+      }
+    },
+    {
+      "name": "patch_entity",
+      "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "description": "Entity Type to patch."
+          },
+          "entityFqn": {
+            "type": "string",
+            "description": "Fully Qualified Name of the Entity to be patched."
+          },
+          "patch": {
+            "type": "string",
+            "description": "JSONPatch as String format."
+          }
+        },
+        "required": [
+          "entityType",
+          "entityFqn",
+          "patch"
+        ]
+      }
+    },
+    {
+      "name": "get_entity_lineage",
+      "description": "Get detailed information about lineage (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities.",
+      "parameters": {
+        "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "description": "Type of entity"
+          },
+          "fqn": {
+            "type": "string",
+            "description": "Fully qualified name of the entity"
+          },
+          "upstream_depth": {
+            "type": "integer",
+            "description": "Depth for reaching upstream entities. Default is 5."
+          },
+          "downstream_depth": {
+            "type": "integer",
+            "description": "Depth for reaching downstream entities. Default is 5."
+          }
+        },
+        "required": [
+          "entity_type",
+          "fqn",
+          "upstream_depth",
+          "downstream_depth"
+        ]
+      }
+    }
+  ]
+}

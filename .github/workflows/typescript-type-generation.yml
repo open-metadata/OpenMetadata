@@ -1,7 +1,7 @@
 name: TypeScript Type Generation
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
       - "openmetadata-spec/src/main/resources/json/schema/**"
@@ -26,6 +26,15 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Check if repository is a fork
+        id: check-fork
+        run: |
+          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo "is_fork=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_fork=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -60,7 +69,7 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Commit and push changes
-        if: steps.git-check.outputs.changes == 'true'
+        if: steps.git-check.outputs.changes == 'true' && steps.check-fork.outputs.is_fork == 'false'
         id: commit-changes
         run: |
           git add openmetadata-ui/src/main/resources/ui/src/generated/
@@ -69,9 +78,25 @@ jobs:
           echo "committed=true" >> $GITHUB_OUTPUT
 
       - name: Create PR comment about auto-update
-        if: steps.commit-changes.outputs.committed == 'true' && github.event_name == 'pull_request'
+        if: steps.commit-changes.outputs.committed == 'true' && steps.check-fork.outputs.is_fork == 'false' && github.event_name == 'pull_request_target'
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             **TypeScript types have been updated based on the JSON schema changes in the PR**
+
+      - name: Create PR comment about forked repository
+        if: steps.git-check.outputs.changes == 'true' && steps.check-fork.outputs.is_fork == 'true' && github.event_name == 'pull_request_target'
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ⚠️**Generated types need to be updated.**
+            The generated TypeScript types cannot be automatically committed from a forked repository.
+            Please run the type generation locally and commit the changes manually.
+
+            To generate the types locally, run:
+            ```bash
+            cd openmetadata-ui/src/main/resources/ui
+            ./json2ts-generate-all.sh -l true
+            ```
