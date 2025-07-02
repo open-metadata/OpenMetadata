@@ -4269,7 +4269,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return null;
   }
 
-  private UUID getAdminUserId() throws HttpResponseException {
+  protected UUID getAdminUserId() throws HttpResponseException {
     UserResourceTest userResourceTest = new UserResourceTest();
     User adminUser = userResourceTest.getEntityByName("admin", ADMIN_AUTH_HEADERS);
     return adminUser.getId();

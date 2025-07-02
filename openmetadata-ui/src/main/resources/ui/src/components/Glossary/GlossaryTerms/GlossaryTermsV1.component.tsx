@@ -321,8 +321,10 @@ const GlossaryTermsV1 = ({
     setTimeout(() => {
       fetchGlossaryTermAssets();
     }, 500);
-    getEntityFeedCount();
-  }, [glossaryFqn]);
+    if (!isVersionView) {
+      getEntityFeedCount();
+    }
+  }, [glossaryFqn, isVersionView]);
 
   const updatedGlossaryTerm = useMemo(() => {
     const name = isVersionView

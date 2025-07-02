@@ -232,7 +232,8 @@ export const findItemByFqn = (
 
 export const convertGlossaryTermsToTreeOptions = (
   options: ModifiedGlossaryTerm[] = [],
-  level = 0
+  level = 0,
+  allowParentSelection = false
 ): Omit<DefaultOptionType, 'label'>[] => {
   const treeData = options.map((option) => {
     const hasChildren = 'children' in option && !isEmpty(option?.children);
@@ -251,14 +252,15 @@ export const convertGlossaryTermsToTreeOptions = (
         </Typography.Text>
       ),
       'data-testid': `tag-${option.fullyQualifiedName}`,
-      checkable: isGlossaryTerm,
+      checkable: allowParentSelection || isGlossaryTerm,
       isLeaf: isGlossaryTerm ? !hasChildren : false,
-      selectable: isGlossaryTerm,
+      selectable: allowParentSelection || isGlossaryTerm,
       children:
         hasChildren &&
         convertGlossaryTermsToTreeOptions(
           option.children as ModifiedGlossaryTerm[],
-          level + 1
+          level + 1,
+          allowParentSelection
         ),
     };
   });

@@ -150,7 +150,7 @@ const GlossaryPage = () => {
 
   const handleAddGlossaryClick = useCallback(() => {
     navigate(ROUTES.ADD_GLOSSARY);
-  }, [history]);
+  }, [navigate]);
 
   const fetchGlossaryList = useCallback(async () => {
     try {
@@ -299,7 +299,7 @@ const GlossaryPage = () => {
         showErrorToast(error as AxiosError);
       }
     },
-    [activeGlossary, updateActiveGlossary, history, fetchGlossaryList]
+    [activeGlossary, updateActiveGlossary, navigate, fetchGlossaryList]
   );
 
   const updateVote = useCallback(

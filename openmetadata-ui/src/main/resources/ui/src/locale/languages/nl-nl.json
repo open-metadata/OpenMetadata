@@ -1760,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}} is niet geldig",
     "entity-is-not-valid-url": "{{entity}} is geen geldige URL",
     "entity-maximum-size": "{{entity}} kan maximaal {{max}} tekens bevatten",
+    "entity-moved-successfully": "{{entity}} succesvol verplaatst",
     "entity-name-validation": "Naam mag alleen letters, cijfers, underscores, streepjes, punten, haakjes en ampersands bevatten.",
     "entity-not-contain-whitespace": "{{entity}} mag geen spaties bevatten",
     "entity-owned-by-name": "Dit entiteit is eigendom van {{entityOwner}}",

@@ -1760,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}} n'est pas valide",
     "entity-is-not-valid-url": "{{entity}} n'est pas une URL valide",
     "entity-maximum-size": "{{entity}} peut avoir un maximum de {{max}} caractères",
+    "entity-moved-successfully": "{{entity}} déplacé avec succès",
     "entity-name-validation": "Le nom ne doit contenir que des lettres, chiffres, underscores, tirets, points, parenthèses, et perluettes.",
     "entity-not-contain-whitespace": "{{entity}} ne doit pas contenir d'espace",
     "entity-owned-by-name": "Cette Resource appartient à {{entityOwner}}",

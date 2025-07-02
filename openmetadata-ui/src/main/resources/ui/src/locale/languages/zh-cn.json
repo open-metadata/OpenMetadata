@@ -1760,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}}无效",
     "entity-is-not-valid-url": "{{entity}}不是有效 URL",
     "entity-maximum-size": "{{entity}}最多只能包含{{max}}个字符",
+    "entity-moved-successfully": "{{entity}} 移动成功",
     "entity-name-validation": "命名只能包含字母、数字、下划线、连字符、句号、圆括号和 & 符号",
     "entity-not-contain-whitespace": "{{entity}}不应包含空格",
     "entity-owned-by-name": "此实体归{{entityOwner}}所有",

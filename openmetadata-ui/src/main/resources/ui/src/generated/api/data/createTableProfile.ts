@@ -203,6 +203,7 @@ export enum DMLOperationType {
     Delete = "DELETE",
     Insert = "INSERT",
     Update = "UPDATE",
+    Write = "WRITE",
 }
 
 /**
