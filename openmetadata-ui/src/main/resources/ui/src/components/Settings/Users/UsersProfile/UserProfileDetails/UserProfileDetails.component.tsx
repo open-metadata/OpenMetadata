@@ -12,7 +12,15 @@
  */
 
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Button, Divider, Input, Space, Tooltip, Typography } from 'antd';
+import {
+  Badge,
+  Button,
+  Divider,
+  Input,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -40,7 +48,10 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import { isMaskedEmail } from '../../../../../utils/Users.util';
+import {
+  getUserOnlineStatus,
+  isMaskedEmail,
+} from '../../../../../utils/Users.util';
 import Chip from '../../../../common/Chip/Chip.component';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -94,6 +105,10 @@ const UserProfileDetails = ({
       ),
     [userData]
   );
+
+  const onlineStatus = useMemo(() => {
+    return getUserOnlineStatus(userData, true);
+  }, [userData]);
 
   const onDisplayNameChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value),
@@ -334,6 +349,16 @@ const UserProfileDetails = ({
                 </Tooltip>
               )}
             </Space>
+          )}
+          {onlineStatus && (
+            <Tooltip title={onlineStatus.tooltip}>
+              <Badge
+                className="m-l-sm"
+                data-testid="user-online-status"
+                status={onlineStatus.status}
+                text={onlineStatus.text}
+              />
+            </Tooltip>
           )}
           {userData.deleted && (
             <span className="deleted-badge-button" data-testid="deleted-badge">
