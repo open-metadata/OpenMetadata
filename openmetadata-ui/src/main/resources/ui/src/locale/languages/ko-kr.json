@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 일",
+    "1-hr": "1 시간",
     "aborted": "중단됨",
     "accept": "수락",
     "accept-all": "모두 수락",
@@ -937,6 +939,8 @@
     "november": "11월",
     "null": "널",
     "number": "숫자",
+    "number-day-plural": "{{number}} 일",
+    "number-hr-plural": "{{number}} 시간",
     "number-of-object-plural": "객체 수",
     "number-of-retries": "재시도 횟수",
     "number-of-rows": "행 수",
@@ -1479,6 +1483,7 @@
     "uninstalled-lowercase": "제거됨",
     "unique": "고유",
     "unit-of-measurement": "측정 단위",
+    "unlimited": "무제한",
     "unpause": "일시 중지 해제",
     "unprocessed": "처리되지 않음",
     "up-vote": "추천",
