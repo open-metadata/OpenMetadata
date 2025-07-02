@@ -149,17 +149,14 @@ public interface SearchClient {
               def lineage = ctx._source.upstreamLineage[i];
               if (lineage == null || lineage.columns == null) continue;
 
-              // Loop through the nested 'columns' array
               for (int j = 0; j < lineage.columns.length; j++) {
                 def columnMapping = lineage.columns[j];
                 if (columnMapping == null) continue;
 
-                /* Update downstream column */
                 if (columnMapping.toColumn != null && params.columnUpdates.containsKey(columnMapping.toColumn)) {
                   columnMapping.toColumn = params.columnUpdates[columnMapping.toColumn];
                 }
 
-                /* Update upstream columns */
                 if (columnMapping.fromColumns != null) {
                   for (int k = 0; k < columnMapping.fromColumns.length; k++) {
                     def fc = columnMapping.fromColumns[k];
@@ -176,12 +173,10 @@ public interface SearchClient {
   String DELETE_COLUMN_LINEAGE_SCRIPT =
       """
           if (ctx._source.upstreamLineage != null) {
-              // Process each lineage entry
               for (int i = 0; i < ctx._source.upstreamLineage.length; i++) {
                   def lineage = ctx._source.upstreamLineage[i];
 
                   if (lineage != null && lineage.columns != null) {
-                      // First, clean up fromColumns arrays by removing deleted columns
                       for (def column : lineage.columns) {
                           if (column != null && column.fromColumns != null) {
                               column.fromColumns.removeIf(fromCol ->\s
@@ -190,7 +185,6 @@ public interface SearchClient {
                           }
                       }
 
-                      // Then remove entire column entries that should be deleted
                       lineage.columns.removeIf(column ->\s
                           column == null ||
                           (column.toColumn != null && params.deletedFQNs.contains(column.toColumn)) ||
