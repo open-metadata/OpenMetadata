@@ -1760,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}} ไม่ถูกต้อง",
     "entity-is-not-valid-url": "{{entity}} ไม่ใช่ URL ที่ถูกต้อง",
     "entity-maximum-size": "{{entity}} สามารถมีความยาวสูงสุด {{max}} ตัวอักษร",
+    "entity-moved-successfully": "{{entity}} ย้ายสำเร็จแล้ว",
     "entity-name-validation": "ชื่อจะต้องประกอบด้วยตัวอักษร, ตัวเลข, ขีดล่าง, ขีดกลาง, จุด, วงเล็บ และลาเบล (&)",
     "entity-not-contain-whitespace": "{{entity}} ไม่ควรมีช่องว่าง",
     "entity-owned-by-name": "เอนทิตีนี้เป็นของ {{entityOwner}}",
