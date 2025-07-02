@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 gün",
+    "1-hr": "1 saat",
     "aborted": "İptal Edildi",
     "accept": "Kabul Et",
     "accept-all": "Tümünü Kabul Et",
@@ -937,6 +939,8 @@
     "november": "Kasım",
     "null": "Boş",
     "number": "Sayı",
+    "number-day-plural": "{{number}} gün",
+    "number-hr-plural": "{{number}} saat",
     "number-of-object-plural": "Nesne Sayısı",
     "number-of-retries": "Yeniden Deneme Sayısı",
     "number-of-rows": "Satır sayısı",
@@ -1479,6 +1483,7 @@
     "uninstalled-lowercase": "kaldırıldı",
     "unique": "Benzersiz",
     "unit-of-measurement": "Ölçü Birimi",
+    "unlimited": "Sınırsız",
     "unpause": "Devam Ettir",
     "unprocessed": "İşlenmemiş",
     "up-vote": "Yukarı Oy",
@@ -1755,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}} geçerli değil",
     "entity-is-not-valid-url": "{{entity}} geçerli bir url değil",
     "entity-maximum-size": "{{entity}} en fazla {{max}} karakter olabilir",
+    "entity-moved-successfully": "{{entity}} başarıyla taşındı",
     "entity-name-validation": "Ad yalnızca harf, rakam, alt çizgi, kısa çizgi, nokta, parantez ve ve işareti içerebilir.",
     "entity-not-contain-whitespace": "{{entity}} boşluk içermemelidir",
     "entity-owned-by-name": "Bu varlık {{entityOwner}} adlı kullanıcıya aittir",

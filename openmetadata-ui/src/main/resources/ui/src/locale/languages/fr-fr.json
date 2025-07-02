@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 jour",
+    "1-hr": "1 heure",
     "aborted": "Interrompu",
     "accept": "Accepter",
     "accept-all": "Tout Accepter",
@@ -937,6 +939,8 @@
     "november": "Novembre",
     "null": "Null",
     "number": "Number",
+    "number-day-plural": "{{number}} jours",
+    "number-hr-plural": "{{number}} heures",
     "number-of-object-plural": "Nombre d'Objets",
     "number-of-retries": "Nombre de Tentatives",
     "number-of-rows": "Nombre de lignes",
@@ -1479,6 +1483,7 @@
     "uninstalled-lowercase": "désinstallé",
     "unique": "Unique",
     "unit-of-measurement": "Unité de mesure",
+    "unlimited": "Illimité",
     "unpause": "Réactiver",
     "unprocessed": "Unprocessed",
     "up-vote": "Voter",
@@ -1755,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}} n'est pas valide",
     "entity-is-not-valid-url": "{{entity}} n'est pas une URL valide",
     "entity-maximum-size": "{{entity}} peut avoir un maximum de {{max}} caractères",
+    "entity-moved-successfully": "{{entity}} déplacé avec succès",
     "entity-name-validation": "Le nom ne doit contenir que des lettres, chiffres, underscores, tirets, points, parenthèses, et perluettes.",
     "entity-not-contain-whitespace": "{{entity}} ne doit pas contenir d'espace",
     "entity-owned-by-name": "Cette Resource appartient à {{entityOwner}}",
