@@ -95,4 +95,4 @@ Under `Advanced Config`, specify the SSL mode appropriate for your connection, s
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.6/connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

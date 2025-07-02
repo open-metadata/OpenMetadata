@@ -113,7 +113,7 @@ source:
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "teradata"} /%}
+{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "teradata"} /%}
 
 {% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "teradata"} /%}
 
