@@ -17,8 +17,10 @@ import {
   ExtraTableDropdownOptions,
   findColumnByEntityLink,
   getEntityIcon,
+  getTableColumnConfigSelections,
   getTagsWithoutTier,
   getTierTags,
+  handleUpdateTableColumnSelections,
   updateColumnInNestedStructure,
 } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
@@ -323,6 +325,358 @@ describe('TableUtils', () => {
 
       expect(result).toHaveLength(0);
       expect(result).toStrictEqual([]);
+    });
+  });
+
+  describe('getTableColumnConfigSelections', () => {
+    const mockSetPreference = jest.fn();
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should return existing selections when entityType exists and has selections', () => {
+      const entityType = 'table';
+      const selectedEntityTableColumns = {
+        table: ['column1', 'column2', 'column3'],
+      };
+      const defaultColumns = ['column1', 'column2'];
+
+      const result = getTableColumnConfigSelections(
+        entityType,
+        false,
+        defaultColumns,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual(['column1', 'column2', 'column3']);
+      expect(mockSetPreference).not.toHaveBeenCalled();
+    });
+
+    it('should return default columns and update preferences when entityType exists but no selections', () => {
+      const entityType = 'table';
+      const selectedEntityTableColumns = {};
+      const defaultColumns = ['column1', 'column2'];
+
+      const result = getTableColumnConfigSelections(
+        entityType,
+        false,
+        defaultColumns,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual(['column1', 'column2']);
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          table: ['column1', 'column2'],
+        },
+      });
+    });
+
+    it('should return empty array when defaultColumns is undefined', () => {
+      const entityType = 'table';
+      const selectedEntityTableColumns = {};
+      const defaultColumns = undefined;
+
+      const result = getTableColumnConfigSelections(
+        entityType,
+        false,
+        defaultColumns,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual([]);
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          table: [],
+        },
+      });
+    });
+
+    it('should return empty array when isFullViewTable is true', () => {
+      const entityType = 'table';
+      const selectedEntityTableColumns = {};
+      const defaultColumns = ['column1', 'column2'];
+
+      const result = getTableColumnConfigSelections(
+        entityType,
+        true,
+        defaultColumns,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual([]);
+      expect(mockSetPreference).not.toHaveBeenCalled();
+    });
+
+    it('should return empty array when entityType is undefined', () => {
+      const entityType = undefined;
+      const selectedEntityTableColumns = {};
+      const defaultColumns = ['column1', 'column2'];
+
+      const result = getTableColumnConfigSelections(
+        entityType,
+        false,
+        defaultColumns,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual([]);
+      expect(mockSetPreference).not.toHaveBeenCalled();
+    });
+
+    it('should return empty array when entityType is empty string', () => {
+      const entityType = '';
+      const selectedEntityTableColumns = {};
+      const defaultColumns = ['column1', 'column2'];
+
+      const result = getTableColumnConfigSelections(
+        entityType,
+        false,
+        defaultColumns,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual([]);
+      expect(mockSetPreference).not.toHaveBeenCalled();
+    });
+
+    it('should preserve existing selections for other entity types', () => {
+      const entityType = 'table';
+      const selectedEntityTableColumns = {
+        dashboard: ['dashboard1', 'dashboard2'],
+      };
+      const defaultColumns = ['column1', 'column2'];
+
+      const result = getTableColumnConfigSelections(
+        entityType,
+        false,
+        defaultColumns,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual(['column1', 'column2']);
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          dashboard: ['dashboard1', 'dashboard2'],
+          table: ['column1', 'column2'],
+        },
+      });
+    });
+  });
+
+  describe('handleUpdateTableColumnSelections', () => {
+    const mockSetPreference = jest.fn();
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should add column to selections when selected is true', () => {
+      const selected = true;
+      const key = 'column3';
+      const columnDropdownSelections = ['column1', 'column2'];
+      const entityType = 'table';
+      const selectedEntityTableColumns = {
+        table: ['column1', 'column2'],
+      };
+
+      const result = handleUpdateTableColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        entityType,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual(['column1', 'column2', 'column3']);
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          table: ['column1', 'column2', 'column3'],
+        },
+      });
+    });
+
+    it('should remove column from selections when selected is false', () => {
+      const selected = false;
+      const key = 'column2';
+      const columnDropdownSelections = ['column1', 'column2', 'column3'];
+      const entityType = 'table';
+      const selectedEntityTableColumns = {
+        table: ['column1', 'column2', 'column3'],
+      };
+
+      const result = handleUpdateTableColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        entityType,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual(['column1', 'column3']);
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          table: ['column1', 'column3'],
+        },
+      });
+    });
+
+    it('should handle adding duplicate column gracefully', () => {
+      const selected = true;
+      const key = 'column2';
+      const columnDropdownSelections = ['column1', 'column2'];
+      const entityType = 'table';
+      const selectedEntityTableColumns = {
+        table: ['column1', 'column2'],
+      };
+
+      const result = handleUpdateTableColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        entityType,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual(['column1', 'column2', 'column2']);
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          table: ['column1', 'column2', 'column2'],
+        },
+      });
+    });
+
+    it('should handle removing non-existent column gracefully', () => {
+      const selected = false;
+      const key = 'nonExistentColumn';
+      const columnDropdownSelections = ['column1', 'column2'];
+      const entityType = 'table';
+      const selectedEntityTableColumns = {
+        table: ['column1', 'column2'],
+      };
+
+      const result = handleUpdateTableColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        entityType,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual(['column1', 'column2']);
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          table: ['column1', 'column2'],
+        },
+      });
+    });
+
+    it('should not call setPreference when entityType is undefined', () => {
+      const selected = true;
+      const key = 'column3';
+      const columnDropdownSelections = ['column1', 'column2'];
+      const entityType = undefined;
+      const selectedEntityTableColumns = {
+        table: ['column1', 'column2'],
+      };
+
+      const result = handleUpdateTableColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        entityType,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual(['column1', 'column2', 'column3']);
+      expect(mockSetPreference).not.toHaveBeenCalled();
+    });
+
+    it('should not call setPreference when entityType is empty string', () => {
+      const selected = false;
+      const key = 'column2';
+      const columnDropdownSelections = ['column1', 'column2'];
+      const entityType = '';
+      const selectedEntityTableColumns = {
+        table: ['column1', 'column2'],
+      };
+
+      const result = handleUpdateTableColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        entityType,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual(['column1']);
+      expect(mockSetPreference).not.toHaveBeenCalled();
+    });
+
+    it('should preserve existing selections for other entity types', () => {
+      const selected = true;
+      const key = 'column3';
+      const columnDropdownSelections = ['column1', 'column2'];
+      const entityType = 'table';
+      const selectedEntityTableColumns = {
+        table: ['column1', 'column2'],
+        dashboard: ['dashboard1', 'dashboard2'],
+      };
+
+      const result = handleUpdateTableColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        entityType,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual(['column1', 'column2', 'column3']);
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          table: ['column1', 'column2', 'column3'],
+          dashboard: ['dashboard1', 'dashboard2'],
+        },
+      });
+    });
+
+    it('should handle empty columnDropdownSelections array', () => {
+      const selected = true;
+      const key = 'column1';
+      const columnDropdownSelections: string[] = [];
+      const entityType = 'table';
+      const selectedEntityTableColumns = {};
+
+      const result = handleUpdateTableColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        entityType,
+        selectedEntityTableColumns,
+        mockSetPreference
+      );
+
+      expect(result).toEqual(['column1']);
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          table: ['column1'],
+        },
+      });
     });
   });
 });

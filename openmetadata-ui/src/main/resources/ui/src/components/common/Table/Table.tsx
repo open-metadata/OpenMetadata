@@ -37,7 +37,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   getCustomizeColumnDetails,
   getReorderedColumns,
@@ -73,7 +73,6 @@ const Table = <T extends Record<string, unknown>>(
 ) => {
   const { t } = useTranslation();
   const { type } = useGenericContext();
-  const { currentUser } = useApplicationStore();
   const [propsColumns, setPropsColumns] = useState<ColumnsType<T>>([]);
   const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
   const [dropdownColumnList, setDropdownColumnList] = useState<
@@ -86,6 +85,10 @@ const Table = <T extends Record<string, unknown>>(
     () => ({ columns: propsColumns as Column[], minWidth: 80 }),
     [propsColumns]
   );
+  const {
+    preferences: { selectedEntityTableColumns },
+    setPreference,
+  } = useCurrentUserPreferences();
 
   const isLoading = useMemo(
     () => (loading as SpinProps)?.spinning ?? (loading as boolean) ?? false,
@@ -114,8 +117,9 @@ const Table = <T extends Record<string, unknown>>(
         selected,
         key,
         columnDropdownSelections,
-        currentUser?.fullyQualifiedName ?? '',
-        entityKey
+        entityKey,
+        selectedEntityTableColumns,
+        setPreference
       );
 
       setColumnDropdownSelections(updatedSelections);
@@ -126,10 +130,21 @@ const Table = <T extends Record<string, unknown>>(
   const handleBulkColumnAction = useCallback(() => {
     if (dropdownColumnList.length === columnDropdownSelections.length) {
       setColumnDropdownSelections([]);
+      setPreference({
+        selectedEntityTableColumns: {
+          ...selectedEntityTableColumns,
+          [entityKey]: [],
+        },
+      });
     } else {
-      setColumnDropdownSelections(
-        dropdownColumnList.map((option) => option.value)
-      );
+      const columns = dropdownColumnList.map((option) => option.value);
+      setColumnDropdownSelections(columns);
+      setPreference({
+        selectedEntityTableColumns: {
+          ...selectedEntityTableColumns,
+          [entityKey]: columns,
+        },
+      });
     }
   }, [dropdownColumnList, columnDropdownSelections]);
 
@@ -231,10 +246,11 @@ const Table = <T extends Record<string, unknown>>(
 
   useEffect(() => {
     const selections = getTableColumnConfigSelections(
-      currentUser?.fullyQualifiedName ?? '',
       entityKey,
       isFullViewTable,
-      defaultVisibleColumns
+      defaultVisibleColumns,
+      selectedEntityTableColumns,
+      setPreference
     );
 
     setColumnDropdownSelections(selections);

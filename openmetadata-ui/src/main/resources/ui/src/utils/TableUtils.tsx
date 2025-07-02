@@ -158,6 +158,7 @@ import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
+import { UserPreferences } from '../hooks/currentUserStore/useCurrentUserStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   FrequentlyJoinedTables,
@@ -744,31 +745,24 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
 };
 
 export const getTableColumnConfigSelections = (
-  userFqn: string,
   entityType: string | undefined,
   isFullViewTable: boolean,
-  defaultColumns: string[] | undefined
+  defaultColumns: string[] | undefined,
+  selectedEntityTableColumns: Record<string, string[]>,
+  setPreference: (preferences: Partial<UserPreferences>) => void
 ) => {
-  if (!userFqn) {
-    return [];
-  }
-
-  const storageKey = `selectedColumns-${userFqn}`;
-  const selectedColumns = JSON.parse(localStorage.getItem(storageKey) ?? '{}');
-
   if (entityType) {
-    if (selectedColumns[entityType]) {
-      return selectedColumns[entityType];
+    if (selectedEntityTableColumns?.[entityType]) {
+      return selectedEntityTableColumns[entityType];
     } else if (!isFullViewTable) {
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          ...selectedColumns,
-          [entityType]: defaultColumns,
-        })
-      );
+      setPreference({
+        selectedEntityTableColumns: {
+          ...selectedEntityTableColumns,
+          [entityType]: defaultColumns ?? [],
+        },
+      });
 
-      return defaultColumns;
+      return defaultColumns ?? [];
     }
   }
 
@@ -779,25 +773,21 @@ export const handleUpdateTableColumnSelections = (
   selected: boolean,
   key: string,
   columnDropdownSelections: string[],
-  userFqn: string,
-  entityType: string | undefined
+  entityType: string | undefined,
+  selectedEntityTableColumns: Record<string, string[]>,
+  setPreference: (preferences: Partial<UserPreferences>) => void
 ) => {
   const updatedSelections = selected
     ? [...columnDropdownSelections, key]
     : columnDropdownSelections.filter((item) => item !== key);
 
-  // Updating localStorage
-  const selectedColumns = JSON.parse(
-    localStorage.getItem(`selectedColumns-${userFqn}`) ?? '{}'
-  );
   if (entityType) {
-    localStorage.setItem(
-      `selectedColumns-${userFqn}`,
-      JSON.stringify({
-        ...selectedColumns,
+    setPreference({
+      selectedEntityTableColumns: {
+        ...selectedEntityTableColumns,
         [entityType]: updatedSelections,
-      })
-    );
+      },
+    });
   }
 
   return updatedSelections;
