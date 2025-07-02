@@ -113,7 +113,9 @@ test.describe('Cron Validations', () => {
     await expect(
       page
         .locator('#schedular-form_cron_help')
-        .getByText(cronInvalidMinuteMessage)
+        .getByText(
+          'Cron schedule too frequent. Please choose at least 1-hour intervals.'
+        )
     ).toBeAttached();
 
     // Check every second frequency throws an error
@@ -122,7 +124,9 @@ test.describe('Cron Validations', () => {
     await expect(
       page
         .locator('#schedular-form_cron_help')
-        .getByText(cronInvalidMinuteMessage)
+        .getByText(
+          'Cron schedule too frequent. Please choose at least 1-hour intervals.'
+        )
     ).toBeAttached();
 
     // Check '0 0 * * 7' to be invalid
@@ -174,5 +178,14 @@ test.describe('Cron Validations', () => {
         .locator('#schedular-form_cron_help')
         .getByText(cronInvalidDayOfWeekMessage)
     ).toBeAttached();
+
+    await inputCronExpression(page, '0 18 * * Fri	');
+
+    await expect(
+      page
+        .getByTestId('cron-container')
+        .getByText('At 06:00 PM, only on Friday')
+    ).toBeAttached();
+    await expect(page.locator('#schedular-form_cron_help')).not.toBeAttached();
   });
 });
