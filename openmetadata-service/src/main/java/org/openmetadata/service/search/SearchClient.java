@@ -12,6 +12,8 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -45,6 +47,7 @@ public interface SearchClient {
   String GLOBAL_SEARCH_ALIAS = "all";
   String DATA_ASSET_SEARCH_ALIAS = "dataAsset";
   String GLOSSARY_TERM_SEARCH_INDEX = "glossary_term_search_index";
+  String TABLE_SEARCH_INDEX = "table_search_index";
   String TAG_SEARCH_INDEX = "tag_search_index";
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
@@ -87,7 +90,7 @@ public interface SearchClient {
       "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].docUniqueId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
 
   String REMOVE_ENTITY_RELATIONSHIP =
-      "for (int i = 0; i < ctx._source.entityRelationship.length; i++) { if (ctx._source.entityRelationship[i].docId == '%s') { ctx._source.entityRelationship.remove(i) }}";
+      "for (int i = 0; i < ctx._source.upstreamEntityRelationship.length; i++) { if (ctx._source.upstreamEntityRelationship[i].docId == '%s') { ctx._source.upstreamEntityRelationship.remove(i) }}";
 
   String ADD_UPDATE_LINEAGE =
       "boolean docIdExists = false; for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) { if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) { ctx._source.upstreamLineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.upstreamLineage.add(params.lineageData);}";
@@ -96,7 +99,11 @@ public interface SearchClient {
   // It checks if any duplicate entry is present based on the docId and updates only if it is not
   // present
   String ADD_UPDATE_ENTITY_RELATIONSHIP =
-      "boolean docIdExists = false; for (int i = 0; i < ctx._source.entityRelationship.size(); i++) { if (ctx._source.entityRelationship[i].docId.equalsIgnoreCase(params.entityRelationshipData.docId)) { ctx._source.entityRelationship[i] = params.entityRelationshipData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.entityRelationship.add(params.entityRelationshipData);}";
+      "boolean docIdExists = false; "
+          + "for (int i = 0; i < ctx._source.upstreamEntityRelationship.size(); i++) { "
+          + " if (ctx._source.upstreamEntityRelationship[i].docId.equalsIgnoreCase(params.entityRelationshipData.docId)) { "
+          + "   ctx._source.upstreamEntityRelationship[i] = params.entityRelationshipData; docIdExists = true; break;}}"
+          + "if (!docIdExists) {ctx._source.upstreamEntityRelationship.add(params.entityRelationshipData);}";
   String UPDATE_ADDED_DELETE_GLOSSARY_TAGS =
       "if (ctx._source.tags != null) { for (int i = ctx._source.tags.size() - 1; i >= 0; i--) { if (params.tagDeleted != null) { for (int j = 0; j < params.tagDeleted.size(); j++) { if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) { ctx._source.tags.remove(i); } } } } } if (ctx._source.tags == null) { ctx._source.tags = []; } if (params.tagAdded != null) { ctx._source.tags.addAll(params.tagAdded); } ctx._source.tags = ctx._source.tags .stream() .distinct() .sorted((o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN)) .collect(Collectors.toList());";
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
@@ -448,4 +455,13 @@ public interface SearchClient {
   default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
     // Default implementation does nothing as this is only needed for Elasticsearch
   }
+
+  SearchEntityRelationshipResult searchSchemaEntityRelationshipForPrefix(
+      String schemaFqn, String queryFilter, boolean deleted) throws IOException;
+
+  SearchEntityRelationshipResult searchEntityRelationship(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
+
+  SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
 }

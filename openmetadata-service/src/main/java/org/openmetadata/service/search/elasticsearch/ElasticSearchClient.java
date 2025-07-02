@@ -12,6 +12,7 @@ import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.g
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
+import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
@@ -126,6 +127,8 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -206,6 +209,7 @@ public class ElasticSearchClient implements SearchClient {
   private final String clusterAlias;
 
   private final ESLineageGraphBuilder lineageGraphBuilder;
+  private final ESEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -233,6 +237,7 @@ public class ElasticSearchClient implements SearchClient {
     queryBuilderFactory = new ElasticQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new ESLineageGraphBuilder(client);
+    entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(client);
     nlqService = null;
   }
 
@@ -2650,5 +2655,94 @@ public class ElasticSearchClient implements SearchClient {
       LOG.error("Failed to fetch cluster settings", e);
       throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
     }
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchEntityRelationship(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    int upstreamDepth = entityRelationshipRequest.getUpstreamDepth();
+    int downstreamDepth = entityRelationshipRequest.getDownstreamDepth();
+    SearchEntityRelationshipResult result =
+        entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
+            entityRelationshipRequest
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withDirection(
+                    org.openmetadata
+                        .schema
+                        .api
+                        .entityRelationship
+                        .EntityRelationshipDirection
+                        .DOWNSTREAM)
+                .withDirectionValue(
+                    getEntityRelationshipDirection(
+                        org.openmetadata
+                            .schema
+                            .api
+                            .entityRelationship
+                            .EntityRelationshipDirection
+                            .DOWNSTREAM)));
+    SearchEntityRelationshipResult upstreamResult =
+        entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
+            entityRelationshipRequest
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withDirection(
+                    org.openmetadata
+                        .schema
+                        .api
+                        .entityRelationship
+                        .EntityRelationshipDirection
+                        .UPSTREAM)
+                .withDirectionValue(
+                    getEntityRelationshipDirection(
+                        org.openmetadata
+                            .schema
+                            .api
+                            .entityRelationship
+                            .EntityRelationshipDirection
+                            .UPSTREAM)));
+
+    for (var nodeFromDownstream : result.getNodes().entrySet()) {
+      if (upstreamResult.getNodes().containsKey(nodeFromDownstream.getKey())) {
+        org.openmetadata.schema.type.entityRelationship.NodeInformation existingNode =
+            upstreamResult.getNodes().get(nodeFromDownstream.getKey());
+        LayerPaging existingPaging = existingNode.getPaging();
+        existingPaging.setEntityDownstreamCount(
+            nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
+      }
+    }
+
+    // Here we are merging everything from downstream paging into upstream paging
+    result.getNodes().putAll(upstreamResult.getNodes());
+    result.getUpstreamEdges().putAll(upstreamResult.getUpstreamEdges());
+    result.getDownstreamEdges().putAll(upstreamResult.getDownstreamEdges());
+    return result;
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    Set<String> directionValue =
+        getEntityRelationshipDirection(entityRelationshipRequest.getDirection());
+    entityRelationshipRequest.setDirectionValue(directionValue);
+
+    if (entityRelationshipRequest.getDirection()
+        == org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection.DOWNSTREAM) {
+      return entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
+          entityRelationshipRequest);
+    } else {
+      directionValue = getEntityRelationshipDirection(entityRelationshipRequest.getDirection());
+      entityRelationshipRequest.setDirectionValue(directionValue);
+      return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
+          entityRelationshipRequest);
+    }
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchSchemaEntityRelationshipForPrefix(
+      String schemaFqn, String queryFilter, boolean deleted) throws IOException {
+    return entityRelationshipGraphBuilder.getSchemaEntityRelationship(
+        schemaFqn, queryFilter, deleted);
   }
 }
