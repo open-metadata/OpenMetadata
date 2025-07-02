@@ -1,5 +1,6 @@
 ---
 title: Run the QuickSight Connector Externally
+description: Configure AWS QuickSight connector in OpenMetadata using YAML. Step-by-step setup guide for dashboard metadata ingestion and integration.
 slug: /connectors/dashboard/quicksight/yaml
 ---
 

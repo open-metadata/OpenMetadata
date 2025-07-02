@@ -1,5 +1,6 @@
 ---
 title: Run the Sigma Connector Externally
+description: Configure Sigma dashboard connector for OpenMetadata using YAML. Step-by-step setup guide with examples to integrate your Sigma analytics platform.
 slug: /connectors/dashboard/sigma/yaml
 ---
 

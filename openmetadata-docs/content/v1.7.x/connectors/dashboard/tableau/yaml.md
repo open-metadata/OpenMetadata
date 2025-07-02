@@ -1,5 +1,6 @@
 ---
 title: Run the Tableau Connector Externally
+description: Configure Tableau dashboard connections in OpenMetadata using YAML. Step-by-step guide for seamless data catalog integration and metadata extraction.
 slug: /connectors/dashboard/tableau/yaml
 ---
 

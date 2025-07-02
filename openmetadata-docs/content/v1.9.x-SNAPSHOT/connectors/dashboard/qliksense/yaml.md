@@ -1,5 +1,6 @@
 ---
 title: Run the Qlik Sense Connector Externally
+description: Configure QlikSense dashboard connectors in OpenMetadata using YAML. Get step-by-step setup instructions, connection parameters, and examples.
 slug: /connectors/dashboard/qliksense/yaml
 ---
 

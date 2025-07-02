@@ -1,5 +1,6 @@
 ---
 title: Run the PowerBI Connector Externally
+description: Learn how to configure PowerBI dashboard connectors in OpenMetadata using YAML. Step-by-step setup guide with examples and best practices.
 slug: /connectors/dashboard/powerbi/yaml
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: AzureSQL Connector Troubleshooting
+description: Solve Azure SQL connector issues in OpenMetadata with expert troubleshooting guides. Fix common connection problems, authentication errors, and data ing...
 slug: /connectors/database/azuresql/troubleshooting
 ---
 

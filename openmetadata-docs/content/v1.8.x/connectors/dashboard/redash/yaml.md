@@ -1,5 +1,6 @@
 ---
 title: Run the Redash Connector Externally
+description: Configure Redash dashboard connector for OpenMetadata using YAML. Step-by-step setup guide with examples to integrate your Redash dashboards seamlessly.
 slug: /connectors/dashboard/redash/yaml
 ---
 

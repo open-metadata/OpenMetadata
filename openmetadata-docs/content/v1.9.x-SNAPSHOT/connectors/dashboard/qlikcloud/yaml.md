@@ -1,5 +1,6 @@
 ---
 title: Run the Qlik Cloud Connector Externally
+description: Configure QlikCloud dashboard connector for OpenMetadata using YAML. Step-by-step setup guide with examples to integrate Qlik Cloud analytics seamlessly.
 slug: /connectors/dashboard/qlikcloud/yaml
 ---
 
