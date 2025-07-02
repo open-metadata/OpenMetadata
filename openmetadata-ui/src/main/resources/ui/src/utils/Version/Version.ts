@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { snakeCase } from 'lodash';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 
-export type WhatsNewModalProps = {
-  header: string;
-  onCancel: () => void;
-  visible: boolean;
+let version = '';
+
+// Subscribe to the app version and update the version variable
+useApplicationStore.subscribe((state) => {
+  version = state.appVersion ?? '';
+});
+
+export const getVersionedStorageKey = (key: string) => {
+  const versionedKey = key + '_' + snakeCase(version);
+
+  return versionedKey;
 };
-
-export enum ToggleType {
-  FEATURES = 'features',
-  CHANGE_LOG = 'change-log',
-}

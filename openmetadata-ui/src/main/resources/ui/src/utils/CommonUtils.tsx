@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -10,8 +11,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-/* eslint-disable @typescript-eslint/ban-types */
 
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
@@ -38,7 +37,6 @@ import {
 import { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -49,7 +47,6 @@ import {
 import { BASE_COLORS } from '../constants/DataInsight.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
-import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
@@ -61,6 +58,7 @@ import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { showErrorToast } from './ToastUtils';
+import { getVersionedStorageKey } from './Version/version';
 
 export const arraySorterByKey = <T extends object>(
   key: keyof T,
@@ -249,24 +247,30 @@ export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
 export const setRecentlyViewedData = (
   recentData: Array<RecentlyViewedData>
 ): void => {
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_VIEWED, {
-    data: recentData,
-  });
+  reactLocalStorage.setObject(
+    getVersionedStorageKey(LOCALSTORAGE_RECENTLY_VIEWED),
+    {
+      data: recentData,
+    }
+  );
 };
 
 export const setRecentlySearchedData = (
   recentData: Array<RecentlySearchedData>
 ): void => {
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_SEARCHED, {
-    data: recentData,
-  });
+  reactLocalStorage.setObject(
+    getVersionedStorageKey(LOCALSTORAGE_RECENTLY_SEARCHED),
+    {
+      data: recentData,
+    }
+  );
 };
 
 export const addToRecentSearched = (searchTerm: string): void => {
   if (searchTerm.trim()) {
     const searchData = { term: searchTerm, timestamp: Date.now() };
     const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-      LOCALSTORAGE_RECENTLY_SEARCHED
+      getVersionedStorageKey(LOCALSTORAGE_RECENTLY_SEARCHED)
     ) as RecentlySearched;
     let arrSearchedData: RecentlySearched['data'] = [];
     if (recentlySearch?.data) {
@@ -290,7 +294,7 @@ export const addToRecentSearched = (searchTerm: string): void => {
 export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   const entityData = { ...eData, timestamp: Date.now() };
   let recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_VIEWED
+    getVersionedStorageKey(LOCALSTORAGE_RECENTLY_VIEWED)
   ) as RecentlyViewed;
   if (recentlyViewed?.data) {
     const arrData = recentlyViewed.data
@@ -562,10 +566,6 @@ export const getTeamsUser = (
   }
 
   return;
-};
-
-export const getEmptyPlaceholder = () => {
-  return <ErrorPlaceHolder size={SIZE.MEDIUM} />;
 };
 
 //  return the status like loading and success
