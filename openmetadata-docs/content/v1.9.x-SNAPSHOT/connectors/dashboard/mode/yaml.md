@@ -1,5 +1,6 @@
 ---
 title: Run the Mode Connector Externally
+description: Configure Mode Analytics dashboard connector for OpenMetadata using YAML. Step-by-step setup guide with examples to integrate your Mode dashboards seamlessly.
 slug: /connectors/dashboard/mode/yaml
 ---
 
