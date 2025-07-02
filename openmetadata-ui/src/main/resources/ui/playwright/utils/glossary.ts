@@ -1499,7 +1499,10 @@ export const checkGlossaryTermDetails = async (
   ).toContainText(reviewer.responseData.displayName);
 };
 
-export const setupGlossaryDenyPermissionTest = async (apiContext: any) => {
+export const setupGlossaryDenyPermissionTest = async (
+  apiContext: any,
+  isGlossary?: boolean
+) => {
   // Create all necessary resources
   const dataConsumerUser = new UserClass();
   const id = uuid();
@@ -1554,7 +1557,7 @@ export const setupGlossaryDenyPermissionTest = async (apiContext: any) => {
   await dataConsumerTeam.create(apiContext);
 
   // Set domain ownership
-  await glossary1.patch(apiContext, [
+  await (isGlossary ? glossary1 : glossaryTerm1).patch(apiContext, [
     {
       op: 'add',
       path: '/tags/0',

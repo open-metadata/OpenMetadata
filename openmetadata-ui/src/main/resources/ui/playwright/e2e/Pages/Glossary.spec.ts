@@ -1445,7 +1445,7 @@ test.describe('Glossary tests', () => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
     const { dataConsumerUser, glossary1, cleanup } =
-      await setupGlossaryDenyPermissionTest(apiContext);
+      await setupGlossaryDenyPermissionTest(apiContext, true);
 
     const { page: dataConsumerPage, afterAction: consumerAfterAction } =
       await performUserLogin(browser, dataConsumerUser);
@@ -1466,6 +1466,36 @@ test.describe('Glossary tests', () => {
       dataConsumerPage.getByTestId('permission-error-placeholder')
     ).toHaveText(
       "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
+    );
+
+    await consumerAfterAction();
+    await cleanup(apiContext);
+    await afterAction();
+  });
+
+  test('Verify Glossary Term Deny Permission', async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    const { dataConsumerUser, glossary1, glossaryTerm1, cleanup } =
+      await setupGlossaryDenyPermissionTest(apiContext, false);
+    glossary1.data.terms = [glossaryTerm1];
+
+    const { page: dataConsumerPage, afterAction: consumerAfterAction } =
+      await performUserLogin(browser, dataConsumerUser);
+
+    await redirectToHomePage(dataConsumerPage);
+    await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(dataConsumerPage, glossary1.data.displayName);
+    await dataConsumerPage.getByTestId(glossaryTerm1.data.displayName).click();
+
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toBeVisible();
+
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toHaveText(
+      "You don't have necessary permissions. Please check with the admin to get the  permission."
     );
 
     await consumerAfterAction();
