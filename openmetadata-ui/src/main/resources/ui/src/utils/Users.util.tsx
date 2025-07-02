@@ -15,6 +15,7 @@ import { Popover, Skeleton, Space, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
+import moment from 'moment';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
@@ -198,4 +199,42 @@ export const getEmptyTextFromUserProfileItem = (item: string) => {
   };
 
   return messages[item as keyof typeof messages] || NO_DATA_PLACEHOLDER;
+};
+
+export const getUserOnlineStatus = (userData: User, includeTooltip = false) => {
+  // Don't show online status for bots or if userData is not provided
+  if (!userData || userData.isBot) {
+    return null;
+  }
+
+  // Use lastActivityTime if available, otherwise fall back to lastLoginTime
+  const activityTime = userData.lastActivityTime || userData.lastLoginTime;
+
+  if (!activityTime) {
+    return null;
+  }
+
+  const lastActivityMoment = moment(activityTime);
+  const now = moment();
+  const diffMinutes = now.diff(lastActivityMoment, 'minutes');
+
+  if (diffMinutes <= 5) {
+    return {
+      status: 'success' as const,
+      text: t('label.online-now'),
+      ...(includeTooltip && {
+        tooltip: t('label.last-activity-n-minutes-ago', { count: diffMinutes }),
+      }),
+    };
+  } else if (diffMinutes <= 60) {
+    return {
+      status: 'success' as const,
+      text: t('label.active-recently'),
+      ...(includeTooltip && {
+        tooltip: t('label.last-activity-n-minutes-ago', { count: diffMinutes }),
+      }),
+    };
+  }
+
+  return null;
 };

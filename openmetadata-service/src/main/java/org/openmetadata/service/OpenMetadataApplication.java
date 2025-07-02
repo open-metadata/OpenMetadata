@@ -124,6 +124,8 @@ import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
+import org.openmetadata.service.security.auth.UserActivityFilter;
+import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
@@ -284,6 +286,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
+
+    // Register User Activity Tracking
+    registerUserActivityTracking(environment);
+
     environment.lifecycle().manage(new ManagedShutdown());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();
@@ -635,6 +641,27 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig);
       environment.jersey().register(eventFilter);
     }
+  }
+
+  private void registerUserActivityTracking(Environment environment) {
+    // Register the activity tracking filter
+    environment.jersey().register(UserActivityFilter.class);
+
+    // Register lifecycle management for UserActivityTracker
+    environment
+        .lifecycle()
+        .manage(
+            new Managed() {
+              @Override
+              public void start() {
+                // UserActivityTracker starts automatically on first use
+              }
+
+              @Override
+              public void stop() {
+                UserActivityTracker.getInstance().shutdown();
+              }
+            });
   }
 
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {

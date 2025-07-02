@@ -1115,8 +1115,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final PutResponse<T> createOrUpdateForImport(
-      UriInfo uriInfo, T updated, String updatedBy) {
+  public PutResponse<T> createOrUpdateForImport(UriInfo uriInfo, T updated, String updatedBy) {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(
@@ -1633,7 +1632,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  private T createNewEntity(T entity) {
+  protected T createNewEntity(T entity) {
     storeEntity(entity, false);
     storeExtension(entity);
     storeRelationshipsInternal(entity);
@@ -4872,5 +4871,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         || message.contains("instance for")
         || message.contains("does not exist")
         || message.contains("entitynotfoundexception");
+  }
+
+  public boolean isUpdateForImport(T entity) {
+    return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null;
   }
 }
