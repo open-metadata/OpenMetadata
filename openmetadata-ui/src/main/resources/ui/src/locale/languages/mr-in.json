@@ -1760,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}} वैध नाही",
     "entity-is-not-valid-url": "{{entity}} वैध URL नाही",
     "entity-maximum-size": "{{entity}} कमाल {{max}} वर्णांचे असू शकते",
+    "entity-moved-successfully": "{{entity}} यशस्वीरित्या हलविले गेले",
     "entity-name-validation": "नावात फक्त अक्षरे, संख्या, अंडरस्कोर्स, हायफन्स, पिरियड्स, कंस आणि अँपर्सँड्स असणे आवश्यक आहे.",
     "entity-not-contain-whitespace": "{{entity}} मध्ये पांढरी जागा नसावी",
     "entity-owned-by-name": "हा घटक {{entityOwner}} द्वारे मालकीचा आहे",
