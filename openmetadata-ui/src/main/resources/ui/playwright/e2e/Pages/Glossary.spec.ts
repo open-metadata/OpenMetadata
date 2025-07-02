@@ -1252,6 +1252,10 @@ test.describe('Glossary tests', () => {
           const checkboxLabels = ['Reviewer', 'Synonyms'];
           await selectColumns(page, checkboxLabels);
           await verifyColumnsVisibility(page, checkboxLabels, true);
+
+          await page.reload();
+          await page.waitForLoadState('networkidle');
+          await verifyColumnsVisibility(page, checkboxLabels, true);
         }
       );
 
@@ -1261,6 +1265,10 @@ test.describe('Glossary tests', () => {
           await openColumnDropdown(page);
           const checkboxLabels = ['Reviewer', 'Owners'];
           await deselectColumns(page, checkboxLabels);
+          await verifyColumnsVisibility(page, checkboxLabels, false);
+
+          await page.reload();
+          await page.waitForLoadState('networkidle');
           await verifyColumnsVisibility(page, checkboxLabels, false);
         }
       );
@@ -1277,6 +1285,10 @@ test.describe('Glossary tests', () => {
           'ACTIONS',
         ];
         await verifyAllColumns(page, tableColumns, true);
+
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await verifyAllColumns(page, tableColumns, true);
       });
 
       await test.step('Hide All columns selection', async () => {
@@ -1288,6 +1300,10 @@ test.describe('Glossary tests', () => {
           'OWNERS',
           'STATUS',
         ];
+        await verifyAllColumns(page, tableColumns, false);
+
+        await page.reload();
+        await page.waitForLoadState('networkidle');
         await verifyAllColumns(page, tableColumns, false);
       });
     } finally {
