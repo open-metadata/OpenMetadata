@@ -9,6 +9,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
+  <name>OpenMetadata Service</name>
 
   <properties>
     <dropwizard.swagger.version>4.0.5-1</dropwizard.swagger.version>

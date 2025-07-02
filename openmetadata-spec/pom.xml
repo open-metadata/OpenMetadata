@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>openmetadata-spec</artifactId>
+    <name>OpenMetadata Specification</name>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>

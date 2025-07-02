@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>openmetadata-clients</artifactId>
+    <name>OpenMetadata Clients</name>
     <packaging>pom</packaging>
     <modules>
         <module>openmetadata-java-client</module>
