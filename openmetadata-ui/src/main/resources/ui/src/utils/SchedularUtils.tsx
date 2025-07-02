@@ -303,26 +303,30 @@ export const cronValidator = async (_: RuleObject, value: string) => {
   // Check if the cron expression has exactly 5 fields (standard Unix cron)
 
   if (cronParts.length !== 5) {
-    return Promise.reject(t('message.cron-invalid-field-count'));
+    return Promise.reject(new Error(t('message.cron-invalid-field-count')));
   }
 
   // Validate that each field follows standard Unix cron format
   const [minute, hour, dayOfMonth, month, dayOfWeek] = cronParts;
 
   if (!minutePattern.test(minute)) {
-    return Promise.reject(t('message.cron-invalid-minute-field'));
+    return Promise.reject(new Error(t('message.cron-invalid-minute-field')));
   }
   if (!hourPattern.test(hour)) {
-    return Promise.reject(t('message.cron-invalid-hour-field'));
+    return Promise.reject(new Error(t('message.cron-invalid-hour-field')));
   }
   if (!dayOfMonthPattern.test(dayOfMonth)) {
-    return Promise.reject(t('message.cron-invalid-day-of-month-field'));
+    return Promise.reject(
+      new Error(t('message.cron-invalid-day-of-month-field'))
+    );
   }
   if (!monthPattern.test(month)) {
-    return Promise.reject(t('message.cron-invalid-month-field'));
+    return Promise.reject(new Error(t('message.cron-invalid-month-field')));
   }
   if (!dayOfWeekPattern.test(dayOfWeek)) {
-    return Promise.reject(t('message.cron-invalid-day-of-week-field'));
+    return Promise.reject(
+      new Error(t('message.cron-invalid-day-of-week-field'))
+    );
   }
 
   try {
@@ -334,13 +338,15 @@ export const cronValidator = async (_: RuleObject, value: string) => {
     const isFrequencyInSeconds = /Every \d* *second/.test(description);
 
     if (isFrequencyInMinutes || isFrequencyInSeconds) {
-      return Promise.reject(t('message.cron-less-than-hour-message'));
+      return Promise.reject(
+        new Error(t('message.cron-less-than-hour-message'))
+      );
     }
 
     return Promise.resolve();
-  } catch (error) {
+  } catch {
     // If cronstrue fails to parse, it's an invalid cron expression
-    return Promise.reject(t('message.cron-invalid-expression'));
+    return Promise.reject(new Error(t('message.cron-invalid-expression')));
   }
 };
 

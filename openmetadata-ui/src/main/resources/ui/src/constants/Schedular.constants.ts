@@ -102,13 +102,15 @@ export const DEFAULT_SCHEDULE_CRON_DAILY = '0 0 * * *';
 export const DEFAULT_SCHEDULE_CRON_WEEKLY = '0 0 * * 1';
 export const DEFAULT_SCHEDULE_CRON_MONTHLY = '0 0 1 * *';
 
-// Standard Unix cron validation patterns
-export const minutePattern =
-  /^(\*|[0-5]?[0-9](-[0-5]?[0-9])?(,\d+)*|\*\/[0-5]?[0-9])$/;
+export const minutePattern = /^(\*(\/[0-5]?\d)?|[0-5]?\d(-[0-5]?\d)?(,\d+)*)$/;
+
 export const hourPattern =
-  /^(\*|1?[0-9]|2[0-3](-1?[0-9]|2[0-3])?(,\d+)*|\*\/1?[0-9]|2[0-3])$/;
+  /^(\*|1?\d|2[0-3](-1?\d|2[0-3])?(,\d+)*|\*\/1?\d|2[0-3])$/;
+
 export const dayOfMonthPattern =
-  /^(\*|[1-9]|[12][0-9]|3[01](-[1-9]|[12][0-9]|3[01])?(,\d+)*|\*\/[1-9]|[12][0-9]|3[01])$/;
+  /^(\*(\/[1-9])?|([1-9]|[12]\d|3[01])(-([1-9]|[12]\d|3[01]))?(,\d+)*)$/;
+
 export const monthPattern =
-  /^(\*|[1-9]|1[0-2](-[1-9]|1[0-2])?(,\d+)*|\*\/[1-9]|1[0-2])$/;
+  /^(\*|([1-9]|1[0-2])(-([1-9]|1[0-2]))?(,\d+)*|\*\/[1-9])$/;
+
 export const dayOfWeekPattern = /^(\*|[0-6](-[0-6])?(,\d+)*|\*\/[0-6])$/;
