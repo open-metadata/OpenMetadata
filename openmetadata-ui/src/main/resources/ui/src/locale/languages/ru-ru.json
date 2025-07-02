@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 день",
+    "1-hr": "1 час",
     "aborted": "Прервано",
     "accept": "Принять",
     "accept-all": "Accept All",
@@ -939,6 +941,8 @@
     "november": "Ноябрь",
     "null": "Пустые значения",
     "number": "Number",
+    "number-day-plural": "{{number}} дней",
+    "number-hr-plural": "{{number}} часов",
     "number-of-object-plural": "Количество объектов",
     "number-of-retries": "Number of Retries",
     "number-of-rows": "Количество строк",
@@ -1483,6 +1487,7 @@
     "uninstalled-lowercase": "uninstalled",
     "unique": "Уникальные значения",
     "unit-of-measurement": "Единица измерения",
+    "unlimited": "Без ограничений",
     "unpause": "Снять паузу",
     "unprocessed": "Unprocessed",
     "up-vote": "Up Vote",

@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 día",
+    "1-hr": "1 hora",
     "aborted": "Abortado",
     "accept": "Aceptar",
     "accept-all": "Accept All",
@@ -939,6 +941,8 @@
     "november": "Noviembre",
     "null": "Nulo",
     "number": "Number",
+    "number-day-plural": "{{number}} días",
+    "number-hr-plural": "{{number}} horas",
     "number-of-object-plural": "Número de objetos",
     "number-of-retries": "Número de intentos",
     "number-of-rows": "Número de filas",
@@ -1483,6 +1487,7 @@
     "uninstalled-lowercase": "uninstalled",
     "unique": "Único",
     "unit-of-measurement": "medida Unidad",
+    "unlimited": "Sin límite",
     "unpause": "Reanudar",
     "unprocessed": "Unprocessed",
     "up-vote": "Voto Positivo",

@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 天",
+    "1-hr": "1 小时",
     "aborted": "已中止",
     "accept": "接受",
     "accept-all": "接受所有",
@@ -939,6 +941,8 @@
     "november": "十一月",
     "null": "Null",
     "number": "Number",
+    "number-day-plural": "{{number}} 天",
+    "number-hr-plural": "{{number}} 小时",
     "number-of-object-plural": "对象个数",
     "number-of-retries": "重试次数",
     "number-of-rows": "行数",
@@ -1483,6 +1487,7 @@
     "uninstalled-lowercase": "已卸载",
     "unique": "唯一",
     "unit-of-measurement": "计量单位",
+    "unlimited": "无限制",
     "unpause": "取消暂停",
     "unprocessed": "Unprocessed",
     "up-vote": "Up Vote",
