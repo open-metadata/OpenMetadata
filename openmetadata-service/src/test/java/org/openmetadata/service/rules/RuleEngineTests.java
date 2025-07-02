@@ -1,6 +1,8 @@
 package org.openmetadata.service.rules;
 
 import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.resources.EntityResourceTest.TEAM11_REF;
 import static org.openmetadata.service.resources.EntityResourceTest.USER1_REF;
 import static org.openmetadata.service.resources.EntityResourceTest.USER2_REF;
@@ -17,14 +19,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.ContractStatus;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -236,27 +239,23 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     Table tableWithContract =
         tableResourceTest.createEntity(createWithContract, ADMIN_AUTH_HEADERS);
 
-    dataContractResourceTest
-        .createDataContractRequest(test + "_dataContract", tableWithContract)
-        .withEntity(new EntityReference().withId(tableWithContract.getId()).withType(Entity.TABLE))
-        .withSemantics(
-            List.of(
-                new SemanticsRule()
-                    .withName("Description can't be empty")
-                    .withDescription("Validates that the table has a description")
-                    .withRule("{ \"!!\": { \"var\": \"description\" } }")))
-        .withSchema(
-            List.of(
-                new org.openmetadata.schema.type.Field()
-                    .withName(C1)
-                    .withDataType(FieldDataType.INT),
-                new org.openmetadata.schema.type.Field()
-                    .withName(C2)
-                    .withDataType(FieldDataType.STRING),
-                new org.openmetadata.schema.type.Field()
-                    .withName(C3)
-                    .withDataType(FieldDataType.STRING)))
-        .withOwners(List.of(USER1_REF));
+    CreateDataContract createContractForTable =
+        dataContractResourceTest
+            .createDataContractRequest(test.getDisplayName(), tableWithContract)
+            .withStatus(ContractStatus.Active)
+            .withSemantics(
+                List.of(
+                    new SemanticsRule()
+                        .withName("Description can't be empty")
+                        .withDescription("Validates that the table has a description.")
+                        .withRule("{ \"!!\": { \"var\": \"description\" } }")));
+
+    // Create and validate the contract
+    DataContract dataContract = dataContractResourceTest.createDataContract(createContractForTable);
+    assertNotNull(dataContract);
+    assertNotNull(dataContract.getId());
+    assertEquals(tableWithContract.getId(), dataContract.getEntity().getId());
+    assertEquals("table", dataContract.getEntity().getType());
 
     // The table has null description. If we try to update any other field instead of fixing the
     // description, it should fail

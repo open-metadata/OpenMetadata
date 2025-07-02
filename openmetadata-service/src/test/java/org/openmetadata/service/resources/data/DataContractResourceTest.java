@@ -246,7 +246,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
         .withStatus(ContractStatus.Draft);
   }
 
-  private DataContract createDataContract(CreateDataContract create) throws IOException {
+  public DataContract createDataContract(CreateDataContract create) throws IOException {
     WebTarget target = getCollection();
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(create));
