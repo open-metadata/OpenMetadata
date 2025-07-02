@@ -424,21 +424,21 @@ class AirflowSource(PipelineServiceSource):
             tasks = data.get("tasks", [])
             task_owners = []
 
-            # Handle default_args.owner
-            default_owner = data.get("default_args", {}).get("owner")
+            # Handle default_args.owner (wrapped or not)
+            default_args = data.get("default_args", {})
+            if isinstance(default_args, dict) and "__var" in default_args:
+                default_args = default_args["__var"]
+            default_owner = default_args.get("owner")
 
             for task in tasks:
                 # Flatten serialized task
                 task_data = (
                     task.get("__var")
-                    if isinstance(task, dict) and task.keys() == {"__var", "__type"}
+                    if isinstance(task, dict) and "__var" in task
                     else task
                 )
 
-                owner = task_data.get("owner")
-                if not owner and default_owner:
-                    task_data["owner"] = default_owner
-                    owner = default_owner
+                owner = task_data.get("owner") or default_owner
 
                 if owner:
                     task_owners.append(owner)
