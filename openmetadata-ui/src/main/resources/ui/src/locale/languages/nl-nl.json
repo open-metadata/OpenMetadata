@@ -1,5 +1,7 @@
 {
   "label": {
+    "1-day": "1 dag",
+    "1-hr": "1 uur",
     "aborted": "Afgebroken",
     "accept": "Accepteren",
     "accept-all": "Accept All",
@@ -937,6 +939,8 @@
     "november": "november",
     "null": "Null",
     "number": "Number",
+    "number-day-plural": "{{number}} dagen",
+    "number-hr-plural": "{{number}} uren",
     "number-of-object-plural": "Aantal objecten",
     "number-of-retries": "Aantal herhalingen",
     "number-of-rows": "Aantal rijen",
@@ -1479,6 +1483,7 @@
     "uninstalled-lowercase": "uninstalled",
     "unique": "Uniek",
     "unit-of-measurement": "Meeteenheid",
+    "unlimited": "Onbeperkt",
     "unpause": "Hervatten",
     "unprocessed": "Unprocessed",
     "up-vote": "Up Vote",
@@ -1755,6 +1760,7 @@
     "entity-is-not-valid": "{{entity}} is niet geldig",
     "entity-is-not-valid-url": "{{entity}} is geen geldige URL",
     "entity-maximum-size": "{{entity}} kan maximaal {{max}} tekens bevatten",
+    "entity-moved-successfully": "{{entity}} succesvol verplaatst",
     "entity-name-validation": "Naam mag alleen letters, cijfers, underscores, streepjes, punten, haakjes en ampersands bevatten.",
     "entity-not-contain-whitespace": "{{entity}} mag geen spaties bevatten",
     "entity-owned-by-name": "Dit entiteit is eigendom van {{entityOwner}}",
