@@ -15,7 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Form, Input, Modal, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusSquare } from '../../../../../assets/svg/plus-square.svg';
 import { VALIDATION_MESSAGES } from '../../../../../constants/constants';
@@ -23,7 +23,6 @@ import {
   CuratedAssetsFormSelectedAssetsInfo,
   getSelectedResourceCount,
 } from '../../../../../utils/CuratedAssetsUtils';
-import { AdvanceSearchProvider } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { AdvancedAssetsFilterField } from '../AdvancedAssetsFilterField/AdvancedAssetsFilterField.component';
 import { SelectAssetTypeField } from '../SelectAssetTypeField/SelectAssetTypeField.component';
 import './curated-assets-modal.less';
@@ -33,10 +32,9 @@ import {
 } from './CuratedAssetsModal.interface';
 
 const CuratedAssetsModal = ({
-  curatedAssetsData,
+  curatedAssetsConfig,
   onCancel,
   onSave,
-  isSaveButtonDisabled,
   isOpen,
 }: CuratedAssetsModalProps) => {
   const { t } = useTranslation();
@@ -47,28 +45,25 @@ const CuratedAssetsModal = ({
       resourcesWithNonZeroCount: [],
     });
 
-  const initialValues = useMemo(
-    () => ({
-      ...(curatedAssetsData || {}),
-      resources: [...(curatedAssetsData?.resources || [])],
-    }),
-    [curatedAssetsData]
-  );
-
   const selectedResource = Form.useWatch('resources', form);
 
   const queryFilter = Form.useWatch('queryFilter', form);
 
   const title = Form.useWatch('title', form);
 
+  useEffect(() => {
+    if (isOpen && curatedAssetsConfig) {
+      form.setFieldsValue({
+        title: curatedAssetsConfig.title || '',
+        resources: curatedAssetsConfig.resources || [],
+        queryFilter: curatedAssetsConfig.queryFilter || '{}',
+      });
+    }
+  }, [isOpen, curatedAssetsConfig, form]);
+
   const disableSave = useMemo(() => {
-    return (
-      isEmpty(title) ||
-      isEmpty(selectedResource) ||
-      isEmpty(queryFilter) ||
-      isSaveButtonDisabled
-    );
-  }, [title, selectedResource, queryFilter, isSaveButtonDisabled]);
+    return isEmpty(title) || isEmpty(selectedResource) || isEmpty(queryFilter);
+  }, [title, selectedResource, queryFilter]);
 
   const handleCancel = useCallback(() => {
     form.resetFields();
@@ -76,11 +71,12 @@ const CuratedAssetsModal = ({
   }, [form, onCancel]);
 
   const handleSave = useCallback(
-    (value) => {
+    (value: CuratedAssetsConfig) => {
       onSave({ ...value });
-      handleCancel();
+      form.resetFields();
+      onCancel();
     },
-    [onSave, handleCancel]
+    [onSave, form, onCancel]
   );
 
   const fetchEntityCount = useCallback(
@@ -89,6 +85,11 @@ const CuratedAssetsModal = ({
       selectedResource,
       queryFilter,
       shouldUpdateResourceList = true,
+    }: {
+      countKey: string;
+      selectedResource: string[];
+      queryFilter?: string;
+      shouldUpdateResourceList?: boolean;
     }) => {
       try {
         const { entityCount, resourcesWithNonZeroCount } =
@@ -117,13 +118,13 @@ const CuratedAssetsModal = ({
       <div className="flex items-center">
         <PlusSquare className="text-xl" />
         <Typography.Text strong className="m-l-xs text-white">
-          {!isEmpty(curatedAssetsData)
+          {!isEmpty(curatedAssetsConfig)
             ? t('label.edit-widget')
             : t('label.create-widget')}
         </Typography.Text>
       </div>
     ),
-    [curatedAssetsData, t]
+    [curatedAssetsConfig, t]
   );
 
   const modalFooter = useMemo(
@@ -163,33 +164,30 @@ const CuratedAssetsModal = ({
       width={700}
       onCancel={handleCancel}
     >
-      <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
-        <Form<CuratedAssetsConfig>
-          data-testid="curated-assets-form"
-          form={form}
-          id="curated-assets-form"
-          initialValues={initialValues}
-          layout="vertical"
-          validateMessages={VALIDATION_MESSAGES}
-          onFinish={handleSave}
-        >
-          <Form.Item label="Widget's Title" name="title">
-            <Input
-              autoFocus
-              data-testid="title-input"
-              placeholder={t('message.curated-assets-widget-title-placeholder')}
-            />
-          </Form.Item>
-          <SelectAssetTypeField
-            fetchEntityCount={fetchEntityCount}
-            selectedAssetsInfo={selectedAssetsInfo}
+      <Form<CuratedAssetsConfig>
+        data-testid="curated-assets-form"
+        form={form}
+        id="curated-assets-form"
+        layout="vertical"
+        validateMessages={VALIDATION_MESSAGES}
+        onFinish={handleSave}
+      >
+        <Form.Item label="Widget's Title" name="title">
+          <Input
+            autoFocus
+            data-testid="title-input"
+            placeholder={t('message.curated-assets-widget-title-placeholder')}
           />
-          <AdvancedAssetsFilterField
-            fetchEntityCount={fetchEntityCount}
-            selectedAssetsInfo={selectedAssetsInfo}
-          />
-        </Form>
-      </AdvanceSearchProvider>
+        </Form.Item>
+        <SelectAssetTypeField
+          fetchEntityCount={fetchEntityCount}
+          selectedAssetsInfo={selectedAssetsInfo}
+        />
+        <AdvancedAssetsFilterField
+          fetchEntityCount={fetchEntityCount}
+          selectedAssetsInfo={selectedAssetsInfo}
+        />
+      </Form>
     </Modal>
   );
 };

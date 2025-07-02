@@ -23,7 +23,6 @@ import { Col, Form, Input, Row, Skeleton } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   AlertMessage,
@@ -34,6 +33,7 @@ import {
 import { elasticSearchFormat } from '../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderUtils';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { CuratedAssetsConfig } from '../CuratedAssetsModal/CuratedAssetsModal.interface';
 import './advanced-assets-filter-field.less';
 
 export const AdvancedAssetsFilterField = ({
@@ -50,7 +50,7 @@ export const AdvancedAssetsFilterField = ({
   const { fqn } = useFqn();
   const { t } = useTranslation();
   const isMounting = useRef(true);
-  const form = Form.useFormInstance<IngestionPipeline>();
+  const form = Form.useFormInstance<CuratedAssetsConfig>();
 
   const queryFilterValue = form.getFieldValue('queryFilter');
 

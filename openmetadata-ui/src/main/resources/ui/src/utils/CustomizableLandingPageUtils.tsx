@@ -21,6 +21,7 @@ import {
   uniqueId,
 } from 'lodash';
 import { Layout } from 'react-grid-layout';
+import { AdvanceSearchProvider } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../enums/common.enum';
 import {
@@ -272,19 +273,21 @@ export const getWidgetFromKey = ({
   const Widget = customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig.i);
 
   return (
-    <Widget
-      announcements={announcements}
-      currentLayout={currentLayout}
-      followedData={followedData ?? []}
-      followedDataCount={followedDataCount}
-      handleLayoutUpdate={handleLayoutUpdate}
-      handleRemoveWidget={handleRemoveWidget}
-      isAnnouncementLoading={isAnnouncementLoading}
-      isEditView={isEditView}
-      isLoadingOwnedData={isLoadingOwnedData}
-      selectedGridSize={widgetConfig.w}
-      widgetKey={widgetConfig.i}
-    />
+    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
+      <Widget
+        announcements={announcements}
+        currentLayout={currentLayout}
+        followedData={followedData ?? []}
+        followedDataCount={followedDataCount}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        isAnnouncementLoading={isAnnouncementLoading}
+        isEditView={isEditView}
+        isLoadingOwnedData={isLoadingOwnedData}
+        selectedGridSize={widgetConfig.w}
+        widgetKey={widgetConfig.i}
+      />
+    </AdvanceSearchProvider>
   );
 };
 

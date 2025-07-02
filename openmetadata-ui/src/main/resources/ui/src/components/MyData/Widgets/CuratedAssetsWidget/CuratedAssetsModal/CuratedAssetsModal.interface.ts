@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 export type CuratedAssetsModalProps = {
-  curatedAssetsData?: CuratedAssetsConfig | null;
-  isEditView?: boolean;
+  curatedAssetsConfig?: CuratedAssetsConfig | null;
   isOpen: boolean;
-  isSaveButtonDisabled?: boolean;
   onCancel: () => void;
   onSave: (data: CuratedAssetsConfig) => void;
 };

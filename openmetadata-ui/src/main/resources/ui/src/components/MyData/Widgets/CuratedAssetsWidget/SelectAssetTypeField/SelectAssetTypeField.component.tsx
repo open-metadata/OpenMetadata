@@ -14,7 +14,7 @@
 import { Col, Form, Select, Skeleton } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CURATED_ASSETS_LIST } from '../../../../../constants/AdvancedSearch.constants';
 import { getSourceOptionsFromResourceList } from '../../../../../utils/Alerts/AlertsUtil';

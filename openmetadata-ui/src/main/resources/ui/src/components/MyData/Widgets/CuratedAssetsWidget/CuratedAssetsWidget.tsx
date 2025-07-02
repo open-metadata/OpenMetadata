@@ -13,33 +13,32 @@
 
 import {
   ArrowRightOutlined,
+  DownOutlined,
   DragOutlined,
   MoreOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  List,
-  Popover,
-  Row,
-  Tooltip,
-  Typography,
-} from 'antd';
-import { get, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, Card, Col, Divider, Dropdown, Row, Typography } from 'antd';
+import { get, isEmpty, isUndefined, orderBy, toLower } from 'lodash';
+import { MenuInfo } from 'rc-menu/lib/interface';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
+import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
+import {
+  ERROR_PLACEHOLDER_TYPE,
+  SIZE,
+  SORT_ORDER,
+} from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { EntityReference } from '../../../../generated/type/entityReference';
-import { SearchSourceAlias } from '../../../../interface/search.interface';
+import {
+  SearchIndexSearchSourceMapping,
+  SearchSourceAlias,
+} from '../../../../interface/search.interface';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -60,7 +59,12 @@ import EntityListSkeleton from '../../../common/Skeleton/MyData/EntityListSkelet
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import './curated-assets-widget.less';
 import CuratedAssetsModal from './CuratedAssetsModal/CuratedAssetsModal';
-import { CuratedAssetsConfig } from './CuratedAssetsModal/CuratedAssetsModal.interface';
+import {
+  CURATED_ASSETS_MORE_MENU_ITEMS,
+  CURATED_ASSETS_MORE_MENU_KEYS,
+  CURATED_ASSETS_SORT_BY_KEYS,
+  CURATED_ASSETS_SORT_BY_OPTIONS,
+} from './CuratedAssetsWidget.constants';
 
 const CuratedAssetsWidget = ({
   isEditView,
@@ -70,38 +74,42 @@ const CuratedAssetsWidget = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const [data, setData] = useState<Array<EntityReference>>([]);
+  const [data, setData] = useState<
+    Array<SearchIndexSearchSourceMapping[SearchIndex]>
+  >([]);
+  const [sortedData, setSortedData] = useState<
+    Array<SearchIndexSearchSourceMapping[SearchIndex]>
+  >([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [createCuratedAssetsModalOpen, setCreateCuratedAssetsModalOpen] =
     useState<boolean>(false);
   const [viewMoreCount, setViewMoreCount] = useState<string>('');
+  const [selectedSortBy, setSelectedSortBy] = useState<string>(
+    CURATED_ASSETS_SORT_BY_KEYS.LATEST
+  );
   const { config } = useAdvanceSearch();
 
-  const curatedAssetsData = useMemo(() => {
-    let curatedAssetsConfig: CuratedAssetsConfig | null | undefined = null;
-
-    currentLayout?.forEach((layout: WidgetConfig) => {
-      if (layout.i === widgetKey) {
-        curatedAssetsConfig = layout.config;
-      }
-    });
-
-    return curatedAssetsConfig;
+  const curatedAssetsData = useMemo<WidgetConfig | null | undefined>(() => {
+    return currentLayout?.find(
+      (layout: WidgetConfig) => layout.i === widgetKey
+    );
   }, [currentLayout, widgetKey]);
 
+  const { config: curatedAssetsConfig } = curatedAssetsData || {};
+
   const queryFilter = useMemo(
-    () => get(curatedAssetsData, 'queryFilter', '{}'),
-    [curatedAssetsData]
+    () => get(curatedAssetsConfig, 'queryFilter', '{}'),
+    [curatedAssetsConfig]
   );
 
   const selectedResource = useMemo(
-    () => get(curatedAssetsData, 'resources', []),
-    [curatedAssetsData]
+    () => get(curatedAssetsConfig, 'resources', []),
+    [curatedAssetsConfig]
   );
 
   const title = useMemo(
-    () => get(curatedAssetsData, 'title', ''),
-    [curatedAssetsData]
+    () => get(curatedAssetsConfig, 'title', ''),
+    [curatedAssetsConfig]
   );
 
   const sourceIcon = searchClassBase.getEntityIcon(selectedResource?.[0] ?? '');
@@ -137,14 +145,14 @@ const CuratedAssetsWidget = ({
 
         setViewMoreCount(count);
 
-        setData(source as unknown as EntityReference[]);
+        setData(source);
       } catch (error) {
         return;
       } finally {
         setIsLoading(false);
       }
     }
-  }, [curatedAssetsData, selectedResource, queryFilter]);
+  }, [curatedAssetsConfig, selectedResource, queryFilter]);
 
   const handleCloseClick = useCallback(() => {
     if (!isUndefined(handleRemoveWidget)) {
@@ -176,6 +184,102 @@ const CuratedAssetsWidget = ({
     setCreateCuratedAssetsModalOpen(false);
   };
 
+  const handleSortData = useCallback(
+    (
+      data: Array<SearchIndexSearchSourceMapping[SearchIndex]>,
+      sortBy: string
+    ) => {
+      let newSortedData = data;
+      if (sortBy === CURATED_ASSETS_SORT_BY_KEYS.LATEST) {
+        newSortedData = orderBy(data, ['updatedAt'], [SORT_ORDER.DESC]);
+      } else if (sortBy === CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z) {
+        newSortedData = orderBy(
+          data,
+          [(item) => toLower(getEntityName(item))],
+          [SORT_ORDER.ASC]
+        );
+      } else if (sortBy === CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A) {
+        newSortedData = orderBy(
+          data,
+          [(item) => toLower(getEntityName(item))],
+          [SORT_ORDER.DESC]
+        );
+      }
+      setSortedData(newSortedData);
+    },
+    []
+  );
+
+  const handleSortByClick = useCallback(
+    (e: MenuInfo) => {
+      if (!isEditView) {
+        setSelectedSortBy(e.key);
+
+        return;
+      }
+
+      if (handleLayoutUpdate) {
+        const hasCurrentCuratedAssets = currentLayout?.find(
+          (layout: WidgetConfig) => layout.i === widgetKey
+        );
+
+        const updatedLayout = hasCurrentCuratedAssets
+          ? currentLayout?.map((layout: WidgetConfig) =>
+              layout.i === widgetKey
+                ? { ...layout, config: { ...layout.config, sortBy: e.key } }
+                : layout
+            )
+          : [
+              ...(currentLayout || []),
+              {
+                ...customizeMyDataPageClassBase.curatedAssetsWidgetDefaultValues,
+                i: widgetKey,
+                config: {
+                  ...customizeMyDataPageClassBase
+                    .curatedAssetsWidgetDefaultValues.config,
+                  sortBy: e.key,
+                },
+              },
+            ];
+
+        handleLayoutUpdate(updatedLayout as Layout[]);
+      }
+    },
+    [currentLayout, handleLayoutUpdate, widgetKey, isEditView]
+  );
+
+  const handleSizeChange = useCallback(
+    (value: number) => {
+      if (handleLayoutUpdate) {
+        const hasCurrentCuratedAssets = currentLayout?.find(
+          (layout: WidgetConfig) => layout.i === widgetKey
+        );
+
+        const updatedLayout = hasCurrentCuratedAssets
+          ? currentLayout?.map((layout: WidgetConfig) =>
+              layout.i === widgetKey
+                ? { ...layout, config: { ...layout.config }, w: value }
+                : layout
+            )
+          : [
+              ...(currentLayout || []),
+              {
+                ...customizeMyDataPageClassBase.curatedAssetsWidgetDefaultValues,
+                i: widgetKey,
+                config: {
+                  ...customizeMyDataPageClassBase
+                    .curatedAssetsWidgetDefaultValues.config,
+                },
+                w: value,
+              },
+            ];
+
+        handleLayoutUpdate(updatedLayout as Layout[]);
+      }
+    },
+    [currentLayout, handleLayoutUpdate, widgetKey]
+  );
+
   const handleModalClose = useCallback(() => {
     setCreateCuratedAssetsModalOpen(false);
     setData([]);
@@ -192,18 +296,15 @@ const CuratedAssetsWidget = ({
     }
   }, [createCuratedAssetsModalOpen, selectedResource, prepareData]);
 
-  const menuItems = useMemo(
-    () => [
-      {
-        key: 'remove-widget',
-        label: 'Remove Widget',
-        onClick: () => {
-          handleCloseClick();
-        },
-      },
-    ],
-    [handleCloseClick]
-  );
+  const handleMoreClick = (e: MenuInfo) => {
+    if (e.key === CURATED_ASSETS_MORE_MENU_KEYS.REMOVE_WIDGET) {
+      handleCloseClick();
+    } else if (e.key === CURATED_ASSETS_MORE_MENU_KEYS.HALF_SIZE) {
+      handleSizeChange(1);
+    } else if (e.key === CURATED_ASSETS_MORE_MENU_KEYS.FULL_SIZE) {
+      handleSizeChange(2);
+    }
+  };
 
   const queryURL = useMemo(
     () =>
@@ -215,78 +316,103 @@ const CuratedAssetsWidget = ({
     [queryFilter, config, selectedResource]
   );
 
-  const menuItemsList = useMemo(
-    () => (
-      <List
-        dataSource={menuItems}
-        renderItem={(item) => (
-          <List.Item>
-            <Typography.Text className="cursor-pointer" onClick={item.onClick}>
-              {item.label}
-            </Typography.Text>
-          </List.Item>
-        )}
-      />
-    ),
-    []
-  );
+  useEffect(() => {
+    if (data.length > 0 && selectedSortBy) {
+      handleSortData(data, selectedSortBy);
+    }
+  }, [data, handleSortData, selectedSortBy]);
 
   const header = useMemo(
     () => (
       <Row className="curated-assets-header" justify="space-between">
         <Col className="d-flex items-center h-full min-h-8">
-          {sourceIcon && title && (
-            <div className="d-flex h-6 w-6 m-r-sm">{sourceIcon}</div>
-          )}
-          <Typography.Paragraph className="widget-title">
+          <div className="d-flex h-6 w-6 m-r-sm">
+            {sourceIcon && title ? sourceIcon : <StarOutlinedIcon />}
+          </div>
+
+          <Typography.Paragraph
+            className="widget-title"
+            ellipsis={{ tooltip: true }}
+            style={{
+              maxWidth: curatedAssetsData?.w === 1 ? '200px' : '525px',
+            }}
+          >
             {title || t('label.curated-asset-plural')}
           </Typography.Paragraph>
         </Col>
-        {isEditView && (
-          <Col>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <DragOutlined
-                className="drag-widget-icon cursor-pointer widget-header-icon"
-                data-testid="drag-widget-button"
-                size={20}
-              />
-              <Button
-                disabled={isEmpty(selectedResource)}
-                icon={
-                  <EditIcon
-                    data-testid="edit-widget-button"
-                    height={20}
-                    width={20}
-                  />
-                }
-                onClick={handleModalOpen}
-              />
-              <Popover
-                destroyTooltipOnHide
-                content={menuItemsList}
-                placement="bottomRight"
-                showArrow={false}
-                trigger="click"
+
+        <Col>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {isEditView ? (
+              <>
+                <DragOutlined
+                  className="drag-widget-icon cursor-pointer widget-header-options"
+                  data-testid="drag-widget-button"
+                  size={20}
+                />
+                <Button
+                  className="widget-header-options"
+                  disabled={isEmpty(selectedResource)}
+                  icon={
+                    <EditIcon
+                      data-testid="edit-widget-button"
+                      height={20}
+                      width={20}
+                    />
+                  }
+                  onClick={handleModalOpen}
+                />
+              </>
+            ) : (
+              <Dropdown
+                className="widget-header-options"
+                data-testid="sort-by-button"
+                menu={{
+                  items: CURATED_ASSETS_SORT_BY_OPTIONS,
+                  selectable: true,
+                  multiple: false,
+                  activeKey: selectedSortBy,
+                  onClick: handleSortByClick,
+                  className: 'widget-header-menu',
+                }}
+                trigger={['click']}
               >
-                <Tooltip title={t('label.more')}>
-                  <Button
-                    className="widget-header-icon"
-                    data-testid="filter-button"
-                    icon={
-                      <MoreOutlined
-                        data-testid="more-widget-button"
-                        size={20}
-                      />
-                    }
-                  />
-                </Tooltip>
-              </Popover>
-            </div>
-          </Col>
-        )}
+                <Button data-testid="filter-button">
+                  {
+                    CURATED_ASSETS_SORT_BY_OPTIONS.find(
+                      (option) => option.key === selectedSortBy
+                    )?.label
+                  }
+                  <DownOutlined />
+                </Button>
+              </Dropdown>
+            )}
+            <Dropdown
+              className="widget-header-options"
+              data-testid="more-button"
+              menu={{
+                items: CURATED_ASSETS_MORE_MENU_ITEMS,
+                selectable: true,
+                multiple: false,
+                onClick: handleMoreClick,
+                className: 'widget-header-menu',
+              }}
+              placement="bottomLeft"
+              trigger={['click']}
+            >
+              <Button
+                className=""
+                data-testid="more-button"
+                icon={
+                  <MoreOutlined data-testid="more-widget-button" size={20} />
+                }
+              />
+            </Dropdown>
+          </div>
+        </Col>
       </Row>
     ),
-    [isEditView, title, menuItemsList, handleModalOpen]
+    [isEditView, title, handleModalOpen, selectedSortBy, curatedAssetsData?.w]
   );
 
   const emptyState = useMemo(
@@ -343,13 +469,14 @@ const CuratedAssetsWidget = ({
     [t]
   );
 
-  const footer = useMemo(() => {
-    return (
+  const footer = useMemo(
+    () => (
       <Row className="curated-assets-footer">
         <Divider className="mb-0 mt-0" />
         <Button
           className="text-primary hover:underline w-full  footer-view-more-button"
           href={queryURL}
+          target="_blank"
           type="link"
         >
           {t('label.view-more-count', {
@@ -359,63 +486,70 @@ const CuratedAssetsWidget = ({
           <ArrowRightOutlined data-testid="arrow-right-icon" />
         </Button>
       </Row>
-    );
-  }, [t, handleModalOpen, viewMoreCount, queryURL]);
+    ),
+    [t, viewMoreCount, queryURL]
+  );
 
   const entityList = useMemo(
     () => (
-      <div className="entity-list-body no-scrollbar h-full w-full">
-        {data.length > 0
-          ? data.map((item) => (
-              <div
-                className="right-panel-list-item flex items-center justify-between"
-                data-testid={`Recently Viewed-${getEntityName(item)}`}
-                key={item.id}
-              >
-                <div className="flex items-center">
-                  <Link
-                    to={entityUtilClassBase.getEntityLink(
-                      item.type || '',
-                      item.fullyQualifiedName as string
+      <div className="entity-list-body h-full w-full">
+        {sortedData.length > 0
+          ? sortedData.map((item) => {
+              const title = getEntityName(item);
+              const description = get(item, 'description');
+
+              return (
+                <div
+                  className="right-panel-list-item  flex items-center w-full"
+                  data-testid={`Curated Assets-${title}`}
+                  key={item.id}
+                >
+                  <img
+                    alt={get(item, 'service.displayName', '')}
+                    className="entity-icon"
+                    src={serviceUtilClassBase.getServiceTypeLogo(
+                      item as unknown as SearchSourceAlias
                     )}
-                  >
-                    <Button
-                      className="entity-button flex-center p-0 m--ml-1"
-                      icon={
-                        <img
-                          alt={get(item, 'service.displayName', '')}
-                          className="entity-icon"
-                          src={serviceUtilClassBase.getServiceTypeLogo(
-                            item as unknown as SearchSourceAlias
-                          )}
-                        />
-                      }
-                      title={getEntityName(item as unknown as EntityReference)}
-                      type="text"
+                  />
+                  <div className="flex items-center">
+                    <Link
+                      className="flex items-center right-panel-list-item-link"
+                      to={entityUtilClassBase.getEntityLink(
+                        item.type || '',
+                        item.fullyQualifiedName as string
+                      )}
                     >
-                      <div className="flex flex-col">
+                      <div
+                        className="flex flex-col"
+                        style={{
+                          width: curatedAssetsData?.w === 1 ? '320px' : '760px',
+                        }}
+                      >
                         <Typography.Text
-                          className="w-72 text-left text-sm"
+                          className="entity-list-item-title"
                           ellipsis={{ tooltip: true }}
                         >
-                          {get(item, 'service.displayName', '')}
+                          {title}
                         </Typography.Text>
-                        <Typography.Text
-                          className="w-72 text-left text-sm"
-                          ellipsis={{ tooltip: true }}
-                        >
-                          {getEntityName(item)}
-                        </Typography.Text>
+
+                        {description && (
+                          <Typography.Paragraph
+                            className="entity-list-item-description"
+                            ellipsis={{ rows: 2 }}
+                          >
+                            {description}
+                          </Typography.Paragraph>
+                        )}
                       </div>
-                    </Button>
-                  </Link>
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           : noDataState}
       </div>
     ),
-    [data]
+    [sortedData, noDataState, curatedAssetsData?.w]
   );
 
   return (
@@ -427,10 +561,11 @@ const CuratedAssetsWidget = ({
         <EntityListSkeleton
           dataLength={data.length !== 0 ? data.length : 5}
           loading={Boolean(isLoading)}
+          skeletonContainerStyle={{ marginLeft: '20px', marginTop: '20px' }}
         >
           <>
             {header}
-            {isEmpty(data) && isEmpty(selectedResource)
+            {isEditView && isEmpty(data) && isEmpty(selectedResource)
               ? emptyState
               : entityList}
             {!isEmpty(data) && footer}
@@ -438,8 +573,7 @@ const CuratedAssetsWidget = ({
         </EntityListSkeleton>
       </Card>
       <CuratedAssetsModal
-        curatedAssetsData={curatedAssetsData}
-        isEditView={isEditView}
+        curatedAssetsConfig={curatedAssetsConfig}
         isOpen={createCuratedAssetsModalOpen}
         onCancel={handleModalClose}
         onSave={handleSave}

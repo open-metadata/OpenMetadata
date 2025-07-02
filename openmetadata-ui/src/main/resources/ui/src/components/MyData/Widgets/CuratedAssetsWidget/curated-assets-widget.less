@@ -23,19 +23,26 @@
 }
 
 .right-panel-list-item {
-  padding-top: 8px;
-  padding-bottom: 8px;
+  padding: 12px 24px;
+
+  &:hover {
+    background-color: @grey-1;
+  }
 
   .entity-button-icon {
-    height: 24px;
-    width: 24px;
+    height: 20px;
+    width: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     svg {
-      height: 18px;
-      width: 18px;
+      height: 20px;
+      width: 20px;
     }
+  }
+
+  .right-panel-list-item-link {
+    text-decoration: none;
   }
 }
 
@@ -52,33 +59,52 @@
     font-size: 18px;
     line-height: 28px;
     margin-bottom: 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   .curated-assets-footer {
-    bottom: 0;
-    position: fixed;
     width: 100%;
     background-color: @white;
+    border-bottom-right-radius: 12px;
+    border-bottom-left-radius: 12px;
   }
 
   .curated-assets-header {
-    padding: 20px 20px 0px 20px;
+    padding: 12px 20px 12px 20px;
+    border-bottom: 1px solid @grey-15;
   }
 
   .entity-list-body {
-    padding: 0px 20px 0px 20px;
+    padding: 0;
+    margin-top: 0;
   }
 
   .footer-view-more-button {
     margin-top: 8px;
     margin-bottom: 8px;
   }
+
+  .entity-list-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+  }
+
+  .entity-list-item-description {
+    font-size: 12px;
+    font-weight: 400;
+    text-align: left;
+    margin-bottom: 0;
+  }
 }
 
-.widget-header-icon {
+.widget-header-options {
   padding: 10px;
   height: 40px;
-  width: 40px;
+  min-width: 40px;
+  max-width: 100px;
   border-radius: 8px;
   border: 1px solid @grey-15;
   font-size: 20px;
@@ -92,6 +118,28 @@
     background-color: @grey-1;
     border-color: @primary-color;
   }
+
+  .widget-header-menu {
+    padding: 8px;
+    border-radius: 12px;
+  }
+}
+
+.ant-dropdown-menu-item {
+  padding: 16px 24px !important;
+  height: 40px !important;
+
+  &:hover {
+    color: @blue-34 !important;
+    background-color: @blue-33 !important;
+    font-weight: 500 !important;
+  }
+}
+
+.ant-dropdown-menu-item-active {
+  color: @blue-34 !important;
+  background-color: @blue-33 !important;
+  font-weight: 500 !important;
 }
 
 .entity-icon {

@@ -64,7 +64,9 @@ class CustomizeMyDataPageClassBase {
   };
 
   curatedAssetsWidgetDefaultValues: WidgetConfig = {
-    config: {},
+    config: {
+      sortBy: 'latest',
+    },
     h: this.landingPageWidgetDefaultHeights.curatedAssets,
     i: LandingPageWidgetKeys.CURATED_ASSETS,
     static: false,

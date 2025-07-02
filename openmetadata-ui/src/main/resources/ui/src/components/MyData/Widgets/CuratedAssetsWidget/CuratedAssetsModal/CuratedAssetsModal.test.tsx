@@ -12,7 +12,6 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Form, FormInstance } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import CuratedAssetsModal from './CuratedAssetsModal';
 
@@ -61,7 +60,7 @@ const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();
 
 const defaultProps = {
-  curatedAssetsData: null,
+  curatedAssetsConfig: null,
   onCancel: mockOnCancel,
   onSave: mockOnSave,
   isSaveButtonDisabled: false,
@@ -88,7 +87,7 @@ describe('CuratedAssetsModal', () => {
   it('renders modal with edit widget title when data is provided', () => {
     const propsWithData = {
       ...defaultProps,
-      curatedAssetsData: { title: 'Test Widget' },
+      curatedAssetsConfig: { title: 'Test Widget' },
     };
 
     render(<CuratedAssetsModal {...propsWithData} />);
@@ -154,7 +153,7 @@ describe('CuratedAssetsModal', () => {
     render(
       <CuratedAssetsModal
         {...defaultProps}
-        curatedAssetsData={{
+        curatedAssetsConfig={{
           title: 'Test Widget',
           resources: ['table'],
           queryFilter: '{"query":{"bool":{"must":[]}}}',
@@ -187,12 +186,11 @@ describe('CuratedAssetsModal', () => {
     render(
       <CuratedAssetsModal
         {...defaultProps}
-        curatedAssetsData={{
+        curatedAssetsConfig={{
           title: 'Test Widget',
           resources: ['table'],
           queryFilter: '{"query":{"bool":{"must":[]}}}',
         }}
-        isSaveButtonDisabled={false}
       />
     );
 
