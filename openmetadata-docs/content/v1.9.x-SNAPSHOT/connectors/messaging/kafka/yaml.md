@@ -157,39 +157,57 @@ source:
       type: Kafka
 ```
 ```yaml {% srNumber=1 %}
-      bootstrapServers: localhost:9092
+      bootstrapServers: localhost:9092  # REQUIRED - Kafka broker addresses
 ```
 ```yaml {% srNumber=2 %}
-      schemaRegistryURL: http://localhost:8081  # Needs to be a URI
+      schemaRegistryURL: http://localhost:8081  # Schema Registry URL
 ```
 ```yaml {% srNumber=3 %}
-      saslUsername: username
+      saslUsername: username  # SASL authentication username
 ```
 ```yaml {% srNumber=4 %}
-      saslPassword: password
+      saslPassword: password  # SASL authentication password
 ```
 ```yaml {% srNumber=5 %}
-      saslMechanism: PLAIN
+      saslMechanism: PLAIN  # SASL mechanism: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, GSSAPI, OAUTHBEARER
 ```
 ```yaml {% srNumber=6 %}
-      basicAuthUserInfo: username:password
+      basicAuthUserInfo: username:password  # Schema Registry basic auth
 ```
 ```yaml {% srNumber=7 %}
-      consumerConfig: {}
+      consumerConfig:
+        # Example consumer configurations:
+        # auto.offset.reset: "earliest"
+        # max.poll.records: 500
+        # session.timeout.ms: 30000
 ```
 ```yaml {% srNumber=8 %}
-      schemaRegistryConfig: {}
+      schemaRegistryConfig:
+        # Example schema registry configurations:
+        # schema.registry.basic.auth.credentials.source: "USER_INFO"
+        # schema.registry.ssl.truststore.location: "/path/to/truststore.jks"
 ```
 ```yaml {% srNumber=9 %}
-      # securityProtocol: PLAINTEXT
+      securityProtocol: PLAINTEXT  # Security protocol: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL
 ```
 ```yaml {% srNumber=10 %}
       # schemaRegistryTopicSuffixName: -value
 ```
 ```yaml {% srNumber=11 %}
-      # schemaRegistrySSL: ""
+      # SSL Configuration for Consumer connections (when securityProtocol is SSL or SASL_SSL)
+      # consumerConfigSSL:
+      #   caCertificate: "/path/to/ca-cert.pem"
+      #   sslCertificate: "/path/to/client-cert.pem"
+      #   sslKey: "/path/to/client-key.pem"
 ```
 ```yaml {% srNumber=12 %}
+      # SSL Configuration for Schema Registry connections  
+      # schemaRegistrySSL:
+      #   caCertificate: "/path/to/schema-registry-ca.pem"
+      #   sslCertificate: "/path/to/schema-registry-cert.pem" 
+      #   sslKey: "/path/to/schema-registry-key.pem"
+```
+```yaml {% srNumber=13 %}
       # supportsMetadataExtraction: true
 ```
 
