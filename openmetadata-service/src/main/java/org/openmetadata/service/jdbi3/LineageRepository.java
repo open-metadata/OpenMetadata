@@ -51,8 +51,11 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -1236,5 +1239,131 @@ public class LineageRepository {
     for (EntityReference entity : downstreamEntityReferences) {
       getDownstreamLineage(entity.getId(), entity.getType(), lineage, downstreamDepth);
     }
+  }
+
+  /**
+   * Propagate column renames and deletions to every UPSTREAM lineage record that involves the
+   * supplied table (either as upstream or downstream entity).
+   *
+   * @param tableId the UUID of the table whose columns changed
+   * @param renamed map of original&nbsp;FQN ➜ new&nbsp;FQN
+   * @param deleted list of column FQNs that were removed entirely
+   */
+  @Transaction
+  public void updateColumnLineage(UUID tableId, Map<String, String> renamed, List<String> deleted) {
+
+    // Short-circuit when there is no work to perform
+    if ((renamed == null || renamed.isEmpty()) && (deleted == null || deleted.isEmpty())) {
+      return;
+    }
+
+    /*
+     * Prepare fast-lookup structures
+     */
+    final Map<String, String> fqnRenameMap = Optional.ofNullable(renamed).orElse(Map.of());
+    final Set<String> deletedFqns = new HashSet<>(Optional.ofNullable(deleted).orElse(List.of()));
+
+    /*
+     * Collect every UPSTREAM lineage row where this table appears on EITHER side of the edge.
+     */
+    List<CollectionDAO.EntityRelationshipObject> lineageRows = new ArrayList<>();
+    List<String> tableIdList = List.of(tableId.toString());
+
+    // Table is the *upstream* side (fromId)
+    lineageRows.addAll(
+        dao.relationshipDAO().findFromBatch(tableIdList, Relationship.UPSTREAM.ordinal()));
+
+    // Table is the *downstream* side (toId)
+    lineageRows.addAll(
+        dao.relationshipDAO()
+            .findToBatch(tableIdList, Relationship.UPSTREAM.ordinal(), Entity.TABLE, Entity.TABLE));
+
+    /*
+     * Iterate and rewrite JSON payloads in-place
+     */
+    for (CollectionDAO.EntityRelationshipObject row : lineageRows) {
+      try {
+        LineageDetails details = JsonUtils.readValue(row.getJson(), LineageDetails.class);
+
+        boolean rowModified = rewriteColumnMappings(details, fqnRenameMap, deletedFqns);
+
+        if (rowModified) {
+          // UPSERT the updated lineage JSON back into the relationship table
+          dao.relationshipDAO()
+              .insert(
+                  UUID.fromString(row.getFromId()),
+                  UUID.fromString(row.getToId()),
+                  row.getFromEntity(),
+                  row.getToEntity(),
+                  row.getRelation(),
+                  JsonUtils.pojoToJson(details));
+        }
+      } catch (Exception ex) {
+        LOG.warn(
+            "Failed to update column lineage for relationship {} -> {}. Skipping this row.",
+            row.getFromId(),
+            row.getToId(),
+            ex);
+      }
+    }
+  }
+
+  /**
+   * Apply rename / delete rules to the <code>columnsLineage</code> section of the supplied
+   * {@link LineageDetails} object.
+   *
+   * @return true if the object was actually changed.
+   */
+  private boolean rewriteColumnMappings(
+      LineageDetails details, Map<String, String> renameMap, Set<String> deletedFqns) {
+    if (details.getColumnsLineage() == null) {
+      return false;
+    }
+
+    boolean modified = false;
+
+    for (Iterator<ColumnLineage> mappingIter = details.getColumnsLineage().iterator();
+        mappingIter.hasNext(); ) {
+      ColumnLineage mapping = mappingIter.next();
+
+      /* --- Downstream column (toColumn) ----------------------------------- */
+      if (mapping.getToColumn() != null) {
+        String renamed = renameMap.get(mapping.getToColumn());
+        if (renamed != null) {
+          mapping.setToColumn(renamed);
+          modified = true;
+        } else if (deletedFqns.contains(mapping.getToColumn())) {
+          // Entire mapping is invalid – downstream target vanished
+          mappingIter.remove();
+          modified = true;
+          continue; // No need to touch upstream side now
+        }
+      }
+
+      /* --- Upstream columns (fromColumns[]) -------------------------------- */
+      if (mapping.getFromColumns() != null) {
+        ListIterator<String> fromIter = mapping.getFromColumns().listIterator();
+        while (fromIter.hasNext()) {
+          String upstream = fromIter.next();
+
+          if (deletedFqns.contains(upstream)) {
+            fromIter.remove();
+            modified = true;
+          } else {
+            String renamed = renameMap.get(upstream);
+            if (renamed != null) {
+              fromIter.set(renamed);
+              modified = true;
+            }
+          }
+        }
+        // If nothing left on upstream side, drop the whole mapping
+        if (mapping.getFromColumns().isEmpty()) {
+          mappingIter.remove();
+        }
+      }
+    }
+
+    return modified;
   }
 }
