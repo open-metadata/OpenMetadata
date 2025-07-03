@@ -325,5 +325,4 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
   public List<String> getTargetFQNHashForTagPrefix(String tagFQNHashPrefix) {
     return delegate.getTargetFQNHashForTagPrefix(tagFQNHashPrefix);
   }
-
 }

@@ -155,7 +155,7 @@ public final class RelationshipCache {
 
     try {
       Map<String, String> serializedData = serializeRelationships(relationships);
-      
+
       if (!serializedData.isEmpty()) {
         storeInRedis(key, serializedData);
         LOG.debug("Cached relationships for entity: {}, count: {}", entityId, relationships.size());
@@ -166,7 +166,7 @@ public final class RelationshipCache {
       incrementCacheError();
     }
   }
-  
+
   /**
    * Serialize relationships to Redis-compatible format
    */
@@ -180,11 +180,12 @@ public final class RelationshipCache {
     }
     return serializedData;
   }
-  
+
   /**
    * Store serialized data in Redis with TTL
    */
-  private static void storeInRedis(String key, Map<String, String> data) throws RedisCacheException {
+  private static void storeInRedis(String key, Map<String, String> data)
+      throws RedisCacheException {
     executeWithRetry(
         () -> {
           try {
@@ -327,7 +328,7 @@ public final class RelationshipCache {
       return Collections.emptyMap();
     }
   }
-  
+
   /**
    * Parse raw stats map to Long values
    */
@@ -338,7 +339,7 @@ public final class RelationshipCache {
     }
     return stats;
   }
-  
+
   /**
    * Parse a single stat entry
    */
@@ -387,7 +388,7 @@ public final class RelationshipCache {
    */
   private static <T> T executeWithRetry(RedisOperation<T> operation) throws RedisCacheException {
     CompletableFuture<T> future = executeWithRetryAsync(operation, 0);
-    
+
     try {
       return future.get();
     } catch (CompletionException e) {
@@ -403,54 +404,56 @@ public final class RelationshipCache {
       throw new RedisCacheException("Unexpected error during Redis operation", e);
     }
   }
-  
+
   /**
    * Execute Redis command with async retry logic
    */
   private static <T> CompletableFuture<T> executeWithRetryAsync(
       RedisOperation<T> operation, int attempt) {
-    
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return operation.execute();
-      } catch (RedisCacheException e) {
-        throw new CompletionException(e);
-      }
-    }).exceptionally(throwable -> {
-      if (attempt >= maxRetries) {
-        LOG.error(
-            "Redis operation failed after {} attempts: {}",
-            maxRetries + 1,
-            throwable.getMessage());
-        throw new CompletionException(
-            "Redis operation failed after " + (maxRetries + 1) + " attempts",
-            throwable);
-      }
-      
-      long backoffMs = (long) Math.pow(2, attempt) * 100;
-      LOG.warn(
-          "Redis operation failed, scheduling retry (attempt {}/{}): {}",
-          attempt + 1,
-          maxRetries + 1,
-          throwable.getMessage());
-      
-      CompletableFuture<T> retryFuture = new CompletableFuture<>();
-      retryExecutor.schedule(
-          () ->
-            executeWithRetryAsync(operation, attempt + 1)
-                .whenComplete((result, error) -> {
-                  if (error != null) {
-                    retryFuture.completeExceptionally(error);
-                  } else {
-                    retryFuture.complete(result);
-                  }
-                })
-          ,
-          backoffMs,
-          TimeUnit.MILLISECONDS);
-      
-      return retryFuture.join();
-    });
+
+    return CompletableFuture.supplyAsync(
+            () -> {
+              try {
+                return operation.execute();
+              } catch (RedisCacheException e) {
+                throw new CompletionException(e);
+              }
+            })
+        .exceptionally(
+            throwable -> {
+              if (attempt >= maxRetries) {
+                LOG.error(
+                    "Redis operation failed after {} attempts: {}",
+                    maxRetries + 1,
+                    throwable.getMessage());
+                throw new CompletionException(
+                    "Redis operation failed after " + (maxRetries + 1) + " attempts", throwable);
+              }
+
+              long backoffMs = (long) Math.pow(2, attempt) * 100;
+              LOG.warn(
+                  "Redis operation failed, scheduling retry (attempt {}/{}): {}",
+                  attempt + 1,
+                  maxRetries + 1,
+                  throwable.getMessage());
+
+              CompletableFuture<T> retryFuture = new CompletableFuture<>();
+              retryExecutor.schedule(
+                  () ->
+                      executeWithRetryAsync(operation, attempt + 1)
+                          .whenComplete(
+                              (result, error) -> {
+                                if (error != null) {
+                                  retryFuture.completeExceptionally(error);
+                                } else {
+                                  retryFuture.complete(result);
+                                }
+                              }),
+                  backoffMs,
+                  TimeUnit.MILLISECONDS);
+
+              return retryFuture.join();
+            });
   }
 
   /**
@@ -536,7 +539,7 @@ public final class RelationshipCache {
   private interface RedisOperation<T> {
     T execute() throws RedisCacheException;
   }
-  
+
   /**
    * Shutdown the retry executor (call during application shutdown)
    */

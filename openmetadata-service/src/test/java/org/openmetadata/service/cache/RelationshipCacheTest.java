@@ -14,7 +14,6 @@
 package org.openmetadata.service.cache;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.runners.model.MultipleFailureException.assertEmpty;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import java.lang.reflect.Method;
