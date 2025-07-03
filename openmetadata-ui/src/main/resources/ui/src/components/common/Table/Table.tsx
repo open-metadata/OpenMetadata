@@ -93,9 +93,10 @@ const Table = <T extends Record<string, unknown>>(
 
   const entityKey = useMemo(() => entityType ?? type, [type, entityType]);
 
-  // Check if the table is in Full View mode, if so, the dropdown and Customize Column feature is not available
-  const isFullViewTable = useMemo(
-    () => isEmpty(rest.staticVisibleColumns) && isEmpty(defaultVisibleColumns),
+  // Check if the table is customizable, if so, the dropdown and Customize Column feature is available
+  const isCustomizeColumnEnable = useMemo(
+    () =>
+      !isEmpty(rest.staticVisibleColumns) && !isEmpty(defaultVisibleColumns),
     [rest.staticVisibleColumns, defaultVisibleColumns]
   );
 
@@ -149,23 +150,6 @@ const Table = <T extends Record<string, unknown>>(
     columnDropdownSelections,
     selectedEntityTableColumns,
     entityKey,
-  ]);
-
-  const tableColumnConfigSelections = useMemo(() => {
-    if (entityKey) {
-      if (selectedEntityTableColumns?.[entityKey]) {
-        return selectedEntityTableColumns[entityKey];
-      } else if (!isFullViewTable) {
-        return defaultVisibleColumns ?? [];
-      }
-    }
-
-    return [];
-  }, [
-    entityKey,
-    selectedEntityTableColumns,
-    defaultVisibleColumns,
-    isFullViewTable,
   ]);
 
   const menu = useMemo(
@@ -238,15 +222,15 @@ const Table = <T extends Record<string, unknown>>(
   };
 
   useEffect(() => {
-    if (!isFullViewTable) {
+    if (isCustomizeColumnEnable) {
       setDropdownColumnList(
         getCustomizeColumnDetails<T>(rest.columns, rest.staticVisibleColumns)
       );
     }
-  }, [isFullViewTable, rest.columns, rest.staticVisibleColumns]);
+  }, [isCustomizeColumnEnable, rest.columns, rest.staticVisibleColumns]);
 
   useEffect(() => {
-    if (isFullViewTable) {
+    if (!isCustomizeColumnEnable) {
       setPropsColumns(rest.columns ?? []);
     } else {
       const filteredColumns = (rest.columns ?? []).filter(
@@ -258,21 +242,31 @@ const Table = <T extends Record<string, unknown>>(
       setPropsColumns(getReorderedColumns(dropdownColumnList, filteredColumns));
     }
   }, [
-    isFullViewTable,
+    isCustomizeColumnEnable,
     rest.columns,
     columnDropdownSelections,
     rest.staticVisibleColumns,
   ]);
 
   useEffect(() => {
-    setColumnDropdownSelections(tableColumnConfigSelections);
-  }, [tableColumnConfigSelections]);
+    if (isCustomizeColumnEnable) {
+      setColumnDropdownSelections(
+        selectedEntityTableColumns?.[entityKey] ?? defaultVisibleColumns ?? []
+      );
+    }
+  }, [
+    isCustomizeColumnEnable,
+    selectedEntityTableColumns,
+    entityKey,
+    defaultVisibleColumns,
+  ]);
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>
       <Col
         className={classNames({
-          'p-y-md': searchProps ?? rest.extraTableFilters ?? !isFullViewTable,
+          'p-y-md':
+            searchProps ?? rest.extraTableFilters ?? isCustomizeColumnEnable,
         })}
         span={24}>
         <Row className="p-x-md">
@@ -288,7 +282,7 @@ const Table = <T extends Record<string, unknown>>(
               />
             </Col>
           ) : null}
-          {(rest.extraTableFilters || !isFullViewTable) && (
+          {(rest.extraTableFilters || isCustomizeColumnEnable) && (
             <Col
               className={classNames(
                 'd-flex justify-end items-center gap-5',
@@ -296,7 +290,7 @@ const Table = <T extends Record<string, unknown>>(
               )}
               span={searchProps ? 12 : 24}>
               {rest.extraTableFilters}
-              {!isFullViewTable && (
+              {isCustomizeColumnEnable && (
                 <DndProvider backend={HTML5Backend}>
                   <Dropdown
                     className="custom-column-dropdown-menu text-primary"

@@ -180,7 +180,56 @@ describe('Table component', () => {
       expect(mockSetPreference).not.toHaveBeenCalled();
     });
 
-    it('should identify as full view table when no static or default columns are provided', () => {
+    it('should use default columns when no existing preferences and customization is enabled', () => {
+      mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {};
+
+      renderComponent({
+        staticVisibleColumns: ['col1'],
+        defaultVisibleColumns: ['col2', 'col3'],
+        entityType: 'table',
+      });
+
+      // Component should not automatically set preferences
+      expect(mockSetPreference).not.toHaveBeenCalled();
+    });
+
+    it('should require both static and default columns for customization', () => {
+      renderComponent({
+        staticVisibleColumns: ['col1'],
+        defaultVisibleColumns: ['col2'],
+      });
+
+      expect(screen.getByTestId('column-dropdown')).toBeInTheDocument();
+    });
+
+    it('should not render column dropdown when only staticVisibleColumns is provided', () => {
+      renderComponent({
+        staticVisibleColumns: ['col1'],
+        defaultVisibleColumns: undefined,
+      });
+
+      expect(screen.queryByTestId('column-dropdown')).not.toBeInTheDocument();
+    });
+
+    it('should not render column dropdown when only defaultVisibleColumns is provided', () => {
+      renderComponent({
+        staticVisibleColumns: undefined,
+        defaultVisibleColumns: ['col2'],
+      });
+
+      expect(screen.queryByTestId('column-dropdown')).not.toBeInTheDocument();
+    });
+
+    it('should not render column dropdown when both static and default columns are empty', () => {
+      renderComponent({
+        staticVisibleColumns: undefined,
+        defaultVisibleColumns: undefined,
+      });
+
+      expect(screen.queryByTestId('column-dropdown')).not.toBeInTheDocument();
+    });
+
+    it('should not enable customization when no static or default columns are provided', () => {
       renderComponent();
 
       expect(screen.queryByTestId('column-dropdown')).not.toBeInTheDocument();
@@ -241,7 +290,7 @@ describe('Table component', () => {
 
       renderComponent({
         staticVisibleColumns: ['col1'],
-        defaultVisibleColumns: ['col2'],
+        defaultVisibleColumns: ['col2', 'col3'],
         entityType: 'table',
       });
 
@@ -398,6 +447,8 @@ describe('Table component', () => {
 
     it('should render search bar when searchProps are provided', () => {
       renderComponent({
+        staticVisibleColumns: ['col1'],
+        defaultVisibleColumns: ['col2'],
         searchProps: {
           placeholder: 'Search columns',
           value: 'test',
