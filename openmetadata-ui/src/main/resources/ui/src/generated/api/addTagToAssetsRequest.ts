@@ -22,10 +22,6 @@ export interface AddTagToAssetsRequest {
      * If true, the request will be validated but no changes will be made
      */
     dryRun?: boolean;
-    /**
-     * Operation to be performed
-     */
-    operation?: Operation;
 }
 
 /**
@@ -82,12 +78,4 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
-}
-
-/**
- * Operation to be performed
- */
-export enum Operation {
-    AddAssets = "AddAssets",
-    AddClassificationTags = "AddClassificationTags",
 }

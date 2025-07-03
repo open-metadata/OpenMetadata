@@ -15,9 +15,10 @@ import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Alert } from 'antd';
-import { t } from 'i18next';
+
 import { isEmpty, isUndefined } from 'lodash';
-import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AIRFLOW_HYBRID,
   COLLATE_SAAS,
@@ -29,6 +30,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
+import i18n from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
   getConnectionSchemas,
@@ -45,8 +47,8 @@ import { ConnectionConfigFormProps } from './ConnectionConfigForm.interface';
 
 const ConnectionConfigForm = ({
   data,
-  okText = t('label.save'),
-  cancelText = t('label.cancel'),
+  okText = i18n.t('label.save'),
+  cancelText = i18n.t('label.cancel'),
   serviceType,
   serviceCategory,
   status,
@@ -56,6 +58,7 @@ const ConnectionConfigForm = ({
   disableTestConnection = false,
 }: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
+  const { t } = useTranslation();
   const [ingestionRunner, setIngestionRunner] = useState<string | undefined>();
 
   const formRef = useRef<Form<ConfigData>>(null);
@@ -193,6 +196,7 @@ const ConnectionConfigForm = ({
             <TestConnection
               connectionType={serviceType}
               getData={() => formRef.current?.state?.formData}
+              hostIp={hostIp}
               isTestingDisabled={disableTestConnection}
               serviceCategory={serviceCategory}
               serviceName={data?.name}

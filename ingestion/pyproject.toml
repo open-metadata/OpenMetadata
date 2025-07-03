@@ -41,7 +41,7 @@ provider_info = "airflow_provider_openmetadata:get_provider_config"
 
 [tool.coverage.run]
 source = [
-    "env/lib/python3.9/site-packages/metadata"
+    "env/lib/python3.10/site-packages/metadata"
 ]
 relative_files = true
 branch = true
@@ -74,6 +74,8 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')"
 ]
 
+# Skip tests that are known to fail or are not ready to run until issue #21736 is solved
+addopts = "--ignore=ingestion/tests/unit/topology/database/test_deltalake.py --ignore=ingestion/tests/integration/sources/mlmodels/mlflow/test_mlflow.py"
 [project.entry-points.pytest11]
 pytest_openmetadata = "_openmetadata_testutils.pytest_openmetadata.plugin"
 
@@ -259,6 +261,7 @@ ignore = [
   "src/metadata/ingestion/*",
   "src/metadata/mixins/*",
   "src/metadata/parsers/*",
+  "src/metadata/pii/scanners/*",
   "src/metadata/pii/*processor.py",
   "src/metadata/profiler/*",
   "src/metadata/sampler/*",

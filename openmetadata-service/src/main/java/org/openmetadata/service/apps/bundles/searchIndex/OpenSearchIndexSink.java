@@ -12,17 +12,18 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.HttpHeaders;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.DocWriteRequest;
@@ -45,6 +46,8 @@ public class OpenSearchIndexSink implements BulkSink, Closeable {
   private final long initialBackoffMillis;
   private final long maxBackoffMillis;
   private final Semaphore semaphore;
+  private static final RequestOptions COMPRESSED_REQUEST_OPTIONS =
+      RequestOptions.DEFAULT.toBuilder().addHeader(HttpHeaders.CONTENT_ENCODING, "gzip").build();
 
   public OpenSearchIndexSink(
       SearchClient client,
@@ -145,7 +148,7 @@ public class OpenSearchIndexSink implements BulkSink, Closeable {
       ((RestHighLevelClient) client.getClient())
           .bulkAsync(
               bulkRequest,
-              RequestOptions.DEFAULT,
+              COMPRESSED_REQUEST_OPTIONS,
               new ActionListener<BulkResponse>() {
                 @Override
                 public void onResponse(BulkResponse response) {

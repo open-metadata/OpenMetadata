@@ -121,6 +121,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
@@ -154,7 +155,6 @@ import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
@@ -184,7 +184,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
   private boolean isSelfSignUpEnabled = false;
-  static final String FIELDS = "profile,roles,teams,follows,owns,domains,personas,defaultPersona";
+  static final String FIELDS =
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -302,6 +303,73 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (isBot != null) {
       filter.addQueryParam("isBot", String.valueOf(isBot));
     }
+    ResultList<User> users =
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    users.getData().forEach(user -> decryptOrNullify(securityContext, user));
+    return users;
+  }
+
+  @GET
+  @Path("/online")
+  @Operation(
+      operationId = "listOnlineUsers",
+      summary = "List online users",
+      description =
+          "Get a list of users who have been active within the specified time window. Admin access only.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of online users",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserList.class))),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Admin access required")
+      })
+  public ResultList<User> listOnlineUsers(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Time window in minutes (default: 5). Examples: 1 (last minute), 5 (last 5 minutes), 60 (last hour), 1440 (last day)",
+              schema = @Schema(type = "integer", example = "5"))
+          @QueryParam("timeWindow")
+          @DefaultValue("5")
+          int timeWindow,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Returns list of users before this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(
+              description = "Returns list of users after this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after) {
+    // Admin access check
+    authorizer.authorizeAdmin(securityContext);
+
+    // Calculate the timestamp threshold
+    long currentTimeMillis = System.currentTimeMillis();
+    long timeWindowMillis = timeWindow * 60 * 1000L; // Convert minutes to milliseconds
+    long thresholdTimestamp = currentTimeMillis - timeWindowMillis;
+
+    // Create filter for online users - uses both lastLoginTime and lastActivityTime
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("lastActivityTimeGreaterThan", String.valueOf(thresholdTimestamp));
+    filter.addQueryParam("isBot", "false"); // Exclude bots from online users
+
     ResultList<User> users =
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     users.getData().forEach(user -> decryptOrNullify(securityContext, user));
@@ -899,6 +967,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
         if (path.equals("/isAdmin") || path.equals("/isBot") || path.contains("/roles")) {
           authorizer.authorizeAdmin(securityContext);
           continue;
+        }
+        // Check if updating personaPreferences - users can only update their own
+        if (path.startsWith("/personaPreferences")) {
+          String authenticatedUserName = securityContext.getUserPrincipal().getName();
+          User authenticatedUser =
+              repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
+          if (!authenticatedUser.getId().equals(id)) {
+            throw new AuthorizationException("Users can only update their own persona preferences");
+          }
         }
         // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")

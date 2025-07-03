@@ -83,10 +83,11 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public void setInheritedFields(Tag tag, Fields fields) {
     Classification parent =
-        Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "", ALL);
+        Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "owners", ALL);
     if (parent.getDisabled() != null && parent.getDisabled()) {
       tag.setDisabled(true);
     }
+    inheritOwners(tag, fields, parent);
   }
 
   @Override

@@ -50,10 +50,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
+import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.LoadGlossary;
+import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -79,10 +82,13 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Path("/v1/glossaryTerms")
 @Tag(
@@ -252,7 +258,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
     // Filter by glossary parent term
     if (parentTermParam != null) {
-      GlossaryTerm parentTerm = repository.find(parentTermParam, Include.NON_DELETED);
+      GlossaryTerm parentTerm =
+          repository.get(null, parentTermParam, repository.getFields("parent"));
       fqn = parentTerm.getFullyQualifiedName();
 
       // Ensure parent glossary term belongs to the glossary
@@ -620,7 +627,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
-      @Valid AddGlossaryToAssetsRequest request) {
+      @Valid ValidateGlossaryTagsRequest request) {
     return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
   }
 
@@ -647,6 +654,71 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
     return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
+  }
+
+  @PUT
+  @Path("/{id}/moveAsync")
+  @Operation(
+      operationId = "moveGlossaryTerm",
+      summary = "Move a glossary term to a new parent or glossary",
+      description =
+          "Move a glossary term to a new parent term or glossary. Only parent or glossary can be changed.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The moved glossary term",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class)))
+      })
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response moveGlossaryTerm(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @RequestBody(
+              description = "MoveGlossaryTermRequest with new parent or glossary",
+              required = true,
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON,
+                      schema = @Schema(implementation = MoveGlossaryTermRequest.class)))
+          MoveGlossaryTermRequest moveRequest) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+
+    String jobId = UUID.randomUUID().toString();
+    GlossaryTerm glossaryTerm =
+        repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
+    String userName = securityContext.getUserPrincipal().getName();
+
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            GlossaryTerm movedGlossaryTerm = repository.moveGlossaryTerm(id, moveRequest, userName);
+            WebsocketNotificationHandler.sendMoveOperationCompleteNotification(
+                jobId, securityContext, movedGlossaryTerm);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendMoveOperationFailedNotification(
+                jobId, securityContext, glossaryTerm, e.getMessage());
+          }
+        });
+
+    return Response.accepted()
+        .entity(
+            new MoveGlossaryTermResponse(
+                jobId,
+                "Move operation initiated for " + glossaryTerm.getName(),
+                glossaryTerm.getName()))
+        .build();
   }
 
   @DELETE

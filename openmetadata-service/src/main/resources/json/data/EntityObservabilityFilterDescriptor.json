@@ -37,6 +37,15 @@
           "ownerNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -98,6 +107,15 @@
           "ownerNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -150,6 +168,15 @@
           "ownerNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -202,6 +229,15 @@
           "ownerNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -257,6 +293,15 @@
           "ownerNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -324,6 +369,15 @@
           "tableNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -392,6 +446,15 @@
           "domainList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [

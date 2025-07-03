@@ -1,5 +1,6 @@
 ---
-title: MySQL
+title: MySQL Connector | OpenMetadata Database Integration Guide
+description: Set up MySQL database connector for OpenMetadata to automatically discover, catalog, and manage your MySQL metadata. Step-by-step configuration guide.
 slug: /connectors/database/mysql
 ---
 

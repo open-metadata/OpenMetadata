@@ -1,5 +1,5 @@
 ---
-title: Glossary
+title: Glossary | OpenMetadata Data Glossary Guide
 slug: /how-to-guides/data-governance/glossary
 ---
 

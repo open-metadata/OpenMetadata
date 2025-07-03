@@ -29,7 +29,7 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 abstract class TestEntityMasker {
 

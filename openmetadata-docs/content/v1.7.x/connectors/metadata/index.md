@@ -1,5 +1,5 @@
 ---
-title: Metadata Services
+title: Metadata Services | OpenMetadata Integration Overview
 slug: /connectors/metadata
 ---
 

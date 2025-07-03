@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -268,6 +269,44 @@ public class WebsocketNotificationHandler {
     if (userId != null) {
       WebSocketManager.getInstance()
           .sendToOne(userId, WebSocketManager.DELETE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendMoveOperationCompleteNotification(
+      String jobId, SecurityContext securityContext, EntityInterface entity) {
+    MoveGlossaryTermMessage message =
+        new MoveGlossaryTermMessage(
+            jobId, "COMPLETED", entity.getName(), entity.getFullyQualifiedName(), null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.info(
+        "[AsyncMove] Move operation completed successfully - jobId: {}, userId:{}, entity: {}, ",
+        jobId,
+        userId,
+        entity.getName());
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.MOVE_GLOSSARY_TERM_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendMoveOperationFailedNotification(
+      String jobId, SecurityContext securityContext, EntityInterface entity, String error) {
+    MoveGlossaryTermMessage message =
+        new MoveGlossaryTermMessage(
+            jobId, "FAILED", entity.getName(), entity.getFullyQualifiedName(), error);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.error(
+        "[AsyncMove] Move operation failed - jobId: {}, userId:{} ,entity: {}, error: {}",
+        jobId,
+        userId,
+        entity.getName(),
+        error);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.MOVE_GLOSSARY_TERM_CHANNEL, jsonMessage);
     }
   }
 }

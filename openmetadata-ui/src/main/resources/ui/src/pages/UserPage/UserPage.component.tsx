@@ -16,15 +16,9 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy } from 'lodash';
 import Qs from 'qs';
-import {
-  default as React,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import Users from '../../components/Settings/Users/Users.component';
@@ -39,7 +33,7 @@ import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
@@ -56,6 +50,8 @@ const UserPage = () => {
           TabSpecificField.ROLES,
           TabSpecificField.TEAMS,
           TabSpecificField.PERSONAS,
+          TabSpecificField.LAST_ACTIVITY_TIME,
+          TabSpecificField.LAST_LOGIN_TIME,
           TabSpecificField.DEFAULT_PERSONA,
           TabSpecificField.DOMAINS,
         ],
@@ -93,7 +89,7 @@ const UserPage = () => {
   );
 
   const handleEntityPaginate = (page: string | number) => {
-    history.push({
+    navigate({
       search: Qs.stringify({ page }),
     });
   };
@@ -172,8 +168,8 @@ const UserPage = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push(ROUTES.HOME),
-    [handleToggleDelete]
+      isSoftDelete ? handleToggleDelete() : navigate(ROUTES.HOME),
+    [handleToggleDelete, navigate]
   );
 
   useEffect(() => {

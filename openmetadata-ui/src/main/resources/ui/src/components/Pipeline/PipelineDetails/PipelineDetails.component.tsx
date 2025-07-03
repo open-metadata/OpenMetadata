@@ -14,9 +14,9 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -40,8 +40,13 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
+import {
+  createTagObject,
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -65,9 +70,10 @@ const PipelineDetails = ({
   onUpdateVote,
   onExtensionUpdate,
   handleToggleDelete,
+  onPipelineUpdate,
 }: PipeLineDetailsProp) => {
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const userID = currentUser?.id ?? '';
@@ -232,13 +238,16 @@ const PipelineDetails = ({
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
-      history.replace({
-        pathname: getEntityDetailsPath(
-          EntityType.PIPELINE,
-          pipelineFQN,
-          tabValue
-        ),
-      });
+      navigate(
+        {
+          pathname: getEntityDetailsPath(
+            EntityType.PIPELINE,
+            pipelineFQN,
+            tabValue
+          ),
+        },
+        { replace: true }
+      );
     }
   };
 
@@ -253,7 +262,7 @@ const PipelineDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
@@ -309,6 +318,21 @@ const PipelineDetails = ({
     setIsTabExpanded(!isTabExpanded);
   };
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (pipelineDetails && updatePipelineDetailsState) {
+        const certificationTag: Pipeline['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedPipelineDetails = {
+          ...pipelineDetails,
+          certification: certificationTag,
+        };
+
+        await onPipelineUpdate(updatedPipelineDetails, 'certification');
+      }
+    },
+    [pipelineDetails, onPipelineUpdate]
+  );
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], tab, PageType.Pipeline),
     [tabs[0], tab]
@@ -334,6 +358,7 @@ const PipelineDetails = ({
             entityType={EntityType.PIPELINE}
             openTaskCount={feedCount.openTaskCount}
             permissions={pipelinePermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followPipeline}
             onOwnerUpdate={onOwnerUpdate}

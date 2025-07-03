@@ -7,8 +7,8 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {

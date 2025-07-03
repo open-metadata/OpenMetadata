@@ -13,7 +13,7 @@ from metadata.pii.algorithms.presidio_utils import (
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIITag
-from metadata.pii.constants import SUPPORTED_LANG
+from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
 
 
 def test_analyzer_supports_all_expected_pii_entities():

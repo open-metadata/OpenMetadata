@@ -1,5 +1,6 @@
 ---
-title: Unity Catalog
+title: Unity Catalog Connector | OpenMetadata Data Governance
+description: Connect Unity Catalog to OpenMetadata seamlessly. Complete setup guide, configuration steps, and metadata extraction for Databricks Unity Catalog integration.
 slug: /connectors/database/unity-catalog
 ---
 

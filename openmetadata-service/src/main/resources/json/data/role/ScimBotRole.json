@@ -1,0 +1,13 @@
+{
+  "name": "ScimBotRole",
+  "displayName": "SCIM bot role",
+  "description": "Role corresponding to the SCIM bot, with SCIM-only access.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies": [
+    {
+      "type": "policy",
+      "name": "ScimBotPolicy"
+    }
+  ]
+}

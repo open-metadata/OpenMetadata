@@ -21,12 +21,12 @@ import {
   TreeSelect,
   TreeSelectProps,
 } from 'antd';
-import { Key } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, {
+import {
   FC,
+  Key,
   ReactElement,
   useEffect,
   useMemo,
@@ -37,6 +37,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
 import { PAGE_SIZE_LARGE, TEXT_BODY_COLOR } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { LabelType } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -67,7 +68,13 @@ import {
   SelectOption,
 } from './AsyncSelectList.interface';
 
-const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
+interface TreeAsyncSelectListProps
+  extends Omit<AsyncSelectListProps, 'fetchOptions'> {
+  isMultiSelect?: boolean;
+  isParentSelectable?: boolean;
+}
+
+const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   onChange,
   initialOptions,
   tagType,
@@ -76,6 +83,9 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   onCancel,
   open: openProp = true,
   hasNoActionButtons,
+  isMultiSelect = true, // default to true for backward compatibility
+  isParentSelectable = false, // by default, only leaf nodes can be selected
+
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -95,6 +105,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
   const fetchGlossaryListInternal = async () => {
     setIsLoading(true);
+
     try {
       const { data } = await getGlossariesList({
         limit: PAGE_SIZE_LARGE,
@@ -150,7 +161,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     const { value, onClose } = data;
     const tagLabel = getTagDisplay(value as string);
     const tag = {
-      tagFQN: selectedTag?.data.fullyQualifiedName,
+      tagFQN: (selectedTag?.data as Tag)?.fullyQualifiedName,
       ...pick(
         selectedTag?.data,
         'description',
@@ -199,43 +210,89 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   };
 
   const handleChange: TreeSelectProps['onChange'] = (
-    values: {
-      disabled: boolean;
-      halfChecked: boolean;
-      label: React.ReactNode;
-      value: string;
-    }[]
+    values:
+      | string
+      | string[]
+      | {
+          disabled: boolean;
+          halfChecked: boolean;
+          label: React.ReactNode;
+          value: string;
+        }[]
   ) => {
-    const lastSelectedMap = new Map(
-      selectedTagsRef.current.map((tag) => [tag.value, tag])
-    );
-    const selectedValues = values.map(({ value }) => {
-      if (lastSelectedMap.has(value)) {
-        return lastSelectedMap.get(value) as SelectOption;
-      }
-      const initialData = findItemByFqn(
-        [
-          ...glossaries,
-          ...(isNull(searchOptions) ? [] : searchOptions),
-          ...(initialOptions ?? []),
-        ] as ModifiedGlossaryTerm[],
-        value,
-        false
-      );
+    if (isMultiSelect) {
+      // Handle multi-select mode (existing behavior)
+      const selectedValues = (
+        values as {
+          disabled: boolean;
+          halfChecked: boolean;
+          label: React.ReactNode;
+          value: string;
+        }[]
+      ).map(({ value }) => {
+        const lastSelectedMap = new Map(
+          selectedTagsRef.current.map((tag) => [tag.value, tag])
+        );
+        if (lastSelectedMap.has(value)) {
+          return lastSelectedMap.get(value) as SelectOption;
+        }
+        const initialData = findItemByFqn(
+          [
+            ...glossaries,
+            ...(isNull(searchOptions) ? [] : searchOptions),
+            ...(initialOptions ?? []),
+          ] as ModifiedGlossaryTerm[],
+          value,
+          false
+        );
 
-      return initialData
-        ? {
-            value: initialData.fullyQualifiedName ?? '',
-            label: getEntityName(initialData),
-            data: initialData,
-          }
-        : {
-            value,
-            label: value,
-          };
-    });
-    selectedTagsRef.current = selectedValues as SelectOption[];
-    onChange?.(selectedValues);
+        return initialData
+          ? {
+              value: initialData.fullyQualifiedName ?? '',
+              label: getEntityName(initialData),
+              data: initialData,
+            }
+          : {
+              value,
+              label: value,
+            };
+      });
+      selectedTagsRef.current = selectedValues as SelectOption[];
+      onChange?.(selectedValues);
+    } else {
+      // Handle single-select mode
+      if (values) {
+        const value = values as string;
+
+        const initialData = findItemByFqn(
+          [
+            ...glossaries,
+            ...(isNull(searchOptions) ? [] : searchOptions),
+            ...(initialOptions ?? []),
+          ] as ModifiedGlossaryTerm[],
+          value,
+          false
+        );
+
+        const selectedValue = initialData
+          ? {
+              value: initialData.fullyQualifiedName ?? '',
+              label: getEntityName(initialData),
+              data: initialData,
+            }
+          : {
+              value,
+              label: value,
+            };
+
+        selectedTagsRef.current = [selectedValue as SelectOption];
+        onChange?.(selectedValue as any);
+      } else {
+        // Nothing selected
+        selectedTagsRef.current = [];
+        onChange?.([]);
+      }
+    }
   };
 
   const fetchGlossaryTerm = async (params?: ListGlossaryTermsParams) => {
@@ -287,21 +344,22 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     }
   }, [glossaries]);
 
-  const treeData = useMemo(
-    () =>
-      convertGlossaryTermsToTreeOptions(
-        isNull(searchOptions)
-          ? (glossaries as ModifiedGlossaryTerm[])
-          : (searchOptions as unknown as ModifiedGlossaryTerm[])
-      ),
-    [glossaries, searchOptions, expandableKeys.current]
-  );
+  const treeData = useMemo(() => {
+    return convertGlossaryTermsToTreeOptions(
+      isNull(searchOptions)
+        ? (glossaries as ModifiedGlossaryTerm[])
+        : (searchOptions as unknown as ModifiedGlossaryTerm[]),
+      0,
+      isParentSelectable
+    );
+  }, [glossaries, searchOptions, expandableKeys.current, isParentSelectable]);
 
   return (
     <TreeSelect
       showSearch
-      treeCheckStrictly
-      treeCheckable
+      {...(isMultiSelect
+        ? { treeCheckable: true, treeCheckStrictly: true }
+        : {})}
       autoFocus={open}
       className="async-select-list"
       data-testid="tag-selector"
@@ -343,6 +401,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       }
       tagRender={customTagRender}
       treeData={treeData}
+      treeDefaultExpandAll={false}
       treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}
       onChange={handleChange}
       onDropdownVisibleChange={handleDropdownVisibleChange}

@@ -46,6 +46,10 @@ export interface User {
      */
     email: string;
     /**
+     * External identifier from identity provider (used for SCIM).
+     */
+    externalId?: string;
+    /**
      * List of entities followed by the user.
      */
     follows?: EntityReference[];
@@ -83,6 +87,10 @@ export interface User {
      */
     isEmailVerified?: boolean;
     /**
+     * Last time the user was active in the system.
+     */
+    lastActivityTime?: number;
+    /**
      * Last time the user logged in.
      */
     lastLoginTime?: number;
@@ -96,6 +104,11 @@ export interface User {
      */
     owns?: EntityReference[];
     /**
+     * User's personal preferences for each persona. Users can customize certain UI elements per
+     * persona while inheriting base persona configuration.
+     */
+    personaPreferences?: PersonaPreferences[];
+    /**
      * Personas that the user assigned to.
      */
     personas?: EntityReference[];
@@ -107,6 +120,10 @@ export interface User {
      * Roles that the user has been assigned.
      */
     roles?: EntityReference[];
+    /**
+     * Raw user name from SCIM.
+     */
+    scimUserName?: string;
     /**
      * Teams that the user belongs to.
      */
@@ -519,6 +536,40 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * User-specific preferences for a persona that override default persona UI customization.
+ * These are limited customizations that users can apply to personalize their experience
+ * while still inheriting the base persona configuration.
+ */
+export interface PersonaPreferences {
+    /**
+     * User's personal customizations for the landing page.
+     */
+    landingPageSettings?: LandingPageSettings;
+    /**
+     * UUID of the persona these preferences belong to.
+     */
+    personaId: string;
+    /**
+     * Name of the persona for quick reference and linking.
+     */
+    personaName: string;
+}
+
+/**
+ * User's personal customizations for the landing page.
+ */
+export interface LandingPageSettings {
+    /**
+     * Custom header background color for the landing page.
+     */
+    headerColor?: string;
+    /**
+     * Reference to a custom header background image (reserved for future use).
+     */
+    headerImage?: string;
 }
 
 /**

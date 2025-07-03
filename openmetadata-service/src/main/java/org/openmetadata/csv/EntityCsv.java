@@ -75,6 +75,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -90,6 +91,7 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.TableConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -100,7 +102,6 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
@@ -376,6 +377,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
     return tagLabels;
+  }
+
+  protected AssetCertification getCertificationLabels(String certificationTag) {
+    if (nullOrEmpty(certificationTag)) {
+      return null;
+    }
+    TagLabel certificationLabel =
+        new TagLabel().withTagFQN(certificationTag).withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    return new AssetCertification()
+        .withTagLabel(certificationLabel)
+        .withAppliedDate(System.currentTimeMillis())
+        .withExpiryDate(System.currentTimeMillis());
   }
 
   public Map<String, Object> getExtension(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
@@ -849,9 +863,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
         // In case of updating entity , prepareInternal as update=True
-        repository.prepareInternal(
-            entity,
-            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
         AsyncService.getInstance()
@@ -864,10 +877,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
-      responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
@@ -902,9 +913,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
         // In case of updating entity , prepareInternal as update=True
-        repository.prepareInternal(
-            entity,
-            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
         PutResponse<EntityInterface> response =
             repository.createOrUpdateForImport(null, entity, importedBy);
         responseStatus = response.getStatus();
@@ -918,10 +928,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else {
       repository.setFullyQualifiedName(entity);
-      responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
     }
 
@@ -1003,9 +1011,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
         // In case of updating entity , prepareInternal as update=True
-        repository.prepareInternal(
-            entity,
-            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
       } catch (Exception ex) {
@@ -1015,10 +1022,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
-      responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
@@ -1077,6 +1082,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 Pair.of(4, TagSource.CLASSIFICATION),
                 Pair.of(5, TagSource.GLOSSARY),
                 Pair.of(6, TagSource.CLASSIFICATION)));
+    AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+
     schema
         .withId(UUID.randomUUID())
         .withName(csvRecord.get(0))
@@ -1085,10 +1092,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withDescription(csvRecord.get(2))
         .withOwners(getOwners(printer, csvRecord, 3))
         .withTags(tagLabels)
-        .withRetentionPeriod(csvRecord.get(7))
-        .withSourceUrl(csvRecord.get(8))
-        .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-        .withExtension(getExtension(printer, csvRecord, 10))
+        .withCertification(certification)
+        .withRetentionPeriod(csvRecord.get(8))
+        .withSourceUrl(csvRecord.get(9))
+        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
     if (processRecord) {
@@ -1155,6 +1163,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 Pair.of(4, TagSource.CLASSIFICATION),
                 Pair.of(5, TagSource.GLOSSARY),
                 Pair.of(6, TagSource.CLASSIFICATION)));
+    AssetCertification certification = getCertificationLabels(csvRecord.get(7));
 
     // Populate table attributes
     table
@@ -1162,10 +1171,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withDescription(csvRecord.get(2))
         .withOwners(getOwners(printer, csvRecord, 3))
         .withTags(tagLabels)
-        .withRetentionPeriod(csvRecord.get(7))
-        .withSourceUrl(csvRecord.get(8))
-        .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-        .withExtension(getExtension(printer, csvRecord, 10))
+        .withCertification(certification)
+        .withRetentionPeriod(csvRecord.get(8))
+        .withSourceUrl(csvRecord.get(9))
+        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
     if (processRecord) {
@@ -1228,8 +1238,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 Pair.of(4, TagSource.CLASSIFICATION),
                 Pair.of(5, TagSource.GLOSSARY),
                 Pair.of(6, TagSource.CLASSIFICATION)));
-
-    String languageStr = csvRecord.get(18);
+    AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+    String languageStr = csvRecord.get(19);
     StoredProcedureLanguage language = null;
 
     if (languageStr != null && !languageStr.isEmpty()) {
@@ -1241,16 +1251,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     StoredProcedureCode storedProcedureCode =
-        new StoredProcedureCode().withCode(csvRecord.get(17)).withLanguage(language);
+        new StoredProcedureCode().withCode(csvRecord.get(18)).withLanguage(language);
 
     sp.withDisplayName(csvRecord.get(1))
         .withDescription(csvRecord.get(2))
         .withOwners(getOwners(printer, csvRecord, 3))
         .withTags(tagLabels)
-        .withSourceUrl(csvRecord.get(8))
-        .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+        .withCertification(certification)
+        .withSourceUrl(csvRecord.get(9))
+        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
         .withStoredProcedureCode(storedProcedureCode)
-        .withExtension(getExtension(printer, csvRecord, 10));
+        .withExtension(getExtension(printer, csvRecord, 11));
 
     if (processRecord) {
       // Only create the stored procedure if the schema actually exists
@@ -1318,7 +1329,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   private void updateColumnsFromCsvRecursive(Table table, CSVRecord csvRecord, CSVPrinter printer)
       throws IOException {
     String columnFqn = csvRecord.get(0);
-    String columnFullyQualifiedName = csvRecord.get(12);
+    String columnFullyQualifiedName = csvRecord.get(13);
     Column column = null;
     boolean columnExists = false;
     try {
@@ -1338,8 +1349,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     column.withDisplayName(csvRecord.get(1));
     column.withDescription(csvRecord.get(2));
-    column.withDataTypeDisplay(csvRecord.get(13));
-    String dataTypeStr = csvRecord.get(14);
+    column.withDataTypeDisplay(csvRecord.get(14));
+    String dataTypeStr = csvRecord.get(15);
     if (nullOrEmpty(dataTypeStr)) {
       throw new IllegalArgumentException(
           "Column dataType is mandatory for column: " + csvRecord.get(0));
@@ -1353,11 +1364,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     if (column.getDataType() == ColumnDataType.ARRAY) {
-      if (nullOrEmpty(csvRecord.get(15))) {
+      if (nullOrEmpty(csvRecord.get(16))) {
         throw new IllegalArgumentException(
             "Array data type is mandatory for ARRAY columns: " + csvRecord.get(0));
       }
-      column.withArrayDataType(ColumnDataType.fromValue(csvRecord.get(15)));
+      column.withArrayDataType(ColumnDataType.fromValue(csvRecord.get(16)));
     }
 
     if (column.getDataType() == ColumnDataType.STRUCT && column.getChildren() == null) {
@@ -1365,7 +1376,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     column.withDataLength(
-        parseDataLength(csvRecord.get(16), column.getDataType(), column.getName()));
+        parseDataLength(csvRecord.get(17), column.getDataType(), column.getName()));
 
     List<TagLabel> tagLabels =
         getTagLabels(

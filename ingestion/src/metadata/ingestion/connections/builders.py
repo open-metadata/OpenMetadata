@@ -128,11 +128,10 @@ def init_empty_connection_options() -> ConnectionOptions:
     return ConnectionOptions(root={})
 
 
-def _add_password(url: str, connection) -> str:
+def get_password_secret(connection) -> SecretStr:
     """
-    A helper function that adds the password to the url if it exists.
-    Distinguishing between BasicAuth (Password) and IamAuth (AWSConfig)
-    and adding to url.
+    Helper to extract the password secret from the connection object.
+    Handles BasicAuth, IamAuth, and falls back to empty SecretStr if not found.
     """
     password = getattr(connection, BUILDER_PASSWORD_ATTR, None)
 
@@ -161,6 +160,14 @@ def _add_password(url: str, connection) -> str:
     if not password:
         logger.warning("No password has been provided in connection")
         password = SecretStr("")
+    return password
+
+
+def _add_password(url: str, connection) -> str:
+    """
+    A helper function that adds the password to the url if it exists.
+    """
+    password = get_password_secret(connection)
     url += f":{quote_plus(password.get_secret_value())}"
     return url
 

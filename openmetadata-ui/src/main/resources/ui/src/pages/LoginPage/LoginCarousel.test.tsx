@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import loginClassBase from '../../constants/LoginClassBase';
 import LoginCarousel from './LoginCarousel';
@@ -23,7 +22,9 @@ describe('Test LoginCarousel component', () => {
   it('renders the carousel container', () => {
     render(<LoginCarousel />);
 
-    expect(screen.getByTestId('carousel-container')).toBeInTheDocument();
+    expect(screen.queryAllByTestId('slider-container')).toHaveLength(
+      LOGIN_SLIDE.length
+    );
   });
 
   it('renders a carousel with the correct number of slides', async () => {

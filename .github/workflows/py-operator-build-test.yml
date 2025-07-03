@@ -84,3 +84,9 @@ jobs:
         run: |
           source env/bin/activate
           python scripts/validate_sample_data.py
+
+      - name: Clean Up
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume

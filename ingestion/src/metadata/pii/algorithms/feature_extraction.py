@@ -22,7 +22,7 @@ from presidio_analyzer import AnalyzerEngine
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.pii.algorithms.presidio_patches import PresidioRecognizerResultPatcher
 from metadata.pii.algorithms.tags import PIITag
-from metadata.pii.constants import SUPPORTED_LANG
+from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
 from metadata.utils.logger import pii_logger
 
 logger = pii_logger()

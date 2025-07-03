@@ -530,9 +530,11 @@ site_menu:
   - category: Connectors / Pipeline / Spline / Troubleshooting
     url: /connectors/pipeline/spline/troubleshooting
   - category: Connectors / Pipeline / SSIS
-    url: /connectors/pipeline/SSIS
+    url: /connectors/pipeline/ssis
   - category: Connectors / Pipeline / SSIS / Run Externally
-    url: /connectors/pipeline/SSIS/yaml
+    url: /connectors/pipeline/ssis/yaml
+  - category: Connectors / Pipeline / SSIS / Troubleshooting
+    url: /connectors/pipeline/ssis/troubleshooting
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
   - category: Connectors / Pipeline / Stitch / Run Externally
@@ -673,6 +675,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt
   - category: Connectors / Ingestion / Workflows / dbt / Configure dbt workflow from OpenMetadata UI
     url: /connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui
+  - category: Connectors / Ingestion / Workflows / dbt / Auto Ingest DBT Core Artifacts
+    url: /connectors/ingestion/workflows/dbt/auto-ingest-dbt-core    
   - category: Connectors / Ingestion / Workflows / dbt / Run Externally
     url: /connectors/ingestion/workflows/dbt/run-dbt-workflow-externally
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
@@ -781,8 +785,8 @@ site_menu:
     url: /how-to-guides/admin-guide/Reindexing-Search
   - category: How-to Guides / Admin Guide / Data Insights
     url: /how-to-guides/admin-guide/data-insights
-  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
-    url: /how-to-guides/admin-guide/persona-landing-page-customization 
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization
+    url: /how-to-guides/admin-guide/persona-landing-page-customization
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
     url: /how-to-guides/admin-guide/persona-landing-page-customization/customizable-landing-page
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Define Personas
@@ -811,7 +815,7 @@ site_menu:
   - category: How-to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
     url: /how-to-guides/guide-for-data-users/custom
   - category: How-to Guides / Guide for Data Users / How to Customize OpenMetadata
-    url: /how-to-guides/guide-for-data-users/theme  
+    url: /how-to-guides/guide-for-data-users/theme
   - category: How-to Guides / Guide for Data Users / Overview of Announcements
     url: /how-to-guides/guide-for-data-users/announcements
   - category: How-to Guides / Guide for Data Users / How to Create an Announcement
@@ -959,7 +963,7 @@ site_menu:
     url: /how-to-guides/data-governance
   - category: How-to Guides / Data Governance / Automation
     url: /how-to-guides/data-governance/automation
-  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate 
+  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate
     url: /how-to-guides/data-governance/automation/set-up-automation
   - category: How-to Guides / Data Governance / Glossary
     url: /how-to-guides/data-governance/glossary

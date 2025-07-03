@@ -9,6 +9,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
+  <name>OpenMetadata Service</name>
 
   <properties>
     <dropwizard.swagger.version>4.0.5-1</dropwizard.swagger.version>
@@ -792,6 +793,11 @@
       <version>5.9</version>
     </dependency>
     <dependency>
+      <groupId>commons-beanutils</groupId>
+      <artifactId>commons-beanutils</artifactId>
+      <version>1.11.0</version>
+    </dependency>
+    <dependency>
       <groupId>com.onelogin</groupId>
       <artifactId>java-saml</artifactId>
       <version>${java.saml}</version>
@@ -942,6 +948,11 @@
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.http.servlet-api</artifactId>
       <version>2.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.opensearch.client</groupId>
+      <artifactId>opensearch-rest-high-level-client</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 

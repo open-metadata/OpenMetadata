@@ -17,9 +17,9 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
@@ -79,7 +79,7 @@ const TableProfilerChart = ({
   } = useTableProfiler();
 
   const { fqn: datasetFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const customMetrics = useMemo(
     () => tableDetails?.customMetrics ?? tableCustomMetric?.customMetrics ?? [],
@@ -107,7 +107,7 @@ const TableProfilerChart = ({
       label: <TabsLabel id="test-case" name={t('label.test-case')} />,
       key: 'test-case',
       onClick: () => {
-        history.push(
+        navigate(
           getAddDataQualityTableTestPath(
             ProfilerDashboardType.TABLE,
             datasetFQN
@@ -119,7 +119,7 @@ const TableProfilerChart = ({
       label: <TabsLabel id="custom-metric" name={t('label.custom-metric')} />,
       key: 'custom-metric',
       onClick: () => {
-        history.push(
+        navigate(
           getAddCustomMetricPath(ProfilerDashboardType.TABLE, datasetFQN)
         );
       },

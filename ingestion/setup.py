@@ -1,4 +1,4 @@
-#  Copyright 2025 Collate
+# https://github.com/open-metadata/OpenMetadata/actions/runs/15640676139/job/44066998708?pr=21719  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -146,6 +146,7 @@ base_requirements = {
     VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
+    "python-dotenv>=0.19.0",  # For environment variable support in dbt ingestion
     "PyYAML~=6.0",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
@@ -156,7 +157,8 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools~=70.0",
     "shapely",
-    "collate-data-diff",
+    "collate-data-diff>=0.11.6",
+    "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     # TODO: Remove one once we have updated datadiff version
     "snowflake-connector-python>=3.13.1,<4.0.0",
     "mysql-connector-python>=8.0.29;python_version<'3.9'",
@@ -236,11 +238,12 @@ plugins: Dict[str, Set[str]] = {
         *COMMONS["datalake"],
     },
     "deltalake": {
-        "delta-spark<=2.3.0",
-        "deltalake~=0.17,<0.20",
+        "delta-spark>=3.0.0,<4.0.0",
+        "deltalake>=0.19.0,<0.20",
+        "pyspark==3.5.6",
     },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
-    "deltalake-storage": {"deltalake~=0.17"},
-    "deltalake-spark": {"delta-spark<=2.3.0"},
+    "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
+    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {"pydoris==1.0.2"},
     "druid": {"pydruid>=0.6.5"},
@@ -377,7 +380,7 @@ dev = {
 
 # Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
-    "pytest==7.0.0",
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",
@@ -396,7 +399,7 @@ test = {
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "basedpyright~=1.14",
-    "pytest==7.0.0",
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",

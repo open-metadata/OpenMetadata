@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Collapse, Row, Skeleton, Typography } from 'antd';
+import { Collapse, List, Row, Skeleton, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import './summary-list.less';
@@ -39,45 +38,48 @@ export default function SummaryList({
   }
 
   return (
-    <Row align="middle" data-testid="summary-list">
-      {isEmpty(formattedEntityData) ? (
-        <div>
-          <Text className="no-data-chip-placeholder">
-            {emptyPlaceholderText ?? t('message.no-data-available')}
-          </Text>
-        </div>
-      ) : (
-        formattedEntityData.map((entity) =>
-          isEmpty(entity.children) || isUndefined(entity.children) ? (
-            <SummaryListItems
-              entityDetails={entity}
-              isColumnsData={entityType === SummaryEntityType.COLUMN}
-              key={`${entity.name}-summary-list-item`}
-            />
-          ) : (
-            <Collapse
-              ghost
-              className="summary-list-collapse w-full"
-              collapsible="icon"
-              key={`${entity.name}-collapse`}>
-              <Collapse.Panel
-                data-testid={`${entity.name}-collapse`}
-                header={
-                  <SummaryListItems
-                    entityDetails={entity}
-                    isColumnsData={entityType === SummaryEntityType.COLUMN}
-                  />
-                }
-                key={`${entity.name}-collapse-panel`}>
-                <SummaryList
-                  entityType={entityType}
-                  formattedEntityData={entity.children}
+    <List
+      data-testid="summary-list"
+      dataSource={formattedEntityData}
+      locale={{
+        emptyText: (
+          <div>
+            <Text className="no-data-chip-placeholder">
+              {emptyPlaceholderText ?? t('message.no-data-available')}
+            </Text>
+          </div>
+        ),
+      }}
+      renderItem={(item) =>
+        isEmpty(item.children) || isUndefined(item.children) ? (
+          <SummaryListItems
+            entityDetails={item}
+            isColumnsData={entityType === SummaryEntityType.COLUMN}
+            key={`${item.name}-summary-list-item`}
+          />
+        ) : (
+          <Collapse
+            ghost
+            className="summary-list-collapse w-full"
+            collapsible="icon"
+            key={`${item.name}-collapse`}>
+            <Collapse.Panel
+              data-testid={`${item.name}-collapse`}
+              header={
+                <SummaryListItems
+                  entityDetails={item}
+                  isColumnsData={entityType === SummaryEntityType.COLUMN}
                 />
-              </Collapse.Panel>
-            </Collapse>
-          )
+              }
+              key={`${item.name}-collapse-panel`}>
+              <SummaryList
+                entityType={entityType}
+                formattedEntityData={item.children}
+              />
+            </Collapse.Panel>
+          </Collapse>
         )
-      )}
-    </Row>
+      }
+    />
   );
 }
