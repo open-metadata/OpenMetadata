@@ -2883,6 +2883,16 @@ public interface CollectionDAO {
                 hash = true)
             String fqnhash,
         @Bind("termName") String termName);
+
+    @SqlQuery(
+        "SELECT json FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName)")
+    String getGlossaryTermByNameAndGlossaryIgnoreCase(
+        @BindConcat(
+                value = "glossaryHash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash,
+        @Bind("termName") String termName);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -4294,6 +4304,8 @@ public interface CollectionDAO {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
+      String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
+      String lastActivityTimeGreaterThan = filter.getQueryParam("lastActivityTimeGreaterThan");
       String mySqlCondition = filter.getCondition("ue");
       String postgresCondition = filter.getCondition("ue");
       if (isAdminStr != null) {
@@ -4332,7 +4344,29 @@ public interface CollectionDAO {
                   postgresCondition);
         }
       }
-      if (team == null && isAdminStr == null && isBotStr == null) {
+      if (lastLoginTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", mySqlCondition, lastLoginTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", postgresCondition, lastLoginTimeGreaterThan);
+      }
+      if (lastActivityTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                mySqlCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+      }
+      if (team == null
+          && isAdminStr == null
+          && isBotStr == null
+          && lastLoginTimeGreaterThan == null
+          && lastActivityTimeGreaterThan == null) {
         return EntityDAO.super.listCount(filter);
       }
       return listCount(
@@ -4345,6 +4379,8 @@ public interface CollectionDAO {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
+      String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
+      String lastActivityTimeGreaterThan = filter.getQueryParam("lastActivityTimeGreaterThan");
       String mySqlCondition = filter.getCondition("ue");
       String postgresCondition = filter.getCondition("ue");
       if (isAdminStr != null) {
@@ -4383,7 +4419,29 @@ public interface CollectionDAO {
                   postgresCondition);
         }
       }
-      if (team == null && isAdminStr == null && isBotStr == null) {
+      if (lastLoginTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", mySqlCondition, lastLoginTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", postgresCondition, lastLoginTimeGreaterThan);
+      }
+      if (lastActivityTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                mySqlCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+      }
+      if (team == null
+          && isAdminStr == null
+          && isBotStr == null
+          && lastLoginTimeGreaterThan == null
+          && lastActivityTimeGreaterThan == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
       return listBefore(
@@ -4402,6 +4460,8 @@ public interface CollectionDAO {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
+      String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
+      String lastActivityTimeGreaterThan = filter.getQueryParam("lastActivityTimeGreaterThan");
       String mySqlCondition = filter.getCondition("ue");
       String postgresCondition = filter.getCondition("ue");
       if (isAdminStr != null) {
@@ -4440,7 +4500,29 @@ public interface CollectionDAO {
                   postgresCondition);
         }
       }
-      if (team == null && isAdminStr == null && isBotStr == null) {
+      if (lastLoginTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", mySqlCondition, lastLoginTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", postgresCondition, lastLoginTimeGreaterThan);
+      }
+      if (lastActivityTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                mySqlCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+      }
+      if (team == null
+          && isAdminStr == null
+          && isBotStr == null
+          && lastLoginTimeGreaterThan == null
+          && lastActivityTimeGreaterThan == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
       return listAfter(
@@ -4576,6 +4658,37 @@ public interface CollectionDAO {
     default User findEntityByName(String fqn, Include include) {
       return EntityDAO.super.findEntityByName(fqn.toLowerCase(), include);
     }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE user_entity SET json = JSON_SET(json, '$.lastActivityTime', :lastActivityTime) WHERE nameHash = :nameHash AND deleted = false",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE user_entity SET json = jsonb_set(json, '{lastActivityTime}', to_jsonb(:lastActivityTime::bigint)) WHERE nameHash = :nameHash AND deleted = false",
+        connectionType = POSTGRES)
+    void updateLastActivityTime(
+        @BindFQN("nameHash") String nameHash, @Bind("lastActivityTime") long lastActivityTime);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE user_entity SET json = JSON_SET(json, '$.lastActivityTime', "
+                + "CASE nameHash "
+                + "<caseStatements> "
+                + "END) "
+                + "WHERE nameHash IN (<nameHashes>) AND deleted = false",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE user_entity SET json = jsonb_set(json, '{lastActivityTime}', "
+                + "CASE nameHash "
+                + "<caseStatements> "
+                + "END::text::jsonb) "
+                + "WHERE nameHash IN (<nameHashes>) AND deleted = false",
+        connectionType = POSTGRES)
+    void updateLastActivityTimeBulk(
+        @Define("caseStatements") String caseStatements,
+        @BindList("nameHashes") List<String> nameHashes);
   }
 
   interface ChangeEventDAO {
