@@ -1,5 +1,6 @@
 ---
 title: Sigma Connector | OpenMetadata Dashboard Integration Guide
+description: Connect Sigma Analytics to OpenMetadata seamlessly. Learn how to configure the Sigma dashboard connector for automated metadata extraction and lineage tracking.
 slug: /connectors/dashboard/sigma
 ---
 

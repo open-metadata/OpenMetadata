@@ -31,6 +31,14 @@ jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
+jest.mock('../../components/Settings/Users/Users.component', () =>
+  jest.fn().mockReturnValue(<p>User Component</p>)
+);
+
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
+
 const mockUpdateCurrentUser = jest.fn();
 const mockNavigate = jest.fn();
 
@@ -45,6 +53,7 @@ jest.mock('../../hooks/useApplicationStore', () => {
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: '/test' })),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
@@ -215,5 +224,55 @@ describe.skip('Test the User Page', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(ROUTES.HOME);
+  });
+});
+
+describe('UserPage - Activity Time Fields', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('Should fetch lastActivityTime and lastLoginTime fields', async () => {
+    render(<UserPage />, { wrapper: MemoryRouter });
+
+    expect(getUserByName).toHaveBeenCalledWith('xyz', {
+      fields: [
+        'profile',
+        'roles',
+        'teams',
+        'personas',
+        'lastActivityTime',
+        'lastLoginTime',
+        'defaultPersona',
+        'domains',
+      ],
+      include: 'all',
+    });
+  });
+
+  it('Should pass user data with activity times to Users component', async () => {
+    const userDataWithActivityTime = {
+      ...USER_DATA,
+      name: 'xyz',
+      lastActivityTime: 1234567890,
+      lastLoginTime: 1234567880,
+    };
+
+    (getUserByName as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(userDataWithActivityTime)
+    );
+
+    const mockUsers = jest
+      .fn()
+      .mockReturnValue(<div data-testid="user-data">Mocked Users</div>);
+    (Users as jest.Mock).mockImplementation(mockUsers);
+
+    render(<UserPage />, { wrapper: MemoryRouter });
+
+    // Wait for the loader to disappear
+    await screen.findByTestId('user-data');
+
+    expect(userDataWithActivityTime.lastActivityTime).toBe(1234567890);
+    expect(userDataWithActivityTime.lastLoginTime).toBe(1234567880);
   });
 });
