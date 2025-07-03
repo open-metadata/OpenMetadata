@@ -339,9 +339,8 @@ const CuratedAssetsWidget = ({
             ellipsis={{ tooltip: true }}
             style={{
               maxWidth: curatedAssetsData?.w === 1 ? '200px' : '525px',
-            }}
-          >
-            {title || t('label.curated-asset-plural')}
+            }}>
+            {title ?? t('label.curated-asset-plural')}
           </Typography.Paragraph>
         </Col>
 
@@ -379,8 +378,7 @@ const CuratedAssetsWidget = ({
                   onClick: handleSortByClick,
                   className: 'widget-header-menu',
                 }}
-                trigger={['click']}
-              >
+                trigger={['click']}>
                 <Button data-testid="filter-button">
                   {
                     CURATED_ASSETS_SORT_BY_OPTIONS.find(
@@ -402,8 +400,7 @@ const CuratedAssetsWidget = ({
                 className: 'widget-header-menu',
               }}
               placement="bottomLeft"
-              trigger={['click']}
-            >
+              trigger={['click']}>
               <Button
                 className=""
                 data-testid="more-button"
@@ -431,8 +428,7 @@ const CuratedAssetsWidget = ({
               width={SIZE.LARGE}
             />
           }
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
-        >
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography.Paragraph>
             {t('message.no-curated-assets')}
           </Typography.Paragraph>
@@ -440,8 +436,7 @@ const CuratedAssetsWidget = ({
             data-testid="add-curated-asset-button"
             icon={<PlusOutlined data-testid="plus-icon" />}
             type="primary"
-            onClick={handleModalOpen}
-          >
+            onClick={handleModalOpen}>
             {t('label.create')}
           </Button>
         </ErrorPlaceHolder>
@@ -462,8 +457,7 @@ const CuratedAssetsWidget = ({
               width={SIZE.LARGE}
             />
           }
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
-        >
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography.Paragraph>
             {t('message.curated-assets-no-data-message')}
           </Typography.Paragraph>
@@ -481,8 +475,7 @@ const CuratedAssetsWidget = ({
           className="text-primary hover:underline w-full  footer-view-more-button"
           href={queryURL}
           target="_blank"
-          type="link"
-        >
+          type="link">
           {t('label.view-more-count', {
             count: viewMoreCount as unknown as number,
           })}
@@ -506,8 +499,7 @@ const CuratedAssetsWidget = ({
                 <div
                   className="right-panel-list-item  flex items-center w-full"
                   data-testid={`Curated Assets-${title}`}
-                  key={item.id}
-                >
+                  key={item.id}>
                   <img
                     alt={get(item, 'service.displayName', '')}
                     className="entity-icon"
@@ -521,26 +513,22 @@ const CuratedAssetsWidget = ({
                       to={entityUtilClassBase.getEntityLink(
                         item.type || '',
                         item.fullyQualifiedName as string
-                      )}
-                    >
+                      )}>
                       <div
                         className="flex flex-col"
                         style={{
                           width: curatedAssetsData?.w === 1 ? '320px' : '760px',
-                        }}
-                      >
+                        }}>
                         <Typography.Text
                           className="entity-list-item-title"
-                          ellipsis={{ tooltip: true }}
-                        >
+                          ellipsis={{ tooltip: true }}>
                           {title}
                         </Typography.Text>
 
                         {description && (
                           <Typography.Paragraph
                             className="entity-list-item-description"
-                            ellipsis={{ rows: 2 }}
-                          >
+                            ellipsis={{ rows: 2 }}>
                             {description}
                           </Typography.Paragraph>
                         )}
@@ -560,13 +548,11 @@ const CuratedAssetsWidget = ({
     <>
       <Card
         className="curated-assets-widget-container card-widget"
-        data-testid="curated-assets-widget"
-      >
+        data-testid="curated-assets-widget">
         <EntityListSkeleton
           dataLength={data.length !== 0 ? data.length : 5}
           loading={Boolean(isLoading)}
-          skeletonContainerStyle={{ marginLeft: '20px', marginTop: '20px' }}
-        >
+          skeletonContainerStyle={{ marginLeft: '20px', marginTop: '20px' }}>
           <>
             {header}
             {isEditView && isEmpty(data) && isEmpty(selectedResource)

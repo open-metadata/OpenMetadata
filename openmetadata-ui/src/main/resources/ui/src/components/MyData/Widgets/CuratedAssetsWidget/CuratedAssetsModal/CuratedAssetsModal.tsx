@@ -54,9 +54,9 @@ const CuratedAssetsModal = ({
   useEffect(() => {
     if (isOpen && curatedAssetsConfig) {
       form.setFieldsValue({
-        title: curatedAssetsConfig.title || '',
-        resources: curatedAssetsConfig.resources || [],
-        queryFilter: curatedAssetsConfig.queryFilter || '{}',
+        title: curatedAssetsConfig.title ?? '',
+        resources: curatedAssetsConfig.resources ?? [],
+        queryFilter: curatedAssetsConfig.queryFilter ?? '{}',
       });
     }
   }, [isOpen, curatedAssetsConfig, form]);
@@ -133,8 +133,7 @@ const CuratedAssetsModal = ({
         data-testid="cancelButton"
         key="cancelButton"
         type="ghost"
-        onClick={handleCancel}
-      >
+        onClick={handleCancel}>
         {t('label.cancel')}
       </Button>,
       <Button
@@ -142,8 +141,7 @@ const CuratedAssetsModal = ({
         disabled={disableSave}
         key="saveButton"
         type="primary"
-        onClick={() => form.submit()}
-      >
+        onClick={() => form.submit()}>
         {t('label.save')}
       </Button>,
     ],
@@ -162,16 +160,14 @@ const CuratedAssetsModal = ({
       open={isOpen}
       title={modalTitle}
       width={700}
-      onCancel={handleCancel}
-    >
+      onCancel={handleCancel}>
       <Form<CuratedAssetsConfig>
         data-testid="curated-assets-form"
         form={form}
         id="curated-assets-form"
         layout="vertical"
         validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSave}
-      >
+        onFinish={handleSave}>
         <Form.Item label="Widget's Title" name="title">
           <Input
             autoFocus
