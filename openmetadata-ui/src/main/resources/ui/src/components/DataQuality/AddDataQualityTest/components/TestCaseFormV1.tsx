@@ -41,6 +41,7 @@ import {
 } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
@@ -161,6 +162,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const { t } = useTranslation();
   const { config } = useLimitStore();
   const [form] = useForm<FormValues>();
+  const { isAirflowAvailable } = useAirflowStatus();
 
   // =============================================
   // HOOKS - State (grouped by functionality)
@@ -759,7 +761,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           };
 
           const ingestion = await addIngestionPipeline(ingestionPayload);
-          await deployIngestionPipelineById(ingestion.id ?? '');
+          if (isAirflowAvailable) {
+            await deployIngestionPipelineById(ingestion.id ?? '');
+          }
         }
 
         showSuccessToast(
@@ -959,7 +963,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         initialValues={{
           testLevel: TestLevel.TABLE,
           ...testCaseClassBase.initialFormValues(),
-          testName: replaceAllSpacialCharWith_(initialValues?.testName ?? ''),
+          testName: initialValues?.testName,
           testTypeId: initialValues?.testTypeId,
           params: getInitialParamsValue,
           tags: initialValues?.tags || [],

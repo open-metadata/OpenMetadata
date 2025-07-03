@@ -15,12 +15,12 @@ import { Button, Card, Col, Row, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestCaseFormV1 from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1';
+import BundleSuiteForm from '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
-import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -41,6 +41,7 @@ const DataQualityPage = () => {
 
   // Add state for modal open/close
   const [isTestCaseModalOpen, setIsTestCaseModalOpen] = useState(false);
+  const [isBundleSuiteModalOpen, setIsBundleSuiteModalOpen] = useState(false);
 
   // Add handlers for modal
   const handleOpenTestCaseModal = () => {
@@ -49,6 +50,14 @@ const DataQualityPage = () => {
 
   const handleCloseTestCaseModal = () => {
     setIsTestCaseModalOpen(false);
+  };
+
+  const handleOpenBundleSuiteModal = () => {
+    setIsBundleSuiteModalOpen(true);
+  };
+
+  const handleCloseBundleSuiteModal = () => {
+    setIsBundleSuiteModalOpen(false);
   };
 
   const menuItems = useMemo(() => {
@@ -94,15 +103,14 @@ const DataQualityPage = () => {
               <Col className="d-flex justify-end" span={8}>
                 {activeTab === DataQualityPageTabs.TEST_SUITES &&
                   testSuitePermission?.Create && (
-                    <Link
+                    <Button
                       data-testid="add-test-suite-btn"
-                      to={ROUTES.ADD_TEST_SUITES}>
-                      <Button type="primary">
-                        {t('label.add-entity', {
-                          entity: t('label.bundle-suite-plural'),
-                        })}
-                      </Button>
-                    </Link>
+                      type="primary"
+                      onClick={handleOpenBundleSuiteModal}>
+                      {t('label.add-entity', {
+                        entity: t('label.bundle-suite-plural'),
+                      })}
+                    </Button>
                   )}
                 {activeTab === DataQualityPageTabs.TEST_CASES &&
                   testSuitePermission?.Create && (
@@ -136,16 +144,31 @@ const DataQualityPage = () => {
           />
         </Col>
       </Row>
-      <TestCaseFormV1
-        isDrawer
-        drawerProps={{
-          title: t('label.add-entity', {
-            entity: t('label.test-case'),
-          }),
-          open: isTestCaseModalOpen,
-        }}
-        onCancel={handleCloseTestCaseModal}
-      />
+      {isTestCaseModalOpen && (
+        <TestCaseFormV1
+          isDrawer
+          drawerProps={{
+            title: t('label.add-entity', {
+              entity: t('label.test-case'),
+            }),
+            open: isTestCaseModalOpen,
+          }}
+          onCancel={handleCloseTestCaseModal}
+        />
+      )}
+      {isBundleSuiteModalOpen && (
+        <BundleSuiteForm
+          isDrawer
+          drawerProps={{
+            title: t('label.add-entity', {
+              entity: t('label.bundle-suite-plural'),
+            }),
+            open: isBundleSuiteModalOpen,
+          }}
+          onCancel={handleCloseBundleSuiteModal}
+          onSuccess={handleCloseBundleSuiteModal}
+        />
+      )}
     </DataQualityProvider>
   );
 };
