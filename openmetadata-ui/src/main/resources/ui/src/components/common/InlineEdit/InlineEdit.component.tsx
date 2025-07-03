@@ -31,11 +31,6 @@ const InlineEdit = ({
       e.preventDefault();
       onCancel?.();
     }
-
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      onSave?.();
-    }
   };
 
   return (

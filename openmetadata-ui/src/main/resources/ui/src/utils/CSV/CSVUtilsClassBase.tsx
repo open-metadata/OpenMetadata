@@ -199,11 +199,16 @@ class CSVUtilsClassBase {
             }, 1);
           };
 
+          const onClose = () => {
+            props.onCancel();
+          };
+
           return (
             <TierCard
               currentTier={value}
               popoverProps={{ open: true }}
-              updateTier={handleChange}>
+              updateTier={handleChange}
+              onClose={onClose}>
               {' '}
             </TierCard>
           );
