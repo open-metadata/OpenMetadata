@@ -29,6 +29,7 @@ import {
   getChangedEntityName,
   getDiffByFieldName,
   getEntityDescriptionDiff,
+  getEntityDisplayNameDiff,
   getEntityTagDiff,
   getTextDiff,
   isEndsWithField,
@@ -80,51 +81,9 @@ export function createAddedSchemasDiff(
   schemaFieldsDiff: EntityDiffProps,
   schemaFields: Array<Field> = []
 ) {
-  let newField: Array<Field> = [];
-  const newValueStr = schemaFieldsDiff.added?.newValue ?? '[]';
-
-  // Check if newValueStr is a valid JSON array
-  if (newValueStr.startsWith('[') && newValueStr.endsWith(']')) {
-    newField = JSON.parse(newValueStr);
-  } else {
-    // Treat as single string value and construct field object
-    const fieldName = schemaFieldsDiff.added?.name;
-    if (fieldName && newValueStr) {
-      // Split field path and take last 2 values: name and property
-      const pathParts = fieldName.split('.');
-      if (pathParts.length >= 2) {
-        const property = pathParts[pathParts.length - 1]; // Last part is property
-        const nameWithQuotes = pathParts[pathParts.length - 2]; // Second-to-last is field name
-        const actualFieldName = nameWithQuotes.replace(/"/g, ''); // Remove quotes
-
-        // Create field object with the extracted name and property
-        const fieldObj: Partial<Field> = {
-          name: actualFieldName,
-        };
-
-        // Set the appropriate property based on the path
-        switch (property) {
-          case 'dataTypeDisplay':
-            fieldObj.dataTypeDisplay = newValueStr;
-
-            break;
-          case 'dataType':
-            fieldObj.dataType = newValueStr as DataTypeTopic;
-
-            break;
-          case 'description':
-            fieldObj.description = newValueStr;
-
-            break;
-          default:
-            // For any other property, set it generically
-            fieldObj[property as keyof Field] = newValueStr;
-        }
-
-        newField = [fieldObj as Field];
-      }
-    }
-  }
+  const newField: Array<Field> = JSON.parse(
+    schemaFieldsDiff.added?.newValue ?? '[]'
+  );
 
   newField.forEach((field) => {
     const formatSchemaFieldsData = (arr: Array<Field>, updateAll?: boolean) => {
@@ -256,6 +215,20 @@ export const getVersionedSchema = (
     } else if (isEndsWithField(EntityField.TAGS, changedEntityName)) {
       const formattedSchema = getEntityTagDiff(
         schemaFieldDiff,
+        changedSchemaFieldName,
+        schemaFields
+      );
+
+      clonedMessageSchema = {
+        ...clonedMessageSchema,
+        schemaFields: formattedSchema,
+      };
+    } else if (
+      isEndsWithField(EntityField.DATA_TYPE_DISPLAY, changedEntityName)
+    ) {
+      const formattedSchema = getEntityDisplayNameDiff(
+        schemaFieldDiff,
+        EntityField.DATA_TYPE_DISPLAY,
         changedSchemaFieldName,
         schemaFields
       );
