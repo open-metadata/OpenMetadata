@@ -149,6 +149,7 @@ class CSVUtilsClassBase {
           return (
             <InlineEdit onCancel={props.onCancel} onSave={props.onComplete}>
               <TagSuggestion
+                autoFocus
                 selectProps={{
                   className: 'react-grid-select-dropdown',
                   size: 'small',
