@@ -1,5 +1,6 @@
 ---
 title: Connectors | OpenMetadata Docs for Seamless Data Integration
+description: Explore OpenMetadata's comprehensive connector library to integrate with databases, dashboards, pipelines, and ML platforms. Easy setup guides included.
 slug: /connectors
 ---
 

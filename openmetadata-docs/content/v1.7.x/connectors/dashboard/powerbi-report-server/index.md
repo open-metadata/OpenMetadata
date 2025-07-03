@@ -1,5 +1,6 @@
 ---
 title: Run the PowerBI Report Server Connector Externally
+description: Connect Power BI Report Server to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/dashboard/powerbireportserver
 ---
 

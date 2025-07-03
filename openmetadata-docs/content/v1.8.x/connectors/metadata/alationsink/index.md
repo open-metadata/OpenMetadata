@@ -1,5 +1,6 @@
 ---
 title: Alation Sink | OpenMetadata Metadata Integration
+description: Connect Alation to OpenMetadata seamlessly with our AlationSink connector. Complete setup guide, configuration steps, and metadata sync instructions.
 slug: /connectors/metadata/alationsink
 ---
 

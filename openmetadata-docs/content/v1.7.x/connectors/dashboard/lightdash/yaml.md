@@ -1,5 +1,6 @@
 ---
 title: Run the Lightdash Connector Externally
+description: Configure Lightdash dashboard connector for OpenMetadata using YAML. Step-by-step setup guide with examples to integrate your BI dashboards seamlessly.
 slug: /connectors/dashboard/lightdash/yaml
 ---
 

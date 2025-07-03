@@ -1,5 +1,6 @@
 ---
 title: Vertica Connector | OpenMetadata Analytics Database Guide
+description: Connect Vertica database to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/database/vertica
 ---
 

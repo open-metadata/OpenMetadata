@@ -1,5 +1,6 @@
 ---
 title: Run the Looker Connector Externally
+description: Configure Looker dashboard connections in OpenMetadata using YAML. Step-by-step setup guide with examples for seamless data catalog integration.
 slug: /connectors/dashboard/looker/yaml
 ---
 

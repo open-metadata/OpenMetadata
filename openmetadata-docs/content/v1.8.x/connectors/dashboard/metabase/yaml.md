@@ -1,5 +1,6 @@
 ---
 title: Run the Metabase Connector Externally
+description: Configure Metabase dashboard connector for OpenMetadata using YAML. Step-by-step setup guide with examples to integrate your Metabase dashboards seamlessly.
 slug: /connectors/dashboard/metabase/yaml
 ---
 

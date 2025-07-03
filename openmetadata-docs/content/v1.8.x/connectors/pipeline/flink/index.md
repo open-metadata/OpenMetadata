@@ -1,5 +1,6 @@
 ---
 title: Apache Flink Connector | OpenMetadata Streaming Guide
+description: Connect Apache Flink pipelines to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/pipeline/flink
 ---
 
