@@ -72,6 +72,7 @@ import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/p
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 import { TestSuiteSearchParams } from '../../DataQuality.interface';
 import PieChartSummaryPanel from '../../SummaryPannel/PieChartSummaryPanel.component';
+import './test-suites.style.less';
 
 export const TestSuites = () => {
   const { t } = useTranslation();
@@ -306,15 +307,6 @@ export const TestSuites = () => {
                 align="center"
                 className="w-full justify-between"
                 size={16}>
-                <Form.Item className="m-0 w-80">
-                  <Searchbar
-                    removeMargin
-                    searchValue={searchValue}
-                    onSearch={(value) =>
-                      handleSearchParam(value, 'searchValue')
-                    }
-                  />
-                </Form.Item>
                 <Form.Item
                   className="m-0"
                   label={t('label.owner')}
@@ -355,52 +347,66 @@ export const TestSuites = () => {
           testSummary={testCaseSummary}
         />
       </Col>
+
       <Col span={24}>
-        <Row gutter={[16, 16]}>
-          <Col span={16}>
-            <Radio.Group value={subTab} onChange={handleSubTabChange}>
-              <Radio.Button value={DataQualitySubTabs.TABLE_SUITES}>
-                {t('label.table-suite-plural')}
-              </Radio.Button>
-              <Radio.Button value={DataQualitySubTabs.BUNDLE_SUITES}>
-                {t('label.bundle-suite-plural')}
-              </Radio.Button>
-            </Radio.Group>
-          </Col>
-          <Col span={8}>
-            <Searchbar
-              removeMargin
-              searchValue={searchValue}
-              onSearch={(value) => handleSearchParam(value, 'searchValue')}
-            />
-          </Col>
-        </Row>
-      </Col>
-      <Col span={24}>
-        <Table
-          columns={columns}
-          customPaginationProps={{
-            currentPage,
-            isLoading,
-            pageSize,
-            isNumberBased: true,
-            paging,
-            pagingHandler: handleTestSuitesPageChange,
-            onShowSizeChange: handlePageSizeChange,
-            showPagination,
-          }}
-          data-testid="test-suite-table"
-          dataSource={testSuites}
-          loading={isLoading}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          scroll={{
-            x: '100%',
-          }}
-          size="small"
-        />
+        <div className="test-suite-list-container">
+          <div className="test-suite-list-header">
+            <Row gutter={[16, 16]}>
+              <Col span={16}>
+                <Radio.Group value={subTab} onChange={handleSubTabChange}>
+                  <Radio.Button
+                    data-testid="table-suite-radio-btn"
+                    value={DataQualitySubTabs.TABLE_SUITES}>
+                    {t('label.table-suite-plural')}
+                  </Radio.Button>
+                  <Radio.Button
+                    data-testid="bundle-suite-radio-btn"
+                    value={DataQualitySubTabs.BUNDLE_SUITES}>
+                    {t('label.bundle-suite-plural')}
+                  </Radio.Button>
+                </Radio.Group>
+              </Col>
+              <Col span={8}>
+                <Searchbar
+                  removeMargin
+                  placeholder={t('label.search-entity', {
+                    entity:
+                      subTab === DataQualitySubTabs.TABLE_SUITES
+                        ? t('label.table-suite-plural')
+                        : t('label.bundle-suite-plural'),
+                  })}
+                  searchValue={searchValue}
+                  onSearch={(value) => handleSearchParam(value, 'searchValue')}
+                />
+              </Col>
+            </Row>
+          </div>
+          <Table
+            columns={columns}
+            containerClassName="custom-card-with-table"
+            customPaginationProps={{
+              currentPage,
+              isLoading,
+              pageSize,
+              isNumberBased: true,
+              paging,
+              pagingHandler: handleTestSuitesPageChange,
+              onShowSizeChange: handlePageSizeChange,
+              showPagination,
+            }}
+            data-testid="test-suite-table"
+            dataSource={testSuites}
+            loading={isLoading}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            scroll={{
+              x: '100%',
+            }}
+            size="small"
+          />
+        </div>
       </Col>
     </Row>
   );

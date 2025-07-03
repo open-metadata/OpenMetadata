@@ -79,6 +79,7 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
+import PageHeader from '../../PageHeader/PageHeader.component';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
 
@@ -392,6 +393,31 @@ export const TestCases = () => {
     }
   };
 
+  const dqTableHeader = useMemo(() => {
+    return (
+      <Row gutter={[16, 16]}>
+        <Col span={16}>
+          <PageHeader
+            data={{
+              header: t('label.test-case-insight-plural'),
+              subHeader: t('message.test-case-insight-description'),
+            }}
+          />
+        </Col>
+        <Col span={8}>
+          <Searchbar
+            removeMargin
+            placeholder={t('label.search-entity', {
+              entity: t('label.test-case-lowercase'),
+            })}
+            searchValue={searchValue}
+            onSearch={(value) => handleSearchParam('searchValue', value)}
+          />
+        </Col>
+      </Row>
+    );
+  }, [searchValue, handleSearchParam]);
+
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => {
       if (prevSelected.includes(key)) {
@@ -488,16 +514,6 @@ export const TestCases = () => {
           layout="horizontal"
           onValuesChange={handleFilterChange}>
           <Space wrap align="center" className="w-full" size={16}>
-            <Form.Item className="m-0 w-80">
-              <Searchbar
-                removeMargin
-                placeholder={t('label.search-entity', {
-                  entity: t('label.test-case-lowercase'),
-                })}
-                searchValue={searchValue}
-                onSearch={(value) => handleSearchParam('searchValue', value)}
-              />
-            </Form.Item>
             <Form.Item noStyle name="selectedFilters">
               <Dropdown
                 menu={{
@@ -665,6 +681,7 @@ export const TestCases = () => {
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}
+          tableHeader={dqTableHeader}
           testCases={testCase}
           onTestCaseResultUpdate={handleStatusSubmit}
           onTestUpdate={handleTestCaseUpdate}

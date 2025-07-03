@@ -82,7 +82,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   breadcrumbData,
   fetchTestCases,
   isEditAllowed,
-}) => {
+  tableHeader,
+}: DataQualityTabProps) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
@@ -147,7 +148,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.status'),
         dataIndex: 'testCaseResult',
         key: 'status',
-        width: 100,
+        width: 120,
         render: (result: TestCaseResult) => {
           return result?.testCaseStatus ? (
             <StatusBadge
@@ -238,7 +239,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               getColumnNameFromEntityLink(entityLink) ?? ''
             );
 
-            return name;
+            return (
+              <Typography.Paragraph
+                className="m-0"
+                data-testid={name}
+                style={{ maxWidth: 150 }}>
+                {name}
+              </Typography.Paragraph>
+            );
           }
 
           return '--';
@@ -483,10 +491,18 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   }, [testCases]);
 
   return (
-    <>
+    <div
+      className={classNames({
+        'data-quality-tab-container': !isUndefined(tableHeader),
+      })}>
+      {tableHeader && (
+        <div className="data-quality-table-header">{tableHeader}</div>
+      )}
       <Table
         columns={columns}
-        containerClassName="test-case-table-container"
+        containerClassName={classNames('test-case-table-container', {
+          'custom-card-with-table': !isUndefined(tableHeader),
+        })}
         {...(pagingData && showPagination
           ? {
               customPaginationProps: {
@@ -562,7 +578,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onCancel={handleCancel}
         />
       )}
-    </>
+    </div>
   );
 };
 
