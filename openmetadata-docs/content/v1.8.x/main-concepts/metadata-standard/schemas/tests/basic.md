@@ -1,5 +1,5 @@
 ---
-title: basic
+title: Basic Test Schema Details | OpenMetadata Testing Framework
 slug: /main-concepts/metadata-standard/schemas/tests/basic
 ---
 
