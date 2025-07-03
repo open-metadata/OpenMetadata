@@ -55,11 +55,11 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
+      await page.fill('#tableTestForm_testTypeId', testCase.type);
       const tableListSearchResponse = page.waitForResponse(
         `/api/v1/search/query?q=*index=table_search_index*`
       );
       await page.getByTestId('tableDiff').click();
-      await page.fill('#tableTestForm_testTypeId', testCase.type);
       await tableListSearchResponse;
       await page.click('#tableTestForm_params_table2');
       const tableSearchResponse = page.waitForResponse(
