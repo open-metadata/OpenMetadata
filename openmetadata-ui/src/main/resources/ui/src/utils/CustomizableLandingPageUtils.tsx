@@ -224,13 +224,14 @@ export const getWidgetFromKey = ({
   handlePlaceholderWidgetKey,
   handleRemoveWidget,
   announcements,
-  followedDataCount,
   followedData,
   isLoadingOwnedData,
   iconHeight,
   iconWidth,
   isEditView,
   isAnnouncementLoading,
+  currentLayout,
+  handleLayoutUpdate,
 }: {
   widgetConfig: WidgetConfig;
   handleOpenAddWidgetModal?: () => void;
@@ -238,12 +239,13 @@ export const getWidgetFromKey = ({
   handleRemoveWidget?: (key: string) => void;
   announcements?: Thread[];
   followedData?: EntityReference[];
-  followedDataCount: number;
   isLoadingOwnedData: boolean;
   iconHeight?: SIZE;
   iconWidth?: SIZE;
   isEditView?: boolean;
   isAnnouncementLoading?: boolean;
+  currentLayout?: Array<WidgetConfig>;
+  handleLayoutUpdate?: (layout: Layout[]) => void;
 }) => {
   if (
     widgetConfig.i.endsWith('.EmptyWidgetPlaceholder') &&
@@ -269,8 +271,9 @@ export const getWidgetFromKey = ({
   return (
     <Widget
       announcements={announcements}
+      currentLayout={currentLayout}
       followedData={followedData ?? []}
-      followedDataCount={followedDataCount}
+      handleLayoutUpdate={handleLayoutUpdate}
       handleRemoveWidget={handleRemoveWidget}
       isAnnouncementLoading={isAnnouncementLoading}
       isEditView={isEditView}

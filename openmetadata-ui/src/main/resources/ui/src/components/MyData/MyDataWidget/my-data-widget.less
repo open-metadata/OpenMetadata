@@ -14,10 +14,12 @@
 @import (reference) '../../../styles/variables.less';
 
 .my-data-widget-container {
+  height: 100%;
   .ant-card-body {
     display: flex;
     flex-direction: column;
     padding: 0 !important;
+    height: 100%;
   }
 
   .my-data-widget-icon {
@@ -26,9 +28,9 @@
     }
   }
 
-  .drag-widget-icon,
-  .remove-widget-icon {
+  .drag-widget-icon {
     border: 1px solid @grey-2;
+    border-radius: 8px;
   }
 
   .my-data-widget-list-item {
@@ -61,5 +63,14 @@
   }
   .view-more-text:hover {
     text-decoration: none;
+  }
+
+  .widget-options {
+    border: 1px solid @grey-25;
+    border-radius: 8px;
+    .more-options-btn svg {
+      color: @grey-25;
+      font-size: 20px;
+    }
   }
 }

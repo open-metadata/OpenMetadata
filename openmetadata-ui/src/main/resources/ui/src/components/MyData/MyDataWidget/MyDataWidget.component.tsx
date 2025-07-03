@@ -12,12 +12,14 @@
  */
 import Icon, {
   ArrowRightOutlined,
-  CloseOutlined,
   DragOutlined,
+  MoreOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Button, Card, Col, Dropdown, Row, Space, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -25,11 +27,18 @@ import {
   PAGE_SIZE,
   ROUTES,
 } from '../../../constants/constants';
+import {
+  WIDGETS_MORE_MENU_KEYS,
+  WIDGETS_MORE_MENU_OPTIONS,
+} from '../../../constants/Widgets.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SearchSourceAlias } from '../../../interface/search.interface';
-import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import {
+  WidgetCommonProps,
+  WidgetConfig,
+} from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import customizeMyDataPageClassBase from '../../../utils/CustomizeMyDataPageClassBase';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -46,6 +55,8 @@ const MyDataWidgetInternal = ({
   isEditView = false,
   handleRemoveWidget,
   widgetKey,
+  handleLayoutUpdate,
+  currentLayout,
 }: WidgetCommonProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -114,6 +125,44 @@ const MyDataWidgetInternal = ({
     fetchMyDataAssets();
   }, [currentUser]);
 
+  const handleSizeChange = useCallback(
+    (value: number) => {
+      if (handleLayoutUpdate) {
+        const hasCurrentWidget = currentLayout?.find(
+          (layout: WidgetConfig) => layout.i === widgetKey
+        );
+
+        const updatedLayout = hasCurrentWidget
+          ? currentLayout?.map((layout: WidgetConfig) =>
+              layout.i === widgetKey ? { ...layout, w: value } : layout
+            )
+          : [
+              ...(currentLayout || []),
+              {
+                ...customizeMyDataPageClassBase.defaultLayout.find(
+                  (layout: WidgetConfig) => layout.i === widgetKey
+                ),
+                i: widgetKey,
+                w: value,
+              },
+            ];
+
+        handleLayoutUpdate(updatedLayout as Layout[]);
+      }
+    },
+    [currentLayout, handleLayoutUpdate, widgetKey]
+  );
+
+  const handleMoreClick = (e: MenuInfo) => {
+    if (e.key === WIDGETS_MORE_MENU_KEYS.REMOVE_WIDGET) {
+      handleCloseClick();
+    } else if (e.key === WIDGETS_MORE_MENU_KEYS.HALF_SIZE) {
+      handleSizeChange(1);
+    } else if (e.key === WIDGETS_MORE_MENU_KEYS.FULL_SIZE) {
+      handleSizeChange(2);
+    }
+  };
+
   return (
     <Card
       className="my-data-widget-container card-widget p-y-lg p-x-box"
@@ -135,16 +184,28 @@ const MyDataWidgetInternal = ({
               {isEditView && (
                 <>
                   <DragOutlined
-                    className="drag-widget-icon cursor-pointer p-xs border-radius-xs"
+                    className="drag-widget-icon cursor-pointer p-sm border-radius-xs"
                     data-testid="drag-widget-button"
-                    size={14}
+                    size={20}
                   />
-                  <CloseOutlined
-                    className="remove-widget-icon p-xs border-radius-xs"
-                    data-testid="remove-widget-button"
-                    size={14}
-                    onClick={handleCloseClick}
-                  />
+                  <Dropdown
+                    className="widget-options"
+                    data-testid="widget-options"
+                    menu={{
+                      items: WIDGETS_MORE_MENU_OPTIONS,
+                      selectable: true,
+                      multiple: false,
+                      onClick: handleMoreClick,
+                      className: 'widget-header-menu',
+                    }}
+                    placement="bottomLeft"
+                    trigger={['click']}>
+                    <Button
+                      className="more-options-btn"
+                      data-testid="more-options-btn"
+                      icon={<MoreOutlined size={20} />}
+                    />
+                  </Dropdown>
                 </>
               )}
             </Space>
@@ -182,7 +243,7 @@ const MyDataWidgetInternal = ({
           </div>
         ) : (
           <div className="d-flex flex-col h-full">
-            <div className="entity-list-body p-y-sm d-flex flex-col gap-3 flex-1 ">
+            <div className="entity-list-body p-y-sm d-flex flex-col gap-3 flex-1 overflow-y-auto">
               {data.map((item) => {
                 return (
                   <div
@@ -218,7 +279,7 @@ const MyDataWidgetInternal = ({
             </div>
             <div className="d-flex items-center justify-center w-full p-y-lg">
               <Link
-                className="view-more-text text-sm font-regular m-b-sm cursor-pointer"
+                className="view-more-text text-sm font-regular m-b-lg cursor-pointer"
                 data-testid="view-more-link"
                 to={getUserPath(currentUser?.name ?? '', 'mydata')}>
                 {t('label.view-more-capital')}{' '}

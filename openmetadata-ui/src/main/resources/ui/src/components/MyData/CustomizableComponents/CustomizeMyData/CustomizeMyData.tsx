@@ -78,7 +78,6 @@ function CustomizeMyData({
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
 
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
-  const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
@@ -138,7 +137,6 @@ function CustomizeMyData({
         filters: `followers:${currentUser.id}`,
       });
 
-      setFollowedDataCount(res?.hits?.total.value ?? 0);
       setFollowedData(res.hits.hits.map((hit) => hit._source));
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -161,24 +159,25 @@ function CustomizeMyData({
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
             followedData,
-            followedDataCount,
             isLoadingOwnedData: isLoadingOwnedData,
             widgetConfig: widget,
             handleOpenAddWidgetModal: handleOpenAddWidgetModal,
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
             handleRemoveWidget: handleRemoveWidget,
             isEditView: true,
+            currentLayout: layout,
+            handleLayoutUpdate: handleLayoutUpdate,
           })}
         </div>
       )),
     [
       layout,
       followedData,
-      followedDataCount,
       isLoadingOwnedData,
       handleOpenAddWidgetModal,
       handlePlaceholderWidgetKey,
       handleRemoveWidget,
+      handleLayoutUpdate,
     ]
   );
 
@@ -242,9 +241,10 @@ function CustomizeMyData({
           />
           <ReactGridLayout
             className="grid-container"
-            cols={3}
+            cols={customizeMyDataPageClassBase.landingPageMaxGridSize}
             draggableHandle=".drag-widget-icon"
             isResizable={false}
+            key={JSON.stringify(layout)}
             margin={[
               customizeMyDataPageClassBase.landingPageWidgetMargin,
               customizeMyDataPageClassBase.landingPageWidgetMargin,

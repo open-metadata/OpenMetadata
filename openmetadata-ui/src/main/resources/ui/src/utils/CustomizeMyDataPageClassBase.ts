@@ -53,7 +53,7 @@ class CustomizeMyDataPageClassBase {
   defaultWidgetHeight = 3;
   landingPageWidgetMargin = 16;
   landingPageRowHeight = 100;
-  landingPageMaxGridSize = 4;
+  landingPageMaxGridSize = 3;
 
   landingPageWidgetDefaultHeights: Record<string, number> = {
     activityFeed: 4,
@@ -70,7 +70,7 @@ class CustomizeMyDataPageClassBase {
     h: this.landingPageWidgetDefaultHeights.announcements,
     i: LandingPageWidgetKeys.ANNOUNCEMENTS,
     w: 1,
-    x: 3,
+    x: 2,
     y: 0,
     static: true, // Making announcement widget fixed on top right position
   };
@@ -96,40 +96,40 @@ class CustomizeMyDataPageClassBase {
       h: this.landingPageWidgetDefaultHeights.myData,
       i: LandingPageWidgetKeys.MY_DATA,
       w: 1,
-      x: 2,
-      y: 0,
+      x: 0,
+      y: 4,
       static: false,
     },
     {
       h: this.landingPageWidgetDefaultHeights.kpi,
       i: LandingPageWidgetKeys.KPI,
       w: 1,
-      x: 0,
-      y: 3,
+      x: 1,
+      y: 4,
       static: false,
     },
     {
       h: this.landingPageWidgetDefaultHeights.totalAssets,
       i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
       w: 1,
-      x: 1,
-      y: 3,
+      x: 2,
+      y: 4,
       static: false,
     },
     {
       h: this.landingPageWidgetDefaultHeights.following,
       i: LandingPageWidgetKeys.FOLLOWING,
       w: 1,
-      x: 2,
-      y: 3,
+      x: 0,
+      y: 8,
       static: false,
     },
     {
       h: this.landingPageWidgetDefaultHeights.recentlyViewed,
       i: LandingPageWidgetKeys.RECENTLY_VIEWED,
       w: 1,
-      x: 0,
-      y: 6,
+      x: 1,
+      y: 8,
       static: false,
     },
   ];
@@ -152,7 +152,6 @@ class CustomizeMyDataPageClassBase {
       handleRemoveWidget?: (widgetKey: string) => void;
       announcements: Thread[];
       followedData: EntityReference[];
-      followedDataCount: number;
       isLoadingOwnedData: boolean;
     }
   >
