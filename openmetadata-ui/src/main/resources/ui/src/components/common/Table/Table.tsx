@@ -156,13 +156,6 @@ const Table = <T extends Record<string, unknown>>(
       if (selectedEntityTableColumns?.[entityKey]) {
         return selectedEntityTableColumns[entityKey];
       } else if (!isFullViewTable) {
-        setPreference({
-          selectedEntityTableColumns: {
-            ...selectedEntityTableColumns,
-            [entityKey]: defaultVisibleColumns ?? [],
-          },
-        });
-
         return defaultVisibleColumns ?? [];
       }
     }

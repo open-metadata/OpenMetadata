@@ -180,36 +180,6 @@ describe('Table component', () => {
       expect(mockSetPreference).not.toHaveBeenCalled();
     });
 
-    it('should set default columns when no existing preferences', () => {
-      mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {};
-
-      renderComponent({
-        staticVisibleColumns: ['col1'],
-        defaultVisibleColumns: ['col2', 'col3'],
-        entityType: 'table',
-      });
-
-      expect(mockSetPreference).toHaveBeenCalledWith({
-        selectedEntityTableColumns: {
-          table: ['col2', 'col3'],
-        },
-      });
-    });
-
-    it('should use entityType from props over generic context type', () => {
-      renderComponent({
-        staticVisibleColumns: ['col1'],
-        defaultVisibleColumns: ['col2'],
-        entityType: 'dashboard',
-      });
-
-      expect(mockSetPreference).toHaveBeenCalledWith({
-        selectedEntityTableColumns: {
-          dashboard: ['col2'],
-        },
-      });
-    });
-
     it('should identify as full view table when no static or default columns are provided', () => {
       renderComponent();
 
