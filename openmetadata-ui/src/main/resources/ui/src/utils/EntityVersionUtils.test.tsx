@@ -22,7 +22,7 @@ import {
 } from '../generated/entity/data/table';
 import { DataTypeTopic, Field } from '../generated/entity/data/topic';
 import { FieldChange } from '../generated/entity/services/databaseService';
-import { getEntityDisplayNameDiff } from './EntityVersionUtils';
+import { getStringEntityDiff } from './EntityVersionUtils';
 
 // Mock data for testing
 const createMockTableColumn = (
@@ -81,7 +81,7 @@ const createMockEntityDiff = (
   updated,
 });
 
-describe('getEntityDisplayNameDiff', () => {
+describe('getStringEntityDiff', () => {
   describe('TableColumn entity', () => {
     it('should update displayName with diff when entity name matches', () => {
       const oldDisplayName = 'Old Display Name';
@@ -99,7 +99,7 @@ describe('getEntityDisplayNameDiff', () => {
         createMockTableColumn('otherColumn', 'Other Display Name'),
       ];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DISPLAYNAME,
         entityName,
@@ -128,7 +128,7 @@ describe('getEntityDisplayNameDiff', () => {
         createMockTableColumn('otherColumn', 'Other Display Name'),
       ];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DESCRIPTION,
         entityName,
@@ -163,7 +163,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const columns = [parentColumn];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DISPLAYNAME,
         childEntityName,
@@ -187,7 +187,7 @@ describe('getEntityDisplayNameDiff', () => {
         createMockTableColumn('differentColumn', 'Original Display Name'),
       ];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DISPLAYNAME,
         'nonExistentColumn',
@@ -213,7 +213,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const columns = [createMockContainerColumn(entityName, oldDisplayName)];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DISPLAYNAME,
         entityName,
@@ -240,7 +240,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const fields = [createMockField(entityName, oldDisplayName)];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DISPLAYNAME,
         entityName,
@@ -261,7 +261,7 @@ describe('getEntityDisplayNameDiff', () => {
         createMockFieldChange('displayName', 'Old', 'New')
       );
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DISPLAYNAME,
         'anyEntity',
@@ -282,7 +282,7 @@ describe('getEntityDisplayNameDiff', () => {
         createMockTableColumn('testColumn', 'Test Display Name'),
       ];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DISPLAYNAME,
         undefined,
@@ -304,7 +304,7 @@ describe('getEntityDisplayNameDiff', () => {
         createMockTableColumn('testColumn', 'Existing Display Name'),
       ];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DISPLAYNAME,
         'testColumn',
@@ -328,7 +328,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const columns = [createMockTableColumn(entityName, '')];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DISPLAYNAME,
         entityName,
@@ -351,7 +351,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const columns = [createMockTableColumn(entityName, oldDisplayName)];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DISPLAYNAME,
         entityName,
@@ -386,7 +386,7 @@ describe('getEntityDisplayNameDiff', () => {
         },
       ];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.DATA_TYPE_DISPLAY,
         entityName,
@@ -411,7 +411,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const columns = [{ ...createMockTableColumn(entityName), name: oldName }];
 
-      const result = getEntityDisplayNameDiff(
+      const result = getStringEntityDiff(
         entityDiff,
         EntityField.NAME,
         entityName,

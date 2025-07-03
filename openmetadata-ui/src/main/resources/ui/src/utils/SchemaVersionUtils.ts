@@ -29,8 +29,8 @@ import {
   getChangedEntityName,
   getDiffByFieldName,
   getEntityDescriptionDiff,
-  getEntityDisplayNameDiff,
   getEntityTagDiff,
+  getStringEntityDiff,
   getTextDiff,
   isEndsWithField,
 } from './EntityVersionUtils';
@@ -226,7 +226,7 @@ export const getVersionedSchema = (
     } else if (
       isEndsWithField(EntityField.DATA_TYPE_DISPLAY, changedEntityName)
     ) {
-      const formattedSchema = getEntityDisplayNameDiff(
+      const formattedSchema = getStringEntityDiff(
         schemaFieldDiff,
         EntityField.DATA_TYPE_DISPLAY,
         changedSchemaFieldName,

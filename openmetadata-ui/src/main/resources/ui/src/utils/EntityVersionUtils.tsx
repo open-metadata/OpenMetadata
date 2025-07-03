@@ -508,7 +508,7 @@ export function getEntityDescriptionDiff<A extends AssetsChildForVersionPages>(
   return entityList;
 }
 
-export function getEntityDisplayNameDiff<A extends EntityColumn>(
+export function getStringEntityDiff<A extends EntityColumn>(
   entityDiff: EntityDiffProps,
   key: EntityField,
   changedEntityName?: string,
@@ -825,7 +825,7 @@ export function getColumnsDataWithVersionChanges<
       ];
     } else if (isEndsWithField(EntityField.DISPLAYNAME, changedEntityName)) {
       newColumnsList = [
-        ...getEntityDisplayNameDiff(
+        ...getStringEntityDiff(
           columnDiff,
           EntityField.DISPLAYNAME,
           changedColName,
