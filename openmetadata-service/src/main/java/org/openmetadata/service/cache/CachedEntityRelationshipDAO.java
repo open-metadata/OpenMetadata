@@ -507,7 +507,7 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
           createRelationshipCacheKey(
               entityId.toString(), entityType, FIND_TO_KEY, commonRelations.toString());
 
-      if (RelationshipCache.get(toKey) == null) {
+      if (RelationshipCache.get(toKey).isEmpty()) {
         List<EntityRelationshipRecord> toResults =
             delegate.findTo(entityId, entityType, commonRelations);
         if (!toResults.isEmpty()) {
@@ -529,7 +529,7 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
             createRelationshipCacheKey(
                 entityId.toString(), entityType, FIND_FROM_KEY, relation + ":*");
 
-        if (RelationshipCache.get(fromKey) == null) {
+        if (RelationshipCache.get(fromKey).isEmpty()) {
           List<EntityRelationshipRecord> fromResults =
               delegate.findFrom(entityId, entityType, relation);
           if (!fromResults.isEmpty()) {

@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMigration;
 
 @Slf4j
 public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
@@ -64,13 +63,11 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
 
     try {
       Map<String, Object> cachedData = RelationshipCache.get(cacheKey);
-      if (cachedData != null) {
-        @SuppressWarnings("unchecked")
-        List<TagLabel> cachedTags = (List<TagLabel>) cachedData.get("tags");
-        if (cachedTags != null) {
-          LOG.debug("Cache hit for tags of entity: {}", targetFQN);
-          return cachedTags;
-        }
+      @SuppressWarnings("unchecked")
+      List<TagLabel> cachedTags = (List<TagLabel>) cachedData.get("tags");
+      if (cachedTags != null) {
+        LOG.debug("Cache hit for tags of entity: {}", targetFQN);
+        return cachedTags;
       }
 
       List<TagLabel> tags = delegate.getTags(targetFQN);
@@ -101,14 +98,12 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
 
     try {
       Map<String, Object> cachedData = RelationshipCache.get(batchKey);
-      if (cachedData != null) {
-        @SuppressWarnings("unchecked")
-        List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> cachedBatch =
-            (List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash>) cachedData.get("batchTags");
-        if (cachedBatch != null) {
-          LOG.debug("Cache hit for batch tags query with {} entities", targetFQNHashes.size());
-          return cachedBatch;
-        }
+      @SuppressWarnings("unchecked")
+      List<TagLabelWithFQNHash> cachedBatch =
+          (List<TagLabelWithFQNHash>) cachedData.get("batchTags");
+      if (cachedBatch != null) {
+        LOG.debug("Cache hit for batch tags query with {} entities", targetFQNHashes.size());
+        return cachedBatch;
       }
 
       List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> batchTags =
@@ -148,14 +143,12 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
 
     try {
       Map<String, Object> cachedData = RelationshipCache.get(prefixKey);
-      if (cachedData != null) {
-        @SuppressWarnings("unchecked")
-        Map<String, List<TagLabel>> cachedPrefixTags =
-            (Map<String, List<TagLabel>>) cachedData.get("prefixTags");
-        if (cachedPrefixTags != null) {
-          LOG.debug("Cache hit for prefix tags query: {}", targetFQNPrefix);
-          return cachedPrefixTags;
-        }
+      @SuppressWarnings("unchecked")
+      Map<String, List<TagLabel>> cachedPrefixTags =
+          (Map<String, List<TagLabel>>) cachedData.get("prefixTags");
+      if (cachedPrefixTags != null) {
+        LOG.debug("Cache hit for prefix tags query: {}", targetFQNPrefix);
+        return cachedPrefixTags;
       }
 
       Map<String, List<TagLabel>> prefixTags =
@@ -333,13 +326,4 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
     return delegate.getTargetFQNHashForTagPrefix(tagFQNHashPrefix);
   }
 
-  private void invalidateAllTagCaches() {
-    try {
-      LOG.warn(
-          "Full tag cache invalidation requested - consider implementing key tracking for efficiency");
-      RelationshipCache.clearAll();
-    } catch (Exception e) {
-      LOG.warn("Error invalidating all tag caches: {}", e.getMessage());
-    }
-  }
 }

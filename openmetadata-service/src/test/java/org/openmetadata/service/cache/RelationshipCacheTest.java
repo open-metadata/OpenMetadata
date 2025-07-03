@@ -14,6 +14,7 @@
 package org.openmetadata.service.cache;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.runners.model.MultipleFailureException.assertEmpty;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import java.lang.reflect.Method;
@@ -147,7 +148,7 @@ public class RelationshipCacheTest extends CachedOpenMetadataApplicationResource
   public void testCacheMiss() {
     String nonExistentEntityId = UUID.randomUUID().toString();
     Map<String, Object> cachedData = RelationshipCache.get(nonExistentEntityId);
-    assertNull(cachedData, "Cache miss should return null");
+    assertTrue(cachedData.isEmpty(), "Cache miss should return null");
   }
 
   @Test
@@ -159,7 +160,7 @@ public class RelationshipCacheTest extends CachedOpenMetadataApplicationResource
     RelationshipCache.put(entityId, relationships);
     assertNotNull(RelationshipCache.get(entityId), "Data should be in cache");
     RelationshipCache.evict(entityId);
-    assertNull(RelationshipCache.get(entityId), "Data should be evicted from cache");
+    assertTrue(RelationshipCache.get(entityId).isEmpty(), "Data should be evicted from cache");
   }
 
   @Test
@@ -311,11 +312,11 @@ public class RelationshipCacheTest extends CachedOpenMetadataApplicationResource
     String entityId = testTable.getId().toString();
     RelationshipCache.put(entityId, null);
     Map<String, Object> result = RelationshipCache.get(entityId);
-    assertNull(result, "Cache should handle null data gracefully");
+    assertTrue(result.isEmpty(), "Cache should return empty map for null data");
     Map<String, Object> emptyMap = new HashMap<>();
     RelationshipCache.put(entityId, emptyMap);
     result = RelationshipCache.get(entityId);
-    assertNull(result, "Cache should not store empty maps");
+    assertTrue(result.isEmpty(), "Cache should return empty map for null data");
     Map<String, Object> mapWithNulls = new HashMap<>();
     mapWithNulls.put("key1", null);
     mapWithNulls.put("key2", "value");

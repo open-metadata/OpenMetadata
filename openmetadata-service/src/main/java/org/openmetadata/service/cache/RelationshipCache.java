@@ -7,8 +7,13 @@ import io.lettuce.core.cluster.api.sync.RedisAdvancedClusterCommands;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Thin static façade over Redis Hash + tagUsage counter for caching entity relationships.
@@ -19,17 +24,14 @@ public final class RelationshipCache {
 
   private static volatile boolean initialized = false;
   private static volatile boolean clusterMode = false;
-
-  // Standalone Redis connection
   private static StatefulRedisConnection<String, String> redisConnection;
-
-  // Cluster Redis connection
   private static StatefulRedisClusterConnection<String, String> clusterConnection;
 
   private static int defaultTtlSeconds;
   private static int maxRetries;
 
-  // Cache key prefixes
+  private static final ScheduledExecutorService retryExecutor = Executors.newScheduledThreadPool(2);
+
   private static final String RELATIONSHIP_KEY_PREFIX = "rel:";
   private static final String TAG_USAGE_KEY = "tagUsage";
   private static final String CACHE_STATS_KEY = "cache:stats";
@@ -96,8 +98,8 @@ public final class RelationshipCache {
    */
   public static Map<String, Object> get(String entityId) {
     if (!isAvailable()) {
-      LOG.debug("Cache not available, returning null for entity: {}", entityId);
-      return null;
+      LOG.debug("Cache not available, returning empty map for entity: {}", entityId);
+      return Collections.emptyMap();
     }
 
     String key = RELATIONSHIP_KEY_PREFIX + entityId;
@@ -106,16 +108,20 @@ public final class RelationshipCache {
       Map<String, String> rawData =
           executeWithRetry(
               () -> {
-                if (clusterMode) {
-                  return clusterConnection.sync().hgetall(key);
-                } else {
-                  return redisConnection.sync().hgetall(key);
+                try {
+                  if (clusterMode) {
+                    return clusterConnection.sync().hgetall(key);
+                  } else {
+                    return redisConnection.sync().hgetall(key);
+                  }
+                } catch (Exception e) {
+                  throw new RedisCacheException("Failed to get relationships", e);
                 }
               });
 
       if (rawData == null || rawData.isEmpty()) {
         incrementCacheMiss();
-        return null;
+        return Collections.emptyMap();
       }
 
       Map<String, Object> relationships = new HashMap<>();
@@ -130,10 +136,10 @@ public final class RelationshipCache {
       LOG.debug("Cache hit for entity: {}, relationships: {}", entityId, relationships.size());
       return relationships;
 
-    } catch (Exception e) {
+    } catch (RedisCacheException e) {
       LOG.error("Error retrieving relationships from cache for entity: {}", entityId, e);
       incrementCacheError();
-      return null;
+      return Collections.emptyMap();
     }
   }
 
@@ -148,40 +154,58 @@ public final class RelationshipCache {
     String key = RELATIONSHIP_KEY_PREFIX + entityId;
 
     try {
-      Map<String, String> serializedData = new HashMap<>();
-      for (Map.Entry<String, Object> entry : relationships.entrySet()) {
-        String serializedValue = serializeValue(entry.getValue());
-        if (serializedValue != null) {
-          serializedData.put(entry.getKey(), serializedValue);
-        }
-      }
-
+      Map<String, String> serializedData = serializeRelationships(relationships);
+      
       if (!serializedData.isEmpty()) {
-        executeWithRetry(
-            () -> {
-              if (clusterMode) {
-                RedisAdvancedClusterCommands<String, String> commands = clusterConnection.sync();
-                commands.hset(key, serializedData);
-                if (defaultTtlSeconds > 0) {
-                  commands.expire(key, defaultTtlSeconds);
-                }
-              } else {
-                RedisCommands<String, String> commands = redisConnection.sync();
-                commands.hset(key, serializedData);
-                if (defaultTtlSeconds > 0) {
-                  commands.expire(key, defaultTtlSeconds);
-                }
-              }
-              return null;
-            });
-
+        storeInRedis(key, serializedData);
         LOG.debug("Cached relationships for entity: {}, count: {}", entityId, relationships.size());
       }
 
-    } catch (Exception e) {
+    } catch (RedisCacheException e) {
       LOG.error("Error storing relationships to cache for entity: {}", entityId, e);
       incrementCacheError();
     }
+  }
+  
+  /**
+   * Serialize relationships to Redis-compatible format
+   */
+  private static Map<String, String> serializeRelationships(Map<String, Object> relationships) {
+    Map<String, String> serializedData = new HashMap<>();
+    for (Map.Entry<String, Object> entry : relationships.entrySet()) {
+      String serializedValue = serializeValue(entry.getValue());
+      if (serializedValue != null) {
+        serializedData.put(entry.getKey(), serializedValue);
+      }
+    }
+    return serializedData;
+  }
+  
+  /**
+   * Store serialized data in Redis with TTL
+   */
+  private static void storeInRedis(String key, Map<String, String> data) throws RedisCacheException {
+    executeWithRetry(
+        () -> {
+          try {
+            if (clusterMode) {
+              RedisAdvancedClusterCommands<String, String> commands = clusterConnection.sync();
+              commands.hset(key, data);
+              if (defaultTtlSeconds > 0) {
+                commands.expire(key, defaultTtlSeconds);
+              }
+            } else {
+              RedisCommands<String, String> commands = redisConnection.sync();
+              commands.hset(key, data);
+              if (defaultTtlSeconds > 0) {
+                commands.expire(key, defaultTtlSeconds);
+              }
+            }
+            return null;
+          } catch (Exception e) {
+            throw new RedisCacheException("Failed to store in Redis", e);
+          }
+        });
   }
 
   /**
@@ -197,16 +221,20 @@ public final class RelationshipCache {
     try {
       executeWithRetry(
           () -> {
-            if (clusterMode) {
-              return clusterConnection.sync().del(key);
-            } else {
-              return redisConnection.sync().del(key);
+            try {
+              if (clusterMode) {
+                return clusterConnection.sync().del(key);
+              } else {
+                return redisConnection.sync().del(key);
+              }
+            } catch (Exception e) {
+              throw new RedisCacheException("Failed to evict cache for entity: " + entityId, e);
             }
           });
 
       LOG.debug("Evicted cache for entity: {}", entityId);
 
-    } catch (Exception e) {
+    } catch (RedisCacheException e) {
       LOG.error("Error evicting cache for entity: {}", entityId, e);
     }
   }
@@ -222,14 +250,18 @@ public final class RelationshipCache {
     try {
       executeWithRetry(
           () -> {
-            if (clusterMode) {
-              return clusterConnection.sync().hincrby(TAG_USAGE_KEY, tagId, delta);
-            } else {
-              return redisConnection.sync().hincrby(TAG_USAGE_KEY, tagId, delta);
+            try {
+              if (clusterMode) {
+                return clusterConnection.sync().hincrby(TAG_USAGE_KEY, tagId, delta);
+              } else {
+                return redisConnection.sync().hincrby(TAG_USAGE_KEY, tagId, delta);
+              }
+            } catch (Exception e) {
+              throw new RedisCacheException("Failed to bump tag usage for tag: " + tagId, e);
             }
           });
 
-    } catch (Exception e) {
+    } catch (RedisCacheException e) {
       LOG.error("Error updating tag usage for tag: {}", tagId, e);
     }
   }
@@ -246,16 +278,20 @@ public final class RelationshipCache {
       String value =
           executeWithRetry(
               () -> {
-                if (clusterMode) {
-                  return clusterConnection.sync().hget(TAG_USAGE_KEY, tagId);
-                } else {
-                  return redisConnection.sync().hget(TAG_USAGE_KEY, tagId);
+                try {
+                  if (clusterMode) {
+                    return clusterConnection.sync().hget(TAG_USAGE_KEY, tagId);
+                  } else {
+                    return redisConnection.sync().hget(TAG_USAGE_KEY, tagId);
+                  }
+                } catch (Exception e) {
+                  throw new RedisCacheException("Failed to get tag usage for tag: " + tagId, e);
                 }
               });
 
       return value != null ? Long.parseLong(value) : 0L;
 
-    } catch (Exception e) {
+    } catch (RedisCacheException e) {
       LOG.error("Error retrieving tag usage for tag: {}", tagId, e);
       return 0L;
     }
@@ -273,27 +309,44 @@ public final class RelationshipCache {
       Map<String, String> rawStats =
           executeWithRetry(
               () -> {
-                if (clusterMode) {
-                  return clusterConnection.sync().hgetall(CACHE_STATS_KEY);
-                } else {
-                  return redisConnection.sync().hgetall(CACHE_STATS_KEY);
+                try {
+                  if (clusterMode) {
+                    return clusterConnection.sync().hgetall(CACHE_STATS_KEY);
+                  } else {
+                    return redisConnection.sync().hgetall(CACHE_STATS_KEY);
+                  }
+                } catch (Exception e) {
+                  throw new RedisCacheException("Failed to get cache statistics", e);
                 }
               });
 
-      Map<String, Long> stats = new HashMap<>();
-      for (Map.Entry<String, String> entry : rawStats.entrySet()) {
-        try {
-          stats.put(entry.getKey(), Long.parseLong(entry.getValue()));
-        } catch (NumberFormatException e) {
-          LOG.warn("Invalid stat value for {}: {}", entry.getKey(), entry.getValue());
-        }
-      }
+      return parseStatsMap(rawStats);
 
-      return stats;
-
-    } catch (Exception e) {
+    } catch (RedisCacheException e) {
       LOG.error("Error retrieving cache statistics", e);
       return Collections.emptyMap();
+    }
+  }
+  
+  /**
+   * Parse raw stats map to Long values
+   */
+  private static Map<String, Long> parseStatsMap(Map<String, String> rawStats) {
+    Map<String, Long> stats = new HashMap<>();
+    for (Map.Entry<String, String> entry : rawStats.entrySet()) {
+      parseSingleStat(entry, stats);
+    }
+    return stats;
+  }
+  
+  /**
+   * Parse a single stat entry
+   */
+  private static void parseSingleStat(Map.Entry<String, String> entry, Map<String, Long> stats) {
+    try {
+      stats.put(entry.getKey(), Long.parseLong(entry.getValue()));
+    } catch (NumberFormatException e) {
+      LOG.warn("Invalid stat value for {}: {}", entry.getKey(), entry.getValue());
     }
   }
 
@@ -308,53 +361,96 @@ public final class RelationshipCache {
     try {
       executeWithRetry(
           () -> {
-            if (clusterMode) {
-              // For cluster mode, we'd need to iterate through all nodes
-              // This is a simplified implementation
-              LOG.warn("clearAll() in cluster mode requires careful implementation");
-              return null;
-            } else {
-              return redisConnection.sync().flushdb();
+            try {
+              if (clusterMode) {
+                // For cluster mode, we'd need to iterate through all nodes
+                // This is a simplified implementation
+                LOG.warn("clearAll() in cluster mode requires careful implementation");
+                return null;
+              } else {
+                return redisConnection.sync().flushdb();
+              }
+            } catch (Exception e) {
+              throw new RedisCacheException("Failed to clear all cache data", e);
             }
           });
 
       LOG.info("Cleared all cache data");
 
-    } catch (Exception e) {
+    } catch (RedisCacheException e) {
       LOG.error("Error clearing cache", e);
     }
   }
 
   /**
-   * Execute Redis command with retry logic
+   * Execute Redis command with retry logic using non-blocking approach
    */
-  private static <T> T executeWithRetry(RedisOperation<T> operation) throws Exception {
-    Exception lastException = null;
-
-    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+  private static <T> T executeWithRetry(RedisOperation<T> operation) throws RedisCacheException {
+    CompletableFuture<T> future = executeWithRetryAsync(operation, 0);
+    
+    try {
+      return future.get();
+    } catch (CompletionException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof Exception exception) {
+        throw new RedisCacheException("Redis operation failed", exception);
+      }
+      throw new RedisCacheException("Redis operation failed", cause);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RedisCacheException("Redis operation interrupted", e);
+    } catch (Exception e) {
+      throw new RedisCacheException("Unexpected error during Redis operation", e);
+    }
+  }
+  
+  /**
+   * Execute Redis command with async retry logic
+   */
+  private static <T> CompletableFuture<T> executeWithRetryAsync(
+      RedisOperation<T> operation, int attempt) {
+    
+    return CompletableFuture.supplyAsync(() -> {
       try {
         return operation.execute();
-      } catch (Exception e) {
-        lastException = e;
-        if (attempt < maxRetries) {
-          long backoffMs = (long) Math.pow(2, attempt) * 100; // Exponential backoff
-          try {
-            Thread.sleep(backoffMs);
-          } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw e;
-          }
-          LOG.warn(
-              "Redis operation failed, retrying (attempt {}/{}): {}",
-              attempt + 1,
-              maxRetries + 1,
-              e.getMessage());
-        }
+      } catch (RedisCacheException e) {
+        throw new CompletionException(e);
       }
-    }
-
-    throw new RuntimeException(
-        "Redis operation failed after " + (maxRetries + 1) + " attempts", lastException);
+    }).exceptionally(throwable -> {
+      if (attempt >= maxRetries) {
+        LOG.error(
+            "Redis operation failed after {} attempts: {}",
+            maxRetries + 1,
+            throwable.getMessage());
+        throw new CompletionException(
+            "Redis operation failed after " + (maxRetries + 1) + " attempts",
+            throwable);
+      }
+      
+      long backoffMs = (long) Math.pow(2, attempt) * 100;
+      LOG.warn(
+          "Redis operation failed, scheduling retry (attempt {}/{}): {}",
+          attempt + 1,
+          maxRetries + 1,
+          throwable.getMessage());
+      
+      CompletableFuture<T> retryFuture = new CompletableFuture<>();
+      retryExecutor.schedule(
+          () ->
+            executeWithRetryAsync(operation, attempt + 1)
+                .whenComplete((result, error) -> {
+                  if (error != null) {
+                    retryFuture.completeExceptionally(error);
+                  } else {
+                    retryFuture.complete(result);
+                  }
+                })
+          ,
+          backoffMs,
+          TimeUnit.MILLISECONDS);
+      
+      return retryFuture.join();
+    });
   }
 
   /**
@@ -418,13 +514,17 @@ public final class RelationshipCache {
     try {
       executeWithRetry(
           () -> {
-            if (clusterMode) {
-              return clusterConnection.sync().hincrby(CACHE_STATS_KEY, statName, 1);
-            } else {
-              return redisConnection.sync().hincrby(CACHE_STATS_KEY, statName, 1);
+            try {
+              if (clusterMode) {
+                return clusterConnection.sync().hincrby(CACHE_STATS_KEY, statName, 1);
+              } else {
+                return redisConnection.sync().hincrby(CACHE_STATS_KEY, statName, 1);
+              }
+            } catch (Exception e) {
+              throw new RedisCacheException("Failed to increment stat: " + statName, e);
             }
           });
-    } catch (Exception e) {
+    } catch (RedisCacheException e) {
       LOG.debug("Error incrementing stat {}: {}", statName, e.getMessage());
     }
   }
@@ -434,6 +534,21 @@ public final class RelationshipCache {
    */
   @FunctionalInterface
   private interface RedisOperation<T> {
-    T execute() throws Exception;
+    T execute() throws RedisCacheException;
+  }
+  
+  /**
+   * Shutdown the retry executor (call during application shutdown)
+   */
+  public static void shutdown() {
+    retryExecutor.shutdown();
+    try {
+      if (!retryExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+        retryExecutor.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      retryExecutor.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
   }
 }

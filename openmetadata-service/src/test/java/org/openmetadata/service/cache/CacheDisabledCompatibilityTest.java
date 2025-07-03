@@ -168,7 +168,7 @@ public class CacheDisabledCompatibilityTest extends OpenMetadataApplicationTest 
     assertDoesNotThrow(
         () -> {
           Map<String, Object> result = RelationshipCache.get(entityId);
-          assertNull(result, "get() should return null when cache is disabled");
+          assertTrue(result.isEmpty(), "get() should return empty map when cache is disabled");
         },
         "get() should handle disabled cache gracefully");
 
