@@ -5,6 +5,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -140,6 +141,59 @@ public interface SearchClient {
           + "} "
           + "} "
           + "}";
+
+  String UPDATE_COLUMN_LINEAGE_SCRIPT =
+      """
+          if (ctx._source.upstreamLineage != null) {
+            for (int i = 0; i < ctx._source.upstreamLineage.length; i++) {
+              def lineage = ctx._source.upstreamLineage[i];
+              if (lineage == null || lineage.columns == null) continue;
+
+              for (int j = 0; j < lineage.columns.length; j++) {
+                def columnMapping = lineage.columns[j];
+                if (columnMapping == null) continue;
+
+                if (columnMapping.toColumn != null && params.columnUpdates.containsKey(columnMapping.toColumn)) {
+                  columnMapping.toColumn = params.columnUpdates[columnMapping.toColumn];
+                }
+
+                if (columnMapping.fromColumns != null) {
+                  for (int k = 0; k < columnMapping.fromColumns.length; k++) {
+                    def fc = columnMapping.fromColumns[k];
+                    if (fc != null && params.columnUpdates.containsKey(fc)) {
+                      columnMapping.fromColumns[k] = params.columnUpdates[fc];
+                    }
+                  }
+                }
+              }
+            }
+          }
+          """;
+
+  String DELETE_COLUMN_LINEAGE_SCRIPT =
+      """
+          if (ctx._source.upstreamLineage != null) {
+              for (int i = 0; i < ctx._source.upstreamLineage.length; i++) {
+                  def lineage = ctx._source.upstreamLineage[i];
+
+                  if (lineage != null && lineage.columns != null) {
+                      for (def column : lineage.columns) {
+                          if (column != null && column.fromColumns != null) {
+                              column.fromColumns.removeIf(fromCol ->\s
+                                  fromCol == null || params.deletedFQNs.contains(fromCol)
+                              );
+                          }
+                      }
+
+                      lineage.columns.removeIf(column ->\s
+                          column == null ||
+                          (column.toColumn != null && params.deletedFQNs.contains(column.toColumn)) ||
+                          (column.fromColumns != null && column.fromColumns.isEmpty())
+                      );
+                  }
+              }
+          }
+          """;
 
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
@@ -463,4 +517,9 @@ public interface SearchClient {
 
   void updateGlossaryTermByFqnPrefix(
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
+
+  void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap);
+
+  void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns);
 }

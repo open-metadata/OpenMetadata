@@ -31,6 +31,7 @@ import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntities;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
@@ -1335,6 +1336,38 @@ public class TableRepository extends EntityRepository<Table> {
       // manage table ER relationship based on table constraints
       addConstraintRelationship(origTable, added);
       deleteConstraintRelationship(origTable, deleted);
+    }
+
+    @Override
+    protected void handleColumnLineageUpdates(
+        List<String> deletedColumns,
+        java.util.HashMap<String, String> originalUpdatedColumnFqnMap) {
+      boolean hasRenames = !originalUpdatedColumnFqnMap.isEmpty();
+      boolean hasDeletes = !deletedColumns.isEmpty();
+
+      // Update lineage relationships stored in the database
+      if (hasRenames || hasDeletes) {
+        LineageRepository lineageRepository = Entity.getLineageRepository();
+        if (lineageRepository != null) {
+          lineageRepository.updateColumnLineage(
+              updated.getId(),
+              hasRenames ? originalUpdatedColumnFqnMap : java.util.Collections.emptyMap(),
+              hasDeletes ? deletedColumns : java.util.Collections.emptyList(),
+              updated.getSchemaDefinition(),
+              updated.getUpdatedBy());
+        }
+      }
+
+      if (hasRenames) {
+        searchRepository
+            .getSearchClient()
+            .updateColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, originalUpdatedColumnFqnMap);
+      }
+      if (hasDeletes) {
+        searchRepository
+            .getSearchClient()
+            .deleteColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, deletedColumns);
+      }
     }
   }
 
