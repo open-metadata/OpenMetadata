@@ -4147,6 +4147,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         BiPredicate<Column, Column> columnMatch) {
       List<Column> deletedColumns = new ArrayList<>();
       List<Column> addedColumns = new ArrayList<>();
+      HashMap<String, String> originalUpdatedColumnFqns = new HashMap<>();
       recordListChange(
           fieldName, origColumns, updatedColumns, addedColumns, deletedColumns, columnMatch);
       // carry forward tags and description if deletedColumns matches added column
@@ -4183,6 +4184,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (stored == null) { // New column added
           continue;
         }
+        // Store Original and Updated Column Map
+        if (!stored.getFullyQualifiedName().equals(updated.getFullyQualifiedName())) {
+          originalUpdatedColumnFqns.putIfAbsent(
+              stored.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        }
 
         updateColumnDescription(fieldName, stored, updated);
         updateColumnDisplayName(stored, updated);
@@ -4204,6 +4210,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       majorVersionChange = majorVersionChange || !deletedColumns.isEmpty();
+      List<String> deletedColumnFqnList =
+          deletedColumns.stream().map(Column::getFullyQualifiedName).toList();
+      handleColumnLineageUpdates(deletedColumnFqnList, originalUpdatedColumnFqns);
+    }
+
+    protected void handleColumnLineageUpdates(
+        List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
+      // NO-OP – to be overridden by entity-specific updaters when needed.
     }
 
     private void updateColumnDescription(
