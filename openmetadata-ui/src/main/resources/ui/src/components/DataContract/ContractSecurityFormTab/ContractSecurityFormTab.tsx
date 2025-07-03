@@ -15,8 +15,9 @@ import { useTranslation } from 'react-i18next';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
 
-export const ContractSecurityFormTab = () => {
+export const ContractSecurityFormTab: React.FC = () => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
 
   const fields: FieldProp[] = [
     {
@@ -43,7 +44,9 @@ export const ContractSecurityFormTab = () => {
       </Typography.Text>
 
       <Card>
-        <Form>{generateFormFields(fields)}</Form>
+        <Form form={form} layout="vertical" name="contract-security-form">
+          {generateFormFields(fields)}
+        </Form>
       </Card>
     </div>
   );

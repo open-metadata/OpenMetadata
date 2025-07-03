@@ -15,7 +15,7 @@ import { Card, Radio, Table, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-export const ContractQualityFormTab = () => {
+export const ContractQualityFormTab: React.FC = () => {
   const [testType, setTestType] = useState<'table' | 'column'>('table');
 
   const { t } = useTranslation();

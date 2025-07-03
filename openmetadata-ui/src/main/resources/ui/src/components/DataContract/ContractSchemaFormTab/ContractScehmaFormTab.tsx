@@ -10,37 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import Table from '../../common/Table/Table';
+import SchemaTable from '../../Database/SchemaTable/SchemaTable.component';
 
-export const ContractSchemaFormTab = () => {
-  const { t } = useTranslation();
-  const columns = useMemo(
-    () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-      },
-      {
-        title: t('label.type'),
-        dataIndex: 'type',
-      },
-      {
-        title: t('label.tag-plural'),
-        dataIndex: 'tags',
-      },
-      {
-        title: t('label.glossary-term-plural'),
-        dataIndex: 'glossaryTerms',
-      },
-      {
-        title: t('label.contraint-plural'),
-        dataIndex: 'contraints',
-      },
-    ],
-    [t]
-  );
+export const ContractSchemaFormTab: React.FC = () => {
+  //   const { t } = useTranslation();
+  //   const columns = useMemo(
+  //     () => [
+  //       {
+  //         title: t('label.name'),
+  //         dataIndex: 'name',
+  //       },
+  //       {
+  //         title: t('label.type'),
+  //         dataIndex: 'type',
+  //       },
+  //       {
+  //         title: t('label.tag-plural'),
+  //         dataIndex: 'tags',
+  //       },
+  //       {
+  //         title: t('label.glossary-term-plural'),
+  //         dataIndex: 'glossaryTerms',
+  //       },
+  //       {
+  //         title: t('label.constraint-plural'),
+  //         dataIndex: 'contraints',
+  //       },
+  //     ],
+  //     [t]
+  //   );
 
-  return <Table columns={columns} dataSource={[]} />;
+  return <SchemaTable />;
 };

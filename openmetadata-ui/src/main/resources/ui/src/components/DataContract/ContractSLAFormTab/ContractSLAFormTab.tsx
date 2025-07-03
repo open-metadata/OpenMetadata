@@ -22,8 +22,9 @@ import {
 } from 'antd';
 import { useTranslation } from 'react-i18next';
 
-export const ContractSLAFormTab = () => {
+export const ContractSLAFormTab: React.FC = () => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
 
   return (
     <div className="container">
@@ -40,7 +41,7 @@ export const ContractSLAFormTab = () => {
             <Typography.Text type="secondary">
               {t('message.refresh-frequency-description')}
             </Typography.Text>
-            <Form layout="horizontal">
+            <Form form={form} layout="horizontal" name="contract-sla-form">
               <Form.Item label={t('label.interval')} name="interval">
                 <Input type="number" />
               </Form.Item>
@@ -64,7 +65,7 @@ export const ContractSLAFormTab = () => {
             <Typography.Text type="secondary">
               {t('message.max-latency-description')}
             </Typography.Text>
-            <Form layout="horizontal">
+            <Form form={form} layout="horizontal" name="contract-sla-form">
               <Form.Item label={t('label.value')} name="value">
                 <Input type="number" />
               </Form.Item>
@@ -88,7 +89,7 @@ export const ContractSLAFormTab = () => {
             <Typography.Text type="secondary">
               {t('message.availability-time-description')}
             </Typography.Text>
-            <Form layout="horizontal">
+            <Form form={form} layout="horizontal" name="contract-sla-form">
               <Form.Item label={t('label.time')} name="time">
                 <TimePicker />
               </Form.Item>
@@ -103,7 +104,7 @@ export const ContractSLAFormTab = () => {
             <Typography.Text type="secondary">
               {t('message.retention-description')}
             </Typography.Text>
-            <Form layout="horizontal">
+            <Form form={form} layout="horizontal" name="contract-sla-form">
               <Form.Item label={t('label.period')} name="period">
                 <Input type="number" />
               </Form.Item>

@@ -131,6 +131,7 @@ import TableProfiler from '../components/Database/Profiler/TableProfiler/TablePr
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -1036,8 +1037,8 @@ export const getTableDetailPageBaseTabs = ({
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
       ),
-      key: EntityTabs.SCHEMA,
-      children: <div>{t('label.contract')}</div>,
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (

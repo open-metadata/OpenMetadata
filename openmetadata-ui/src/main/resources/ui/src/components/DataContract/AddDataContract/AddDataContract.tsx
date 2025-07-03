@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-console */
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,8 +13,19 @@
  *  limitations under the License.
  */
 /* eslint-disable i18next/no-literal-string */
-import { Button, Card, Space, Tabs, Typography } from 'antd';
-import { useMemo, useState } from 'react';
+import { CodeOutlined, EditOutlined, TableOutlined } from '@ant-design/icons';
+import {
+  Button,
+  Card,
+  Divider,
+  Form,
+  Radio,
+  RadioChangeEvent,
+  Tabs,
+  Typography,
+} from 'antd';
+import { FormProviderProps } from 'antd/lib/form/context';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
@@ -22,41 +35,79 @@ import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFo
 import { ContractSecurityFormTab } from '../ContractSecurityFormTab/ContractSecurityFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
 import { ContractSLAFormTab } from '../ContractSLAFormTab/ContractSLAFormTab';
+import './add-data-contract.less';
 
-export const AddDataContract = () => {
+const AddDataContract: React.FC = () => {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<'YAML' | 'UI'>('UI');
+  const [mode, setMode] = useState<'YAML' | 'UI'>('YAML');
   const [yaml, setYaml] = useState('');
+
+  const handleFormChange: FormProviderProps['onFormFinish'] = (
+    name: string,
+    { forms, values }: { forms: Record<string, any>; values: any }
+  ) => {
+    console.log(name, forms, values);
+  };
 
   const items = useMemo(
     () => [
       {
-        label: t('label.contract-detail-plural'),
+        label: (
+          <div className="d-flex items-center">
+            <TableOutlined />
+            <span>{t('label.contract-detail-plural')}</span>
+          </div>
+        ),
         key: 'contract-detail',
         children: <ContractDetailFormTab />,
       },
       {
-        label: t('label.schema'),
+        label: (
+          <div className="d-flex items-center">
+            <TableOutlined />
+            <span>{t('label.schema')}</span>
+          </div>
+        ),
         key: 'schema',
         children: <ContractSchemaFormTab />,
       },
       {
-        label: t('label.semantics'),
+        label: (
+          <div className="d-flex items-center">
+            <TableOutlined />
+            <span>{t('label.semantic-plural')}</span>
+          </div>
+        ),
         key: 'semantics',
         children: <ContractSemanticFormTab />,
       },
       {
-        label: t('label.security'),
+        label: (
+          <div className="d-flex items-center">
+            <TableOutlined />
+            <span>{t('label.security')}</span>
+          </div>
+        ),
         key: 'security',
         children: <ContractSecurityFormTab />,
       },
       {
-        label: t('label.quality'),
+        label: (
+          <div className="d-flex items-center">
+            <TableOutlined />
+            <span>{t('label.quality')}</span>
+          </div>
+        ),
         key: 'quality',
         children: <ContractQualityFormTab />,
       },
       {
-        label: t('label.sla'),
+        label: (
+          <div className="d-flex items-center">
+            <TableOutlined />
+            <span>{t('label.sla')}</span>
+          </div>
+        ),
         key: 'sla',
         children: <ContractSLAFormTab />,
       },
@@ -64,50 +115,69 @@ export const AddDataContract = () => {
     [t]
   );
 
+  const handleModeChange = useCallback((e: RadioChangeEvent) => {
+    setMode(e.target.value);
+  }, []);
+
   const cardTitle = useMemo(() => {
     return (
-      <Space className="w-full">
-        <div className="d-flex item-center justify-between">
-          <Typography.Title level={5}>{t('label.schema')}</Typography.Title>
-          <Typography.Text type="secondary">
-            {t('label.yaml-mode-description')}
-          </Typography.Text>
+      <div className="d-flex items-center justify-between">
+        <div className="d-flex item-center justify-between flex-1">
           <div>
-            <Button.Group>
-              <Button
-                type={mode === 'YAML' ? 'primary' : 'default'}
-                onClick={() => setMode('YAML')}>
-                {t('label.yaml-mode')}
-              </Button>
-              <Button
-                type={mode === 'UI' ? 'primary' : 'default'}
-                onClick={() => setMode('UI')}>
-                {t('label.ui-mode')}
-              </Button>
-            </Button.Group>
+            <Typography.Title className="m-0" level={5}>
+              {t('label.add-contract-detail-plural')}
+            </Typography.Title>
+            <Typography.Paragraph className="m-0 text-sm" type="secondary">
+              {t('message.add-contract-detail-description')}
+            </Typography.Paragraph>
+          </div>
+          <div className="d-flex items-center">
+            <Radio.Group value={mode} onChange={handleModeChange}>
+              <Radio value="YAML">
+                <CodeOutlined />
+              </Radio>
+              <Radio value="UI">
+                <EditOutlined />
+              </Radio>
+            </Radio.Group>
+            <Divider type="vertical" />
           </div>
         </div>
         <div>
           <Button type="default">{t('label.cancel')}</Button>
-          <Button type="primary">{t('label.save')}</Button>
+          <Button className="m-l-sm" type="primary">
+            {t('label.save')}
+          </Button>
         </div>
-      </Space>
+      </div>
     );
-  }, [mode, t]);
+  }, [mode, t, handleModeChange]);
 
   const cardContent = useMemo(() => {
     if (mode === 'YAML') {
       return (
-        <SchemaEditor
-          mode={{ name: CSMode.YAML }}
-          value={yaml}
-          onChange={setYaml}
-        />
+        <Card>
+          <SchemaEditor
+            mode={{ name: CSMode.YAML }}
+            value={yaml}
+            onChange={setYaml}
+          />
+        </Card>
       );
     }
 
-    return <Tabs items={items} tabPosition="left" />;
-  }, [mode, items, t]);
+    return (
+      <Form.Provider onFormFinish={handleFormChange}>
+        <Tabs className="contract-tabs" items={items} tabPosition="left" />
+      </Form.Provider>
+    );
+  }, [mode, items, t, handleFormChange]);
 
-  return <Card title={cardTitle}>{cardContent}</Card>;
+  return (
+    <Card className="h-full" title={cardTitle}>
+      {cardContent}
+    </Card>
+  );
 };
+
+export default AddDataContract;
