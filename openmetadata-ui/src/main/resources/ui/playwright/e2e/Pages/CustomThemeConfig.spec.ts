@@ -130,9 +130,6 @@ test.describe('Custom Theme Config Page', () => {
     // Fill other required fields to make form valid
     await page.locator('[data-testid="customLogoUrlPath"]').fill(config.logo);
 
-    // Wait for any initial image load requests to complete
-    await page.waitForTimeout(1000);
-
     // Reset counter before save action
     monogramUrlCallCount = 0;
     monogramRequests.length = 0;
