@@ -133,57 +133,6 @@ const Table = <T extends Record<string, unknown>>(
     }
   }, [dropdownColumnList, columnDropdownSelections]);
 
-  const menu = useMemo(
-    () => ({
-      items: [
-        {
-          key: 'header',
-          label: (
-            <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
-              <Typography.Text
-                className="text-sm text-grey-muted font-medium"
-                data-testid="column-dropdown-title">
-                {t('label.column')}
-              </Typography.Text>
-              <Button
-                className="text-primary text-sm p-0"
-                data-testid="column-dropdown-action-button"
-                type="text"
-                onClick={handleBulkColumnAction}>
-                {dropdownColumnList.length === columnDropdownSelections.length
-                  ? t('label.hide-all')
-                  : t('label.view-all')}
-              </Button>
-            </div>
-          ),
-        },
-        {
-          key: 'columns',
-          label: dropdownColumnList.map(
-            (item: TableColumnDropdownList, index: number) => (
-              <DraggableMenuItem
-                currentItem={item}
-                index={index}
-                itemList={dropdownColumnList}
-                key={item.value}
-                selectedOptions={columnDropdownSelections}
-                onMoveItem={handleMoveItem}
-                onSelect={handleColumnItemSelect}
-              />
-            )
-          ),
-        },
-      ],
-    }),
-    [
-      dropdownColumnList,
-      columnDropdownSelections,
-      handleMoveItem,
-      handleColumnItemSelect,
-      handleBulkColumnAction,
-    ]
-  );
-
   const resizingTableProps = rest.resizableColumns
     ? {
         columns: resizableColumns,
@@ -306,7 +255,6 @@ const Table = <T extends Record<string, unknown>>(
                         </div>
                       </div>
                     )}
-                    menu={menu}
                     open={isDropdownVisible}
                     placement="bottomRight"
                     trigger={['click']}
