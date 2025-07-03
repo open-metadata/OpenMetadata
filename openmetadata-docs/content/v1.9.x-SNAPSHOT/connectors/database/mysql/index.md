@@ -1,10 +1,14 @@
 ---
 title: MySQL Connector | OpenMetadata Database Integration Guide
 <<<<<<< HEAD
+<<<<<<< HEAD
 description: Connect MySQL databases to OpenMetadata effortlessly. Complete setup guide, configuration steps, and troubleshooting tips for seamless data integration.
 =======
 description: Set up MySQL database connector for OpenMetadata to automatically discover, catalog, and manage your MySQL metadata. Step-by-step configuration guide.
 >>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
+=======
+description: Connect MySQL databases to OpenMetadata effortlessly. Complete setup guide, configuration steps, and troubleshooting tips for seamless data integration.
+>>>>>>> ac8f18500f (Doc: Meta Description Updation)
 slug: /connectors/database/mysql
 ---
 

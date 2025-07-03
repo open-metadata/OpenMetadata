@@ -1,10 +1,14 @@
 ---
 title: Couchbase Connector | OpenMetadata NoSQL Integration Guide
 <<<<<<< HEAD
+<<<<<<< HEAD
 description: Connect Couchbase to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 =======
 description: Connect Couchbase to OpenMetadata effortlessly. Complete setup guide, configuration steps, and metadata extraction for your NoSQL database connector.
 >>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
+=======
+description: Connect Couchbase to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
+>>>>>>> ac8f18500f (Doc: Meta Description Updation)
 slug: /connectors/database/couchbase
 ---
 

@@ -1,10 +1,14 @@
 ---
 title: Salesforce Connector | OpenMetadata CRM Integration Guide
 <<<<<<< HEAD
+<<<<<<< HEAD
 description: Connect Salesforce to OpenMetadata with our database connector. Discover, catalog, and manage your Salesforce data assets seamlessly. Setup guide included.
 =======
 description: Connect Salesforce to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration tips, and metadata extraction made easy.
 >>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
+=======
+description: Connect Salesforce to OpenMetadata with our database connector. Discover, catalog, and manage your Salesforce data assets seamlessly. Setup guide included.
+>>>>>>> ac8f18500f (Doc: Meta Description Updation)
 slug: /connectors/database/salesforce
 ---
 

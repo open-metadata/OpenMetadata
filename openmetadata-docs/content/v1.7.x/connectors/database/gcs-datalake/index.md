@@ -1,10 +1,14 @@
 ---
 title: GCS Datalake Connector | OpenMetadata Cloud Storage Integration
 <<<<<<< HEAD
+<<<<<<< HEAD
 description: Connect GCS Datalake to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction for Google Cloud Storage.
 =======
 description: Connect your Google Cloud Storage data lake to OpenMetadata with our comprehensive GCS connector guide. Setup instructions, configuration tips & best practices.
 >>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
+=======
+description: Connect GCS Datalake to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction for Google Cloud Storage.
+>>>>>>> ac8f18500f (Doc: Meta Description Updation)
 slug: /connectors/database/gcs-datalake
 ---
 

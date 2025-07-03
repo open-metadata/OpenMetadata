@@ -1,10 +1,14 @@
 ---
 title: Hive Connector | OpenMetadata Big Data Integration Guide
 <<<<<<< HEAD
+<<<<<<< HEAD
 description: Connect Apache Hive to OpenMetadata with our comprehensive database connector guide. Learn setup, configuration, and metadata extraction in minutes.
 =======
 description: Connect Apache Hive to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration options, and metadata extraction steps.
 >>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
+=======
+description: Connect Apache Hive to OpenMetadata with our comprehensive database connector guide. Learn setup, configuration, and metadata extraction in minutes.
+>>>>>>> ac8f18500f (Doc: Meta Description Updation)
 slug: /connectors/database/hive
 ---
 

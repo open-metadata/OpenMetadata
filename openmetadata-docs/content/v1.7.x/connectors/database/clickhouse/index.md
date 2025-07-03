@@ -1,6 +1,6 @@
 ---
 title: ClickHouse Connector | OpenMetadata Database Integration
-description: Learn how to connect ClickHouse databases to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration options, and trouble...
+description: Connect ClickHouse to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/database/clickhouse
 ---
 

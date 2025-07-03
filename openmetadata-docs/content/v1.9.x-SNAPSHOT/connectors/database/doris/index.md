@@ -1,10 +1,14 @@
 ---
 title: Doris Connector | OpenMetadata Database Integration Guide
 <<<<<<< HEAD
+<<<<<<< HEAD
 description: Learn how to connect Apache Doris database to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration, and metadata extra...
 =======
 description: Connect Apache Doris to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration steps, and metadata extraction tips.
 >>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
+=======
+description: Learn how to connect Apache Doris database to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration, and metadata extra...
+>>>>>>> ac8f18500f (Doc: Meta Description Updation)
 slug: /connectors/database/doris
 ---
 

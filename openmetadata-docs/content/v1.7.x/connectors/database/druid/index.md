@@ -1,10 +1,14 @@
 ---
 title: Druid Connector | OpenMetadata Real-Time Analytics Guide
 <<<<<<< HEAD
+<<<<<<< HEAD
 description: Connect Druid to OpenMetadata effortlessly with our database connector. Extract metadata, lineage, and usage insights from your Druid clusters seamlessly.
 =======
 description: Learn how to connect Apache Druid to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction.
 >>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
+=======
+description: Connect Druid to OpenMetadata effortlessly with our database connector. Extract metadata, lineage, and usage insights from your Druid clusters seamlessly.
+>>>>>>> ac8f18500f (Doc: Meta Description Updation)
 slug: /connectors/database/druid
 ---
 

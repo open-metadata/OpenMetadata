@@ -1,10 +1,14 @@
 ---
 title: DynamoDB Connector | OpenMetadata NoSQL Database Integration
 <<<<<<< HEAD
+<<<<<<< HEAD
 description: Connect DynamoDB to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 =======
 description: Connect DynamoDB to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration options, and metadata extraction steps.
 >>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
+=======
+description: Connect DynamoDB to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
+>>>>>>> ac8f18500f (Doc: Meta Description Updation)
 slug: /connectors/database/dynamodb
 ---
 

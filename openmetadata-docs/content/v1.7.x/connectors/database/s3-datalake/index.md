@@ -1,10 +1,14 @@
 ---
 title: S3 Datalake Connector | OpenMetadata Cloud Storage Guide
 <<<<<<< HEAD
+<<<<<<< HEAD
 description: Connect your S3 Data Lake to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration examples, and metadata extraction tips.
 =======
 description: Connect your S3 data lake to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration examples, and best practices included.
 >>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
+=======
+description: Connect your S3 Data Lake to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration examples, and metadata extraction tips.
+>>>>>>> ac8f18500f (Doc: Meta Description Updation)
 slug: /connectors/database/s3-datalake
 ---
 
