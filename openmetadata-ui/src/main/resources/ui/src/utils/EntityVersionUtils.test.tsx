@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EntityField } from '../constants/Feeds.constants';
 import {
   Column as ContainerColumn,
   DataType as ContainerDataType,
@@ -100,7 +101,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'displayName',
+        EntityField.DISPLAYNAME,
         entityName,
         columns
       );
@@ -129,7 +130,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'description',
+        EntityField.DESCRIPTION,
         entityName,
         columns
       );
@@ -164,7 +165,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'displayName',
+        EntityField.DISPLAYNAME,
         childEntityName,
         columns
       );
@@ -188,7 +189,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'displayName',
+        EntityField.DISPLAYNAME,
         'nonExistentColumn',
         columns
       );
@@ -214,7 +215,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'displayName',
+        EntityField.DISPLAYNAME,
         entityName,
         columns
       );
@@ -241,7 +242,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'displayName',
+        EntityField.DISPLAYNAME,
         entityName,
         fields
       );
@@ -262,7 +263,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'displayName',
+        EntityField.DISPLAYNAME,
         'anyEntity',
         []
       );
@@ -283,7 +284,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'displayName',
+        EntityField.DISPLAYNAME,
         undefined,
         columns
       );
@@ -305,7 +306,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'displayName',
+        EntityField.DISPLAYNAME,
         'testColumn',
         columns
       );
@@ -329,7 +330,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'displayName',
+        EntityField.DISPLAYNAME,
         entityName,
         columns
       );
@@ -352,7 +353,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'displayName',
+        EntityField.DISPLAYNAME,
         entityName,
         columns
       );
@@ -372,7 +373,7 @@ describe('getEntityDisplayNameDiff', () => {
         undefined,
         undefined,
         createMockFieldChange(
-          'dataTypeDisplay',
+          EntityField.DATA_TYPE_DISPLAY,
           oldDataTypeDisplay,
           newDataTypeDisplay
         )
@@ -387,7 +388,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'dataTypeDisplay',
+        EntityField.DATA_TYPE_DISPLAY,
         entityName,
         columns
       );
@@ -412,7 +413,7 @@ describe('getEntityDisplayNameDiff', () => {
 
       const result = getEntityDisplayNameDiff(
         entityDiff,
-        'name',
+        EntityField.NAME,
         entityName,
         columns
       );

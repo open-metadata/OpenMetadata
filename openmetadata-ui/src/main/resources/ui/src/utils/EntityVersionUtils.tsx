@@ -510,7 +510,7 @@ export function getEntityDescriptionDiff<A extends AssetsChildForVersionPages>(
 
 export function getEntityDisplayNameDiff<A extends EntityColumn>(
   entityDiff: EntityDiffProps,
-  key: string,
+  key: EntityField,
   changedEntityName?: string,
   entityList: A[] = []
 ) {
