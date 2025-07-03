@@ -21,6 +21,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,12 +40,12 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -320,11 +321,22 @@ public class SearchIndexAppTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testStatsAccumulation() {
+  void testStatsAccumulation() throws Exception {
     searchIndexApp.init(
         new App()
             .withName("SearchIndexingApplication")
             .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class)));
+
+    // Initialize stats and set searchIndexStats field
+    Stats initialStats = searchIndexApp.initializeTotalRecords(Set.of("table"));
+
+    // Use reflection to set searchIndexStats
+    Field searchIndexStatsField = SearchIndexApp.class.getDeclaredField("searchIndexStats");
+    searchIndexStatsField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    AtomicReference<Stats> searchIndexStats =
+        (AtomicReference<Stats>) searchIndexStatsField.get(searchIndexApp);
+    searchIndexStats.set(initialStats);
 
     StepStats batch1 = new StepStats().withSuccessRecords(10).withFailedRecords(2);
     StepStats batch2 = new StepStats().withSuccessRecords(15).withFailedRecords(1);
@@ -335,12 +347,18 @@ public class SearchIndexAppTest extends OpenMetadataApplicationTest {
     searchIndexApp.updateStats("table", batch3);
 
     Stats jobStats = searchIndexApp.getJobData().getStats();
+    assertNotNull(jobStats);
+    assertNotNull(jobStats.getEntityStats());
+    assertNotNull(jobStats.getEntityStats().getAdditionalProperties());
+
     StepStats tableStats = jobStats.getEntityStats().getAdditionalProperties().get("table");
+    assertNotNull(tableStats);
 
     assertEquals(33, tableStats.getSuccessRecords()); // 10 + 15 + 8
     assertEquals(3, tableStats.getFailedRecords()); // 2 + 1 + 0
 
     StepStats overallStats = jobStats.getJobStats();
+    assertNotNull(overallStats);
     assertEquals(33, overallStats.getSuccessRecords());
     assertEquals(3, overallStats.getFailedRecords());
   }
@@ -393,6 +411,17 @@ public class SearchIndexAppTest extends OpenMetadataApplicationTest {
             .withName("SearchIndexingApplication")
             .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class)));
 
+    // Initialize stats and set searchIndexStats field
+    Stats initialStats = searchIndexApp.initializeTotalRecords(Set.of("table"));
+
+    // Use reflection to set searchIndexStats
+    Field searchIndexStatsField = SearchIndexApp.class.getDeclaredField("searchIndexStats");
+    searchIndexStatsField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    AtomicReference<Stats> searchIndexStats =
+        (AtomicReference<Stats>) searchIndexStatsField.get(searchIndexApp);
+    searchIndexStats.set(initialStats);
+
     int numThreads = 5;
     int batchesPerThread = 10;
     ExecutorService executor = Executors.newFixedThreadPool(numThreads);
@@ -419,7 +448,12 @@ public class SearchIndexAppTest extends OpenMetadataApplicationTest {
     executor.shutdown();
 
     Stats jobStats = searchIndexApp.getJobData().getStats();
+    assertNotNull(jobStats);
+    assertNotNull(jobStats.getEntityStats());
+    assertNotNull(jobStats.getEntityStats().getAdditionalProperties());
+
     StepStats tableStats = jobStats.getEntityStats().getAdditionalProperties().get("table");
+    assertNotNull(tableStats);
 
     int expectedSuccess = 0;
     int expectedFailures = 0;

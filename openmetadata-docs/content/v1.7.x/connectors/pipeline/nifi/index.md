@@ -1,5 +1,6 @@
 ---
-title: Nifi
+title: Nifi Connector | OpenMetadata Data Pipeline Integration
+description: Connect Apache NiFi to OpenMetadata seamlessly. Complete setup guide for NiFi pipeline connector with step-by-step configuration and metadata extraction.
 slug: /connectors/pipeline/nifi
 ---
 

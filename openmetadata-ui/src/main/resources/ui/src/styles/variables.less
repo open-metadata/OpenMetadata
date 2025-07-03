@@ -19,10 +19,19 @@
 @error-color: ~'var(--ant-error-color)';
 @info-color: ~'var(--ant-info-color)';
 @link-color: ~'var(--ant-primary-color)';
-@primary-1: ~'var(--ant-primary-1)';
 @radio-button-checked-bg: ~'var(--ant-primary-1)';
 @highlight-color: #f41111;
-
+@primary-25: ~'var(--ant-primary-25)';
+@primary-50: ~'var(--ant-primary-50)';
+@primary-1: ~'var(--ant-primary-1)';
+@primary-2: ~'var(--ant-primary-2)';
+@primary-3: ~'var(--ant-primary-3)';
+@primary-4: ~'var(--ant-primary-4)';
+@primary-5: ~'var(--ant-primary-5)';
+@primary-6: ~'var(--ant-primary-6)';
+@primary-7: ~'var(--ant-primary-7)';
+@primary-8: ~'var(--ant-primary-8)';
+@primary-9: ~'var(--ant-primary-9)';
 @green-1: #28a744;
 @green-2: #ebf9f4;
 @green-3: #48ca9e;
@@ -85,21 +94,21 @@
 @blue-6: #eff5ff;
 @blue-7: #3062d4;
 @blue-8: #f5f8ff;
-@blue-9: #175cd3;
+@blue-9: @primary-7;
 @blue-10: #005bc4;
-@blue-12: #1570ef;
+@blue-12: @primary-color;
 @blue-13: #e0f2fe;
-@blue-14: #f5faff;
-@blue-16: #84caff;
+@blue-14: @primary-25;
+@blue-16: @primary-3;
 @blue-17: #0968da;
 @blue-18: #e3e3e3;
 @blue-20: #d5d9eb;
 @blue-21: #026aa2;
 @blue-22: #f0f9ff;
 @blue-23: #e6f1fe;
-@blue-24: #2e90fa;
-@blue-25: #b2ddff;
-@blue-26: #1849a9;
+@blue-24: @primary-5;
+@blue-25: @primary-2;
+@blue-26: @primary-8;
 @blue-27: #2196f3;
 @blue-28: #e3f2fd4d;
 @grey-text: #2c2c2c;
@@ -136,7 +145,7 @@
 @box-shadow-base: 0px 2px 10px rgba(0, 0, 0, 0.12);
 @button-box-shadow-default: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
 @button-box-shadow-hover: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
-@button-box-shadow-focus: 0px 0px 0px 4px rgba(209, 233, 255, 1);
+@button-box-shadow-focus: 0px 0px 0px 4px @primary-1;
 @button-box-shadow-disabled: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
 @button-box-shadow-grey: 0px 1px 2px 0px rgba(10, 13, 18, 0.05),
   0px 0px 0px 4px #f5f5f5;
@@ -203,7 +212,7 @@
 @alert-error: @red-13;
 @alert-info: @blue-16;
 @alert-info-icon: @blue-12;
-@alert-info-icon-bg-1: #d1e9ff;
+@alert-info-icon-bg-1: @primary-1;
 @alert-info-icon-bg-2: @primary-button-background;
 @alert-success-icon: @green-13;
 @alert-success-icon-bg-1: @green-12;
@@ -227,7 +236,7 @@
 @tab-height: 60px;
 
 @entity-details-tab-height: calc(
-  100vh - @data-asset-header-height - @tab-height - @om-navbar-height - @size-md
+  100vh - @data-asset-header-height - @tab-height - @om-navbar-height - @size-xs
 );
 @entity-version-page-tabs-height: calc(
   100vh - @data-asset-header-height-versions-page - @tab-height -
@@ -273,9 +282,9 @@
 
 @welcome-page-height: calc(100vh - 112px);
 
-@profile-page-sidebar: calc(100vh - @om-navbar-height - 40px);
+@profile-page-sidebar: calc(100vh - @om-navbar-height - 20px);
 @profile-entity-details-tab-height: calc(@profile-page-sidebar - 64px);
-@user-profile-page-panel-height: calc(100vh - @om-navbar-height - 108px);
+@user-profile-page-panel-height: calc(100vh - @om-navbar-height - 88px);
 
 //  48px - navbar height
 @welcome-page-height: calc(100vh - 48px - @om-navbar-height);
@@ -370,7 +379,7 @@
 
 @primary-heading-color: @blue-9;
 @navigation-text-color: #787486;
-@primary-button-background: #eff8ff;
+@primary-button-background: @primary-50;
 
 // button sizes
 @btn-height-sm: 36px;

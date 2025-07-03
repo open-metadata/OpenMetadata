@@ -15,7 +15,7 @@ import { WidgetProps } from '@rjsf/utils';
 import { Button, UploadProps } from 'antd';
 import Upload, { UploadChangeParam, UploadFile } from 'antd/lib/upload';
 import { AxiosError } from 'axios';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileUploadEnum } from '../../../../../enums/File.enum';
 import { showErrorToast } from '../../../../../utils/ToastUtils';

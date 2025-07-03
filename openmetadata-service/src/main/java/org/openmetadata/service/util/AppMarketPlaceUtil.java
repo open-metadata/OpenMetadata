@@ -16,6 +16,7 @@ import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;

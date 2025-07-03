@@ -1,5 +1,10 @@
 ---
-title: Qlik Cloud
+title: Qlik Cloud Connector | OpenMetadata Dashboard Integration
+<<<<<<< HEAD
+description: Connect QlikCloud dashboards to OpenMetadata effortlessly. Complete setup guide, configuration steps, and metadata extraction for seamless data governance.
+=======
+description: Connect Qlik Cloud to OpenMetadata effortlessly. Complete setup guide for dashboard integration, data lineage tracking, and metadata extraction.
+>>>>>>> b9d49f3b9d (Doc: SEO Description Updation)
 slug: /connectors/dashboard/qlikcloud
 ---
 

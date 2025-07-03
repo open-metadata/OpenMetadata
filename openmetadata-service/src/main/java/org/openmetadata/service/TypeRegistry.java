@@ -26,12 +26,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 /** Type registry used for storing Types in OpenMetadata and customProperties of entity types. */
 @Slf4j

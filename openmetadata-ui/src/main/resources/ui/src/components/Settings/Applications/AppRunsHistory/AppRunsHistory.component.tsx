@@ -15,7 +15,7 @@ import { Button, Modal, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
-import React, {
+import {
   forwardRef,
   useCallback,
   useEffect,
@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   NO_DATA_PLACEHOLDER,
   SOCKET_EVENTS,
@@ -108,7 +108,7 @@ const AppRunsHistory = forwardRef(
       showPagination: paginationVisible,
     } = usePaging();
 
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const isExternalApp = useMemo(
       () => appData?.appType === AppType.External,
@@ -119,7 +119,7 @@ const AppRunsHistory = forwardRef(
       (key?: string) => {
         if (key) {
           if (isExternalApp && appData) {
-            return history.push(
+            return navigate(
               getLogsViewerPath(
                 GlobalSettingOptions.APPLICATIONS,
                 appData.name ?? '',

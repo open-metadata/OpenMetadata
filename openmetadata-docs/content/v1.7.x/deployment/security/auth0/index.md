@@ -1,5 +1,5 @@
 ---
-title: Auth0 SSO
+title: Auth0 SSO | OpenMetadata Security Integration
 slug: /deployment/security/auth0
 collate: false
 ---

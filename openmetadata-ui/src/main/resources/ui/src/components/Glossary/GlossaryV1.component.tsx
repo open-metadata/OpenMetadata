@@ -14,9 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -41,6 +41,7 @@ import { updateGlossaryTermByFqn } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
@@ -67,12 +68,15 @@ const GlossaryV1 = ({
   refreshActiveGlossaryTerm,
 }: GlossaryV1Props) => {
   const { t } = useTranslation();
-  const { action, tab } =
-    useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
+  const { action, tab } = useRequiredParams<{
+    action: EntityAction;
+    glossaryName: string;
+    tab: string;
+  }>();
   const { customizedPage } = useCustomPages(
     isGlossaryActive ? PageType.Glossary : PageType.GlossaryTerm
   );
-  const history = useHistory();
+  const navigate = useNavigate();
   const [activeGlossaryTerm, setActiveGlossaryTerm] =
     useState<GlossaryTerm | null>(null);
   const { getEntityPermission } = usePermissionProvider();
@@ -224,7 +228,7 @@ const GlossaryV1 = ({
       // Update store with newly created term
       insertNewGlossaryTermToChildTerms(term);
       if (!isGlossaryActive && tab !== 'terms') {
-        history.push(
+        navigate(
           getGlossaryTermDetailsPath(
             selectedData.fullyQualifiedName || '',
             EntityTabs.TERMS

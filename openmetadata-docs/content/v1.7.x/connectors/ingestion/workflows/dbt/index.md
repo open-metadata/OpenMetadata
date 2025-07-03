@@ -1,5 +1,5 @@
 ---
-title: dbt Workflow
+title: dbt Workflow | OpenMetadata Data Build Tool Integration
 slug: /connectors/ingestion/workflows/dbt
 ---
 
@@ -22,6 +22,14 @@ Configure the dbt Workflow from the UI.
 Configure the dbt Workflow from the CLI.
 {%/inlineCallout%}
 
+{%inlineCallout
+  icon="celebration"
+  bold="Auto Ingest DBT Artifacts (dbt-core)"
+  href="/connectors/ingestion/workflows/dbt/auto-ingest-dbt-core"%}
+Configure the auto dbt ingestion for dbt-core.
+
+{%/inlineCallout%}
+
 {%/inlineCalloutContainer%}
 
 # dbt Integration
@@ -39,7 +47,7 @@ Configure the dbt Workflow from the CLI.
 | dbt Owner                   | {% icon iconName="check" /%}              |
 | dbt Descriptions            | {% icon iconName="check" /%}              |
 | dbt Tests                   | {% icon iconName="check" /%}              |
-| Supported dbt Core Versions | `v1.2` `v1.3` `v1.5` `v1.5` `v1.6` `v1.7` `v1.8`|
+| Supported dbt Core Versions | `v1.2` `v1.3` `v1.5` `v1.5` `v1.6` `v1.7` `v1.8` v1.9`|
 
 {% /multiTablesWrapper %}
 

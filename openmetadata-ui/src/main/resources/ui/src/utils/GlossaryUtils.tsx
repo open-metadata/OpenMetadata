@@ -16,7 +16,6 @@ import { Tag, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React from 'react';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -233,7 +232,8 @@ export const findItemByFqn = (
 
 export const convertGlossaryTermsToTreeOptions = (
   options: ModifiedGlossaryTerm[] = [],
-  level = 0
+  level = 0,
+  allowParentSelection = false
 ): Omit<DefaultOptionType, 'label'>[] => {
   const treeData = options.map((option) => {
     const hasChildren = 'children' in option && !isEmpty(option?.children);
@@ -252,14 +252,15 @@ export const convertGlossaryTermsToTreeOptions = (
         </Typography.Text>
       ),
       'data-testid': `tag-${option.fullyQualifiedName}`,
-      checkable: isGlossaryTerm,
+      checkable: allowParentSelection || isGlossaryTerm,
       isLeaf: isGlossaryTerm ? !hasChildren : false,
-      selectable: isGlossaryTerm,
+      selectable: allowParentSelection || isGlossaryTerm,
       children:
         hasChildren &&
         convertGlossaryTermsToTreeOptions(
           option.children as ModifiedGlossaryTerm[],
-          level + 1
+          level + 1,
+          allowParentSelection
         ),
     };
   });

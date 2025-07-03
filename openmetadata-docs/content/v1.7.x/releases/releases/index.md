@@ -1,5 +1,5 @@
 ---
-title: All Releases
+title: All Releases | OpenMetadata All Releases
 slug: /releases/all-releases
 ---
 
@@ -13,6 +13,8 @@ version. To see what's coming in next releases, please check our {% collateConte
 {% /note %}
 
 {% partial file="/v1.7/releases/latest.md" /%}
+
+{% partial file="/v1.7/releases/1.7.4.md" /%}
 
 {% partial file="/v1.7/releases/1.7.3.md" /%}
 

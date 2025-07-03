@@ -12,7 +12,6 @@
  */
 
 import { findByText, queryByText, render } from '@testing-library/react';
-import React from 'react';
 import {
   mockedGlossaries,
   mockedGlossaryTerms,
@@ -24,8 +23,6 @@ const params = {
   glossaryName: 'GlossaryName',
   action: '',
 };
-
-const mockPush = jest.fn();
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
@@ -75,11 +72,9 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   useParams: jest.fn().mockImplementation(() => params),
   Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('./GlossaryDetails/GlossaryDetails.component', () => {

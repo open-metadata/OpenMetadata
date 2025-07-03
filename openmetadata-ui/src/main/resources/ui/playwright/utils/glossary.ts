@@ -820,19 +820,38 @@ export const confirmationDragAndDropGlossary = async (
 
 export const changeTermHierarchyFromModal = async (
   page: Page,
-  dragElement: string,
-  dropElement: string
+  entityDisplayName: string,
+  entityFqn: string,
+  isGlossaryTerm = true
 ) => {
-  await selectActiveGlossaryTerm(page, dragElement);
   await page.getByTestId('manage-button').click();
   await page.getByTestId('change-parent-button').click();
+
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+
+  await page.getByLabel('Select Parent').click();
+  await page.waitForSelector('.async-tree-select-list-dropdown', {
+    state: 'visible',
+  });
+
+  if (isGlossaryTerm) {
+    const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
+    await page.getByLabel('Select Parent').fill(entityDisplayName);
+    await searchRes;
+  }
+
+  await page.getByTestId(`tag-${entityFqn}`).click();
+
+  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
   await page
-    .locator('[data-testid="change-parent-select"] > .ant-select-selector')
+    .locator('[data-testid="change-parent-hierarchy-modal"]')
+    .getByRole('button', { name: 'Submit' })
     .click();
-  await page.getByTitle(dropElement).click();
-  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-  await page.getByRole('button', { name: 'Submit' }).click();
   await saveRes;
+
+  await expect(
+    page.locator('[role="dialog"].change-parent-hierarchy-modal')
+  ).toBeHidden();
 };
 
 export const deleteGlossaryOrGlossaryTerm = async (
@@ -1016,6 +1035,7 @@ export const createDescriptionTaskForGlossary = async (
   }
 
   if (addDescription) {
+    await page.locator(descriptionBox).clear();
     await page
       .locator(descriptionBox)
       .fill(value.description ?? 'Updated description');

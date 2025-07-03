@@ -175,9 +175,11 @@ import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -196,7 +198,6 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -681,7 +682,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       }
       @SuppressWarnings("unchecked")
-      T entity = (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id));
+      T entity =
+          JsonUtils.deepCopy(
+              (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id)), entityClass);
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
           || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, id));
@@ -756,7 +759,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
       }
       @SuppressWarnings("unchecked")
-      T entity = (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
+      T entity =
+          JsonUtils.deepCopy(
+              (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn)), entityClass);
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
           || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
@@ -1105,8 +1110,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final PutResponse<T> createOrUpdateForImport(
-      UriInfo uriInfo, T updated, String updatedBy) {
+  public PutResponse<T> createOrUpdateForImport(UriInfo uriInfo, T updated, String updatedBy) {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(
@@ -1117,29 +1121,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
-    if (supportsSearch) {
-      searchRepository.createEntity(entity);
-    }
+    EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
   }
 
   protected void postCreate(List<T> entities) {
-    if (supportsSearch) {
-      searchRepository.createEntities((List<EntityInterface>) entities);
+    for (T entity : entities) {
+      EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
     }
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
-    if (supportsSearch) {
-      searchRepository.updateEntity(updated);
-    }
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntityUpdated(updated, updated.getChangeDescription(), null);
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T updated) {
-    if (supportsSearch) {
-      searchRepository.updateEntity(updated);
-    }
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntityUpdated(updated, updated.getChangeDescription(), null);
   }
 
   @Transaction
@@ -1380,19 +1380,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postDelete(T entity) {}
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
-    if (supportsSearch) {
-      if (hardDelete) {
-        searchRepository.deleteEntity(entity);
-      } else {
-        searchRepository.softDeleteOrRestoreEntity(entity, true);
-      }
+    if (hardDelete) {
+      // Hard delete - dispatch delete event
+      EntityLifecycleEventDispatcher.getInstance().onEntityDeleted(entity, null);
+    } else {
+      // Soft delete - dispatch soft delete event
+      EntityLifecycleEventDispatcher.getInstance()
+          .onEntitySoftDeletedOrRestored(entity, true, null);
     }
   }
 
   public final void restoreFromSearch(T entity) {
-    if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntity(entity, false);
-    }
+    // Dispatch entity restore event
+    EntityLifecycleEventDispatcher.getInstance().onEntitySoftDeletedOrRestored(entity, false, null);
   }
 
   public ResultList<T> listFromSearchWithOffset(
@@ -1682,7 +1682,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  private T createNewEntity(T entity) {
+  protected T createNewEntity(T entity) {
     storeEntity(entity, false);
     storeExtension(entity);
     storeRelationshipsInternal(entity);
@@ -2761,7 +2761,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
       // Update ES
-      searchRepository.updateEntity(ref);
+      EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(ref, null);
     }
 
     result.withSuccessRequest(success);
@@ -3394,11 +3394,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDisplayName() {
-      if (operation.isPut() && !nullOrEmpty(original.getDisplayName()) && updatedByBot()) {
-        // Revert change to non-empty displayName if it is being updated by a bot
-        updated.setDisplayName(original.getDisplayName());
-        return;
-      }
       recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
     }
 
@@ -4203,6 +4198,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         BiPredicate<Column, Column> columnMatch) {
       List<Column> deletedColumns = new ArrayList<>();
       List<Column> addedColumns = new ArrayList<>();
+      HashMap<String, String> originalUpdatedColumnFqns = new HashMap<>();
       recordListChange(
           fieldName, origColumns, updatedColumns, addedColumns, deletedColumns, columnMatch);
       // carry forward tags and description if deletedColumns matches added column
@@ -4239,6 +4235,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (stored == null) { // New column added
           continue;
         }
+        // Store Original and Updated Column Map
+        if (!stored.getFullyQualifiedName().equals(updated.getFullyQualifiedName())) {
+          originalUpdatedColumnFqns.putIfAbsent(
+              stored.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        }
 
         updateColumnDescription(fieldName, stored, updated);
         updateColumnDisplayName(stored, updated);
@@ -4260,6 +4261,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       majorVersionChange = majorVersionChange || !deletedColumns.isEmpty();
+      List<String> deletedColumnFqnList =
+          deletedColumns.stream().map(Column::getFullyQualifiedName).toList();
+      handleColumnLineageUpdates(deletedColumnFqnList, originalUpdatedColumnFqns);
+    }
+
+    protected void handleColumnLineageUpdates(
+        List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
+      // NO-OP – to be overridden by entity-specific updaters when needed.
     }
 
     private void updateColumnDescription(
@@ -4665,5 +4674,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
     };
+  }
+
+  public boolean isUpdateForImport(T entity) {
+    return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null;
   }
 }

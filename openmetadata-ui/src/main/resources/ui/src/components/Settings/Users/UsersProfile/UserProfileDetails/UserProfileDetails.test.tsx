@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../../../generated/settings/settings';
 import { useAuth } from '../../../../../hooks/authHooks';
@@ -359,9 +357,7 @@ describe('Test User Profile Details Component', () => {
       );
     });
 
-    await act(async () => {
-      userEvent.click(screen.getByTestId('edit-displayName'));
-    });
+    fireEvent.click(screen.getByTestId('edit-displayName'));
 
     expect(screen.getByText('InlineEdit')).toBeInTheDocument();
 
@@ -373,9 +369,7 @@ describe('Test User Profile Details Component', () => {
       });
     });
 
-    await act(async () => {
-      userEvent.click(screen.getByTestId('display-name-save-button'));
-    });
+    fireEvent.click(screen.getByTestId('display-name-save-button'));
 
     expect(mockPropsData.updateUserDetails).toHaveBeenCalledWith(
       { displayName: undefined },

@@ -1,5 +1,5 @@
 ---
-title: Prerequisites
+title: Prerequisites | OpenMetadata Developer Setup Requirements
 slug: /developers/contribute/build-code-and-run-tests/prerequisites
 ---
 
@@ -9,7 +9,7 @@ This guide will help you set up all prerequisites to develop on OpenMetadata.
 OpenMetadata being a full stack project, we use the following for development:
 
 - [Docker 20 or higher](https://docs.docker.com/engine/install/)
-- [Java JDK 17](https://docs.oracle.com/en/java/javase/17/install/overview-jdk-installation.html)
+- [Java JDK 21](https://docs.oracle.com/en/java/javase/21/install/overview-jdk-installation.html)
 - [Antlr 4.9.2](https://www.antlr.org/) - `sudo make install_antlr_cli`
 - [JQ](https://jqlang.github.io/jq/) - `brew install jq` (osx)  `apt-get install jq` (Ubuntu)
 - [Maven 3.5.x or higher](https://maven.apache.org/install.html) - (with Java JDK 11)
@@ -76,16 +76,16 @@ This program built for i386-apple-darwin11.3.0
 Python 3.9.9
 
 > node --version
-v17.3.0
+v20.19.2
 
 > yarn --version
-1.22.17
+1.22.22
 
 > rpm --version
 RPM version 4.17.0
 
 > jq --version                                                                                       
-jq-1.6
+jq-1.7.1
 
 ```
 

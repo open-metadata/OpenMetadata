@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>openmetadata-java-client</artifactId>
+    <name>OpenMetadata Java Client</name>
     <properties>
         <java.version>21</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
@@ -226,7 +227,7 @@
             <plugin>
                 <groupId>org.openapitools</groupId>
                 <artifactId>openapi-generator-maven-plugin</artifactId>
-                <version>7.0.1</version>
+                <version>7.13.0</version>
                 <executions>
                     <execution>
                         <goals>

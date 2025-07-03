@@ -372,6 +372,10 @@ test.describe('Policy page should work properly', () => {
 
     await page.reload();
 
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await page.waitForLoadState('networkidle');
+
     await getElementWithPagination(page, policyLocator);
 
     await page.getByTestId('manage-button').click();

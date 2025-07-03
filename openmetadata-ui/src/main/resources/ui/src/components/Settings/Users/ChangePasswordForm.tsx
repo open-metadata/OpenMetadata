@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input, Modal } from 'antd';
+import { Form, Input, Modal } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
@@ -38,101 +38,96 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
   const newPassword = Form.useWatch('newPassword', form);
 
   return (
-    // Used Button to stop click propagation event anywhere in the component to parent
-    // Users.Component collapsible panel
-    <Button
-      className="remove-button-default-styling"
-      onClick={(e) => e.stopPropagation()}>
-      <Modal
-        centered
-        closable={false}
-        confirmLoading={isLoading}
-        data-testid="modal-container"
-        maskClosable={false}
-        okButtonProps={{
-          form: 'change-password-form',
-          type: 'primary',
-          htmlType: 'submit',
-        }}
-        okText={t('label.update-entity', { entity: t('label.password') })}
-        open={visible}
-        title={t('label.change-entity', {
-          entity: t('label.password'),
-        })}
-        width={500}
-        onCancel={() => {
-          form.resetFields();
-          onCancel();
-        }}>
-        <Form
-          form={form}
-          id="change-password-form"
-          layout="vertical"
-          name="change-password-form"
-          validateMessages={VALIDATION_MESSAGES}
-          onFinish={onSave}>
-          {isLoggedInUser && (
-            <Form.Item
-              data-testid="oldPassword"
-              label={t('label.old-password')}
-              name="oldPassword"
-              rules={[
-                {
-                  required: true,
-                },
-              ]}>
-              <Input.Password
-                autoComplete="off"
-                data-testid="input-oldPassword"
-                placeholder={t('label.enter-type-password', {
-                  type: t('label.old'),
-                })}
-              />
-            </Form.Item>
-          )}
+    <Modal
+      centered
+      cancelText={t('label.cancel')}
+      closable={false}
+      confirmLoading={isLoading}
+      data-testid="modal-container"
+      maskClosable={false}
+      okButtonProps={{
+        form: 'change-password-form',
+        type: 'primary',
+        htmlType: 'submit',
+      }}
+      okText={t('label.update-entity', { entity: t('label.password') })}
+      open={visible}
+      title={t('label.change-entity', {
+        entity: t('label.password'),
+      })}
+      width={500}
+      onCancel={() => {
+        form.resetFields();
+        onCancel();
+      }}>
+      <Form
+        form={form}
+        id="change-password-form"
+        layout="vertical"
+        name="change-password-form"
+        validateMessages={VALIDATION_MESSAGES}
+        onFinish={onSave}>
+        {isLoggedInUser && (
           <Form.Item
-            label={t('label.new-password')}
-            name="newPassword"
+            data-testid="oldPassword"
+            label={t('label.old-password')}
+            name="oldPassword"
             rules={[
               {
                 required: true,
               },
-              {
-                pattern: passwordRegex,
-                message: t('message.password-error-message'),
-              },
             ]}>
             <Input.Password
               autoComplete="off"
-              data-testid="input-newPassword"
+              data-testid="input-oldPassword"
               placeholder={t('label.enter-type-password', {
-                type: t('label.new'),
+                type: t('label.old'),
               })}
             />
           </Form.Item>
-          <Form.Item
-            label={t('label.confirm-new-password')}
-            name="confirmPassword"
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (value !== newPassword) {
-                    return Promise.reject(t('label.password-not-match'));
-                  }
+        )}
+        <Form.Item
+          label={t('label.new-password')}
+          name="newPassword"
+          rules={[
+            {
+              required: true,
+            },
+            {
+              pattern: passwordRegex,
+              message: t('message.password-error-message'),
+            },
+          ]}>
+          <Input.Password
+            autoComplete="off"
+            data-testid="input-newPassword"
+            placeholder={t('label.enter-type-password', {
+              type: t('label.new'),
+            })}
+          />
+        </Form.Item>
+        <Form.Item
+          label={t('label.confirm-new-password')}
+          name="confirmPassword"
+          rules={[
+            {
+              validator: (_, value) => {
+                if (value !== newPassword) {
+                  return Promise.reject(t('label.password-not-match'));
+                }
 
-                  return Promise.resolve();
-                },
+                return Promise.resolve();
               },
-            ]}>
-            <Input.Password
-              autoComplete="off"
-              data-testid="input-confirm-newPassword"
-              placeholder={t('label.confirm-new-password')}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Button>
+            },
+          ]}>
+          <Input.Password
+            autoComplete="off"
+            data-testid="input-confirm-newPassword"
+            placeholder={t('label.confirm-new-password')}
+          />
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 };
 

@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getImageWithResolutionAndFallback } from '../../../../utils/ProfilerUtils';
@@ -127,12 +126,8 @@ describe('UserProfileIcon', () => {
     }));
 
     const { getByTestId } = render(<UserProfileIcon />);
-    await act(async () => {
-      userEvent.click(getByTestId('dropdown-profile'));
-    });
-    await act(async () => {
-      fireEvent.click(getByTestId('persona-label'));
-    });
+    fireEvent.click(getByTestId('dropdown-profile'));
+    fireEvent.click(getByTestId('persona-label'));
 
     expect(getByTestId('check-outlined')).toBeInTheDocument();
   });
@@ -152,12 +147,8 @@ describe('UserProfileIcon', () => {
     }));
 
     const { getByTestId, queryByTestId } = render(<UserProfileIcon />);
-    await act(async () => {
-      userEvent.click(getByTestId('dropdown-profile'));
-    });
-    await act(async () => {
-      fireEvent.click(getByTestId('persona-label'));
-    });
+    fireEvent.click(getByTestId('dropdown-profile'));
+    fireEvent.click(getByTestId('persona-label'));
 
     expect(queryByTestId('check-outlined')).not.toBeInTheDocument();
   });

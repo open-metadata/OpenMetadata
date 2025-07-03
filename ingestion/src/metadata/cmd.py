@@ -25,6 +25,7 @@ from metadata.cli.app import run_app
 from metadata.cli.classify import run_classification
 from metadata.cli.dataquality import run_test
 from metadata.cli.ingest import run_ingest
+from metadata.cli.ingest_dbt import run_ingest_dbt
 from metadata.cli.lineage import run_lineage
 from metadata.cli.profile import run_profiler
 from metadata.cli.usage import run_usage
@@ -35,6 +36,7 @@ logger = cli_logger()
 
 class MetadataCommands(Enum):
     INGEST = "ingest"
+    INGEST_DBT = "ingest-dbt"
     USAGE = "usage"
     PROFILE = "profile"
     TEST = "test"
@@ -46,6 +48,7 @@ class MetadataCommands(Enum):
 
 RUN_PATH_METHODS = {
     MetadataCommands.INGEST.value: run_ingest,
+    MetadataCommands.INGEST_DBT.value: run_ingest_dbt,
     MetadataCommands.USAGE.value: run_usage,
     MetadataCommands.LINEAGE.value: run_lineage,
     MetadataCommands.PROFILE.value: run_profiler,
@@ -62,6 +65,20 @@ def create_common_config_parser_args(parser: argparse.ArgumentParser):
         help="path to the config file",
         type=Path,
         required=True,
+    )
+
+
+def create_dbt_parser_args(parser: argparse.ArgumentParser):
+    """
+    Additional Parser Arguments for DBT Ingestion
+    """
+    parser.add_argument(
+        "-c",
+        "--dbt-project-path",
+        help="path to the dbt project directory (default: current directory)",
+        type=Path,
+        default=Path("."),
+        required=False,
     )
 
 
@@ -100,6 +117,11 @@ def get_parser(args: Optional[List[str]] = None):
 
     create_common_config_parser_args(
         sub_parser.add_parser(MetadataCommands.INGEST.value, help="Ingestion Workflow")
+    )
+    create_dbt_parser_args(
+        sub_parser.add_parser(
+            MetadataCommands.INGEST_DBT.value, help="DBT Artifacts Ingestion"
+        )
     )
     create_common_config_parser_args(
         sub_parser.add_parser(MetadataCommands.LINEAGE.value, help="Lineage Workflow")
@@ -152,9 +174,14 @@ def metadata(args: Optional[List[str]] = None):
     contains_args = vars(get_parser(args))
     metadata_workflow = contains_args.get("command")
     config_file: Optional[Path] = contains_args.get("config")
+    dbt_project_path: Optional[Path] = contains_args.get("dbt_project_path")
+
     path = None
     if config_file:
         path = config_file.expanduser()
+    elif dbt_project_path:
+        path = dbt_project_path.expanduser()
+
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     else:
