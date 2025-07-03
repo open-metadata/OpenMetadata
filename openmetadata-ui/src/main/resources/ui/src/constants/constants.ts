@@ -313,6 +313,7 @@ export const SOCKET_EVENTS = {
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
+  MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

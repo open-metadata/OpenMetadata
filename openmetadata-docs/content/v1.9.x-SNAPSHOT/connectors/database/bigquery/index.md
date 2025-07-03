@@ -1,5 +1,6 @@
 ---
 title: BigQuery | OpenMetadata Connector Setup & Integration Guide
+description: Connect BigQuery to OpenMetadata seamlessly with our comprehensive database connector guide. Setup instructions, configuration tips, and metadata extrac...
 slug: /connectors/database/bigquery
 ---
 
@@ -154,8 +155,23 @@ This setting does **not** affect actual billing—it is only used for internal r
 The default value, if not set, may assume the standard on-demand BigQuery pricing (e.g., $5.00 per TiB), but you should adjust it according to your organization's negotiated rates or flat-rate pricing model.
 
 {% note %}
-If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave
-the GCP credentials empty. This is why they are not marked as required.
+**Application Default Credentials (ADC) Authentication**
+
+If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery, configure the GCP credentials with type `gcp_adc`:
+
+```yaml
+credentials:
+  gcpConfig:
+    type: gcp_adc
+    projectId: ["your-project-id"]  # Optional: specify project(s) for data access
+```
+
+**Using ADC with Billing Project ID**: When using ADC authentication, you can still specify a **Billing Project ID** to ensure proper billing attribution for your BigQuery queries. This is particularly useful when:
+- Your service account has access to multiple projects
+- You want to bill queries to a specific project different from the one containing your data
+- You're running queries that span multiple projects
+
+**ADC Setup**: ADC authentication works automatically when running in Google Cloud environments (GKE, Compute Engine, Cloud Run) or when you've configured it locally using `gcloud auth application-default login`.
 {% /note %}
 
 
