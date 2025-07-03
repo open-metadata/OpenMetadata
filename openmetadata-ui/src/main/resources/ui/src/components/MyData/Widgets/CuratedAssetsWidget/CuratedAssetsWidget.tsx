@@ -326,7 +326,7 @@ const CuratedAssetsWidget = ({
     () => (
       <Row className="curated-assets-header" justify="space-between">
         <Col className="d-flex items-center h-full min-h-8">
-          <div className="d-flex h-6 w-6 m-r-sm">
+          <div className="d-flex h-6 w-6 m-r-xs">
             {sourceIcon && title ? (
               sourceIcon
             ) : (
@@ -340,7 +340,7 @@ const CuratedAssetsWidget = ({
             style={{
               maxWidth: curatedAssetsData?.w === 1 ? '200px' : '525px',
             }}>
-            {title ?? t('label.curated-asset-plural')}
+            {title || t('label.curated-asset-plural')}
           </Typography.Paragraph>
         </Col>
 
@@ -365,6 +365,29 @@ const CuratedAssetsWidget = ({
                   }
                   onClick={handleModalOpen}
                 />
+                <Dropdown
+                  className="widget-header-options"
+                  data-testid="more-button"
+                  menu={{
+                    items: CURATED_ASSETS_MORE_MENU_ITEMS,
+                    selectable: true,
+                    multiple: false,
+                    onClick: handleMoreClick,
+                    className: 'widget-header-menu',
+                  }}
+                  placement="bottomLeft"
+                  trigger={['click']}>
+                  <Button
+                    className=""
+                    data-testid="more-button"
+                    icon={
+                      <MoreOutlined
+                        data-testid="more-widget-button"
+                        size={20}
+                      />
+                    }
+                  />
+                </Dropdown>
               </>
             ) : (
               <Dropdown
@@ -389,26 +412,6 @@ const CuratedAssetsWidget = ({
                 </Button>
               </Dropdown>
             )}
-            <Dropdown
-              className="widget-header-options"
-              data-testid="more-button"
-              menu={{
-                items: CURATED_ASSETS_MORE_MENU_ITEMS,
-                selectable: true,
-                multiple: false,
-                onClick: handleMoreClick,
-                className: 'widget-header-menu',
-              }}
-              placement="bottomLeft"
-              trigger={['click']}>
-              <Button
-                className=""
-                data-testid="more-button"
-                icon={
-                  <MoreOutlined data-testid="more-widget-button" size={20} />
-                }
-              />
-            </Dropdown>
           </div>
         </Col>
       </Row>

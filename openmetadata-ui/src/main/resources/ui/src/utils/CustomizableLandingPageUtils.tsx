@@ -126,20 +126,6 @@ export const getAddWidgetHandler =
     }
   };
 
-const getEmptyWidgetHeight = (
-  widget: WidgetConfig,
-  minHeight: number,
-  maxHeight: number
-) => {
-  if (minHeight <= widget.h && widget.h <= maxHeight) {
-    return widget.h;
-  } else if (minHeight > widget.h) {
-    return minHeight;
-  } else {
-    return maxHeight;
-  }
-};
-
 export const moveEmptyWidgetToTheEnd = (layout: Array<WidgetConfig>) =>
   layout.map((widget) =>
     widget.i === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
@@ -148,24 +134,10 @@ export const moveEmptyWidgetToTheEnd = (layout: Array<WidgetConfig>) =>
   );
 
 export const getRemoveWidgetHandler =
-  (widgetKey: string, minHeight: number, maxHeight: number) =>
-  (currentLayout: Array<WidgetConfig>) => {
-    if (widgetKey.endsWith('.EmptyWidgetPlaceholder')) {
-      return currentLayout.filter(
-        (widget: WidgetConfig) => widget.i !== widgetKey
-      );
-    } else {
-      return currentLayout.map((widget: WidgetConfig) =>
-        widget.i === widgetKey
-          ? {
-              ...widget,
-              i: widgetKey + '.EmptyWidgetPlaceholder',
-              h: getEmptyWidgetHeight(widget, minHeight, maxHeight),
-              config: {},
-            }
-          : widget
-      );
-    }
+  (widgetKey: string) => (currentLayout: Array<WidgetConfig>) => {
+    return currentLayout.filter(
+      (widget: WidgetConfig) => widget.i !== widgetKey
+    );
   };
 
 export const getLayoutUpdateHandler =

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
 import { Button, Form, Input, Modal, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
@@ -154,7 +153,6 @@ const CuratedAssetsModal = ({
       closable
       destroyOnClose
       className="curated-assets-modal"
-      closeIcon={<CloseOutlined className="text-2xl text-white" />}
       data-testid="curated-assets-modal-container"
       footer={modalFooter}
       open={isOpen}

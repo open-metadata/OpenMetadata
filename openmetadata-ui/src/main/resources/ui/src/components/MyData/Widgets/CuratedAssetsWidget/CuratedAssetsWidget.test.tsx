@@ -92,8 +92,7 @@ jest.mock(
       <div
         data-length={dataLength}
         data-loading={loading}
-        data-testid="loading-skeleton"
-      >
+        data-testid="loading-skeleton">
         {children}
       </div>
     ))
@@ -127,8 +126,7 @@ jest.mock('./CuratedAssetsModal/CuratedAssetsModal', () =>
           </button>
           <button
             data-testid="saveButton"
-            onClick={() => onSave({ title: 'Test Widget' })}
-          >
+            onClick={() => onSave({ title: 'Test Widget' })}>
             Save
           </button>
         </div>
@@ -401,7 +399,7 @@ describe('CuratedAssetsWidget', () => {
   });
 
   it('renders more options dropdown', async () => {
-    render(<CuratedAssetsWidget {...defaultProps} />);
+    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
     await waitFor(() => {
       expect(screen.getByTestId('more-button')).toBeInTheDocument();
     });
