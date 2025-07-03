@@ -2751,4 +2751,50 @@ public class OpenSearchClient implements SearchClient {
       }
     }
   }
+
+  @Override
+  public void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
+
+    Map<String, Object> params = new HashMap<>();
+
+    params.put("columnUpdates", originalUpdatedColumnFqnMap);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, UPDATE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateOpenSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while updating Column Lineage: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("deletedFQNs", deletedColumns);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, DELETE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateOpenSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while deleting Column Lineage: {}", e.getMessage(), e);
+      }
+    }
+  }
 }
