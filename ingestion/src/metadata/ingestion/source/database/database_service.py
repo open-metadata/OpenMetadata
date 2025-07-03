@@ -68,7 +68,7 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import calculate_execution_time
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_tag_label
 
@@ -159,7 +159,11 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["table", "stored_procedure"],
-        post_process=["mark_schemas_as_deleted", "mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
+        post_process=[
+            "mark_schemas_as_deleted",
+            "mark_tables_as_deleted",
+            "mark_stored_procedures_as_deleted",
+        ],
         threads=True,
     )
     table: Annotated[
@@ -543,7 +547,9 @@ class DatabaseServiceSource(
             )
             if filter_by_schema(
                 self.source_config.databaseFilterPattern,
-                database_fqn if self.source_config.useFqnForFiltering else database_name,
+                database_fqn
+                if self.source_config.useFqnForFiltering
+                else database_name,
             ):
                 if add_to_status:
                     self.status.filter(database_fqn, "Database Filtered Out")
@@ -611,64 +617,10 @@ class DatabaseServiceSource(
             )
 
             for schema_fqn in schema_fqn_list:
-                # Get all filtered-in table FQNs for this schema to create a complete source state
-                filtered_table_fqns = set()
-                
-                # Get all tables from the source (including filtered ones)
-                schema_name = self.context.get().database_schema
-                try:
-                    if self.source_config.includeTables:
-                        for table_and_type in self.query_table_names_and_types(schema_name):
-                            table_name = self.standardize_table_name(schema_name, table_and_type.name)
-                            table_fqn = fqn.build(
-                                self.metadata,
-                                entity_type=Table,
-                                service_name=self.context.get().database_service,
-                                database_name=self.context.get().database,
-                                schema_name=self.context.get().database_schema,
-                                table_name=table_name,
-                                skip_es_search=True,
-                            )
-                            if filter_by_table(
-                                self.source_config.tableFilterPattern,
-                                table_fqn if self.source_config.useFqnForFiltering else table_name,
-                            ):
-                                # Add filtered-out tables to the source state so they won't be marked as deleted
-                                filtered_table_fqns.add(table_fqn)
-                            else:
-                                # Add filtered-in tables to the source state
-                                filtered_table_fqns.add(table_fqn)
-
-                    if self.source_config.includeViews:
-                        for view_and_type in self.query_view_names_and_types(schema_name):
-                            view_name = self.standardize_table_name(schema_name, view_and_type.name)
-                            view_fqn = fqn.build(
-                                self.metadata,
-                                entity_type=Table,
-                                service_name=self.context.get().database_service,
-                                database_name=self.context.get().database,
-                                schema_name=self.context.get().database_schema,
-                                table_name=view_name,
-                            )
-                            if filter_by_table(
-                                self.source_config.tableFilterPattern,
-                                view_fqn if self.source_config.useFqnForFiltering else view_name,
-                            ):
-                                # Add filtered-out views to the source state so they won't be marked as deleted
-                                filtered_table_fqns.add(view_fqn)
-                            else:
-                                # Add filtered-in views to the source state
-                                filtered_table_fqns.add(view_fqn)
-                except Exception as err:
-                    logger.warning(f"Error getting table names for schema {schema_name}: {err}")
-
-                # Combine the processed tables with filtered tables
-                complete_source_state = self.database_source_state.union(filtered_table_fqns)
-
                 yield from delete_entity_from_source(
                     metadata=self.metadata,
                     entity_type=Table,
-                    entity_source_state=complete_source_state,
+                    entity_source_state=self.database_source_state,
                     mark_deleted_entity=self.source_config.markDeletedTables,
                     params={"database": schema_fqn},
                 )
@@ -711,13 +663,19 @@ class DatabaseServiceSource(
                 service_name=self.context.get().database_service,
             )
 
-            # Get all filtered-in database FQNs to create a complete source state
+            # We need to include both processed databases and filtered databases in the source state
+            # to ensure we mark as deleted any databases that were previously ingested but are now
+            # filtered out, as well as any databases that were processed in this run
             filtered_database_fqns = set()
-            for database_name in self._get_filtered_database_names(return_fqn=True, add_to_status=False):
+            for database_name in self._get_filtered_database_names(
+                return_fqn=True, add_to_status=False
+            ):
                 filtered_database_fqns.add(database_name)
 
             # Combine the processed databases with filtered databases
-            complete_source_state = self.database_entity_source_state.union(filtered_database_fqns)
+            complete_source_state = self.database_entity_source_state.union(
+                filtered_database_fqns
+            )
 
             yield from delete_entity_from_source(
                 metadata=self.metadata,
@@ -750,13 +708,19 @@ class DatabaseServiceSource(
             )
 
             # Get all filtered-in schema FQNs to create a complete source state
+            # We need to include both processed schemas and filtered schemas in the source state
+            # to ensure we mark as deleted any schemas that were previously ingested but are now
+            # filtered out, as well as any schemas that were processed in this run
             filtered_schema_fqns = set()
-            for schema_name in self._get_filtered_schema_names(return_fqn=True, add_to_status=False):
+            for schema_name in self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
+            ):
                 filtered_schema_fqns.add(schema_name)
 
             # Combine the processed schemas with filtered schemas
-            complete_source_state = self.schema_entity_source_state.union(filtered_schema_fqns)
-            
+            complete_source_state = self.schema_entity_source_state.union(
+                filtered_schema_fqns
+            )
 
             yield from delete_entity_from_source(
                 metadata=self.metadata,
