@@ -1,5 +1,5 @@
 ---
-title: index
+title: Storage Ingestion Schemas | OpenMetadata Metadata Ingestion
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storage
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: index
+title: Data Lake Connections Schema | OpenMetadata Database Services
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake
 ---
 
