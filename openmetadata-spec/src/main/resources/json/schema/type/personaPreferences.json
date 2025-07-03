@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/type/personaPreferences.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PersonaPreferences",
+  "description": "User-specific preferences for a persona that override default persona UI customization. These are limited customizations that users can apply to personalize their experience while still inheriting the base persona configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PersonaPreferences",
+  "properties": {
+    "personaId": {
+      "description": "UUID of the persona these preferences belong to.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "personaName": {
+      "description": "Name of the persona for quick reference and linking.",
+      "type": "string"
+    },
+    "landingPageSettings": {
+      "description": "User's personal customizations for the landing page.",
+      "type": "object",
+      "properties": {
+        "headerColor": {
+          "description": "Custom header background color for the landing page.",
+          "type": "string"
+        },
+        "headerImage": {
+          "description": "Reference to a custom header background image (reserved for future use).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["personaId", "personaName"],
+  "additionalProperties": false
+}

@@ -20,6 +20,11 @@ export interface Persona {
      */
     changeDescription?: ChangeDescription;
     /**
+     * When true, this persona is the system-wide default persona that will be applied to users
+     * who don't have any persona assigned or no default persona set.
+     */
+    default?: boolean;
+    /**
      * Description of the persona.
      */
     description?: string;
