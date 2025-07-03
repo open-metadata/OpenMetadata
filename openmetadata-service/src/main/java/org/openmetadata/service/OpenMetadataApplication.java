@@ -37,11 +37,9 @@ import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
-import io.swagger.v3.oas.annotations.security.SecuritySchemes;
 import io.swagger.v3.oas.annotations.servers.Server;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
-import jakarta.servlet.ServletRegistration;
 import jakarta.validation.Validation;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseFilter;
@@ -72,11 +70,11 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.cache.CachedCollectionDAO;
 import org.openmetadata.service.cache.RedisCacheBundle;
@@ -104,9 +102,6 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.mcp.McpServer;
-import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
-import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -132,6 +127,8 @@ import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
+import org.openmetadata.service.security.auth.UserActivityFilter;
+import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
@@ -170,13 +167,11 @@ import org.quartz.SchedulerException;
       @Server(url = "http://localhost:8585/api", description = "Endpoint URL")
     },
     security = @SecurityRequirement(name = "BearerAuth"))
-@SecuritySchemes({
-  @SecurityScheme(
-      name = "BearerAuth",
-      type = SecuritySchemeType.HTTP,
-      scheme = "bearer",
-      bearerFormat = "JWT")
-})
+@SecurityScheme(
+    name = "BearerAuth",
+    type = SecuritySchemeType.HTTP,
+    scheme = "bearer",
+    bearerFormat = "JWT")
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
@@ -215,7 +210,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
-    initializeSearchRepository(catalogConfig.getElasticSearchConfiguration());
+    initializeSearchRepository(catalogConfig);
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
@@ -297,6 +292,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
+
+    // Register User Activity Tracking
+    registerUserActivityTracking(environment);
+
     environment.lifecycle().manage(new ManagedShutdown());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();
@@ -336,9 +335,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     try {
       if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
-        McpServer mcpServer = new McpServer(new DefaultToolContext(), new DefaultPromptsContext());
+        Class<?> mcpServerClass = Class.forName("org.openmetadata.mcp.McpServer");
+        McpServerProvider mcpServer =
+            (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
         mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+        LOG.info("MCP Server registered successfully");
       }
+    } catch (ClassNotFoundException ex) {
+      LOG.info("MCP module not found in classpath, skipping MCP server initialization");
     } catch (Exception ex) {
       LOG.error("Error initializing MCP server", ex);
     }
@@ -402,10 +406,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  protected void initializeSearchRepository(ElasticSearchConfiguration esConfig) {
+  protected void initializeSearchRepository(OpenMetadataApplicationConfig config) {
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
-    SearchRepository searchRepository = new SearchRepository(esConfig);
+    SearchRepository searchRepository =
+        new SearchRepository(
+            config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
     Entity.setSearchRepository(searchRepository);
   }
 
@@ -475,53 +481,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
       // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
-      ServletRegistration.Dynamic samlRedirectServlet =
-          environment.servlets().addServlet("saml_login", new SamlLoginServlet());
-      samlRedirectServlet.addMapping("/api/v1/saml/login");
-      ServletRegistration.Dynamic samlReceiverServlet =
-          environment
-              .servlets()
-              .addServlet(
-                  "saml_acs",
-                  new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration()));
-      samlReceiverServlet.addMapping("/api/v1/saml/acs");
-      ServletRegistration.Dynamic samlMetadataServlet =
-          environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());
-      samlMetadataServlet.addMapping("/api/v1/saml/metadata");
-
-      // 1) SAML Login
-      ServletHolder samlLoginHolder = new ServletHolder();
-      samlLoginHolder.setName("saml_login");
-      samlLoginHolder.setServlet(new SamlLoginServlet());
-      contextHandler.addServlet(samlLoginHolder, "/api/v1/saml/login");
-
-      // 2) SAML Assertion Consumer (ACS)
-      ServletHolder samlAcsHolder = new ServletHolder();
-      samlAcsHolder.setName("saml_acs");
-      samlAcsHolder.setServlet(
-          new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration()));
-      contextHandler.addServlet(samlAcsHolder, "/api/v1/saml/acs");
-
-      // 3) SAML Metadata
-      ServletHolder samlMetadataHolder = new ServletHolder();
-      samlMetadataHolder.setName("saml_metadata");
-      samlMetadataHolder.setServlet(new SamlMetadataServlet());
-      contextHandler.addServlet(samlMetadataHolder, "/api/v1/saml/metadata");
-
-      // 4) SAML Token Refresh
-      ServletHolder samlRefreshHolder = new ServletHolder();
-      samlRefreshHolder.setName("saml_refresh_token");
-      samlRefreshHolder.setServlet(new SamlTokenRefreshServlet());
-      contextHandler.addServlet(samlRefreshHolder, "/api/v1/saml/refresh");
-
-      // 5) SAML Logout
-      ServletHolder samlLogoutHolder = new ServletHolder();
-      samlLogoutHolder.setName("saml_logout_token");
-      samlLogoutHolder.setServlet(
-          new SamlLogoutServlet(
-              catalogConfig.getAuthenticationConfiguration(),
-              catalogConfig.getAuthorizerConfiguration()));
-      contextHandler.addServlet(samlLogoutHolder, "/api/v1/saml/logout");
+      contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
+      contextHandler.addServlet(
+          new ServletHolder(
+              new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration())),
+          "/api/v1/saml/acs");
+      contextHandler.addServlet(
+          new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
+      contextHandler.addServlet(
+          new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
+      contextHandler.addServlet(
+          new ServletHolder(
+              new SamlLogoutServlet(
+                  catalogConfig.getAuthenticationConfiguration(),
+                  catalogConfig.getAuthorizerConfiguration())),
+          "/api/v1/saml/logout");
     }
   }
 
@@ -678,6 +652,27 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig);
       environment.jersey().register(eventFilter);
     }
+  }
+
+  private void registerUserActivityTracking(Environment environment) {
+    // Register the activity tracking filter
+    environment.jersey().register(UserActivityFilter.class);
+
+    // Register lifecycle management for UserActivityTracker
+    environment
+        .lifecycle()
+        .manage(
+            new Managed() {
+              @Override
+              public void start() {
+                // UserActivityTracker starts automatically on first use
+              }
+
+              @Override
+              public void stop() {
+                UserActivityTracker.getInstance().shutdown();
+              }
+            });
   }
 
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
