@@ -15,6 +15,45 @@ import i18n, { t as i18nextT } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 import { getInitOptions } from './i18nextUtil';
+import { SupportedLocales } from './LocalUtil.interface';
+
+// Function to detect browser language
+export const detectBrowserLanguage = (): SupportedLocales => {
+  const browserLang = navigator.language;
+  const browserLangs = navigator.languages || [browserLang];
+  let browserLanguage = undefined;
+  for (const lang of browserLangs) {
+    const langCode = lang.split('-')[0];
+    // Map common language codes to supported locales
+    const languageMap: Record<string, SupportedLocales> = {
+      mr: SupportedLocales.मराठी, // Marathi
+      en: SupportedLocales.English,
+      ko: SupportedLocales.한국어,
+      fr: SupportedLocales.Français,
+      zh: SupportedLocales.简体中文,
+      ja: SupportedLocales.日本語,
+      pt: SupportedLocales['Português (Brasil)'], // Default to Brazilian Portuguese
+      es: SupportedLocales.Español,
+      gl: SupportedLocales.Galego,
+      ru: SupportedLocales.Русский,
+      de: SupportedLocales.Deutsch,
+      he: SupportedLocales.Hebrew,
+      nl: SupportedLocales.Nederlands,
+      pr: SupportedLocales.Persian,
+      th: SupportedLocales.Thai,
+      tr: SupportedLocales.Türkçe,
+    };
+
+    if (languageMap[langCode]) {
+      browserLanguage = languageMap[langCode];
+
+      return browserLanguage;
+    }
+  }
+
+  // English is the default language when we don't support browser language
+  return browserLanguage ?? SupportedLocales.English;
+};
 
 // Initialize i18next (language)
 i18n

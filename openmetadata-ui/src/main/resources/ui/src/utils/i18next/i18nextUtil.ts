@@ -30,26 +30,7 @@ import ruRU from '../../locale/languages/ru-ru.json';
 import thTH from '../../locale/languages/th-th.json';
 import trTR from '../../locale/languages/tr-tr.json';
 import zhCN from '../../locale/languages/zh-cn.json';
-
-export enum SupportedLocales {
-  English = 'en-US',
-  한국어 = 'ko-KR',
-  Français = 'fr-FR',
-  简体中文 = 'zh-CN',
-  日本語 = 'ja-JP',
-  'Português (Brasil)' = 'pt-BR',
-  'Português (Portugal)' = 'pt-PT',
-  Español = 'es-ES',
-  Galego = 'gl-ES',
-  Русский = 'ru-RU',
-  Deutsch = 'de-DE',
-  Hebrew = 'he-HE',
-  Nederlands = 'nl-NL',
-  Persian = 'pr-PR',
-  Thai = 'th-TH',
-  मराठी = 'mr-IN',
-  Türkçe = 'tr-TR',
-}
+import { SupportedLocales } from './LocalUtil.interface';
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
   label: `${key} - ${upperCase(value.split('-')[0])}`,
