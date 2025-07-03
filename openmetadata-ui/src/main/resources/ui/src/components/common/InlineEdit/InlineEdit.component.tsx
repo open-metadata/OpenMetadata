@@ -26,6 +26,18 @@ const InlineEdit = ({
   cancelButtonProps,
   saveButtonProps,
 }: InlineEditProps) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancel?.();
+    }
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      onSave?.();
+    }
+  };
+
   return (
     <Space
       className={classNames(className, 'inline-edit-container')}
@@ -33,7 +45,8 @@ const InlineEdit = ({
       direction={direction}
       // Used onClick to stop click propagation event anywhere in the component to parent
       // TeamDetailsV1 and User.component collapsible panel.
-      onClick={(e) => e.stopPropagation()}>
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={handleKeyDown}>
       {children}
 
       <Space className="w-full justify-end" data-testid="buttons" size={4}>
