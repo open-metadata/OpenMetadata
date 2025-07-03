@@ -1705,6 +1705,7 @@
     "delete-webhook-permanently": "{{webhookName}} web kancasını kalıcı olarak silmek istiyor musunuz? Bu işlem geri alınamaz.",
     "derived-tag-warning": "Bu etiket otomatik olarak türetilmiştir ve yalnızca ilgili Sözlük Terimi silinerek kaldırılabilir.",
     "description-coverage-widget-description": "Servisteki tüm veri varlıkları için açıklama kapsamı. <0>daha fazla bilgi edinin.</0>",
+    "destination-owner-selection-warning": "Lütfen \"Sahip\" bir <0>Takım</0> olduğundan emin olun ve \"{{subscriptionType}}\" uyarıları almak için yapılandırıldı.",
     "destination-selection-warning": "Lütfen \"{{subscriptionCategory}}\" kategorisinin uyarıları almak için \"{{subscriptionType}}\" türünü yapılandırdığından emin olun.",
     "disable-app": "Bu, {{app}} uygulamasını devre dışı bırakacaktır.",
     "disable-classification-description": "Sınıflandırmayı devre dışı bırakarak, herhangi bir varlığa ilişkili etiketleri arayamayacak veya atayamayacaksınız.",

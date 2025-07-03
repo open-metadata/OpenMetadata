@@ -41,6 +41,7 @@ import { CreateEventSubscription } from '../../../../generated/events/api/create
 import {
   Destination,
   SubscriptionCategory,
+  SubscriptionType,
 } from '../../../../generated/events/eventSubscription';
 import { useFqn } from '../../../../hooks/useFqn';
 import { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
@@ -51,6 +52,7 @@ import {
   getFilteredDestinationOptions,
   getSubscriptionTypeOptions,
 } from '../../../../utils/Alerts/AlertsUtil';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
@@ -116,7 +118,7 @@ function DestinationSelectItem({
     [];
 
   const handleTabChange = useCallback(
-    (key) => {
+    (key: string) => {
       setActiveTab(key);
       setDestinationOptions(getFilteredDestinationOptions(key, selectedSource));
     },
@@ -316,10 +318,19 @@ function DestinationSelectItem({
                       icon={<InfoCircleOutlined height={14} />}
                       message={
                         <Typography.Text className="text-sm">
-                          {t('message.destination-selection-warning', {
-                            subscriptionCategory: destinationType,
-                            subscriptionType,
-                          })}
+                          <Transi18next
+                            i18nKey={
+                              destinationType === SubscriptionCategory.Owners &&
+                              subscriptionType !== SubscriptionType.Email
+                                ? 'message.destination-owner-selection-warning'
+                                : 'message.destination-selection-warning'
+                            }
+                            renderElement={<b />}
+                            values={{
+                              subscriptionCategory: destinationType,
+                              subscriptionType,
+                            }}
+                          />
                         </Typography.Text>
                       }
                       type="warning"

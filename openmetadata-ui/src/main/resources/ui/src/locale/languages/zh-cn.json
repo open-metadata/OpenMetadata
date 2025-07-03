@@ -1705,6 +1705,7 @@
     "delete-webhook-permanently": "您要永久删除 Webhook {{webhookName}} 吗？此操作无法撤消",
     "derived-tag-warning": "该标签是自动生成的, 只有通过删除相关术语库术语才能删除该标签。",
     "description-coverage-widget-description": "服务中所有数据资产的描述覆盖率。<0>了解更多。</0>",
+    "destination-owner-selection-warning": "请确保 \"所有者\" 是一个 <0>团队</0>，并配置了 \"{{subscriptionType}}\" 以接收警报。",
     "destination-selection-warning": "请确认\"{{subscriptionCategory}}\"是否已配置其\"{{subscriptionType}}\"以接收警报",
     "disable-app": "这将禁用{{app}}应用.",
     "disable-classification-description": "禁用分类选项, 您将无法查看到关联的标签",

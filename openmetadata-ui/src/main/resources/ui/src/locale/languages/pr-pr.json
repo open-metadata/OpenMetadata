@@ -1705,6 +1705,7 @@
     "delete-webhook-permanently": "آیا می‌خواهید وب‌هوک {{webhookName}} را به طور دائمی حذف کنید؟ این عمل قابل بازگشت نیست.",
     "derived-tag-warning": "این برچسب به طور خودکار مشتق شده است و فقط با حذف اصطلاح مربوطه از فرهنگ لغت قابل حذف است.",
     "description-coverage-widget-description": "پوشش توضیحات برای تمام دارایی‌های داده در سرویس. <0>بیشتر بدانید.</0>",
+    "destination-owner-selection-warning": "لطفاً اطمینان حاصل کنید که \"مالک\" یک <0>تیم</0> با \"{{subscriptionType}}\" پیکربندی‌شده برای دریافت هشدارها باشد.",
     "destination-selection-warning": "لطفاً اطمینان حاصل کنید که \"{{subscriptionCategory}}\" تنظیمات \"{{subscriptionType}}\" را برای دریافت هشدارها پیکربندی کرده است.",
     "disable-app": "این عمل برنامه {{app}} را غیرفعال خواهد کرد.",
     "disable-classification-description": "با غیرفعال کردن طبقه‌بندی، دیگر قادر به جستجو یا اختصاص برچسب‌های مرتبط به هیچ موجودیتی نخواهید بود.",

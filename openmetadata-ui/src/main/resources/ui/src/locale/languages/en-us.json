@@ -1705,6 +1705,7 @@
     "delete-webhook-permanently": "You want to delete webhook {{webhookName}} permanently? This action cannot be reverted.",
     "derived-tag-warning": "This tag is automatically derived and can only be removed by deleting the related Glossary Term.",
     "description-coverage-widget-description": "Description coverage for all data assets in the service. <0>learn more.</0>",
+    "destination-owner-selection-warning": "Please make sure the \"Owner\" is a <0>Team</0> with \"{{subscriptionType}}\" configured to receive alerts.",
     "destination-selection-warning": "Please make sure if the \"{{subscriptionCategory}}\" have configured their \"{{subscriptionType}}\" to receive the alerts.",
     "disable-app": "This will disable the {{app}} application.",
     "disable-classification-description": "By disabling classification, you will not be able to search by, or assign associated tags to any entity.",
