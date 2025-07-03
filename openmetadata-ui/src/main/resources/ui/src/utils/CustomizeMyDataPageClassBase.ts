@@ -87,7 +87,7 @@ class CustomizeMyDataPageClassBase {
     {
       h: this.landingPageWidgetDefaultHeights.DataAssets,
       i: LandingPageWidgetKeys.DATA_ASSETS,
-      w: 2,
+      w: 1,
       x: 1,
       y: 0,
       static: false,

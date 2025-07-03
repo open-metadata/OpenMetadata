@@ -218,7 +218,7 @@ const MyDataPage = () => {
         />
         <ReactGridLayout
           className="grid-container p-x-box"
-          cols={3}
+          cols={customizePageClassBase.landingPageMaxGridSize}
           containerPadding={[0, 0]}
           isDraggable={false}
           isResizable={false}
@@ -226,7 +226,7 @@ const MyDataPage = () => {
             customizePageClassBase.landingPageWidgetMargin,
             customizePageClassBase.landingPageWidgetMargin,
           ]}
-          rowHeight={100}>
+          rowHeight={customizePageClassBase.landingPageRowHeight}>
           {widgets}
         </ReactGridLayout>
       </div>
