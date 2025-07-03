@@ -1427,6 +1427,7 @@
     "term-plural": "Terimler",
     "test": "Test",
     "test-case": "Test Senaryosu",
+    "test-case-insight-plural": "Test Durumu İçgörüleri",
     "test-case-lowercase": "test senaryosu",
     "test-case-lowercase-plural": "test senaryoları",
     "test-case-name": "Test Senaryosu Adı",
@@ -2157,6 +2158,7 @@
     "team-member-management-description": "{{brandName}} içindeki kullanıcılara ve takımlara erişimi kolaylaştırın.",
     "team-moved-success": "Takım başarıyla taşındı!",
     "team-no-asset": "Takımınızın herhangi bir varlığı yok.",
+    "test-case-insight-description": "Yapılandırılmış test doğrulamalarına dayalı olarak veri setinizin sağlığının merkezi görünümüne erişin.",
     "test-case-schedule-description": "Veri kalitesi testleri istenen sıklıkta çalışacak şekilde zamanlanabilir. Saat dilimi UTC'dir.",
     "test-connection-cannot-be-triggered": "Bağlantı testi tetiklenemez.",
     "test-connection-taking-too-long": {

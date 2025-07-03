@@ -1427,6 +1427,7 @@
     "term-plural": "Termen",
     "test": "Test",
     "test-case": "Testcase",
+    "test-case-insight-plural": "Testcase Inzichten",
     "test-case-lowercase": "testcase",
     "test-case-lowercase-plural": "testcases",
     "test-case-name": "Testcasenaam",
@@ -2157,6 +2158,7 @@
     "team-member-management-description": "Stroomlijn toegang voor gebruikers en teams in {{brandName}}.",
     "team-moved-success": "Team succesvol verplaatst!",
     "team-no-asset": "Je team heeft geen assets.",
+    "test-case-insight-description": "Toegang tot een gecentraliseerde weergave van de gezondheid van uw dataset op basis van geconfigureerde testvalidaties.",
     "test-case-schedule-description": "The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.",
     "test-connection-cannot-be-triggered": "Testconnectie kan niet worden geactiveerd.",
     "test-connection-taking-too-long": {

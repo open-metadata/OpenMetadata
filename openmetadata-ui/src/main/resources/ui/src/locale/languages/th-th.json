@@ -1427,6 +1427,7 @@
     "term-plural": "คำศัพท์หลายรายการ",
     "test": "ทดสอบ",
     "test-case": "กรณีทดสอบ",
+    "test-case-insight-plural": "ข้อมูลเชิงลึกกรณีทดสอบ",
     "test-case-lowercase": "กรณีทดสอบ",
     "test-case-lowercase-plural": "กรณีทดสอบหลายรายการ",
     "test-case-name": "ชื่อกรณีทดสอบ",
@@ -2157,6 +2158,7 @@
     "team-member-management-description": "Streamline access to users and teams in {{brandName}}.",
     "team-moved-success": "ย้ายทีมสำเร็จ!",
     "team-no-asset": "ทีมของคุณไม่มีสินทรัพย์ใด ๆ",
+    "test-case-insight-description": "เข้าถึงมุมมองรวมศูนย์ของสุขภาพชุดข้อมูลของคุณตามการตรวจสอบทดสอบที่กำหนดค่าไว้",
     "test-case-schedule-description": "การทดสอบคุณภาพข้อมูลสามารถกำหนดเวลาให้ดำเนินการในความถี่ที่ต้องการ เขตเวลาคือ UTC",
     "test-connection-cannot-be-triggered": "ไม่สามารถกระตุ้นการทดสอบการเชื่อมต่อได้",
     "test-connection-taking-too-long": {

@@ -1427,6 +1427,7 @@
     "term-plural": "Termos",
     "test": "Proba",
     "test-case": "Caso de proba",
+    "test-case-insight-plural": "Información dos Casos de Proba",
     "test-case-lowercase": "caso de proba",
     "test-case-lowercase-plural": "casos de proba",
     "test-case-name": "Nome do caso de proba",
@@ -2157,6 +2158,7 @@
     "team-member-management-description": "Optimiza o acceso a usuarios e equipos en {{brandName}}.",
     "team-moved-success": "O equipo moveuse correctamente!",
     "team-no-asset": "O teu equipo non ten ningún activo.",
+    "test-case-insight-description": "Accede a unha vista centralizada da saúde do teu conxunto de datos baseada en validacións de proba configuradas.",
     "test-case-schedule-description": "As probas de calidade de datos poden programarse para executarse coa frecuencia desexada. A zona horaria está en UTC.",
     "test-connection-cannot-be-triggered": "Non se pode iniciar a conexión de proba.",
     "test-connection-taking-too-long": {

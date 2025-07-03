@@ -1427,6 +1427,7 @@
     "term-plural": "Terms",
     "test": "テスト",
     "test-case": "テストケース",
+    "test-case-insight-plural": "テストケースインサイト",
     "test-case-lowercase": "テストケース",
     "test-case-lowercase-plural": "test cases",
     "test-case-name": "Test Case Name",
@@ -2157,6 +2158,7 @@
     "team-member-management-description": "Streamline access to users and teams in {{brandName}}.",
     "team-moved-success": "チームの移動が成功しました！",
     "team-no-asset": "あなたのチームはアセットを持っていません。",
+    "test-case-insight-description": "設定されたテスト検証に基づいて、データセットの健全性の集中ビューにアクセスします。",
     "test-case-schedule-description": "The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.",
     "test-connection-cannot-be-triggered": "Test connection cannot be triggered.",
     "test-connection-taking-too-long": {

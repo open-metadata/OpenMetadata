@@ -1427,6 +1427,7 @@
     "term-plural": "Begriffe",
     "test": "Test",
     "test-case": "Testfall",
+    "test-case-insight-plural": "Testfall-Einblicke",
     "test-case-lowercase": "testfall",
     "test-case-lowercase-plural": "testfälle",
     "test-case-name": "Testfall Name",
@@ -2157,6 +2158,7 @@
     "team-member-management-description": "Streamline access to users and teams in {{brandName}}.",
     "team-moved-success": "Team erfolgreich verschoben!",
     "team-no-asset": "Ihr Team hat keine Vermögenswerte.",
+    "test-case-insight-description": "Zugriff auf eine zentrale Ansicht der Gesundheit Ihres Datensatzes basierend auf konfigurierten Testvalidierungen.",
     "test-case-schedule-description": "Die Datenqualitätstests können mit der gewünschten Häufigkeit geplant werden. Die Zeitzone ist UTC.",
     "test-connection-cannot-be-triggered": "Die Testverbindung kann nicht ausgelöst werden.",
     "test-connection-taking-too-long": {

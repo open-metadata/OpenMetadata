@@ -1427,6 +1427,7 @@
     "term-plural": "संज्ञा",
     "test": "चाचणी",
     "test-case": "चाचणी प्रकरण",
+    "test-case-insight-plural": "चाचणी प्रकरण अंतर्दृष्टी",
     "test-case-lowercase": "चाचणी प्रकरण",
     "test-case-lowercase-plural": "चाचणी प्रकरणे",
     "test-case-name": "चाचणी प्रकरण नाव",
@@ -2157,6 +2158,7 @@
     "team-member-management-description": "{{brandName}} मध्ये वापरकर्ते आणि टीम्सना प्रवेश सुलभ करा.",
     "team-moved-success": "टीम यशस्वीरित्या हलवली!",
     "team-no-asset": "तुमच्या टीमकडे कोणतीही ॲसेट नाहीत.",
+    "test-case-insight-description": "कॉन्फिगर केलेल्या चाचणी प्रमाणीकरणांवर आधारित आपल्या डेटासेटच्या आरोग्याचे केंद्रीकृत दृश्य प्रवेश करा.",
     "test-case-schedule-description": "डेटा गुणवत्ता चाचण्या इच्छित वारंवारतेवर चालवण्यासाठी वेळापत्रक करता येतात. टाइमझोन UTC मध्ये आहे.",
     "test-connection-cannot-be-triggered": "कनेक्शन चाचणी ट्रिगर केली जाऊ शकत नाही.",
     "test-connection-taking-too-long": {

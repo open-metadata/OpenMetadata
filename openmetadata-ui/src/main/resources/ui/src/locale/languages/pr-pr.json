@@ -1427,6 +1427,7 @@
     "term-plural": "واژه‌ها",
     "test": "تست",
     "test-case": "مورد تست",
+    "test-case-insight-plural": "بینش‌های موارد آزمایش",
     "test-case-lowercase": "مورد تست",
     "test-case-lowercase-plural": "موردهای تست",
     "test-case-name": "نام مورد تست",
@@ -2157,6 +2158,7 @@
     "team-member-management-description": "دسترسی به کاربران و تیم‌ها را در {{brandName}} ساده‌سازی کنید.",
     "team-moved-success": "تیم با موفقیت منتقل شد!",
     "team-no-asset": "تیم شما هیچ دارایی ندارد.",
+    "test-case-insight-description": "دسترسی به نمای متمرکز سلامت مجموعه داده‌های شما بر اساس اعتبارسنجی‌های آزمایش پیکربندی شده.",
     "test-case-schedule-description": "آزمون‌های کیفیت داده می‌توانند به صورت دوره‌ای برنامه‌ریزی شوند. منطقه زمانی به صورت UTC است.",
     "test-connection-cannot-be-triggered": "اتصال تست نمی‌تواند اجرا شود.",
     "test-connection-taking-too-long": {

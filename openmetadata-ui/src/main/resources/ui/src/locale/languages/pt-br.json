@@ -1427,6 +1427,7 @@
     "term-plural": "Termos",
     "test": "Teste",
     "test-case": "Caso de Teste",
+    "test-case-insight-plural": "Insights de Casos de Teste",
     "test-case-lowercase": "caso de teste",
     "test-case-lowercase-plural": "casos de teste",
     "test-case-name": "Nome do Caso de Teste",
@@ -2157,6 +2158,7 @@
     "team-member-management-description": "Simplifique o acesso a usuários e equipes em {{brandName}}.",
     "team-moved-success": "Equipe movida com sucesso!",
     "team-no-asset": "Sua equipe não possui ativos.",
+    "test-case-insight-description": "Acesse uma visão centralizada da saúde do seu dataset baseada em validações de teste configuradas.",
     "test-case-schedule-description": "Os testes de qualidade de dados podem ser programados para serem executados na frequência desejada. O fuso horário está em UTC.",
     "test-connection-cannot-be-triggered": "Não é possível acionar o teste de conexão.",
     "test-connection-taking-too-long": {
