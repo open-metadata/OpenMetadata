@@ -2,6 +2,7 @@ package org.openmetadata.service.security;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
+import com.auth0.jwk.SigningKeyNotFoundException;
 import java.util.Map;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
@@ -21,7 +22,11 @@ public class LocalJwkProvider implements JwkProvider {
   }
 
   @Override
-  public Jwk get(String kid) {
-    return self;
+  public Jwk get(String kid) throws com.auth0.jwk.JwkException {
+    // Only return the key if the kid matches
+    if (self.getId().equals(kid)) {
+      return self;
+    }
+    throw new SigningKeyNotFoundException("No key found with kid: " + kid, null);
   }
 }
