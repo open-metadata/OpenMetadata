@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Typography } from 'antd';
+import { FocusTrap } from 'focus-trap-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -109,15 +110,25 @@ const DomainSelectableList = ({
       <Popover
         destroyTooltipOnHide
         content={
-          <DomainSelectablTree
-            initialDomains={initialDomains}
-            isMultiple={multiple}
-            showAllDomains={showAllDomains}
-            value={selectedDomainsList as string[]}
-            visible={popupVisible || Boolean(popoverProps?.open)}
-            onCancel={handleCancel}
-            onSubmit={handleUpdate}
-          />
+          <FocusTrap
+            focusTrapOptions={{
+              fallbackFocus: () =>
+                (document.querySelector(
+                  '#domain-selectable-list'
+                ) as HTMLElement) || document.body,
+            }}>
+            <div id="domain-selectable-list">
+              <DomainSelectablTree
+                initialDomains={initialDomains}
+                isMultiple={multiple}
+                showAllDomains={showAllDomains}
+                value={selectedDomainsList as string[]}
+                visible={popupVisible || Boolean(popoverProps?.open)}
+                onCancel={handleCancel}
+                onSubmit={handleUpdate}
+              />
+            </div>
+          </FocusTrap>
         }
         open={popupVisible}
         overlayClassName="domain-select-popover w-400"

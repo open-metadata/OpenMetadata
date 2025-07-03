@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Popover, Space, Tabs, Typography } from 'antd';
+import { FocusTrap } from 'focus-trap-react';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -255,101 +256,108 @@ export const UserTeamSelectableList = ({
     <Popover
       destroyTooltipOnHide
       content={
-        <>
-          {previewSelected && (
-            <Space
-              className="user-team-popover-header w-full p-x-sm p-y-md"
-              direction="vertical"
-              size={8}>
-              <Typography.Text className="text-grey-muted">
-                {t('label.selected-entity', {
-                  entity: label ?? t('label.owner-plural'),
-                })}
-              </Typography.Text>
-              <div className="user-team-popover-header-content">
-                {selectedUsers.map((user) => {
-                  return (
-                    <UserTag
-                      closable
-                      avatarType="outlined"
-                      className="user-team-pills"
-                      id={user.name ?? ''}
-                      isTeam={user.type === EntityType.TEAM}
-                      key={user.id}
-                      name={getEntityName(user)}
-                      size={UserTagSize.small}
-                      onRemove={() => onRemove(user.id)}
+        <FocusTrap
+          focusTrapOptions={{
+            fallbackFocus: () =>
+              (document.querySelector(
+                '#user-team-selectable-list'
+              ) as HTMLElement) || document.body,
+          }}>
+          <div id="user-team-selectable-list">
+            {previewSelected && (
+              <Space
+                className="user-team-popover-header w-full p-x-sm p-y-md"
+                direction="vertical"
+                size={8}>
+                <Typography.Text className="text-grey-muted">
+                  {t('label.selected-entity', {
+                    entity: label ?? t('label.owner-plural'),
+                  })}
+                </Typography.Text>
+                <div className="user-team-popover-header-content">
+                  {selectedUsers.map((user) => {
+                    return (
+                      <UserTag
+                        closable
+                        avatarType="outlined"
+                        className="user-team-pills"
+                        id={user.name ?? ''}
+                        isTeam={user.type === EntityType.TEAM}
+                        key={user.id}
+                        name={getEntityName(user)}
+                        size={UserTagSize.small}
+                        onRemove={() => onRemove(user.id)}
+                      />
+                    );
+                  })}
+                </div>
+              </Space>
+            )}
+            <Tabs
+              centered
+              activeKey={activeTab}
+              className="select-owner-tabs"
+              data-testid="select-owner-tabs"
+              destroyInactiveTabPane={false}
+              items={[
+                {
+                  label: (
+                    <>
+                      {t('label.team-plural')}{' '}
+                      {getCountBadge(count.team, '', activeTab === 'teams')}
+                    </>
+                  ),
+                  key: 'teams',
+                  children: (
+                    <SelectableList
+                      customTagRenderer={TeamListItemRenderer}
+                      fetchOptions={fetchTeamOptions}
+                      height={listHeight}
+                      multiSelect={isMultiTeam}
+                      searchBarDataTestId="owner-select-teams-search-bar"
+                      searchPlaceholder={t('label.search-for-type', {
+                        type: t('label.team'),
+                      })}
+                      selectedItems={defaultTeams}
+                      onCancel={handleCancelSelectableList}
+                      onChange={handleChange}
+                      onUpdate={handleUpdate}
                     />
-                  );
-                })}
-              </div>
-            </Space>
-          )}
-
-          <Tabs
-            centered
-            activeKey={activeTab}
-            className="select-owner-tabs"
-            data-testid="select-owner-tabs"
-            destroyInactiveTabPane={false}
-            items={[
-              {
-                label: (
-                  <>
-                    {t('label.team-plural')}{' '}
-                    {getCountBadge(count.team, '', activeTab === 'teams')}
-                  </>
-                ),
-                key: 'teams',
-                children: (
-                  <SelectableList
-                    customTagRenderer={TeamListItemRenderer}
-                    fetchOptions={fetchTeamOptions}
-                    height={listHeight}
-                    multiSelect={isMultiTeam}
-                    searchBarDataTestId="owner-select-teams-search-bar"
-                    searchPlaceholder={t('label.search-for-type', {
-                      type: t('label.team'),
-                    })}
-                    selectedItems={defaultTeams}
-                    onCancel={handleCancelSelectableList}
-                    onChange={handleChange}
-                    onUpdate={handleUpdate}
-                  />
-                ),
-              },
-              {
-                label: (
-                  <>
-                    {t('label.user-plural')}
-                    {getCountBadge(count.user, '', activeTab === 'users')}
-                  </>
-                ),
-                key: 'users',
-                children: (
-                  <SelectableList
-                    fetchOptions={fetchUserOptions}
-                    height={listHeight}
-                    multiSelect={isMultiUser}
-                    searchBarDataTestId="owner-select-users-search-bar"
-                    searchPlaceholder={t('label.search-for-type', {
-                      type: t('label.user'),
-                    })}
-                    selectedItems={defaultUsers}
-                    onCancel={handleCancelSelectableList}
-                    onChange={handleChange}
-                    onUpdate={handleUpdate}
-                  />
-                ),
-              },
-            ]}
-            size="small"
-            onChange={(key: string) => setActiveTab(key as 'teams' | 'users')}
-            // Used div to stop click propagation event anywhere in the component to parent
-            // Users.component collapsible panel
-            onClick={(e) => e.stopPropagation()}
-          />
-        </>
+                  ),
+                },
+                {
+                  label: (
+                    <>
+                      {t('label.user-plural')}
+                      {getCountBadge(count.user, '', activeTab === 'users')}
+                    </>
+                  ),
+                  key: 'users',
+                  children: (
+                    <SelectableList
+                      fetchOptions={fetchUserOptions}
+                      height={listHeight}
+                      multiSelect={isMultiUser}
+                      searchBarDataTestId="owner-select-users-search-bar"
+                      searchPlaceholder={t('label.search-for-type', {
+                        type: t('label.user'),
+                      })}
+                      selectedItems={defaultUsers}
+                      onCancel={handleCancelSelectableList}
+                      onChange={handleChange}
+                      onUpdate={handleUpdate}
+                    />
+                  ),
+                },
+              ]}
+              size="small"
+              onChange={(key: string) => setActiveTab(key as 'teams' | 'users')}
+              // Used div to stop click propagation event anywhere in the component to parent
+              // Users.component collapsible panel
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </FocusTrap>
       }
       open={popupVisible}
       overlayClassName="user-team-select-popover card-shadow"
