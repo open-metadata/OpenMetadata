@@ -36,6 +36,9 @@ const DomainRouter = withSuspenseFallback(
     () => import(/* webpackChunkName: "DomainRouter" */ './DomainRouter')
   )
 );
+const DomainsPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/Domains/DomainsPage.component'))
+);
 const SettingsRouter = withSuspenseFallback(
   React.lazy(
     () => import(/* webpackChunkName: "SettingsRouter" */ './SettingsRouter')
@@ -707,6 +710,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<GlossaryTermRouter />} path="/glossary-term/*" />
       <Route element={<SettingsRouter />} path="/settings/*" />
       <Route element={<DomainRouter />} path="/domain/*" />
+
+      <Route
+        element={<DomainsPage pageTitle={t('label.domain')} />}
+        path={ROUTES.DOMAINS}
+      />
+      <Route
+        element={<DomainsPage pageTitle={t('label.data-product')} />}
+        path={ROUTES.DATA_PRODUCTS}
+      />
+
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />
       <Route
         element={
