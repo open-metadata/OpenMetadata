@@ -1,0 +1,10 @@
+{
+    "name": "MyTask",
+    "displayName": "My Task",
+    "description": "My Task KnowledgePanel shows list of Tasks that User has created.",
+    "entityType": "KnowledgePanel",
+    "fullyQualifiedName": "KnowledgePanel.MyTask",
+    "data": {
+      "gridSizes": ["small", "medium"]
+    }
+  }
