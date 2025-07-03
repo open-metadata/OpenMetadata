@@ -272,6 +272,40 @@ const Table = <T extends Record<string, unknown>>(
                 <DndProvider backend={HTML5Backend}>
                   <Dropdown
                     className="custom-column-dropdown-menu text-primary"
+                    dropdownRender={() => (
+                      <div className="ant-dropdown-menu p-sm">
+                        <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
+                          <Typography.Text
+                            className="text-sm text-grey-muted font-medium"
+                            data-testid="column-dropdown-title">
+                            {t('label.column')}
+                          </Typography.Text>
+                          <Button
+                            className="text-primary text-sm p-0"
+                            data-testid="column-dropdown-action-button"
+                            type="text"
+                            onClick={handleBulkColumnAction}>
+                            {dropdownColumnList.length ===
+                            columnDropdownSelections.length
+                              ? t('label.hide-all')
+                              : t('label.view-all')}
+                          </Button>
+                        </div>
+                        <div className="draggable-list m-t-xss">
+                          {dropdownColumnList.map((item, index) => (
+                            <DraggableMenuItem
+                              currentItem={item}
+                              index={index}
+                              itemList={dropdownColumnList}
+                              key={item.value}
+                              selectedOptions={columnDropdownSelections}
+                              onMoveItem={handleMoveItem}
+                              onSelect={handleColumnItemSelect}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     menu={menu}
                     open={isDropdownVisible}
                     placement="bottomRight"
