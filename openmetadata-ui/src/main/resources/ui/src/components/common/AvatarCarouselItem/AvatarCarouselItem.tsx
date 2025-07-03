@@ -33,7 +33,8 @@ const AvatarCarouselItem = ({
   onAvatarClick,
   isActive,
 }: AvatarCarouselItemProps) => {
-  const { suggestionsByUser } = useSuggestionsContext();
+  const { suggestionsByUser, fetchSuggestionsByUserId } =
+    useSuggestionsContext();
   const buttonRef = useRef(null);
   avatarBtnRefs.current[index] = buttonRef;
   const getUserSuggestionsCount = useCallback(
@@ -41,6 +42,16 @@ const AvatarCarouselItem = ({
       suggestionsByUser.get(userName)?.combinedData.length ?? 0,
     [suggestionsByUser]
   );
+
+  const handleAvatarClick = useCallback(() => {
+    // Call the original onAvatarClick function
+    onAvatarClick(index);
+
+    // Fetch suggestions for this specific user
+    if (avatar.id) {
+      fetchSuggestionsByUserId(avatar.id);
+    }
+  }, [onAvatarClick, index, avatar.id, fetchSuggestionsByUserId]);
 
   const button = (
     <Button
@@ -50,7 +61,7 @@ const AvatarCarouselItem = ({
       data-testid={`avatar-carousel-item-${avatar.id}`}
       ref={buttonRef}
       shape="circle"
-      onClick={() => onAvatarClick(index)}>
+      onClick={handleAvatarClick}>
       <ProfilePicture name={avatar.name ?? ''} width="28" />
     </Button>
   );
