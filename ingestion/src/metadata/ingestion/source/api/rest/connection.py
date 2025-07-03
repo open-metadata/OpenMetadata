@@ -12,7 +12,8 @@
 """
 Source connection handler
 """
-from typing import Optional
+import json
+from typing import Optional, Union
 
 import requests
 from requests.models import Response
@@ -28,6 +29,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.readers.file.local import LocalReader
 from metadata.utils.constants import THREE_MIN
 
 
@@ -43,10 +45,29 @@ class InvalidOpenAPISchemaError(Exception):
     """
 
 
-def get_connection(connection: RestConnection) -> Response:
+def get_connection(connection: RestConnection) -> Union[Response, dict]:
     """
     Create connection
     """
+    if not connection.openAPISchemaFilePath and not connection.openAPISchemaURL:
+        raise ValueError(
+            "Either 'openAPISchemaURL' or 'openAPISchemaFilePath' must be provided"
+        )
+
+    if connection.openAPISchemaFilePath:
+        reader = LocalReader()
+        if not connection.openAPISchemaFilePath.startswith("/"):
+            # convert relative path to absolute path
+            connection.openAPISchemaFilePath = f"/{connection.openAPISchemaFilePath}"
+        file_content = reader.read(connection.openAPISchemaFilePath)
+        try:
+            json_response = json.loads(file_content)
+        except Exception as exc:
+            raise InvalidOpenAPISchemaError(
+                f"Provided schema is not valid OpenAPI JSON schema: {exc}"
+            )
+        return json_response
+
     if connection.token:
         headers = {"Authorization": f"Bearer {connection.token.get_secret_value()}"}
         return requests.get(connection.openAPISchemaURL, headers=headers)
@@ -55,7 +76,7 @@ def get_connection(connection: RestConnection) -> Response:
 
 def test_connection(
     metadata: OpenMetadata,
-    client: Response,
+    client: Union[Response, dict],
     service_connection: RestConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
@@ -66,6 +87,8 @@ def test_connection(
     """
 
     def custom_url_exec():
+        if isinstance(client, dict):
+            return []
         if client.status_code == 200:
             return []
         raise SchemaURLError(
@@ -75,6 +98,8 @@ def test_connection(
 
     def custom_schema_exec():
         try:
+            if isinstance(client, dict):
+                return []
             if client.json() is not None and client.json().get("openapi") is not None:
                 return []
 
