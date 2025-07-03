@@ -95,6 +95,7 @@ import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
