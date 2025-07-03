@@ -1,5 +1,6 @@
 ---
 title: Dashboard Services | Connect BI Tools with OpenMetadata
+description: Discover OpenMetadata dashboard connectors to integrate Tableau, PowerBI, Superset & more. Complete setup guides, configurations & metadata extraction.
 slug: /connectors/dashboard
 ---
 

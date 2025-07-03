@@ -1,5 +1,6 @@
 ---
 title: Auto-Classification in OpenMetadata
+description: Learn how to set up automatic data classification in OpenMetadata to streamline data governance and ensure consistent tagging across your data assets.
 slug: /how-to-guides/data-governance/classification/auto-classification
 ---
 
