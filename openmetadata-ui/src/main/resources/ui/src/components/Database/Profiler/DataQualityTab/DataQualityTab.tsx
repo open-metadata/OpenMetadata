@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Skeleton, Tooltip, Typography } from 'antd';
+import { Col, Row, Skeleton, Typography } from 'antd';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
 import { FilterValue, SorterResult } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -37,7 +37,6 @@ import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseRe
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getNameFromFQN, Transi18next } from '../../../../utils/CommonUtils';
-import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getColumnNameFromEntityLink,
   getEntityName,
@@ -49,7 +48,6 @@ import {
 } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import AppBadge from '../../../common/Badge/Badge.component';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -61,6 +59,7 @@ import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
 import EditTestCaseModal from '../../../DataQuality/AddDataQualityTest/EditTestCaseModal';
+import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
   DataQualityTabProps,
@@ -140,6 +139,18 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     } finally {
       setIsTestCaseRemovalLoading(false);
     }
+  };
+
+  const handleStatusSubmit = (value: TestCaseResolutionStatus) => {
+    setTestCaseStatus((prev) => {
+      return prev.map((item) => {
+        if (item.stateId === value.stateId) {
+          return value;
+        }
+
+        return item;
+      });
+    });
   };
 
   const columns = useMemo(() => {
@@ -279,43 +290,36 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.incident'),
         dataIndex: 'testCaseResult',
         key: 'incident',
-        width: 100,
+        width: 120,
         render: (_, record) => {
           const testCaseResult = testCaseStatus.find(
             (status) =>
               status.testCaseReference?.fullyQualifiedName ===
               record.fullyQualifiedName
           );
-          const label = testCaseResult?.testCaseResolutionStatusType;
 
           if (isStatusLoading) {
             return <Skeleton.Input size="small" />;
           }
 
-          return label ? (
-            <Tooltip
-              placement="bottom"
-              title={
-                testCaseResult?.updatedAt &&
-                `${formatDate(testCaseResult.updatedAt)}
-                    ${
-                      testCaseResult.updatedBy
-                        ? 'by ' + getEntityName(testCaseResult.updatedBy)
-                        : ''
-                    }`
-              }>
-              <span data-testid={`${record.name}-status`}>
-                <AppBadge
-                  className={classNames(
-                    'resolution',
-                    label.toLocaleLowerCase()
-                  )}
-                  label={label}
-                />
-              </span>
-            </Tooltip>
-          ) : (
-            '--'
+          if (!testCaseResult) {
+            return '--';
+          }
+
+          // Check if user has permission to edit incident status
+          const testCasePermission = testCasePermissions.find(
+            (permission) =>
+              permission.fullyQualifiedName === record.fullyQualifiedName
+          );
+          const hasEditPermission =
+            isEditAllowed || testCasePermission?.EditAll;
+
+          return (
+            <TestCaseIncidentManagerStatus
+              data={testCaseResult}
+              hasPermission={hasEditPermission}
+              onSubmit={handleStatusSubmit}
+            />
           );
         },
       },
@@ -395,6 +399,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     isStatusLoading,
     isPermissionLoading,
     testCasePermissions,
+    handleStatusSubmit,
+    isEditAllowed,
   ]);
 
   const fetchTestCaseStatus = async () => {
