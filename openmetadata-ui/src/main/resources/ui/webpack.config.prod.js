@@ -27,6 +27,9 @@ module.exports = {
     buildDependencies: {
       config: [__filename], // Cache invalidation on config file changes
     },
+    cacheDirectory: path.resolve(__dirname, 'node_modules/.cache/webpack'),
+    compression: 'gzip', // Compress cache files
+    store: 'pack', // More efficient storage
   },
 
   // Production mode
@@ -67,7 +70,8 @@ module.exports = {
           {
             loader: 'thread-loader',
             options: {
-              workers: require('os').cpus().length - 1, // Use all available CPU cores minus one
+              workers: Math.max(require('os').cpus().length - 2, 2), // More conservative CPU usage
+              poolTimeout: 2000, // Faster pool termination
             },
           },
           {
@@ -245,12 +249,19 @@ module.exports = {
       test: /\.(js|css|html|svg)$/,
     }),
 
-    // Bundle analyzer (optional, for debugging)
-    new BundleAnalyzerPlugin({
+    // Bundle analyzer (only when explicitly requested)
+    ...(process.env.ANALYZE_BUNDLE === 'true' ? [new BundleAnalyzerPlugin({
       analyzerMode: 'static', // Outputs an HTML report
       openAnalyzer: false, // Set to true to open report automatically
-    }),
+    })] : []),
   ],
+
+  // Performance budgets
+  performance: {
+    maxAssetSize: 300000, // 300KB
+    maxEntrypointSize: 300000, // 300KB
+    hints: 'warning', // Show warnings for budget violations
+  },
 
   // Disable source maps for production
   devtool: false,
