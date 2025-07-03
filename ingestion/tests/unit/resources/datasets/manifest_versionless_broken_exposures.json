@@ -19561,16 +19561,12 @@
       "description": "Exemplary OM API Endpoint.\n",
       "label": "asd",
       "maturity": "high",
-      "meta": {
-        "open_metadata_fqn": "mlflow_svc.forecast_sales"
-      },
+      "meta": {},
       "tags": [],
       "config": {
         "enabled": true,
         "tags": [],
-        "meta": {
-          "open_metadata_fqn": "mlflow_svc.forecast_sales"
-        }
+        "meta": {}
       },
       "unrendered_config": {},
       "url": "https://docs.open-metadata.org/api/v1/tables",
@@ -19609,7 +19605,7 @@
         "warehouse",
         "create_table_endpoint"
       ],
-      "type": "application",
+      "type": "notebook",
       "owner": {
         "email": "gorskimariusz13@gmail.com",
         "name": "Mariusz G\u00f3rski"
@@ -19646,54 +19642,6 @@
       "sources": [],
       "metrics": [],
       "created_at": 1751007276.5458581
-    },
-    "exposure.dbt_tutorial.looker_orders": {
-      "name": "looker_orders",
-      "resource_type": "exposure",
-      "package_name": "dbt_tutorial",
-      "path": "warehouse/fact_sales.yml",
-      "original_file_path": "models/warehouse/fact_sales.yml",
-      "unique_id": "exposure.dbt_tutorial.looker_orders",
-      "fqn": [
-        "dbt_tutorial",
-        "warehouse",
-        "looker_orders"
-      ],
-      "type": "dashboard",
-      "owner": {
-        "email": "gorskimariusz13@gmail.com",
-        "name": "Mariusz G\u00f3rski"
-      },
-      "description": "Exemplary OM Looker Dashboard.\n",
-      "label": "zxc",
-      "maturity": "high",
-      "meta": {
-          "open_metadata_fqn": "dummy"
-      },
-      "tags": [],
-      "config": {
-        "enabled": true,
-        "tags": [],
-        "meta": {}
-      },
-      "unrendered_config": {},
-      "url": "http://localhost:808/looker/dashboard/8/",
-      "depends_on": {
-        "macros": [],
-        "nodes": [
-          "model.dbt_tutorial.fact_sales"
-        ]
-      },
-      "refs": [
-        {
-          "name": "fact_sales",
-          "package": null,
-          "version": null
-        }
-      ],
-      "sources": [],
-      "metrics": [],
-      "created_at": 1751007451.077749
     }
   },
     "metrics": {},
