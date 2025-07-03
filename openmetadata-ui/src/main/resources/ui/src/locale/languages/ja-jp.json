@@ -1727,6 +1727,7 @@
     "delete-webhook-permanently": "You want to delete webhook {{webhookName}} permanently? This action cannot be reverted.",
     "derived-tag-warning": "This tag is automatically derived and can only be removed by deleting the related Glossary Term.",
     "description-coverage-widget-description": "サービス内の全データアセットの説明カバレッジ。<0>詳細を見る。</0>",
+    "destination-owner-selection-warning": "「オーナー」がアラートを受信するように「{{subscriptionType}}」が設定された<0>チーム</0>であることを確認してください。.",
     "destination-selection-warning": "Please make sure if the \"{{subscriptionCategory}}\" have configured their \"{{subscriptionType}}\" to receive the alerts.",
     "disable-app": "This will disable the {{app}} application.",
     "disable-classification-description": "Option to disable classifications, You won't be able to see associated tags within application",

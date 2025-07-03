@@ -1727,6 +1727,7 @@
     "delete-webhook-permanently": "तुम्हाला वेबहुक {{webhookName}} कायमचे मिटवायचे आहे का? ही क्रिया उलटवता येणार नाही.",
     "derived-tag-warning": "हा टॅग स्वयंचलितपणे व्युत्पन्न केला जातो आणि संबंधित शब्दकोश संज्ञा मिटवूनच काढला जाऊ शकतो.",
     "description-coverage-widget-description": "सेवेतील सर्व डेटा मालमत्तांसाठी वर्णन व्याप्ती. <0>अधिक जाणून घ्या.</0>",
+    "destination-owner-selection-warning": "कृपया खात्री करा की \"मालक\" हा अलर्ट प्राप्त करण्यासाठी \"{{subscriptionType}}\" कॉन्फिगर केलेला <0>टीम</0> आहे.",
     "destination-selection-warning": "कृपया खात्री करा की \"{{subscriptionCategory}}\" ने \"{{subscriptionType}}\" अलर्ट प्राप्त करण्यासाठी कॉन्फिगर केले आहेत.",
     "disable-app": "हे {{app}} अनुप्रयोग अक्षम करेल.",
     "disable-classification-description": "वर्गीकरण अक्षम केल्याने, तुम्ही कोणत्याही घटकासाठी शोधू किंवा संबंधित टॅग नियुक्त करू शकणार नाही.",

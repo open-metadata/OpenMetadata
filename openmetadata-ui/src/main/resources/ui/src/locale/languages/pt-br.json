@@ -1727,6 +1727,7 @@
     "delete-webhook-permanently": "Você deseja excluir permanentemente o webhook {{webhookName}}? Esta ação não pode ser revertida.",
     "derived-tag-warning": "Esta tag é derivada automaticamente e só pode ser removida excluindo o Termo de Glossário relacionado.",
     "description-coverage-widget-description": "Cobertura de descrição para todos os ativos de dados no serviço. <0>saiba mais.</0>",
+    "destination-owner-selection-warning": "Por favor, certifique-se de que o \"Proprietário\" é um <0>Equipe</0> com \"{{subscriptionType}}\" configurado para receber alertas.",
     "destination-selection-warning": "Certifique-se de que o \"{{subscriptionCategory}}\" configurou o \"{{subscriptionType}}\" para receber os alertas.",
     "disable-app": "Isso desativará a aplicação {{app}}.",
     "disable-classification-description": "Ao desativar a classificação, você não poderá buscar por, ou atribuir tags associadas a qualquer entidade.",
