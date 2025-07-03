@@ -1,5 +1,6 @@
 ---
 title: Run the Looker Connector Externally
+description: Configure Looker dashboard connections in OpenMetadata using YAML. Step-by-step setup guide with examples for seamless data catalog integration.
 slug: /connectors/dashboard/looker/yaml
 ---
 
@@ -133,13 +134,13 @@ source:
       type: Looker
 ```
 ```yaml {% srNumber=1 %}
-      clientId: Client ID
+      clientId: Client ID  # REQUIRED - Looker API client ID
 ```
 ```yaml {% srNumber=2 %}
-      clientSecret: Client Secret
+      clientSecret: Client Secret  # REQUIRED - Looker API client secret
 ```
 ```yaml {% srNumber=3 %}
-      hostPort: http://hostPort
+      hostPort: http://hostPort  # REQUIRED - Looker instance URL
 ```
 ```yaml {% srNumber=4 %}
       gitCredentials:

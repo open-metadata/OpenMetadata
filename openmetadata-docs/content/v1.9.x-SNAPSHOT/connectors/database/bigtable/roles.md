@@ -1,5 +1,6 @@
 ---
 title: BigTable Roles | Configure Access for OpenMetadata Connector
+description: Configure BigTable database roles and permissions in OpenMetadata connectors. Learn essential access control setup for seamless data cataloging and meta...
 slug: /connectors/database/bigtable/roles
 ---
 

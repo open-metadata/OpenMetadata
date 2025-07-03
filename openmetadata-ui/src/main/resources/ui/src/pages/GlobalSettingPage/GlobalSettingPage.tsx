@@ -60,7 +60,13 @@ const GlobalSettingPage = () => {
   );
 
   const handleSettingItemClick = useCallback((category: string) => {
-    navigate(getSettingPath(category));
+    // Handle special case for nested menu items
+    if (category.includes('.')) {
+      const [cat, option] = category.split('.');
+      navigate(getSettingPath(cat, option));
+    } else {
+      navigate(getSettingPath(category));
+    }
   }, []);
 
   if (isEmpty(settingItems)) {
