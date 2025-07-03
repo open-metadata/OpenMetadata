@@ -567,7 +567,10 @@ public class UserRepository extends EntityRepository<User> {
     }
     if (teams.size() > 1) {
       // Remove organization team from the response
-      teams = teams.stream().filter(t -> !t.getId().equals(getOrganization().getId())).toList();
+      teams =
+          teams.stream()
+              .filter(t -> !t.getId().equals(getOrganization().getId()))
+              .collect(Collectors.toList());
       user.setTeams(teams);
     }
   }
