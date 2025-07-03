@@ -119,12 +119,12 @@ class SalesforceSource(DatabaseServiceSource):
         From topology.
         Prepare a database request and pass it to the sink
         """
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=database_name,
-                service=self.context.get().database_service,
-            )
+        database_request = CreateDatabaseRequest(
+            name=database_name,
+            service=self.context.get().database_service,
         )
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_database_schema_names(self) -> Iterable[str]:
         """
@@ -139,19 +139,19 @@ class SalesforceSource(DatabaseServiceSource):
         From topology.
         Prepare a database schema request and pass it to the sink
         """
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-            )
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
+            ),
         )
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
