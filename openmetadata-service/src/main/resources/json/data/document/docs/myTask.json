@@ -1,7 +1,7 @@
 {
     "name": "MyTask",
     "displayName": "My Task",
-    "description": "My Task KnowledgePanel shows list of Tasks that User has created.",
+    "description": "View and manage all tasks that have been assigned to you.",
     "entityType": "KnowledgePanel",
     "fullyQualifiedName": "KnowledgePanel.MyTask",
     "data": {
