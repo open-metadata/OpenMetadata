@@ -1,6 +1,10 @@
 ---
 title: MSSQL Connector | OpenMetadata SQL Server Integration Guide
+<<<<<<< HEAD
 description: Connect Microsoft SQL Server to OpenMetadata with our comprehensive MSSQL connector guide. Easy setup, configuration steps, and metadata extraction.
+=======
+description: Connect your Microsoft SQL Server to OpenMetadata with our comprehensive MSSQL connector guide. Step-by-step setup, configuration, and metadata extraction.
+>>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
 slug: /connectors/database/mssql
 ---
 

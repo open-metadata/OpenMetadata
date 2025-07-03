@@ -1,6 +1,6 @@
 ---
 title: CockroachDB Connector | OpenMetadata Integration Guide
-description: Connect your CockroachDB database to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
+description: Set up CockroachDB connector in OpenMetadata to discover, catalog, and manage your database metadata. Complete integration guide with configuration steps.
 slug: /connectors/database/cockroach
 ---
 

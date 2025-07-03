@@ -1,5 +1,6 @@
 ---
 title: Atlas Connector | OpenMetadata Metadata Integration
+description: Connect Apache Atlas to OpenMetadata seamlessly. Complete setup guide, configuration steps, and best practices for Atlas metadata connector integration.
 slug: /connectors/metadata/atlas
 ---
 

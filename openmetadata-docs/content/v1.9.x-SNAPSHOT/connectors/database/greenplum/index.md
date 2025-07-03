@@ -1,6 +1,10 @@
 ---
 title: Greenplum Connector | OpenMetadata Database Integration Guide
+<<<<<<< HEAD
 description: Connect Greenplum database to OpenMetadata with our comprehensive connector guide. Configure data ingestion, metadata extraction, and profiling in minutes.
+=======
+description: Connect Greenplum to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration details, and metadata extraction made simple.
+>>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
 slug: /connectors/database/greenplum
 ---
 

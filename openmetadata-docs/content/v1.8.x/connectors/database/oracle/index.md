@@ -1,6 +1,10 @@
 ---
 title: Oracle Connector | OpenMetadata Enterprise Database Guide
+<<<<<<< HEAD
 description: Connect Oracle databases to OpenMetadata effortlessly. Complete setup guide, configuration steps, and troubleshooting tips for seamless data discovery a...
+=======
+description: Connect Oracle databases to OpenMetadata effortlessly. Complete setup guide, configuration steps, and troubleshooting tips for seamless data catalog integration.
+>>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
 slug: /connectors/database/oracle
 ---
 

@@ -1,6 +1,10 @@
 ---
 title: Domo Database Connector | OpenMetadata Integration Guide
+<<<<<<< HEAD
 description: Connect Domo Database to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration steps, and metadata extraction made simple.
+=======
+description: Connect Domo Database to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration steps, and metadata extraction tips.
+>>>>>>> bd5955fca2 (Docs: SEO Description Updation (#22035))
 slug: /connectors/database/domo-database
 ---
 
