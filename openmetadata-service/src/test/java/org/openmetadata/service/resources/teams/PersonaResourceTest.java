@@ -39,6 +39,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -51,6 +52,8 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
         "personas",
         PersonaResource.FIELDS);
     supportsSearchIndex = false;
+    supportsOwners = false;
+    supportsAdminOnly = true;
   }
 
   public void setupPersonas(TestInfo test) throws HttpResponseException {
@@ -63,7 +66,6 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
 
   @Test
   void post_validPersonas_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create Persona with different optional fields
     CreatePersona create = createRequest(test, 1);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
@@ -108,6 +110,136 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
   }
 
   @Test
+  void test_defaultPersona_POST_PUT_PATCH(TestInfo test) throws IOException {
+    // Test 1: Create a persona with default=true
+    CreatePersona create1 = createRequest(test, 1).withName("DataScientist").withDefault(true);
+    Persona persona1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
+    assertTrue(persona1.getDefault());
+
+    // Test 2: Create another persona with default=true, should unset the previous default
+    CreatePersona create2 = createRequest(test, 2).withName("DataEngineer").withDefault(true);
+    Persona persona2 = createAndCheckEntity(create2, ADMIN_AUTH_HEADERS);
+    assertTrue(persona2.getDefault());
+
+    // Verify persona1 is no longer default
+    persona1 = getEntity(persona1.getId(), ADMIN_AUTH_HEADERS);
+    assertFalse(persona1.getDefault());
+
+    // Test 3: Create a third persona without default flag
+    CreatePersona create3 = createRequest(test, 3).withName("DataAnalyst");
+    Persona persona3 = createAndCheckEntity(create3, ADMIN_AUTH_HEADERS);
+    assertFalse(persona3.getDefault());
+
+    // Test 4: Update persona3 to be default using PUT
+    persona3.setDefault(true);
+    ChangeDescription change = getChangeDescription(persona3, MINOR_UPDATE);
+    fieldUpdated(change, "default", false, true);
+    persona3 =
+        updateAndCheckEntity(
+            create3.withDefault(true), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertTrue(persona3.getDefault());
+
+    // Verify persona2 is no longer default
+    persona2 = getEntity(persona2.getId(), ADMIN_AUTH_HEADERS);
+    assertFalse(persona2.getDefault());
+
+    // Test 5: PATCH persona1 to be default
+    String originalJson = JsonUtils.pojoToJson(persona1);
+    persona1.setDefault(true);
+    change = getChangeDescription(persona1, MINOR_UPDATE);
+    fieldUpdated(change, "default", false, true);
+    persona1 =
+        patchEntityAndCheck(persona1, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertTrue(persona1.getDefault());
+
+    // Verify persona3 is no longer default
+    persona3 = getEntity(persona3.getId(), ADMIN_AUTH_HEADERS);
+    assertFalse(persona3.getDefault());
+
+    // Test 6: PATCH to unset default from persona1
+    originalJson = JsonUtils.pojoToJson(persona1);
+    persona1.setDefault(false);
+    change = getChangeDescription(persona1, MINOR_UPDATE);
+    fieldUpdated(change, "default", true, false);
+    persona1 =
+        patchEntityAndCheck(persona1, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertFalse(persona1.getDefault());
+
+    // Verify no personas have default=true now
+    List<Persona> allPersonas = listEntities(null, ADMIN_AUTH_HEADERS).getData();
+    for (Persona persona : allPersonas) {
+      if (persona.getName().startsWith(getEntityName(test))) {
+        assertFalse(persona.getDefault());
+      }
+    }
+  }
+
+  @Test
+  void test_systemDefaultPersonaForUsers(TestInfo test) throws IOException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+
+    // Test 1: Create a default persona
+    CreatePersona createDefaultPersona =
+        createRequest(test, 1).withName("DefaultPersona").withDefault(true);
+    Persona defaultPersona = createAndCheckEntity(createDefaultPersona, ADMIN_AUTH_HEADERS);
+    assertTrue(defaultPersona.getDefault());
+
+    // Test 2: Create a user without any persona
+    User user1 =
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+
+    // Test 3: Query user with defaultPersona field - should return system default
+    user1 = userResourceTest.getEntity(user1.getId(), "defaultPersona", ADMIN_AUTH_HEADERS);
+    assertNotNull(user1.getDefaultPersona());
+    assertEquals(defaultPersona.getId(), user1.getDefaultPersona().getId());
+    assertEquals(defaultPersona.getName(), user1.getDefaultPersona().getName());
+
+    // Test 4: Create another persona (non-default)
+    CreatePersona createPersona2 = createRequest(test, 2).withName("DataScientist_test");
+    Persona persona2 = createAndCheckEntity(createPersona2, ADMIN_AUTH_HEADERS);
+    assertFalse(persona2.getDefault());
+
+    // Test 5: Assign persona2 to user1 and set it as user's default
+    // First, get a fresh copy of user1 without the defaultPersona field
+    User userToUpdate = userResourceTest.getEntity(user1.getId(), "personas", ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(userToUpdate);
+    userToUpdate.setPersonas(List.of(persona2.getEntityReference()));
+    userToUpdate.setDefaultPersona(persona2.getEntityReference());
+    ChangeDescription change = getChangeDescription(userToUpdate, MINOR_UPDATE);
+    fieldAdded(change, "personas", List.of(persona2.getEntityReference()));
+    fieldAdded(change, "defaultPersona", persona2.getEntityReference());
+    user1 =
+        userResourceTest.patchEntityAndCheck(
+            userToUpdate, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Test 6: Query user with defaultPersona - should now return user's own default, not system
+    // default
+    user1 = userResourceTest.getEntity(user1.getId(), "defaultPersona", ADMIN_AUTH_HEADERS);
+    assertNotNull(user1.getDefaultPersona());
+    assertEquals(persona2.getId(), user1.getDefaultPersona().getId());
+    assertEquals(persona2.getName(), user1.getDefaultPersona().getName());
+
+    // Test 7: Create a new system default persona
+    CreatePersona createNewDefault =
+        createRequest(test, 3).withName("NewDefaultPersona").withDefault(true);
+    Persona newDefaultPersona = createAndCheckEntity(createNewDefault, ADMIN_AUTH_HEADERS);
+    assertTrue(newDefaultPersona.getDefault());
+
+    // Test 8: Create a new user and verify they get the new system default
+    User user2 =
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
+    user2 = userResourceTest.getEntity(user2.getId(), "defaultPersona", ADMIN_AUTH_HEADERS);
+    assertNotNull(user2.getDefaultPersona());
+    assertEquals(newDefaultPersona.getId(), user2.getDefaultPersona().getId());
+
+    // Test 9: User1 should still have their own default persona (not affected by system default
+    // change)
+    user1 = userResourceTest.getEntity(user1.getId(), "defaultPersona", ADMIN_AUTH_HEADERS);
+    assertNotNull(user1.getDefaultPersona());
+    assertEquals(persona2.getId(), user1.getDefaultPersona().getId());
+  }
+
+  @Test
   void delete_validPersona_200_OK(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 =
@@ -136,40 +268,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     assertResponse(
         () -> patchEntity(persona.getId(), originalJson, persona, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
-  }
-
-  @Test
-  void patch_personaUsers_as_user_with_UpdatePersona_permission(TestInfo test) throws IOException {
-    UserResourceTest userResourceTest = new UserResourceTest();
-    List<EntityReference> userRefs = new ArrayList<>();
-    for (int i = 0; i < 7; i++) {
-      User user =
-          userResourceTest.createEntity(
-              userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
-      userRefs.add(user.getEntityReference());
-    }
-
-    Persona persona = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-    String originalJson = JsonUtils.pojoToJson(persona);
-    persona.setUsers(userRefs);
-
-    // Ensure user without UpdatePersona permission cannot add users to a Persona.
-    String randomUserName = userRefs.get(0).getName();
-    assertResponse(
-        () ->
-            patchEntity(
-                persona.getId(),
-                originalJson,
-                persona,
-                SecurityUtil.authHeaders(randomUserName + "@open-metadata.org")),
-        FORBIDDEN,
-        permissionNotAllowed(randomUserName, List.of(MetadataOperation.EDIT_USERS)));
-
-    // Ensure user with UpdateTeam permission can add users to a team.
-    ChangeDescription change = getChangeDescription(persona, MINOR_UPDATE);
-    fieldAdded(change, "users", userRefs);
-    patchEntityAndCheck(persona, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+        "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -259,11 +358,16 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     }
     expectedUsers = expectedUsers.isEmpty() ? null : expectedUsers;
     TestUtils.assertEntityReferences(expectedUsers, persona.getUsers());
+
+    // Validate default field - it should always exist
+    assertEquals(
+        Boolean.TRUE.equals(createRequest.getDefault()), Boolean.TRUE.equals(persona.getDefault()));
   }
 
   @Override
   public void compareEntities(Persona expected, Persona updated, Map<String, String> authHeaders) {
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
+    assertEquals(expected.getDefault(), updated.getDefault());
     List<EntityReference> expectedUsers = listOrEmpty(expected.getUsers());
     List<EntityReference> actualUsers = listOrEmpty(updated.getUsers());
     TestUtils.assertEntityReferences(expectedUsers, actualUsers);
@@ -276,6 +380,10 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     }
     if ("users".equals(fieldName)) {
       assertEntityReferencesFieldChange(expected, actual);
+    } else if ("default".equals(fieldName)) {
+      Boolean expectedDefault = (Boolean) expected;
+      Boolean actualDefault = (Boolean) actual;
+      assertEquals(expectedDefault, actualDefault);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

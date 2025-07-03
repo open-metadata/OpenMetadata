@@ -51,6 +51,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -211,9 +212,11 @@ public class UserRepository extends EntityRepository<User> {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> roles = user.getRoles();
     List<EntityReference> teams = user.getTeams();
+    EntityReference defaultPersona = user.getDefaultPersona();
 
-    // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
-    user.withRoles(null).withTeams(null).withInheritedRoles(null);
+    // Don't store roles, teams, defaultPersona and href as JSON. Build it on the fly based on
+    // relationships
+    user.withRoles(null).withTeams(null).withInheritedRoles(null).withDefaultPersona(null);
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
@@ -224,7 +227,7 @@ public class UserRepository extends EntityRepository<User> {
     store(user, update);
 
     // Restore the relationships
-    user.withRoles(roles).withTeams(teams);
+    user.withRoles(roles).withTeams(teams).withDefaultPersona(defaultPersona);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
@@ -327,7 +330,7 @@ public class UserRepository extends EntityRepository<User> {
     user.setRoles(fields.contains(ROLES_FIELD) ? getRoles(user) : user.getRoles());
     user.setPersonas(fields.contains("personas") ? getPersonas(user) : user.getPersonas());
     user.setDefaultPersona(
-        fields.contains("defaultPersonas") ? getDefaultPersona(user) : user.getDefaultPersona());
+        fields.contains("defaultPersona") ? getDefaultPersona(user) : user.getDefaultPersona());
     user.withInheritedRoles(
         fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
     user.setDomains(fields.contains("domains") ? getDomains(user.getId()) : user.getDomains());
@@ -536,7 +539,15 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public EntityReference getDefaultPersona(User user) {
-    return getToEntityRef(user.getId(), Relationship.DEFAULTS_TO, Entity.PERSONA, false);
+    EntityReference userDefaultPersona =
+        getFromEntityRef(user.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
+    if (userDefaultPersona != null) {
+      return userDefaultPersona;
+    }
+    PersonaRepository personaRepository =
+        (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
+    Persona systemDefault = personaRepository.getSystemDefaultPersona();
+    return systemDefault != null ? systemDefault.getEntityReference() : null;
   }
 
   private void assignRoles(User user, List<EntityReference> roles) {
@@ -713,8 +724,7 @@ public class UserRepository extends EntityRepository<User> {
       updateRoles(original, updated);
       updateTeams(original, updated);
       updatePersonas(original, updated);
-      recordChange(
-          "defaultPersona", original.getDefaultPersona(), updated.getDefaultPersona(), true);
+      updateDefaultPersona(original, updated);
       recordChange("profile", original.getProfile(), updated.getProfile(), true);
       recordChange("timezone", original.getTimezone(), updated.getTimezone());
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
@@ -822,6 +832,19 @@ public class UserRepository extends EntityRepository<User> {
           added,
           deleted,
           EntityUtil.entityReferenceMatch);
+    }
+
+    private void updateDefaultPersona(User original, User updated) {
+      // Get the actual default persona from the database (not the system default)
+      // The relationship is: persona --DEFAULTS_TO--> user, so we need to find FROM user
+      EntityReference originalDefaultPersona =
+          getFromEntityRef(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
+      if (originalDefaultPersona != null) {
+        // Delete the relationship: persona --DEFAULTS_TO--> user
+        deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA);
+      }
+      assignDefaultPersona(updated, updated.getDefaultPersona());
+      recordChange("defaultPersona", originalDefaultPersona, updated.getDefaultPersona(), true);
     }
 
     private void updatePersonaPreferences(User original, User updated) {

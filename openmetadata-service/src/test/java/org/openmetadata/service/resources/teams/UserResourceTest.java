@@ -1836,7 +1836,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     }
     assertEquals(expected.getIsAdmin(), updated.getIsAdmin());
     if (expected.getDefaultPersona() != null) {
-      assertEquals(expected.getDefaultPersona(), updated.getDefaultPersona());
+      assertEquals(expected.getDefaultPersona().getId(), updated.getDefaultPersona().getId());
     }
 
     TestUtils.assertEntityReferences(expected.getRoles(), updated.getRoles());
@@ -1861,8 +1861,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         Profile actualProfile = JsonUtils.readValue(actual.toString(), Profile.class);
         assertEquals(expectedProfile, actualProfile);
       }
-      case "teams", "roles", "personas", "defaultPersona" -> assertEntityReferencesFieldChange(
-          expected, actual);
+      case "teams", "roles", "personas" -> assertEntityReferencesFieldChange(expected, actual);
+      case "defaultPersona" -> assertEntityReference(expected, actual);
       case "personaPreferences" -> {
         List<PersonaPreferences> expectedPreferences = (List<PersonaPreferences>) expected;
         List<PersonaPreferences> actualPreferences =
