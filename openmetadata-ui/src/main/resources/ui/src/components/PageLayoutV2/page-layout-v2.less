@@ -1,0 +1,85 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.page-layout-v2 {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #fafafa;
+
+  #page-alert {
+    margin-bottom: 16px;
+  }
+
+  .page-layout-v2-breadcrumbs {
+    padding: 16px 24px 0;
+    margin-bottom: 16px;
+
+    li {
+      display: flex;
+      align-items: center;
+    }
+
+    .ant-breadcrumb {
+      font-size: 14px;
+      color: #535862;
+
+      .ant-breadcrumb-link {
+        color: #155eef;
+        text-decoration: none;
+
+        a {
+          display: flex;
+          align-items: center;
+        }
+
+        &:hover {
+          color: #1890ff;
+        }
+      }
+
+      .ant-breadcrumb-separator {
+        color: #787486;
+        margin: 0 8px;
+      }
+    }
+  }
+
+  .page-layout-v2-content {
+    flex: 1;
+    min-height: 0;
+    padding: 0 24px 24px;
+
+    &.page-layout-v2-centered {
+      justify-content: center;
+      align-items: center;
+    }
+
+    .page-layout-v2-header {
+      margin-bottom: 24px;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .page-layout-v2-page-content {
+      flex: 1;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      min-height: 0;
+    }
+  }
+}
