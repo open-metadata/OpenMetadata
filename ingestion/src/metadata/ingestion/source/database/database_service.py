@@ -538,7 +538,10 @@ class DatabaseServiceSource(
         """
         Get filtered database names based on the database filter pattern
         """
-        for database_name in self.get_database_names():
+        database_names_iterable = getattr(
+            self, "get_database_names_raw", self.get_database_names
+        )()
+        for database_name in database_names_iterable:
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,
@@ -656,33 +659,33 @@ class DatabaseServiceSource(
                 f"Mark Deleted Databases set to True. Processing service [{self.context.get().database_service}]"
             )
 
-            # Build the service FQN to use as parameter
-            service_fqn = fqn.build(
-                self.metadata,
-                entity_type=DatabaseService,
-                service_name=self.context.get().database_service,
-            )
-
-            # We need to include both processed databases and filtered databases in the source state
+            # We need to include ALL databases from the source in the source state
+            # This includes both processed databases and all databases (filtered-in and filtered-out)
             # to ensure we mark as deleted any databases that were previously ingested but are now
             # filtered out, as well as any databases that were processed in this run
-            filtered_database_fqns = set()
-            for database_name in self._get_filtered_database_names(
-                return_fqn=True, add_to_status=False
-            ):
-                filtered_database_fqns.add(database_name)
+            all_database_fqns = set()
 
-            # Combine the processed databases with filtered databases
-            complete_source_state = self.database_entity_source_state.union(
-                filtered_database_fqns
+            # Get all databases from the source (both filtered-in and filtered-out)
+            for database_name in self._get_filtered_database_names():
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=database_name,
+                )
+                all_database_fqns.add(database_fqn)
+
+            # Combine the processed databases with all databases from source
+            complete_db_source_state = self.database_entity_source_state.union(
+                all_database_fqns
             )
 
             yield from delete_entity_from_source(
                 metadata=self.metadata,
                 entity_type=Database,
-                entity_source_state=complete_source_state,
+                entity_source_state=complete_db_source_state,
                 mark_deleted_entity=self.source_config.markDeletedDatabases,
-                params={"service": service_fqn},
+                params={"service": self.context.get().database_service},
             )
 
     def mark_schemas_as_deleted(self):
