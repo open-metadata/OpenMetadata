@@ -84,9 +84,17 @@ test.describe('Custom Theme Config Page', () => {
     expect(updatedConfigResponse.status()).toBe(200);
 
     // Verify the updated theme color
+
+    await page.waitForSelector(
+      '[data-testid="save-btn"] .ant-btn-loading-icon',
+      {
+        state: 'detached',
+      }
+    );
+
     await expect(page.getByTestId('save-btn')).toHaveCSS(
       'background-color',
-      'rgb(21, 112, 239)'
+      'rgb(104, 9, 220)'
     );
 
     const defaultConfigResponsePromise = page.waitForResponse(
