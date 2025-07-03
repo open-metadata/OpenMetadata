@@ -158,7 +158,6 @@ import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
-import { UserPreferences } from '../hooks/currentUserStore/useCurrentUserStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   FrequentlyJoinedTables,
@@ -742,55 +741,6 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
       );
     }
   });
-};
-
-export const getTableColumnConfigSelections = (
-  entityType: string | undefined,
-  isFullViewTable: boolean,
-  defaultColumns: string[] | undefined,
-  selectedEntityTableColumns: Record<string, string[]>,
-  setPreference: (preferences: Partial<UserPreferences>) => void
-) => {
-  if (entityType) {
-    if (selectedEntityTableColumns?.[entityType]) {
-      return selectedEntityTableColumns[entityType];
-    } else if (!isFullViewTable) {
-      setPreference({
-        selectedEntityTableColumns: {
-          ...selectedEntityTableColumns,
-          [entityType]: defaultColumns ?? [],
-        },
-      });
-
-      return defaultColumns ?? [];
-    }
-  }
-
-  return [];
-};
-
-export const handleUpdateTableColumnSelections = (
-  selected: boolean,
-  key: string,
-  columnDropdownSelections: string[],
-  entityType: string | undefined,
-  selectedEntityTableColumns: Record<string, string[]>,
-  setPreference: (preferences: Partial<UserPreferences>) => void
-) => {
-  const updatedSelections = selected
-    ? [...columnDropdownSelections, key]
-    : columnDropdownSelections.filter((item) => item !== key);
-
-  if (entityType) {
-    setPreference({
-      selectedEntityTableColumns: {
-        ...selectedEntityTableColumns,
-        [entityType]: updatedSelections,
-      },
-    });
-  }
-
-  return updatedSelections;
 };
 
 export const getTableDetailPageBaseTabs = ({

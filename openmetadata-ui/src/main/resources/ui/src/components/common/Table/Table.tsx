@@ -42,11 +42,7 @@ import {
   getCustomizeColumnDetails,
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
-import {
-  getTableColumnConfigSelections,
-  getTableExpandableConfig,
-  handleUpdateTableColumnSelections,
-} from '../../../utils/TableUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
@@ -113,18 +109,20 @@ const Table = <T extends Record<string, unknown>>(
 
   const handleColumnItemSelect = useCallback(
     (key: string, selected: boolean) => {
-      const updatedSelections = handleUpdateTableColumnSelections(
-        selected,
-        key,
-        columnDropdownSelections,
-        entityKey,
-        selectedEntityTableColumns,
-        setPreference
-      );
+      const updatedSelections = selected
+        ? [...columnDropdownSelections, key]
+        : columnDropdownSelections.filter((item) => item !== key);
+
+      setPreference({
+        selectedEntityTableColumns: {
+          ...selectedEntityTableColumns,
+          [entityKey]: updatedSelections,
+        },
+      });
 
       setColumnDropdownSelections(updatedSelections);
     },
-    [columnDropdownSelections, entityKey]
+    [columnDropdownSelections, selectedEntityTableColumns, entityKey]
   );
 
   const handleBulkColumnAction = useCallback(() => {
@@ -146,7 +144,36 @@ const Table = <T extends Record<string, unknown>>(
         },
       });
     }
-  }, [dropdownColumnList, columnDropdownSelections]);
+  }, [
+    dropdownColumnList,
+    columnDropdownSelections,
+    selectedEntityTableColumns,
+    entityKey,
+  ]);
+
+  const tableColumnConfigSelections = useMemo(() => {
+    if (entityKey) {
+      if (selectedEntityTableColumns?.[entityKey]) {
+        return selectedEntityTableColumns[entityKey];
+      } else if (!isFullViewTable) {
+        setPreference({
+          selectedEntityTableColumns: {
+            ...selectedEntityTableColumns,
+            [entityKey]: defaultVisibleColumns ?? [],
+          },
+        });
+
+        return defaultVisibleColumns ?? [];
+      }
+    }
+
+    return [];
+  }, [
+    entityKey,
+    selectedEntityTableColumns,
+    defaultVisibleColumns,
+    isFullViewTable,
+  ]);
 
   const menu = useMemo(
     () => ({
@@ -245,16 +272,8 @@ const Table = <T extends Record<string, unknown>>(
   ]);
 
   useEffect(() => {
-    const selections = getTableColumnConfigSelections(
-      entityKey,
-      isFullViewTable,
-      defaultVisibleColumns,
-      selectedEntityTableColumns,
-      setPreference
-    );
-
-    setColumnDropdownSelections(selections);
-  }, [entityKey, defaultVisibleColumns, isFullViewTable]);
+    setColumnDropdownSelections(tableColumnConfigSelections);
+  }, [tableColumnConfigSelections]);
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>

@@ -15,10 +15,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { getCustomizeColumnDetails } from '../../../utils/CustomizeColumnUtils';
-import {
-  getTableColumnConfigSelections,
-  handleUpdateTableColumnSelections,
-} from '../../../utils/TableUtils';
 import Table from './Table';
 
 jest.mock('../../../utils/CustomizeColumnUtils', () => ({
@@ -30,8 +26,6 @@ jest.mock('../../../utils/CustomizeColumnUtils', () => ({
 }));
 
 jest.mock('../../../utils/TableUtils', () => ({
-  getTableColumnConfigSelections: jest.fn(),
-  handleUpdateTableColumnSelections: jest.fn(),
   getTableExpandableConfig: jest.fn(),
 }));
 
@@ -109,16 +103,7 @@ describe('Table component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (getTableColumnConfigSelections as jest.Mock).mockReturnValue([
-      'col1',
-      'col2',
-    ]);
-    (handleUpdateTableColumnSelections as jest.Mock).mockImplementation(
-      (selected, key, currentSelections) =>
-        selected
-          ? [...currentSelections, key]
-          : currentSelections.filter((item: string) => item !== key)
-    );
+    mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {};
   });
 
   it('should display skeleton loader if loading is true', async () => {
@@ -180,20 +165,35 @@ describe('Table component', () => {
       ]);
     });
 
-    it('should initialize column selections using getTableColumnConfigSelections', () => {
+    it('should initialize column selections from existing user preferences', () => {
+      mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {
+        table: ['col1', 'col2'],
+      };
+
       renderComponent({
         staticVisibleColumns: ['col1'],
         defaultVisibleColumns: ['col2', 'col3'],
         entityType: 'table',
       });
 
-      expect(getTableColumnConfigSelections).toHaveBeenCalledWith(
-        'table',
-        false,
-        ['col2', 'col3'],
-        {},
-        mockSetPreference
-      );
+      // Component should use existing preferences
+      expect(mockSetPreference).not.toHaveBeenCalled();
+    });
+
+    it('should set default columns when no existing preferences', () => {
+      mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {};
+
+      renderComponent({
+        staticVisibleColumns: ['col1'],
+        defaultVisibleColumns: ['col2', 'col3'],
+        entityType: 'table',
+      });
+
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          table: ['col2', 'col3'],
+        },
+      });
     });
 
     it('should use entityType from props over generic context type', () => {
@@ -203,43 +203,24 @@ describe('Table component', () => {
         entityType: 'dashboard',
       });
 
-      expect(getTableColumnConfigSelections).toHaveBeenCalledWith(
-        'dashboard',
-        false,
-        ['col2'],
-        {},
-        mockSetPreference
-      );
-    });
-
-    it('should use generic context type when entityType is not provided', () => {
-      renderComponent({
-        staticVisibleColumns: ['col1'],
-        defaultVisibleColumns: ['col2'],
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          dashboard: ['col2'],
+        },
       });
-
-      expect(getTableColumnConfigSelections).toHaveBeenCalledWith(
-        'table',
-        false,
-        ['col2'],
-        {},
-        mockSetPreference
-      );
     });
 
     it('should identify as full view table when no static or default columns are provided', () => {
       renderComponent();
 
-      expect(getTableColumnConfigSelections).toHaveBeenCalledWith(
-        'table',
-        true,
-        undefined,
-        {},
-        mockSetPreference
-      );
+      expect(screen.queryByTestId('column-dropdown')).not.toBeInTheDocument();
     });
 
     it('should open column dropdown and show column options', async () => {
+      mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {
+        table: ['col1', 'col2'],
+      };
+
       renderComponent({
         staticVisibleColumns: ['col1'],
         defaultVisibleColumns: ['col2'],
@@ -255,9 +236,14 @@ describe('Table component', () => {
     });
 
     it('should handle column selection when checkbox is clicked', async () => {
+      mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {
+        table: ['col1', 'col2'],
+      };
+
       renderComponent({
         staticVisibleColumns: ['col1'],
         defaultVisibleColumns: ['col2'],
+        entityType: 'table',
       });
 
       const columnDropdown = screen.getByTestId('column-dropdown');
@@ -270,50 +256,46 @@ describe('Table component', () => {
       const checkbox = screen.getByTestId('column-checkbox-col2');
       fireEvent.click(checkbox);
 
-      expect(handleUpdateTableColumnSelections).toHaveBeenCalledWith(
-        false,
-        'col2',
-        ['col1', 'col2'],
-        'table',
-        {},
-        mockSetPreference
-      );
+      // Verify that preferences are updated
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          table: ['col1'],
+        },
+      });
     });
 
-    it('should handle column deselection when checkbox is unchecked', async () => {
-      (getTableColumnConfigSelections as jest.Mock).mockReturnValue([
-        'col1',
-        'col2',
-        'col3',
-      ]);
+    it('should handle column addition when unchecked checkbox is clicked', async () => {
+      mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {
+        table: ['col1'],
+      };
 
       renderComponent({
         staticVisibleColumns: ['col1'],
         defaultVisibleColumns: ['col2'],
+        entityType: 'table',
       });
 
       const columnDropdown = screen.getByTestId('column-dropdown');
       fireEvent.click(columnDropdown);
 
       await waitFor(() => {
-        expect(screen.getByTestId('column-checkbox-col2')).toBeInTheDocument();
+        expect(screen.getByTestId('column-checkbox-col3')).toBeInTheDocument();
       });
 
-      const checkbox = screen.getByTestId('column-checkbox-col2');
+      const checkbox = screen.getByTestId('column-checkbox-col3');
       fireEvent.click(checkbox);
 
-      expect(handleUpdateTableColumnSelections).toHaveBeenCalledWith(
-        false,
-        'col2',
-        ['col1', 'col2', 'col3'],
-        'table',
-        {},
-        mockSetPreference
-      );
+      expect(mockSetPreference).toHaveBeenCalledWith({
+        selectedEntityTableColumns: {
+          table: ['col1', 'col3'],
+        },
+      });
     });
 
     it('should show "View All" button when not all columns are selected', async () => {
-      (getTableColumnConfigSelections as jest.Mock).mockReturnValue(['col1']);
+      mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {
+        table: ['col1'],
+      };
 
       renderComponent({
         staticVisibleColumns: ['col1'],
@@ -332,11 +314,9 @@ describe('Table component', () => {
     });
 
     it('should show "Hide All" button when all columns are selected', async () => {
-      (getTableColumnConfigSelections as jest.Mock).mockReturnValue([
-        'col1',
-        'col2',
-        'col3',
-      ]);
+      mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {
+        table: ['col1', 'col2', 'col3'],
+      };
 
       renderComponent({
         staticVisibleColumns: ['col1'],
@@ -355,11 +335,14 @@ describe('Table component', () => {
     });
 
     it('should select all columns when "View All" button is clicked', async () => {
-      (getTableColumnConfigSelections as jest.Mock).mockReturnValue(['col1']);
+      mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {
+        table: ['col1'],
+      };
 
       renderComponent({
         staticVisibleColumns: ['col1'],
         defaultVisibleColumns: ['col2'],
+        entityType: 'table',
       });
 
       const columnDropdown = screen.getByTestId('column-dropdown');
@@ -382,15 +365,14 @@ describe('Table component', () => {
     });
 
     it('should deselect all columns when "Hide All" button is clicked', async () => {
-      (getTableColumnConfigSelections as jest.Mock).mockReturnValue([
-        'col1',
-        'col2',
-        'col3',
-      ]);
+      mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {
+        table: ['col1', 'col2', 'col3'],
+      };
 
       renderComponent({
         staticVisibleColumns: ['col1'],
         defaultVisibleColumns: ['col2'],
+        entityType: 'table',
       });
 
       const columnDropdown = screen.getByTestId('column-dropdown');
@@ -415,6 +397,7 @@ describe('Table component', () => {
     it('should preserve existing preferences for other entity types', async () => {
       mockUseCurrentUserPreferences.preferences.selectedEntityTableColumns = {
         dashboard: ['dash1', 'dash2'],
+        table: ['col1'],
       };
 
       renderComponent({
