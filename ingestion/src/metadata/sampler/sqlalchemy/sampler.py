@@ -41,6 +41,9 @@ logger = profiler_interface_registry_logger()
 
 RANDOM_LABEL = "random"
 
+# Default maximum number of elements to extract from array columns to prevent OOM
+DEFAULT_MAX_ARRAY_ELEMENTS = 10
+
 
 def _object_value_for_elem(self, elem):
     """
@@ -102,6 +105,36 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             selectable (Table): a selectable table
         """
         return selectable
+
+    def _get_max_array_elements(self) -> int:
+        """Get the maximum number of array elements from config or use default"""
+        if (
+            self.sample_config
+            and hasattr(self.sample_config, "maxArrayElements")
+            and self.sample_config.maxArrayElements
+        ):
+            return self.sample_config.maxArrayElements
+        return DEFAULT_MAX_ARRAY_ELEMENTS
+
+    def _handle_array_column(self, column: Column) -> bool:
+        """Check if a column is an array type"""
+        # Implement this method in the child classes
+        return False
+
+    def _process_array_value(self, value):
+        """Process array values to convert numpy arrays to Python lists"""
+        import numpy as np  # pylint: disable=import-outside-toplevel
+
+        if isinstance(value, np.ndarray):
+            return value.tolist()
+        return value
+
+    def _get_slice_expression(self, column: Column):
+        """Generate SQL expression to slice array elements at query level
+        By default, we return the column as is.
+        Child classes can override this method to return a different expression.
+        """
+        return column
 
     def _base_sample_query(self, column: Optional[Column], label=None):
         """Base query for sampling
@@ -215,16 +248,60 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             ]
 
         with self.get_client_context() as client:
-            sqa_sample = (
-                client.query(*sqa_columns)
-                .select_from(ds)
-                .limit(self.sample_limit)
-                .all()
-            )
+            # Check if we have array columns that need special handling
+            array_columns = [
+                col for col in sqa_columns if self._handle_array_column(col)
+            ]
 
+            if array_columns:
+                # Handle array columns with special query modification
+                max_elements = self._get_max_array_elements()
+                select_columns = []
+
+                for col in sqa_columns:
+                    if self._handle_array_column(col):
+                        slice_expression = self._get_slice_expression(col)
+                        select_columns.append(slice_expression)
+                        logger.info(
+                            f"Limiting array column {col.name} to {max_elements} elements to prevent OOM"
+                        )
+                    else:
+                        select_columns.append(col)
+
+                # Create query with modified columns
+                sqa_sample = (
+                    client.query(*select_columns)
+                    .select_from(ds)
+                    .limit(self.sample_limit)
+                    .all()
+                )
+            else:
+                # Use standard approach for non-array columns
+                sqa_sample = (
+                    client.query(*sqa_columns)
+                    .select_from(ds)
+                    .limit(self.sample_limit)
+                    .all()
+                )
+
+        # Process array columns manually if we used text() expressions
+        processed_rows = []
+        if array_columns:
+            for row in sqa_sample:
+                processed_row = []
+                for i, col in enumerate(sqa_columns):
+                    value = row[i]
+                    if self._handle_array_column(col):
+                        processed_value = self._process_array_value(value)
+                        processed_row.append(processed_value)
+                    else:
+                        processed_row.append(value)
+                processed_rows.append(processed_row)
+        else:
+            processed_rows = [list(row) for row in sqa_sample]
         return TableData(
             columns=[column.name for column in sqa_columns],
-            rows=[list(row) for row in sqa_sample],
+            rows=processed_rows,
         )
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
