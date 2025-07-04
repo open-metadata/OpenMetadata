@@ -73,6 +73,12 @@ setup('authenticate all users', async ({ browser }) => {
   setup.setTimeout(120 * 1000);
 
   let adminPage: Page;
+  let dataConsumerPage: Page;
+  let dataStewardPage: Page;
+  let editDescriptionPage: Page;
+  let editTagsPage: Page;
+  let editGlossaryTermPage: Page;
+  let ownerPage: Page;
 
   try {
     // Create admin page and context
@@ -116,27 +122,51 @@ setup('authenticate all users', async ({ browser }) => {
     // Save admin state
     await adminPage.context().storageState({ path: adminFile });
 
-    // Login and save states for all users in parallel
-    const loginPromises = [
-      { user: dataConsumer, file: dataConsumerFile },
-      { user: dataSteward, file: dataStewardFile },
-      { user: editDescriptionUser, file: editDescriptionFile },
-      { user: editTagsUser, file: editTagsFile },
-      { user: editGlossaryTermUser, file: editGlossaryTermFile },
-      { user: ownerUser, file: ownerFile },
-    ].map(async ({ user, file }) => {
-      const page = await browser.newPage();
-      try {
-        await user.login(page);
-        // Wait for successful navigation instead of network idle
-        await page.waitForURL('**/my-data', { timeout: 15000 });
-        await page.context().storageState({ path: file });
-      } finally {
-        await page.close();
-      }
-    });
+    // Create separate pages for each user
+    const [
+      dataConsumerPage,
+      dataStewardPage,
+      editDescriptionPage,
+      editTagsPage,
+      editGlossaryTermPage,
+      ownerPage,
+    ] = await Promise.all([
+      browser.newPage(),
+      browser.newPage(),
+      browser.newPage(),
+      browser.newPage(),
+      browser.newPage(),
+      browser.newPage(),
+    ]);
 
-    await Promise.all(loginPromises);
+    // Save states for each user sequentially to avoid file operation conflicts
+    await dataConsumer.login(dataConsumerPage);
+    await dataConsumerPage.waitForLoadState('networkidle');
+    await dataConsumerPage.context().storageState({ path: dataConsumerFile });
+
+    await dataSteward.login(dataStewardPage);
+    await dataStewardPage.waitForLoadState('networkidle');
+    await dataStewardPage.context().storageState({ path: dataStewardFile });
+
+    await editDescriptionUser.login(editDescriptionPage);
+    await editDescriptionPage.waitForLoadState('networkidle');
+    await editDescriptionPage
+      .context()
+      .storageState({ path: editDescriptionFile });
+
+    await editTagsUser.login(editTagsPage);
+    await editTagsPage.waitForLoadState('networkidle');
+    await editTagsPage.context().storageState({ path: editTagsFile });
+
+    await editGlossaryTermUser.login(editGlossaryTermPage);
+    await editGlossaryTermPage.waitForLoadState('networkidle');
+    await editGlossaryTermPage
+      .context()
+      .storageState({ path: editGlossaryTermFile });
+
+    await ownerUser.login(ownerPage);
+    await ownerPage.waitForLoadState('networkidle');
+    await ownerPage.context().storageState({ path: ownerFile });
 
     await afterAction();
   } catch (error) {
@@ -145,9 +175,24 @@ setup('authenticate all users', async ({ browser }) => {
 
     throw error;
   } finally {
-    // Admin page cleanup
-    if (adminPage) {
-      await adminPage.close();
+    // Close pages sequentially to avoid conflicts
+    if (dataConsumerPage) {
+      await dataConsumerPage.close();
+    }
+    if (dataStewardPage) {
+      await dataStewardPage.close();
+    }
+    if (editDescriptionPage) {
+      await editDescriptionPage.close();
+    }
+    if (editTagsPage) {
+      await editTagsPage.close();
+    }
+    if (editGlossaryTermPage) {
+      await editGlossaryTermPage.close();
+    }
+    if (ownerPage) {
+      await ownerPage.close();
     }
   }
 });
