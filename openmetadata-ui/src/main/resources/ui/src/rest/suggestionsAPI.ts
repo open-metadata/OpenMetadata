@@ -25,11 +25,26 @@ const BASE_URL = '/suggestions';
 export type ListSuggestionsParams = ListParams & {
   entityFQN?: string;
   limit?: number;
+  userId?: string;
 };
 
 export const getSuggestionsList = async (params?: ListSuggestionsParams) => {
   const response = await APIClient.get<PagingResponse<Suggestion[]>>(BASE_URL, {
     params,
+  });
+
+  return response.data;
+};
+
+export const getSuggestionsByUserId = async (
+  userId: string,
+  params?: Omit<ListSuggestionsParams, 'userId'>
+) => {
+  const response = await APIClient.get<PagingResponse<Suggestion[]>>(BASE_URL, {
+    params: {
+      ...params,
+      userId,
+    },
   });
 
   return response.data;

@@ -1,5 +1,6 @@
 ---
 title: Run the MicroStrategy Connector Externally
+description: Configure MicroStrategy dashboard integration with OpenMetadata using YAML. Step-by-step connector setup guide with examples and best practices.
 slug: /connectors/dashboard/microstrategy/yaml
 ---
 
