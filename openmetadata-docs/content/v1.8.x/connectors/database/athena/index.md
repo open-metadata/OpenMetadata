@@ -1,10 +1,6 @@
 ---
 title: Athena | OpenMetadata Database Connector Configuration
-<<<<<<< HEAD
 description: Connect Amazon Athena to OpenMetadata effortlessly. Complete setup guide, configuration steps, and best practices for database metadata ingestion.
-=======
-description: Learn how to connect Amazon Athena to OpenMetadata with our step-by-step connector guide. Extract metadata, lineage, and profiling data seamlessly.
->>>>>>> b9d49f3b9d (Doc: SEO Description Updation)
 slug: /connectors/database/athena
 ---
 

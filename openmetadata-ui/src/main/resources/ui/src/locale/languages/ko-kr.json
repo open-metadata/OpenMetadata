@@ -1727,6 +1727,7 @@
     "delete-webhook-permanently": "웹훅 {{webhookName}}을(를) 영구적으로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
     "derived-tag-warning": "이 태그는 자동으로 파생되며 관련 용어집 용어를 삭제해야만 제거할 수 있습니다.",
     "description-coverage-widget-description": "서비스 내 모든 데이터 자산에 대한 설명 커버리지입니다. <0>자세히 알아보기.</0>",
+    "destination-owner-selection-warning": "\"소유자\"가 <0>팀</0>이며 \"{{subscriptionType}}\"이 설정되어 있는지 확인하세요.",
     "destination-selection-warning": "\"{{subscriptionCategory}}\"가 알림을 받을 수 있도록 \"{{subscriptionType}}\"이(가) 구성되어 있는지 확인하세요.",
     "disable-app": "이렇게 하면 {{app}} 애플리케이션이 비활성화됩니다.",
     "disable-classification-description": "분류를 비활성화하면 관련 태그로 검색하거나 엔티티에 할당할 수 없게 됩니다.",
