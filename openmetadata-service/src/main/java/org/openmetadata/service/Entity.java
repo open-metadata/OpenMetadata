@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.resources.CollectionRegistry.PACKAGES;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
@@ -79,6 +80,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public final class Entity {
@@ -766,5 +768,45 @@ public final class Entity {
 
   public static UserRepository getUserRepository() {
     return (UserRepository) Entity.getEntityRepository(Entity.USER);
+  }
+
+  public static <T extends EntityInterface> T getEntity(CollectionDAO dao, Class<T> clz, UUID id, Include include) throws IOException {
+      String json = dao.findById(clz.getSimpleName(), id);
+      if (json == null) {
+          throw new EntityNotFoundException(String.format("Entity %s not found", id));
+      }
+      return JsonUtils.readValue(json, clz);
+  }
+
+  public static <T extends EntityInterface> T getEntityByName(CollectionDAO dao, Class<T> clz, String name, Include include) throws IOException {
+      String json = dao.findByName(clz.getSimpleName(), name);
+      if (json == null) {
+          throw new EntityNotFoundException(String.format("Entity %s not found", name));
+      }
+      return JsonUtils.readValue(json, clz);
+  }
+
+  public static EntityReference getEntityReference(String entityType, String fqn) {
+      if (nullOrEmpty(fqn)) {
+          return null;
+      }
+      return new EntityReference().withType(entityType).withFullyQualifiedName(fqn);
+  }
+
+  public static EntityReference getEntityReference(UriInfo uriInfo) {
+      return getEntityReference(uriInfo.getPath());
+  }
+
+  public static EntityReference getEntityReference(String path) {
+      if (nullOrEmpty(path)) {
+          return null;
+      }
+      String[] pathParts = path.split("/");
+      if (pathParts.length < 2) {
+          return null;
+      }
+      String entityType = pathParts[pathParts.length - 2];
+      String name = pathParts[pathParts.length - 1];
+      return new EntityReference().withType(entityType).withName(name);
   }
 }

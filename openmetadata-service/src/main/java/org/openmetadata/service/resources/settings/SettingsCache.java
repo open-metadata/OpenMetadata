@@ -21,6 +21,7 @@ import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 
 import com.cronutils.utils.StringUtils;
 import com.google.common.cache.CacheBuilder;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
@@ -53,6 +55,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.security.auth.AuthenticationConfigurationManager;
 
 @Slf4j
 public class SettingsCache {
@@ -207,6 +210,23 @@ public class SettingsCache {
                       .withUpstreamDepth(2)
                       .withLineageLayer(LineageLayer.ENTITY_LINEAGE));
       Entity.getSystemRepository().createNewSetting(setting);
+    }
+
+    // Initialize Authentication Configuration
+    Settings storedAuthConfig = Entity.getSystemRepository()
+        .getConfigWithKey(AUTHENTICATION_CONFIGURATION.toString());
+    if (storedAuthConfig == null) {
+        // Only in case a config doesn't exist in DB we insert it from YAML
+        AuthenticationConfiguration authConfig = applicationConfig.getAuthenticationConfiguration();
+        
+        Settings setting = new Settings()
+            .withConfigType(AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(authConfig);
+        
+        Entity.getSystemRepository().createNewSetting(setting);
+        
+        // Initialize the AuthenticationConfigurationManager with the default config
+        AuthenticationConfigurationManager.getInstance().loadConfig();
     }
   }
 

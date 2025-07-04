@@ -96,6 +96,10 @@ import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.util.TestUtils;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.security.client.OidcClientConfig;
+import org.openmetadata.schema.security.client.SamlSSOClientConfig;
+import org.openmetadata.service.security.auth.AuthenticationConfigurationManager;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -1018,6 +1022,62 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
         "The test entity type should not be added to allowedFields");
   }
 
+  @Test
+  void testAuthenticationConfiguration() throws HttpResponseException {
+    // Get initial auth config
+    AuthenticationConfiguration initialConfig = getAuthConfig();
+    assertNotNull(initialConfig, "Initial auth config should not be null");
+
+    // Create new OIDC config
+    AuthenticationConfiguration newConfig = new AuthenticationConfiguration()
+        .withProvider("google")
+        .withOidcConfiguration(
+            new OidcClientConfig()
+                .withClientId("test-client-id")
+                .withSecret("test-secret")
+                .withTokenEndpoint("https://test.com/token"));
+
+    // Update auth config
+    Response response = updateAuthConfig(newConfig);
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    // Verify config is updated
+    AuthenticationConfiguration updatedConfig = getAuthConfig();
+    assertEquals(newConfig.getProvider(), updatedConfig.getProvider());
+    assertEquals(newConfig.getOidcConfiguration().getClientId(), 
+                updatedConfig.getOidcConfiguration().getClientId());
+    
+    // Verify sensitive fields are encrypted
+    assertNotEquals(newConfig.getOidcConfiguration().getSecret(),
+                   updatedConfig.getOidcConfiguration().getSecret(),
+                   "Secret should be encrypted");
+
+    // Test SAML config
+    AuthenticationConfiguration samlConfig = new AuthenticationConfiguration()
+        .withProvider("saml")
+        .withSamlConfiguration(
+            new SamlSSOClientConfig()
+                .withIdpCert("test-cert")
+                .withSpPrivateKey("test-private-key")
+                .withKeyStorePassword("test-password"));
+
+    response = updateAuthConfig(samlConfig);
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    // Verify SAML config
+    AuthenticationConfiguration updatedSamlConfig = getAuthConfig();
+    assertEquals(samlConfig.getProvider(), updatedSamlConfig.getProvider());
+    assertNotEquals(samlConfig.getSamlConfiguration().getSpPrivateKey(),
+                   updatedSamlConfig.getSamlConfiguration().getSpPrivateKey(),
+                   "Private key should be encrypted");
+    assertNotEquals(samlConfig.getSamlConfiguration().getKeyStorePassword(),
+                   updatedSamlConfig.getSamlConfiguration().getKeyStorePassword(),
+                   "Keystore password should be encrypted");
+
+    // Restore initial config
+    updateAuthConfig(initialConfig);
+  }
+
   private static ValidationResponse getValidation() throws HttpResponseException {
     WebTarget target = getResource("system/status");
     return TestUtils.get(target, ValidationResponse.class, ADMIN_AUTH_HEADERS);
@@ -1062,5 +1122,15 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   private void resetSystemConfig() throws HttpResponseException {
     WebTarget target = getResource("system/settings/reset/" + SettingsType.SEARCH_SETTINGS.value());
     TestUtils.put(target, Response.Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  private AuthenticationConfiguration getAuthConfig() throws HttpResponseException {
+    WebTarget target = getResource("system/auth/config");
+    return TestUtils.get(target, AuthenticationConfiguration.class, ADMIN_AUTH_HEADERS);
+  }
+
+  private Response updateAuthConfig(AuthenticationConfiguration config) throws HttpResponseException {
+    WebTarget target = getResource("system/auth/config");
+    return TestUtils.put(target, config, Response.class, ADMIN_AUTH_HEADERS);
   }
 }

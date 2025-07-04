@@ -13,136 +13,91 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
+import static org.openmetadata.service.util.MicrometerBundleSingleton.createMicrometerBundle;
 
-import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
-import io.dropwizard.configuration.SubstitutingSourceProvider;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import io.dropwizard.assets.AssetsBundle;
 import io.dropwizard.core.Application;
-import io.dropwizard.core.server.DefaultServerFactory;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
+import io.dropwizard.db.DataSourceFactory;
+import io.dropwizard.health.conf.HealthConfiguration;
+import io.dropwizard.health.core.HealthCheckBundle;
+import io.dropwizard.jdbi3.JdbiFactory;
 import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
-import io.dropwizard.jetty.MutableServletContextHandler;
-import io.dropwizard.lifecycle.Managed;
+import io.dropwizard.servlets.tasks.LogConfigurationTask;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import io.socket.engineio.server.EngineIoServerOptions;
-import io.socket.engineio.server.JettyWebSocketHandler;
-import io.swagger.v3.oas.annotations.OpenAPIDefinition;
-import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
-import io.swagger.v3.oas.annotations.info.Contact;
-import io.swagger.v3.oas.annotations.info.Info;
-import io.swagger.v3.oas.annotations.info.License;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.security.SecurityScheme;
-import io.swagger.v3.oas.annotations.servers.Server;
-import jakarta.servlet.DispatcherType;
-import jakarta.servlet.FilterRegistration;
-import jakarta.validation.Validation;
+import io.swagger.v3.jaxrs2.integration.resources.AcceptHeaderOpenApiResource;
+import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
+import io.swagger.v3.oas.integration.SwaggerConfiguration;
 import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.container.ContainerResponseFilter;
-import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
+import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
-import java.util.Optional;
-import javax.naming.ConfigurationException;
-import lombok.SneakyThrows;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.servlet.DispatcherType;
+import javax.servlet.FilterRegistration;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.jetty.server.session.SessionHandler;
-import org.eclipse.jetty.servlet.FilterHolder;
-import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerInitializer;
+import org.eclipse.jetty.servlets.CrossOriginFilter;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.configuration.FluentConfiguration;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
-import org.hibernate.validator.messageinterpolation.ResourceBundleMessageInterpolator;
-import org.hibernate.validator.resourceloading.PlatformResourceBundleLocator;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjects;
-import org.jetbrains.annotations.NotNull;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.api.security.ClientType;
-import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.api.security.jwt.JWTTokenExpiry;
+import org.openmetadata.schema.api.security.jwt.JWTTokenType;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.search.IndexMappingLoader;
-import org.openmetadata.service.apps.ApplicationContext;
-import org.openmetadata.service.apps.ApplicationHandler;
-import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.apps.bundles.changeEvent.ChangeEventHandler;
+import org.openmetadata.service.apps.bundles.changeEvent.ChangeEventRepository;
+import org.openmetadata.service.apps.bundles.insights.DataInsightsHandler;
+import org.openmetadata.service.apps.bundles.insights.DataInsightsRepository;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.auth.NoopAuthorizer;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
-import org.openmetadata.service.events.EventFilter;
-import org.openmetadata.service.events.EventPubSub;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
+import org.openmetadata.service.exception.UnhandledExceptionMapper;
+import org.openmetadata.service.exception.WebAnalyticExceptionMapper;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.jobs.EnumCleanupHandler;
-import org.openmetadata.service.jobs.GenericBackgroundWorker;
-import org.openmetadata.service.jobs.JobDAO;
-import org.openmetadata.service.jobs.JobHandlerRegistry;
-import org.openmetadata.service.limits.DefaultLimits;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.migration.Migration;
-import org.openmetadata.service.migration.MigrationValidationClient;
+import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
-import org.openmetadata.service.monitoring.EventMonitor;
-import org.openmetadata.service.monitoring.EventMonitorConfiguration;
-import org.openmetadata.service.monitoring.EventMonitorFactory;
-import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexDefinition;
+import org.openmetadata.service.search.opensearch.OpenSearchConfiguration;
+import org.openmetadata.service.search.opensearch.OpenSearchIndexDefinition;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
-import org.openmetadata.service.security.AuthCallbackServlet;
-import org.openmetadata.service.security.AuthLoginServlet;
-import org.openmetadata.service.security.AuthLogoutServlet;
-import org.openmetadata.service.security.AuthRefreshServlet;
-import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
+import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.NoopAuthorizer;
-import org.openmetadata.service.security.NoopFilter;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
-import org.openmetadata.service.security.auth.BasicAuthenticator;
-import org.openmetadata.service.security.auth.LdapAuthenticator;
-import org.openmetadata.service.security.auth.NoopAuthenticator;
-import org.openmetadata.service.security.auth.UserActivityFilter;
-import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.auth.AuthenticationConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
-import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
-import org.openmetadata.service.security.saml.SamlLoginServlet;
-import org.openmetadata.service.security.saml.SamlLogoutServlet;
-import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
-import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
 import org.openmetadata.service.socket.FeedServlet;
-import org.openmetadata.service.socket.OpenMetadataAssetServlet;
-import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.CustomParameterNameProvider;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
-import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
-import org.pac4j.core.util.CommonHelper;
-import org.quartz.SchedulerException;
 
 /** Main catalog application */
 @Slf4j
@@ -176,6 +131,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   protected Jdbi jdbi;
 
+  private OpenMetadataApplicationConfig configuration;
+  private Environment environment;
+
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException,
@@ -188,6 +146,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           CertificateException,
           KeyStoreException,
           NoSuchAlgorithmException {
+    
+    // Store config and environment for later use
+    this.configuration = catalogConfig;
+    this.environment = environment;
+
+    // Validate configuration
     validateConfiguration(catalogConfig);
 
     // Instantiate incident severity classifier
@@ -207,7 +171,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
-    initializeSearchRepository(catalogConfig);
+    // Initialize AuthenticationConfigurationManager after database setup
+    AuthenticationConfigurationManager.initialize(Entity.getSystemRepository(), this);
+    AuthenticationConfigurationManager.getInstance().loadConfig();
+
+    // Register Authenticator with loaded config
+    registerAuthenticator(catalogConfig);
+
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
@@ -259,9 +229,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
-
-    // Register Authenticator
-    registerAuthenticator(catalogConfig);
 
     // Register Limits
     registerLimits(catalogConfig);
@@ -727,6 +694,86 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.error("Websocket configuration error: {}", ex.getMessage());
     }
   }
+
+  public AuthenticatorHandler getAuthenticatorHandler() {
+    return authenticatorHandler;
+  }
+
+  public OpenMetadataApplicationConfig getConfiguration() {
+    return configuration;
+  }
+
+  public void reinitializeAuthHandlers(OpenMetadataApplicationConfig config) {
+    try {
+        LOG.info("Reinitializing authentication handlers");
+        
+        // Get the current auth provider
+        String currentProvider = config.getAuthenticationConfiguration().getProvider();
+        
+        // Reinitialize the authenticator handler
+        authenticatorHandler.reload(config);
+        
+        // Reload servlets if needed
+        if (currentProvider != null && !currentProvider.equals(config.getAuthenticationConfiguration().getProvider())) {
+            reloadAuthServlets(config);
+        }
+        
+        LOG.info("Successfully reinitialized authentication handlers");
+    } catch (Exception e) {
+        LOG.error("Failed to reinitialize authentication handlers", e);
+        throw new RuntimeException("Failed to reinitialize authentication handlers", e);
+    }
+}
+
+private void reloadAuthServlets(OpenMetadataApplicationConfig config) {
+    try {
+        LOG.info("Reloading authentication servlets");
+        
+        // Remove existing auth servlets
+        for (String path : environment.servlets().getServlets().keySet()) {
+            if (path.startsWith("/api/v1/auth/")) {
+                environment.servlets().removeServlet(path);
+            }
+        }
+        
+        // Register new auth servlets based on the provider
+        registerAuthServlets(config);
+        
+        LOG.info("Successfully reloaded authentication servlets");
+    } catch (Exception e) {
+        LOG.error("Failed to reload authentication servlets", e);
+        throw new RuntimeException("Failed to reload authentication servlets", e);
+    }
+}
+
+private void registerAuthServlets(OpenMetadataApplicationConfig config) {
+    // Add provider-specific servlets based on the authentication configuration
+    String provider = config.getAuthenticationConfiguration().getProvider();
+    
+    switch (provider.toLowerCase()) {
+        case "google":
+            environment.servlets().addServlet("googleAuthServlet", new GoogleAuthServlet())
+                .addMapping("/api/v1/auth/google/*");
+            break;
+        case "okta":
+            environment.servlets().addServlet("oktaAuthServlet", new OktaAuthServlet())
+                .addMapping("/api/v1/auth/okta/*");
+            break;
+        case "auth0":
+            environment.servlets().addServlet("auth0AuthServlet", new Auth0AuthServlet())
+                .addMapping("/api/v1/auth/auth0/*");
+            break;
+        case "azure":
+            environment.servlets().addServlet("azureAuthServlet", new AzureAuthServlet())
+                .addMapping("/api/v1/auth/azure/*");
+            break;
+        case "custom-oidc":
+            environment.servlets().addServlet("customOidcAuthServlet", new CustomOidcAuthServlet())
+                .addMapping("/api/v1/auth/custom-oidc/*");
+            break;
+        // Add more cases for other providers
+    }
+}
 
   public static void main(String[] args) throws Exception {
     OpenMetadataApplication openMetadataApplication = new OpenMetadataApplication();

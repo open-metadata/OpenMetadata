@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
@@ -56,6 +57,11 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.security.client.OidcClientConfig;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.service.util.PasswordUtil;
+import org.openmetadata.service.exception.ErrorMessage;
 
 @Slf4j
 @Repository
@@ -215,33 +221,29 @@ public class SystemRepository {
 
   @Transaction
   public Response createOrUpdate(Settings setting) {
-    Settings oldValue = getConfigWithKey(setting.getConfigType().toString());
-
-    if (oldValue != null && oldValue.getConfigType().equals(SettingsType.EMAIL_CONFIGURATION)) {
-      SmtpSettings configValue =
-          JsonUtils.convertValue(oldValue.getConfigValue(), SmtpSettings.class);
-      if (configValue != null) {
-        SmtpSettings.Templates templates = configValue.getTemplates();
-        SmtpSettings newConfigValue =
-            JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
-        if (newConfigValue != null) {
-          newConfigValue.setTemplates(templates);
-          setting.setConfigValue(newConfigValue);
-        }
-      }
+    // If this is an auth config, encrypt sensitive fields
+    if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+      AuthenticationConfiguration config = JsonUtils.convertValue(
+          setting.getConfigValue(), 
+          AuthenticationConfiguration.class
+      );
+      setting.setConfigValue(encryptAuthConfig(config));
     }
 
     try {
-      updateSetting(setting);
-    } catch (Exception ex) {
-      LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
-      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
-    }
-    if (oldValue == null) {
-      return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
-          .toResponse();
-    } else {
-      return (new RestUtil.PutResponse<>(Response.Status.OK, setting, ENTITY_UPDATED)).toResponse();
+      Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
+      if (oldValue != null) {
+        // Update
+        dao.update(setting);
+      } else {
+        // Create
+        dao.insert(setting);
+      }
+      postUpdate(setting.getConfigType());
+      return Response.ok(Entity.getCollectionDAO().settingsDAO().findByKey(setting.getConfigType().toString())).build();
+    } catch (Exception e) {
+      LOG.error(FAILED_TO_UPDATE_SETTINGS, e);
+      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + e.getMessage()).build();
     }
   }
 
@@ -612,5 +614,65 @@ public class SystemRepository {
             String.format(
                 "Missing migrations that were not executed %s. Unexpected executed migrations %s",
                 missingVersions, unexpectedVersions));
+  }
+
+  private AuthenticationConfiguration encryptAuthConfig(AuthenticationConfiguration config) {
+    if (config == null) return null;
+
+    // Handle OIDC client secret
+    if (config.getOidcConfiguration() != null) {
+      OidcClientConfig oidcConfig = config.getOidcConfiguration();
+      String encryptedSecret = PasswordUtil.encryptPassword(oidcConfig.getSecret());
+      oidcConfig.setSecret(encryptedSecret);
+    }
+
+    // Handle SAML private key and keystore password
+    if (config.getSamlConfiguration() != null) {
+      SamlSSOClientConfig samlConfig = config.getSamlConfiguration();
+      String encryptedPrivateKey = PasswordUtil.encryptPassword(samlConfig.getSpPrivateKey());
+      String encryptedKeystorePass = PasswordUtil.encryptPassword(samlConfig.getKeyStorePassword());
+      samlConfig.setSpPrivateKey(encryptedPrivateKey);
+      samlConfig.setKeyStorePassword(encryptedKeystorePass);
+    }
+
+    return config;
+  }
+
+  private AuthenticationConfiguration decryptAuthConfig(AuthenticationConfiguration config) {
+    if (config == null) return null;
+
+    // Handle OIDC client secret
+    if (config.getOidcConfiguration() != null) {
+      OidcClientConfig oidcConfig = config.getOidcConfiguration();
+      String decryptedSecret = PasswordUtil.decryptPassword(oidcConfig.getSecret());
+      oidcConfig.setSecret(decryptedSecret);
+    }
+
+    // Handle SAML private key and keystore password
+    if (config.getSamlConfiguration() != null) {
+      SamlSSOClientConfig samlConfig = config.getSamlConfiguration();
+      String decryptedPrivateKey = PasswordUtil.decryptPassword(samlConfig.getSpPrivateKey());
+      String decryptedKeystorePass = PasswordUtil.decryptPassword(samlConfig.getKeyStorePassword());
+      samlConfig.setSpPrivateKey(decryptedPrivateKey);
+      samlConfig.setKeyStorePassword(decryptedKeystorePass);
+    }
+
+    return config;
+  }
+
+  @Override
+  public Settings getSettings(String key) {
+    Settings settings = super.getSettings(key);
+    
+    // If this is an auth config, decrypt sensitive fields
+    if (settings != null && settings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+      AuthenticationConfiguration config = JsonUtils.convertValue(
+          settings.getConfigValue(), 
+          AuthenticationConfiguration.class
+      );
+      settings.setConfigValue(decryptAuthConfig(config));
+    }
+    
+    return settings;
   }
 }

@@ -3,6 +3,7 @@ package org.openmetadata.service.resources.system;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -62,6 +63,9 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.email.EmailUtil;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.AuthenticationConfigurationManager;
 
 @Path("/v1/system")
 @Tag(name = "System", description = "APIs related to System configuration and settings.")
@@ -447,5 +451,61 @@ public class SystemResource {
       })
   public ValidationResponse validate() {
     return systemRepository.validateSystem(applicationConfig, pipelineServiceClient, jwtFilter);
+  }
+
+  @GET
+  @Path("/auth/config")
+  @Operation(
+      operationId = "getAuthConfig",
+      summary = "Get SSO authentication configuration",
+      description = "Get the current SSO authentication configuration",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "SSO Configuration",
+              content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuthenticationConfiguration.class)))
+      })
+  public AuthenticationConfiguration getAuthConfig(@Context SecurityContext securityContext) {
+      authorizer.authorizeAdmin(securityContext);
+      return SettingsCache.getSetting(AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class);
+  }
+
+  @PUT
+  @Path("/auth/config")
+  @Operation(
+      operationId = "updateAuthConfig",
+      summary = "Update SSO authentication configuration",
+      description = "Update the SSO authentication configuration",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "Updated SSO Configuration",
+              content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuthenticationConfiguration.class)))
+      })
+  public Response updateAuthConfig(
+          @Context SecurityContext securityContext,
+          @Valid AuthenticationConfiguration config) {
+      authorizer.authorizeAdmin(securityContext);
+
+      try {
+          // Create settings object
+          Settings settings = new Settings()
+              .withConfigType(AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(config);
+
+          // Save to database
+          settings = systemRepository.createOrUpdate(settings);
+
+          // Invalidate cache
+          SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+
+          // Reload authentication system
+          AuthenticationConfigurationManager.getInstance().reloadAuthenticationSystem(config);
+
+          return Response.ok(settings).build();
+      } catch (Exception e) {
+          LOG.error("Failed to update authentication configuration", e);
+          throw new RuntimeException("Failed to update authentication configuration: " + e.getMessage());
+      }
   }
 }
