@@ -85,12 +85,12 @@ test.describe('Custom Theme Config Page', () => {
 
     // Verify the updated theme color
 
-    await page.waitForSelector(
-      '[data-testid="save-btn"] .ant-btn-loading-icon',
-      {
-        state: 'detached',
-      }
+    const spinner = page.locator(
+      '[data-testid="save-btn"] .ant-btn-loading-icon'
     );
+    if (await spinner.isVisible({ timeout: 1000 })) {
+      await spinner.waitFor({ state: 'detached', timeout: 10000 });
+    }
 
     await expect(page.getByTestId('save-btn')).toHaveCSS(
       'background-color',
