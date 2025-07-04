@@ -16,13 +16,16 @@ import { useRef } from 'react';
 
 export const FocusTrapWithContainer = ({
   children,
+  active = true,
 }: {
   children: React.ReactNode;
+  active?: boolean;
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   return (
     <FocusTrap
+      active={active}
       focusTrapOptions={{
         fallbackFocus: () => containerRef.current || document.body,
         initialFocus: () =>

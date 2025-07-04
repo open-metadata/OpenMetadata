@@ -110,7 +110,7 @@ const DomainSelectableList = ({
       <Popover
         destroyTooltipOnHide
         content={
-          <FocusTrapWithContainer>
+          <FocusTrapWithContainer active={popoverProps?.open || false}>
             <DomainSelectablTree
               initialDomains={initialDomains}
               isMultiple={multiple}
