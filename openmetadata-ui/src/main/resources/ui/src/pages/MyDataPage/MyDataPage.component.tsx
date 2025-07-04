@@ -166,6 +166,7 @@ const MyDataPage = () => {
             followedDataCount,
             isLoadingOwnedData: isLoadingOwnedData,
             widgetConfig: widget,
+            currentLayout: layout,
           })}
         </div>
       )),
@@ -228,7 +229,8 @@ const MyDataPage = () => {
             customizePageClassBase.landingPageWidgetMargin,
             customizePageClassBase.landingPageWidgetMargin,
           ]}
-          rowHeight={100}>
+          rowHeight={100}
+        >
           {widgets}
         </ReactGridLayout>
       </div>

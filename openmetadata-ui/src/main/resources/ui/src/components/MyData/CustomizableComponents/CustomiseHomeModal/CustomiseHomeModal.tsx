@@ -73,8 +73,10 @@ const CustomiseHomeModal = ({
     if (!widget) {
       return;
     }
-    const isAlreadyAdded = addedWidgetsList?.some((addedWidgetId) =>
-      addedWidgetId.startsWith(widget.fullyQualifiedName ?? '')
+    const isAlreadyAdded = addedWidgetsList?.some(
+      (addedWidgetId) =>
+        addedWidgetId.startsWith(widget.fullyQualifiedName ?? '') &&
+        !addedWidgetId.includes(LandingPageWidgetKeys.CURATED_ASSETS)
     );
 
     if (isAlreadyAdded) {
