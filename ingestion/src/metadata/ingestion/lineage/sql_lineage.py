@@ -333,9 +333,11 @@ def get_source_table_names(
     """
     try:
         if not isinstance(source_table, DataFunction):
-            yield EntityReference(
-                id=procedure.id.root, type="storedProcedure"
-            ) if procedure else None, str(source_table)
+            yield (
+                EntityReference(id=procedure.id.root, type="storedProcedure")
+                if procedure
+                else None
+            ), str(source_table)
         else:
             yield from __process_udf_table_names(
                 metadata,
@@ -547,15 +549,19 @@ def _create_lineage_by_table_name(
             # Add nodes and edges with minimal data
             graph.add_node(
                 from_table,
-                fqns=[table.fullyQualifiedName.root for table in from_table_entities]
-                if from_table_entities
-                else [],
+                fqns=(
+                    [table.fullyQualifiedName.root for table in from_table_entities]
+                    if from_table_entities
+                    else []
+                ),
             )
             graph.add_node(
                 to_table,
-                fqns=[table.fullyQualifiedName.root for table in to_table_entities]
-                if to_table_entities
-                else [],
+                fqns=(
+                    [table.fullyQualifiedName.root for table in to_table_entities]
+                    if to_table_entities
+                    else []
+                ),
             )
             graph.add_edge(from_table, to_table)
             return

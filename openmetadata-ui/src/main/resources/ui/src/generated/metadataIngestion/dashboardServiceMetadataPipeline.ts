@@ -111,9 +111,11 @@ export interface FilterPattern {
  */
 export interface LineageInformation {
     /**
-     * List of Database Service Names for creation of lineage
+     * List of service path prefixes for lineage matching. Supported formats: DBServiceName,
+     * DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or
+     * DBServiceName.DatabaseName.SchemaName.TableName
      */
-    dbServiceNames?: string[];
+    dbServicePrefixes?: string[];
     [property: string]: any;
 }
 

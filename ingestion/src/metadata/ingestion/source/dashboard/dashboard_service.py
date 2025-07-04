@@ -13,7 +13,7 @@ Base class for ingesting dashboard services
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Union
+from typing import Any, Iterable, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
@@ -251,7 +251,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Any,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -340,15 +340,26 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                         f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"
                     )
 
-    def get_db_service_names(self) -> List[str]:
+    def get_db_service_prefixes(self) -> List[str]:
         """
-        Get the list of db service names
+        Get the list of db service prefixes
         """
         return (
-            self.source_config.lineageInformation.dbServiceNames or []
+            self.source_config.lineageInformation.dbServicePrefixes or []
             if self.source_config.lineageInformation
             else []
         )
+
+    def parse_db_service_prefix(
+        self, db_service_prefix: Optional[str]
+    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        """
+        Parse the db service prefix
+        Returns:
+            Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]: service, database, schema, table
+        """
+        prefix_parts = (db_service_prefix or "").split(".")
+        return prefix_parts + ([None] * (4 - len(prefix_parts)))
 
     def yield_dashboard_lineage(
         self, dashboard_details: Any
@@ -364,15 +375,12 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             yield from self.yield_lineage_request(lineage)
 
         # yield datamodel lineage with tables from db services
-        db_service_names = self.get_db_service_names()
-        if not db_service_names:
+        db_service_prefixes = self.get_db_service_prefixes()
+        for db_service_prefix in db_service_prefixes or [None]:
             for lineage in (
-                self.yield_dashboard_lineage_details(dashboard_details) or []
-            ):
-                yield from self.yield_lineage_request(lineage)
-        for db_service_name in db_service_names or []:
-            for lineage in (
-                self.yield_dashboard_lineage_details(dashboard_details, db_service_name)
+                self.yield_dashboard_lineage_details(
+                    dashboard_details, db_service_prefix
+                )
                 or []
             ):
                 yield from self.yield_lineage_request(lineage)
