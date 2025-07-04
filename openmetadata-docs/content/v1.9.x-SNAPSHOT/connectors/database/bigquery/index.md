@@ -56,6 +56,10 @@ link="/connectors/database/bigquery/create-credentials"
 - Select the `GCP Project ID` that you want to enable the `Data Catalog API` on.
 - Click on `Enable API` which will enable the data catalog api on the respective project.
 
+{% note %}
+Access to the Google Data Catalog API is optional and only required if you want to retrieve policy tags from BigQuery. The BigQuery connector does not require this permission for general metadata ingestion.
+{% /note %}
+
 ### GCP Permissions
 
 To execute metadata extraction and usage workflow successfully the user or the service account should have enough access to fetch required data. Following table describes the minimum required permissions
