@@ -91,3 +91,23 @@ export const getCurrentLocaleForConstrue = () => {
 
   return i18next.resolvedLanguage.split('-')[0];
 };
+
+// Map common language codes to supported locales
+export const languageMap: Record<string, SupportedLocales> = {
+  mr: SupportedLocales.मराठी, // Marathi
+  en: SupportedLocales.English,
+  ko: SupportedLocales.한국어,
+  fr: SupportedLocales.Français,
+  zh: SupportedLocales.简体中文,
+  ja: SupportedLocales.日本語,
+  pt: SupportedLocales['Português (Brasil)'], // Default to Brazilian Portuguese
+  es: SupportedLocales.Español,
+  gl: SupportedLocales.Galego,
+  ru: SupportedLocales.Русский,
+  de: SupportedLocales.Deutsch,
+  he: SupportedLocales.Hebrew,
+  nl: SupportedLocales.Nederlands,
+  pr: SupportedLocales.Persian,
+  th: SupportedLocales.Thai,
+  tr: SupportedLocales.Türkçe,
+};
