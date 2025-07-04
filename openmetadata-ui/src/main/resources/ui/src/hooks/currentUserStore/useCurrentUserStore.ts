@@ -15,8 +15,9 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { useApplicationStore } from '../useApplicationStore';
 
-interface UserPreferences {
+export interface UserPreferences {
   isSidebarCollapsed: boolean;
+  selectedEntityTableColumns: Record<string, string[]>;
 }
 
 interface Store {
@@ -31,6 +32,7 @@ interface Store {
 
 const defaultPreferences: UserPreferences = {
   isSidebarCollapsed: false,
+  selectedEntityTableColumns: {},
   // Add default values for other preferences
 };
 
