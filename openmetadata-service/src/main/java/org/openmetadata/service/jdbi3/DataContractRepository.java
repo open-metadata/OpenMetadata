@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.resources.data.DataContractResource;
@@ -150,6 +151,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
     return fieldNames;
+  }
+
+  public DataContract loadEntityDataContract(EntityReference entity) {
+    return JsonUtils.readValue(
+        daoCollection
+            .dataContractDAO()
+            .getContractByEntityId(entity.getId().toString(), entity.getType()),
+        DataContract.class);
   }
 
   @Override

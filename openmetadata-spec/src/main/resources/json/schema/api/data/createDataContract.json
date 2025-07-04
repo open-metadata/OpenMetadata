@@ -41,7 +41,7 @@
       "description": "Semantics rules defined in the data contract.",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/dataContract.json#/definitions/semanticsRule"
+        "$ref": "../../type/basic.json#/definitions/semanticsRule"
       },
       "default": null
     },

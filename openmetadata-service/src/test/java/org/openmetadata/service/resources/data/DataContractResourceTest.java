@@ -66,7 +66,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @Execution(ExecutionMode.CONCURRENT)
-class DataContractResourceTest extends OpenMetadataApplicationTest {
+public class DataContractResourceTest extends OpenMetadataApplicationTest {
   private static final String C1 = "id";
   private static final String C2 = "name";
   private static final String C3 = "description";
@@ -229,7 +229,7 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   /**
    * Creates a unique data contract request for testing with Table
    */
-  private CreateDataContract createDataContractRequest(String name, Table table) {
+  public CreateDataContract createDataContractRequest(String name, Table table) {
     String uniqueSuffix =
         UUID.randomUUID().toString().replace("-", "")
             + "_"
@@ -246,7 +246,7 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
         .withStatus(ContractStatus.Draft);
   }
 
-  private DataContract createDataContract(CreateDataContract create) throws IOException {
+  public DataContract createDataContract(CreateDataContract create) throws IOException {
     WebTarget target = getCollection();
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(create));
@@ -261,6 +261,17 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     if (fields != null) {
       target = target.queryParam("fields", fields);
     }
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+  }
+
+  private DataContract getDataContractByEntityId(UUID entityId, String entityType)
+      throws HttpResponseException {
+    WebTarget target =
+        getCollection()
+            .path("/entity")
+            .queryParam("entityId", entityId)
+            .queryParam("entityType", entityType);
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
     return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
   }
@@ -357,6 +368,21 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     DataContract created = createDataContract(create);
 
     DataContract retrieved = getDataContract(created.getId(), null);
+
+    assertEquals(created.getId(), retrieved.getId());
+    assertEquals(created.getName(), retrieved.getName());
+    assertEquals(created.getFullyQualifiedName(), retrieved.getFullyQualifiedName());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testGetDataContractByEntityId(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    DataContract retrieved =
+        getDataContractByEntityId(table.getId(), org.openmetadata.service.Entity.TABLE);
 
     assertEquals(created.getId(), retrieved.getId());
     assertEquals(created.getName(), retrieved.getName());
