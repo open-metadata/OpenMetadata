@@ -1727,6 +1727,7 @@
     "delete-webhook-permanently": "Вы хотите навсегда удалить webhook {{webhookName}}? Это действие нельзя отменить.",
     "derived-tag-warning": "This tag is automatically derived and can only be removed by deleting the related Glossary Term.",
     "description-coverage-widget-description": "Покрытие описаниями для всех объектов данных в сервисе. <0>узнать больше.</0>",
+    "destination-owner-selection-warning": "Пожалуйста, убедитесь, что \"Владелец\" является <0>Командой</0>, для которой настроен \"{{subscriptionType}}\" для получения оповещений.",
     "destination-selection-warning": "Please make sure if the \"{{subscriptionCategory}}\" have configured their \"{{subscriptionType}}\" to receive the alerts.",
     "disable-app": "This will disable the {{app}} application.",
     "disable-classification-description": "Отключив классификацию, вы не сможете выполнять поиск или назначать связанные теги любому объекту.",

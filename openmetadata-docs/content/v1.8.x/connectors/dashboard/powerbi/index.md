@@ -1,10 +1,6 @@
 ---
 title: PowerBI Connector | OpenMetadata Integration Documentation
-<<<<<<< HEAD
 description: Connect Power BI to OpenMetadata with our comprehensive dashboard connector guide. Setup instructions, configuration tips, and metadata extraction made simple.
-=======
-description: Connect Power BI to OpenMetadata with our comprehensive connector guide. Extract dashboards, reports, and metadata seamlessly for better data governance.
->>>>>>> b9d49f3b9d (Doc: SEO Description Updation)
 slug: /connectors/dashboard/powerbi
 ---
 
