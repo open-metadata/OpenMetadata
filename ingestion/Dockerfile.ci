@@ -93,7 +93,7 @@ WORKDIR /home/airflow/ingestion
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
-RUN pip install ".[${INGESTION_DEPENDENCY}]"
+RUN pip install --use-feature=fast-deps --parallel 10 ".[${INGESTION_DEPENDENCY}]"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \

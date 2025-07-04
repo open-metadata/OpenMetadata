@@ -85,7 +85,7 @@ RUN pip install --upgrade pip setuptools~=70.3.0
 
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install ".[airflow]"
-RUN pip install ".[${INGESTION_DEPENDENCY}]"
+RUN pip install --use-feature=fast-deps --parallel 10 ".[${INGESTION_DEPENDENCY}]"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
