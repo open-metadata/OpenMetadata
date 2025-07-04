@@ -43,8 +43,10 @@ class ServiceSpecPatch:
     def get_data_diff_class(self) -> Type["BaseTableParameter"]:
         return import_from_module(self.service_spec.data_diff)
 
-    def get_connection_class(self) -> Type[BaseConnection]:
-        return import_from_module(self.service_spec.connection_class)
+    def get_connection_class(self) -> Optional[Type[BaseConnection]]:
+        if self.service_spec.connection_class:
+            return import_from_module(self.service_spec.connection_class)
+        return None
 
 
 class BaseTableParameter:
@@ -99,18 +101,23 @@ class BaseTableParameter:
 
     @staticmethod
     def _get_service_connection_config(
-        db_service: DatabaseService,
+        service_connection_config,
     ) -> Optional[Union[str, dict]]:
         """
         Get the connection dictionary for the service.
         """
-        service_connection_config = db_service.connection.config
         service_spec_patch = ServiceSpecPatch(
             ServiceType.Database, service_connection_config.type.value.lower()
         )
 
         try:
             connection_class = service_spec_patch.get_connection_class()
+            if not connection_class:
+                return (
+                    str(get_connection(service_connection_config).url)
+                    if service_connection_config
+                    else None
+                )
             connection = connection_class(service_connection_config)
             return connection.get_connection_dict()
         except (ValueError, AttributeError, NotImplementedError):
@@ -137,7 +144,9 @@ class BaseTableParameter:
             str: The url for the data diff service
         """
         source_url = (
-            BaseTableParameter._get_service_connection_config(db_service)
+            BaseTableParameter._get_service_connection_config(
+                db_service.connection.config
+            )
             if not override_url
             else override_url
         )
