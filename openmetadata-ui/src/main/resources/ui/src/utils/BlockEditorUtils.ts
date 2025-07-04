@@ -90,10 +90,13 @@ export const formatContent = (
 ) => {
   // Create a new DOMParser
   const parser = new DOMParser();
-  const doc = parser.parseFromString(
-    _convertMarkdownFormatToHtmlString(htmlString),
-    'text/html'
-  );
+
+  // Only convert markdown to HTML if the content is not already HTML
+  const processedContent = isHTMLString(htmlString)
+    ? htmlString
+    : _convertMarkdownFormatToHtmlString(htmlString);
+
+  const doc = parser.parseFromString(processedContent, 'text/html');
 
   // Use querySelectorAll to find all anchor tags with text content starting with "@" or "#"
   const anchorTags = doc.querySelectorAll(

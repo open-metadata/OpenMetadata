@@ -12,6 +12,7 @@
  */
 import { Editor } from '@tiptap/react';
 import {
+  formatContent,
   formatValueBasedOnContent,
   getHtmlStringFromMarkdownString,
   getTextFromHtmlString,
@@ -134,6 +135,31 @@ describe('formatValueBasedOnContent', () => {
     const input = '<p></p>';
 
     expect(formatValueBasedOnContent(input)).toBe('');
+  });
+});
+
+describe('formatContent', () => {
+  it('should format mention for client display correctly', () => {
+    const input =
+      '<p>This <a data-type="mention" data-label="Infrastructure" href="http://localhost:3000/settings/members/teams/Infrastructure" data-entitytype="team" data-fqn="Infrastructure">@Infrastructure</a> team</p>';
+
+    const result = formatContent(input, 'client');
+
+    // Should replace the anchor tag content with just @Infrastructure
+    expect(result).toContain('@Infrastructure');
+    expect(result.match(/@Infrastructure/g) || []).toHaveLength(1);
+  });
+
+  it('should format mention for server storage correctly', () => {
+    const input =
+      '<p>This <a data-type="mention" data-label="Infrastructure" href="http://localhost:3000/settings/members/teams/Infrastructure" data-entitytype="team" data-fqn="Infrastructure">@Infrastructure</a> team</p>';
+
+    const result = formatContent(input, 'server');
+
+    // Should convert to server format with markdown link structure
+    expect(result).toContain(
+      '&lt;#E.team.Infrastructure|[@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure)&gt;'
+    );
   });
 });
 
