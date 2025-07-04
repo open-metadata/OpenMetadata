@@ -355,30 +355,34 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   }, [glossaries, searchOptions, expandableKeys.current, isParentSelectable]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onCancel?.();
-    }
+    switch (e.key) {
+      case 'Escape':
+        e.preventDefault();
+        onCancel?.();
 
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      e.stopPropagation();
-      form.submit();
-    }
+        break;
+      case 'Tab':
+        e.preventDefault();
+        e.stopPropagation();
+        form.submit();
 
-    const active = document.querySelector(
-      '.ant-select-tree .ant-select-tree-treenode-active .ant-select-tree-checkbox'
-    );
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      e.stopPropagation();
-      if (active) {
+        break;
+      case 'Enter': {
+        e.preventDefault();
+        e.stopPropagation();
+        const active = document.querySelector(
+          '.ant-select-tree .ant-select-tree-treenode-active .ant-select-tree-checkbox'
+        );
         if (active) {
           (active as HTMLElement).click();
+        } else {
+          form.submit();
         }
-      } else {
-        form.submit();
+
+        break;
       }
+      default:
+        break;
     }
   };
 
