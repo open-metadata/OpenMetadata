@@ -38,7 +38,6 @@ import FollowingWidget, {
 } from '../components/MyData/RightSidebar/FollowingWidget';
 import CuratedAssetsWidget from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget';
 import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
-import FeedsWidget from '../components/MyData/Widgets/FeedsWidget/FeedsWidget.component';
 import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
 import RecentlyViewed from '../components/MyData/Widgets/RecentlyViewed/RecentlyViewed';
 import TotalDataAssetsWidget from '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
@@ -174,9 +173,6 @@ class CustomizeMyDataPageClassBase {
   public getWidgetsFromKey(
     widgetKey: string
   ): FC<WidgetCommonProps & AnnouncementsWidgetProps & FollowingWidgetProps> {
-    if (widgetKey.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
-      return FeedsWidget;
-    }
     if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
       return DataAssetsWidget;
     }
