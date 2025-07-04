@@ -342,6 +342,7 @@ def build_patch(
     array_entity_fields: Optional[List] = None,
     remove_change_description: bool = True,
     override_metadata: Optional[bool] = False,
+    skip_on_failure: Optional[bool] = True,
 ) -> Optional[jsonpatch.JsonPatch]:
     """
     Given an Entity type and Source entity and Destination entity,
@@ -352,6 +353,10 @@ def build_patch(
         destination: payload with changes applied to the source.
         allowed_fields: List of field names to filter from source and destination models
         restrict_update_fields: List of field names which will only support add operation
+        array_entity_fields: List of array fields to sort for consistent patching
+        remove_change_description: Whether to remove change description from entities
+        override_metadata: Whether to override existing metadata fields
+        skip_on_failure: Whether to skip the patch operation on failure (default: True)
 
     Returns
         Updated Entity
@@ -421,10 +426,13 @@ def build_patch(
             patch.patch = updated_operations
 
         return patch
-    except Exception:
+    except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning("Couldn't build patch for Entity.")
-        return None
+        if skip_on_failure:
+            logger.warning(f"Couldn't build patch for Entity: {exc}")
+            return None
+        else:
+            raise
 
 
 def _get_attribute_name(attr: T) -> str:

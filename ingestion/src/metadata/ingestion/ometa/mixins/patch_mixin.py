@@ -124,6 +124,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         restrict_update_fields: Optional[List] = None,
         array_entity_fields: Optional[List] = None,
         override_metadata: Optional[bool] = False,
+        skip_on_failure: Optional[bool] = True,
     ) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
@@ -135,6 +136,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             destination: payload with changes applied to the source.
             allowed_fields: List of field names to filter from source and destination models
             restrict_update_fields: List of field names which will only support add operation
+            array_entity_fields: List of array fields to sort for consistent patching
+            override_metadata: Whether to override existing metadata fields
+            skip_on_failure: Whether to skip the patch operation on failure (default: True)
 
         Returns
             Updated Entity
@@ -147,6 +151,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 restrict_update_fields=restrict_update_fields,
                 array_entity_fields=array_entity_fields,
                 override_metadata=override_metadata,
+                skip_on_failure=skip_on_failure,
             )
 
             if not patch:
@@ -160,7 +165,11 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to PATCH {get_log_name(source)}: {exc}")
+            if skip_on_failure:
+                logger.warning(f"Error trying to PATCH {get_log_name(source)}: {exc}")
+                return None
+            else:
+                raise
 
         return None
 
@@ -170,6 +179,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         source: T,
         description: str,
         force: bool = False,
+        skip_on_failure: bool = True,
     ) -> Optional[T]:
         """
         Given an Entity type and ID, JSON PATCH the description.
@@ -206,7 +216,12 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         destination = source.model_copy(deep=True)
         destination.description = Markdown(description)
 
-        return self.patch(entity=entity, source=source, destination=destination)
+        return self.patch(
+            entity=entity,
+            source=source,
+            destination=destination,
+            skip_on_failure=skip_on_failure,
+        )
 
     def patch_table_constraints(
         self,
@@ -275,6 +290,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         operation: Union[
             PatchOperation.ADD, PatchOperation.REMOVE
         ] = PatchOperation.ADD,
+        skip_on_failure: bool = True,
     ) -> Optional[T]:
         """
         Given an Entity type and ID, JSON PATCH the tag.
@@ -306,7 +322,12 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         else:
             destination.tags.extend(tag_labels)
 
-        return self.patch(entity=entity, source=source, destination=destination)
+        return self.patch(
+            entity=entity,
+            source=source,
+            destination=destination,
+            skip_on_failure=skip_on_failure,
+        )
 
     def patch_tag(
         self,
@@ -316,11 +337,16 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         operation: Union[
             PatchOperation.ADD, PatchOperation.REMOVE
         ] = PatchOperation.ADD,
+        skip_on_failure: bool = True,
     ) -> Optional[T]:
         """Will be deprecated in 1.3"""
         logger.warning("patch_tag will be deprecated in 1.3. Use `patch_tags` instead.")
         return self.patch_tags(
-            entity=entity, source=source, tag_labels=[tag_label], operation=operation
+            entity=entity,
+            source=source,
+            tag_labels=[tag_label],
+            operation=operation,
+            skip_on_failure=skip_on_failure,
         )
 
     def patch_owner(
