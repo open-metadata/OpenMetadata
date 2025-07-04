@@ -73,9 +73,6 @@ class ColumnClassifier(ABC, Generic[T]):
         """
 
 
-# Implementations
-
-
 @final
 class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
     """
