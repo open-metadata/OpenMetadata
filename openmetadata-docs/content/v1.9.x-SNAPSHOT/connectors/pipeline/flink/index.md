@@ -1,5 +1,6 @@
 ---
 title: Apache Flink Connector | OpenMetadata Streaming Guide
+description: Connect Apache Flink pipelines to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/pipeline/flink
 ---
 
@@ -25,7 +26,7 @@ Configure and schedule Flink metadata from the OpenMetadata UI:
 - [Troubleshooting](/connectors/pipeline/flink/troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/flink/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/flink/yaml"} /%}
 
 ## Requirements
 
@@ -38,12 +39,12 @@ The ingestion framework uses flink REST APIs to connect to the instance and perf
 ## Metadata Ingestion
 
 {% partial 
-    file="/v1.9connectors/metadata-ingestion-ui.md" 
+    file="/v1.9/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "KafkaConnect", 
-        selectServicePath: "/images/v1.9connectors/flink/select-new-service.webp",
-        addNewServicePath: "/images/v1.9connectors/flink/add-new-service.webp",
-        serviceConnectionPath: "/images/v1.9connectors/flink/service-connection.webp",
+        selectServicePath: "/images/v1.9/connectors/flink/select-new-service.webp",
+        addNewServicePath: "/images/v1.9/connectors/flink/add-new-service.webp",
+        serviceConnectionPath: "/images/v1.9/connectors/flink/service-connection.webp",
     } 
 /%}
 
@@ -65,10 +66,10 @@ The ingestion framework uses flink REST APIs to connect to the instance and perf
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

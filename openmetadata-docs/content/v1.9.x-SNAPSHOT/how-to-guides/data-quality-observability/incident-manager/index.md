@@ -1,5 +1,5 @@
 ---
-title: Incident Manager
+title: Incident Manager | OpenMetadata Data Quality Management
 slug: /how-to-guides/data-quality-observability/incident-manager
 ---
 
@@ -11,7 +11,7 @@ Using Incident Manager, managing data quality issues becomes streamlined and eff
  In v1.1.0, we introduced the ability for user to manage and triage incidents linked to failures. When a test case fails, it will automatically open a new incident and mark it as new. If enough information is available, OpenMetadata will automatically assign a severity to the incident; note that you can override this severity. It indicates that a new failure has happened.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/resolution-workflow-new.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/resolution-workflow-new.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
@@ -23,12 +23,12 @@ The Incident Manager serves as a centralized hub to handle the resolution flow o
 - **Log the Root Cause:** Document the underlying cause of the failure for future reference and analysis.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/resolution-workflow-ack-form.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/resolution-workflow-ack-form.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/resolution-workflow-ack.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/resolution-workflow-ack.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
@@ -36,13 +36,13 @@ The Incident Manager serves as a centralized hub to handle the resolution flow o
 You can mark the incident as `resolved`. The user will be required to specify the reason and add a comment. This provides context regarding the incident and helps users further understand what might have gone wrong
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/resolution-workflow-resolved-form.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/resolution-workflow-resolved-form.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/resolution-workflow-resolved.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/resolution-workflow-resolved.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
@@ -64,7 +64,7 @@ When clicking on an open incident you will different information:
 **Closed Incidents:** this section will show you incidents that have been resolved in the past with the timeline and any comments/collaboration that might have been happening and the resolution reason.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/incident-management-page.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/incident-management-page.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}

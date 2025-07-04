@@ -12,17 +12,18 @@
  */
 
 import { Menu, MenuProps } from 'antd';
-import React, { useMemo } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
 import { DataInsightTabs } from '../../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../../utils/DataInsightUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import DataInsightClassBase from '../DataInsightClassBase';
 
 const DataInsightLeftPanel = () => {
-  const { tab } = useParams<{ tab: DataInsightTabs }>();
+  const { tab } = useRequiredParams<{ tab: DataInsightTabs }>();
 
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const menuItems: MenuProps['items'] = useMemo(() => {
     const data = DataInsightClassBase.getLeftSideBar();
@@ -39,7 +40,7 @@ const DataInsightLeftPanel = () => {
   }, []);
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
-    history.push(getDataInsightPathWithFqn(e.key as DataInsightTabs));
+    navigate(getDataInsightPathWithFqn(e.key as DataInsightTabs));
   };
 
   return (

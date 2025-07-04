@@ -1,5 +1,5 @@
 ---
-title: createTag
+title: Create Tag API | OpenMetadata Tagging API
 slug: /main-concepts/metadata-standard/schemas/api/classification/createtag
 ---
 

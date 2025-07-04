@@ -1,5 +1,6 @@
 ---
 title: Run the PowerBI Report Server Connector Externally
+description: Connect Power BI Report Server to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/dashboard/powerbireportserver
 ---
 
@@ -19,7 +20,7 @@ Configure and schedule PowerBI Report Server metadata from CLI:
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/dashboard/powerbireportserver/troubleshooting)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -28,12 +29,12 @@ The PowerBI Report Server should be accessible from the ingestion environment.
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "PowerBIReportServer", 
-    selectServicePath: "/images/v1.9connectors/powerbireportserver/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/powerbireportserver/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/powerbireportserver/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/powerbireportserver/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/powerbireportserver/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/powerbireportserver/service-connection.png",
 } 
 /%}
 
@@ -57,10 +58,10 @@ Web Portal Virtual Directory name which you have configured in your PowerBI Repo
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

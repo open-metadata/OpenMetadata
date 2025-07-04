@@ -1,5 +1,5 @@
 ---
-title: index
+title: Report Data Type Schema | OpenMetadata Report Data Types
 slug: /main-concepts/metadata-standard/schemas/analytics/reportdatatype
 ---
 

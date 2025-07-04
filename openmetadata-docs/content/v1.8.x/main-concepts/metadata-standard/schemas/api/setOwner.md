@@ -1,5 +1,5 @@
 ---
-title: setOwner
+title: Set Owner API | OpenMetadata Ownership API
 slug: /main-concepts/metadata-standard/schemas/api/setowner
 ---
 

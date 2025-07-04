@@ -28,7 +28,7 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Reverse Metadata](/connectors/ingestion/workflows/reverse-metadata)
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -43,7 +43,7 @@ GRANT SELECT ON TABLE svv_table_info to test_user;
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the Redshift ingestion, you will need to install:
 
@@ -81,7 +81,7 @@ This is a sample config for Redshift:
 
 {% codeInfo srNumber=1 %}
 
-**username**: Specify the User to connect to Snoflake. It should have enough privileges to read all the metadata.
+**username**: Specify the User to connect to Redshift. It should have enough privileges to read all the metadata.
 
 {% /codeInfo %}
 
@@ -111,11 +111,11 @@ This is a sample config for Redshift:
 
 
 
-{% partial file="/v1.9connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -166,16 +166,16 @@ source:
       type: Redshift
 ```
 ```yaml {% srNumber=1 %}
-      username: username
+      username: username  # REQUIRED
 ```
 ```yaml {% srNumber=2 %}
       password: password
 ```
 ```yaml {% srNumber=3 %}
-      database: dev
+      database: dev  # REQUIRED - database name
 ```
 ```yaml {% srNumber=4 %}
-      hostPort: cluster.name.region.redshift.amazonaws.com:5439
+      hostPort: cluster.name.region.redshift.amazonaws.com:5439  # REQUIRED - format: host:port
 ```
 ```yaml {% srNumber=5 %}
       # ingestAllDatabases: true
@@ -194,28 +194,28 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.9connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}
 
 
-{% partial file="/v1.9connectors/yaml/query-usage.md" variables={connector: "redshift"} /%}
+{% partial file="/v1.9/connectors/yaml/query-usage.md" variables={connector: "redshift"} /%}
 
-{% partial file="/v1.9connectors/yaml/lineage.md" variables={connector: "redshift"} /%}
+{% partial file="/v1.9/connectors/yaml/lineage.md" variables={connector: "redshift"} /%}
 
-{% partial file="/v1.9connectors/yaml/data-profiler.md" variables={connector: "redshift"} /%}
+{% partial file="/v1.9/connectors/yaml/data-profiler.md" variables={connector: "redshift"} /%}
 
-{% partial file="/v1.9connectors/yaml/auto-classification.md" variables={connector: "redshift"} /%}
+{% partial file="/v1.9/connectors/yaml/auto-classification.md" variables={connector: "redshift"} /%}
 
-{% partial file="/v1.9connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.9/connectors/yaml/data-quality.md" /%}
 
 ## Securing Redshift Connection with SSL in OpenMetadata
 

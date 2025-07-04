@@ -1,5 +1,5 @@
 ---
-title: Observability Alerts
+title: Observability Alerts | OpenMetadata Alerting Guide
 slug: /how-to-guides/data-quality-observability/observability/alerts
 ---
 
@@ -19,6 +19,11 @@ To set up an alert on a test case or test suite, navigate to the observability m
 The first will be to select a source. For data quality you have 2 relevant options:
 - `Test Case`: it will trigger an alert for the specific test case selected
 - `Test Suite`: it will trigger an alert for any test case event linked to the test suite. This is a great way to group alerts and reducing notification fatigue
+- `Table`: Schema changes and table metrocs changes
+- `Pipeline`: Updates to pipeline assets that you have ingested
+- `Ingestion Pipeline (Collate)`: Status changes to your collate ingestion pipelines
+- `Container`: Schema changes for the container asset 
+- `Topics`: Schema changes for the topic asset
 
 {% image
   src="/images/v1.8/features/ingestion/workflows/profiler/alert-source-selection.png"

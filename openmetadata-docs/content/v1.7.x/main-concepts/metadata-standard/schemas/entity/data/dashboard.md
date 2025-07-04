@@ -1,5 +1,5 @@
 ---
-title: dashboard
+title: Dashboard Schema | OpenMetadata Dashboard
 slug: /main-concepts/metadata-standard/schemas/entity/data/dashboard
 ---
 

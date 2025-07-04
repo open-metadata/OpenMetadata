@@ -1,5 +1,6 @@
 ---
 title: Run the Qlik Sense Connector Externally
+description: Configure QlikSense dashboard connectors in OpenMetadata using YAML. Get step-by-step setup instructions, connection parameters, and examples.
 slug: /connectors/dashboard/qliksense/yaml
 ---
 
@@ -19,13 +20,13 @@ Configure and schedule PowerBI metadata and profiler workflows from the OpenMeta
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-qlik-sense-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the PowerBI ingestion, you will need to install:
 
@@ -139,11 +140,11 @@ You will have to replace new lines with `\n` and the final private key that you 
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/dashboard/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/dashboard/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -186,11 +187,11 @@ source:
 ```yaml {% srNumber=6 %}
       validateHostName: false
 ```
-{% partial file="/v1.9connectors/yaml/dashboard/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -221,4 +222,4 @@ Refer to the guide on how to generate authentication certificates so that OpenMe
         rootCertificateData: -----BEGIN CERTIFICATE-----\n....\n...-----END CERTIFICATE-----\n
 ```
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}

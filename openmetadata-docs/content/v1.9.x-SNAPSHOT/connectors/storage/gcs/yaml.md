@@ -18,7 +18,7 @@ Configure and schedule GCS metadata workflows from the CLI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -52,7 +52,7 @@ file at the bucket root.
 
 You can learn more about this [here](/connectors/storage). Keep reading for an example on the shape of the manifest file.
 
-{% partial file="/v1.9connectors/storage/manifest.md" /%}
+{% partial file="/v1.9/connectors/storage/manifest.md" /%}
 
 ## Metadata Ingestion
 
@@ -85,7 +85,7 @@ This is a sample config for Athena:
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/common/gcp-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/gcp-config-def.md" /%}
 
 {% codeInfo srNumber=4 %}
 
@@ -123,11 +123,11 @@ source:
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/storage/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/storage/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -160,7 +160,7 @@ source:
         gcpConfig:
 ```
 
-{% partial file="/v1.9connectors/yaml/common/gcp-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/gcp-config.md" /%}
 
 ```yaml {% srNumber=4 %}
       # taxonomyLocation: us
@@ -176,11 +176,11 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.9connectors/yaml/storage/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/storage/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 

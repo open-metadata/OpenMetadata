@@ -1,5 +1,5 @@
 ---
-title: app
+title: Application Entity Schema | OpenMetadata Entity Applications
 slug: /main-concepts/metadata-standard/schemas/entity/applications/app
 ---
 

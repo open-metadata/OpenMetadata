@@ -14,7 +14,7 @@ import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
@@ -24,7 +24,6 @@ import {
   FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
   TEST_CONNECTION_FAILURE_MESSAGE,
-  TEST_CONNECTION_INFO_MESSAGE,
   TEST_CONNECTION_INITIAL_MESSAGE,
   TEST_CONNECTION_PROGRESS_PERCENTAGE,
   TEST_CONNECTION_SUCCESS_MESSAGE,
@@ -72,6 +71,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   shouldValidateForm = true,
   showDetails = true,
   onTestConnection,
+  hostIp,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -336,7 +336,15 @@ const TestConnection: FC<TestConnectionProps> = ({
         );
 
         if (!isWorkflowCompleted) {
-          setMessage(TEST_CONNECTION_INFO_MESSAGE);
+          let message = t('message.test-connection-taking-too-long.default', {
+            service_type: serviceType,
+          });
+          if (hostIp) {
+            message += t('message.test-connection-taking-too-long.withIp', {
+              ip: hostIp,
+            });
+          }
+          setMessage(message);
           setIsConnectionTimeout(true);
         }
 
@@ -506,10 +514,12 @@ const TestConnection: FC<TestConnectionProps> = ({
       <TestConnectionModal
         errorMessage={errorMessage}
         handleCloseErrorMessage={handleCloseErrorMessage}
+        hostIp={hostIp}
         isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
         progress={progress}
+        serviceType={serviceType}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={handleCancelTestConnectionModal}

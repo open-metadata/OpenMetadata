@@ -1,5 +1,5 @@
 ---
-title: registrationRequest
+title: Registration Request | OpenMetadata Registration API
 slug: /main-concepts/metadata-standard/schemas/auth/registrationrequest
 ---
 

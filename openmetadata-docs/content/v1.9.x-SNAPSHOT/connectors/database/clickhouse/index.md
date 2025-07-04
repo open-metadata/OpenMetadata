@@ -1,5 +1,6 @@
 ---
 title: ClickHouse Connector | OpenMetadata Database Integration
+description: Learn how to connect ClickHouse databases to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration options, and trouble...
 slug: /connectors/database/clickhouse
 ---
 
@@ -31,7 +32,7 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
 {% /collateContent %}
 
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/clickhouse/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/clickhouse/yaml"} /%}
 
 ## Requirements
 
@@ -63,12 +64,12 @@ For the usage and lineage workflow, the user will need `SELECT` privilege. You c
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Clickhouse", 
-    selectServicePath: "/images/v1.9connectors/clickhouse/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/clickhouse/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/clickhouse/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/clickhouse/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/clickhouse/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/clickhouse/service-connection.png",
 } 
 /%}
 
@@ -84,20 +85,20 @@ For the usage and lineage workflow, the user will need `SELECT` privilege. You c
 - **Secure Connection**: Establish secure connection with ClickHouse. ClickHouse supports secure communication over SSL/TLS to protect data in transit, by checking this option, it establishes secure connection with ClickHouse. This flag is useful when you are using `clickhouse+native` connection scheme.
 - **Key File**: The key file path is the location when ClickHouse looks for a file containing the private key needed for secure communication over SSL/TLS. By default, ClickHouse will look for the key file in the `/etc/clickhouse-server directory`, with the file name `server.key`. However, this can be customized in the ClickHouse configuration file (`config.xml`). This flag is useful when you are using `clickhouse+native` connection scheme and the secure connection flag is enabled.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
 {% collateContent %}
-{% partial file="/v1.9connectors/database/clickhouse/reverse-metadata.md" /%}
+{% partial file="/v1.9/connectors/database/clickhouse/reverse-metadata.md" /%}
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

@@ -1,5 +1,5 @@
 ---
-title: createAppRequest
+title: Create App Request | OpenMetadata App Creation
 slug: /main-concepts/metadata-standard/schemas/entity/applications/createapprequest
 ---
 

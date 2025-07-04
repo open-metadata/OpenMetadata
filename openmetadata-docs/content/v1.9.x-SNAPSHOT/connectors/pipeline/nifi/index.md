@@ -1,5 +1,6 @@
 ---
 title: Nifi Connector | OpenMetadata Data Pipeline Integration
+description: Connect Apache NiFi to OpenMetadata seamlessly. Complete setup guide for NiFi pipeline connector with step-by-step configuration and metadata extraction.
 slug: /connectors/pipeline/nifi
 ---
 
@@ -19,7 +20,7 @@ Configure and schedule NiFi metadata workflows from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/pipeline/nifi/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/nifi/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/nifi/yaml"} /%}
 
 ## Requirements
 
@@ -33,12 +34,12 @@ The user should be able to send request to the NiFi API and access the `Resource
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Nifi", 
-    selectServicePath: "/images/v1.9connectors/nifi/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/nifi/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/nifi/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/nifi/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/nifi/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/nifi/service-connection.png",
 } 
 /%}
 
@@ -64,10 +65,10 @@ The user should be able to send request to the NiFi API and access the `Resource
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

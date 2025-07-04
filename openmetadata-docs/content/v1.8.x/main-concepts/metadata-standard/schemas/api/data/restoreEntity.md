@@ -1,5 +1,5 @@
 ---
-title: restoreEntity
+title: Restore Entity API | OpenMetadata Entity Restore
 slug: /main-concepts/metadata-standard/schemas/api/data/restoreentity
 ---
 

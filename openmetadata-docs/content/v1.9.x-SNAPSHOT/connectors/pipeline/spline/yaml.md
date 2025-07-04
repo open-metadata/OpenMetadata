@@ -18,7 +18,7 @@ Configure and schedule Spline metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -35,7 +35,7 @@ You can refer [this](https://github.com/AbsaOSS/spline-getting-started/tree/main
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the Spline ingestion, you will need to install:
 
@@ -76,11 +76,11 @@ This is a sample config for Spline:
 {% /codeInfo %}
 
 
-{% partial file="/v1.9connectors/yaml/pipeline/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/pipeline/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -100,15 +100,15 @@ source:
       uiHostPort: http://localhost:9090
 ```
 
-{% partial file="/v1.9connectors/yaml/pipeline/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}

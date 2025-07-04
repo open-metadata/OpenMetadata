@@ -1,5 +1,6 @@
 ---
 title: MLflow Connector | OpenMetadata ML Model Integration
+description: Connect MLflow to OpenMetadata seamlessly with our comprehensive connector guide. Learn setup, configuration, and ML model metadata integration in minutes.
 slug: /connectors/ml-model/mlflow
 ---
 
@@ -19,7 +20,7 @@ Configure and schedule MLflow metadata and profiler workflows from the OpenMetad
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/ml-model/mlflow/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/ml-model/mlflow/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/ml-model/mlflow/yaml"} /%}
 
 ## Requirements
 
@@ -30,12 +31,12 @@ To extract metadata, OpenMetadata needs two elements:
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Mlflow", 
-    selectServicePath: "/images/v1.9connectors/mlflow/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/mlflow/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/mlflow/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/mlflow/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/mlflow/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/mlflow/service-connection.png",
 } 
 /%}
 
@@ -49,10 +50,10 @@ To extract metadata, OpenMetadata needs two elements:
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/ml-model/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/ml-model/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

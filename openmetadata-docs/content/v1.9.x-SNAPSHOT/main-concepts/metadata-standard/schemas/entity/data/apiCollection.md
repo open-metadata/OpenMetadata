@@ -1,5 +1,5 @@
 ---
-title: apiCollection
+title: API Collection | OpenMetadata API Collection
 slug: /main-concepts/metadata-standard/schemas/entity/data/apicollection
 ---
 

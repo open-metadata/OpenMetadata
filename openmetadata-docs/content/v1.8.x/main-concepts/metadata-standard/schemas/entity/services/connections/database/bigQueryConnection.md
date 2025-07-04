@@ -1,5 +1,5 @@
 ---
-title: bigQueryConnection
+title: BigQuery Connection | OpenMetadata BigQuery
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/bigqueryconnection
 ---
 

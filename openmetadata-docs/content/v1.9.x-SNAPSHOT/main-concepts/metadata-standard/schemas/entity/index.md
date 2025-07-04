@@ -1,5 +1,5 @@
 ---
-title: index
+title: Entity Schemas | OpenMetadata Entity Models
 slug: /main-concepts/metadata-standard/schemas/entity
 ---
 

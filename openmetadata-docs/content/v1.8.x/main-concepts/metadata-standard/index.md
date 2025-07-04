@@ -1,5 +1,5 @@
 ---
-title: Metadata Standard
+title: Metadata Standard | OpenMetadata Core Schema Guide
 slug: /main-concepts/metadata-standard
 ---
 

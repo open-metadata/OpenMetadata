@@ -25,13 +25,13 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 {% collateContent %}
 - [Reverse Metadata](/connectors/ingestion/workflows/reverse-metadata)
 {% /collateContent %}
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the MySQL ingestion, you will need to install:
 
@@ -271,7 +271,7 @@ sink:
   config: {}
 ```
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -409,11 +409,11 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -444,54 +444,60 @@ source:
       type: Mysql
 ```
 ```yaml {% srNumber=1 %}
-      username: <username>
+      username: <username>  # REQUIRED
 ```
 ```yaml {% srNumber=2 %}
-      authType: 
-        password: <password>
+      authType:
+        password: <password>  # Basic Auth - most common
 ```
 ```yaml {% srNumber=3 %}
-      authType: 
-        awsConfig:
+      authType:
+        awsConfig:  # IAM Auth for AWS RDS MySQL
           awsAccessKeyId: access key id
           awsSecretAccessKey: access secret key
           awsRegion: aws region name
 ```
 ```yaml {% srNumber=4 %}
-      hostPort: <hostPort>
+      hostPort: <hostPort>  # REQUIRED - format: host:port
 ```
 ```yaml {% srNumber=5 %}
-      databaseSchema: schema
+      databaseSchema: schema  # Optional: restrict to single schema
+```
+```yaml {% srNumber=6 %}
+      databaseName: database_name  # Optional: custom name in OpenMetadata
+```
+```yaml {% srNumber=7 %}
+      useSlowLogs: false  # Optional: use slow logs for lineage (default: false)
 ```
 
-```yaml {% srNumber=6 %}
+```yaml {% srNumber=8 %}
       # connectionOptions:
       #   key: value
 ```
-```yaml {% srNumber=7 %}
+```yaml {% srNumber=9 %}
       # connectionArguments:
       #   key: value
 ```
 
-{% partial file="/v1.9connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.9connectors/yaml/lineage.md" variables={connector: "mysql"} /%}
+{% partial file="/v1.9/connectors/yaml/lineage.md" variables={connector: "mysql"} /%}
 
-{% partial file="/v1.9connectors/yaml/data-profiler.md" variables={connector: "mysql"} /%}
+{% partial file="/v1.9/connectors/yaml/data-profiler.md" variables={connector: "mysql"} /%}
 
-{% partial file="/v1.9connectors/yaml/auto-classification.md" variables={connector: "mysql"} /%}
+{% partial file="/v1.9/connectors/yaml/auto-classification.md" variables={connector: "mysql"} /%}
 
-{% partial file="/v1.9connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.9/connectors/yaml/data-quality.md" /%}
 
 ## Securing MySQL Connection with SSL in OpenMetadata
 

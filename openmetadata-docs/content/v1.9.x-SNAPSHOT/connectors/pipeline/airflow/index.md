@@ -1,5 +1,6 @@
 ---
 title: Airflow Connector | OpenMetadata Workflow Orchestration
+description: Connect Apache Airflow to OpenMetadata effortlessly. Complete setup guide, configuration steps, and pipeline metadata extraction for seamless data lineage tracking.
 slug: /connectors/pipeline/airflow
 ---
 
@@ -17,7 +18,7 @@ Configure and schedule Airflow metadata workflow from the OpenMetadata UI:
 
 - [Troubleshooting](/connectors/pipeline/airflow/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airflow/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airflow/yaml"} /%}
 
 {% tilesContainer %}
 {% tile
@@ -42,12 +43,12 @@ You can check the version list [here](https://airflow.apache.org/docs/apache-air
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Airflow", 
-    selectServicePath: "/images/v1.9connectors/airflow/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/airflow/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/airflow/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/airflow/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/airflow/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/airflow/service-connection.png",
 } 
 /%}
 
@@ -70,10 +71,10 @@ In terms of `connection` we support the following selections:
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

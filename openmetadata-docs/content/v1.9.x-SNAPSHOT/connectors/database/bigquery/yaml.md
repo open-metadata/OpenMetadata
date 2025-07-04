@@ -1,5 +1,6 @@
 ---
 title: Run the BigQuery Connector Externally
+description: Configure BigQuery database connections in OpenMetadata using YAML. Complete setup guide with authentication, SSL, and connection parameters.
 slug: /connectors/database/bigquery/yaml
 ---
 
@@ -27,13 +28,13 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Reverse Metadata](/connectors/ingestion/workflows/reverse-metadata)
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the BigQuery ingestion, you will need to install:
 
@@ -78,7 +79,7 @@ link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
 
-{% partial file="/v1.9connectors/database/partitioned-tables.md" /%}
+{% partial file="/v1.9/connectors/database/partitioned-tables.md" /%}
 
 ## Metadata Ingestion
 
@@ -109,7 +110,7 @@ You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/common/gcp-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/gcp-config-def.md" /%}
 
 {% codeInfo srNumber=4 %}
 
@@ -149,11 +150,26 @@ credentials:
 the GCP credentials empty. This is why they are not marked as required.
 
 ```yaml
+# ADC authentication with optional billing project
 ...
   config:
     type: BigQuery
     credentials:
-      gcpConfig: {}
+      gcpConfig:
+        type: gcp_adc
+        projectId: ["your-data-project-id"]  # Optional: specify project(s) for data access
+    billingProjectId: "your-billing-project-id"  # Optional: for billing attribution
+...
+```
+
+```yaml
+# ADC authentication without billing project  
+...
+  config:
+    type: BigQuery
+    credentials:
+      gcpConfig:
+        type: gcp_adc
 ...
 ```
 
@@ -166,11 +182,11 @@ the GCP credentials empty. This is why they are not marked as required.
 {% /codeInfo %}
 
 
-{% partial file="/v1.9connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -205,7 +221,7 @@ source:
         gcpConfig:
 ```
 
-{% partial file="/v1.9connectors/yaml/common/gcp-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/gcp-config.md" /%}
 
 ```yaml {% srNumber=4 %}
       # taxonomyLocation: us
@@ -224,27 +240,27 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.9connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.9connectors/yaml/query-usage.md" variables={connector: "bigquery"} /%}
+{% partial file="/v1.9/connectors/yaml/query-usage.md" variables={connector: "bigquery"} /%}
 
-{% partial file="/v1.9connectors/yaml/lineage.md" variables={connector: "bigquery"} /%}
+{% partial file="/v1.9/connectors/yaml/lineage.md" variables={connector: "bigquery"} /%}
 
-{% partial file="/v1.9connectors/yaml/data-profiler.md" variables={connector: "bigquery"} /%}
+{% partial file="/v1.9/connectors/yaml/data-profiler.md" variables={connector: "bigquery"} /%}
 
-{% partial file="/v1.9connectors/yaml/auto-classification.md" variables={connector: "bigquery"} /%}
+{% partial file="/v1.9/connectors/yaml/auto-classification.md" variables={connector: "bigquery"} /%}
 
-{% partial file="/v1.9connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.9/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

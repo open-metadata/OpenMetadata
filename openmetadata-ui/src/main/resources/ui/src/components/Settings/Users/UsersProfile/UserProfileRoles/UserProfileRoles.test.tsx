@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { MOCK_USER_ROLE } from '../../../../../mocks/User.mock';
 import { getRoles } from '../../../../../rest/rolesAPIV1';

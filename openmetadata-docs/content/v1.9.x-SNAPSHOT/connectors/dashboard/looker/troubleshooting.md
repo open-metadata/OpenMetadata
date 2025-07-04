@@ -1,6 +1,7 @@
 ---
 title: Looker Troubleshooting Guide | OpenMetadata Support
+description: Solve Looker connector issues in OpenMetadata with expert troubleshooting guides. Fix authentication, API errors, and data sync problems quickly.
 slug: /connectors/dashboard/looker/troubleshooting
 ---
 
-{% partial file="/v1.9connectors/troubleshooting.md" /%}
+{% partial file="/v1.9/connectors/troubleshooting.md" /%}

@@ -1,5 +1,6 @@
 ---
 title: SAP HANA Connector | OpenMetadata High-Performance DB
+description: Connect SAP HANA to OpenMetadata effortlessly. Step-by-step setup guide, configuration examples, and troubleshooting tips for seamless database integration.
 slug: /connectors/database/sap-hana
 ---
 
@@ -24,7 +25,7 @@ Configure and schedule SAP HANA metadata and profiler workflows from the OpenMet
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Troubleshooting](/connectors/database/sap-hana/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sap-hana/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sap-hana/yaml"} /%}
 
 ## Requirements
 
@@ -64,12 +65,12 @@ Executing the profiler Workflow or data quality tests, will require the user to 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "SAP HANA", 
-    selectServicePath: "/images/v1.9connectors/sap-hana/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/sap-hana/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/sap-hana/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/sap-hana/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/sap-hana/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/sap-hana/service-connection.png",
 } 
 /%}
 
@@ -96,16 +97,16 @@ We support two possible connection types:
 
 - **User Key**: HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port> <USERNAME> <PASSWORD>`.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

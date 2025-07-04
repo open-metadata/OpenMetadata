@@ -29,6 +29,6 @@ This feature is implemented for all Databases at `schema` level. This means that
 **Example: 4 Threads**
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/metadata/multithreading/example-diagram.png"
+  src="/images/v1.9/features/ingestion/workflows/metadata/multithreading/example-diagram.png"
   alt="Example: 4 Threads"
   caption="Small Diagram to depict how multithreading works." /%}

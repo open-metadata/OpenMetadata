@@ -1,5 +1,5 @@
 ---
-title: index
+title: Feed Schema | OpenMetadata Feed Schema and API Documentation
 slug: /main-concepts/metadata-standard/schemas/entity/feed
 ---
 

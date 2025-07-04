@@ -1,5 +1,5 @@
 ---
-title: basic
+title: Basic KPI Schema | OpenMetadata Basic KPI
 slug: /main-concepts/metadata-standard/schemas/datainsight/kpi/basic
 ---
 

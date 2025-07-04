@@ -1,5 +1,5 @@
 ---
-title: index
+title: Internal Config | OpenMetadata Internal Config
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/internal
 ---
 

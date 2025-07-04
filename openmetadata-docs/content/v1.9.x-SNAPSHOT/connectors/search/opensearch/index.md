@@ -1,5 +1,6 @@
 ---
 title: OpenSearch Connector | OpenMetadata Search Integration
+description: Connect OpenMetadata to OpenSearch with our comprehensive connector guide. Setup instructions, configuration options, and troubleshooting tips included.
 slug: /connectors/search/opensearch
 ---
 
@@ -20,7 +21,7 @@ Configure and schedule OpenSearch metadata workflow from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/search/opensearch/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/search/opensearch/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/search/opensearch/yaml"} /%}
 
 ## Requirements
 
@@ -30,12 +31,12 @@ We extract OpenSearch's metadata by using its [API](https://opensearch.org/docs/
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "OpenSearch", 
-    selectServicePath: "/images/v1.9connectors/opensearch/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/opensearch/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/opensearch/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/opensearch/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/opensearch/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/opensearch/service-connection.png",
 } 
 /%}
 
@@ -149,10 +150,10 @@ Possible values:
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/search/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/search/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
