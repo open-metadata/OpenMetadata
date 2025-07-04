@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Form, FormInstance } from 'antd';
+import { NamePath } from 'antd/lib/form/interface';
 import { isString } from 'lodash';
 import React from 'react';
 import {
@@ -219,7 +220,7 @@ describe('DestinationSelectItem component', () => {
         .mockImplementation(() => mockFormInstance as FormInstance);
       const useWatchMock = jest
         .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
+        .mockImplementation((name: NamePath) => {
           if (
             Array.isArray(name) &&
             name[0] === 'destinations' &&
@@ -312,7 +313,7 @@ describe('DestinationSelectItem component', () => {
         .mockImplementation(() => mockFormInstance as FormInstance);
       const useWatchMock = jest
         .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
+        .mockImplementation((name: NamePath) => {
           if (
             Array.isArray(name) &&
             name[0] === 'destinations' &&
@@ -405,7 +406,7 @@ describe('DestinationSelectItem component', () => {
         .mockImplementation(() => mockFormInstance as FormInstance);
       const useWatchMock = jest
         .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
+        .mockImplementation((name: NamePath) => {
           if (
             Array.isArray(name) &&
             name[0] === 'destinations' &&
@@ -498,7 +499,7 @@ describe('DestinationSelectItem component', () => {
         .mockImplementation(() => mockFormInstance as FormInstance);
       const useWatchMock = jest
         .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
+        .mockImplementation((name: NamePath) => {
           if (
             Array.isArray(name) &&
             name[0] === 'destinations' &&

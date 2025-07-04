@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import React from 'react';
 import { getJWTTokenExpiryOptions } from './BotsUtils';
 
 jest.mock('antd', () => ({

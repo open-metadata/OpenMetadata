@@ -12,32 +12,33 @@
  */
 
 import { Select } from 'antd';
+import React from 'react';
 import { TOKEN_EXPIRY_NUMERIC_VALUES_IN_DAYS } from '../constants/User.constants';
 import { JWTTokenExpiry } from '../generated/entity/teams/user';
 import {
   DATE_TIME_WEEKDAY_WITH_ORDINAL,
   formatDateTimeLong,
 } from './date-time/DateTimeUtils';
-import { t } from './i18next/LocalUtil';
+import i18n from './i18next/LocalUtil';
 
 const { Option } = Select;
 
 const getJWTTokenExpiryLabel = (expiry: JWTTokenExpiry) => {
   switch (expiry) {
     case JWTTokenExpiry.OneHour:
-      return t('label.1-hr');
+      return i18n.t('label.1-hr');
     case JWTTokenExpiry.The1:
-      return t('label.1-day');
+      return i18n.t('label.1-day');
     case JWTTokenExpiry.The7:
-      return t('label.number-day-plural', { number: 7 });
+      return i18n.t('label.number-day-plural', { number: 7 });
     case JWTTokenExpiry.The30:
-      return t('label.number-day-plural', { number: 30 });
+      return i18n.t('label.number-day-plural', { number: 30 });
     case JWTTokenExpiry.The60:
-      return t('label.number-day-plural', { number: 60 });
+      return i18n.t('label.number-day-plural', { number: 60 });
     case JWTTokenExpiry.The90:
-      return t('label.number-day-plural', { number: 90 });
+      return i18n.t('label.number-day-plural', { number: 90 });
     case JWTTokenExpiry.Unlimited:
-      return t('label.unlimited');
+      return i18n.t('label.unlimited');
     default:
       return expiry;
   }
