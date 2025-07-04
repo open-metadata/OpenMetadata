@@ -178,6 +178,7 @@
     "@types/recharts": "^1.8.23",
     "@types/showdown": "^2.0.0",
     "@types/testing-library__jest-dom": "^5.9.5",
+    "@types/tinycolor2": "^1.4.6",
     "@types/turndown": "^5.0.4",
     "@types/use-analytics": "^0.0.0",
     "@typescript-eslint/eslint-plugin": "4.31.0",
