@@ -187,5 +187,5 @@ The production build maintains the `${basePath}` template variable system:
 ## 📚 Additional Resources
 
 - [Vite Documentation](https://vitejs.dev/)
-- [Vite Guide](https://vitejs.dev/guide/)
+- [Vite Migration Guide](https://vitejs.dev/guide/migration.html)
 - [React + Vite](https://vitejs.dev/guide/features.html#react)
