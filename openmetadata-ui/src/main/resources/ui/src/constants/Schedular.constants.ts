@@ -102,3 +102,28 @@ export const DEFAULT_SCHEDULE_CRON_HOURLY = '0 * * * *';
 export const DEFAULT_SCHEDULE_CRON_DAILY = '0 0 * * *';
 export const DEFAULT_SCHEDULE_CRON_WEEKLY = '0 0 * * 1';
 export const DEFAULT_SCHEDULE_CRON_MONTHLY = '0 0 1 * *';
+
+// MINUTE: 0-59
+export const MINUTE_PATTERN =
+  /^(\*|\*\/\d+|([0-5]?\d)(-([0-5]?\d))?(\/\d+)?(,([0-5]?\d)(-([0-5]?\d))?(\/\d+)?)*)$/;
+
+// HOUR: 0-23
+export const HOUR_PATTERN =
+  /^(\*|\*\/\d+|([01]?\d|2[0-3])(-([01]?\d|2[0-3]))?(\/\d+)?(,([01]?\d|2[0-3])(-([01]?\d|2[0-3]))?(\/\d+)?)*)$/;
+
+// DAY OF MONTH: 1-31
+export const DAY_OF_MONTH_PATTERN =
+  /^(\*|\*\/\d+|([1-9]|[12]\d|3[01])(-([1-9]|[12]\d|3[01]))?(\/\d+)?(,([1-9]|[12]\d|3[01])(-([1-9]|[12]\d|3[01]))?(\/\d+)?)*)$/;
+
+// MONTH: 1-12 or JAN-DEC
+export const MONTH_PATTERN = new RegExp(
+  '^(\\*|\\*\\/\\d+|([1-9]|1[0-2]|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)' +
+    '(-([1-9]|1[0-2]|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))?(\\/\\d+)?' +
+    '(,([1-9]|1[0-2]|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)' +
+    '(-([1-9]|1[0-2]|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))?(\\/\\d+)?)*)$',
+  'i'
+);
+
+// DAY OF WEEK: 0-6 or SUN-SAT
+export const DAY_OF_WEEK_PATTERN =
+  /^(\*|\*\/\d+|([0-6]|SUN|MON|TUE|WED|THU|FRI|SAT)(-([0-6]|SUN|MON|TUE|WED|THU|FRI|SAT))?(\/\d+)?(,([0-6]|SUN|MON|TUE|WED|THU|FRI|SAT)(-([0-6]|SUN|MON|TUE|WED|THU|FRI|SAT))?(\/\d+)?)*)$/i;
