@@ -262,7 +262,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                     if self._handle_array_column(col):
                         slice_expression = self._get_slice_expression(col)
                         select_columns.append(slice_expression)
-                        logger.info(
+                        logger.debug(
                             f"Limiting array column {col.name} to {max_elements} elements to prevent OOM"
                         )
                     else:
