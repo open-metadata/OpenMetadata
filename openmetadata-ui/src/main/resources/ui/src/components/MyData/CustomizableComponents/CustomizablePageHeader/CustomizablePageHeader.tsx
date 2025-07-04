@@ -26,10 +26,12 @@ export const CustomizablePageHeader = ({
   onReset,
   onSave,
   personaName,
+  disableSave,
 }: {
   onSave: () => Promise<void>;
   onReset: () => void;
   personaName: string;
+  disableSave?: boolean;
 }) => {
   const { t } = useTranslation();
   const { fqn: personaFqn } = useFqn();
@@ -138,6 +140,7 @@ export const CustomizablePageHeader = ({
           </Button>
           <Button
             data-testid="save-button"
+            disabled={disableSave}
             icon={<SaveOutlined />}
             loading={saving}
             type="primary"
