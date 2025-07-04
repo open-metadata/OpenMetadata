@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, {
   Layout,
@@ -41,6 +41,7 @@ import {
   getWidgetFromKey,
 } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import { areLayoutsEqual } from '../../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
@@ -153,6 +154,17 @@ function CustomizeMyData({
     [layout]
   );
 
+  const disableSave = useMemo(() => {
+    const filteredLayout = layout.filter((widget) =>
+      widget.i.startsWith('KnowledgePanel')
+    );
+
+    return areLayoutsEqual(
+      cloneDeep(initialPageData?.layout as WidgetConfig[]),
+      cloneDeep(filteredLayout)
+    );
+  }, [initialPageData?.layout, layout]);
+
   const widgets = useMemo(
     () =>
       layout.map((widget) => (
@@ -228,6 +240,7 @@ function CustomizeMyData({
           entity: t('label.landing-page'),
         })}>
         <CustomizablePageHeader
+          disableSave={disableSave}
           personaName={getEntityName(personaDetails)}
           onReset={handleReset}
           onSave={handleSave}

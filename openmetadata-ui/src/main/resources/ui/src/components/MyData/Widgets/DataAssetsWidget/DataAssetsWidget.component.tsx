@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DragOutlined, MoreOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Dropdown, Row, Space, Typography } from 'antd';
+import { Button, Card, Col, Dropdown, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
@@ -122,104 +122,130 @@ const DataAssetsWidget = ({
     fetchDataAssets();
   }, []);
 
-  return (
-    <Card
-      className="data-assets-explore-widget-container card-widget h-full"
-      data-testid="data-assets-widget"
-      loading={loading}>
-      <Row>
-        <Col span={24}>
-          <div className="d-flex items-center justify-between m-b-xs">
-            <div className="d-flex items-center gap-3 flex-wrap">
-              <Icon
-                className="data-assets-widget-icon display-xs"
-                component={widgetIcon as SvgComponent}
-              />
-              <Typography.Text className="text-md font-semibold">
-                {t('label.data-asset-plural')}
-              </Typography.Text>
-            </div>
-            <Space>
-              {isEditView && (
-                <>
-                  <DragOutlined
-                    className="drag-widget-icon cursor-pointer p-sm border-radius-xs"
-                    data-testid="drag-widget-button"
-                    size={20}
+  const header = useMemo(
+    () => (
+      <Row className="data-assets-header" justify="space-between">
+        <Col className="d-flex items-center h-full min-h-8">
+          <div className="d-flex h-6 w-6 m-r-xs">
+            <Icon
+              className="data-assets-widget-icon display-xs"
+              component={widgetIcon as any}
+            />
+          </div>
+
+          <Typography.Paragraph
+            className="widget-title"
+            ellipsis={{ tooltip: true }}
+            style={{
+              maxWidth: '525px',
+            }}>
+            {t('label.data-asset-plural')}
+          </Typography.Paragraph>
+        </Col>
+
+        <Col>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {isEditView && (
+              <>
+                <DragOutlined
+                  className="drag-widget-icon cursor-pointer widget-header-options"
+                  data-testid="drag-widget-button"
+                  size={20}
+                />
+                <Dropdown
+                  className="widget-header-options"
+                  data-testid="more-button"
+                  menu={{
+                    items: WIDGETS_MORE_MENU_OPTIONS,
+                    selectable: true,
+                    multiple: false,
+                    onClick: handleMoreClick,
+                    className: 'widget-header-menu',
+                  }}
+                  placement="bottomLeft"
+                  trigger={['click']}>
+                  <Button
+                    className=""
+                    data-testid="more-button"
+                    icon={
+                      <MoreOutlined
+                        data-testid="more-widget-button"
+                        size={20}
+                      />
+                    }
                   />
-                  <Dropdown
-                    className="widget-options"
-                    data-testid="widget-options"
-                    menu={{
-                      items: WIDGETS_MORE_MENU_OPTIONS,
-                      selectable: true,
-                      multiple: false,
-                      onClick: handleMoreClick,
-                      className: 'widget-header-menu',
-                    }}
-                    placement="bottomLeft"
-                    trigger={['click']}>
-                    <Button
-                      className="more-options-btn"
-                      data-testid="more-options-btn"
-                      icon={<MoreOutlined size={20} />}
-                    />
-                  </Dropdown>
-                </>
-              )}
-            </Space>
+                </Dropdown>
+              </>
+            )}
           </div>
         </Col>
-        <Col className="data-assets-explore-widget-body" span={24}>
-          {isEmpty(services) ? (
-            <ErrorPlaceHolder
-              className="border-none p-t-box"
-              icon={
-                <NoDataAssetsPlaceholder
-                  height={SIZE.LARGE}
-                  width={SIZE.LARGE}
-                />
-              }
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <div className="d-flex flex-col items-center">
-                <Typography.Text className="text-md font-semibold m-b-sm">
-                  {t('message.no-data-assets-yet')}
-                </Typography.Text>
-                <Typography.Text className="placeholder-text text-sm font-regular">
-                  {t('message.no-data-assets-message')}
-                </Typography.Text>
-                <Button
-                  className="m-t-md"
-                  type="primary"
-                  onClick={() => {
-                    navigate(ROUTES.EXPLORE);
-                  }}>
-                  {t('label.add-entity', {
-                    entity: t('label.data-asset-plural'),
-                  })}
-                </Button>
-              </div>
-            </ErrorPlaceHolder>
-          ) : (
-            <div className="cards-scroll-container flex-1 overflow-y-auto">
-              <Row className="d-flex gap-4 flex-wrap flex-1" gutter={[16, 16]}>
-                {services.map((service) => (
-                  <Col
-                    key={service.key}
-                    lg={6}
-                    md={8}
-                    sm={12}
-                    xl={6}
-                    xs={24}
-                    xxl={4}>
-                    <DataAssetCard service={service} />
-                  </Col>
-                ))}
-              </Row>
-            </div>
-          )}
-        </Col>
       </Row>
+    ),
+    [isEditView, widgetIcon, handleMoreClick]
+  );
+
+  const emptyState = useMemo(
+    () => (
+      <ErrorPlaceHolder
+        className="border-none p-t-box"
+        icon={
+          <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
+        }
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <div className="d-flex flex-col items-center">
+          <Typography.Text className="text-md font-semibold m-b-sm">
+            {t('message.no-data-assets-yet')}
+          </Typography.Text>
+          <Typography.Text className="placeholder-text text-sm font-regular">
+            {t('message.no-data-assets-message')}
+          </Typography.Text>
+          <Button
+            className="m-t-md"
+            type="primary"
+            onClick={() => {
+              navigate(ROUTES.EXPLORE);
+            }}>
+            {t('label.add-entity', {
+              entity: t('label.data-asset-plural'),
+            })}
+          </Button>
+        </div>
+      </ErrorPlaceHolder>
+    ),
+    [t, navigate]
+  );
+
+  const dataAssetsContent = useMemo(
+    () => (
+      <div className="cards-scroll-container flex-1 overflow-y-auto">
+        <Row className="d-flex gap-4 flex-wrap flex-1" gutter={[16, 16]}>
+          {services.map((service) => (
+            <Col key={service.key} lg={6} md={8} sm={12} xl={6} xs={24} xxl={4}>
+              <DataAssetCard service={service} />
+            </Col>
+          ))}
+        </Row>
+      </div>
+    ),
+    [services]
+  );
+
+  const bodyContent = useMemo(
+    () => (
+      <div className="data-assets-explore-widget-body">
+        {isEmpty(services) ? emptyState : dataAssetsContent}
+      </div>
+    ),
+    [services, emptyState, dataAssetsContent]
+  );
+
+  return (
+    <Card
+      className="data-assets-explore-widget-container card-widget"
+      data-testid="data-assets-widget"
+      loading={loading}>
+      {header}
+      {bodyContent}
     </Card>
   );
 };

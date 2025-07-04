@@ -10,15 +10,36 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../../styles/variables.less');
+@import url('../../../../styles/variables.less');
 
 .data-assets-explore-widget-container {
-  height: 100%; // Ensure the Card takes full height
-  display: flex;
-  flex-direction: column;
+  .ant-card-body {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0px;
+  }
+
+  .widget-title {
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 28px;
+    margin-bottom: 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .data-assets-header {
+    padding: 12px 20px 12px 20px;
+    border-bottom: 1px solid @grey-15;
+  }
+
   .data-assets-explore-widget-body {
     flex: 1;
-    overflow-y: auto; // Make this scrollable
+    overflow-y: auto;
+    padding: 0;
+    margin-top: 0;
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
@@ -68,8 +89,6 @@
   }
 
   .drag-widget-icon {
-    border: 1px solid @grey-2;
-    border-radius: 8px;
     display: none;
   }
 
@@ -82,4 +101,46 @@
   .drag-widget-icon {
     display: block;
   }
+}
+
+.widget-header-options {
+  padding: 10px;
+  height: 40px;
+  min-width: 40px;
+  max-width: 100px;
+  border-radius: 8px;
+  border: 1px solid @grey-15;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: @white;
+
+  &:hover {
+    background-color: @grey-1;
+    border-color: @primary-color;
+  }
+
+  .widget-header-menu {
+    padding: 8px;
+    border-radius: 12px;
+  }
+}
+
+.ant-dropdown-menu-item {
+  padding: 16px 24px !important;
+  height: 40px !important;
+
+  &:hover {
+    color: @blue-34 !important;
+    background-color: @blue-33 !important;
+    font-weight: 500 !important;
+  }
+}
+
+.ant-dropdown-menu-item-active {
+  color: @blue-34 !important;
+  background-color: @blue-33 !important;
+  font-weight: 500 !important;
 }
