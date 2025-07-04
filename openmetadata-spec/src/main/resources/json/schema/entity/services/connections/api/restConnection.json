@@ -40,6 +40,12 @@
       "type": "string",
       "format": "uri"
     },
+    "openAPISchemaFilePath": {
+      "expose": true,
+      "title": "OpenAPI Schema File Path",
+      "description": "Local file path to the OpenAPI schema file (JSON format).",
+      "type": "string"
+    },
     "apiCollectionFilterPattern": {
       "description": "Regex to only fetch api collections with names matching the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
@@ -52,6 +58,5 @@
       "default": true
     }
   },
-  "additionalProperties": false,
-  "required": ["openAPISchemaURL"]
+  "additionalProperties": false
 }
