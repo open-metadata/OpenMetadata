@@ -256,7 +256,7 @@ export const UserTeamSelectableList = ({
     <Popover
       destroyTooltipOnHide
       content={
-        <FocusTrapWithContainer>
+        <FocusTrapWithContainer active={popoverProps?.open || false}>
           {previewSelected && (
             <Space
               className="user-team-popover-header w-full p-x-sm p-y-md"

@@ -25,7 +25,7 @@ import {
 import { AxiosError } from 'axios';
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -46,6 +46,7 @@ const TierCard = ({
   popoverProps,
   onClose,
 }: TierCardProps) => {
+  const popoverRef = useRef<any>(null);
   const [tiers, setTiers] = useState<Array<Tag>>([]);
   const [tierCardData, setTierCardData] = useState<Array<CardWithListItems>>(
     []
@@ -98,6 +99,7 @@ const TierCard = ({
     const tier = tiers.find((tier) => tier.fullyQualifiedName === value);
     await updateTier?.(tier);
     setIsLoadingTierData(false);
+    popoverRef.current?.close();
   };
 
   const handleTierSelection = async ({
@@ -107,6 +109,7 @@ const TierCard = ({
   };
 
   const handleCloseTier = async () => {
+    popoverRef.current?.close();
     onClose?.();
   };
 
@@ -120,7 +123,7 @@ const TierCard = ({
     <Popover
       className="p-0"
       content={
-        <FocusTrapWithContainer>
+        <FocusTrapWithContainer active={popoverProps?.open || false}>
           <Card
             className="tier-card"
             data-testid="cards"
@@ -207,6 +210,7 @@ const TierCard = ({
       }
       overlayClassName="tier-card-popover"
       placement="bottomRight"
+      ref={popoverRef}
       showArrow={false}
       trigger="click"
       onOpenChange={(visible) =>

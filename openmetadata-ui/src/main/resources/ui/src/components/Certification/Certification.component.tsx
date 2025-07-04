@@ -160,7 +160,7 @@ const Certification = ({
     <Popover
       className="p-0"
       content={
-        <FocusTrapWithContainer>
+        <FocusTrapWithContainer active={popoverProps?.open || false}>
           <Card
             bordered={false}
             className="certification-card"
