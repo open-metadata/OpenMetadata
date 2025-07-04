@@ -15,7 +15,7 @@ import test from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
 import { addAndTriggerAutoClassificationPipeline } from '../../utils/autoClassification';
-import { redirectToHomePage } from '../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const mysqlService = new MysqlIngestionClass({
@@ -102,10 +102,7 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
       .toBeAttached();
 
     // Delete the created service
-    await settingClick(
-      page,
-      mysqlService.category as unknown as SettingOptionsType
-    );
-    await mysqlService.deleteService(page);
+    const { apiContext } = await getApiContext(page);
+    await mysqlService.deleteServiceByAPI(apiContext);
   });
 });
