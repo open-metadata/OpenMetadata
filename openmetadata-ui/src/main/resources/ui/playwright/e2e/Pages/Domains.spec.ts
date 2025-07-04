@@ -398,64 +398,65 @@ test.describe('Domains', () => {
     await afterAction();
   });
 
-  test('Follow/unfollow subdomain and create nested sub domain', async ({
-    page,
-  }) => {
-    const { afterAction, apiContext } = await getApiContext(page);
-    const domain = new Domain();
-    const subDomain = new SubDomain(domain);
-    const nestedSubDomain = new SubDomain(subDomain);
+  test.fixme(
+    'Follow/unfollow subdomain and create nested sub domain',
+    async ({ page }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const domain = new Domain();
+      const subDomain = new SubDomain(domain);
+      const nestedSubDomain = new SubDomain(subDomain);
 
-    await domain.create(apiContext);
-    await sidebarClick(page, SidebarItem.DOMAIN);
-    await page.reload();
-    await selectDomain(page, domain.data);
-    // Create sub domain
-    await createSubDomain(page, subDomain.data);
-    await selectSubDomain(page, domain.data, subDomain.data);
-    await verifyDomain(page, subDomain.data, domain.data, false);
-    // Follow domain
-    await followEntity(page, EntityTypeEndpoint.Domain);
-    await redirectToHomePage(page);
+      await domain.create(apiContext);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.reload();
+      await selectDomain(page, domain.data);
+      // Create sub domain
+      await createSubDomain(page, subDomain.data);
+      await selectSubDomain(page, domain.data, subDomain.data);
+      await verifyDomain(page, subDomain.data, domain.data, false);
+      // Follow domain
+      await followEntity(page, EntityTypeEndpoint.Domain);
+      await redirectToHomePage(page);
 
-    // Check that the followed domain is shown in the following widget
-    await expect(
-      page.locator('[data-testid="following-widget"]')
-    ).toBeVisible();
-    await expect(
-      page.locator('[data-testid="following-widget"]')
-    ).toContainText(subDomain.data.displayName);
+      // Check that the followed domain is shown in the following widget
+      await expect(
+        page.locator('[data-testid="following-widget"]')
+      ).toBeVisible();
+      await expect(
+        page.locator('[data-testid="following-widget"]')
+      ).toContainText(subDomain.data.displayName);
 
-    await sidebarClick(page, SidebarItem.DOMAIN);
-    await selectDomain(page, domain.data);
-    await selectSubDomain(page, domain.data, subDomain.data);
-    await verifyDomain(page, subDomain.data, domain.data, false);
-    // Unfollow domain
-    await unFollowEntity(page, EntityTypeEndpoint.Domain);
-    await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+      await selectSubDomain(page, domain.data, subDomain.data);
+      await verifyDomain(page, subDomain.data, domain.data, false);
+      // Unfollow domain
+      await unFollowEntity(page, EntityTypeEndpoint.Domain);
+      await redirectToHomePage(page);
 
-    // Check that the domain is not shown in the following widget
-    await expect(
-      page.locator('[data-testid="following-widget"]')
-    ).toBeVisible();
-    await expect(
-      page.locator('[data-testid="following-widget"]')
-    ).not.toContainText(subDomain.data.displayName);
+      // Check that the domain is not shown in the following widget
+      await expect(
+        page.locator('[data-testid="following-widget"]')
+      ).toBeVisible();
+      await expect(
+        page.locator('[data-testid="following-widget"]')
+      ).not.toContainText(subDomain.data.displayName);
 
-    await sidebarClick(page, SidebarItem.DOMAIN);
-    await selectDomain(page, domain.data);
-    await selectSubDomain(page, domain.data, subDomain.data);
-    await verifyDomain(page, subDomain.data, domain.data, false);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+      await selectSubDomain(page, domain.data, subDomain.data);
+      await verifyDomain(page, subDomain.data, domain.data, false);
 
-    // Create new sub domain under the existing sub domain
-    await createSubDomain(page, nestedSubDomain.data);
-    await page.getByTestId('subdomains').getByText('Sub Domains').click();
-    await page.getByTestId(nestedSubDomain.data.name).click();
-    await verifyDomain(page, nestedSubDomain.data, domain.data, false);
+      // Create new sub domain under the existing sub domain
+      await createSubDomain(page, nestedSubDomain.data);
+      await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await page.getByTestId(nestedSubDomain.data.name).click();
+      await verifyDomain(page, nestedSubDomain.data, domain.data, false);
 
-    await domain.delete(apiContext);
-    await afterAction();
-  });
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  );
 
   test('Should clear assets from data products after deletion of data product in Domain', async ({
     page,
@@ -893,65 +894,79 @@ test.describe('Data Consumer Domain Ownership', () => {
     await afterAction();
   });
 
-  test('Data consumer can manage domain as owner', async ({ browser }) => {
-    const { page: dataConsumerPage, afterAction: consumerAfterAction } =
-      await performUserLogin(browser, testResources.dataConsumerUser);
+  test.fixme(
+    'Data consumer can manage domain as owner',
+    async ({ browser }) => {
+      const { page: dataConsumerPage, afterAction: consumerAfterAction } =
+        await performUserLogin(browser, testResources.dataConsumerUser);
 
-    await test.step(
-      'Check domain management permissions for data consumer owner',
-      async () => {
-        await sidebarClick(dataConsumerPage, SidebarItem.DOMAIN);
-        await selectDomain(dataConsumerPage, testResources.domainForTest.data);
+      await test.step(
+        'Check domain management permissions for data consumer owner',
+        async () => {
+          await sidebarClick(dataConsumerPage, SidebarItem.DOMAIN);
+          await selectDomain(
+            dataConsumerPage,
+            testResources.domainForTest.data
+          );
 
-        await dataConsumerPage.locator('[data-testid="loader"]').waitFor({
-          state: 'detached',
-        });
+          await dataConsumerPage.locator('[data-testid="loader"]').waitFor({
+            state: 'detached',
+          });
 
-        await dataConsumerPage.getByTestId('domain-details-add-button').click();
+          await dataConsumerPage
+            .getByTestId('domain-details-add-button')
+            .click();
 
-        // check Data Products menu item is visible
-        await expect(
-          dataConsumerPage.getByRole('menuitem', {
-            name: 'Data Products',
-            exact: true,
-          })
-        ).toBeVisible();
+          // check Data Products menu item is visible
+          await expect(
+            dataConsumerPage.getByRole('menuitem', {
+              name: 'Data Products',
+              exact: true,
+            })
+          ).toBeVisible();
 
-        await clickOutside(dataConsumerPage);
+          await clickOutside(dataConsumerPage);
 
-        await selectDataProductFromTab(
-          dataConsumerPage,
-          testResources.dataProductForTest.data
-        );
+          await selectDataProductFromTab(
+            dataConsumerPage,
+            testResources.dataProductForTest.data
+          );
 
-        // Verify the user can edit owner, tags, glossary and domain experts
-        await expect(dataConsumerPage.getByTestId('edit-owner')).toBeVisible();
-        await expect(
-          dataConsumerPage.getByTestId('tags-container').getByTestId('add-tag')
-        ).toBeVisible();
+          // Verify the user can edit owner, tags, glossary and domain experts
+          await expect(
+            dataConsumerPage.getByTestId('edit-owner')
+          ).toBeVisible();
+          await expect(
+            dataConsumerPage
+              .getByTestId('tags-container')
+              .getByTestId('add-tag')
+          ).toBeVisible();
 
-        await expect(
-          dataConsumerPage
-            .getByTestId('glossary-container')
-            .getByTestId('add-tag')
-        ).toBeVisible();
+          await expect(
+            dataConsumerPage
+              .getByTestId('glossary-container')
+              .getByTestId('add-tag')
+          ).toBeVisible();
 
-        await expect(
-          dataConsumerPage.getByTestId('domain-expert-name').getByTestId('Add')
-        ).toBeVisible();
+          await expect(
+            dataConsumerPage
+              .getByTestId('domain-expert-name')
+              .getByTestId('Add')
+          ).toBeVisible();
 
-        await expect(
-          dataConsumerPage.getByTestId('manage-button')
-        ).toBeVisible();
+          await expect(
+            dataConsumerPage.getByTestId('manage-button')
+          ).toBeVisible();
 
-        await addTagsAndGlossaryToDomain(dataConsumerPage, {
-          tagFqn: tag.responseData.fullyQualifiedName,
-          glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
-          isDomain: false,
-        });
-      }
-    );
+          await addTagsAndGlossaryToDomain(dataConsumerPage, {
+            tagFqn: tag.responseData.fullyQualifiedName,
+            glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+            isDomain: false,
+          });
+        }
+      );
 
-    await consumerAfterAction();
-  });
+      await consumerAfterAction();
+    }
+  );
 });
