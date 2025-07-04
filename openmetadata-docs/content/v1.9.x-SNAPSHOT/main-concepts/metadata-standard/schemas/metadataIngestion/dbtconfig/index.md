@@ -1,5 +1,5 @@
 ---
-title: index
+title: dbt Configuration | OpenMetadata dbt Configuration Details
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig
 ---
 

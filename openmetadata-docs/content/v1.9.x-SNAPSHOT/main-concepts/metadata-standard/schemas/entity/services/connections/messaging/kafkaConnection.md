@@ -1,5 +1,5 @@
 ---
-title: kafkaConnection
+title: Kafka Connection | OpenMetadata Kafka Messaging Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/kafkaconnection
 ---
 

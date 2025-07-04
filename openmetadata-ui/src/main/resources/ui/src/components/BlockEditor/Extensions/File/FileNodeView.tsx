@@ -14,7 +14,7 @@ import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Popover, Spin, Tabs } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UPLOADED_ASSETS_URL } from '../../../../constants/BlockEditor.constants';
 import Loader from '../../../common/Loader/Loader';

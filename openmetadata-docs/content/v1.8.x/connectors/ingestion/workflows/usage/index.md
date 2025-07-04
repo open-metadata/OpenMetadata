@@ -1,5 +1,5 @@
 ---
-title: Usage Workflow
+title: Usage Workflow Guide | OpenMetadata Ingestion Workflows
 slug: /connectors/ingestion/workflows/usage
 ---
 

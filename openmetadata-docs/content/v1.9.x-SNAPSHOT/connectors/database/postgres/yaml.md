@@ -282,24 +282,24 @@ source:
       type: PostgreSQL
 ```
 ```yaml {% srNumber=1 %}
-      username: username
+      username: username  # REQUIRED
 ```
 ```yaml {% srNumber=2 %}
-      authType: 
-            password: <password>
+      authType:
+        password: <password>  # Basic Auth - most common
 ```
 ```yaml {% srNumber=3 %}
-      authType: 
-            awsConfig:
-                  awsAccessKeyId: access key id
-                  awsSecretAccessKey: access secret key
-                  awsRegion: aws region name
+      authType:
+        awsConfig:  # IAM Auth for AWS RDS PostgreSQL
+          awsAccessKeyId: access key id
+          awsSecretAccessKey: access secret key
+          awsRegion: aws region name
 ```
 ```yaml {% srNumber=4 %}
-      hostPort: localhost:5432
+      hostPort: localhost:5432  # REQUIRED - format: host:port
 ```
 ```yaml {% srNumber=5 %}
-      database: database
+      database: database  # REQUIRED - database name
 ```
 ```yaml {% srNumber=6 %}
       ingestAllDatabases: true

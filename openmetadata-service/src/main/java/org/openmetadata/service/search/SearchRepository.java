@@ -87,6 +87,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -105,7 +106,6 @@ import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -137,7 +137,8 @@ public class SearchRepository {
           FIELD_DISPLAY_NAME);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
-  @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
+  @Getter private final ElasticSearchConfiguration searchConfiguration;
+  @Getter private final int maxDBConnections;
 
   @Getter private final String clusterAlias;
 
@@ -154,18 +155,17 @@ public class SearchRepository {
 
   protected NLQService nlqService;
 
-  public SearchRepository(ElasticSearchConfiguration config) {
-    elasticSearchConfiguration = config;
-    searchClient = buildSearchClient(config);
+  public SearchRepository(ElasticSearchConfiguration config, int maxDBConnections) {
+    this.maxDBConnections = maxDBConnections;
+    searchConfiguration = config;
+    searchClient = buildSearchClient(searchConfiguration);
     searchIndexFactory = buildIndexFactory();
     language =
-        config != null && config.getSearchIndexMappingLanguage() != null
-            ? config.getSearchIndexMappingLanguage().value()
+        searchConfiguration != null && searchConfiguration.getSearchIndexMappingLanguage() != null
+            ? searchConfiguration.getSearchIndexMappingLanguage().value()
             : "en";
-    clusterAlias = config != null ? config.getClusterAlias() : "";
+    clusterAlias = searchConfiguration != null ? searchConfiguration.getClusterAlias() : "";
     loadIndexMappings();
-
-    // Register the search index handler as the primary handler for search operations
     registerSearchIndexHandler();
   }
 
@@ -187,7 +187,7 @@ public class SearchRepository {
     if (searchClient == null) {
       synchronized (SearchRepository.class) {
         if (searchClient == null) {
-          searchClient = buildSearchClient(elasticSearchConfiguration);
+          searchClient = buildSearchClient(searchConfiguration);
         }
       }
     }
@@ -773,7 +773,7 @@ public class SearchRepository {
               fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
               scriptTxt.append(" ");
             }
-          } catch (UnhandledServerException e) {
+          } catch (JsonParsingException e) {
             scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
           }
         }
@@ -795,7 +795,7 @@ public class SearchRepository {
                     field.getName(),
                     field.getName()));
             fieldData.put(field.getName(), newEntityReference);
-          } catch (UnhandledServerException e) {
+          } catch (JsonParsingException e) {
             if (field.getName().equals(Entity.FIELD_TEST_SUITES)) {
               scriptTxt.append(PROPAGATE_TEST_SUITES_SCRIPT);
               fieldData.put(Entity.FIELD_TEST_SUITES, field.getNewValue());
@@ -838,7 +838,7 @@ public class SearchRepository {
               fieldData.put(field.getName(), entityReference);
             }
             scriptTxt.append(" ");
-          } catch (UnhandledServerException e) {
+          } catch (JsonParsingException e) {
             if (field.getName().equals(FIELD_DISPLAY_NAME)) {
               String fieldPath =
                   getFieldPath(entity.getEntityReference().getType(), field.getName());

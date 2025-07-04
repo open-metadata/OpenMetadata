@@ -1195,6 +1195,10 @@ export interface TestCaseDefinitions {
     computePassedFailedRowCount?: boolean;
     parameterValues?:             TestCaseParameterValue[];
     /**
+     * Tags to apply
+     */
+    tags?: TagLabel[];
+    /**
      * Fully qualified name of the test definition.
      */
     testDefinition?: string;
@@ -2077,6 +2081,8 @@ export interface ServiceConnection {
  *
  * Cockroach Database Connection Config
  *
+ * SSAS Metadata Database Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -2420,6 +2426,8 @@ export interface ConfigClass {
      *
      * Password to connect to Exasol.
      *
+     * Password
+     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -2524,6 +2532,8 @@ export interface ConfigClass {
      *
      * Username to connect to Cockroach. This user should have privileges to read all the
      * metadata in Cockroach.
+     *
+     * Username
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -2912,8 +2922,10 @@ export interface ConfigClass {
      * The maximum amount of time (in seconds) to wait for a successful connection to the data
      * source. If the connection attempt takes longer than this timeout period, an error will be
      * returned.
+     *
+     * Connection timeout in seconds.
      */
-    connectionTimeout?: number;
+    connectionTimeout?: number | number;
     /**
      * Databricks compute resources URL.
      */
@@ -3149,6 +3161,10 @@ export interface ConfigClass {
      * Client SSL/TLS settings.
      */
     tls?: SSLTLSSettings;
+    /**
+     * HTTP Link for SSAS ACCESS
+     */
+    httpConnection?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -5462,6 +5478,7 @@ export enum RESTType {
     Snowflake = "Snowflake",
     Spark = "Spark",
     Spline = "Spline",
+    Ssas = "SSAS",
     Ssis = "SSIS",
     Stitch = "Stitch",
     Superset = "Superset",

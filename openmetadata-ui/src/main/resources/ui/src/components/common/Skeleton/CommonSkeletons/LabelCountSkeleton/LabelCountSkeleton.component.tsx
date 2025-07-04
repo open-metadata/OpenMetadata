@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Row, Skeleton } from 'antd';
-import React from 'react';
 import { LabelCountSkeletonProps } from '../../Skeleton.interfaces';
 
 const LabelCountSkeleton = ({

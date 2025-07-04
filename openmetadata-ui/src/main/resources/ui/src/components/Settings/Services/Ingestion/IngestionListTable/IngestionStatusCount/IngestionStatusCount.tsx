@@ -12,7 +12,7 @@
  */
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { getIngestionStatusCountData } from '../../../../../../utils/IngestionUtils';
 import './ingestion-status-count.less';
 import { IngestionStatusCountProps } from './IngestionStatusCount.interface';

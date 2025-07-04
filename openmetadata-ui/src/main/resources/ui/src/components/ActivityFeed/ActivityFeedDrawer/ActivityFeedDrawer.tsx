@@ -13,7 +13,7 @@
 
 import { Col, Drawer, Row } from 'antd';
 import classNames from 'classnames';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';

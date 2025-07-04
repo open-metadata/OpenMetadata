@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { CSSProperties } from 'react';
 import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
 import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
@@ -92,7 +91,7 @@ export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
 export const RUNNER = 'ingestionRunner';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
-export const ERROR500 = t('message.something-went-wrong');
+export const ERROR500 = i18n.t('message.something-went-wrong');
 
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
@@ -313,10 +312,11 @@ export const SOCKET_EVENTS = {
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
+  MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
-  '/database/': [t('message.in-this-database')],
+  '/database/': [i18n.t('message.in-this-database')],
 };
 
 export const NOTIFICATION_READ_TIMER = 2500;
