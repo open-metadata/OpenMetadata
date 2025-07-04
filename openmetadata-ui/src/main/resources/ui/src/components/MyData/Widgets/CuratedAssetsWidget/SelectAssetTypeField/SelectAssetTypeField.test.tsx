@@ -82,8 +82,7 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
       form={form}
       initialValues={{
         resources: ['table'],
-      }}
-    >
+      }}>
       {children}
     </Form>
   );
@@ -209,8 +208,7 @@ describe('SelectAssetTypeField', () => {
           form={form}
           initialValues={{
             resources: [],
-          }}
-        >
+          }}>
           {children}
         </Form>
       );
@@ -252,8 +250,7 @@ describe('SelectAssetTypeField', () => {
           form={form}
           initialValues={{
             resources: ['table'],
-          }}
-        >
+          }}>
           {children}
         </Form>
       );

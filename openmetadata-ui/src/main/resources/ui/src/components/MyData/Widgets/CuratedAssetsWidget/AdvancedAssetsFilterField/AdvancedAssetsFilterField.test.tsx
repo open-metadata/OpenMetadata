@@ -94,8 +94,7 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
         queryFilter: '{"query":{"bool":{"must":[]}}}',
         resources: ['table'],
         title: 'Test Widget',
-      }}
-    >
+      }}>
       {children}
     </Form>
   );
@@ -216,8 +215,7 @@ describe('AdvancedAssetsFilterField', () => {
             queryFilter: '',
             resources: ['table'],
             title: 'Test Widget',
-          }}
-        >
+          }}>
           {children}
         </Form>
       );

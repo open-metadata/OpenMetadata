@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import FollowingWidget from './FollowingWidget';
 
@@ -20,13 +20,24 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <p data-testid="link">{children}</p>
     )),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: {
+      id: '1',
+      name: 'testUser',
+      teams: [],
+    },
+  }),
 }));
 
 const mockProps = {
   followedData: [
     {
       id: '1',
-      type: 'data',
+      type: 'table',
       name: 'Data 1',
       description: 'Description 1',
       displayName: 'Data 1',
@@ -36,9 +47,10 @@ const mockProps = {
       inherited: false,
     },
   ],
-  followedDataCount: 1,
   isLoadingOwnedData: false,
   widgetKey: 'testKey',
+  handleLayoutUpdate: jest.fn(),
+  currentLayout: [],
 };
 
 describe('FollowingWidget', () => {
@@ -46,41 +58,44 @@ describe('FollowingWidget', () => {
     render(<FollowingWidget {...mockProps} />);
 
     expect(screen.getByTestId('following-widget')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('following-data-total-count')
-    ).toBeInTheDocument();
-    expect(screen.getByText('label.following')).toBeInTheDocument();
+    expect(screen.getByText('label.following-assets')).toBeInTheDocument();
   });
 
   it('should render loading state', () => {
     render(<FollowingWidget {...mockProps} isLoadingOwnedData />);
 
-    expect(screen.getByTestId('entity-list-skeleton')).toBeInTheDocument();
+    expect(screen.getByTestId('following-widget')).toBeInTheDocument();
   });
 
   it('should render empty state', () => {
     render(<FollowingWidget {...mockProps} followedData={[]} />);
 
-    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('following-widget')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.not-following-any-assets-yet')
+    ).toBeInTheDocument();
     expect(
       screen.getByText('message.not-followed-anything')
     ).toBeInTheDocument();
   });
 
-  it('should remove widget when close button is clicked', async () => {
-    const handleRemoveWidget = jest.fn();
+  it('should show edit controls when in edit view', () => {
+    render(<FollowingWidget {...mockProps} isEditView />);
 
-    render(
-      <FollowingWidget
-        {...mockProps}
-        isEditView
-        handleRemoveWidget={handleRemoveWidget}
-      />
-    );
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('remove-widget-button'));
-    });
+    expect(screen.getByTestId('drag-widget-button')).toBeInTheDocument();
+    expect(screen.getByTestId('more-options-btn')).toBeInTheDocument();
+  });
 
-    expect(handleRemoveWidget).toHaveBeenCalledWith('testKey');
+  it('should render followed data items', () => {
+    render(<FollowingWidget {...mockProps} />);
+
+    expect(screen.getByText('Data 1')).toBeInTheDocument();
+    expect(screen.getByTestId('Following-Data 1')).toBeInTheDocument();
+  });
+
+  it('should show view more link', () => {
+    render(<FollowingWidget {...mockProps} />);
+
+    expect(screen.getByText('label.view-more-capital')).toBeInTheDocument();
   });
 });

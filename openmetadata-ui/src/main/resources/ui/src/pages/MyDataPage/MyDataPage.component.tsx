@@ -52,7 +52,6 @@ const MyDataPage = () => {
   const { currentUser, selectedPersona } = useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
-  const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
@@ -133,7 +132,6 @@ const MyDataPage = () => {
         filters: `followers:${currentUser.id}`,
       });
 
-      setFollowedDataCount(res?.hits?.total.value ?? 0);
       setFollowedData(res.hits.hits.map((hit) => hit._source));
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -163,7 +161,6 @@ const MyDataPage = () => {
           {getWidgetFromKey({
             announcements: announcements,
             followedData,
-            followedDataCount,
             isLoadingOwnedData: isLoadingOwnedData,
             widgetConfig: widget,
             currentLayout: layout,
@@ -175,7 +172,6 @@ const MyDataPage = () => {
       isAnnouncementLoading,
       announcements,
       followedData,
-      followedDataCount,
       isLoadingOwnedData,
     ]
   );
@@ -217,11 +213,12 @@ const MyDataPage = () => {
       <div className="grid-wrapper">
         <CustomiseLandingPageHeader
           overlappedContainer
+          onHomePage
           // onBackgroundColorUpdate={handleBackgroundColorUpdate} TODO: Update this updation call when we get the api
         />
         <ReactGridLayout
           className="grid-container p-x-box"
-          cols={3}
+          cols={customizePageClassBase.landingPageMaxGridSize}
           containerPadding={[0, 0]}
           isDraggable={false}
           isResizable={false}
@@ -229,8 +226,7 @@ const MyDataPage = () => {
             customizePageClassBase.landingPageWidgetMargin,
             customizePageClassBase.landingPageWidgetMargin,
           ]}
-          rowHeight={100}
-        >
+          rowHeight={100}>
           {widgets}
         </ReactGridLayout>
       </div>

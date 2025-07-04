@@ -137,8 +137,7 @@ function AddWidgetModal({
         <ErrorPlaceHolder
           className="h-min-480"
           data-testid="no-widgets-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
-        >
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           {t('message.no-widgets-to-add')}
         </ErrorPlaceHolder>
       );
@@ -162,8 +161,7 @@ function AddWidgetModal({
       open={open}
       title={t('label.add-new-entity', { entity: t('label.widget') })}
       width={750}
-      onCancel={handleCloseAddWidgetModal}
-    >
+      onCancel={handleCloseAddWidgetModal}>
       {widgetsInfo}
     </Modal>
   );

@@ -11,9 +11,72 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../../styles/variables.less';
+
 .following-widget-container {
   .ant-card-body {
     display: flex;
     flex-direction: column;
+    padding: 0 !important;
+  }
+
+  .following-widget-icon {
+    svg {
+      fill: none;
+    }
+  }
+
+  .drag-widget-icon {
+    border: 1px solid @grey-2;
+    border-radius: 8px;
+    display: none;
+  }
+
+  .following-widget-list-item {
+    border: 1px solid @grey-2;
+    background-color: @grey-29;
+
+    .item-link:hover {
+      text-decoration: none;
+    }
+
+    .entity-button:hover {
+      background: transparent;
+    }
+    .entity-button-icon {
+      height: 32px;
+      width: 32px;
+      svg {
+        height: 100%;
+        width: 100%;
+      }
+    }
+  }
+
+  .placeholder-text {
+    color: @grey-500;
+  }
+
+  .view-more-text {
+    color: @blue-9;
+  }
+  .view-more-text:hover {
+    text-decoration: none;
+  }
+
+  .widget-options {
+    border: 1px solid @grey-25;
+    border-radius: 8px;
+
+    .more-options-btn svg {
+      color: @grey-25;
+      font-size: 20px;
+    }
+  }
+}
+
+.following-widget-container:hover {
+  .drag-widget-icon {
+    display: block;
   }
 }

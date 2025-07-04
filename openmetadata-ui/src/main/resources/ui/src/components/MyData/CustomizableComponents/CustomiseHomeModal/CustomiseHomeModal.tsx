@@ -35,6 +35,7 @@ const CustomiseHomeModal = ({
   onBackgroundColorUpdate,
   currentBackgroundColor,
   placeholderWidgetKey,
+  onHomePage,
 }: CustomiseHomeModalProps) => {
   const { t } = useTranslation();
   const [selectedColor, setSelectedColor] = useState<string>(
@@ -65,8 +66,10 @@ const CustomiseHomeModal = ({
   };
 
   useEffect(() => {
-    fetchWidgets();
-  }, []);
+    if (!onHomePage) {
+      fetchWidgets();
+    }
+  }, [onHomePage]);
 
   const handleSelectWidget = (id: string) => {
     const widget = widgets.find((w) => w.id === id);
@@ -105,39 +108,57 @@ const CustomiseHomeModal = ({
     }
   };
 
-  const customiseOptions = [
-    {
-      key: 'header-theme',
-      label: t('label.header-theme'),
-      component: (
-        <HeaderTheme
-          selectedColor={selectedColor}
-          setSelectedColor={setSelectedColor}
-        />
-      ),
-    },
-    {
-      key: 'all-widgets',
-      label: t('label.all-widgets'),
-      component: (
-        <AllWidgetsContent
-          addedWidgetsList={addedWidgetsList}
-          ref={contentRef}
-          selectedWidgets={selectedWidgets}
-          widgets={widgets}
-          onSelectWidget={handleSelectWidget}
-        />
-      ),
-    },
-  ];
+  const customiseOptions = useMemo(() => {
+    return [
+      {
+        key: 'header-theme',
+        label: t('label.header-theme'),
+        component: (
+          <HeaderTheme
+            selectedColor={selectedColor}
+            setSelectedColor={setSelectedColor}
+          />
+        ),
+      },
+      ...(!onHomePage
+        ? [
+            {
+              key: 'all-widgets',
+              label: t('label.all-widgets'),
+              component: (
+                <AllWidgetsContent
+                  addedWidgetsList={addedWidgetsList}
+                  ref={contentRef}
+                  selectedWidgets={selectedWidgets}
+                  widgets={widgets}
+                  onSelectWidget={handleSelectWidget}
+                />
+              ),
+            },
+          ]
+        : []),
+    ];
+  }, [
+    onHomePage,
+    selectedColor,
+    setSelectedColor,
+    addedWidgetsList,
+    selectedWidgets,
+    widgets,
+    handleSelectWidget,
+  ]);
 
-  const sidebarItems = [
-    ...customiseOptions.map(({ key, label }) => ({ key, label })),
-    ...widgets.map((widget) => ({
-      key: widget.fullyQualifiedName,
-      label: widget.name,
-    })),
-  ];
+  const sidebarItems = useMemo(() => {
+    return [
+      ...customiseOptions.map(({ key, label }) => ({ key, label })),
+      ...(!onHomePage
+        ? widgets.map((widget) => ({
+            key: widget.fullyQualifiedName,
+            label: widget.name,
+          }))
+        : []),
+    ];
+  }, [customiseOptions, onHomePage, widgets]);
 
   const selectedComponent = useMemo(() => {
     return customiseOptions.find((item) => item.key === selectedKey)?.component;

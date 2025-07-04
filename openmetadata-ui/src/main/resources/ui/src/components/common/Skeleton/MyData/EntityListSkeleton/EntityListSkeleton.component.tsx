@@ -30,8 +30,7 @@ const EntityListSkeleton = ({
     <div
       className="m-t-md"
       data-testid="entity-list-skeleton"
-      style={skeletonContainerStyle}
-    >
+      style={skeletonContainerStyle}>
       {getSkeletonMockData(dataLength).map(() => (
         <LabelCountSkeleton
           active
