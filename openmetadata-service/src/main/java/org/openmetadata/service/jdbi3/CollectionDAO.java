@@ -4127,6 +4127,25 @@ public interface CollectionDAO {
     default boolean supportsSoftDelete() {
       return false;
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM persona_entity WHERE JSON_EXTRACT(json, '$.default') = true LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM persona_entity WHERE json->>'default' = 'true' LIMIT 1",
+        connectionType = POSTGRES)
+    String findDefaultPersona();
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE persona_entity SET json = JSON_SET(json, '$.default', false) WHERE JSON_EXTRACT(json, '$.default') = true AND id != :excludeId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE persona_entity SET json = jsonb_set(json, '{default}', 'false') WHERE json->>'default' = 'true' AND id != :excludeId",
+        connectionType = POSTGRES)
+    void unsetOtherDefaultPersonas(@Bind("excludeId") String excludeId);
   }
 
   interface TeamDAO extends EntityDAO<Team> {

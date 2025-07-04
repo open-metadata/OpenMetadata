@@ -1,5 +1,6 @@
 ---
 title: Metabase Connector | OpenMetadata Dashboard Integration
+description: Connect Metabase dashboards to OpenMetadata effortlessly. Complete setup guide, configuration steps, and metadata extraction for seamless integration.
 slug: /connectors/dashboard/metabase
 ---
 

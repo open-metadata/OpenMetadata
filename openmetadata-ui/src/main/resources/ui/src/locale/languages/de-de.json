@@ -1727,6 +1727,7 @@
     "delete-webhook-permanently": "Möchten Sie den Webhook \"{{webhookName}}\" dauerhaft löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
     "derived-tag-warning": "Dieses Tag wird automatisch abgeleitet und kann nur entfernt werden, indem der zugehörige Glossarbegriff gelöscht wird.",
     "description-coverage-widget-description": "Beschreibungsabdeckung für alle Datenvermögenswerte im Dienst. <0>Mehr erfahren.</0>",
+    "destination-owner-selection-warning": "Bitte stellen Sie sicher, dass der \"Eigentümer\" ein <0>Team</0> ist, das \"{{subscriptionType}}\" konfiguriert hat, um Benachrichtigungen zu erhalten.",
     "destination-selection-warning": "Bitte stellen Sie sicher, dass die \"{{subscriptionCategory}}\" ihre \"{{subscriptionType}}\" konfiguriert haben, um die Alarme zu erhalten.",
     "disable-app": "Dies wird die {{app}}-Anwendung deaktivieren.",
     "disable-classification-description": "Durch Deaktivieren der Klassifizierung können Sie nicht mehr nach dieser suchen oder sie mit zugeordneten Tags einer Entität zuweisen.",

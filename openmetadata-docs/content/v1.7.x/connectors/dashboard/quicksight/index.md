@@ -1,6 +1,10 @@
 ---
 title: QuickSight Connector | OpenMetadata Dashboard Integration
+<<<<<<< HEAD
 description: Connect Amazon QuickSight to OpenMetadata with our comprehensive dashboard connector guide. Step-by-step setup, configuration, and metadata extraction.
+=======
+description: Set up AWS QuickSight connector with OpenMetadata to seamlessly integrate your dashboard metadata. Step-by-step guide with configuration examples.
+>>>>>>> b9d49f3b9d (Doc: SEO Description Updation)
 slug: /connectors/dashboard/quicksight
 ---
 

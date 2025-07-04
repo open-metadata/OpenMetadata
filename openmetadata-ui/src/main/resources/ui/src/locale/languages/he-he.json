@@ -1727,6 +1727,7 @@
     "delete-webhook-permanently": "ברצונך למחוק webhook {{webhookName}} לצמיתות? פעולה זו אינה ניתנת לביטול.",
     "derived-tag-warning": "This tag is automatically derived and can only be removed by deleting the related Glossary Term.",
     "description-coverage-widget-description": "כיסוי תיאורים עבור כל נכסי הנתונים בשירות. <0>למד עוד</0>.",
+    "destination-owner-selection-warning": "אנא וודא שה\"בעלים\" הוא <0>צוות</0> עם \"{{subscriptionType}}\" מוגדר לקבלת התראות.",
     "destination-selection-warning": "Please make sure if the \"{{subscriptionCategory}}\" have configured their \"{{subscriptionType}}\" to receive the alerts.",
     "disable-app": "פעולה זו תבטל את היישום {{app}}.",
     "disable-classification-description": "פעולת ביטול הסיווג תמנע ממך לחפש לפיו או להקצות תגי קשר לישות.",

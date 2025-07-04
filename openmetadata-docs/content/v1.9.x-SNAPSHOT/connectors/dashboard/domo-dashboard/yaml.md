@@ -1,5 +1,6 @@
 ---
 title: Run the Domo Dashboard Connector Externally
+description: Configure OpenMetadata's Domo Dashboard connector with YAML - step-by-step setup guide, authentication options, and configuration examples.
 slug: /connectors/dashboard/domo-dashboard/yaml
 ---
 
