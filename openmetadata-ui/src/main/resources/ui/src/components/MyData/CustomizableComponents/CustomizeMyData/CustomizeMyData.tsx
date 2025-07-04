@@ -85,7 +85,7 @@ function CustomizeMyData({
   }, []);
 
   const handleRemoveWidget = useCallback((widgetKey: string) => {
-    setLayout(getRemoveWidgetHandler(widgetKey, 3, 3.5));
+    setLayout(getRemoveWidgetHandler(widgetKey));
   }, []);
 
   const handleMainPanelAddWidget = useCallback(
@@ -165,8 +165,8 @@ function CustomizeMyData({
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
             handleRemoveWidget: handleRemoveWidget,
             isEditView: true,
-            currentLayout: layout,
             handleLayoutUpdate: handleLayoutUpdate,
+            currentLayout: layout,
           })}
         </div>
       )),
@@ -261,6 +261,7 @@ function CustomizeMyData({
           addedWidgetsList={addedWidgetsList}
           handleAddWidget={handleMainPanelAddWidget}
           handleCloseAddWidgetModal={handleCloseAddWidgetModal}
+          handleLayoutUpdate={handleLayoutUpdate}
           maxGridSizeSupport={
             customizeMyDataPageClassBase.landingPageMaxGridSize
           }

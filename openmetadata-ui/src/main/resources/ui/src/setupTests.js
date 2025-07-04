@@ -126,3 +126,20 @@ jest.mock('./utils/TableColumn.util', () => ({
   tagTableObject: jest.fn().mockReturnValue([]),
   columnFilterIcon: jest.fn(),
 }));
+
+/**
+ * Global mock for AdvancedSearchClassBase to fix circular dependency issues
+ */
+jest.mock('./utils/AdvancedSearchClassBase', () => {
+  const actual = jest.requireActual('./utils/AdvancedSearchClassBase');
+
+  return {
+    __esModule: true,
+    ...actual,
+    default: {
+      ...actual.default,
+      autocomplete: jest.fn().mockReturnValue(jest.fn()),
+      getQbConfigs: jest.fn().mockReturnValue({}),
+    },
+  };
+});

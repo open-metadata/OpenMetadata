@@ -31,6 +31,6 @@ export interface WidgetCommonProps {
   isEditView?: boolean;
   widgetKey: string;
   handleRemoveWidget?: (widgetKey: string) => void;
-  handleLayoutUpdate?: (updatedLayout: Layout[]) => void;
+  handleLayoutUpdate?: (layout: Layout[]) => void;
   currentLayout?: Array<WidgetConfig>;
 }

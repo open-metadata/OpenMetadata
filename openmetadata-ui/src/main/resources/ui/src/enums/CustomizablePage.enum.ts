@@ -20,11 +20,12 @@ export enum WidgetWidths {
 export enum LandingPageWidgetKeys {
   ACTIVITY_FEED = 'KnowledgePanel.ActivityFeed',
   ANNOUNCEMENTS = 'KnowledgePanel.Announcements',
-  FOLLOWING = 'KnowledgePanel.Following',
-  RECENTLY_VIEWED = 'KnowledgePanel.RecentlyViewed',
-  MY_DATA = 'KnowledgePanel.MyData',
-  KPI = 'KnowledgePanel.KPI',
-  TOTAL_DATA_ASSETS = 'KnowledgePanel.TotalAssets',
-  EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
+  CURATED_ASSETS = 'KnowledgePanel.CuratedAssets',
   DATA_ASSETS = 'KnowledgePanel.DataAssets',
+  EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
+  FOLLOWING = 'KnowledgePanel.Following',
+  KPI = 'KnowledgePanel.KPI',
+  MY_DATA = 'KnowledgePanel.MyData',
+  RECENTLY_VIEWED = 'KnowledgePanel.RecentlyViewed',
+  TOTAL_DATA_ASSETS = 'KnowledgePanel.TotalAssets',
 }

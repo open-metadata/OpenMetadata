@@ -12,6 +12,7 @@
  */
 import { Col, Row } from 'antd';
 import { forwardRef, useMemo } from 'react';
+import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './all-widgets-content.less';
@@ -27,8 +28,10 @@ const AllWidgetsContent = forwardRef<HTMLDivElement, AllWidgetsContentProps>(
   ({ widgets, addedWidgetsList, selectedWidgets, onSelectWidget }, ref) => {
     const widgetsList = useMemo(() => {
       return widgets.map((widget) => {
-        const isAlreadyAdded = addedWidgetsList?.some((addedWidgetId) =>
-          addedWidgetId.startsWith(widget.fullyQualifiedName ?? '')
+        const isAlreadyAdded = addedWidgetsList?.some(
+          (addedWidgetId) =>
+            addedWidgetId.startsWith(widget.fullyQualifiedName ?? '') &&
+            !addedWidgetId.includes(LandingPageWidgetKeys.CURATED_ASSETS)
         );
         const isSelected = selectedWidgets.includes(widget.id ?? '');
 

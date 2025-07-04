@@ -12,6 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { PageType } from '../../generated/system/ui/page';
 import {
   mockActiveAnnouncementData,
   mockCustomizePageClassBase,
@@ -169,6 +170,26 @@ jest.mock('../DataInsightPage/DataInsightProvider', () => {
     }),
   };
 });
+
+jest.mock('react-router-dom', () => ({
+  useParams: jest.fn().mockImplementation(() => ({
+    fqn: mockPersonaName,
+    pageFqn: PageType.LandingPage,
+  })),
+  Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+jest.mock(
+  '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
+  () => ({
+    AdvanceSearchProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => (
+        <div data-testid="advance-search-provider">{children}</div>
+      )),
+  })
+);
 
 describe('MyDataPage component', () => {
   beforeEach(() => {
