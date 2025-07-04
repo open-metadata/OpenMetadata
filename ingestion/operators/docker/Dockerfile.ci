@@ -82,10 +82,13 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_QUIET=1
 
 RUN pip install --upgrade pip setuptools~=70.3.0
+ARG INGESTION_DEPENDENCY="dev"
+RUN pip install ".[${INGESTION_DEPENDENCY}]"
+
 
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install ".[airflow]"
-RUN pip install --use-feature=fast-deps --parallel 10 ".[${INGESTION_DEPENDENCY}]"
+RUN uv pip install ".[${INGESTION_DEPENDENCY}]"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
