@@ -10,6 +10,48 @@
       "type": "string",
       "enum": ["LineagePropagationAction"],
       "default": "LineagePropagationAction"
+    },
+    "stopPropagationConfig": {
+      "description": "Configuration for stopping propagation at specific points",
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "Stop propagation of description at these FQNs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "description": "Stop propagation of tags at these FQNs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "glossaryTerms": {
+          "description": "Stop propagation of glossary terms at these FQNs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "owners": {
+          "description": "Stop propagation of owners at these FQNs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tier": {
+          "description": "Stop propagation of tier at these FQNs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -66,6 +108,11 @@
       "description": "Update descriptions, tags and Glossary Terms via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset, and incoming tags are merged with the existing ones.",
       "type": "boolean",
       "default": false
+    },
+    "stopPropagation": {
+      "title": "Stop Propagation Configuration",
+      "description": "Configuration to stop propagation at specific points for different attributes",
+      "$ref": "#/definitions/stopPropagationConfig"
     }
   },
   "required": ["type"],
