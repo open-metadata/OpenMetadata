@@ -189,13 +189,13 @@ const TierCard = ({
               </Radio.Group>
               <div className="flex justify-end text-lg gap-2 mt-4">
                 <Button
-                  data-testid="close-certification"
+                  data-testid="close-tier-card"
                   type="default"
                   onClick={handleCloseTier}>
                   <CloseOutlined />
                 </Button>
                 <Button
-                  data-testid="update-certification"
+                  data-testid="update-tier-card"
                   type="primary"
                   onClick={() => updateTierData(selectedTier)}>
                   <CheckOutlined />
