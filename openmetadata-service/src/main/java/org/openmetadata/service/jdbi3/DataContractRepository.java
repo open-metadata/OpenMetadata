@@ -67,7 +67,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     EntityReference entityRef = dataContract.getEntity();
 
     if (!update) {
-      validateEntityLink(entityRef);
+      validateEntityReference(entityRef);
     }
     validateSchemaFieldsAgainstEntity(dataContract, entityRef);
     if (dataContract.getOwners() != null) {
@@ -188,18 +188,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         .withUpdatedBy(original.getUpdatedBy());
   }
 
-  private void validateEntityLink(EntityReference entity) {
+  private void validateEntityReference(EntityReference entity) {
     if (entity == null) {
       throw BadRequestException.of("Entity reference is required for data contract");
     }
 
+    // Check the entity exists
     Entity.getEntityReferenceById(entity.getType(), entity.getId(), Include.NON_DELETED);
+    DataContract existingContract = loadEntityDataContract(entity);
 
-    ListFilter filter =
-        new ListFilter(Include.NON_DELETED).addQueryParam("entity", entity.getId().toString());
-    List<DataContract> existingContracts = listAll(new Fields(Set.of("id")), filter);
-
-    if (!existingContracts.isEmpty()) {
+    if (existingContract != null) {
       throw BadRequestException.of(
           String.format(
               "A data contract already exists for entity '%s' with ID %s",

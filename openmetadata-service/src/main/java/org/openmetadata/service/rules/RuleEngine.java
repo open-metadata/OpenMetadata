@@ -57,7 +57,6 @@ public class RuleEngine {
   public void evaluate(EntityInterface facts, List<SemanticsRule> rules, boolean incomingOnly) {
     List<SemanticsRule> erroredRules = evaluateAndReturn(facts, rules, incomingOnly);
     raiseErroredRules(erroredRules);
-
   }
 
   private void raiseErroredRules(List<SemanticsRule> erroredRules) {

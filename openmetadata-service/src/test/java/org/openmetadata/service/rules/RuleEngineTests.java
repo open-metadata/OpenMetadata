@@ -249,7 +249,10 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
         OWNERSHIP_RULE_EXC);
 
     // We can't PATCH a table breaking the ownership rule
-    CreateTable create = tableResourceTest.createRequest(test.getDisplayName() + "_PATCH").withOwners(List.of(USER1_REF));
+    CreateTable create =
+        tableResourceTest
+            .createRequest(test.getDisplayName() + "_PATCH")
+            .withOwners(List.of(USER1_REF));
     Table table = tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     String tableJson = JsonUtils.pojoToJson(table);
     table.withOwners(List.of(USER1_REF, TEAM11_REF));
@@ -286,10 +289,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     assertResponse(
         () ->
             tableResourceTest.patchEntity(
-                table.getId(),
-                tableJsonWithContract,
-                table,
-                ADMIN_AUTH_HEADERS),
+                table.getId(), tableJsonWithContract, table, ADMIN_AUTH_HEADERS),
         Response.Status.BAD_REQUEST,
         "Rule [Description can't be empty] validation failed: Entity does not satisfy the rule. Rule context: Validates that the table has a description.");
 
@@ -297,10 +297,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     table.withDescription("This is a valid description");
     Table patched =
         tableResourceTest.patchEntity(
-            table.getId(),
-            tableJsonWithContract,
-            table,
-            ADMIN_AUTH_HEADERS);
+            table.getId(), tableJsonWithContract, table, ADMIN_AUTH_HEADERS);
     assertNotNull(patched);
     assertEquals("This is a valid description", patched.getDescription());
     assertEquals(table.getOwners().getFirst().getId(), TEAM11_REF.getId());
