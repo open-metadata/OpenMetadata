@@ -217,15 +217,16 @@ class CommonDbSourceService(
             else None
         )
 
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=EntityName(database_name),
-                service=FullyQualifiedEntityName(self.context.get().database_service),
-                description=description,
-                sourceUrl=source_url,
-                tags=self.get_database_tag_labels(database_name=database_name),
-            )
+        database_request = CreateDatabaseRequest(
+            name=EntityName(database_name),
+            service=FullyQualifiedEntityName(self.context.get().database_service),
+            description=description,
+            sourceUrl=source_url,
+            tags=self.get_database_tag_labels(database_name=database_name),
         )
+
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
@@ -264,22 +265,23 @@ class CommonDbSourceService(
             else None
         )
 
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-                description=description,
-                sourceUrl=source_url,
-                tags=self.get_schema_tag_labels(schema_name=schema_name),
-            )
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
+            ),
+            description=description,
+            sourceUrl=source_url,
+            tags=self.get_schema_tag_labels(schema_name=schema_name),
         )
+
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     @staticmethod
     @calculate_execution_time()
