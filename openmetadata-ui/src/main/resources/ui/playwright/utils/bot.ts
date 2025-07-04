@@ -229,17 +229,26 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('revoke-button')).toBeVisible();
+  const isRevokeButtonVisible = await page
+    .getByTestId('revoke-button')
+    .isVisible();
+  const isAuthMechanismVisible = await page
+    .getByTestId('auth-mechanism')
+    .isVisible();
 
-  await page.getByTestId('revoke-button').click();
+  if (isRevokeButtonVisible) {
+    await page.getByTestId('revoke-button').click();
 
-  await expect(page.getByTestId('save-button')).toBeVisible();
+    await expect(page.getByTestId('save-button')).toBeVisible();
 
-  await page.getByTestId('save-button').click();
+    await page.getByTestId('save-button').click();
+  } else if (isAuthMechanismVisible) {
+    await page.getByTestId('auth-mechanism').click();
+  }
 
   await expect(page.getByTestId('token-expiry').locator('div')).toBeVisible();
 
-  await page.getByText('hr').click();
+  await page.getByTestId('token-expiry').click();
   await page.getByText('Unlimited').click();
 
   await expect(page.getByTestId('save-edit')).toBeVisible();
