@@ -165,7 +165,7 @@ const MyDataWidgetInternal = ({
 
   return (
     <Card
-      className="my-data-widget-container card-widget p-y-lg p-x-box"
+      className="my-data-widget-container card-widget p-box"
       data-testid="my-data-widget"
       loading={isLoading}>
       <Row>
@@ -176,7 +176,7 @@ const MyDataWidgetInternal = ({
                 className="my-data-widget-icon display-xs"
                 component={widgetIcon as SvgComponent}
               />
-              <Typography.Text className="text-lg font-semibold">
+              <Typography.Text className="text-md font-semibold">
                 {t('label.my-data')}
               </Typography.Text>
             </div>
@@ -221,13 +221,13 @@ const MyDataWidgetInternal = ({
               className="border-none"
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               <div className="d-flex flex-col items-center">
-                <Typography.Text className="text-xl font-semibold m-b-sm">
+                <Typography.Text className="text-md font-semibold m-b-sm">
                   {t('message.curate-your-data-view')}
                 </Typography.Text>
-                <Typography.Text className="placeholder-text text-md font-regular">
+                <Typography.Text className="placeholder-text text-sm font-regular">
                   {t('message.nothing-saved-here-yet')}
                 </Typography.Text>
-                <Typography.Text className="placeholder-text text-md font-regular">
+                <Typography.Text className="placeholder-text text-sm font-regular">
                   {t('message.no-owned-data')}
                 </Typography.Text>
                 <Button

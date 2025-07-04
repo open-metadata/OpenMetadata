@@ -128,7 +128,7 @@ function FollowingWidget({
 
   return (
     <Card
-      className="following-widget-container card-widget p-y-lg p-x-box"
+      className="following-widget-container card-widget p-box"
       data-testid="following-widget"
       loading={isLoadingOwnedData}>
       <Row>
@@ -139,7 +139,7 @@ function FollowingWidget({
                 className="following-widget-icon display-xs"
                 component={widgetIcon as SvgComponent}
               />
-              <Typography.Text className="text-lg font-semibold">
+              <Typography.Text className="text-md font-semibold">
                 {t('label.following-assets')}
               </Typography.Text>
             </div>
@@ -187,10 +187,10 @@ function FollowingWidget({
               }
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               <div className="d-flex flex-col items-center">
-                <Typography.Text className="text-xl font-semibold m-b-sm">
+                <Typography.Text className="text-md font-semibold m-b-sm">
                   {t('message.not-following-any-assets-yet')}
                 </Typography.Text>
-                <Typography.Paragraph className="placeholder-text text-md font-regular">
+                <Typography.Paragraph className="placeholder-text text-sm font-regular">
                   {t('message.not-followed-anything')}
                 </Typography.Paragraph>
                 <Button

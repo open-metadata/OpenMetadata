@@ -135,7 +135,7 @@ const DataAssetsWidget = ({
                 className="data-assets-widget-icon display-xs"
                 component={widgetIcon as SvgComponent}
               />
-              <Typography.Text className="text-lg font-semibold">
+              <Typography.Text className="text-md font-semibold">
                 {t('label.data-asset-plural')}
               </Typography.Text>
             </div>
@@ -182,10 +182,10 @@ const DataAssetsWidget = ({
               }
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               <div className="d-flex flex-col items-center">
-                <Typography.Text className="text-lg font-semibold m-b-sm">
+                <Typography.Text className="text-md font-semibold m-b-sm">
                   {t('message.no-data-assets-yet')}
                 </Typography.Text>
-                <Typography.Text className="placeholder-text text-md font-regular">
+                <Typography.Text className="placeholder-text text-sm font-regular">
                   {t('message.no-data-assets-message')}
                 </Typography.Text>
                 <Button

@@ -29,6 +29,7 @@
   .drag-widget-icon {
     border: 1px solid @grey-2;
     border-radius: 8px;
+    display: none;
   }
 
   .following-widget-list-item {
@@ -71,5 +72,11 @@
       color: @grey-25;
       font-size: 20px;
     }
+  }
+}
+
+.following-widget-container:hover {
+  .drag-widget-icon {
+    display: block;
   }
 }
