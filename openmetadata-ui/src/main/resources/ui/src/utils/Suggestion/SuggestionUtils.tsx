@@ -48,3 +48,21 @@ export const getSuggestionByType = (suggestion: Suggestion[]) => {
     }
   );
 };
+
+// Helper function to get unique suggestions
+export const getUniqueSuggestions = (
+  existingSuggestions: Suggestion[],
+  newSuggestions: Suggestion[]
+) => {
+  if (newSuggestions.length === 0) {
+    return existingSuggestions;
+  }
+  const existingMap = new Map(existingSuggestions.map((s) => [s.id, s]));
+
+  // Filter out duplicates and merge
+  const uniqueNewSuggestions = newSuggestions.filter(
+    (s) => !existingMap.has(s.id)
+  );
+
+  return [...existingSuggestions, ...uniqueNewSuggestions];
+};
