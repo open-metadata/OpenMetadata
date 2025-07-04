@@ -1,11 +1,6 @@
 ---
 title: AzureSQL | OpenMetadata Connector Setup & Integration Guide
-<<<<<<< HEAD
 description: Learn how to connect Azure SQL databases to OpenMetadata with step-by-step setup guides, configuration options, and metadata extraction features.
-=======
-description: Connect Azure SQL Server to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration options, and metadata extrac...
->>>>>>> b9d49f3b9d (Doc: SEO Description Updation)
-slug: /connectors/database/azuresql
 ---
 
 {% connectorDetailsHeader
