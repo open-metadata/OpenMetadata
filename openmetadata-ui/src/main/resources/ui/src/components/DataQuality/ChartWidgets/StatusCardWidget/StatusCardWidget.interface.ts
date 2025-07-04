@@ -1,5 +1,3 @@
-import { LinkProps } from 'react-router-dom';
-
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +10,9 @@ import { LinkProps } from 'react-router-dom';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { LinkProps } from 'react-router-dom';
+
 export type StatusData = {
   title: string;
   success: number;

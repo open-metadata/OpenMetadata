@@ -12,9 +12,9 @@
  */
 import { isString, isUndefined } from 'lodash';
 import { useMemo } from 'react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { CHART_BASE_SIZE } from '../../../constants/Chart.constants';
-import { WHITE_SMOKE } from '../../../constants/Color.constants';
+import { Cell, Pie, PieChart, Tooltip } from 'recharts';
+import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
+import { GREY_200 } from '../../../constants/Color.constants';
 import { TEXT_GREY_MUTED } from '../../../constants/constants';
 import { CustomPieChartProps } from './Chart.interface';
 
@@ -36,36 +36,34 @@ const CustomPieChart = ({ name, data, label }: CustomPieChartProps) => {
   }, [label]);
 
   return (
-    <ResponsiveContainer
-      height={CHART_BASE_SIZE}
+    <PieChart
+      height={CHART_SMALL_SIZE}
       id={`${name}-pie-chart`}
-      width={CHART_BASE_SIZE}>
-      <PieChart height={CHART_BASE_SIZE} width={CHART_BASE_SIZE}>
-        <Pie
-          cx="50%"
-          cy="50%"
-          data={data}
-          dataKey="value"
-          fill={WHITE_SMOKE}
-          innerRadius={78}
-          outerRadius={107}>
-          <Cell fill={WHITE_SMOKE} />
-        </Pie>
-        <Pie
-          cx="50%"
-          cy="50%"
-          data={data}
-          dataKey="value"
-          innerRadius={85}
-          outerRadius={100}>
-          {data.map((entry) => (
-            <Cell fill={entry.color} key={`cell-${entry.name}`} />
-          ))}
-        </Pie>
-        <Tooltip />
-        {centerLabel}
-      </PieChart>
-    </ResponsiveContainer>
+      width={CHART_SMALL_SIZE}>
+      <Pie
+        cx="50%"
+        cy="50%"
+        data={data}
+        dataKey="value"
+        fill={GREY_200}
+        innerRadius={55}
+        outerRadius={80}>
+        <Cell fill={GREY_200} />
+      </Pie>
+      <Pie
+        cx="50%"
+        cy="50%"
+        data={data}
+        dataKey="value"
+        innerRadius={60}
+        outerRadius={80}>
+        {data.map((entry) => (
+          <Cell fill={entry.color} key={`cell-${entry.name}`} />
+        ))}
+      </Pie>
+      <Tooltip />
+      {centerLabel}
+    </PieChart>
   );
 };
 
