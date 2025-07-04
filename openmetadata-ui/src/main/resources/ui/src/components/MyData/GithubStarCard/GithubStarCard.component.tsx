@@ -25,13 +25,14 @@ import {
   ROUTES,
   STAR_OMD_USER,
   TWO_MINUTE_IN_MILLISECOND,
+  VERSION,
 } from '../../../constants/constants';
 import { OMD_REPOSITORY_LINK } from '../../../constants/docs.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getRepositoryData } from '../../../rest/commonAPI';
+import { getVersionedStorageKey } from '../../../utils/Version/version';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
-import { COOKIE_VERSION } from '../../Modals/WhatsNewModal/whatsNewData';
 import './github-star-card.style.less';
 
 const cookieStorage = new CookieStorage();
@@ -45,7 +46,7 @@ const GithubStarCard = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const isWhatNewAlertVisible = useMemo(
-    () => cookieStorage.getItem(COOKIE_VERSION) !== 'true',
+    () => cookieStorage.getItem(getVersionedStorageKey(VERSION)) !== 'true',
     [cookieStorage]
   );
 

@@ -10,20 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Affix, Button, Card, Col, Row, Typography } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
-import { ReactComponent as RightArrowIcon } from '../../../../assets/svg/ic-arrow-right-full.svg';
-import { ReactComponent as PlayIcon } from '../../../../assets/svg/ic-play-button.svg';
-import { BLACK_COLOR, ROUTES } from '../../../../constants/constants';
+import { ReactComponent as RocketIcon } from '../../../../assets/svg/rocket.svg';
+import { ROUTES, VERSION } from '../../../../constants/constants';
 import { useAuth } from '../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
+import { getVersionedStorageKey } from '../../../../utils/Version/version';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
-import { COOKIE_VERSION, WHATS_NEW } from '../whatsNewData';
-import WhatsNewModal from '../WhatsNewModal';
+import './WhatsNewAlert.less';
 
 const cookieStorage = new CookieStorage();
 
@@ -31,27 +31,25 @@ const WhatsNewAlert = () => {
   const { t } = useTranslation();
   const location = useCustomLocation();
   const { isFirstTimeUser } = useAuth();
+  const { appVersion } = useApplicationStore();
   const [showWhatsNew, setShowWhatsNew] = useState({
     alert: false,
     modal: false,
   });
+  const cookieKey = getVersionedStorageKey(VERSION);
 
-  const latestVersion = useMemo(
-    () => WHATS_NEW[WHATS_NEW.length - 1], // latest version will be last in the array
-    [WHATS_NEW]
-  );
+  const { releaseLink, blogLink, isMajorRelease } = useMemo(() => {
+    return {
+      // If the version ends with .0, it is a major release
+      isMajorRelease: appVersion?.endsWith('.0'),
+      releaseLink: brandClassBase.getReleaseLink(appVersion ?? ''),
+      blogLink: brandClassBase.getBlogLink(appVersion ?? ''),
+    };
+  }, [appVersion]);
+
   const isHomePage = useMemo(
     () => location.pathname.includes(ROUTES.MY_DATA),
     [location.pathname]
-  );
-
-  const onAlertCardClick = useCallback(
-    () =>
-      setShowWhatsNew({
-        alert: false,
-        modal: true,
-      }),
-    []
   );
 
   const onModalCancel = useCallback(
@@ -64,7 +62,7 @@ const WhatsNewAlert = () => {
   );
 
   const handleCancel = useCallback(() => {
-    cookieStorage.setItem(COOKIE_VERSION, 'true', {
+    cookieStorage.setItem(cookieKey, 'true', {
       expires: getReleaseVersionExpiry(),
     });
     onModalCancel();
@@ -72,62 +70,79 @@ const WhatsNewAlert = () => {
 
   useEffect(() => {
     setShowWhatsNew({
-      alert: cookieStorage.getItem(COOKIE_VERSION) !== 'true',
+      alert: cookieStorage.getItem(cookieKey) !== 'true',
       modal: false,
     });
   }, [isFirstTimeUser]);
 
-  const title = useMemo(() => {
-    return brandClassBase.getPageTitle();
-  }, []);
-
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
-        <Affix className="whats-new-alert-container">
-          <Card className="cursor-pointer" data-testid="whats-new-alert-card">
-            <Space align="start" className="d-flex justify-between">
-              <Typography.Text
-                className="whats-new-alert-header"
-                data-testid="whats-new-alert-header">
-                {t('label.brand-updated', {
-                  brandName: title,
-                })}
-              </Typography.Text>
-              <Button
-                className="flex-center m--t-xss"
-                data-testid="close-whats-new-alert"
-                icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
-                type="text"
-                onClick={handleCancel}
-              />
-            </Space>
-
-            <Row className="m-t-sm" gutter={[0, 12]}>
-              <Col className="whats-new-alert-content" span={24}>
-                <Space align="center" size={12} onClick={onAlertCardClick}>
-                  <div className="whats-new-alert-content-icon-container">
-                    <PlayIcon className="whats-new-alert-content-icon" />
-                  </div>
-
-                  <Typography.Text className="whats-new-alert-sub-header">
-                    {t('label.whats-new-version', {
-                      version: latestVersion.version,
-                    })}
-                  </Typography.Text>
-
-                  <RightArrowIcon className="whats-new-alert-content-icon-arrow" />
-                </Space>
+        <Affix
+          style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 2000 }}>
+          <Card bodyStyle={{ padding: 0 }} className="whats-new-alert-card">
+            <Row
+              gutter={0}
+              style={{ minHeight: 140, position: 'relative' }}
+              wrap={false}>
+              <Col className="whats-new-alert-left" flex="160px">
+                <RocketIcon
+                  style={{ width: 48, height: 48, marginBottom: 12 }}
+                />
+                <Typography.Title
+                  className="text-md text-white"
+                  level={5}
+                  style={{ marginBottom: 8 }}>
+                  {t('label.version-number', { version: appVersion ?? '' })}
+                </Typography.Title>
+              </Col>
+              <Col
+                flex="auto"
+                style={{
+                  padding: '24px 32px 24px 24px',
+                  position: 'relative',
+                }}>
+                <Typography.Title
+                  className="text-sm"
+                  level={5}
+                  style={{ marginBottom: 8 }}>
+                  {t('label.new-update-announcement')}
+                </Typography.Title>
+                <div className="whats-new-alert-links">
+                  <Button
+                    href={releaseLink}
+                    rel="noopener noreferrer"
+                    style={{ padding: 0, fontWeight: 600, color: '#2563eb' }}
+                    target="_blank"
+                    type="link">
+                    {t('label.release-notes')}
+                  </Button>
+                  {/* Only show the blog link for major releases */}
+                  {isMajorRelease && (
+                    <Button
+                      href={blogLink}
+                      rel="noopener noreferrer"
+                      style={{ padding: 0, fontWeight: 600, color: '#2563eb' }}
+                      target="_blank"
+                      type="link">
+                      {t('label.blog')}
+                    </Button>
+                  )}
+                </div>
+              </Col>
+              <Col flex={24}>
+                <Button
+                  aria-label={t('label.close')}
+                  className="whats-new-alert-close float-right"
+                  icon={<CloseIcon color="#888" height={20} width={20} />}
+                  type="text"
+                  onClick={handleCancel}
+                />
               </Col>
             </Row>
           </Card>
         </Affix>
       )}
-      <WhatsNewModal
-        header={`${t('label.whats-new')}!`}
-        visible={showWhatsNew.modal}
-        onCancel={onModalCancel}
-      />
     </>
   );
 };

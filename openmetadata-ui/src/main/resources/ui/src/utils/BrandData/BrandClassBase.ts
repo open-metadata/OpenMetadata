@@ -30,6 +30,18 @@ class BrandClassBase {
     return t('label.open-metadata');
   }
 
+  public getReleaseLink(version: string) {
+    const versionWithV = 'v' + version;
+
+    return `https://open-metadata.org/product-updates#${versionWithV}`;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public getBlogLink(_version: string) {
+    // Since medium doens't follow any fixed structure we will just return the blog link
+    return 'https://blog.open-metadata.org/';
+  }
+
   public getWelcomeScreenImg() {
     return WelcomeScreenSrc;
   }
