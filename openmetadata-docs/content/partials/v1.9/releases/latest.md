@@ -1,7 +1,7 @@
-# 1.8.0 Release 🎉
+# 1.8.1 Release 🎉
 
 {% note noteType="Tip" %}
-**24th June 2025**
+**30th June 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,46 +10,46 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.8.0!
+Learn how to upgrade your OpenMetadata instance to 1.8.1!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.8.0-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.8.1-release).
 
 # What's New
 
-OpenMetadata MCP Server — Generative-AI-Ready Metadata with Rich Context
+## Improvements
 
-OpenMetadata 1.8 introduces an enterprise-grade MCP (Metadata Context Provider) server, built natively on our unified knowledge graph. This new service delivers a single, high-performance API layer that empowers any Large Language Model—or any downstream application—to access rich, policy-aware context about your data in real time.
+- REST service process nested objects inside array dtype in schema.
+- Throw an error on query filter parsing and an error on column test case.
+- Display object column type.
+- Add support for adding tags in test case form.
+- Add Postgres SP and UDF descriptions.
+- Enhance AutomatorTestCaseField with tag and glossary support.
 
-## Key highlights:
+## Fixes
 
-- One graph, one endpoint: The MCP server exposes every entity, relationship, data quality metric, lineage detail, and governance rule you’ve curated in OpenMetadata.
-- LLM-optimized responses: JSON schemas are tailored for semantic search and RAG workflows, enabling chatbots and copilots to ground their answers in accurate, up-to-date metadata.
-- Enterprise-grade insights: Gain real-time KPIs on asset distribution, metadata coverage (descriptions, ownership), tiering, and PII tagging to strengthen data governance.
-- Zero-friction adoption: It comes bundled with OpenMetadata—just enable the service, generate an API key, and start querying from Claude, Cursor, ChatGPT, and more.
+- Cache to have immutable entities.
+- Remove edit permission from version page.
+- Table pagination count issue in the Schema page.
+- Version link and fetch logic with 1 hour wait time.
+- Tableau Lineage in multiple schema model.
+- Soft deleted entities are not removed rom system, so relations are still valid if there is entry in DB.
+- Custom properties display issue in advanced search.
+- Image was not rendering correctly in description editor.
+- Handle sampler SQA sessions.
+- Typo on query cost record index.
+- Reply count being shown as 0 in task feed card.
+- Pagination state lost after multiple back navigations in table list view.
+- query_cost_record_search_index Search exception for elasticsearch instance.
+- Search functionality for domain edit in user profile.
+- Username issue in comments card.
+- Quickcloud get script tables.
+- Added Databricks pipeline Lineage.
+- Add parquet alternate filetypes in table fileformat.
+- Snowflake reverse ingestion.
+- Typo for Chart preview.
+- Update version link for Collate.
+- Sorting issue for charts.
 
-With MCP, every data consumer—from BI analysts to autonomous agents generating SQL—can instantly understand tables, lineage, quality, and ownership without leaving their workflow.
-
-## SCIM Provisioning for Okta & Azure AD — Hands-Free User & Group Management (Collate Only)
-
-Collate 1.8 expands our SSO capabilities with native SCIM 2.0 support for Okta and Azure Active Directory. Now, enterprises can manage the full user lifecycle directly from their Identity Provider—no more CSV uploads or manual role assignments.
-
-### Key benefits:
-
-- Automated onboarding & offboarding: The Tier Agent continuously analyzes usage patterns and lineage to highlight your most critical data assets.
-- Consistent governance: The Documentation Agent generates accurate asset descriptions and powers seamless Text2SQL chat experiences.
-- Standards-based interoperability: Built on the SCIM spec, making it easy to extend to other IdPs like JumpCloud, OneLogin, and more.
-
-Together with existing SAML/OIDC SSO, SCIM provisioning completes a turnkey identity stack—giving security teams peace of mind while enabling effortless access for data users.
-
-## Data Contracts - API & Specifications
-
-Data-driven teams often struggle with informal agreements around data quality, schema changes, and SLAs. OpenMetadata 1.8 introduces formalized Data Contracts to define and enforce clear, actionable expectations between data producers and consumers.
-
-### Features:
-
-- Schema & Quality Specifications: Define schemas, semantic tags, quality checks, and SLAs explicitly.
-- API and UI-driven Management: Easy creation, versioning, and management through both intuitive UI and REST APIs.
-
-**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.7.5-release...1.8.0-release)
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.8.0-release...1.8.1-release)

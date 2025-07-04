@@ -36,6 +36,7 @@ test('Table difference test case', async ({ page }) => {
     name: `${table1.entity.name}_test_case`,
     table2: table2.entity.name,
     threshold: '23',
+    type: 'tableDiff',
   };
 
   await table1.visitEntityPage(page);
@@ -54,6 +55,7 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
+      await page.fill('#tableTestForm_testTypeId', testCase.type);
       const tableListSearchResponse = page.waitForResponse(
         `/api/v1/search/query?q=*index=table_search_index*`
       );
@@ -178,6 +180,7 @@ test('Custom SQL Query', async ({ page }) => {
     name: `${table.entity.name}_test_case`,
     displayName: 'SQL Test Case Display Name',
     sqlQuery: 'SELECT * FROM table',
+    type: 'tableCustomSQLQuery',
   };
 
   await table.visitEntityPage(page);
@@ -196,6 +199,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
+      await page.fill('#tableTestForm_testTypeId', testCase.type);
       await page.getByTestId('tableCustomSQLQuery').click();
       await page.click('#tableTestForm_params_strategy');
       await page.locator('.CodeMirror-scroll').click();
