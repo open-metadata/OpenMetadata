@@ -1,6 +1,7 @@
 ---
 title: BigQuery | OpenMetadata Connector Setup & Integration Guide
 description: Connect BigQuery to OpenMetadata seamlessly with our comprehensive database connector guide. Setup instructions, configuration tips, and metadata extrac...
+slug: /connectors/database/bigquery
 ---
 
 {% connectorDetailsHeader
