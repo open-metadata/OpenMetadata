@@ -13,13 +13,13 @@
 
 package org.openmetadata.service.resources;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CONFLICT;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -60,7 +60,6 @@ import com.flipkart.zjsonpatch.JsonDiff;
 import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.aggregations.Aggregation;
@@ -76,6 +75,9 @@ import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.json.JsonXContent;
 import io.socket.client.IO;
 import io.socket.client.Socket;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -97,8 +99,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -182,6 +182,8 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -218,7 +220,6 @@ import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
@@ -229,7 +230,6 @@ import org.openmetadata.service.util.DeleteEntityMessage;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
@@ -241,7 +241,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private static final Map<
           String, EntityResourceTest<? extends EntityInterface, ? extends CreateEntity>>
       ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
-  private final String entityType;
+  protected final String entityType;
   protected final Class<T> entityClass;
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
@@ -250,12 +250,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       systemEntityName; // System entity provided by the system that can't be deleted
   protected final boolean supportsFollowers;
   protected final boolean supportsVotes;
-  protected final boolean supportsOwners;
+  protected boolean supportsOwners;
   protected boolean supportsTags;
   protected boolean supportsPatch = true;
   protected final boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected final boolean supportsEmptyDescription;
+  protected boolean supportsAdminOnly = false;
 
   // Special characters supported in the entity name
   protected String supportedNameCharacters = "_'-.&()[]" + RANDOM_STRING_GENERATOR.generate(1);
@@ -291,6 +292,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference USER1_REF;
   public static User USER2;
   public static EntityReference USER2_REF;
+  public static User USER3; // User with no roles for permission testing
+  public static EntityReference USER3_REF;
   public static User USER_TEAM21;
   public static User BOT_USER;
   public static EntityReference DEFAULT_BOT_ROLE_REF;
@@ -388,6 +391,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static TestDefinition TEST_DEFINITION1;
   public static TestDefinition TEST_DEFINITION2;
   public static TestDefinition TEST_DEFINITION3;
+  public static TestDefinition TEST_DEFINITION4;
+  public static TestDefinition TEST_DEFINITION5;
 
   public static DataInsightChart DI_CHART1;
 
@@ -574,7 +579,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return createRequest(getEntityName(test, index)).withDescription("").withDisplayName(null);
   }
 
-  public final K createRequest(
+  public K createRequest(
       String name, String description, String displayName, List<EntityReference> owners) {
     if (!supportsEmptyDescription && description == null) {
       throw new IllegalArgumentException(
@@ -971,7 +976,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         containerName = container.getName().replace(parentOfContainer + Entity.SEPARATOR, "");
       }
       CreateEntity request = containerTest.createRequest(containerName, "", "", null);
-      containerTest.updateEntity(request, Status.OK, ADMIN_AUTH_HEADERS);
+      containerTest.updateEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS);
 
       ResultList<T> listAfterRestore = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
       assertEquals(listBeforeDeletion.getData().size(), listAfterRestore.getData().size());
@@ -1136,7 +1141,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Try to search entity with INCOMPLETE description
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
-    Response response;
+    es.org.elasticsearch.client.Response response;
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
@@ -1185,7 +1190,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Search for entities without description
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
-    Response response;
+    es.org.elasticsearch.client.Response response;
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
@@ -1230,7 +1235,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create an entity with mandatory name field null
     final K request = createRequest(null, "description", "displayName", null);
     assertResponseContains(
-        () -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param name must not be null]");
 
     // Create an entity with mandatory name field empty
     final K request1 = createRequest("", "description", "displayName", null);
@@ -1360,6 +1367,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
+    if (supportsOwners || supportsAdminOnly) {
+      return;
+    }
     // Ingestion bot can create and delete all the entities except websocket and bot
     if (List.of(Entity.EVENT_SUBSCRIPTION, Entity.BOT).contains(entityType)) {
       return;
@@ -1376,6 +1386,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_entity_as_non_admin_401(TestInfo test) {
+    if (supportsAdminOnly) {
+      return;
+    }
     assertResponse(
         () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
         FORBIDDEN,
@@ -1707,6 +1720,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
+    if (supportsEmptyDescription) {
+      return;
+    }
     // Create entity with non-empty description
     K request =
         createRequest(
@@ -1728,10 +1744,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     fieldUpdated(change, "displayName", "displayName", "updatedDisplayName");
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Updating non-empty description and non-empty displayName is ignored for bot users
-    request.withDescription("updatedDescription2").withDisplayName("updatedDisplayName2");
+    // Updating non-empty description is ignored for bot users
+    request.withDescription("updatedDescription2");
     change = getChangeDescription(entity, NO_CHANGE);
     updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, NO_CHANGE, change);
+
+    // Updating non-empty display name is allowed for bot users
+    // revert to the last committed description, so only displayName is new
+    request.withDescription("updatedDescription").withDisplayName("updatedDisplayName2");
+    change = getChangeDescription(entity, MINOR_UPDATE);
+    fieldUpdated(change, "displayName", "updatedDisplayName", "updatedDisplayName2");
+    updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -1823,7 +1846,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void patch_entityDescriptionAndTestAuthorizer(TestInfo test) throws IOException {
-    if (!supportsPatch) {
+    if (!supportsPatch || supportsAdminOnly) {
       return;
     }
     T entity =
@@ -2160,6 +2183,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    if (supportsAdminOnly) {
+      return;
+    }
     // Deleting as non-owner and non-admin should fail
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -2212,6 +2238,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void delete_async_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    if (supportsEmptyDescription) {
+      return;
+    }
     // Create entity as admin
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -2309,9 +2338,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Initiate the delete operation after connection is established
-    javax.ws.rs.core.Response response =
-        deleteEntityAsync(id, recursive, hardDelete, ADMIN_AUTH_HEADERS);
-    assertEquals(javax.ws.rs.core.Response.Status.ACCEPTED.getStatusCode(), response.getStatus());
+    Response response = deleteEntityAsync(id, recursive, hardDelete, ADMIN_AUTH_HEADERS);
+    assertEquals(Status.ACCEPTED.getStatusCode(), response.getStatus());
 
     // Validate initial response
     DeleteEntityResponse deleteResponse = response.readEntity(DeleteEntityResponse.class);
@@ -2339,7 +2367,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return deleteMessage;
   }
 
-  protected javax.ws.rs.core.Response deleteEntityAsync(
+  protected Response deleteEntityAsync(
       UUID id, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
       throws HttpResponseException {
     try {
@@ -2417,7 +2445,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     RestClient client = getSearchClient();
     Request request = new Request("GET", "/_cat/indices");
     request.addParameter("format", "json");
-    Response response = client.performRequest(request);
+    es.org.elasticsearch.client.Response response = client.performRequest(request);
     JSONArray jsonArray = new JSONArray(EntityUtils.toString(response.getEntity()));
     List<String> indexNamesFromResponse = new ArrayList<>();
     for (int i = 0; i < jsonArray.length(); i++) {
@@ -2742,7 +2770,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws HttpResponseException {
     WebTarget target =
         getResource(
-            String.format("search/query?q=&index=%s&from=0&deleted=false&size=50", indexName));
+            String.format("search/query?q=&index=%s&from=0&deleted=false&size=1000", indexName));
     String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     SearchResponse response = null;
     try {
@@ -3444,6 +3472,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEntityReferences(expectedRefs, actualRefs);
   }
 
+  public void assertEntityReference(Object expected, Object actual) {
+    EntityReference expectedRef =
+        expected instanceof EntityReference
+            ? (EntityReference) expected
+            : JsonUtils.readValue(expected.toString(), EntityReference.class);
+    EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
+    assertEquals(expectedRef.getId(), actualRef.getId());
+    assertEquals(expectedRef.getDisplayName(), actualRef.getDisplayName());
+  }
+
   public static class EventHolder {
     @Getter ChangeEvent expectedEvent;
 
@@ -3752,7 +3790,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertEventually(
           "assertEntityReferenceFromSearch_" + entity.getFullyQualifiedName(),
           () -> {
-            Response response = searchClient.performRequest(request);
+            es.org.elasticsearch.client.Response response = searchClient.performRequest(request);
             String jsonString = EntityUtils.toString(response.getEntity());
             @SuppressWarnings("unchecked")
             HashMap<String, Object> map =
@@ -4257,7 +4295,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return null;
   }
 
-  private UUID getAdminUserId() throws HttpResponseException {
+  protected UUID getAdminUserId() throws HttpResponseException {
     UserResourceTest userResourceTest = new UserResourceTest();
     User adminUser = userResourceTest.getEntityByName("admin", ADMIN_AUTH_HEADERS);
     return adminUser.getId();
@@ -4441,7 +4479,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
             entity.getId().toString());
     request.setJsonEntity(query);
-    Response response = searchClient.performRequest(request);
+    es.org.elasticsearch.client.Response response = searchClient.performRequest(request);
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
@@ -4469,7 +4507,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
             entity.getId().toString());
     request.setJsonEntity(query);
-    Response response = searchClient.performRequest(request);
+    es.org.elasticsearch.client.Response response = searchClient.performRequest(request);
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);

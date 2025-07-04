@@ -14,7 +14,7 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Select, Space } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
@@ -82,7 +82,7 @@ const RolesCard = ({
   if (isAdminUser) {
     return (
       <Card
-        className="new-header-border-card"
+        className="bot-page-roles-card-header"
         extra={
           !isRolesEdit && (
             <EditIconButton

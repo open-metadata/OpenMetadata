@@ -15,6 +15,7 @@ import org.flowable.bpmn.model.SubProcess;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CertificationConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.SetEntityCertificationImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -22,7 +23,6 @@ import org.openmetadata.service.governance.workflows.flowable.builders.FieldExte
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
-import org.openmetadata.service.util.JsonUtils;
 
 public class SetEntityCertificationTask implements NodeInterface {
   private final SubProcess subProcess;
@@ -58,7 +58,8 @@ public class SetEntityCertificationTask implements NodeInterface {
       attachWorkflowInstanceStageListeners(subProcess);
     }
 
-    this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
+    this.runtimeExceptionBoundaryEvent =
+        getRuntimeExceptionBoundaryEvent(subProcess, config.getStoreStageStatus());
     this.subProcess = subProcess;
   }
 

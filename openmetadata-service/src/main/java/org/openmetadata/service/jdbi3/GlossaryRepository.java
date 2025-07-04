@@ -65,6 +65,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -72,7 +73,6 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -212,7 +212,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withStatus(getTermStatus(printer, csvRecord))
           .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
-        createEntity(printer, csvRecord, glossaryTerm);
+        createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
       }
     }
 
@@ -332,7 +332,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     // List of entity references tagged with the glossary term
     Map<String, EntityReference> targetFQNFromES =
         repository.getGlossaryUsageFromES(
-            original.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
     List<EntityReference> childrenTerms =
         searchRepository.getEntitiesContainingFQNFromES(
             original.getFullyQualifiedName(),
@@ -341,12 +341,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     for (EntityReference child : childrenTerms) {
       targetFQNFromES.putAll( // List of entity references tagged with the children term
           repository.getGlossaryUsageFromES(
-              child.getFullyQualifiedName(), targetFQNHashesFromDb.size()));
+              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false));
       searchRepository.updateEntity(child); // update es index of child term
       searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
     }
 
-    searchRepository.updateEntity(original); // update es index of child term
+    searchRepository.updateEntityIndex(original); // update es index of child term
     searchRepository
         .getSearchClient()
         .reindexAcrossIndices("fullyQualifiedName", original.getEntityReference());

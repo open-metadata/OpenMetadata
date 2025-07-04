@@ -13,7 +13,7 @@
  */
 import { Layout } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { SettingType } from '../../generated/settings/settings';
@@ -21,7 +21,6 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import NavBar from '../NavBar/NavBar';
@@ -75,7 +74,8 @@ const AppContainer = () => {
         {/* Render main content */}
         <Layout>
           {/* Render Appbar */}
-          {isProtectedRoute(location.pathname) && isAuthenticated ? (
+          {applicationRoutesClass.isProtectedRoute(location.pathname) &&
+          isAuthenticated ? (
             <NavBar />
           ) : null}
 

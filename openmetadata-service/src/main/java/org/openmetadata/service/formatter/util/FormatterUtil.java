@@ -22,6 +22,8 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.formatter.factory.ParserFactory.getFieldParserObject;
 import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.getFieldNameChange;
 
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -29,8 +31,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -42,13 +42,13 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.factory.ParserFactory;
 import org.openmetadata.service.formatter.field.DefaultFieldFormatter;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j

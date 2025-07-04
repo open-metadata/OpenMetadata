@@ -1,0 +1,77 @@
+{
+  "$id": "https://open-metadata.org/schema/api/mcp/mcpToolDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Tool Definition",
+  "description": "Definition of a tool available in the Model Context Protocol",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.mcp.MCPToolDefinition",
+  "properties": {
+    "name": {
+      "description": "Name of the tool",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of what the tool does",
+      "type": "string"
+    },
+    "parameters": {
+      "description": "Definition of tool parameters",
+      "$ref": "#/definitions/toolParameters"
+    }
+  },
+  "required": ["name", "description", "parameters"],
+  "definitions": {
+    "toolParameters": {
+      "description": "Tool parameter definitions",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.mcp.MCPToolParameters",
+      "properties": {
+        "type": {
+          "description": "Type of parameter schema",
+          "type": "string",
+          "default": "object"
+        },
+        "properties": {
+          "description": "Parameter properties",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/toolParameter"
+          }
+        },
+        "required": {
+          "description": "List of required parameters",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["properties"]
+    },
+    "toolParameter": {
+      "description": "Individual tool parameter definition",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.mcp.MCPToolParameter",
+      "properties": {
+        "type": {
+          "description": "Type of parameter",
+          "type": "string",
+          "enum": ["string", "number", "integer", "boolean", "array", "object"]
+        },
+        "description": {
+          "description": "Description of the parameter",
+          "type": "string"
+        },
+        "enum": {
+          "description": "Possible enum values for this parameter",
+          "type": "array",
+          "items": {}
+        },
+        "default": {
+          "description": "Default value for this parameter"
+        }
+      },
+      "required": ["type", "description"]
+    }
+  }
+}

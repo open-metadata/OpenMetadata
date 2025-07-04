@@ -14,10 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, filter, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -54,7 +53,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
 const TeamsPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useFqn();
@@ -452,7 +451,7 @@ const TeamsPage = () => {
   const afterDeleteAction = (isSoftDelete?: boolean) => {
     isSoftDelete
       ? handleToggleDelete()
-      : history.push(getTeamsWithFqnPath(TeamType.Organization));
+      : navigate(getTeamsWithFqnPath(TeamType.Organization));
   };
 
   const toggleShowDeletedTeam = () => {
@@ -496,6 +495,9 @@ const TeamsPage = () => {
     return (
       <ErrorPlaceHolder
         className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.team-plural'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );

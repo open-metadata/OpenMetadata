@@ -38,6 +38,39 @@ To run the Unity Catalog ingestion, you will need to install:
 pip3 install "openmetadata-ingestion[databricks]"
 ```
 
+### Permission Requirement
+
+To enable full functionality of metadata extraction, profiling, usage, and lineage features in OpenMetadata, the following permissions must be granted to the relevant users in your Databricks environment.
+
+### Metadata and Profiling Permissions
+
+These permissions are required on the catalogs, schemas, and tables from which metadata and profiling information will be ingested.
+
+```sql
+GRANT USE CATALOG ON CATALOG <catalog_name> TO `<user>`;
+GRANT USE SCHEMA ON SCHEMA <schema_name> TO `<user>`;
+GRANT SELECT ON TABLE <table_name> TO `<user>`;
+```
+
+Ensure these grants are applied to all relevant tables for metadata ingestion and profiling operations.
+
+### Usage and Lineage
+
+These permissions enable OpenMetadata to extract query history and construct lineage information.
+
+```sql
+GRANT SELECT ON SYSTEM.QUERY.HISTORY TO `<user>`;
+GRANT USE SCHEMA ON SCHEMA system.query TO `<user>`;
+```
+
+These permissions allow access to Databricks system tables that track query activity, enabling lineage and usage statistics generation.
+
+{% note %}
+
+Adjust <user>, <catalog_name>, <schema_name>, and <table_name> according to your specific deployment and security requirements.
+
+{% /note %}
+
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.

@@ -1,5 +1,6 @@
 ---
-title: MLflow
+title: MLflow Connector | OpenMetadata ML Model Integration
+description: Connect MLflow to OpenMetadata seamlessly with our comprehensive connector guide. Learn setup, configuration, and ML model metadata integration in minutes.
 slug: /connectors/ml-model/mlflow
 ---
 

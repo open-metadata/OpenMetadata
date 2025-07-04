@@ -12,6 +12,7 @@
 Mysql query parser module
 """
 from abc import ABC
+from datetime import datetime
 from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
@@ -22,6 +23,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.mysql.queries import (
+    MYSQL_SQL_STATEMENT,
+    MYSQL_SQL_STATEMENT_SLOW_LOGS,
+)
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 
 
@@ -44,3 +49,29 @@ class MysqlQueryParserSource(QueryParserSource, ABC):
                 f"Expected MysqlConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+        """
+        returns sql statement to fetch query logs.
+
+        Override if we have specific parameters
+        """
+        if self.service_connection.useSlowLogs:
+            self.sql_stmt = MYSQL_SQL_STATEMENT_SLOW_LOGS
+        else:
+            self.sql_stmt = MYSQL_SQL_STATEMENT
+        return self.sql_stmt.format(
+            start_time=start_time,
+            end_time=end_time,
+            filters=self.get_filters(),
+            result_limit=self.source_config.resultLimit,
+        )
+
+    def get_filters(self) -> str:
+        if self.service_connection.useSlowLogs:
+            sql_column = "sql_text"
+        else:
+            sql_column = "argument"
+        if self.source_config.filterCondition:
+            return f"{self.filters.format(sql_column=sql_column)} AND {self.source_config.filterCondition}"
+        return self.filters.format(sql_column=sql_column)

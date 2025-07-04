@@ -12,7 +12,6 @@
  */
 import { AxiosError } from 'axios';
 import { Change, diffLines } from 'diff';
-import i18Next from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
@@ -50,7 +49,7 @@ import { TaskType, Thread } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
 import { SearchSourceAlias } from '../interface/search.interface';
-import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import {
   EntityData,
   Option,
@@ -89,13 +88,14 @@ import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
+import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
-  getIncidentManagerDetailPagePath,
   getServiceDetailsPath,
+  getTestCaseDetailPagePath,
   getUserPath,
 } from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
@@ -188,10 +188,7 @@ export const getTaskDetailPath = (task: Thread) => {
   const entityType = getEntityType(task.about) ?? '';
 
   if (entityType === EntityType.TEST_CASE) {
-    return getIncidentManagerDetailPagePath(
-      entityFqn,
-      IncidentManagerTabs.ISSUES
-    );
+    return getTestCaseDetailPagePath(entityFqn, TestCasePageTabs.ISSUES);
   } else if (entityType === EntityType.USER) {
     return getUserPath(
       entityFqn,
@@ -495,7 +492,7 @@ export const getBreadCrumbList = (
     case EntityType.METRIC: {
       return [
         {
-          name: i18Next.t('label.metric-plural'),
+          name: t('label.metric-plural'),
           url: ROUTES.METRICS,
         },
         {
@@ -689,7 +686,7 @@ export const fetchEntityDetail = (
 
 export const TASK_ACTION_COMMON_ITEM: TaskAction[] = [
   {
-    label: i18Next.t('label.close'),
+    label: t('label.close'),
     key: TaskActionMode.CLOSE,
     icon: CancelColored,
   },
@@ -697,17 +694,17 @@ export const TASK_ACTION_COMMON_ITEM: TaskAction[] = [
 
 export const TASK_ACTION_LIST: TaskAction[] = [
   {
-    label: i18Next.t('label.accept-suggestion'),
+    label: t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
     icon: CheckIcon,
   },
   {
-    label: i18Next.t('label.edit-suggestion'),
+    label: t('label.edit-suggestion'),
     key: TaskActionMode.EDIT,
     icon: EditSuggestionIcon,
   },
   {
-    label: i18Next.t('label.close'),
+    label: t('label.close'),
     key: TaskActionMode.CLOSE,
     icon: CloseIcon,
   },
@@ -715,12 +712,12 @@ export const TASK_ACTION_LIST: TaskAction[] = [
 
 export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
   {
-    label: i18Next.t('label.approve'),
+    label: t('label.approve'),
     key: TaskActionMode.RESOLVE,
     icon: CheckIcon,
   },
   {
-    label: i18Next.t('label.reject'),
+    label: t('label.reject'),
     key: TaskActionMode.CLOSE,
     icon: CloseIcon,
   },
@@ -728,12 +725,12 @@ export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
 
 export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
   {
-    label: i18Next.t('label.re-assign'),
+    label: t('label.re-assign'),
     key: TaskActionMode.RE_ASSIGN,
     icon: EditSuggestionIcon,
   },
   {
-    label: i18Next.t('label.resolve'),
+    label: t('label.resolve'),
     key: TaskActionMode.RESOLVE,
     icon: CloseIcon,
   },

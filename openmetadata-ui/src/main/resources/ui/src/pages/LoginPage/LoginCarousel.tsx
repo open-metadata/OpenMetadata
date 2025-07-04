@@ -12,81 +12,46 @@
  */
 
 import { Carousel, Typography } from 'antd';
-import { t } from 'i18next';
 import { uniqueId } from 'lodash';
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import loginClassBase from '../../constants/LoginClassBase';
 
 const LoginCarousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const carouselContent = loginClassBase.getLoginCarouselContent();
+  const { t } = useTranslation();
 
   return (
-    <div className="carousal-container" data-testid="carousel-container">
-      <Carousel
-        autoplay
-        dots
-        autoplaySpeed={5000}
-        beforeChange={(_, next) => setCurrentIndex(next)}
-        easing="ease-in-out"
-        effect="fade">
-        {carouselContent.map((data, idx) => (
-          <div
-            className="text-center"
-            data-testid="slider-container"
-            key={uniqueId() + '-' + currentIndex + '-' + idx}>
-            <Typography.Title className="carousel-header" level={1}>
+    <Carousel
+      autoplay
+      dots
+      autoplaySpeed={5000}
+      beforeChange={(_, next) => setCurrentIndex(next)}
+      className="login-carousel"
+      data-testid="carousel-container"
+      easing="ease-in-out"
+      effect="fade">
+      {carouselContent.map((data, idx) => (
+        <div
+          className="slider-container"
+          data-testid="slider-container"
+          key={uniqueId() + '-' + currentIndex + '-' + idx}>
+          <div className="text-container d-flex flex-col gap-4">
+            <Typography.Title className="carousel-header display-md" level={1}>
               {t(`label.${data.title}`)}
             </Typography.Title>
             <p
-              className="m-b-lg carousal-description"
+              className="carousal-description text-md p-x-lg"
               data-testid="carousel-slide-description">
               {t(`message.${data.descriptionKey}`)}
             </p>
-            <div className="image-container">
-              <img
-                alt="slider"
-                key={`main-${currentIndex}-${idx}`}
-                loading="lazy"
-                src={data.image}
-                style={{ display: 'initial' }}
-                width={data.width}
-              />
-              {data.image1 && (
-                <img
-                  alt="slider"
-                  className={data.image1.position}
-                  key={`img1-${currentIndex}-${idx}`}
-                  loading="lazy"
-                  src={data.image1.image}
-                  width={data.image1.width}
-                />
-              )}
-              {data.image2 && (
-                <img
-                  alt="slider"
-                  className={data.image2.position}
-                  key={`img2-${currentIndex}-${idx}`}
-                  loading="lazy"
-                  src={data.image2.image}
-                  width={data.image2.width}
-                />
-              )}
-              {data.image3 && (
-                <img
-                  alt="slider"
-                  className={data.image3.position}
-                  key={`img3-${currentIndex}-${idx}`}
-                  loading="lazy"
-                  src={data.image3.image}
-                  width={data.image3.width}
-                />
-              )}
-            </div>
           </div>
-        ))}
-      </Carousel>
-    </div>
+
+          <img alt="slider" className="main-image" src={data.image} />
+        </div>
+      ))}
+    </Carousel>
   );
 };
 

@@ -9,9 +9,10 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
+  <name>OpenMetadata Service</name>
 
   <properties>
-    <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
+    <dropwizard.swagger.version>4.0.5-1</dropwizard.swagger.version>
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
@@ -31,6 +32,9 @@
     <json-smart.version>2.5.2</json-smart.version>
     <aws.sdk.version>2.31.1</aws.sdk.version>
     <bedrock.runtime.version>2.31.1</bedrock.runtime.version>
+    <jetty.version>11.0.25</jetty.version>
+    <logback-core.version>1.5.18</logback-core.version>
+    <logback-classic.version>1.5.18</logback-classic.version>
   </properties>
 
   <dependencyManagement>
@@ -78,6 +82,36 @@
           <artifactId>nimbus-jose-jwt</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <!-- Jakarta EL implementation -->
+    <dependency>
+      <groupId>org.glassfish</groupId>
+      <artifactId>jakarta.el</artifactId>
+      <version>5.0.0-M1</version>
+    </dependency>
+    <!-- Jakarta EL API -->
+    <dependency>
+      <groupId>jakarta.el</groupId>
+      <artifactId>jakarta.el-api</artifactId>
+      <version>5.0.1</version>
+    </dependency>
+    <!-- Hibernate Validator -->
+    <dependency>
+      <groupId>org.hibernate.validator</groupId>
+      <artifactId>hibernate-validator</artifactId>
+      <version>8.0.1.Final</version>
+    </dependency>
+    <!-- Jakarta Bean Validation API -->
+    <dependency>
+      <groupId>jakarta.validation</groupId>
+      <artifactId>jakarta.validation-api</artifactId>
+      <version>3.0.2</version>
+    </dependency>
+    <!-- Expression Language Dependencies -->
+    <dependency>
+      <groupId>org.glassfish.expressly</groupId>
+      <artifactId>expressly</artifactId>
+      <version>5.0.0</version>
     </dependency>
     <!--  Upgrading due to CVE in com.nimbusds:nimbus-jose-jwt  -->
     <dependency>
@@ -136,10 +170,28 @@
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-core</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>javax.validation</groupId>
+          <artifactId>validation-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.hibernate.validator</groupId>
+          <artifactId>hibernate-validator</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>jakarta.validation</groupId>
+          <artifactId>jakarta.validation-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-jdbi3</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jdbi</groupId>
+      <artifactId>jdbi3-sqlobject</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.tomcat</groupId>
@@ -212,8 +264,8 @@
       <artifactId>jersey-media-multipart</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.github.maksymdolgykh.dropwizard</groupId>
-      <artifactId>dropwizard-micrometer-core</artifactId>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-metrics</artifactId>
       <exclusions>
         <exclusion>
           <groupId>ch.qos.logback</groupId>
@@ -244,26 +296,8 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>io.github.maksymdolgykh.dropwizard</groupId>
-      <artifactId>dropwizard-micrometer-jdbi</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>ch.qos.logback</groupId>
-          <artifactId>logback-core</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>ch.qos.logback</groupId>
-          <artifactId>logback-classic</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>ch.qos.logback</groupId>
-          <artifactId>logback-access</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>log4j-over-slf4j</artifactId>
-        </exclusion>
-      </exclusions>
+      <groupId>io.prometheus</groupId>
+      <artifactId>prometheus-metrics-instrumentation-dropwizard</artifactId>
     </dependency>
     <dependency>
       <groupId>io.dropwizard</groupId>
@@ -285,10 +319,6 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.dropwizard.modules</groupId>
-      <artifactId>dropwizard-health</artifactId>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -337,14 +367,17 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-core</artifactId>
+      <version>${logback-core.version}</version>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
+      <version>${logback-classic.version}</version>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-access</artifactId>
+      <version>${logback-classic.version}</version>
     </dependency>
     <dependency>
       <groupId>com.jayway.jsonpath</groupId>
@@ -391,6 +424,72 @@
       <artifactId>everit-json-schema</artifactId>
     </dependency>
 
+    <dependency>
+      <groupId>org.glassfish.jersey.connectors</groupId>
+      <artifactId>jersey-jetty-connector</artifactId>
+      <version>3.1.3</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.http.wrappers</artifactId>
+      <version>1.1.8</version>
+    </dependency>
+
+    <dependency>
+      <groupId>jakarta.servlet</groupId>
+      <artifactId>jakarta.servlet-api</artifactId>
+      <version>${jakarta.servlet-api.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>io.prometheus</groupId>
+      <artifactId>simpleclient</artifactId>
+      <version>0.16.0</version>
+    </dependency>
+    <dependency>
+      <groupId>io.prometheus</groupId>
+      <artifactId>simpleclient_dropwizard</artifactId>
+      <version>0.16.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-bom</artifactId>
+      <version>1.14.5</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+
+    <!-- Micrometer Core -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-observation</artifactId>
+      <version>1.14.5</version>
+    </dependency>
+
+    <!-- Micrometer Prometheus -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+      <version>1.14.5</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-core</artifactId>
+      <version>1.14.5</version>
+    </dependency>
+
+
+    <!-- Dropwizard Metrics -->
+    <dependency>
+      <groupId>io.dropwizard.metrics</groupId>
+      <artifactId>metrics-core</artifactId>
+      <version>4.2.19</version>
+    </dependency>
     <!-- Dependencies for cloudwatch monitoring -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -429,14 +528,6 @@
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.github.java-json-tools</groupId>
-      <artifactId>json-patch</artifactId>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
@@ -495,12 +586,6 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.glassfish.jersey.connectors</groupId>
-      <artifactId>jersey-jetty-connector</artifactId>
-      <version>2.40</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>3.26.3</version>
@@ -520,8 +605,9 @@
     </dependency>
     <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
     <dependency>
-      <groupId>javax.json</groupId>
-      <artifactId>javax.json-api</artifactId>
+      <groupId>jakarta.json</groupId>
+      <artifactId>jakarta.json-api</artifactId>
+      <version>2.1.3</version>
     </dependency>
 
     <!-- Apache Johnzon: Implementation of the Java API for JSON Processing (JSR 374) -->
@@ -612,9 +698,43 @@
       <version>6.2.1</version>
     </dependency>
     <dependency>
+      <groupId>io.modelcontextprotocol.sdk</groupId>
+      <artifactId>mcp-bom</artifactId>
+      <type>pom</type>
+    </dependency>
+    <dependency>
+      <groupId>io.modelcontextprotocol.sdk</groupId>
+      <artifactId>mcp</artifactId>
+    </dependency>
+     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
-      <artifactId>websocket-server</artifactId>
-      <version>9.4.57.v20241219</version>
+      <artifactId>websocket-jakarta-server</artifactId>
+      <version>${jetty.version}</version>
+     </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty.websocket</groupId>
+      <artifactId>websocket-jetty-server</artifactId>
+      <version>${jetty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty.websocket</groupId>
+      <artifactId>websocket-jetty-api</artifactId>
+      <version>${jetty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <version>${jetty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-http</artifactId>
+      <version>${jetty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-io</artifactId>
+      <version>${jetty.version}</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
@@ -673,17 +793,37 @@
       <version>5.9</version>
     </dependency>
     <dependency>
+      <groupId>commons-beanutils</groupId>
+      <artifactId>commons-beanutils</artifactId>
+      <version>1.11.0</version>
+    </dependency>
+    <dependency>
       <groupId>com.onelogin</groupId>
       <artifactId>java-saml</artifactId>
       <version>${java.saml}</version>
       <exclusions>
         <exclusion>
-          <groupId>com.fasterxml.woodstox</groupId>
-          <artifactId>woodstox-core</artifactId>
+          <groupId>javax.servlet</groupId>
+          <artifactId>servlet-api</artifactId>
         </exclusion>
         <exclusion>
-          <groupId>org.apache.santurario</groupId>
-          <artifactId>xmlsec</artifactId>
+          <groupId>javax.servlet</groupId>
+          <artifactId>javax.servlet-api</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.onelogin</groupId>
+      <artifactId>java-saml-core</artifactId>
+      <version>${java.saml}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>javax.servlet</groupId>
+          <artifactId>servlet-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>javax.servlet</groupId>
+          <artifactId>javax.servlet-api</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -770,19 +910,49 @@
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>aws-core</artifactId>
     </dependency>
-    <!-- AWS Auth (if not already included) -->
-    <dependency>
-        <groupId>software.amazon.awssdk</groupId>
-        <artifactId>auth</artifactId>
-    </dependency>
-    <!-- Required AWS dependencies -->
     <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>apache-client</artifactId>
     </dependency>
-    <dependency>
+     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>auth</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.ws.rs</groupId>
+      <artifactId>jakarta.ws.rs-api</artifactId>
+      <version>3.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jersey.core</groupId>
+      <artifactId>jersey-server</artifactId>
+      <version>${jersey-bom.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jersey.containers</groupId>
+      <artifactId>jersey-container-servlet</artifactId>
+      <version>${jersey-bom.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.parsson</groupId>
+      <artifactId>parsson</artifactId>
+      <version>1.1.5</version>
+    </dependency>
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <version>4.0.1</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.http.servlet-api</artifactId>
+      <version>2.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.opensearch.client</groupId>
+      <artifactId>opensearch-rest-high-level-client</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -960,67 +1130,53 @@
         </executions>
       </plugin>
       <plugin>
-        <groupId>io.openapitools.swagger</groupId>
-        <artifactId>swagger-maven-plugin</artifactId>
+        <groupId>io.swagger.core.v3</groupId>
+        <artifactId>swagger-maven-plugin-jakarta</artifactId>
+        <version>2.2.30</version>
+        <dependencies>
+          <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>${jakarta.servlet-api.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>4.0.1</version>
+          </dependency>
+        </dependencies>
         <configuration>
+          <outputFileName>swagger</outputFileName>
+          <outputPath>${basedir}/target/classes/assets</outputPath>
+          <outputFormat>JSONANDYAML</outputFormat>
           <resourcePackages>
-            <resourcePackage>org.openmetadata.service.resources</resourcePackage>
+            <package>org.openmetadata.service</package>
+            <package>org.openmetadata.service.resources</package>
           </resourcePackages>
-          <useResourcePackagesChildren>true</useResourcePackagesChildren>
-          <outputDirectory>${basedir}/target/classes/assets/</outputDirectory>
-          <outputFilename>swagger</outputFilename>
-          <outputFormats>JSON,YAML</outputFormats>
           <prettyPrint>true</prettyPrint>
-          <swaggerConfig>
-            <servers>
-              <server>
-                <url>/api</url>
-                <description>Current Host</description>
-              </server>
-              <server>
-                <url>http://localhost:8585/api</url>
-                <description>Endpoint URL</description>
-              </server>
-            </servers>
-            <securityRequirements>
-              <securityRequirement>
-                <entries>
-                  <entry>
-                    <name>BearerAuth</name>
-                  </entry>
-                </entries>
-              </securityRequirement>
-            </securityRequirements>
-            <components>
-              <securitySchemes>
-                <BearerAuth>
-                  <type>http</type>
-                  <description>Provide Token from Bots settings section in OMD or your Authorization Provider</description>
-                  <scheme>bearer</scheme>
-                </BearerAuth>
-              </securitySchemes>
-            </components>
+          <contextId>default</contextId>
+          <openAPI>
             <info>
-              <title>OpenMetadata Apis</title>
-              <version>${project.parent.version}</version>
+              <title>OpenMetadata APIs</title>
+              <version>${project.version}</version>
+              <description>Common types and API definition for OpenMetadata</description>
               <contact>
-                <email>openmetadata-dev@googlegroups.com</email>
                 <name>OpenMetadata</name>
                 <url>https://open-metadata.org</url>
+                <email>openmetadata-dev@googlegroups.com</email>
               </contact>
               <license>
-                <url>https://www.apache.org/licenses/LICENSE-2.0</url>
                 <name>Apache 2.0</name>
+                <url>https://www.apache.org/licenses/LICENSE-2.0</url>
               </license>
             </info>
-            <descriptionFile>../openmetadata-docs/content/v1.7.x/main-concepts/metadata-standard/apis.md</descriptionFile>
-          </swaggerConfig>
+          </openAPI>
         </configuration>
         <executions>
           <execution>
             <phase>compile</phase>
             <goals>
-              <goal>generate</goal>
+              <goal>resolve</goal>
             </goals>
           </execution>
         </executions>

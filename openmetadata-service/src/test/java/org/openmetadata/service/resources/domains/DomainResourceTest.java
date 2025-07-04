@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.domains;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -18,13 +18,13 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -35,13 +35,13 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.domains.DomainResource.DomainList;
 import org.openmetadata.service.util.EntityHierarchyList;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain> {
@@ -406,7 +406,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
         getDomain.getChildren(),
         getDomain.getOwners(),
         getDomain.getExperts());
-    String fields = "children,owners,parent,experts,tags";
+    String fields = "children,owners,parent,experts,tags,followers";
     getDomain =
         byName
             ? getEntityByName(getDomain.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

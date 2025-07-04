@@ -56,7 +56,7 @@ def validate_name_and_transform(values, modification_method, field_name: str = N
         and field_name in FIELD_NAMES
     ):
         values.root = modification_method(values.root)
-    elif hasattr(values, "model_fields"):
+    elif hasattr(type(values), "model_fields"):
         for key in type(values).model_fields.keys():
             if getattr(values, key):
                 if getattr(values, key).__class__.__name__ in NAME_FIELDS:

@@ -108,6 +108,11 @@ export interface CollateAIAppConfig {
     sendToAdmins?:            boolean;
     sendToTeams?:             boolean;
     /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
      * Number of threads to use for reindexing
      */
     consumerThreads?: number;
@@ -157,6 +162,11 @@ export interface CollateAIAppConfig {
      * Whether the AutoPilot Workflow should be active or not.
      */
     active?: boolean;
+    /**
+     * Enter the retention period for Activity Threads of type = 'Conversation' records in days
+     * (e.g., 30 for one month, 60 for two months).
+     */
+    activityThreadsRetentionPeriod?: number;
     /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
@@ -505,6 +515,10 @@ export interface TestCaseDefinitions {
      */
     computePassedFailedRowCount?: boolean;
     parameterValues?:             TestCaseParameterValue[];
+    /**
+     * Tags to apply
+     */
+    tags?: TagLabel[];
     /**
      * Fully qualified name of the test definition.
      */

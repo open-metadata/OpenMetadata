@@ -15,9 +15,9 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -46,7 +46,7 @@ import { checkPermission } from '../../utils/PermissionsUtils';
 import { getKpiPath } from '../../utils/RouterUtils';
 
 const KPIList = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const isAdminUser = currentUser?.isAdmin ?? false;
   const { t } = useTranslation();
@@ -169,7 +169,7 @@ const KPIList = () => {
                   disabled={!isAdminUser}
                   icon={<EditIcon width="16px" />}
                   type="text"
-                  onClick={() => history.push(getKpiPath(record.name))}
+                  onClick={() => navigate(getKpiPath(record.name))}
                 />
               </Tooltip>
               <Tooltip
@@ -225,6 +225,9 @@ const KPIList = () => {
       ) : (
         <ErrorPlaceHolder
           className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.kpi-uppercase'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       ),

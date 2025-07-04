@@ -22,24 +22,26 @@ import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.client.WebTarget;
 import java.net.URI;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.eclipse.jetty.client.HttpClient;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.jetty.connector.JettyClientProperties;
 import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
+import org.glassfish.jersey.jetty.connector.JettyHttpClientSupplier;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -50,6 +52,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -197,6 +200,9 @@ public abstract class OpenMetadataApplicationTest {
     overrideElasticSearchConfig();
     overrideDatabaseConfig(sqlContainer);
 
+    // Init IndexMapping class
+    IndexMappingLoader.init(getEsConfig());
+
     // Migration overrides
     configOverrides.add(
         ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScriptsLocation));
@@ -242,7 +248,7 @@ public abstract class OpenMetadataApplicationTest {
             config,
             forceMigrations);
     // Initialize search repository
-    SearchRepository searchRepository = new SearchRepository(getEsConfig());
+    SearchRepository searchRepository = new SearchRepository(getEsConfig(), 50);
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
@@ -264,8 +270,11 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   private static void createClient() {
+    HttpClient httpClient = new HttpClient();
+    httpClient.setIdleTimeout(0);
     ClientConfig config = new ClientConfig();
     config.connectorProvider(new JettyConnectorProvider());
+    config.register(new JettyHttpClientSupplier(httpClient));
     config.register(new JacksonFeature(APP.getObjectMapper()));
     config.property(ClientProperties.CONNECT_TIMEOUT, 0);
     config.property(ClientProperties.READ_TIMEOUT, 0);
@@ -291,7 +300,7 @@ public abstract class OpenMetadataApplicationTest {
 
   private void createIndices() {
     ElasticSearchConfiguration esConfig = getEsConfig();
-    SearchRepository searchRepository = new SearchRepository(esConfig);
+    SearchRepository searchRepository = new SearchRepository(esConfig, 50);
     LOG.info("creating indexes.");
     searchRepository.createIndexes();
   }

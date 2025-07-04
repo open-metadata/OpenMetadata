@@ -1,0 +1,21 @@
+{
+  "$id": "McpApplication.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Server",
+  "description": "MCP Server app installs an embedded Model Context Protocol(MCP) server within OpenMetadata. Clients supporting MCP Protocol can connect using SSE or Streamable-Http transports.\n \n   1. SSE : http[s]://openmetadata-host/mcp/sse\n \n    - This endpoint can be used by client if Streamable-Http transport is used.\n \n   2. Streamable-Http : http[s]://openmetadata-host/mcp\n \n    - This endpoint can be used by client if Streamable-Http transport is used.",
+  "properties": {
+    "originValidationEnabled": {
+      "title": "Should Origin Header Be validated",
+      "description": "When enabled, clients must include a valid Origin header when connecting via Streamable-Http transport. This prevents unauthorized cross-origin requests.",
+      "type": "boolean",
+      "default": false
+    },
+    "originHeaderUri": {
+      "title": "Origin Header URI",
+      "description": "The allowed origin URI that clients must include in their Origin header when validation is enabled. Only requests from this URI will be accepted.\nExample: `https://myapp.example.com`",
+      "type": "string",
+      "default": "http://localhost"
+    }
+  },
+  "additionalProperties": false
+}

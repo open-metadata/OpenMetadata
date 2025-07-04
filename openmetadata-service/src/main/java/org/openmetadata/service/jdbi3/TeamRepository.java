@@ -43,6 +43,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.service.util.EntityUtil.*;
 
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,7 +58,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -68,6 +68,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -86,6 +87,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -326,6 +328,10 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getInheritedRoles(Team team) {
     return SubjectContext.getRolesForTeams(getParentsForInheritedRoles(team));
+  }
+
+  protected void entitySpecificCleanup(User entityInterface) {
+    FeedUtil.cleanUpTaskForAssignees(entityInterface.getId(), TEAM);
   }
 
   private TeamHierarchy getTeamHierarchy(Team team) {

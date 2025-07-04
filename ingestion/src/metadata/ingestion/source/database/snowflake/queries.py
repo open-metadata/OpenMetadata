@@ -414,6 +414,10 @@ FROM information_schema.views
 WHERE view_definition is not null
 """
 
+SNOWFLAKE_GET_VIEW_DDL = """
+SELECT GET_DDL('VIEW','{view_name}') AS \"text\"
+"""
+
 SNOWFLAKE_GET_STREAM_DEFINITION = """
 SELECT GET_DDL('STREAM','{stream_name}') AS \"text\"
 """

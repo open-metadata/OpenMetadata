@@ -16,11 +16,13 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.Setter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -41,6 +43,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -50,16 +53,16 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
+@Repository(name = "IngestionPipelineRepository")
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
 
   private static final String UPDATE_FIELDS =
-      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
+      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
   private static final String PATCH_FIELDS =
-      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
+      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
 
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
@@ -251,7 +254,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.setPipelineStatuses(pipelineStatus);
 
     // Update ES Indexes
-    searchRepository.updateEntity(ingestionPipeline);
+    searchRepository.updateEntityIndex(ingestionPipeline);
 
     ChangeEvent changeEvent =
         getChangeEvent(
@@ -275,8 +278,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                 startTs,
                 endTs),
             PipelineStatus.class);
-    List<PipelineStatus> allPipelineStatusList =
-        pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+    List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
+    if (pipelineServiceClient != null) {
+      allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+    }
     allPipelineStatusList.addAll(pipelineStatusList);
     return new ResultList<>(
         allPipelineStatusList,
@@ -290,6 +295,29 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public ResultList<PipelineStatus> listExternalAppStatus(
       String ingestionPipelineFQN, Long startTs, Long endTs) {
     return listPipelineStatus(ingestionPipelineFQN, startTs, endTs)
+        .map(
+            pipelineStatus ->
+                pipelineStatus.withConfig(
+                    Optional.ofNullable(pipelineStatus.getConfig())
+                        .map(m -> m.getOrDefault("appConfig", null))
+                        .map(JsonUtils::getMap)
+                        .orElse(null)));
+  }
+
+  public ResultList<PipelineStatus> listExternalAppStatus(
+      String ingestionPipelineFQN, String serviceName, Long startTs, Long endTs) {
+    return listPipelineStatus(ingestionPipelineFQN, startTs, endTs)
+        .filter(
+            pipelineStatus -> {
+              Map<String, Object> metadata = pipelineStatus.getMetadata();
+              if (metadata == null) {
+                return false;
+              }
+              Map<String, Object> workflowMetadata =
+                  JsonUtils.readOrConvertValue(metadata.get("workflow"), Map.class);
+              String pipelineStatusService = (String) workflowMetadata.get("serviceName");
+              return pipelineStatusService != null && pipelineStatusService.equals(serviceName);
+            })
         .map(
             pipelineStatus ->
                 pipelineStatus.withConfig(

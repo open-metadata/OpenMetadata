@@ -21,6 +21,7 @@ import {
   MenuProps,
   Row,
   Select,
+  Skeleton,
   Space,
   Tooltip,
   Typography,
@@ -35,6 +36,7 @@ import {
   isEqual,
   isUndefined,
   last,
+  orderBy,
   startCase,
   unionBy,
 } from 'lodash';
@@ -47,13 +49,12 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
-
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
@@ -108,7 +109,6 @@ import {
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
-import { EditorContentRef } from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
@@ -125,6 +125,7 @@ import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
 import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNew';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -137,7 +138,7 @@ export const TaskTabNew = ({
   ...rest
 }: TaskTabProps) => {
   const editorRef = useRef<EditorContentRef>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
@@ -163,6 +164,7 @@ export const TaskTabNew = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
+    isPostsLoading,
   } = useActivityFeedProvider();
 
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
@@ -300,7 +302,7 @@ export const TaskTabNew = ({
   };
 
   const handleTaskLinkClick = () => {
-    history.push({
+    navigate({
       pathname: getTaskDetailPath(taskThread),
     });
   };
@@ -443,7 +445,7 @@ export const TaskTabNew = ({
       })
       .finally(() => {
         setHasAddedComment(true);
-        editorRef.current?.clearEditorValue();
+        editorRef.current?.clearEditorContent();
         setShowFeedEditor(false);
         setRecentComment(comment);
       });
@@ -958,20 +960,16 @@ export const TaskTabNew = ({
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
                     <UserPopOverCard
-                      userName={
-                        taskThread?.task?.assignees[0].displayName ?? ''
-                      }>
+                      userName={taskThread?.task?.assignees[0].name ?? ''}>
                       <div className="d-flex items-center">
                         <ProfilePicture
-                          name={
-                            taskThread?.task?.assignees[0].displayName ?? ''
-                          }
+                          name={taskThread?.task?.assignees[0].name ?? ''}
                           width="24"
                         />
                       </div>
                     </UserPopOverCard>
                     <Typography.Text className="text-grey-body">
-                      {taskThread?.task?.assignees[0].displayName}
+                      {getEntityName(taskThread?.task?.assignees[0])}
                     </Typography.Text>
                   </div>
                 ) : (
@@ -1050,6 +1048,34 @@ export const TaskTabNew = ({
   const closeFeedEditor = () => {
     setShowFeedEditor(false);
   };
+
+  const posts = useMemo(() => {
+    if (isPostsLoading) {
+      return (
+        <Space className="m-y-md" direction="vertical" size={16}>
+          <Skeleton active />
+          <Skeleton active />
+          <Skeleton active />
+        </Space>
+      );
+    }
+
+    const posts = orderBy(taskThread.posts, ['postTs'], ['desc']);
+
+    return (
+      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+        {posts.map((reply, index, arr) => (
+          <CommentCard
+            closeFeedEditor={closeFeedEditor}
+            feed={taskThread}
+            isLastReply={index === arr.length - 1}
+            key={reply.id}
+            post={reply}
+          />
+        ))}
+      </Col>
+    );
+  }, [taskThread, closeFeedEditor, isPostsLoading]);
 
   useEffect(() => {
     closeFeedEditor();
@@ -1132,11 +1158,11 @@ export const TaskTabNew = ({
               taskThread?.task?.status === ThreadTaskStatus.Open && (
                 <div className="d-flex gap-2">
                   <div className="profile-picture">
-                    <UserPopOverCard userName={getEntityName(currentUser)}>
+                    <UserPopOverCard userName={currentUser?.name ?? ''}>
                       <div className="d-flex items-center">
                         <ProfilePicture
                           key={taskThread.id}
-                          name={getEntityName(currentUser)}
+                          name={currentUser?.name ?? ''}
                           width="32"
                         />
                       </div>
@@ -1153,22 +1179,7 @@ export const TaskTabNew = ({
               )
             )}
 
-            {taskThread?.posts && taskThread?.posts?.length > 0 && (
-              <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-                {taskThread?.posts
-                  ?.slice()
-                  .sort((a, b) => (b.postTs as number) - (a.postTs as number))
-                  .map((reply, index, arr) => (
-                    <CommentCard
-                      closeFeedEditor={closeFeedEditor}
-                      feed={taskThread}
-                      isLastReply={index === arr.length - 1}
-                      key={reply.id}
-                      post={reply}
-                    />
-                  ))}
-              </Col>
-            )}
+            {posts}
           </div>
         </Col>
       </Col>

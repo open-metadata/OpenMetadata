@@ -145,6 +145,18 @@ Make sure to tune out the DAG configurations (`schedule_interval`, `start_date`,
 
 {% /note %}
 
+{% note %}
+
+If you encounter issues such as missing task instances or Airflow failing to locate a deployed DAG (e.g., `Dag '<DAG_ID>' could not be found`), this may be due to a **timezone mismatch** in your Airflow configuration. To resolve this, set the following in your `airflow.cfg`:
+
+```ini
+default_timezone = system
+```
+
+This ensures that Airflow uses the system timezone, which is particularly important when OpenMetadata and Airflow are running on the same server.
+
+{% /note %}
+
 ### Key Notes
 
 - **Image Version**: Ensure the Docker image version matches your OpenMetadata server version (e.g., `openmetadata/ingestion-base:0.13.2`).  

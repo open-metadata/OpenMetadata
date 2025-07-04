@@ -49,6 +49,14 @@
       "description": "Used for user biography.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "externalId": {
+      "description": "External identifier from identity provider (used for SCIM).",
+      "type": "string"
+    },
+    "scimUserName": {
+      "description": "Raw user name from SCIM.",
+      "type": "string"
+    },
     "displayName": {
       "description": "Name used for display purposes. Example 'FirstName LastName'.",
       "type": "string"
@@ -147,6 +155,18 @@
     "lastLoginTime": {
       "description": "Last time the user logged in.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "lastActivityTime": {
+      "description": "Last time the user was active in the system.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+     "personaPreferences": {
+      "description": "User's personal preferences for each persona. Users can customize certain UI elements per persona while inheriting base persona configuration.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/personaPreferences.json"
+      },
+      "default": []
     }
   },
   "additionalProperties": false,

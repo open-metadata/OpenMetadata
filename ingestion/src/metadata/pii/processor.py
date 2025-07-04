@@ -12,16 +12,10 @@
 """
 Processor util to fetch pii sensitive columns
 """
-import traceback
-from typing import List, Optional, cast
+from typing import Any, Sequence
 
-from metadata.generated.schema.entity.data.table import Column, TableData
-from metadata.generated.schema.entity.services.ingestionPipelines.status import (
-    StackTraceError,
-)
-from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
-    DatabaseServiceAutoClassificationPipeline,
-)
+from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -31,24 +25,20 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.api.models import Either
-from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.step import Step
-from metadata.ingestion.api.steps import Processor
-from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.pii.algorithms.tags import PIISensitivityTag
+from metadata.pii.algorithms.utils import get_top_classes, normalize_scores
+from metadata.pii.base_processor import AutoClassificationProcessor
 from metadata.pii.constants import PII
-from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
-from metadata.pii.scanners.ner_scanner import NERScanner
-from metadata.sampler.models import SamplerResponse
+from metadata.utils import fqn
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 
-class PIIProcessor(Processor):
+class PIIProcessor(AutoClassificationProcessor):
     """
-    A scanner that uses Spacy NER for entity recognition
+    An AutoClassificationProcessor that uses a PIISensitive classifier to tag columns.
     """
 
     def __init__(
@@ -56,50 +46,27 @@ class PIIProcessor(Processor):
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
     ):
-        super().__init__()
-        self.config = config
-        self.metadata = metadata
+        super().__init__(config, metadata)
 
-        # Init and type the source config
-        self.source_config: DatabaseServiceAutoClassificationPipeline = cast(
-            DatabaseServiceAutoClassificationPipeline,
-            self.config.source.sourceConfig.config,
-        )  # Used to satisfy type checked
+        from metadata.pii.algorithms.classifiers import (  # pylint: disable=import-outside-toplevel
+            ColumnClassifier,
+            PIISensitiveClassifier,
+        )
 
-        self._ner_scanner = None
-        self.name_scanner = ColumnNameScanner()
-        self.confidence_threshold = self.source_config.confidence
+        self._classifier: ColumnClassifier[PIISensitivityTag] = PIISensitiveClassifier()
 
-    @property
-    def name(self) -> str:
-        return "Auto Classification Processor"
-
-    @property
-    def ner_scanner(self) -> NERScanner:
-        """Load the NER Scanner only if called"""
-        if self._ner_scanner is None:
-            self._ner_scanner = NERScanner()
-
-        return self._ner_scanner
-
-    @classmethod
-    def create(
-        cls,
-        config_dict: dict,
-        metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
-    ) -> "Step":
-        config = parse_workflow_config_gracefully(config_dict)
-        return cls(config=config, metadata=metadata)
-
-    def close(self) -> None:
-        """Nothing to close"""
+        self.confidence_threshold = self.source_config.confidence / 100
+        self._tolerance = 0.01
 
     @staticmethod
-    def build_column_tag(tag_fqn: str, column_fqn: str) -> ColumnTag:
-        """
-        Build the tag and run the PATCH
-        """
+    def build_tag_label(tag: PIISensitivityTag) -> TagLabel:
+        tag_fqn = fqn.build(
+            metadata=None,
+            entity_type=Tag,
+            classification_name=PII,
+            tag_name=tag.value,
+        )
+
         tag_label = TagLabel(
             tagFQN=tag_fqn,
             source=TagSource.Classification,
@@ -107,85 +74,27 @@ class PIIProcessor(Processor):
             labelType=LabelType.Generated,
         )
 
-        return ColumnTag(column_fqn=column_fqn, tag_label=tag_label)
+        return tag_label
 
-    def process_column(
-        self,
-        idx: int,
-        column: Column,
-        table_data: Optional[TableData],
-        confidence_threshold: float,
-    ) -> Optional[List[ColumnTag]]:
+    def create_column_tag_labels(
+        self, column: Column, sample_data: Sequence[Any]
+    ) -> Sequence[TagLabel]:
         """
-        Tag a column with PII if we find it using our scanners
+        Create tags for the column based on the sample data.
         """
+        # If the column we are about to process already has PII tags return empty
+        for tag in column.tags or []:
+            if PII in tag.tagFQN.root:
+                return []
 
-        # First, check if the column we are about to process
-        # already has PII tags or not
-        column_has_pii_tag = any((PII in tag.tagFQN.root for tag in column.tags or []))
+        # Get the tags and confidence
+        scores = self._classifier.predict_scores(
+            sample_data, column_name=column.name.root, column_data_type=column.dataType
+        )
 
-        # If it has PII tags, we skip the processing
-        # for the column
-        if column_has_pii_tag is True:
-            return None
+        scores = normalize_scores(scores, tol=self._tolerance)
 
-        # We'll scan first by sample data to prioritize the NER scanner
-        # If we find nothing, we'll check the column name
-        tag_and_confidence = (
-            self.ner_scanner.scan([row[idx] for row in table_data.rows])
-            if table_data
-            else None
-        ) or self.name_scanner.scan(column.name.root)
-
-        if (
-            tag_and_confidence
-            and tag_and_confidence.tag_fqn
-            and tag_and_confidence.confidence >= confidence_threshold / 100
-        ):
-            # We support returning +1 tags for a single column in _run
-            return [
-                self.build_column_tag(
-                    tag_fqn=tag_and_confidence.tag_fqn,
-                    column_fqn=column.fullyQualifiedName.root,
-                )
-            ]
-
-        return None
-
-    def _run(
-        self,
-        record: SamplerResponse,
-    ) -> Either[SamplerResponse]:
-        """
-        Main entrypoint for the scanner.
-
-        Adds PII tagging based on the column names
-        and TableData
-        """
-
-        # We don't always need to process
-        if not self.source_config.enableAutoClassification:
-            return Either(right=record)
-
-        column_tags = []
-        for idx, column in enumerate(record.table.columns):
-            try:
-                col_tags = self.process_column(
-                    idx=idx,
-                    column=column,
-                    table_data=record.sample_data.data,
-                    confidence_threshold=self.confidence_threshold,
-                )
-                if col_tags:
-                    column_tags.extend(col_tags)
-            except Exception as err:
-                self.status.failed(
-                    StackTraceError(
-                        name=record.table.fullyQualifiedName.root,
-                        error=f"Error computing PII tags for [{column}] - [{err}]",
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
-
-        record.column_tags = column_tags
-        return Either(right=record)
+        # winner is at most 1 tag
+        winner = get_top_classes(scores, 1, self.confidence_threshold)
+        tag_labels = [self.build_tag_label(tag) for tag in winner]
+        return tag_labels

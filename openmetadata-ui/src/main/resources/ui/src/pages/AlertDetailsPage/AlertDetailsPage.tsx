@@ -16,9 +16,9 @@ import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import AlertConfigDetails from '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails';
@@ -68,20 +68,20 @@ import {
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
   isNotificationAlert = false,
 }: Readonly<AlertDetailsPageProps>) {
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { tab = AlertDetailTabs.CONFIGURATION } =
-    useParams<{ tab: AlertDetailTabs }>();
+  const { tab } = useRequiredParams<{ tab: AlertDetailTabs }>();
   const { fqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
   const [alertEventCounts, setAlertEventCounts] = useState<EventsRecord>();
-  const [loadingCount, setLoadingCount] = useState(1);
+  const [loadingCount, setLoadingCount] = useState(0);
   const [ownerLoading, setOwnerLoading] = useState(false);
   const [alertEventCountsLoading, setAlertEventCountsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
@@ -111,6 +111,7 @@ function AlertDetailsPage({
 
   const fetchResourcePermission = useCallback(async () => {
     try {
+      setLoadingCount((count) => count + 1);
       if (fqn) {
         const searchIndexPermission = await getEntityPermissionByFqn(
           ResourceEntity.EVENT_SUBSCRIPTION,
@@ -137,7 +138,7 @@ function AlertDetailsPage({
       });
 
       setAlertDetails(observabilityAlert);
-    } catch (error) {
+    } catch {
       // Error handling
     } finally {
       setLoadingCount((count) => count - 1);
@@ -153,7 +154,7 @@ function AlertDetailsPage({
       });
 
       setAlertEventCounts(alertCounts);
-    } catch (error) {
+    } catch {
       // Error handling
     } finally {
       setAlertEventCountsLoading(false);
@@ -196,12 +197,12 @@ function AlertDetailsPage({
 
   const handleAlertDelete = useCallback(async () => {
     isNotificationAlert
-      ? history.push(ROUTES.NOTIFICATION_ALERTS)
-      : history.push(ROUTES.OBSERVABILITY_ALERTS);
+      ? navigate(ROUTES.NOTIFICATION_ALERTS)
+      : navigate(ROUTES.OBSERVABILITY_ALERTS);
   }, [history]);
 
   const handleAlertEdit = useCallback(async () => {
-    history.push(
+    navigate(
       isNotificationAlert
         ? getNotificationAlertsEditPath(fqn)
         : getObservabilityAlertsEditPath(fqn)
@@ -295,10 +296,11 @@ function AlertDetailsPage({
 
   const handleTabChange = useCallback(
     (activeKey: string) => {
-      history.replace(
+      navigate(
         isNotificationAlert
           ? getNotificationAlertDetailsPath(fqn, activeKey)
-          : getObservabilityAlertDetailsPath(fqn, activeKey)
+          : getObservabilityAlertDetailsPath(fqn, activeKey),
+        { replace: true }
       );
     },
     [history, fqn]
@@ -325,10 +327,17 @@ function AlertDetailsPage({
     [alertEventCounts, alertEventCountsLoading]
   );
 
-  if (!loadingCount && !viewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  if (!loadingCount && !isUndefined(viewPermission) && !viewPermission) {
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.alert-detail-plural'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
-
   if (!loadingCount && isUndefined(alertDetails)) {
     return <ErrorPlaceHolder className="m-0" />;
   }

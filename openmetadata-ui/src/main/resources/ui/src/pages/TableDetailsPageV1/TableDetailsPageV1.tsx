@@ -17,9 +17,9 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
@@ -28,6 +28,7 @@ import { AlignRightIconButton } from '../../components/common/IconButtons/EditIc
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -98,8 +99,9 @@ import {
   getTierTags,
   updateColumnInNestedStructure,
 } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 
 const TableDetailsPageV1: React.FC = () => {
@@ -108,10 +110,10 @@ const TableDetailsPageV1: React.FC = () => {
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const USERId = currentUser?.id ?? '';
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -162,7 +164,8 @@ const TableDetailsPageV1: React.FC = () => {
             EntityType.TABLE,
             tableFqn,
             tablePermissions,
-            tableDetails
+            tableDetails,
+            navigate
           )
         : [],
     [tablePermissions, tableFqn, tableDetails]
@@ -207,7 +210,7 @@ const TableDetailsPageV1: React.FC = () => {
       });
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setLoading(false);
@@ -317,7 +320,7 @@ const TableDetailsPageV1: React.FC = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const fetchResourcePermission = useCallback(
-    async (tableFqn) => {
+    async (tableFqn: string) => {
       try {
         const tablePermission = await getEntityPermissionByFqn(
           ResourceEntity.TABLE,
@@ -359,9 +362,9 @@ const TableDetailsPageV1: React.FC = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.replace(
-          getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey)
-        );
+        navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
+          replace: true,
+        });
       }
     }
   };
@@ -565,6 +568,21 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, onTableUpdate, tableTags]
   );
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (tableDetails) {
+        const certificationTag: Table['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...tableDetails,
+          certification: certificationTag,
+        };
+
+        await onTableUpdate(updatedTableDetails, 'certification');
+      }
+    },
+    [tableDetails, onTableUpdate]
+  );
   const handleToggleDelete = (version?: number) => {
     setTableDetails((prev) => {
       if (!prev) {
@@ -587,8 +605,7 @@ const TableDetailsPageV1: React.FC = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.table'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -661,15 +678,15 @@ const TableDetailsPageV1: React.FC = () => {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
+      navigate(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
-  const updateTableDetailsState = useCallback((data) => {
+  const updateTableDetailsState = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Table;
 
     setTableDetails((data) => ({
@@ -766,7 +783,15 @@ const TableDetailsPageV1: React.FC = () => {
   }
 
   if (!(isTourOpen || isTourPage) && !viewBasicPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.table-details'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (!tableDetails) {
@@ -800,6 +825,7 @@ const TableDetailsPageV1: React.FC = () => {
               extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}
               permissions={tablePermissions}
+              onCertificationUpdate={onCertificationUpdate}
               onDisplayNameUpdate={handleDisplayNameUpdate}
               onFollowClick={handleFollowTable}
               onOwnerUpdate={handleUpdateOwner}

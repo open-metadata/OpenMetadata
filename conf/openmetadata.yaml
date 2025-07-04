@@ -31,6 +31,8 @@ server:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
+  gzip:
+    syncFlush: true
 
   maxThreads: ${SERVER_MAX_THREADS:-50}
   minThreads: ${SERVER_MIN_THREADS:-10}
@@ -433,9 +435,10 @@ web:
     option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
   cache-control: ${WEB_CONF_CACHE_CONTROL:-""}
   pragma: ${WEB_CONF_PRAGMA:-""}
-  
+
 operationalConfig:
   enable: ${OPERATIONAL_CONFIG_ENABLED:-true}
   operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}  
+    
     
   

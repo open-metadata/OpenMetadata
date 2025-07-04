@@ -1,5 +1,6 @@
 ---
 title: Run the Qlik Cloud Connector Externally
+description: Configure QlikCloud dashboard connector for OpenMetadata using YAML. Step-by-step setup guide with examples to integrate Qlik Cloud analytics seamlessly.
 slug: /connectors/dashboard/qlikcloud/yaml
 ---
 
@@ -81,7 +82,7 @@ Example: `https://<TenantURL>.qlikcloud.com`
 
 Select relevant space types of Qlik Cloud to filter the dashboards ingested into the platform.
 
-Example: `Personal`, `Shared`, `Managed`
+Example: `Personal`, `Shared`, `Managed`, `Data`
 
 {% /codeInfo %}
 
@@ -111,7 +112,7 @@ source:
       hostPort: https://<TenantURL>.qlikcloud.com
 ```
 ```yaml {% srNumber=3 %}
-      spaceTypes: ["Personal", "Shared", "Managed"]
+      spaceTypes: ["Personal", "Shared", "Managed", "Data"]
 ```
 
 {% partial file="/v1.7/connectors/yaml/dashboard/source-config.md" /%}

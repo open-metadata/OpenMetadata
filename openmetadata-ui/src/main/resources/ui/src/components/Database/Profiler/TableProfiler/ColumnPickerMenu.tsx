@@ -13,7 +13,7 @@
 import { Button, Dropdown, Space, Typography } from 'antd';
 import { find, map } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { Column } from '../../../../generated/entity/data/container';
 import { getEntityName } from '../../../../utils/EntityUtils';

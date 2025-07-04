@@ -1,5 +1,6 @@
 ---
-title: SQLite
+title: SQLite Connector | OpenMetadata Lightweight DB Integration
+description: Learn how to connect SQLite databases to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction.
 slug: /connectors/database/sqlite
 ---
 

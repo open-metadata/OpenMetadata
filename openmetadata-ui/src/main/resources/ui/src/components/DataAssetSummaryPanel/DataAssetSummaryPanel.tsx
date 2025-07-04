@@ -12,7 +12,7 @@
  */
 import { Col, Row, Typography } from 'antd';
 import { get, isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -35,10 +35,12 @@ import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { EntityReference } from '../../generated/entity/type';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
+import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryDataProducts from '../common/SummaryDataProducts/SummaryDataProducts';
 import SummaryTagsDescription from '../common/SummaryTagsDescription/SummaryTagsDescription.component';
@@ -54,6 +56,7 @@ export const DataAssetSummaryPanel = ({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   highlights,
   isDomainVisible,
+  isLineageView = false,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
@@ -195,6 +198,27 @@ export const DataAssetSummaryPanel = ({
                     componentType={componentType}
                     entityInfo={entityInfo}
                     isDomainVisible={isDomainVisible}
+                  />
+                </Col>
+              </Row>
+            )}
+
+            {isLineageView && (
+              <Row
+                className="p-md border-radius-card summary-panel-card"
+                gutter={[0, 8]}>
+                <Col span={24}>
+                  <Typography.Text
+                    className="summary-panel-section-title"
+                    data-testid="owner-header">
+                    {t('label.owner-plural')}
+                  </Typography.Text>
+                </Col>
+                <Col className="d-flex flex-wrap gap-2" span={24}>
+                  <OwnerLabel
+                    isCompactView={false}
+                    owners={(dataAsset.owners as EntityReference[]) ?? []}
+                    showLabel={false}
                   />
                 </Col>
               </Row>

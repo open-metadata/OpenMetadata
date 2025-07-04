@@ -1,5 +1,6 @@
 ---
 title: Run the OpenAPI/REST Connector Externally
+description: Learn how to configure OpenMetadata REST API connectors using YAML. Complete documentation with examples, parameters, and best practices for seamless integration.
 slug: /connectors/api/rest/yaml
 ---
 
@@ -67,7 +68,8 @@ source:
 ```
 ```yaml {% srNumber=1 %}
       openAPISchemaURL: https://docs.open-metadata.org/swagger.json
-
+      docURL: https://petstore3.swagger.io/
+      # token: <jwt_token>
 ```
 
 

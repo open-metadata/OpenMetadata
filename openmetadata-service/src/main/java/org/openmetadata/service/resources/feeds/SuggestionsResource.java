@@ -26,26 +26,26 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CreateSuggestion;
 import org.openmetadata.schema.entity.feed.Suggestion;
@@ -122,7 +122,7 @@ public class SuggestionsResource {
                   "Limit the number of suggestions returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(1)
-          @Max(1000000)
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -298,8 +298,7 @@ public class SuggestionsResource {
       dao.checkPermissionsForAcceptOrRejectSuggestion(
           suggestion, SuggestionStatus.Rejected, securityContext);
       dao.checkPermissionsForEditEntity(suggestion, suggestionType, securityContext, authorizer);
-      return dao.acceptSuggestionList(
-          uriInfo, suggestions, suggestionType, securityContext, authorizer);
+      return dao.acceptSuggestionList(uriInfo, suggestions, securityContext, authorizer);
     } else {
       // No suggestions found
       return new RestUtil.PutResponse<>(

@@ -10,21 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Tree, Typography } from 'antd';
+import { Tooltip, Tree, TreeProps, Typography } from 'antd';
+import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
+import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge, Transi18next } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
   getAggregations,
@@ -35,13 +39,10 @@ import {
   updateTreeDataWithCounts,
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-
-import { useTranslation } from 'react-i18next';
-import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
@@ -52,41 +53,45 @@ import {
   TreeNodeData,
 } from './ExploreTree.interface';
 
-const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
-  <Tooltip
-    overlayInnerStyle={{ backgroundColor: '#000', opacity: 1 }}
-    title={
-      <Typography.Text className="text-white">
-        {node.title}
-        {node.type && (
-          <span className="text-grey-400">{` (${node.type})`}</span>
+const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
+  const tooltipText = node.tooltip ?? node.title;
+
+  return (
+    <Tooltip
+      title={
+        <Typography.Text className="text-white">
+          {tooltipText}
+          {node.type && (
+            <span className="text-grey-400">{` (${node.type})`}</span>
+          )}
+        </Typography.Text>
+      }>
+      <div className="d-flex justify-between">
+        <Typography.Text
+          className={classNames({
+            'm-l-xss': node.data?.isRoot,
+          })}
+          data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
+          {node.title}
+        </Typography.Text>
+        {!isUndefined(node.count) && (
+          <span className="explore-node-count">
+            {getCountBadge(node.count)}
+          </span>
         )}
-      </Typography.Text>
-    }>
-    <div className="d-flex justify-between">
-      <Typography.Text
-        className={classNames({
-          'm-l-xss': node.data?.isRoot,
-        })}
-        data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
-        {node.title}
-      </Typography.Text>
-      {!isUndefined(node.count) && (
-        <span className="explore-node-count">{getCountBadge(node.count)}</span>
-      )}
-    </div>
-  </Tooltip>
-);
+      </div>
+    </Tooltip>
+  );
+};
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
+  const hasFetchedRef = useRef(false); // Use a ref to track if we've already fetched, in dev mode as it will fetch twice
   const { t } = useTranslation();
-  const { tab } = useParams<UrlParams>();
+  const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
-
-  const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const defaultExpandedKeys = useMemo(() => {
     return searchClassBase.getExploreTreeKey(tab as ExplorePageTabs);
@@ -108,8 +113,8 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     return [parsedSearch, searchQueryParam, defaultServiceType];
   }, [location.search]);
 
-  const onLoadData = useCallback(
-    async (treeNode: ExploreTreeNode) => {
+  const onLoadData: TreeProps['loadData'] = useCallback(
+    async (treeNode: Parameters<NonNullable<TreeProps['loadData']>>[0]) => {
       try {
         if (treeNode.children) {
           return;
@@ -121,11 +126,11 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           currentBucketValue,
           filterField = [],
           rootIndex,
-        } = treeNode?.data as TreeNodeData;
+        } = (treeNode as ExploreTreeNode)?.data as TreeNodeData;
 
         const searchIndex = isRoot
           ? treeNode.key
-          : treeNode?.data?.parentSearchIndex;
+          : (treeNode as ExploreTreeNode)?.data?.parentSearchIndex;
 
         const { bucket: bucketToFind, queryFilter } =
           searchQueryParam !== ''
@@ -137,7 +142,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               }
             : getSubLevelHierarchyKey(
                 rootIndex === SearchIndex.DATABASE,
-                treeNode?.data?.filterField,
+                (treeNode as ExploreTreeNode)?.data?.filterField,
                 currentBucketKey as EntityFields,
                 currentBucketValue
               );
@@ -207,12 +212,16 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             setSelectedKeys([id]);
           }
 
+          const formattedEntityType =
+            entityUtilClassBase.getFormattedServiceType(bucket.key);
+
           return {
             title: isEntityType ? (
               <>{getPluralizeEntityName(bucket.key)}</>
             ) : (
               <>{bucket.key}</>
             ),
+            tooltip: formattedEntityType,
             count: isEntityType ? bucket.doc_count : undefined,
             key: id,
             type,
@@ -227,39 +236,50 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
                 getQuickFilterObject(bucketToFind, bucket.key),
               ],
               isRoot: false,
-              rootIndex: isRoot ? treeNode.key : treeNode.data?.rootIndex,
+              rootIndex: isRoot
+                ? treeNode.key
+                : (treeNode as ExploreTreeNode).data?.rootIndex,
               dataId: bucket.key,
             },
           };
         });
 
-        setTreeData((origin) => updateTreeData(origin, treeNode.key, children));
+        setTreeData((origin) =>
+          updateTreeData(origin, treeNode.key, children as ExploreTreeNode[])
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [updateTreeData, searchQueryParam, defaultServiceType]
+    [updateTreeData, searchQueryParam, defaultServiceType, setTreeData]
   );
 
-  const switcherIcon = useCallback(({ expanded }) => {
+  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
-  const onNodeSelect = useCallback(
-    (_, { node }) => {
+  const onNodeSelect: TreeProps<DataNode>['onSelect'] = useCallback(
+    (
+      _selectedKeys: Key[],
+      info: Parameters<NonNullable<TreeProps['onSelect']>>[1]
+    ) => {
+      const node = info.node as ExploreTreeNode;
       const filterField = node.data?.filterField;
       if (filterField) {
         onFieldValueSelect(filterField);
       } else if (node.isLeaf) {
         const filterField = [
-          getQuickFilterObject(EntityFields.ENTITY_TYPE, node.data?.entityType),
+          getQuickFilterObject(
+            EntityFields.ENTITY_TYPE,
+            node.data?.entityType ?? ''
+          ),
         ];
         onFieldValueSelect(filterField);
       } else if (node.data?.childEntities) {
         onFieldValueSelect([
           getQuickFilterObjectForEntities(
             EntityFields.ENTITY_TYPE,
-            node.data?.childEntities
+            node.data?.childEntities as EntityType[]
           ),
         ]);
       }
@@ -296,10 +316,13 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     } finally {
       setIsLoading(false);
     }
-  }, [staticKeysHavingCounts]);
+  }, [searchQueryParam, setTreeData]);
 
   useEffect(() => {
-    fetchEntityCounts();
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchEntityCounts();
+    }
   }, []);
 
   useEffect(() => {
@@ -331,7 +354,13 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           <Transi18next
             i18nKey="message.need-help-message"
             renderElement={
-              <a href={DATA_DISCOVERY_DOCS} rel="noreferrer" target="_blank" />
+              <a
+                aria-label="Learn more about data discovery"
+                href={DATA_DISCOVERY_DOCS}
+                rel="noreferrer"
+                target="_blank">
+                {t('label.learn-more')}
+              </a>
             }
             values={{
               doc: t('message.see-how-to-get-started'),
@@ -352,8 +381,10 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       loadData={onLoadData}
       selectedKeys={selectedKeys}
       switcherIcon={switcherIcon}
-      titleRender={(node) => <ExploreTreeTitle node={node} />}
-      treeData={treeData}
+      titleRender={(node) => (
+        <ExploreTreeTitle node={node as ExploreTreeNode} />
+      )}
+      treeData={treeData as DataNode[]}
       onSelect={onNodeSelect}
     />
   );

@@ -91,6 +91,10 @@ export interface IngestionPipeline {
      */
     pipelineStatuses?: PipelineStatus;
     pipelineType:      PipelineType;
+    /**
+     * The processing engine responsible for executing the ingestion pipeline logic.
+     */
+    processingEngine?: EntityReference;
     provider?:         ProviderType;
     /**
      * Control if we want to flag the workflow as failed if we encounter any processing errors.
@@ -263,6 +267,8 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  *
  * The ingestion agent responsible for executing the ingestion pipeline.
+ *
+ * The processing engine responsible for executing the ingestion pipeline logic.
  *
  * Link to the service (such as database, messaging, storage services, etc. for which this
  * ingestion pipeline ingests the metadata from.
@@ -523,6 +529,8 @@ export enum AuthProvider {
  * Regex to only fetch search indexes that matches the pattern.
  *
  * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch tags that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -653,6 +661,10 @@ export interface PipelineStatus {
      */
     endDate?: number;
     /**
+     * Metadata for the pipeline status.
+     */
+    metadata?: { [key: string]: any };
+    /**
      * Pipeline status denotes if its failed or succeeded.
      */
     pipelineState?: PipelineState;
@@ -760,9 +772,11 @@ export enum PipelineType {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }
@@ -1054,6 +1068,7 @@ export interface Pipeline {
      * level metrics.
      */
     computeTableMetrics?: boolean;
+    processingEngine?:    ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
@@ -1234,6 +1249,10 @@ export interface Pipeline {
      */
     searchAcrossDatabases?: boolean;
     /**
+     * Regex to only fetch tags that matches the pattern.
+     */
+    tagFilterPattern?: FilterPattern;
+    /**
      * Application configuration
      */
     appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
@@ -1334,6 +1353,11 @@ export interface CollateAIAppConfig {
     sendToAdmins?:            boolean;
     sendToTeams?:             boolean;
     /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
      * Number of threads to use for reindexing
      */
     consumerThreads?: number;
@@ -1383,6 +1407,11 @@ export interface CollateAIAppConfig {
      * Whether the AutoPilot Workflow should be active or not.
      */
     active?: boolean;
+    /**
+     * Enter the retention period for Activity Threads of type = 'Conversation' records in days
+     * (e.g., 30 for one month, 60 for two months).
+     */
+    activityThreadsRetentionPeriod?: number;
     /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
@@ -1673,6 +1702,10 @@ export interface TestCaseDefinitions {
      */
     computePassedFailedRowCount?: boolean;
     parameterValues?:             TestCaseParameterValue[];
+    /**
+     * Tags to apply
+     */
+    tags?: TagLabel[];
     /**
      * Fully qualified name of the test definition.
      */
@@ -2300,7 +2333,7 @@ export interface Operation {
     /**
      * Type of operation to perform
      */
-    type: Type;
+    type: OperationType;
 }
 
 /**
@@ -2342,10 +2375,41 @@ export interface ReverseIngestionConfig {
 /**
  * Type of operation to perform
  */
-export enum Type {
+export enum OperationType {
     UpdateDescription = "UPDATE_DESCRIPTION",
     UpdateOwner = "UPDATE_OWNER",
     UpdateTags = "UPDATE_TAGS",
+}
+
+/**
+ * Processing Engine Configuration. If not provided, the Native Engine will be used by
+ * default.
+ *
+ * Configuration for the native metadata ingestion engine
+ *
+ * This schema defines the configuration for a Spark Engine runner.
+ */
+export interface ProcessingEngine {
+    /**
+     * The type of the engine configuration
+     */
+    type: ProcessingEngineType;
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    config?: { [key: string]: any };
+    /**
+     * Spark Connect Remote URL.
+     */
+    remote?: string;
+}
+
+/**
+ * The type of the engine configuration
+ */
+export enum ProcessingEngineType {
+    Native = "Native",
+    Spark = "Spark",
 }
 
 /**
@@ -2525,6 +2589,8 @@ export interface ServiceConnection {
  *
  * Cockroach Database Connection Config
  *
+ * SSAS Metadata Database Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -2549,6 +2615,8 @@ export interface ServiceConnection {
  * Airflow Metadata Database Connection Config
  *
  * Wherescape Metadata Database Connection Config
+ *
+ * SSIS Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
  *
@@ -2866,6 +2934,8 @@ export interface ConfigClass {
      *
      * Password to connect to Exasol.
      *
+     * Password
+     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -2971,6 +3041,8 @@ export interface ConfigClass {
      * Username to connect to Cockroach. This user should have privileges to read all the
      * metadata in Cockroach.
      *
+     * Username
+     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -3036,6 +3108,16 @@ export interface ConfigClass {
      */
     connection?: ConfigConnection;
     /**
+     * Tableau API version. If not provided, the version will be used from the tableau server.
+     *
+     * Sigma API version.
+     *
+     * OpenMetadata server API version to use.
+     *
+     * Airbyte API version.
+     */
+    apiVersion?: string;
+    /**
      * Types of methods used to authenticate to the tableau instance
      *
      * Choose Auth Config Type.
@@ -3051,6 +3133,11 @@ export interface ConfigClass {
      * Pagination limit used for Alation APIs pagination
      */
     paginationLimit?: number;
+    /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
     /**
      * Tableau Site Name.
      */
@@ -3166,13 +3253,9 @@ export interface ConfigClass {
      */
     spaceTypes?: SpaceType[];
     /**
-     * Sigma API version.
-     *
-     * OpenMetadata server API version to use.
-     *
-     * Airbyte API version.
+     * Billing Project ID
      */
-    apiVersion?: string;
+    billingProjectId?: string;
     /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
@@ -3347,8 +3430,10 @@ export interface ConfigClass {
      * The maximum amount of time (in seconds) to wait for a successful connection to the data
      * source. If the connection attempt takes longer than this timeout period, an error will be
      * returned.
+     *
+     * Connection timeout in seconds.
      */
-    connectionTimeout?: number;
+    connectionTimeout?: number | number;
     /**
      * Databricks compute resources URL.
      */
@@ -3357,6 +3442,10 @@ export interface ConfigClass {
      * Table name to fetch the query history.
      */
     queryHistoryTable?: string;
+    /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?: string;
     /**
      * License to connect to DB2.
      */
@@ -3400,6 +3489,10 @@ export interface ConfigClass {
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -3576,6 +3669,10 @@ export interface ConfigClass {
      * Client SSL/TLS settings.
      */
     tls?: SSLTLSSettings;
+    /**
+     * HTTP Link for SSAS ACCESS
+     */
+    httpConnection?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -3833,6 +3930,10 @@ export interface ConfigClass {
      * Underlying database connection
      */
     databaseConnection?: DatabaseConnectionClass;
+    /**
+     * Underlying storage connection
+     */
+    packageConnection?: S3Connection | string;
     /**
      * Fivetran API Secret.
      */
@@ -4751,6 +4852,10 @@ export interface ConfigConnection {
      */
     databaseSchema?: string;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port>
      * <USERNAME> <PASSWORD>`
      */
@@ -5239,6 +5344,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -5315,6 +5424,37 @@ export interface OracleConnectionType {
      */
     oracleTNSConnection?: string;
     [property: string]: any;
+}
+
+/**
+ * S3 Connection.
+ */
+export interface S3Connection {
+    awsConfig: AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: S3Type;
+}
+
+/**
+ * Service Type
+ *
+ * S3 service type
+ */
+export enum S3Type {
+    S3 = "S3",
 }
 
 /**
@@ -5473,6 +5613,7 @@ export enum KafkaSecurityProtocol {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
@@ -5743,6 +5884,8 @@ export enum RESTType {
     Snowflake = "Snowflake",
     Spark = "Spark",
     Spline = "Spline",
+    Ssas = "SSAS",
+    Ssis = "SSIS",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",

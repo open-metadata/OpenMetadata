@@ -6,13 +6,13 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import javax.json.JsonPatch;
-import javax.json.JsonValue;
-import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -35,6 +35,7 @@ import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -52,7 +53,6 @@ import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -542,22 +542,28 @@ public class SystemRepository {
   private StepValidation getPipelineServiceClientValidation(
       OpenMetadataApplicationConfig applicationConfig,
       PipelineServiceClientInterface pipelineServiceClient) {
-    PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
-    if (pipelineResponse.getCode() == 200) {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
-          .withPassed(Boolean.TRUE)
-          .withMessage(
-              String.format(
-                  "%s is available at %s",
-                  pipelineServiceClient.getPlatform(),
-                  applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
-    } else {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
-          .withPassed(Boolean.FALSE)
-          .withMessage(pipelineResponse.getReason());
+    if (pipelineServiceClient != null) {
+      PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
+      if (pipelineResponse.getCode() == 200) {
+        return new StepValidation()
+            .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+            .withPassed(Boolean.TRUE)
+            .withMessage(
+                String.format(
+                    "%s is available at %s",
+                    pipelineServiceClient.getPlatform(),
+                    applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
+      } else {
+        return new StepValidation()
+            .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+            .withPassed(Boolean.FALSE)
+            .withMessage(pipelineResponse.getReason());
+      }
     }
+    return new StepValidation()
+        .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+        .withPassed(Boolean.FALSE)
+        .withMessage("Pipeline client disabled, please check configuration");
   }
 
   private StepValidation getJWKsValidation(

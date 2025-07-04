@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { SearchSettings } from '../../../generated/api/search/previewSearchRequest';
 import { searchPreview } from '../../../rest/searchAPI';
 import SearchPreview from './SearchPreview';
@@ -63,15 +62,13 @@ const mockSearchResponse = {
 
 jest.mock('react-router-dom', () => ({
   useParams: () => ({ fqn: 'table' }),
-  useHistory: () => ({
-    push: jest.fn(),
-  }),
   useLocation: () => ({
     pathname: '/search',
     search: '',
     hash: '',
     state: {},
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('react-i18next', () => ({

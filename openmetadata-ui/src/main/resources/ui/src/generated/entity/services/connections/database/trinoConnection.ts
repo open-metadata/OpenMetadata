@@ -41,7 +41,11 @@ export interface TrinoConnection {
     /**
      * Proxies for the connection to Trino data source
      */
-    proxies?:                 { [key: string]: string };
+    proxies?: { [key: string]: string };
+    /**
+     * Table name to fetch the query history.
+     */
+    queryHistoryTable?:       string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.

@@ -15,7 +15,7 @@ caption="Column-Level Data Lineage in OpenMetadata"
 
 {% note noteType="Tip" %} **Quick Tip:** Drilldown to view all the available columns for a table when viewing column-level lineage. {% /note %}
 
-You can generate the column-level lineage automatically by running the **Lineage Ingestion**.
+You can generate the column-level lineage automatically by running the **Lineage Agent**.
 
 {% image
 src="/images/v1.7/how-to-guides/lineage/ingestion.png"

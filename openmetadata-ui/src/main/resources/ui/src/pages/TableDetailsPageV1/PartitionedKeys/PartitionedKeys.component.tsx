@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import Table from '../../../components/common/Table/Table';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
@@ -23,8 +23,13 @@ import {
   Table as TableType,
 } from '../../../generated/entity/data/table';
 
-export const PartitionedKeys = () => {
+export const PartitionedKeys = ({
+  renderAsExpandableCard = true,
+}: {
+  renderAsExpandableCard?: boolean;
+}) => {
   const { data, filterWidgets } = useGenericContext<TableType>();
+  const { t } = useTranslation();
 
   const partitionColumnDetails = useMemo(
     () =>
@@ -80,7 +85,7 @@ export const PartitionedKeys = () => {
     />
   );
 
-  return (
+  return renderAsExpandableCard ? (
     <ExpandableCard
       cardProps={{
         title: t('label.table-partition-plural'),
@@ -88,5 +93,7 @@ export const PartitionedKeys = () => {
       isExpandDisabled={isEmpty(partitionColumnDetails)}>
       {content}
     </ExpandableCard>
+  ) : (
+    content
   );
 };

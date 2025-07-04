@@ -13,7 +13,6 @@
 import Icon, { PlusOutlined } from '@ant-design/icons';
 import { Button, ButtonProps, Tooltip } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
@@ -117,6 +116,7 @@ export const AlignRightIconButton = ({
     <Tooltip title={title}>
       <Button
         className={classNames('border-none tab-expand-icon', className)}
+        data-testid="tab-expand-button"
         icon={<ExpandIcon />}
         size={size}
         type="text"

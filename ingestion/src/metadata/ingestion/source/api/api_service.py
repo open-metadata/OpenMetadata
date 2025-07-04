@@ -39,9 +39,6 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -50,7 +47,7 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -177,11 +174,9 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
         """By default, nothing to close"""
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(
+        test_connection_common(
             self.metadata, self.connection_obj, self.service_connection
         )
-        raise_test_connection_exception(result)
 
     def mark_api_collections_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the api collection as deleted"""

@@ -70,6 +70,7 @@ import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
+import org.openmetadata.schema.auth.collate.SupportToken;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -90,6 +91,7 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -141,6 +143,7 @@ import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
@@ -153,7 +156,6 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindConcat;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindJsonContains;
@@ -277,6 +279,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DataProductDAO dataProductDAO();
+
+  @CreateSqlObject
+  DataContractDAO dataContractDAO();
 
   @CreateSqlObject
   EventSubscriptionDAO eventSubscriptionDAO();
@@ -1346,6 +1351,15 @@ public interface CollectionDAO {
     List<EntityRelationshipObject> getRecordWithOffset(
         @Bind("relation") int relation, @Bind("offset") long offset, @Bind("limit") int limit);
 
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship ORDER BY fromId, toId LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> getAllRelationshipsPaginated(
+        @Bind("offset") long offset, @Bind("limit") int limit);
+
+    @SqlQuery("SELECT COUNT(*) FROM entity_relationship")
+    long getTotalRelationshipCount();
+
     //
     // Delete Operations
     //
@@ -1391,6 +1405,12 @@ public interface CollectionDAO {
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
             + "(fromId = :id AND fromEntity = :entity)")
     void deleteAll(@BindUUID("id") UUID id, @Bind("entity") String entity);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship "
+            + "WHERE (toId IN (<ids>) AND toEntity = :entity) "
+            + "   OR (fromId IN (<ids>) AND fromEntity = :entity)")
+    void deleteAllByThreadIds(@BindList("ids") List<String> ids, @Bind("entity") String entity);
 
     @SqlUpdate("DELETE from entity_relationship WHERE fromId = :id or toId = :id")
     void deleteAllWithId(@BindUUID("id") UUID id);
@@ -1496,6 +1516,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM thread_entity WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM thread_entity WHERE id IN (<ids>)")
+    int deleteByIds(@BindList("ids") List<String> ids);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE task_sequence SET id=LAST_INSERT_ID(id+1)",
@@ -2058,6 +2081,14 @@ public interface CollectionDAO {
           glossaryTermLink.getFullyQualifiedFieldType());
     }
 
+    default List<String> listThreadsByTaskAssignee(String taskAssigneesId) {
+      String condition = String.format(" WHERE taskAssigneesIds LIKE '%%%s%%'", taskAssigneesId);
+      return listThreadsByTaskAssigneesId(condition);
+    }
+
+    @SqlQuery("SELECT json FROM thread_entity <cond>")
+    List<String> listThreadsByTaskAssigneesId(@Define("cond") String cond);
+
     @SqlQuery(
         "SELECT entityLink, type, taskStatus, COUNT(id) as count "
             + "FROM ( "
@@ -2270,6 +2301,12 @@ public interface CollectionDAO {
       deleteAllByPrefixInternal(condition, bindMap);
     }
 
+    default void deleteAllByPrefixes(List<String> threadIds) {
+      for (String threadId : threadIds) {
+        deleteAllByPrefix(threadId);
+      }
+    }
+
     @SqlUpdate("DELETE from field_relationship <cond>")
     void deleteAllByPrefixInternal(
         @Define("cond") String cond, @BindMap Map<String, String> bindings);
@@ -2415,6 +2452,23 @@ public interface CollectionDAO {
     @Override
     default boolean supportsSoftDelete() {
       return false;
+    }
+  }
+
+  interface DataContractDAO extends EntityDAO<DataContract> {
+    @Override
+    default String getTableName() {
+      return "data_contract_entity";
+    }
+
+    @Override
+    default Class<DataContract> getEntityClass() {
+      return DataContract.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
     }
   }
 
@@ -2829,6 +2883,16 @@ public interface CollectionDAO {
                 hash = true)
             String fqnhash,
         @Bind("termName") String termName);
+
+    @SqlQuery(
+        "SELECT json FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName)")
+    String getGlossaryTermByNameAndGlossaryIgnoreCase(
+        @BindConcat(
+                value = "glossaryHash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash,
+        @Bind("termName") String termName);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -2869,6 +2933,11 @@ public interface CollectionDAO {
         condition += serviceCondition;
       }
 
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
+      }
+
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
       if (!nullOrEmpty(serviceType)) {
@@ -2903,6 +2972,11 @@ public interface CollectionDAO {
       if (filter.getQueryParam("service") != null) {
         String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
         condition += serviceCondition;
+      }
+
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
@@ -2944,6 +3018,11 @@ public interface CollectionDAO {
       if (filter.getQueryParam("service") != null) {
         String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
         condition += serviceCondition;
+      }
+
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
@@ -3887,6 +3966,25 @@ public interface CollectionDAO {
     default boolean supportsSoftDelete() {
       return false;
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM persona_entity WHERE JSON_EXTRACT(json, '$.default') = true LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM persona_entity WHERE json->>'default' = 'true' LIMIT 1",
+        connectionType = POSTGRES)
+    String findDefaultPersona();
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE persona_entity SET json = JSON_SET(json, '$.default', false) WHERE JSON_EXTRACT(json, '$.default') = true AND id != :excludeId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE persona_entity SET json = jsonb_set(json, '{default}', 'false') WHERE json->>'default' = 'true' AND id != :excludeId",
+        connectionType = POSTGRES)
+    void unsetOtherDefaultPersonas(@Bind("excludeId") String excludeId);
   }
 
   interface TeamDAO extends EntityDAO<Team> {
@@ -4225,6 +4323,8 @@ public interface CollectionDAO {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
+      String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
+      String lastActivityTimeGreaterThan = filter.getQueryParam("lastActivityTimeGreaterThan");
       String mySqlCondition = filter.getCondition("ue");
       String postgresCondition = filter.getCondition("ue");
       if (isAdminStr != null) {
@@ -4263,7 +4363,29 @@ public interface CollectionDAO {
                   postgresCondition);
         }
       }
-      if (team == null && isAdminStr == null && isBotStr == null) {
+      if (lastLoginTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", mySqlCondition, lastLoginTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", postgresCondition, lastLoginTimeGreaterThan);
+      }
+      if (lastActivityTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                mySqlCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+      }
+      if (team == null
+          && isAdminStr == null
+          && isBotStr == null
+          && lastLoginTimeGreaterThan == null
+          && lastActivityTimeGreaterThan == null) {
         return EntityDAO.super.listCount(filter);
       }
       return listCount(
@@ -4276,6 +4398,8 @@ public interface CollectionDAO {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
+      String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
+      String lastActivityTimeGreaterThan = filter.getQueryParam("lastActivityTimeGreaterThan");
       String mySqlCondition = filter.getCondition("ue");
       String postgresCondition = filter.getCondition("ue");
       if (isAdminStr != null) {
@@ -4314,7 +4438,29 @@ public interface CollectionDAO {
                   postgresCondition);
         }
       }
-      if (team == null && isAdminStr == null && isBotStr == null) {
+      if (lastLoginTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", mySqlCondition, lastLoginTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", postgresCondition, lastLoginTimeGreaterThan);
+      }
+      if (lastActivityTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                mySqlCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+      }
+      if (team == null
+          && isAdminStr == null
+          && isBotStr == null
+          && lastLoginTimeGreaterThan == null
+          && lastActivityTimeGreaterThan == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
       return listBefore(
@@ -4333,6 +4479,8 @@ public interface CollectionDAO {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
+      String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
+      String lastActivityTimeGreaterThan = filter.getQueryParam("lastActivityTimeGreaterThan");
       String mySqlCondition = filter.getCondition("ue");
       String postgresCondition = filter.getCondition("ue");
       if (isAdminStr != null) {
@@ -4371,7 +4519,29 @@ public interface CollectionDAO {
                   postgresCondition);
         }
       }
-      if (team == null && isAdminStr == null && isBotStr == null) {
+      if (lastLoginTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", mySqlCondition, lastLoginTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ue.lastLoginTime > %s ", postgresCondition, lastLoginTimeGreaterThan);
+      }
+      if (lastActivityTimeGreaterThan != null) {
+        mySqlCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                mySqlCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+        postgresCondition =
+            String.format(
+                "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
+                postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
+      }
+      if (team == null
+          && isAdminStr == null
+          && isBotStr == null
+          && lastLoginTimeGreaterThan == null
+          && lastActivityTimeGreaterThan == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
       return listAfter(
@@ -4507,6 +4677,37 @@ public interface CollectionDAO {
     default User findEntityByName(String fqn, Include include) {
       return EntityDAO.super.findEntityByName(fqn.toLowerCase(), include);
     }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE user_entity SET json = JSON_SET(json, '$.lastActivityTime', :lastActivityTime) WHERE nameHash = :nameHash AND deleted = false",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE user_entity SET json = jsonb_set(json, '{lastActivityTime}', to_jsonb(:lastActivityTime::bigint)) WHERE nameHash = :nameHash AND deleted = false",
+        connectionType = POSTGRES)
+    void updateLastActivityTime(
+        @BindFQN("nameHash") String nameHash, @Bind("lastActivityTime") long lastActivityTime);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE user_entity SET json = JSON_SET(json, '$.lastActivityTime', "
+                + "CASE nameHash "
+                + "<caseStatements> "
+                + "END) "
+                + "WHERE nameHash IN (<nameHashes>) AND deleted = false",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE user_entity SET json = jsonb_set(json, '{lastActivityTime}', "
+                + "CASE nameHash "
+                + "<caseStatements> "
+                + "END::text::jsonb) "
+                + "WHERE nameHash IN (<nameHashes>) AND deleted = false",
+        connectionType = POSTGRES)
+    void updateLastActivityTimeBulk(
+        @Define("caseStatements") String caseStatements,
+        @BindList("nameHashes") List<String> nameHashes);
   }
 
   interface ChangeEventDAO {
@@ -5711,6 +5912,27 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT 42")
     Integer testConnection() throws StatementException;
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_EXTRACT(json, '$.fullyQualifiedName') FROM <table> WHERE id NOT IN ( SELECT toId FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json ->> 'fullyQualifiedName' FROM <table> WHERE id NOT IN ( SELECT toId FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity)",
+        connectionType = POSTGRES)
+    List<String> getBrokenRelationFromParentToChild(
+        @Define("table") String tableName,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity);
+
+    @SqlUpdate(
+        value =
+            "DELETE FROM <table> WHERE id NOT IN (SELECT toId FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity)")
+    int deleteBrokenRelationFromParentToChild(
+        @Define("table") String tableName,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity);
   }
 
   class SettingsRowMapper implements RowMapper<Settings> {
@@ -5756,6 +5978,7 @@ public interface CollectionDAO {
         case PASSWORD_RESET -> JsonUtils.readValue(json, PasswordResetToken.class);
         case REFRESH_TOKEN -> JsonUtils.readValue(json, RefreshToken.class);
         case PERSONAL_ACCESS_TOKEN -> JsonUtils.readValue(json, PersonalAccessToken.class);
+        case SUPPORT_TOKEN -> JsonUtils.readValue(json, SupportToken.class);
       };
     }
   }

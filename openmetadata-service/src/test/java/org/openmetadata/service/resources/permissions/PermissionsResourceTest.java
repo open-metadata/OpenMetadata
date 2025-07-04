@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.permissions;
 
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
@@ -31,6 +31,11 @@ import static org.openmetadata.service.security.policyevaluator.OperationContext
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.json.Json;
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonPatchBuilder;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -41,11 +46,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.Json;
-import javax.json.JsonPatch;
-import javax.json.JsonPatchBuilder;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -65,6 +65,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.ResourceRegistry;
@@ -80,7 +81,6 @@ import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j

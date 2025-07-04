@@ -16,7 +16,7 @@
 
 package org.openmetadata.service.resources.glossary;
 
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,6 +50,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateTagLabel;
 
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -61,7 +62,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.Response.Status;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -94,6 +94,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.TableConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -109,7 +110,6 @@ import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -755,6 +755,78 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                       glossaryTermSingleSelectEnumCp.getName())))
         };
     assertRows(result, expectedRows);
+  }
+
+  @Test
+  void test_importCsvWithFullTermUpdate() throws IOException {
+    // Create a glossary
+    String glossaryName = "fullUpdateTest";
+    createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
+
+    // Create custom property for testing
+    TypeResourceTest typeResourceTest = new TypeResourceTest();
+    Type entityType =
+        typeResourceTest.getEntityByName(
+            Entity.GLOSSARY_TERM, "customProperties", ADMIN_AUTH_HEADERS);
+    CustomProperty stringCp =
+        new CustomProperty()
+            .withName("glossaryTermStringCp")
+            .withDescription("string type custom property")
+            .withPropertyType(STRING_TYPE.getEntityReference());
+    typeResourceTest.addAndCheckCustomProperty(
+        entityType.getId(), stringCp, OK, ADMIN_AUTH_HEADERS);
+
+    // First create terms with initial hierarchy and values
+    String initialCsv =
+        createCsv(
+            GlossaryCsv.HEADERS,
+            listOf(
+                ",term1,Term 1,Description 1,syn1;syn2,,,PII.None,,,Draft,",
+                ",term2,Term 2,Description 2,,,,,,,Approved,",
+                "fullUpdateTest.term1,term3,Term 3,Description 3,,,,,,,Approved,"),
+            null);
+
+    // Import initial terms
+    CsvImportResult result = importCsv(glossaryName, initialCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 4, 4, 0);
+
+    // Now update with changes - move term3 to term2 and update other fields
+    String updateCsv =
+        createCsv(
+            GlossaryCsv.HEADERS,
+            listOf(
+                "fullUpdateTest.term2,term3,Term 3 Updated,Description 3 Updated,newSyn1;newSyn2,,ref1;http://ref1.com,PII.Sensitive,,,Approved,glossaryTermStringCp:test value"),
+            null);
+
+    // Import updates
+    result = importCsv(glossaryName, updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
+
+    // Verify all fields were updated
+    GlossaryTerm term3 =
+        new GlossaryTermResourceTest()
+            .getEntityByName(
+                "fullUpdateTest.term2.term3",
+                "owners,reviewers,parent,glossary,tags,extension",
+                ADMIN_AUTH_HEADERS);
+    assertEquals("Term 3 Updated", term3.getDisplayName());
+    assertEquals("Description 3 Updated", term3.getDescription());
+    assertEquals(List.of("newSyn1", "newSyn2"), term3.getSynonyms());
+    assertEquals("term2", term3.getParent().getName());
+    assertEquals(1, term3.getReferences().size());
+    assertEquals("ref1", term3.getReferences().getFirst().getName());
+    assertEquals("http://ref1.com", term3.getReferences().getFirst().getEndpoint().toString());
+    assertEquals(1, term3.getTags().size());
+    assertEquals("PII.Sensitive", term3.getTags().getFirst().getTagFQN());
+    assertEquals(GlossaryTerm.Status.APPROVED, term3.getStatus());
+    // Fix: Safely extract the custom property from the extension map
+    Object extension = term3.getExtension();
+    String customPropValue = null;
+    if (extension instanceof Map) {
+      Object val = ((Map<?, ?>) extension).get("glossaryTermStringCp");
+      if (val != null) customPropValue = val.toString();
+    }
+    assertEquals("test value", customPropValue);
   }
 
   @Test

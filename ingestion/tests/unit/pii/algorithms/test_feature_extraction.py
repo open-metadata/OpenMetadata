@@ -16,7 +16,7 @@ from metadata.pii.algorithms.feature_extraction import (
     extract_pii_tags,
     split_column_name,
 )
-from metadata.pii.algorithms.presidio_patches import url_patcher
+from metadata.pii.algorithms.presidio_patches import date_time_patcher, url_patcher
 from metadata.pii.algorithms.tags import PIITag
 
 
@@ -133,6 +133,30 @@ def test_person_extraction(fake, analyzer):
     )
 
 
+def test_date_time_extraction_false_positive_regression(fake, analyzer):
+    """
+    Regression test for a false positive where a timestamp was incorrectly
+    marked as a date by the Presidio analyzer.
+    """
+    not_dates = [60001, 60002, 60003, 60004, 60005]
+    not_dates_str = [str(date) for date in not_dates]
+    extracted = extract_pii_tags(
+        analyzer, not_dates_str, recognizer_result_patcher=date_time_patcher
+    )
+    assert PIITag.DATE_TIME not in extracted
+
+
+def test_date_time_extraction_with_patched_results(fake, analyzer):
+    # Generate a list of dates and times
+    samples = [str(fake.date_time_this_century()) for _ in range(100)]
+    # Patch the results to avoid false positives
+    extracted = extract_pii_tags(
+        analyzer, samples, recognizer_result_patcher=date_time_patcher
+    )
+
+    assert PIITag.DATE_TIME in extracted
+
+
 # Extraction with patched URL
 def test_email_address_extraction_does_not_extract_url(fake, analyzer):
     samples = [fake.email() for _ in range(100)]
@@ -203,7 +227,7 @@ def test_us_ssn_extraction(fake_en_us, analyzer):
 def test_aadhaar_extraction(analyzer):
     # fake = local_fake_factory("en_IN")  # Use Indian locale
     # samples = [fake.aadhaar_id() for _ in range(100)]
-    # Unfortunately, the generated aadhaar_id by Faker are not valid
+    # Unfortunately, the generated aadhaar_ids by Faker are not always valid
     samples = [
         "466299546357",
         "967638147560",
@@ -224,7 +248,28 @@ def test_aadhaar_extraction(analyzer):
     )
 
 
-# TODO: Add more test for local entities
+def test_indian_passport_extraction(analyzer):
+    # Randomly generated valid Indian passport numbers
+    samples = [
+        "A1234567",
+        "B7654321",
+        "C2345678",
+        "D3456789",
+        "E4567890",
+        "F5678901",
+        "G6789012",
+        "H7890123",
+        "J8901234",
+        "K9012345",
+    ]
+
+    context = ["passport", "document"]
+    extracted = extract_pii_tags(analyzer, samples, context=context)
+    assert get_top_pii_tag(extracted) == PIITag.IN_PASSPORT, (
+        PIITag.IN_PASSPORT,
+        samples,
+        extracted,
+    )
 
 
 def test_extract_pii_from_column_names():

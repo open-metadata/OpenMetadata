@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
 import { StatusData } from '../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
@@ -36,7 +35,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../utils/date-time/DateTimeUtils';
-import i18n from '../utils/i18next/LocalUtil';
+import { t } from '../utils/i18next/LocalUtil';
 import { GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
 
 export const PROFILER_METRIC = [
@@ -64,6 +63,7 @@ export const PROFILER_METRIC = [
   'histogram',
   'customMetricsProfile',
 ];
+export const PROFILER_CHART_DATA_SIZE = 500;
 
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
@@ -212,22 +212,22 @@ export const INITIAL_SUM_METRIC_VALUE = {
 export const INITIAL_QUARTILE_METRIC_VALUE = {
   information: [
     {
-      title: i18n.t('label.first-quartile'),
+      title: t('label.first-quartile'),
       dataKey: 'firstQuartile',
       color: '#1890FF',
     },
     {
-      title: i18n.t('label.median'),
+      title: t('label.median'),
       dataKey: 'median',
       color: '#7147E8',
     },
     {
-      title: i18n.t('label.inter-quartile-range'),
+      title: t('label.inter-quartile-range'),
       dataKey: 'interQuartileRange',
       color: '#008376',
     },
     {
-      title: i18n.t('label.third-quartile'),
+      title: t('label.third-quartile'),
       dataKey: 'thirdQuartile',
       color: '#B02AAC',
     },

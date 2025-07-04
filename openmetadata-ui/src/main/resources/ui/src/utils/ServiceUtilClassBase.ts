@@ -12,9 +12,9 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
-import { capitalize, get, toLower } from 'lodash';
+import { get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
-import MetricIcon from '../assets/svg/metric.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
 import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import {
@@ -672,94 +672,6 @@ class ServiceUtilClassBase {
         return ExplorePageTabs.TABLES;
     }
   }
-
-  public getServiceName = (serviceType: string) => {
-    switch (serviceType) {
-      case this.DatabaseServiceTypeSmallCase.CustomDatabase:
-        return 'Custom Database';
-      case this.DatabaseServiceTypeSmallCase.AzureSQL:
-        return 'AzureSQL';
-      case this.DatabaseServiceTypeSmallCase.BigQuery:
-        return 'BigQuery';
-      case this.DatabaseServiceTypeSmallCase.BigTable:
-        return 'BigTable';
-      case this.DatabaseServiceTypeSmallCase.DeltaLake:
-        return 'DeltaLake';
-      case this.DatabaseServiceTypeSmallCase.DomoDatabase:
-        return 'DomoDatabase';
-      case this.DatabaseServiceTypeSmallCase.DynamoDB:
-        return 'DynamoDB';
-      case this.DatabaseServiceTypeSmallCase.MariaDB:
-        return 'MariaDB';
-      case this.DatabaseServiceTypeSmallCase.MongoDB:
-        return 'MongoDB';
-      case this.DatabaseServiceTypeSmallCase.Cassandra:
-        return 'Cassandra';
-      case this.DatabaseServiceTypeSmallCase.PinotDB:
-        return 'pinotdb';
-      case this.DatabaseServiceTypeSmallCase.SapHana:
-        return 'SapHana';
-      case this.DatabaseServiceTypeSmallCase.SAS:
-        return 'SAS';
-      case this.DatabaseServiceTypeSmallCase.SingleStore:
-        return 'SingleStore';
-      case this.DatabaseServiceTypeSmallCase.SQLite:
-        return 'SQlite';
-      case this.DatabaseServiceTypeSmallCase.UnityCatalog:
-        return 'UnityCatalog';
-      case this.MessagingServiceTypeSmallCase.CustomMessaging:
-        return 'Custom Messaging';
-      case this.DashboardServiceTypeSmallCase.DomoDashboard:
-        return 'DomoDashboard';
-      case this.DashboardServiceTypeSmallCase.PowerBI:
-        return 'PowerBI';
-      case this.DashboardServiceTypeSmallCase.QlikCloud:
-        return 'QlikCloud';
-      case this.DashboardServiceTypeSmallCase.QlikSense:
-        return 'QlikSense';
-      case this.DashboardServiceTypeSmallCase.QuickSight:
-        return 'QuickSight';
-      case this.DashboardServiceTypeSmallCase.CustomDashboard:
-        return 'Custom Dashboard';
-      case this.PipelineServiceTypeSmallCase.DatabricksPipeline:
-        return 'DatabricksPipeline';
-      case this.PipelineServiceTypeSmallCase.DBTCloud:
-        return 'DBTCloud';
-      case this.PipelineServiceTypeSmallCase.DomoPipeline:
-        return 'DomoPipeline';
-      case this.PipelineServiceTypeSmallCase.GluePipeline:
-        return 'Glue Pipeline';
-      case this.PipelineServiceTypeSmallCase.KafkaConnect:
-        return 'KafkaConnect';
-      case this.PipelineServiceTypeSmallCase.OpenLineage:
-        return 'OpenLineage';
-      case this.PipelineServiceTypeSmallCase.CustomPipeline:
-        return 'Custom Pipeline';
-      case this.MlModelServiceTypeSmallCase.SageMaker:
-        return 'SageMaker';
-      case this.MlModelServiceTypeSmallCase.CustomMlModel:
-        return 'Custom Ml Model';
-      case this.StorageServiceTypeSmallCase.CustomStorage:
-        return 'Custom Storage';
-      case this.SearchServiceTypeSmallCase.ElasticSearch:
-        return 'ElasticSearch';
-      case this.SearchServiceTypeSmallCase.CustomSearch:
-        return 'Custom Search';
-      case this.DatabaseServiceTypeSmallCase.Cockroach:
-        return 'Cockroach';
-      case this.DatabaseServiceTypeSmallCase.SapERP:
-        return 'SAP ERP';
-      case this.DatabaseServiceTypeSmallCase.Mssql:
-        return 'MSSQL';
-      case this.MlModelServiceTypeSmallCase.Mlflow:
-        return 'MLflow';
-      case this.StorageServiceTypeSmallCase.Adls:
-        return 'ADLS';
-
-      default:
-        return capitalize(serviceType);
-    }
-  };
 
   public getPipelineServiceConfig(type: PipelineServiceType) {
     return getPipelineConfig(type);

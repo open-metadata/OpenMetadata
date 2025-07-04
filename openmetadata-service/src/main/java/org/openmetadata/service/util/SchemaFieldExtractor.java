@@ -3,6 +3,7 @@ package org.openmetadata.service.util;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.Resource;
 import io.github.classgraph.ScanResult;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.InputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -16,9 +17,15 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.everit.json.schema.*;
+import org.everit.json.schema.ArraySchema;
+import org.everit.json.schema.BooleanSchema;
+import org.everit.json.schema.NullSchema;
+import org.everit.json.schema.NumberSchema;
+import org.everit.json.schema.ObjectSchema;
+import org.everit.json.schema.ReferenceSchema;
+import org.everit.json.schema.Schema;
+import org.everit.json.schema.StringSchema;
 import org.everit.json.schema.loader.SchemaClient;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
@@ -207,7 +214,7 @@ public class SchemaFieldExtractor {
           } else {
             String fieldType = mapSchemaTypeToSimpleType(fieldSchema);
             fieldTypesMap.putIfAbsent(
-                fullFieldName, new FieldDefinition(fullFieldName, fieldType, null));
+                fullFieldName, FieldDefinition.of(fullFieldName, fullFieldName, fieldType, null));
             processedFields.add(fullFieldName);
             LOG.debug("Added field '{}', Type: '{}'", fullFieldName, fieldType);
             // Recursively process nested objects or arrays
@@ -221,7 +228,8 @@ public class SchemaFieldExtractor {
         handleArraySchema(arraySchema, parentPath, fieldTypesMap, processingStack, processedFields);
       } else {
         String fieldType = mapSchemaTypeToSimpleType(schema);
-        fieldTypesMap.putIfAbsent(parentPath, new FieldDefinition(parentPath, fieldType, null));
+        fieldTypesMap.putIfAbsent(
+            parentPath, FieldDefinition.of(parentPath, parentPath, fieldType, null));
         LOG.debug("Added field '{}', Type: '{}'", parentPath, fieldType);
       }
     } finally {
@@ -241,7 +249,7 @@ public class SchemaFieldExtractor {
 
     if (referenceType != null) {
       fieldTypesMap.putIfAbsent(
-          fullFieldName, new FieldDefinition(fullFieldName, referenceType, null));
+          fullFieldName, FieldDefinition.of(fullFieldName, fullFieldName, referenceType, null));
       processedFields.add(fullFieldName);
       LOG.debug("Added field '{}', Type: '{}'", fullFieldName, referenceType);
       if (referenceType.startsWith("array<") && referenceType.endsWith(">")) {
@@ -257,7 +265,8 @@ public class SchemaFieldExtractor {
             referredSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
       }
     } else {
-      fieldTypesMap.putIfAbsent(fullFieldName, new FieldDefinition(fullFieldName, "object", null));
+      fieldTypesMap.putIfAbsent(
+          fullFieldName, FieldDefinition.of(fullFieldName, fullFieldName, "object", null));
       processedFields.add(fullFieldName);
       LOG.debug("Added field '{}', Type: 'object'", fullFieldName);
       extractFieldsFromSchema(
@@ -285,7 +294,7 @@ public class SchemaFieldExtractor {
       if (itemsReferenceType != null) {
         String arrayFieldType = "array<" + itemsReferenceType + ">";
         fieldTypesMap.putIfAbsent(
-            fullFieldName, new FieldDefinition(fullFieldName, arrayFieldType, null));
+            fullFieldName, FieldDefinition.of(fullFieldName, fullFieldName, arrayFieldType, null));
         processedFields.add(fullFieldName);
         LOG.debug("Added field '{}', Type: '{}'", fullFieldName, arrayFieldType);
         Schema referredItemsSchema = itemsReferenceSchema.getReferredSchema();
@@ -296,7 +305,8 @@ public class SchemaFieldExtractor {
     }
     String arrayType = mapSchemaTypeToSimpleType(itemsSchema);
     fieldTypesMap.putIfAbsent(
-        fullFieldName, new FieldDefinition(fullFieldName, "array<" + arrayType + ">", null));
+        fullFieldName,
+        FieldDefinition.of(fullFieldName, fullFieldName, "array<" + arrayType + ">", null));
     processedFields.add(fullFieldName);
     LOG.debug("Added field '{}', Type: 'array<{}>'", fullFieldName, arrayType);
 
@@ -321,49 +331,31 @@ public class SchemaFieldExtractor {
       String propertyName = customProperty.getName();
       String propertyType = customProperty.getPropertyType().getName();
       String fullFieldName = propertyName; // No parent path for custom properties
-
+      String displayName = customProperty.getDisplayName();
       LOG.debug("Processing custom property '{}'", fullFieldName);
 
       Object customPropertyConfigObj = customProperty.getCustomPropertyConfig();
 
       if (isEntityReferenceList(propertyType)) {
         String referenceType = "array<entityReference>";
-        FieldDefinition referenceFieldDefinition =
-            new FieldDefinition(fullFieldName, referenceType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(fullFieldName, referenceFieldDefinition);
+        FieldDefinition fieldDef =
+            FieldDefinition.of(fullFieldName, displayName, referenceType, customPropertyConfigObj);
+        fieldTypesMap.putIfAbsent(fullFieldName, fieldDef);
         processedFields.add(fullFieldName);
         LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
 
-        Schema itemSchema = resolveSchemaByType("entityReference", schemaUri, schemaClient);
-        if (itemSchema != null) {
-          extractFieldsFromSchema(
-              itemSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
-        } else {
-          LOG.warn(
-              "Schema for type 'entityReference' not found. Skipping nested field extraction for '{}'.",
-              fullFieldName);
-        }
       } else if (isEntityReference(propertyType)) {
         String referenceType = "entityReference";
-        FieldDefinition referenceFieldDefinition =
-            new FieldDefinition(fullFieldName, referenceType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(fullFieldName, referenceFieldDefinition);
+        FieldDefinition fieldDef =
+            FieldDefinition.of(fullFieldName, displayName, referenceType, customPropertyConfigObj);
+        fieldTypesMap.putIfAbsent(fullFieldName, fieldDef);
         processedFields.add(fullFieldName);
         LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
 
-        Schema referredSchema = resolveSchemaByType("entityReference", schemaUri, schemaClient);
-        if (referredSchema != null) {
-          extractFieldsFromSchema(
-              referredSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
-        } else {
-          LOG.warn(
-              "Schema for type 'entityReference' not found. Skipping nested field extraction for '{}'.",
-              fullFieldName);
-        }
       } else {
-        FieldDefinition entityFieldDefinition =
-            new FieldDefinition(fullFieldName, propertyType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(fullFieldName, entityFieldDefinition);
+        FieldDefinition fieldDef =
+            FieldDefinition.of(fullFieldName, displayName, propertyType, customPropertyConfigObj);
+        fieldTypesMap.putIfAbsent(fullFieldName, fieldDef);
         processedFields.add(fullFieldName);
         LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, propertyType);
       }
@@ -375,8 +367,11 @@ public class SchemaFieldExtractor {
     for (Map.Entry<String, FieldDefinition> entry : fieldTypesMap.entrySet()) {
       FieldDefinition fieldDef = entry.getValue();
       fieldsList.add(
-          new FieldDefinition(
-              fieldDef.getName(), fieldDef.getType(), fieldDef.getCustomPropertyConfig()));
+          FieldDefinition.of(
+              fieldDef.getName(),
+              fieldDef.getDisplayName(),
+              fieldDef.getType(),
+              fieldDef.getCustomPropertyConfig()));
     }
     return fieldsList;
   }
@@ -638,13 +633,28 @@ public class SchemaFieldExtractor {
   @lombok.Setter
   public static class FieldDefinition {
     private String name;
+    private String displayName;
     private String type;
     private Object customPropertyConfig;
 
     public FieldDefinition(String name, String type, Object customPropertyConfig) {
       this.name = name;
+      this.displayName = name;
       this.type = type;
       this.customPropertyConfig = customPropertyConfig;
+    }
+
+    public FieldDefinition(
+        String name, String displayName, String type, Object customPropertyConfig) {
+      this.name = name;
+      this.displayName = displayName;
+      this.type = type;
+      this.customPropertyConfig = customPropertyConfig;
+    }
+
+    public static FieldDefinition of(
+        String name, String displayName, String type, Object customPropertyConfig) {
+      return new FieldDefinition(name, displayName, type, customPropertyConfig);
     }
   }
 }

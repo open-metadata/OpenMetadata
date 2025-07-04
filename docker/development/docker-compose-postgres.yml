@@ -50,6 +50,7 @@ services:
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
       - plugins.security.disabled=true
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=OpenMetadata_password123!!!
+      - indices.query.bool.max_clause_count=4096
     networks:
       - local_app_net
     expose:

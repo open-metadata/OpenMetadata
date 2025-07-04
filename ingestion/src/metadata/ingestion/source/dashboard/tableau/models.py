@@ -13,9 +13,10 @@
 Tableau Source Model module
 """
 
+import uuid
 from typing import Dict, List, Optional, Set, Union
 
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Table
@@ -28,8 +29,17 @@ class TableauBaseModel(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    id: str
+    # in case of personal space workbooks, the project id is returned as a UUID
+    id: Union[str, uuid.UUID]
     name: Optional[str] = None
+
+    # pylint: disable=no-self-argument
+    @field_validator("id", mode="before")
+    def coerce_uuid_to_string(cls, value):
+        """Ensure id is always stored as a string internally"""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
     def __hash__(self):
         return hash(self.id)
@@ -135,7 +145,7 @@ class UpstreamTable(BaseModel):
     database: Optional[TableauDatabase] = None
     referencedByQueries: Optional[List[CustomSQLTable]] = None
 
-    @validator("referencedByQueries", pre=True)
+    @field_validator("referencedByQueries", mode="before")
     @classmethod
     def filter_none_queries(cls, v):
         """Filter out CustomSQLTable items where query==None."""
@@ -187,7 +197,7 @@ class TableauDashboard(TableauBaseModel):
     tags: Optional[Set] = []
     webpageUrl: Optional[str] = None
     charts: Optional[List[TableauChart]] = None
-    dataModels: List[DataSource] = []
+    dataModels: Optional[List[DataSource]] = []
     custom_sql_queries: Optional[List[str]] = None
     user_views: Optional[int] = None
 

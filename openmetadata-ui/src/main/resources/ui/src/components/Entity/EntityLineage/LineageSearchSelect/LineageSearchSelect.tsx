@@ -14,10 +14,16 @@ import { RightOutlined } from '@ant-design/icons';
 import { Select, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useState } from 'react';
+import { debounce } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
-import { ZOOM_TRANSITION_DURATION } from '../../../../constants/Lineage.constants';
+import {
+  DEBOUNCE_TIMEOUT,
+  INITIAL_NODE_ITEMS_LENGTH,
+  NODE_ITEMS_PAGE_SIZE,
+  ZOOM_TRANSITION_DURATION,
+} from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { Column } from '../../../../generated/entity/data/table';
@@ -39,10 +45,13 @@ const LineageSearchSelect = () => {
     platformView,
   } = useLineageProvider();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [cachedOptions, setCachedOptions] = useState<DefaultOptionType[]>([]);
+  const [allOptions, setAllOptions] = useState<DefaultOptionType[]>([]);
+  const [renderedOptions, setRenderedOptions] = useState<DefaultOptionType[]>(
+    []
+  );
+  const [searchValue, setSearchValue] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Only compute options when dropdown is open
   const generateNodeOptions = useCallback(() => {
     const options: DefaultOptionType[] = [];
 
@@ -51,6 +60,7 @@ const LineageSearchSelect = () => {
       if (!node) {
         return;
       }
+
       const nodeOption = {
         label: (
           <Space data-testid={`option-${node.fullyQualifiedName}`} size={0}>
@@ -71,7 +81,6 @@ const LineageSearchSelect = () => {
 
       const { childrenFlatten = [] } = getEntityChildrenAndLabel(node);
 
-      // Add all columns of the node as separate options
       childrenFlatten.forEach((column: Column) => {
         const columnOption = {
           label: (
@@ -108,24 +117,88 @@ const LineageSearchSelect = () => {
     return options;
   }, [nodes]);
 
-  // Load options when dropdown is opened
   useEffect(() => {
-    if (isDropdownOpen && cachedOptions.length === 0) {
+    if (isDropdownOpen && allOptions.length === 0) {
       setIsLoading(true);
       const options = generateNodeOptions();
-      setCachedOptions(options);
+      setAllOptions(options);
+      setRenderedOptions(options.slice(0, INITIAL_NODE_ITEMS_LENGTH));
       setIsLoading(false);
     }
-  }, [isDropdownOpen, cachedOptions.length, generateNodeOptions]);
+  }, [isDropdownOpen, allOptions.length, generateNodeOptions]);
 
-  // Reset cached options when nodes change
   useEffect(() => {
-    setCachedOptions([]);
+    setAllOptions([]);
+    setRenderedOptions([]);
+    setSearchValue('');
   }, [nodes]);
 
-  const handleDropdownVisibleChange = useCallback((open: boolean) => {
-    setIsDropdownOpen(open);
-  }, []);
+  const filterOptions = useCallback(
+    (value: string) => {
+      if (value) {
+        const filteredOptions = allOptions.filter((option) =>
+          option.dataLabel
+            ?.toString()
+            .toLowerCase()
+            .includes(value.toLowerCase())
+        );
+        setRenderedOptions(filteredOptions);
+      } else {
+        setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
+      }
+    },
+    [allOptions]
+  );
+
+  // Create a debounced version of the filter function
+  const debouncedFilterOptions = useMemo(
+    () => debounce(filterOptions, DEBOUNCE_TIMEOUT),
+    [filterOptions]
+  );
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedFilterOptions.cancel();
+    };
+  }, [debouncedFilterOptions]);
+
+  const handleSearch = (value: string) => {
+    setSearchValue(value);
+    debouncedFilterOptions(value);
+  };
+
+  const loadMoreData = () => {
+    if (searchValue) {
+      // If searching, just use the filtered options from allOptions
+      filterOptions(searchValue);
+    } else {
+      const nextLength = Math.min(
+        renderedOptions.length + NODE_ITEMS_PAGE_SIZE,
+        allOptions.length
+      );
+      setRenderedOptions(allOptions.slice(0, nextLength));
+    }
+  };
+
+  const handleDropdownVisibleChange = useCallback(
+    (open: boolean) => {
+      setIsDropdownOpen(open);
+      if (!open) {
+        setSearchValue('');
+        setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
+        debouncedFilterOptions.cancel();
+      }
+    },
+    [allOptions, debouncedFilterOptions]
+  );
+
+  const handlePopupScroll = (e: React.UIEvent<HTMLElement, UIEvent>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollTop + clientHeight >= scrollHeight - 10) {
+      loadMoreData();
+    }
+  };
 
   const onOptionSelect = useCallback(
     (value?: string) => {
@@ -135,7 +208,6 @@ const LineageSearchSelect = () => {
       if (selectedNode) {
         const { position } = selectedNode;
         onNodeClick(selectedNode);
-        // moving selected node in center
         reactFlowInstance?.setCenter(position.x, position.y, {
           duration: ZOOM_TRANSITION_DURATION,
           zoom: zoomValue,
@@ -160,16 +232,20 @@ const LineageSearchSelect = () => {
       })}
       data-testid="lineage-search"
       dropdownMatchSelectWidth={false}
+      listHeight={300}
       loading={isLoading}
       optionFilterProp="dataLabel"
       optionLabelProp="dataLabel"
-      options={cachedOptions}
+      options={renderedOptions}
       placeholder={t('label.search-entity', {
         entity: t('label.lineage'),
       })}
       popupClassName="lineage-search-options-list"
+      searchValue={searchValue}
       onChange={onOptionSelect}
       onDropdownVisibleChange={handleDropdownVisibleChange}
+      onPopupScroll={handlePopupScroll}
+      onSearch={handleSearch}
     />
   );
 };

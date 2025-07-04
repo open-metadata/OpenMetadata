@@ -13,13 +13,14 @@
 
 package org.openmetadata.service.socket;
 
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
+import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 
 @Slf4j
 @WebServlet("/api/v1/push/feed/*")
@@ -28,16 +29,13 @@ public class FeedServlet extends HttpServlet {
   protected void service(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     try {
+      // EngineIO server expects javax servlet types, so we need to use wrappers
+      HttpServletRequestWrapper wrappedRequest = new HttpServletRequestWrapper(request);
+      HttpServletResponseWrapper wrappedResponse = new HttpServletResponseWrapper(response);
+
       WebSocketManager.getInstance()
           .getEngineIoServer()
-          .handleRequest(
-              new HttpServletRequestWrapper(request) {
-                @Override
-                public boolean isAsyncSupported() {
-                  return true;
-                }
-              },
-              response);
+          .handleRequest(wrappedRequest, wrappedResponse);
     } catch (Exception ex) {
       LOG.error("[FeedServlet] Error Encountered : {}", ex.getMessage());
       response

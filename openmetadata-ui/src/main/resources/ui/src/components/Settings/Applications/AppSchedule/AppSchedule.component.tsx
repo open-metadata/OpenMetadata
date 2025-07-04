@@ -13,13 +13,7 @@
 import { Button, Col, Modal, Row, Space, Typography } from 'antd';
 import cronstrue from 'cronstrue';
 import { isEmpty } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import {
@@ -54,11 +48,9 @@ const AppSchedule = ({
   const { config } = useLimitStore();
 
   const showRunNowButton = useMemo(() => {
-    if (appData && appData.scheduleType === ScheduleType.ScheduledOrManual) {
-      return true;
-    }
-
-    return false;
+    return [ScheduleType.ScheduledOrManual, ScheduleType.OnlyManual].includes(
+      appData?.scheduleType
+    );
   }, [appData]);
 
   const { pipelineSchedules } =

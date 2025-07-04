@@ -40,7 +40,7 @@ concurrency:
 jobs:
   playwright-ci-postgresql:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || (github.event.action == 'labeled' && contains(github.event.label.name, 'Safe To test'))))) }}
     environment: test
     strategy:
       fail-fast: false
@@ -117,6 +117,7 @@ jobs:
           PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
           PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
           PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+          PLAYWRIGHT_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
           PLAYWRIGHT_PROJECT_ID: ${{ steps.cypress-project-id.outputs.CYPRESS_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
