@@ -1,5 +1,6 @@
 ---
 title: Run the Snowflake Connector Externally
+description: Set up Snowflake database connector with OpenMetadata using YAML configuration. Complete setup guide with examples, authentication, and best practices.
 slug: /connectors/database/snowflake/yaml
 ---
 

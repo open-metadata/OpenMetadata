@@ -1,5 +1,6 @@
 ---
 title: Run the Unity Catalog Connector Externally
+description: Configure Unity Catalog database connector with OpenMetadata using YAML. Step-by-step setup guide, configuration examples, and best practices included.
 slug: /connectors/database/unity-catalog/yaml
 ---
 

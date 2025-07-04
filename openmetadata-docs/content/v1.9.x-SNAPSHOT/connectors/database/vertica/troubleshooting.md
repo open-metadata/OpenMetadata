@@ -1,5 +1,6 @@
 ---
 title: Vertica Connector Troubleshooting
+description: Fix Vertica database connection issues with OpenMetadata's comprehensive troubleshooting guide. Get step-by-step solutions for common errors and problems.
 slug: /connectors/database/vertica/troubleshooting
 ---
 

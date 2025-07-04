@@ -1,5 +1,6 @@
 ---
 title: Snowflake Troubleshooting Guide | OpenMetadata Support
+description: Fix Snowflake connector issues fast with OpenMetadata's troubleshooting guide. Get solutions for common problems, error codes, and connection failures.
 slug: /connectors/database/snowflake/troubleshooting
 ---
 
