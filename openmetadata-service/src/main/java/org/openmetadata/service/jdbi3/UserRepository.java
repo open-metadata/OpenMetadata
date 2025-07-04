@@ -36,7 +36,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -774,7 +773,11 @@ public class UserRepository extends EntityRepository<User> {
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.DOMAIN);
 
       for (EntityReference domain : updatedDomains) {
-        addRelationship(domain.getId(), original.getId(), Entity.DOMAIN, USER, Relationship.HAS);
+        // Skip domains inherited from teams.
+        // Their relations aren’t stored in the DB and are handled in setInheritedFields().
+        if (domain.getInherited() == null || !domain.getInherited()) {
+          addRelationship(domain.getId(), original.getId(), Entity.DOMAIN, USER, Relationship.HAS);
+        }
       }
 
       origDomains.sort(EntityUtil.compareEntityReference);
@@ -807,46 +810,12 @@ public class UserRepository extends EntityRepository<User> {
       recordListChange(
           TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
 
-      Set<EntityReference> teamsToFetch =
-          new HashSet<>() {
-            {
-              addAll(updatedTeams);
-              addAll(added);
-              addAll(deleted);
-            }
-          };
-
-      Map<UUID, Team> teamMap =
-          teamsToFetch.stream()
-              .collect(
-                  Collectors.toMap(
-                      EntityReference::getId,
-                      ref -> Entity.getEntity(ref, "id,userCount,domains", Include.ALL)));
-
-      Set<UUID> inheritedDomainIds =
-          updatedTeams.stream()
-              .map(ref -> teamMap.get(ref.getId()))
-              .filter(Objects::nonNull)
-              .flatMap(team -> listOrEmpty(team.getDomains()).stream())
-              .map(EntityReference::getId)
-              .collect(Collectors.toSet());
-
-      // Remove any domain from the updated user object that is no longer inherited
-      if (updated.getDomains() != null) {
-        updated.setDomains(
-            updated.getDomains().stream()
-                .filter(domain -> inheritedDomainIds.contains(domain.getId()))
-                .collect(Collectors.toList()));
-      }
-
       // Update users and userCount in team search index
       Stream.concat(added.stream(), deleted.stream())
           .forEach(
               teamRef -> {
-                EntityInterface team = teamMap.get(teamRef.getId());
-                if (team != null) {
-                  searchRepository.updateEntity(team.getEntityReference());
-                }
+                EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
+                searchRepository.updateEntityIndex(team);
               });
     }
 
