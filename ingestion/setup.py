@@ -376,6 +376,7 @@ dev = {
     "twine",
     "build",
     *plugins["sample-data"],
+    "uv~=0.7",
 }
 
 # Dependencies for unit testing in addition to dev dependencies and plugins
