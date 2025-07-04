@@ -1,5 +1,6 @@
 ---
 title: CockroachDB Connector | OpenMetadata Integration Guide
+description: Set up CockroachDB connector in OpenMetadata to discover, catalog, and manage your database metadata. Complete integration guide with configuration steps.
 slug: /connectors/database/cockroach
 ---
 
@@ -95,4 +96,4 @@ Under `Advanced Config`, specify the SSL mode appropriate for your connection, s
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.6/connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

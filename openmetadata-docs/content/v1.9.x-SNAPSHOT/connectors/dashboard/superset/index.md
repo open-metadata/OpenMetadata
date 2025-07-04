@@ -1,5 +1,10 @@
 ---
 title: Superset Connector | OpenMetadata Dashboard Integration
+<<<<<<< HEAD
+description: Learn how to connect Apache Superset dashboards to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration, and metadata integration.
+=======
+description: Connect Apache Superset to OpenMetadata with our step-by-step connector guide. Extract dashboard metadata, lineage, and usage analytics seamlessly.
+>>>>>>> b9d49f3b9d (Doc: SEO Description Updation)
 slug: /connectors/dashboard/superset
 ---
 
