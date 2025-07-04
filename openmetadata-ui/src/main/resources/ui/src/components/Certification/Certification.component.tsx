@@ -13,7 +13,6 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Popover, Radio, Space, Spin, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { FocusTrap } from 'focus-trap-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
@@ -23,9 +22,11 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
 import { getTagImageSrc } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
 import Loader from '../common/Loader/Loader';
 import { CertificationProps } from './Certification.interface';
 import './certification.less';
+
 const Certification = ({
   currentCertificate = '',
   children,
@@ -159,67 +160,59 @@ const Certification = ({
     <Popover
       className="p-0"
       content={
-        <FocusTrap
-          focusTrapOptions={{
-            fallbackFocus: () =>
-              (document.querySelector(
-                '#certification-card-container'
-              ) as HTMLElement) || document.body,
-          }}>
-          <div id="certification-card-container">
-            <Card
-              bordered={false}
-              className="certification-card"
-              data-testid="certification-cards"
-              title={
-                <Space className="w-full justify-between">
-                  <div className="flex gap-2 items-center w-full">
-                    <CertificationIcon height={18} width={18} />
-                    <Typography.Text className="m-b-0 font-semibold text-sm">
-                      {t('label.edit-entity', {
-                        entity: t('label.certification'),
-                      })}
-                    </Typography.Text>
-                  </div>
-                  <Typography.Text
-                    className="m-b-0 font-semibold text-primary text-sm cursor-pointer"
-                    data-testid="clear-certification"
-                    tabIndex={0}
-                    onClick={() => updateCertificationData()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        updateCertificationData();
-                      }
-                    }}>
-                    {t('label.clear')}
+        <FocusTrapWithContainer>
+          <Card
+            bordered={false}
+            className="certification-card"
+            data-testid="certification-cards"
+            title={
+              <Space className="w-full justify-between">
+                <div className="flex gap-2 items-center w-full">
+                  <CertificationIcon height={18} width={18} />
+                  <Typography.Text className="m-b-0 font-semibold text-sm">
+                    {t('label.edit-entity', {
+                      entity: t('label.certification'),
+                    })}
                   </Typography.Text>
-                </Space>
-              }>
-              <Spin
-                indicator={<Loader size="small" />}
-                spinning={isLoadingCertificationData}>
-                {certificationCardData}
-                <div className="flex justify-end text-lg gap-2 mt-4">
-                  <Button
-                    data-testid="close-certification"
-                    type="default"
-                    onClick={handleCloseCertification}>
-                    <CloseOutlined />
-                  </Button>
-                  <Button
-                    data-testid="update-certification"
-                    type="primary"
-                    onClick={() =>
-                      updateCertificationData(selectedCertification)
-                    }>
-                    <CheckOutlined />
-                  </Button>
                 </div>
-              </Spin>
-            </Card>
-          </div>
-        </FocusTrap>
+                <Typography.Text
+                  className="m-b-0 font-semibold text-primary text-sm cursor-pointer"
+                  data-testid="clear-certification"
+                  tabIndex={0}
+                  onClick={() => updateCertificationData()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      updateCertificationData();
+                    }
+                  }}>
+                  {t('label.clear')}
+                </Typography.Text>
+              </Space>
+            }>
+            <Spin
+              indicator={<Loader size="small" />}
+              spinning={isLoadingCertificationData}>
+              {certificationCardData}
+              <div className="flex justify-end text-lg gap-2 mt-4">
+                <Button
+                  data-testid="close-certification"
+                  type="default"
+                  onClick={handleCloseCertification}>
+                  <CloseOutlined />
+                </Button>
+                <Button
+                  data-testid="update-certification"
+                  type="primary"
+                  onClick={() =>
+                    updateCertificationData(selectedCertification)
+                  }>
+                  <CheckOutlined />
+                </Button>
+              </div>
+            </Spin>
+          </Card>
+        </FocusTrapWithContainer>
       }
       overlayClassName="certification-card-popover"
       placement="bottomRight"
