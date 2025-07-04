@@ -15,7 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Typography } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import panelTitleBg from '../../assets/img/panel-title-bg.png';
+import panelHeaderImage from '../../assets/img/panel-header-bg.png';
 import { PanelProps } from './Panel.interface';
 import './panel.less';
 
@@ -52,7 +52,7 @@ export function Panel({
         <img
           alt="panel-title-bg"
           className="w-full h-full"
-          src={panelTitleBg}
+          src={panelHeaderImage}
         />
       </div>
       <div className="panel-header-content">
