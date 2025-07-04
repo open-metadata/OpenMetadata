@@ -357,7 +357,7 @@ const GlossaryV1 = ({
   const glossaryContent = useMemo(() => {
     if (!(glossaryPermission.ViewAll || glossaryPermission.ViewBasic)) {
       return (
-        <div className="d-flex justify-center items-center full-height">
+        <div className="full-height">
           <ErrorPlaceHolder
             className="mt-0-important border-none"
             permissionValue={t('label.view-entity', {

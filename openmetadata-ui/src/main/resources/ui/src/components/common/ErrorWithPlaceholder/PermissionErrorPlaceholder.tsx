@@ -25,7 +25,7 @@ const PermissionErrorPlaceholder = ({
   return (
     <div
       className={classNames(
-        'h-full flex-center border-default border-radius-sm bg-white',
+        'full-height flex-center border-default border-radius-sm bg-white',
         className
       )}>
       <Space
