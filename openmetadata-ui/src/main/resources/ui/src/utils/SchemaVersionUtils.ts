@@ -223,6 +223,18 @@ export const getVersionedSchema = (
         ...clonedMessageSchema,
         schemaFields: formattedSchema,
       };
+    } else if (isEndsWithField(EntityField.DISPLAYNAME, changedEntityName)) {
+      const formattedSchema = getStringEntityDiff(
+        schemaFieldDiff,
+        EntityField.DISPLAYNAME,
+        changedSchemaFieldName,
+        schemaFields
+      );
+
+      clonedMessageSchema = {
+        ...clonedMessageSchema,
+        schemaFields: formattedSchema,
+      };
     } else if (
       isEndsWithField(EntityField.DATA_TYPE_DISPLAY, changedEntityName)
     ) {

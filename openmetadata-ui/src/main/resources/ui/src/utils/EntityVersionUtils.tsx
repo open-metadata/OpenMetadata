@@ -832,6 +832,17 @@ export function getColumnsDataWithVersionChanges<
           colList
         ),
       ];
+    } else if (
+      isEndsWithField(EntityField.DATA_TYPE_DISPLAY, changedEntityName)
+    ) {
+      newColumnsList = [
+        ...getStringEntityDiff(
+          columnDiff,
+          EntityField.DATA_TYPE_DISPLAY,
+          changedColName,
+          colList
+        ),
+      ];
     } else if (!isEndsWithField(EntityField.CONSTRAINT, changedEntityName)) {
       const changedEntity = changedEntityName
         ?.split(FQN_SEPARATOR_CHAR)
