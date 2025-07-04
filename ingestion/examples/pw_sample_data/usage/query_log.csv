@@ -1,0 +1,2 @@
+query_text,database_name,schema_name
+"SELECT * FROM sales.order_items oi INNER JOIN sales.orders o ON oi.order_id=o.order_id",postgres,sales
