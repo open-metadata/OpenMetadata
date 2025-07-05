@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
@@ -112,21 +113,30 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
 
       // Filter out EntityNotFoundExceptions from errors - these are expected when relationships
       // point to deleted entities and should not be counted as failures
-      List<EntityError> realErrors = new ArrayList<>();
       if (!result.getErrors().isEmpty()) {
-        for (EntityError error : result.getErrors()) {
-          // Skip entities with missing relationships - these will be garbage collected separately
-          if (error.getMessage() != null && error.getMessage().contains("Not found")) {
-            LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
-          } else {
-            realErrors.add(error);
-          }
+        List<EntityError> realErrors =
+            result.getErrors().stream()
+                .filter(error -> !isEntityNotFoundError(error))
+                .collect(Collectors.toList());
+
+        if (!realErrors.isEmpty()) {
+          LOG.warn("[PaginatedEntitiesSource] Real errors found: {}", realErrors.size());
+          realErrors.forEach(error -> LOG.warn("Error: {}", error.getMessage()));
+        }
+
+        long notFoundCount = result.getErrors().size() - realErrors.size();
+        if (notFoundCount > 0) {
+          LOG.debug(
+              "[PaginatedEntitiesSource] Ignored {} 'entity not found' errors for stale relationships",
+              notFoundCount);
         }
 
         if (!realErrors.isEmpty()) {
           lastFailedCursor = this.cursor.get();
+          realErrors.forEach(error -> LOG.warn("Error: {}", error.getMessage()));
         }
 
+        lastFailedCursor = this.cursor.get();
         if (result.getPaging().getAfter() == null) {
           this.cursor.set(null);
           this.isDone.set(true);
@@ -249,5 +259,16 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Override
   public void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
+  }
+
+  private boolean isEntityNotFoundError(EntityError error) {
+    if (error == null || error.getMessage() == null) {
+      return false;
+    }
+    String message = error.getMessage().toLowerCase();
+    return message.contains("not found")
+        || message.contains("instance for")
+        || message.contains("does not exist")
+        || message.contains("entitynotfoundexception");
   }
 }
