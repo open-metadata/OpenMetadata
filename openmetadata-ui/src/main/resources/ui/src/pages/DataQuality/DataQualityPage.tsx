@@ -11,18 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Tabs } from 'antd';
-import { isEmpty } from 'lodash';
+import { DownOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestCaseFormV1 from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1';
 import BundleSuiteForm from '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { EntityType } from '../../enums/entity.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -60,6 +58,19 @@ const DataQualityPage = () => {
     setIsBundleSuiteModalOpen(false);
   };
 
+  const addButtonContent = [
+    {
+      label: t('label.test-case'),
+      key: '1',
+      onClick: handleOpenTestCaseModal,
+    },
+    {
+      label: t('label.bundle-suite'),
+      key: '2',
+      onClick: handleOpenBundleSuiteModal,
+    },
+  ];
+
   const menuItems = useMemo(() => {
     const data = DataQualityClassBase.getDataQualityTab();
 
@@ -74,8 +85,8 @@ const DataQualityPage = () => {
     });
   }, []);
 
-  const extraDropdownContent = useMemo(
-    () => DataQualityClassBase.getManageExtraOptions(activeTab),
+  const exportDataQualityDashboardButton = useMemo(
+    () => DataQualityClassBase.getExportDataQualityDashboardButton(activeTab),
     [activeTab]
   );
 
@@ -123,12 +134,25 @@ const DataQualityPage = () => {
                       })}
                     </Button>
                   )}
-                {isEmpty(extraDropdownContent) ? null : (
-                  <ManageButton
-                    entityName={EntityType.TEST_CASE}
-                    entityType={EntityType.TEST_CASE}
-                    extraDropdownContent={extraDropdownContent}
-                  />
+                {exportDataQualityDashboardButton}
+
+                {activeTab === DataQualityPageTabs.DASHBOARD && (
+                  <Dropdown
+                    className="m-l-md h-10"
+                    menu={{
+                      items: addButtonContent,
+                    }}
+                    placement="bottomRight"
+                    trigger={['click']}>
+                    <Button
+                      data-testid="data-quality-add-button-menu"
+                      type="primary">
+                      <Space>
+                        {t('label.add')}
+                        <DownOutlined />
+                      </Space>
+                    </Button>
+                  </Dropdown>
                 )}
               </Col>
             </Row>

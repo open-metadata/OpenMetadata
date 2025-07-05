@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as TestCaseIcon } from '../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
 import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
@@ -80,8 +79,10 @@ class DataQualityClassBase {
     return DataQualityPageTabs.TEST_CASES;
   }
 
-  public getManageExtraOptions(_activeTab: DataQualityPageTabs): ItemType[] {
-    return [];
+  public getExportDataQualityDashboardButton(
+    _activeTab: DataQualityPageTabs
+  ): React.ReactNode {
+    return null;
   }
 }
 
