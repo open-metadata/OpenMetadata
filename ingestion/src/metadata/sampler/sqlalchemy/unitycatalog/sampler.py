@@ -13,9 +13,13 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+
+from sqlalchemy import Column, text
+
 from metadata.ingestion.source.database.databricks.connection import (
     get_connection as databricks_get_connection,
 )
+from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
@@ -30,3 +34,27 @@ class UnityCatalogSamplerInterface(SQASampler):
         client = super().get_client()
         self.set_catalog(client)
         return client
+
+    def _handle_array_column(self, column: Column) -> bool:
+        """Check if a column is an array type"""
+        return isinstance(column.type, CustomArray)
+
+    def _get_slice_expression(self, column: Column):
+        """Generate SQL expression to slice array elements at query level
+
+        Args:
+            column_name: Name of the column
+            max_elements: Maximum number of elements to extract
+
+        Returns:
+            SQL expression string for array slicing
+        """
+        max_elements = self._get_max_array_elements()
+        return text(
+            f"""
+        CASE 
+            WHEN `{column.name}` IS NULL THEN NULL
+            ELSE slice(`{column.name}`, 1, {max_elements})
+        END AS `{column._label}`
+        """
+        )
