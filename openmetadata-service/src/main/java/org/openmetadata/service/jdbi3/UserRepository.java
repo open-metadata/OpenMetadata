@@ -773,7 +773,11 @@ public class UserRepository extends EntityRepository<User> {
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.DOMAIN);
 
       for (EntityReference domain : updatedDomains) {
-        addRelationship(domain.getId(), original.getId(), Entity.DOMAIN, USER, Relationship.HAS);
+        // Skip domains inherited from teams.
+        // Their relations aren’t stored in the DB and are handled in setInheritedFields().
+        if (domain.getInherited() == null || !domain.getInherited()) {
+          addRelationship(domain.getId(), original.getId(), Entity.DOMAIN, USER, Relationship.HAS);
+        }
       }
 
       origDomains.sort(EntityUtil.compareEntityReference);
