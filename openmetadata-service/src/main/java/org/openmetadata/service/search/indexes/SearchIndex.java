@@ -395,6 +395,11 @@ public interface SearchIndex {
     fields.putAll(TagIndex.getFields());
     fields.putAll(DataProductIndex.getFields());
     fields.putAll(APIEndpointIndex.getFields());
+    fields.putAll(DirectoryIndex.getFields());
+    fields.putAll(FileIndex.getFields());
+    fields.putAll(SpreadsheetIndex.getFields());
+    fields.putAll(WorksheetIndex.getFields());
+    fields.putAll(DriveServiceIndex.getFields());
     return fields;
   }
 }

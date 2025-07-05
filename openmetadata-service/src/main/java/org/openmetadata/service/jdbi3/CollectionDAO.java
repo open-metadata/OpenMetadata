@@ -94,6 +94,8 @@ import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Directory;
+import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
@@ -102,9 +104,11 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.SearchIndex;
+import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -114,6 +118,7 @@ import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
@@ -320,7 +325,22 @@ public interface CollectionDAO {
   ApiServiceDAO apiServiceDAO();
 
   @CreateSqlObject
+  DriveServiceDAO driveServiceDAO();
+
+  @CreateSqlObject
   ContainerDAO containerDAO();
+
+  @CreateSqlObject
+  DirectoryDAO directoryDAO();
+
+  @CreateSqlObject
+  FileDAO fileDAO();
+
+  @CreateSqlObject
+  SpreadsheetDAO spreadsheetDAO();
+
+  @CreateSqlObject
+  WorksheetDAO worksheetDAO();
 
   @CreateSqlObject
   FeedDAO feedDAO();
@@ -718,6 +738,91 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "nameHash";
+    }
+  }
+
+  interface DriveServiceDAO extends EntityDAO<DriveService> {
+    @Override
+    default String getTableName() {
+      return "drive_service_entity";
+    }
+
+    @Override
+    default Class<DriveService> getEntityClass() {
+      return DriveService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface DirectoryDAO extends EntityDAO<Directory> {
+    @Override
+    default String getTableName() {
+      return "directory_entity";
+    }
+
+    @Override
+    default Class<Directory> getEntityClass() {
+      return Directory.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface FileDAO extends EntityDAO<File> {
+    @Override
+    default String getTableName() {
+      return "file_entity";
+    }
+
+    @Override
+    default Class<File> getEntityClass() {
+      return File.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface SpreadsheetDAO extends EntityDAO<Spreadsheet> {
+    @Override
+    default String getTableName() {
+      return "spreadsheet_entity";
+    }
+
+    @Override
+    default Class<Spreadsheet> getEntityClass() {
+      return Spreadsheet.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface WorksheetDAO extends EntityDAO<Worksheet> {
+    @Override
+    default String getTableName() {
+      return "worksheet_entity";
+    }
+
+    @Override
+    default Class<Worksheet> getEntityClass() {
+      return Worksheet.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
     }
   }
 
