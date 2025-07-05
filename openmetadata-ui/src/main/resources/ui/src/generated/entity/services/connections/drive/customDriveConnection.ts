@@ -11,17 +11,23 @@
  *  limitations under the License.
  */
 /**
- * This schema defines the service types entities which requires a connection.
+ * Custom Drive Connection to build a source that is not supported.
  */
-export enum ServiceType {
-    API = "Api",
-    Dashboard = "Dashboard",
-    Database = "Database",
-    Drive = "Drive",
-    Messaging = "Messaging",
-    Metadata = "Metadata",
-    MlModel = "MlModel",
-    Pipeline = "Pipeline",
-    Search = "Search",
-    Storage = "Storage",
+export interface CustomDriveConnection {
+    connectionArguments?:        { [key: string]: any };
+    connectionOptions?:          { [key: string]: string };
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: CustomDriveType;
+}
+
+/**
+ * Service Type
+ *
+ * Custom Drive service type
+ */
+export enum CustomDriveType {
+    CustomDrive = "CustomDrive",
 }
