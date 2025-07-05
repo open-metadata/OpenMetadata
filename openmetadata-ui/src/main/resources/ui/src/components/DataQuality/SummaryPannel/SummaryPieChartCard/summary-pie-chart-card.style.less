@@ -10,20 +10,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.chart-total-count-value-link {
-  &.ant-typography a {
-    font-size: 1.25rem /* 20px */;
-    line-height: 1.75rem /* 28px */;
-    font-weight: 500;
-  }
-}
 
-.chart-widget-link-no-underline {
-  a:hover {
-    text-decoration: none;
+@import (reference) '../../../../styles/variables.less';
+
+.pie-chart-summary-panel {
+  .summary-title {
+    font-size: 16px;
+    color: @text-color;
+    font-weight: 600;
+    margin-bottom: 0;
   }
 
-  &:hover .chart-widget-link-underline {
-    text-decoration: underline;
+  .summary-value {
+    font-size: 30px;
+    font-weight: 600;
+    color: @text-color;
+    line-height: 1.2;
+    margin-top: 8px;
+  }
+
+  .chart-container {
+    position: relative;
+  }
+
+  .chart-center-text {
+    font-size: 16px;
+    font-weight: 600;
+    fill: @text-color;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
 }

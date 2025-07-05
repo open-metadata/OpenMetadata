@@ -1,0 +1,146 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../../styles/variables.less';
+
+.test-case-form-v1 {
+  position: relative;
+  min-height: 100vh;
+  padding-bottom: 80px; // Space for fixed buttons
+
+  .ant-form-item {
+    margin-bottom: @size-lg;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .ant-form-item-label > label {
+    color: @grey-800;
+    font-weight: @font-medium;
+    font-size: @font-size-base;
+  }
+
+  .select-table-card,
+  .test-type-card,
+  .test-details-card,
+  .scheduler-card {
+    background-color: @grey-1;
+    border: 1px solid @grey-200;
+    border-radius: @border-radius-sm;
+    margin-bottom: @size-lg;
+
+    .ant-card-body {
+      padding: @size-sm @size-mlg @size-mlg;
+    }
+
+    .ant-form-item {
+      margin-bottom: @size-lg;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .ant-form-item-label > label {
+      color: @grey-800;
+      font-weight: @font-medium;
+      font-size: @font-size-base;
+    }
+
+    .card-title {
+      color: @grey-800;
+      font-size: @size-md;
+      font-weight: @font-medium;
+      margin-bottom: @size-mlg;
+      line-height: 1.4;
+    }
+  }
+
+  .scheduler-card {
+    .selection-card {
+      background-color: @white;
+
+      &.selected,
+      &:hover {
+        background-color: @blue-22;
+      }
+    }
+  }
+
+  .test-level-section {
+    margin-bottom: @size-lg;
+
+    .form-section-title {
+      color: @grey-800;
+      font-size: @size-md;
+      font-weight: @font-medium;
+      margin-bottom: @size-mlg;
+      line-height: 1.4;
+    }
+
+    .ant-form-item-explain-error {
+      margin-top: @size-xs;
+      color: @error-color;
+      font-size: @font-size-base;
+    }
+  }
+
+  .test-case-form-actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: @white;
+    border-top: 1px solid @grey-200;
+    padding: @size-lg @size-xl;
+    display: flex;
+    justify-content: flex-end;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  // Drawer mode adjustments
+  &.drawer-mode {
+    min-height: auto;
+    padding-bottom: 0;
+
+    .test-case-form-actions {
+      display: none; // Hide actions in drawer mode, use drawer footer instead
+    }
+  }
+
+  .block-editor-wrapper.block-editor-wrapper--bar-menu .om-block-editor {
+    background-color: @white;
+    max-height: 150px;
+  }
+  .block-editor-wrapper .om-block-editor > p:last-child {
+    padding-bottom: 130px;
+  }
+}
+
+// Drawer specific styles
+.drawer-form-content {
+  .test-case-form-v1 {
+    padding-bottom: 0;
+  }
+}
+
+.drawer-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+
+  .ant-space {
+    width: auto;
+  }
+}

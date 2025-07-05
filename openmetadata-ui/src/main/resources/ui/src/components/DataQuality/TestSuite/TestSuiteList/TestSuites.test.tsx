@@ -97,7 +97,7 @@ const mockDataQualityContext = {
     failed: 0,
     skipped: 0,
   },
-  activeTab: DataQualityPageTabs.TABLES,
+  activeTab: DataQualityPageTabs.TEST_CASES,
 };
 jest.mock('../../../../pages/DataQuality/DataQualityProvider', () => {
   return {
