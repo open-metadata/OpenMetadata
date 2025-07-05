@@ -4447,10 +4447,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return ownersMap;
     }
     // Use Include.ALL to get all relationships including those for soft-deleted entities
+    // Use the 3-parameter version to find owners of any entity type (equivalent to passing null in
+    // single entity version)
     var records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(entityListToStrings(entities), Relationship.OWNS.ordinal(), ALL);
+
+    LOG.info(
+        "batchFetchOwners: Found {} owner relationships for {} entities",
+        records.size(),
+        entities.size());
 
     // Group records by entity type to batch fetch entity references
     var ownerIdsByType = new HashMap<String, List<UUID>>();
