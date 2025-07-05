@@ -28,12 +28,14 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateDirectory;
@@ -61,15 +63,32 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorksheet> {
-  private static final Spreadsheet DEFAULT_SPREADSHEET;
-  private static final EntityReference DEFAULT_SPREADSHEET_REFERENCE;
+  private static Spreadsheet DEFAULT_SPREADSHEET;
+  private static EntityReference DEFAULT_SPREADSHEET_REFERENCE;
 
-  static {
-    try {
+  public WorksheetResourceTest() {
+    super(
+        Entity.WORKSHEET,
+        Worksheet.class,
+        WorksheetResource.WorksheetList.class,
+        "drives/worksheets",
+        WorksheetResource.FIELDS);
+    supportsSearchIndex = true;
+  }
+
+  @BeforeAll
+  public void setup(TestInfo test) throws URISyntaxException, IOException {
+    super.setup(test);
+    setupDefaultSpreadsheet(test);
+  }
+
+  public void setupDefaultSpreadsheet(TestInfo test) throws HttpResponseException {
+    if (DEFAULT_SPREADSHEET == null) {
       // Create drive service
       DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
       CreateDriveService createService =
-          new CreateDriveService()
+          driveServiceResourceTest
+              .createRequest(test)
               .withName("testDriveServiceWorksheet")
               .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive)
               .withConnection(getTestDriveConnection());
@@ -84,34 +103,23 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
 
       // Create default spreadsheet
       SpreadsheetResourceTest spreadsheetResourceTest = new SpreadsheetResourceTest();
+      spreadsheetResourceTest.setupDriveService(test); // Make sure its drive service is set up
       CreateSpreadsheet createSpreadsheet =
-          new CreateSpreadsheet()
+          spreadsheetResourceTest
+              .createRequest(test)
               .withName("defaultTestSpreadsheet")
               .withService(service.getFullyQualifiedName());
-      Spreadsheet sheet;
       try {
-        sheet =
+        DEFAULT_SPREADSHEET =
             spreadsheetResourceTest.getEntityByName(
                 createSpreadsheet.getName(), ADMIN_AUTH_HEADERS);
       } catch (Exception e) {
         // Spreadsheet doesn't exist, create it
-        sheet = spreadsheetResourceTest.createEntity(createSpreadsheet, ADMIN_AUTH_HEADERS);
+        DEFAULT_SPREADSHEET =
+            spreadsheetResourceTest.createEntity(createSpreadsheet, ADMIN_AUTH_HEADERS);
       }
-      DEFAULT_SPREADSHEET = sheet;
       DEFAULT_SPREADSHEET_REFERENCE = DEFAULT_SPREADSHEET.getEntityReference();
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to initialize test spreadsheet", e);
     }
-  }
-
-  public WorksheetResourceTest() {
-    super(
-        Entity.WORKSHEET,
-        Worksheet.class,
-        WorksheetResource.WorksheetList.class,
-        "drives/worksheets",
-        WorksheetResource.FIELDS);
-    supportsSearchIndex = true;
   }
 
   @Test
@@ -608,7 +616,7 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
     return entity.getSpreadsheet();
   }
 
-  private static DriveConnection getTestDriveConnection() {
+  private DriveConnection getTestDriveConnection() {
     GCPCredentials gcpCredentials =
         new GCPCredentials()
             .withGcpConfig(

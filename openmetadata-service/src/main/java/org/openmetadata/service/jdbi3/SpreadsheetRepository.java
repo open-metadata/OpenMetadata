@@ -68,15 +68,19 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   public void setFullyQualifiedName(Spreadsheet spreadsheet) {
     if (spreadsheet.getDirectory() != null) {
       // Spreadsheet is within a directory
+      Directory directory = Entity.getEntity(spreadsheet.getDirectory(), "", Include.NON_DELETED);
       spreadsheet.setFullyQualifiedName(
-          FullyQualifiedName.add(
-              spreadsheet.getDirectory().getFullyQualifiedName(), spreadsheet.getName()));
+          FullyQualifiedName.add(directory.getFullyQualifiedName(), spreadsheet.getName()));
     } else {
       // Spreadsheet is directly under the service
+      DriveService service = Entity.getEntity(spreadsheet.getService(), "", Include.NON_DELETED);
       spreadsheet.setFullyQualifiedName(
-          FullyQualifiedName.add(
-              spreadsheet.getService().getFullyQualifiedName(), spreadsheet.getName()));
+          FullyQualifiedName.add(service.getFullyQualifiedName(), spreadsheet.getName()));
     }
+    LOG.debug(
+        "Set FQN for spreadsheet: {} -> {}",
+        spreadsheet.getName(),
+        spreadsheet.getFullyQualifiedName());
   }
 
   @Override
@@ -103,6 +107,9 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
 
   @Override
   public void storeEntity(Spreadsheet spreadsheet, boolean update) {
+    // Store the entity
+    store(spreadsheet, update);
+
     // Store service relationship
     EntityReference service = spreadsheet.getService();
     addRelationship(
@@ -155,6 +162,14 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     spreadsheet.withWorksheets(fields.contains("worksheets") ? getWorksheets(spreadsheet) : null);
   }
 
+  private EntityReference getDirectory(Spreadsheet spreadsheet) {
+    return getFromEntityRef(spreadsheet.getId(), Relationship.CONTAINS, DIRECTORY, false);
+  }
+
+  private List<EntityReference> getWorksheets(Spreadsheet spreadsheet) {
+    return findFrom(spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS, WORKSHEET);
+  }
+
   @Override
   public void restorePatchAttributes(Spreadsheet original, Spreadsheet updated) {
     // Patch can't change service or directory
@@ -165,25 +180,6 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   public EntityRepository<Spreadsheet>.EntityUpdater getUpdater(
       Spreadsheet original, Spreadsheet updated, Operation operation) {
     return new SpreadsheetUpdater(original, updated, operation);
-  }
-
-  private EntityReference getDirectory(Spreadsheet spreadsheet) {
-    return getFromEntityRef(spreadsheet.getId(), Relationship.CONTAINS, DIRECTORY, false);
-  }
-
-  private List<EntityReference> getWorksheets(Spreadsheet spreadsheet) {
-    List<EntityReference> worksheets = new ArrayList<>();
-
-    // Get worksheets
-    List<CollectionDAO.EntityRelationshipRecord> worksheetRecords =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .findFrom(spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS.ordinal(), WORKSHEET);
-    for (CollectionDAO.EntityRelationshipRecord rel : worksheetRecords) {
-      worksheets.add(Entity.getEntityReferenceById(WORKSHEET, rel.getId(), Include.NON_DELETED));
-    }
-
-    return worksheets;
   }
 
   @Override

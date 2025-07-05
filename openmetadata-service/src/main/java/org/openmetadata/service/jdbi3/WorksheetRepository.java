@@ -67,9 +67,9 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
 
   @Override
   public void setFullyQualifiedName(Worksheet worksheet) {
+    Spreadsheet spreadsheet = Entity.getEntity(worksheet.getSpreadsheet(), "", Include.NON_DELETED);
     worksheet.setFullyQualifiedName(
-        FullyQualifiedName.add(
-            worksheet.getSpreadsheet().getFullyQualifiedName(), worksheet.getName()));
+        FullyQualifiedName.add(spreadsheet.getFullyQualifiedName(), worksheet.getName()));
   }
 
   @Override
@@ -86,6 +86,9 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
 
   @Override
   public void storeEntity(Worksheet worksheet, boolean update) {
+    // Store the entity
+    store(worksheet, update);
+
     // Store service relationship
     EntityReference service = worksheet.getService();
     addRelationship(

@@ -29,11 +29,13 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateDirectory;
@@ -59,31 +61,8 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 class SpreadsheetResourceTest extends EntityResourceTest<Spreadsheet, CreateSpreadsheet> {
-  private static final DriveService DRIVE_SERVICE;
-  private static final EntityReference DRIVE_SERVICE_REFERENCE;
-
-  static {
-    try {
-      DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
-      CreateDriveService createService =
-          new CreateDriveService()
-              .withName("testDriveServiceSpreadsheet")
-              .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive)
-              .withConnection(getTestDriveConnection());
-      DriveService service;
-      try {
-        service =
-            driveServiceResourceTest.getEntityByName(createService.getName(), ADMIN_AUTH_HEADERS);
-      } catch (Exception e) {
-        // Service doesn't exist, create it
-        service = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-      }
-      DRIVE_SERVICE = service;
-      DRIVE_SERVICE_REFERENCE = DRIVE_SERVICE.getEntityReference();
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to initialize test drive service", e);
-    }
-  }
+  private static DriveService DRIVE_SERVICE;
+  private static EntityReference DRIVE_SERVICE_REFERENCE;
 
   public SpreadsheetResourceTest() {
     super(
@@ -93,6 +72,32 @@ class SpreadsheetResourceTest extends EntityResourceTest<Spreadsheet, CreateSpre
         "drives/spreadsheets",
         SpreadsheetResource.FIELDS);
     supportsSearchIndex = true;
+  }
+
+  @BeforeAll
+  public void setup(TestInfo test) throws URISyntaxException, IOException {
+    super.setup(test);
+    setupDriveService(test);
+  }
+
+  public void setupDriveService(TestInfo test) throws HttpResponseException {
+    if (DRIVE_SERVICE == null) {
+      DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
+      CreateDriveService createService =
+          driveServiceResourceTest
+              .createRequest(test)
+              .withName("testDriveServiceSpreadsheet")
+              .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive)
+              .withConnection(getTestDriveConnection());
+      try {
+        DRIVE_SERVICE =
+            driveServiceResourceTest.getEntityByName(createService.getName(), ADMIN_AUTH_HEADERS);
+      } catch (Exception e) {
+        // Service doesn't exist, create it
+        DRIVE_SERVICE = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+      }
+      DRIVE_SERVICE_REFERENCE = DRIVE_SERVICE.getEntityReference();
+    }
   }
 
   @Test
@@ -561,7 +566,7 @@ class SpreadsheetResourceTest extends EntityResourceTest<Spreadsheet, CreateSpre
     return entity.getService();
   }
 
-  private static DriveConnection getTestDriveConnection() {
+  private DriveConnection getTestDriveConnection() {
     GCPCredentials gcpCredentials =
         new GCPCredentials()
             .withGcpConfig(

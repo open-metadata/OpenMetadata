@@ -225,6 +225,6 @@
       "default": null
     }
   },
-  "required": ["id", "name", "service", "directory"],
+  "required": ["id", "name", "service"],
   "additionalProperties": false
 }

@@ -65,7 +65,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
-@Path("/v1/directories")
+@Path("/v1/drives/directories")
 @Tag(
     name = "Directories",
     description =
@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "directories")
 public class DirectoryResource extends EntityResource<Directory, DirectoryRepository> {
-  public static final String COLLECTION_PATH = "v1/directories/";
+  public static final String COLLECTION_PATH = "v1/drives/directories/";
   static final String FIELDS =
       "owners,children,parent,usageSummary,tags,extension,domain,sourceHash,lifeCycle,votes,followers";
   private final DirectoryMapper mapper = new DirectoryMapper();

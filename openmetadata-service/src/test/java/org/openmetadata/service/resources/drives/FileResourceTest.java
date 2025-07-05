@@ -28,11 +28,13 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateDirectory;
@@ -57,37 +59,39 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
-  private static final DriveService DRIVE_SERVICE;
-  private static final EntityReference DRIVE_SERVICE_REFERENCE;
-
-  static {
-    try {
-      DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
-      CreateDriveService createService =
-          new CreateDriveService()
-              .withName("testDriveServiceFile")
-              .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive)
-              .withConnection(getTestDriveConnection());
-      DriveService globalDriveService;
-      try {
-        globalDriveService =
-            driveServiceResourceTest.getEntityByName(createService.getName(), ADMIN_AUTH_HEADERS);
-      } catch (Exception e) {
-        // Service doesn't exist, create it
-        globalDriveService =
-            driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-      }
-      DRIVE_SERVICE = globalDriveService;
-      DRIVE_SERVICE_REFERENCE = DRIVE_SERVICE.getEntityReference();
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to initialize test drive service", e);
-    }
-  }
+  private static DriveService DRIVE_SERVICE;
+  private static EntityReference DRIVE_SERVICE_REFERENCE;
 
   public FileResourceTest() {
     super(
         Entity.FILE, File.class, FileResource.FileList.class, "drives/files", FileResource.FIELDS);
     supportsSearchIndex = true;
+  }
+
+  @BeforeAll
+  public void setup(TestInfo test) throws URISyntaxException, IOException {
+    super.setup(test);
+    setupDriveService(test);
+  }
+
+  public void setupDriveService(TestInfo test) throws HttpResponseException {
+    if (DRIVE_SERVICE == null) {
+      DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
+      CreateDriveService createService =
+          driveServiceResourceTest
+              .createRequest(test)
+              .withName("testDriveServiceFile")
+              .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive)
+              .withConnection(getTestDriveConnection());
+      try {
+        DRIVE_SERVICE =
+            driveServiceResourceTest.getEntityByName(createService.getName(), ADMIN_AUTH_HEADERS);
+      } catch (Exception e) {
+        // Service doesn't exist, create it
+        DRIVE_SERVICE = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+      }
+      DRIVE_SERVICE_REFERENCE = DRIVE_SERVICE.getEntityReference();
+    }
   }
 
   @Test
@@ -102,22 +106,19 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
   }
 
   @Test
-  void post_fileCreateWithoutRequiredFields_400() {
+  void post_fileCreateWithoutRequiredFields_400() throws HttpResponseException {
 
     CreateFile create = createRequest("file1").withService(null);
     CreateFile finalCreate = create;
     assertResponse(
         () -> createEntity(finalCreate, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
 
-    // Create file without required directory field
+    // Create file without optional directory field - should succeed
     create = createRequest("file1").withDirectory(null);
-    CreateFile finalCreate1 = create;
-    assertResponse(
-        () -> createEntity(finalCreate1, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[directory must not be null]");
+    File file = createEntity(create, ADMIN_AUTH_HEADERS);
+    assertEquals(getContainer().getFullyQualifiedName() + ".file1", file.getFullyQualifiedName());
   }
 
   @Test
@@ -134,9 +135,10 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     // Create directory
     DirectoryResourceTest directoryResourceTest = new DirectoryResourceTest();
     CreateDirectory createDirectory =
-        directoryResourceTest
-            .createRequest("documents")
-            .withService(service.getFullyQualifiedName());
+        new CreateDirectory()
+            .withName("documents")
+            .withService(service.getFullyQualifiedName())
+            .withPath("/path/to/documents");
     Directory directory = directoryResourceTest.createEntity(createDirectory, ADMIN_AUTH_HEADERS);
 
     // Create file in directory
@@ -270,9 +272,17 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
 
     // Test various file formats
     String[] formats = {
-      "CSV", "TSV", "JSON", "Avro",
-      "Parquet", "PDF", "Document", "Document",
-      "Spreadsheet", "Spreadsheet", "Text", "Archive"
+      "CSV",
+      "PDF",
+      "Document",
+      "Spreadsheet",
+      "Text",
+      "Archive",
+      "Image",
+      "Video",
+      "Audio",
+      "Code",
+      "Data"
     };
 
     for (String format : formats) {
@@ -299,14 +309,18 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     // Create nested directory structure
     DirectoryResourceTest directoryResourceTest = new DirectoryResourceTest();
     CreateDirectory createRoot =
-        directoryResourceTest.createRequest("docs").withService(service.getFullyQualifiedName());
+        new CreateDirectory()
+            .withName("docs")
+            .withService(service.getFullyQualifiedName())
+            .withPath("/path/to/docs");
     Directory rootDir = directoryResourceTest.createEntity(createRoot, ADMIN_AUTH_HEADERS);
 
     CreateDirectory createSubDir =
-        directoryResourceTest
-            .createRequest("reports")
+        new CreateDirectory()
+            .withName("reports")
             .withService(service.getFullyQualifiedName())
-            .withParent(rootDir.getFullyQualifiedName());
+            .withParent(rootDir.getFullyQualifiedName())
+            .withPath("/path/to/docs/reports");
     Directory subDir = directoryResourceTest.createEntity(createSubDir, ADMIN_AUTH_HEADERS);
 
     // Create file in nested directory
@@ -338,11 +352,17 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     // Create two directories
     DirectoryResourceTest directoryResourceTest = new DirectoryResourceTest();
     CreateDirectory createDir1 =
-        directoryResourceTest.createRequest("dir1").withService(service.getFullyQualifiedName());
+        new CreateDirectory()
+            .withName("dir1")
+            .withService(service.getFullyQualifiedName())
+            .withPath("/path/to/dir1");
     Directory dir1 = directoryResourceTest.createEntity(createDir1, ADMIN_AUTH_HEADERS);
 
     CreateDirectory createDir2 =
-        directoryResourceTest.createRequest("dir2").withService(service.getFullyQualifiedName());
+        new CreateDirectory()
+            .withName("dir2")
+            .withService(service.getFullyQualifiedName())
+            .withPath("/path/to/dir2");
     Directory dir2 = directoryResourceTest.createEntity(createDir2, ADMIN_AUTH_HEADERS);
 
     // Create files in each directory
@@ -426,7 +446,7 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwners(), entity.getTags());
 
-    fields = "owners,tags";
+    fields = "owners,tags,followers";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -453,7 +473,7 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     return entity.getService();
   }
 
-  private static DriveConnection getTestDriveConnection() {
+  private DriveConnection getTestDriveConnection() {
     GCPCredentials gcpCredentials =
         new GCPCredentials()
             .withGcpConfig(

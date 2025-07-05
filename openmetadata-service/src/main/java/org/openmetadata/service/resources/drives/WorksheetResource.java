@@ -63,7 +63,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
-@Path("/v1/worksheets")
+@Path("/v1/drives/worksheets")
 @Tag(
     name = "Worksheets",
     description = "A `Worksheet` is an individual sheet or tab within a Spreadsheet.")
@@ -71,7 +71,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "worksheets")
 public class WorksheetResource extends EntityResource<Worksheet, WorksheetRepository> {
-  public static final String COLLECTION_PATH = "v1/worksheets/";
+  public static final String COLLECTION_PATH = "v1/drives/worksheets/";
   static final String FIELDS =
       "owners,spreadsheet,columns,sampleData,usageSummary,tags,extension,domain,sourceHash,lifeCycle,votes,followers";
   private final WorksheetMapper mapper = new WorksheetMapper();

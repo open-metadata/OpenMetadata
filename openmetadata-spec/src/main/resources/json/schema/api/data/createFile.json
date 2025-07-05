@@ -113,6 +113,6 @@
       "maxLength": 32
     }
   },
-  "required": ["name", "service", "directory"],
+  "required": ["name", "service"],
   "additionalProperties": false
 }

@@ -63,7 +63,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
-@Path("/v1/spreadsheets")
+@Path("/v1/drives/spreadsheets")
 @Tag(
     name = "Spreadsheets",
     description =
@@ -72,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "spreadsheets")
 public class SpreadsheetResource extends EntityResource<Spreadsheet, SpreadsheetRepository> {
-  public static final String COLLECTION_PATH = "v1/spreadsheets/";
+  public static final String COLLECTION_PATH = "v1/drives/spreadsheets/";
   static final String FIELDS =
       "owners,directory,worksheets,usageSummary,tags,extension,domain,sourceHash,lifeCycle,votes,followers";
   private final SpreadsheetMapper mapper = new SpreadsheetMapper();

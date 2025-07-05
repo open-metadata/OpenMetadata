@@ -65,8 +65,17 @@ public class FileRepository extends EntityRepository<File> {
 
   @Override
   public void setFullyQualifiedName(File file) {
-    file.setFullyQualifiedName(
-        FullyQualifiedName.add(file.getDirectory().getFullyQualifiedName(), file.getName()));
+    if (file.getDirectory() != null) {
+      // File is within a directory
+      Directory directory = Entity.getEntity(file.getDirectory(), "", Include.NON_DELETED);
+      file.setFullyQualifiedName(
+          FullyQualifiedName.add(directory.getFullyQualifiedName(), file.getName()));
+    } else {
+      // File is directly under the service
+      DriveService service = Entity.getEntity(file.getService(), "", Include.NON_DELETED);
+      file.setFullyQualifiedName(
+          FullyQualifiedName.add(service.getFullyQualifiedName(), file.getName()));
+    }
   }
 
   @Override
@@ -76,20 +85,35 @@ public class FileRepository extends EntityRepository<File> {
     file.setService(driveService.getEntityReference());
     file.setServiceType(driveService.getServiceType());
 
-    // Validate parent directory
-    Directory directory = Entity.getEntity(file.getDirectory(), "", Include.NON_DELETED);
-    file.setDirectory(directory.getEntityReference());
+    // Validate parent directory if provided
+    if (file.getDirectory() != null) {
+      Directory directory = Entity.getEntity(file.getDirectory(), "", Include.NON_DELETED);
+      file.setDirectory(directory.getEntityReference());
+
+      // Ensure the directory belongs to the same service
+      if (!directory.getService().getId().equals(driveService.getId())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Directory %s does not belong to service %s",
+                directory.getFullyQualifiedName(), driveService.getFullyQualifiedName()));
+      }
+    }
   }
 
   @Override
   public void storeEntity(File file, boolean update) {
+    // Store the entity
+    store(file, update);
+
     // Store service relationship
     EntityReference service = file.getService();
     addRelationship(service.getId(), file.getId(), service.getType(), FILE, Relationship.CONTAINS);
 
-    // Store directory relationship
-    EntityReference directory = file.getDirectory();
-    addRelationship(directory.getId(), file.getId(), DIRECTORY, FILE, Relationship.CONTAINS);
+    // Store directory relationship if present
+    if (file.getDirectory() != null) {
+      EntityReference directory = file.getDirectory();
+      addRelationship(directory.getId(), file.getId(), DIRECTORY, FILE, Relationship.CONTAINS);
+    }
   }
 
   @Override
@@ -99,16 +123,23 @@ public class FileRepository extends EntityRepository<File> {
 
   @Override
   public void setInheritedFields(File file, EntityUtil.Fields fields) {
-    // Inherit domain from directory if not set
+    // Inherit domain from directory if available, otherwise from service
     if (file.getDomain() == null) {
-      Directory directory = Entity.getEntity(file.getDirectory(), "domain", Include.NON_DELETED);
-      file.withDomain(directory.getDomain());
+      if (file.getDirectory() != null) {
+        Directory directory = Entity.getEntity(file.getDirectory(), "domain", Include.NON_DELETED);
+        file.withDomain(directory.getDomain());
+      } else {
+        DriveService service = Entity.getEntity(file.getService(), "domain", Include.NON_DELETED);
+        file.withDomain(service.getDomain());
+      }
     }
   }
 
   @Override
   public void clearFields(File file, EntityUtil.Fields fields) {
     file.withUsageSummary(fields.contains("usageSummary") ? file.getUsageSummary() : null);
+    file.withOwners(fields.contains("owners") ? file.getOwners() : null);
+    file.withTags(fields.contains("tags") ? file.getTags() : null);
   }
 
   @Override
@@ -129,7 +160,7 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   private EntityReference getDirectory(File file) {
-    return getFromEntityRef(file.getId(), Relationship.CONTAINS, DIRECTORY, true);
+    return getFromEntityRef(file.getId(), Relationship.CONTAINS, DIRECTORY, false);
   }
 
   @Override
@@ -246,7 +277,9 @@ public class FileRepository extends EntityRepository<File> {
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());
       addField(recordList, entity.getDescription());
-      addField(recordList, entity.getDirectory().getFullyQualifiedName());
+      addField(
+          recordList,
+          entity.getDirectory() != null ? entity.getDirectory().getFullyQualifiedName() : "");
       addField(recordList, entity.getFileType().toString());
       addField(recordList, entity.getMimeType());
       addField(recordList, entity.getExtension() != null ? entity.getExtension().toString() : "");
@@ -266,7 +299,7 @@ public class FileRepository extends EntityRepository<File> {
           recordList,
           entity.getDataProducts() != null
               ? entity.getDataProducts().stream()
-                  .map(ref -> ref.getFullyQualifiedName())
+                  .map(EntityReference::getFullyQualifiedName)
                   .collect(Collectors.joining(";"))
               : "");
       addOwners(recordList, entity.getExperts());
@@ -302,6 +335,7 @@ public class FileRepository extends EntityRepository<File> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      recordChange("description", original.getDescription(), updated.getDescription());
       recordChange("fileType", original.getFileType(), updated.getFileType());
       recordChange("mimeType", original.getMimeType(), updated.getMimeType());
       recordChange("extension", original.getExtension(), updated.getExtension());

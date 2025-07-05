@@ -63,13 +63,13 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
-@Path("/v1/files")
+@Path("/v1/drives/files")
 @Tag(name = "Files", description = "A `File` is a document or resource stored in a Drive Service.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "files")
 public class FileResource extends EntityResource<File, FileRepository> {
-  public static final String COLLECTION_PATH = "v1/files/";
+  public static final String COLLECTION_PATH = "v1/drives/files/";
   static final String FIELDS =
       "owners,directory,usageSummary,tags,extension,domain,sourceHash,lifeCycle,votes,followers";
   private final FileMapper mapper = new FileMapper();
@@ -360,6 +360,32 @@ public class FileResource extends EntityResource<File, FileRepository> {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteFileAsync",
+      summary = "Asynchronously delete a file by Id",
+      description = "Asynchronously delete a file by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "File for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and its children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Id of the file", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
   @PUT
   @Path("/{id}/restore")
   @Operation(
@@ -376,6 +402,28 @@ public class FileResource extends EntityResource<File, FileRepository> {
                     schema = @Schema(implementation = File.class)))
       })
   public Response restoreFile(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restoreFileById",
+      summary = "Restore a soft deleted file by id",
+      description = "Restore a soft deleted file by id.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the file",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = File.class)))
+      })
+  public Response restore(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {

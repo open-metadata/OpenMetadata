@@ -66,14 +66,14 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   public void setFullyQualifiedName(Directory directory) {
     if (directory.getParent() != null) {
       // Nested directory - build FQN from parent
+      Directory parent = Entity.getEntity(directory.getParent(), "", Include.NON_DELETED);
       directory.setFullyQualifiedName(
-          FullyQualifiedName.add(
-              directory.getParent().getFullyQualifiedName(), directory.getName()));
+          FullyQualifiedName.add(parent.getFullyQualifiedName(), directory.getName()));
     } else {
       // Root directory - build FQN from service
+      DriveService service = Entity.getEntity(directory.getService(), "", Include.NON_DELETED);
       directory.setFullyQualifiedName(
-          FullyQualifiedName.add(
-              directory.getService().getFullyQualifiedName(), directory.getName()));
+          FullyQualifiedName.add(service.getFullyQualifiedName(), directory.getName()));
     }
   }
 
@@ -101,6 +101,9 @@ public class DirectoryRepository extends EntityRepository<Directory> {
 
   @Override
   public void storeEntity(Directory directory, boolean update) {
+    // Store the entity
+    store(directory, update);
+
     // Store service relationship
     EntityReference service = directory.getService();
     addRelationship(
@@ -163,7 +166,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     return getFromEntityRef(directory.getId(), Relationship.CONTAINS, DIRECTORY, false);
   }
 
-  protected List<EntityReference> getChildrenRefs(Directory directory) {
+  private List<EntityReference> getChildrenRefs(Directory directory) {
     List<EntityReference> children = new ArrayList<>();
 
     // Get subdirectories
