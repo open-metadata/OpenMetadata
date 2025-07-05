@@ -4471,7 +4471,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     e.getEntity().getId().equals(upstreamTable.getId())
                         && e.getRelatedEntity().getId().equals(tableInSchema1.getId())));
 
-    // Test UPSTREAM direction with depth=0 (should return no upstream edges)
+    // Test UPSTREAM direction with depth=0 (should return starting node + immediate upstreams)
     Map<String, String> queryParamsUpstreamZero = new HashMap<>();
     queryParamsUpstreamZero.put("fqn", tableInSchema1.getFullyQualifiedName());
     queryParamsUpstreamZero.put("upstreamDepth", "0");
@@ -4487,9 +4487,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                 org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
                 ADMIN_AUTH_HEADERS);
     assertNotNull(upstreamZeroResult);
-    assertEquals(1, upstreamZeroResult.getNodes().size());
+    // Expect starting node + immediate upstreams
+    assertEquals(2, upstreamZeroResult.getNodes().size());
     assertTrue(upstreamZeroResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
-    assertTrue(upstreamZeroResult.getUpstreamEdges().isEmpty());
+    assertTrue(upstreamZeroResult.getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
+    // Should have 1 upstream edge (upstreamTable -> tableInSchema1)
+    assertEquals(1, upstreamZeroResult.getUpstreamEdges().size());
+    assertTrue(
+        upstreamZeroResult.getUpstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(upstreamTable.getId())
+                        && e.getRelatedEntity().getId().equals(tableInSchema1.getId())));
     assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
 
     // Test DOWNSTREAM direction for the table (not schema)
@@ -4513,10 +4522,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertNotNull(downstreamResult);
 
     // For this test setup, tableInSchema1 has no downstream relationships
-    assertEquals(1, downstreamResult.getNodes().size());
+    // Again for upstreamDepth = 0, we get the node + upstreamNeighbours = 2
+    assertEquals(2, downstreamResult.getNodes().size());
     assertTrue(downstreamResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
     assertEquals(0, downstreamResult.getDownstreamEdges().size());
-    assertTrue(downstreamResult.getUpstreamEdges().isEmpty());
   }
 
   @Test

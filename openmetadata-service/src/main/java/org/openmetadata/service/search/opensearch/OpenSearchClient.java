@@ -2732,8 +2732,8 @@ public class OpenSearchClient implements SearchClient {
     SearchEntityRelationshipResult result =
         entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
             entityRelationshipRequest
-                .withUpstreamDepth(upstreamDepth)
-                .withDownstreamDepth(downstreamDepth)
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
                 .withDirection(
                     org.openmetadata
                         .schema
@@ -2752,8 +2752,8 @@ public class OpenSearchClient implements SearchClient {
     SearchEntityRelationshipResult upstreamResult =
         entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
             entityRelationshipRequest
-                .withUpstreamDepth(upstreamDepth)
-                .withDownstreamDepth(downstreamDepth)
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
                 .withDirection(
                     org.openmetadata
                         .schema
@@ -2780,7 +2780,7 @@ public class OpenSearchClient implements SearchClient {
       }
     }
 
-    // Here we are merging everything from downstream paging into upstream paging
+    // since paging from downstream is merged into upstream, we can just put the upstream result
     result.getNodes().putAll(upstreamResult.getNodes());
     result.getUpstreamEdges().putAll(upstreamResult.getUpstreamEdges());
     result.getDownstreamEdges().putAll(upstreamResult.getDownstreamEdges());
@@ -2793,6 +2793,11 @@ public class OpenSearchClient implements SearchClient {
     Set<String> directionValue =
         getEntityRelationshipDirection(entityRelationshipRequest.getDirection());
     entityRelationshipRequest.setDirectionValue(directionValue);
+
+    entityRelationshipRequest =
+        entityRelationshipRequest
+            .withUpstreamDepth(entityRelationshipRequest.getUpstreamDepth() + 1)
+            .withDownstreamDepth(entityRelationshipRequest.getDownstreamDepth() + 1);
 
     if (entityRelationshipRequest.getDirection()
         == org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection.DOWNSTREAM) {

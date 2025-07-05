@@ -2,6 +2,7 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
+import static org.openmetadata.service.search.SearchClient.UPSTREAM_ENTITY_RELATIONSHIP_FIELD;
 import static org.openmetadata.service.search.SearchClient.UPSTREAM_LINEAGE_FIELD;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 
@@ -34,11 +35,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.SSLUtil;
 
 public final class SearchUtils {
-  public static final String LINEAGE_AGGREGATION = "matchesPerKey";
+  public static final String GRAPH_AGGREGATION = "matchesPerKey";
   public static final String DOWNSTREAM_NODE_KEY = "upstreamLineage.fromEntity.fqnHash.keyword";
   public static final String PIPELINE_AS_EDGE_KEY = "upstreamLineage.pipeline.fqnHash.keyword";
-  public static final String ENTITY_RELATIONSHIP_AGGREGATION = "matchesPerKey";
-  public static final String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   public static final String DOWNSTREAM_ENTITY_RELATIONSHIP_KEY =
       "upstreamEntityRelationship.entity.fqnHash.keyword";
 
@@ -138,13 +137,12 @@ public final class SearchUtils {
     return Entity.PIPELINE.equals(entityType) || Entity.STORED_PROCEDURE.equals(entityType);
   }
 
-  public static List<EsLineageData> paginateUpstreamEntities(
-      List<EsLineageData> upstreamEntities, int from, int size) {
-    if (nullOrEmpty(upstreamEntities)) {
+  public static <T> List<T> paginateList(List<T> list, int from, int size) {
+    if (nullOrEmpty(list)) {
       return Collections.emptyList();
     }
 
-    int totalLength = upstreamEntities.size();
+    int totalLength = list.size();
 
     if (from >= totalLength) {
       return Collections.emptyList();
@@ -154,7 +152,7 @@ public final class SearchUtils {
     int to = Math.min(from + size, totalLength);
 
     // Return the sublist
-    return upstreamEntities.subList(from, to);
+    return list.subList(from, to);
   }
 
   public static Set<String> getRequiredLineageFields(String fields) {

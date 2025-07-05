@@ -37,6 +37,7 @@ import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
+  String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   String FQN_FIELD = "fullyQualifiedName";
   ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
   String UPDATE = "update";
