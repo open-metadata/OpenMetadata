@@ -226,8 +226,8 @@ The command automatically discovers artifacts from your dbt project's `target/` 
 | Artifact | Required | Description |
 |----------|----------|-------------|
 | `manifest.json` | ✅ Yes | Model definitions, relationships, and metadata |
-| `catalog.json` | ❌ Optional | Table and column statistics from `dbt docs generate` |
-| `run_results.json` | ❌ Optional | Test results from `dbt test` |
+| `catalog.json` | Optional | Table and column statistics from `dbt docs generate` |
+| `run_results.json` | Optional | Test results from `dbt test` |
 
 ### Generate All Artifacts
 
