@@ -1728,3 +1728,22 @@ export const checkExploreSearchFilter = async (
 
   await entity?.visitEntityPage(page);
 };
+
+export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
+  switch (entity.getType()) {
+    case 'Table':
+    case 'Dashboard Data Model':
+      return '/columns/0/dataTypeDisplay';
+    case 'ApiEndpoint':
+      return '/requestSchema/schemaFields/0/dataTypeDisplay';
+    case 'Topic':
+      return '/messageSchema/schemaFields/0/dataTypeDisplay';
+    case 'Container':
+      return '/dataModel/columns/0/dataTypeDisplay';
+    case 'SearchIndex':
+      return '/fields/0/dataTypeDisplay';
+
+    default:
+      return undefined;
+  }
+};

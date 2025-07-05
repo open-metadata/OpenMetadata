@@ -22,7 +22,11 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
-import { addMultiOwner, assignTier } from '../../utils/entity';
+import {
+  addMultiOwner,
+  assignTier,
+  getEntityDataTypeDisplayPatch,
+} from '../../utils/entity';
 
 const entityCreationConfig: EntityDataClassCreationConfig = {
   apiEndpoint: true,
@@ -78,6 +82,7 @@ test.describe('Entity Version pages', () => {
     const domain = EntityDataClass.domain1.responseData;
 
     for (const entity of entities) {
+      const dataTypeDisplayPath = getEntityDataTypeDisplayPatch(entity);
       await entity.patch({
         apiContext,
         patchData: [
@@ -116,6 +121,15 @@ test.describe('Entity Version pages', () => {
               description: domain.description,
             },
           },
+          ...(dataTypeDisplayPath
+            ? [
+                {
+                  op: 'add' as const,
+                  path: dataTypeDisplayPath,
+                  value: 'OBJECT',
+                },
+              ]
+            : []),
         ],
       });
     }
