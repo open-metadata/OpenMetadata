@@ -58,7 +58,9 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             DatabaseService, self.table_entity.service.id, nullable=False
         )
 
-        service1_url = BaseTableParameter._get_service_connection_config(service1)
+        service1_url = BaseTableParameter._get_service_connection_config(
+            self.service_connection_config
+        )
 
         table2_fqn = self.get_parameter(test_case, "table2")
         if table2_fqn is None:

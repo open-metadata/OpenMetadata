@@ -22,6 +22,7 @@ import {
 import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
   descriptionBox,
+  executeWithRetry,
   getApiContext,
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
@@ -642,11 +643,13 @@ class ServiceBaseClass {
 
   async deleteServiceByAPI(apiContext: APIRequestContext) {
     if (this.serviceResponseData.fullyQualifiedName) {
-      await apiContext.delete(
-        `/api/v1/services/dashboardServices/name/${encodeURIComponent(
-          this.serviceResponseData.fullyQualifiedName
-        )}?recursive=true&hardDelete=true`
-      );
+      await executeWithRetry(async () => {
+        await apiContext.delete(
+          `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+            this.serviceResponseData.fullyQualifiedName
+          )}?recursive=true&hardDelete=true`
+        );
+      }, 'delete service');
     }
   }
 }

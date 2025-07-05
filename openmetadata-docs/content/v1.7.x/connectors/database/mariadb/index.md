@@ -1,5 +1,6 @@
 ---
 title: MariaDB Connector | OpenMetadata Database Integration Guide
+description: Connect MariaDB to OpenMetadata with our comprehensive database connector guide. Easy setup, configuration steps, and metadata extraction for your data catalog.
 slug: /connectors/database/mariadb
 ---
 
