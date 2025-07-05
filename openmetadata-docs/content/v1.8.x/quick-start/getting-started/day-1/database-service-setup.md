@@ -31,7 +31,7 @@ You can quickly set up a database service for metadata extraction in OpenMetadat
 - The side panel offers guidance with available documentation, and you can also refer to the specific `Snowflake` Connector [documentation](/connectors)for more information.
 
 {% image
-  src="/images/v1.8/getting-started/configure-connector0.png"
+  src="/images/v1.8/getting-started/configure-connector.png"
   alt="Configure Service"
   caption="Updating Connection Service" /%}
 

@@ -19,13 +19,13 @@ Configure and schedule KafkaConnect metadata and profiler workflows from the Ope
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.6/connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the KafkaConnect ingestion, you will need to install:
 
@@ -82,11 +82,11 @@ This is a sample config for KafkaConnect:
 **messagingServiceName**: Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service. e.g. local_kafka.
 {% /codeInfo %}
 
-{% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/pipeline/source-config-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -116,14 +116,14 @@ source:
         # messagingServiceName: ""
 ```
 
-{% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}

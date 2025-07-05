@@ -65,7 +65,7 @@
   <distributionManagement>
     <snapshotRepository>
       <id>ossrh</id>
-      <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+      <url>https://central.sonatype.com/repository/maven-snapshots/</url>
     </snapshotRepository>
     <repository>
       <id>ossrh</id>
@@ -157,6 +157,7 @@
     <jetty.version>11.0.25</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
     <mcp-sdk.version>0.8.1</mcp-sdk.version>
+    <lettuce.version>6.7.1.RELEASE</lettuce.version>
   </properties>
 
   <dependencyManagement>
@@ -649,6 +650,12 @@
             <artifactId>snakeyaml</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <!-- Redis/Cache dependencies -->
+      <dependency>
+        <groupId>io.lettuce</groupId>
+        <artifactId>lettuce-core</artifactId>
+        <version>${lettuce.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

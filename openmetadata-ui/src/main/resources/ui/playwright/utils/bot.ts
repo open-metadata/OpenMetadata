@@ -65,7 +65,7 @@ export const createBot = async (page: Page) => {
 
   // Select expiry time
   await page.click('[data-testid="token-expiry"]');
-  await page.locator('[title="1 hr"] div').click();
+  await page.locator('[title="1 hour"] div').click();
 
   await page.locator(descriptionBox).fill(BOT_DETAILS.description);
 
@@ -165,7 +165,9 @@ export const tokenExpirationForDays = async (page: Page) => {
     await page.click('[data-testid="token-expiry"]');
 
     // Select the expiration period
-    await page.locator(`text=${expiryTime} days`).click();
+    await page
+      .locator(`text=${expiryTime} day${expiryTime > 1 ? 's' : ''}`)
+      .click();
 
     // Save the updated date
     const expiryDate = customFormatDateTime(
@@ -194,7 +196,7 @@ export const tokenExpirationUnlimitedDays = async (page: Page) => {
   // Click on expiry token dropdown
   await page.click('[data-testid="token-expiry"]');
   // Select unlimited days
-  await page.getByText('Unlimited days').click();
+  await page.getByText('Unlimited').click();
   // Save the selected changes
   await page.click('[data-testid="save-edit"]');
 
@@ -227,18 +229,27 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('revoke-button')).toBeVisible();
+  const isRevokeButtonVisible = await page
+    .getByTestId('revoke-button')
+    .isVisible();
+  const isAuthMechanismVisible = await page
+    .getByTestId('auth-mechanism')
+    .isVisible();
 
-  await page.getByTestId('revoke-button').click();
+  if (isRevokeButtonVisible) {
+    await page.getByTestId('revoke-button').click();
 
-  await expect(page.getByTestId('save-button')).toBeVisible();
+    await expect(page.getByTestId('save-button')).toBeVisible();
 
-  await page.getByTestId('save-button').click();
+    await page.getByTestId('save-button').click();
+  } else if (isAuthMechanismVisible) {
+    await page.getByTestId('auth-mechanism').click();
+  }
 
   await expect(page.getByTestId('token-expiry').locator('div')).toBeVisible();
 
-  await page.getByText('hr').click();
-  await page.getByText('Unlimited days').click();
+  await page.getByTestId('token-expiry').click();
+  await page.getByText('Unlimited').click();
 
   await expect(page.getByTestId('save-edit')).toBeVisible();
 

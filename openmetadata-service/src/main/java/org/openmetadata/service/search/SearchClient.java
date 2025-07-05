@@ -5,6 +5,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -87,6 +88,18 @@ public interface SearchClient {
   String UPDATE_CERTIFICATION_SCRIPT =
       "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
 
+  String UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT =
+      "if (ctx._source.containsKey('tags')) { "
+          + "    for (int i = 0; i < ctx._source.tags.size(); i++) { "
+          + "        if (ctx._source.tags[i].containsKey('tagFQN') && "
+          + "            ctx._source.tags[i].containsKey('source') && "
+          + "            ctx._source.tags[i].source == 'Glossary' && "
+          + "            ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) { "
+          + "            ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN); "
+          + "        } "
+          + "    } "
+          + "}";
+
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].docUniqueId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
 
@@ -136,6 +149,59 @@ public interface SearchClient {
           + "} "
           + "} "
           + "}";
+
+  String UPDATE_COLUMN_LINEAGE_SCRIPT =
+      """
+          if (ctx._source.upstreamLineage != null) {
+            for (int i = 0; i < ctx._source.upstreamLineage.length; i++) {
+              def lineage = ctx._source.upstreamLineage[i];
+              if (lineage == null || lineage.columns == null) continue;
+
+              for (int j = 0; j < lineage.columns.length; j++) {
+                def columnMapping = lineage.columns[j];
+                if (columnMapping == null) continue;
+
+                if (columnMapping.toColumn != null && params.columnUpdates.containsKey(columnMapping.toColumn)) {
+                  columnMapping.toColumn = params.columnUpdates[columnMapping.toColumn];
+                }
+
+                if (columnMapping.fromColumns != null) {
+                  for (int k = 0; k < columnMapping.fromColumns.length; k++) {
+                    def fc = columnMapping.fromColumns[k];
+                    if (fc != null && params.columnUpdates.containsKey(fc)) {
+                      columnMapping.fromColumns[k] = params.columnUpdates[fc];
+                    }
+                  }
+                }
+              }
+            }
+          }
+          """;
+
+  String DELETE_COLUMN_LINEAGE_SCRIPT =
+      """
+          if (ctx._source.upstreamLineage != null) {
+              for (int i = 0; i < ctx._source.upstreamLineage.length; i++) {
+                  def lineage = ctx._source.upstreamLineage[i];
+
+                  if (lineage != null && lineage.columns != null) {
+                      for (def column : lineage.columns) {
+                          if (column != null && column.fromColumns != null) {
+                              column.fromColumns.removeIf(fromCol ->\s
+                                  fromCol == null || params.deletedFQNs.contains(fromCol)
+                              );
+                          }
+                      }
+
+                      lineage.columns.removeIf(column ->\s
+                          column == null ||
+                          (column.toColumn != null && params.deletedFQNs.contains(column.toColumn)) ||
+                          (column.fromColumns != null && column.fromColumns.isEmpty())
+                      );
+                  }
+              }
+          }
+          """;
 
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
@@ -456,6 +522,14 @@ public interface SearchClient {
   default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
     // Default implementation does nothing as this is only needed for Elasticsearch
   }
+
+  void updateGlossaryTermByFqnPrefix(
+      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
+
+  void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap);
+
+  void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns);
 
   SearchEntityRelationshipResult searchSchemaEntityRelationshipForPrefix(
       String schemaFqn, String queryFilter, boolean deleted) throws IOException;

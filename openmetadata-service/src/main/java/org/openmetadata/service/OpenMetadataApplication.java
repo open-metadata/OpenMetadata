@@ -76,6 +76,9 @@ import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.cache.CachedCollectionDAO;
+import org.openmetadata.service.cache.RedisCacheBundle;
+import org.openmetadata.service.cache.RelationshipCache;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -124,6 +127,8 @@ import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
+import org.openmetadata.service.security.auth.UserActivityFilter;
+import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
@@ -220,6 +225,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);
 
+    // Initialize Redis Cache if enabled
+    initializeCache(catalogConfig, environment);
+
     initializeWebsockets(catalogConfig, environment);
 
     // init Secret Manager
@@ -284,6 +292,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
+
+    // Register User Activity Tracking
+    registerUserActivityTracking(environment);
+
     environment.lifecycle().manage(new ManagedShutdown());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();
@@ -442,7 +454,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
-    return jdbi.onDemand(CollectionDAO.class);
+    CollectionDAO originalDAO = jdbi.onDemand(CollectionDAO.class);
+
+    // Wrap with caching decorator if cache is available
+    if (RelationshipCache.isAvailable()) {
+      LOG.info("Wrapping CollectionDAO with caching support");
+      return new CachedCollectionDAO(originalDAO);
+    }
+
+    LOG.info("Using original CollectionDAO without caching");
+    return originalDAO;
   }
 
   private void registerSamlServlets(
@@ -633,6 +654,27 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
+  private void registerUserActivityTracking(Environment environment) {
+    // Register the activity tracking filter
+    environment.jersey().register(UserActivityFilter.class);
+
+    // Register lifecycle management for UserActivityTracker
+    environment
+        .lifecycle()
+        .manage(
+            new Managed() {
+              @Override
+              public void start() {
+                // UserActivityTracker starts automatically on first use
+              }
+
+              @Override
+              public void stop() {
+                UserActivityTracker.getInstance().shutdown();
+              }
+            });
+  }
+
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
 
     if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
@@ -698,6 +740,24 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
+    }
+  }
+
+  private void initializeCache(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    if (catalogConfig.getCacheConfiguration() != null
+        && catalogConfig.getCacheConfiguration().isEnabled()) {
+      LOG.info("Initializing Redis cache");
+      try {
+        RedisCacheBundle cacheBundle = new RedisCacheBundle();
+        cacheBundle.run(catalogConfig, environment);
+        LOG.info("Redis cache initialized successfully");
+      } catch (Exception e) {
+        LOG.error("Failed to initialize Redis cache", e);
+        throw new RuntimeException("Failed to initialize Redis cache", e);
+      }
+    } else {
+      LOG.info("Redis cache is disabled");
     }
   }
 

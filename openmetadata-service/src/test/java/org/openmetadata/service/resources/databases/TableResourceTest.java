@@ -112,6 +112,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -134,13 +135,18 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
+import org.openmetadata.schema.type.Edge;
+import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
@@ -170,6 +176,7 @@ import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
+import org.openmetadata.service.resources.lineage.LineageResourceTest;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
@@ -4343,6 +4350,75 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     org.setDefaultRoles(defaultRoles);
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     teamResourceTest.patchEntity(org.getId(), json, org, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_lineageColumnRenamePropagates(TestInfo test) throws IOException {
+    // 1. Create upstream base table with a single column "id"
+    Column srcCol = getColumn("id", INT, null);
+    CreateTable createSrc =
+        createRequest(getEntityName(test, 0) + "_src")
+            .withColumns(List.of(srcCol))
+            .withTableConstraints(null); // No constraints so we can freely delete/rename columns
+    Table sourceTable = createAndCheckEntity(createSrc, ADMIN_AUTH_HEADERS);
+
+    // 2. Create downstream view with the same column name
+    Column viewCol = getColumn("id", INT, null);
+    CreateTable createView =
+        createRequest(getEntityName(test, 1) + "_view")
+            .withTableType(TableType.View)
+            .withColumns(List.of(viewCol))
+            .withTableConstraints(null)
+            .withSchemaDefinition(
+                "SELECT id FROM " + sourceTable.getFullyQualifiedName()); // minimal definition
+    Table viewTable = createAndCheckEntity(createView, ADMIN_AUTH_HEADERS);
+
+    // 3. Add lineage with column mapping source.id -> view.id
+    String srcColFqn = FullyQualifiedName.add(sourceTable.getFullyQualifiedName(), "id");
+    String viewColFqn = FullyQualifiedName.add(viewTable.getFullyQualifiedName(), "id");
+    ColumnLineage columnMapping =
+        new ColumnLineage().withToColumn(viewColFqn).withFromColumns(List.of(srcColFqn));
+    LineageDetails lineageDetails = new LineageDetails().withColumnsLineage(List.of(columnMapping));
+    EntitiesEdge edge =
+        new EntitiesEdge()
+            .withFromEntity(sourceTable.getEntityReference())
+            .withToEntity(viewTable.getEntityReference())
+            .withLineageDetails(lineageDetails);
+    AddLineage addLineage = new AddLineage().withEdge(edge);
+
+    LineageResourceTest lineageTestHelper = new LineageResourceTest();
+    lineageTestHelper.addLineage(addLineage, ADMIN_AUTH_HEADERS);
+
+    // 4. PATCH the view column name from "id" to "ID" (upper-case)
+    Table viewV1 = viewTable;
+    String originalJson = JsonUtils.pojoToJson(viewV1);
+    Table viewV2 = JsonUtils.deepCopy(viewV1, Table.class);
+    viewV2.getColumns().getFirst().setName("ID");
+    viewV2.getColumns().getFirst().setDisplayName("ID");
+    viewV2.setSchemaDefinition("SELECT ID FROM " + sourceTable.getFullyQualifiedName());
+    // Apply patch without asserting the change description – focus of the test is lineage update
+    viewV2 = patchEntity(viewV1.getId(), originalJson, viewV2, ADMIN_AUTH_HEADERS);
+
+    // 5. Fetch lineage for the view and assert the toColumn has been updated to the new name
+    EntityLineage lineage =
+        lineageTestHelper.getLineage(Entity.TABLE, viewV2.getId(), 1, 0, ADMIN_AUTH_HEADERS);
+
+    boolean updatedColumnFound = false;
+    for (Edge edgeObj : lineage.getUpstreamEdges()) {
+      if (edgeObj.getLineageDetails() == null
+          || edgeObj.getLineageDetails().getColumnsLineage() == null) {
+        continue;
+      }
+      for (ColumnLineage cl : edgeObj.getLineageDetails().getColumnsLineage()) {
+        if (cl.getToColumn() != null && cl.getToColumn().endsWith(".ID")) {
+          updatedColumnFound = true;
+          break;
+        }
+      }
+    }
+    assertTrue(
+        updatedColumnFound,
+        "Expected upstream lineage to reference the renamed column '.ID' but did not find it");
   }
 
   @Test
