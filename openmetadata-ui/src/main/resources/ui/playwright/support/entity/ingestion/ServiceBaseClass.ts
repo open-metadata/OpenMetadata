@@ -104,6 +104,8 @@ class ServiceBaseClass {
     await this.fillConnectionDetails(page);
 
     if (this.shouldTestConnection) {
+      expect(page.getByTestId('next-button')).not.toBeVisible();
+
       await testConnection(page);
     }
 
