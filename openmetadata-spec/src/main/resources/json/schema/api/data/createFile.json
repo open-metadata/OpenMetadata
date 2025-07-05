@@ -35,7 +35,7 @@
       "description": "MIME type of the file",
       "type": "string"
     },
-    "extension": {
+    "fileExtension": {
       "description": "File extension",
       "type": "string"
     },

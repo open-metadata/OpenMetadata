@@ -41,7 +41,7 @@ public class FileIndex implements SearchIndex {
     doc.put("directory", getEntityWithDisplayName(file.getDirectory()));
     doc.put("fileType", file.getFileType());
     doc.put("mimeType", file.getMimeType());
-    doc.put("extension", file.getExtension());
+    doc.put("fileExtension", file.getFileExtension());
     doc.put("path", file.getPath());
     doc.put("driveFileId", file.getDriveFileId());
     doc.put("size", file.getSize());
@@ -60,7 +60,7 @@ public class FileIndex implements SearchIndex {
     fields.put("path", 5.0f);
     fields.put("fileType", 3.0f);
     fields.put("mimeType", 2.0f);
-    fields.put("extension", 3.0f);
+    fields.put("fileExtension", 3.0f);
     return fields;
   }
 }

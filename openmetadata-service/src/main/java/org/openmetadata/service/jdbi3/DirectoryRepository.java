@@ -145,7 +145,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
 
   @Override
   public void setFields(Directory directory, EntityUtil.Fields fields) {
-    directory.withService(getContainer(directory.getId()));
+    directory.withService(getService(directory));
     directory.withParent(getParentDirectory(directory));
     directory.withChildren(fields.contains("children") ? getChildrenRefs(directory) : null);
   }
@@ -164,6 +164,10 @@ public class DirectoryRepository extends EntityRepository<Directory> {
 
   private EntityReference getParentDirectory(Directory directory) {
     return getFromEntityRef(directory.getId(), Relationship.CONTAINS, DIRECTORY, false);
+  }
+
+  private EntityReference getService(Directory directory) {
+    return getFromEntityRef(directory.getId(), Relationship.CONTAINS, Entity.DRIVE_SERVICE, true);
   }
 
   private List<EntityReference> getChildrenRefs(Directory directory) {

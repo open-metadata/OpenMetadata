@@ -87,11 +87,17 @@ public class FileRepository extends EntityRepository<File> {
 
     // Validate parent directory if provided
     if (file.getDirectory() != null) {
-      Directory directory = Entity.getEntity(file.getDirectory(), "", Include.NON_DELETED);
+      Directory directory = Entity.getEntity(file.getDirectory(), "service", Include.NON_DELETED);
       file.setDirectory(directory.getEntityReference());
 
       // Ensure the directory belongs to the same service
       if (!directory.getService().getId().equals(driveService.getId())) {
+        LOG.error(
+            "Service mismatch - Directory service: {} ({}), File service: {} ({})",
+            directory.getService().getFullyQualifiedName(),
+            directory.getService().getId(),
+            driveService.getFullyQualifiedName(),
+            driveService.getId());
         throw new IllegalArgumentException(
             String.format(
                 "Directory %s does not belong to service %s",
@@ -126,7 +132,7 @@ public class FileRepository extends EntityRepository<File> {
     // Inherit domain from directory if available, otherwise from service
     if (file.getDomain() == null) {
       if (file.getDirectory() != null) {
-        Directory directory = Entity.getEntity(file.getDirectory(), "domain", Include.NON_DELETED);
+        Directory directory = Entity.getEntity(file.getDirectory(), "domain,service", Include.NON_DELETED);
         file.withDomain(directory.getDomain());
       } else {
         DriveService service = Entity.getEntity(file.getService(), "domain", Include.NON_DELETED);
@@ -144,7 +150,7 @@ public class FileRepository extends EntityRepository<File> {
 
   @Override
   public void setFields(File file, EntityUtil.Fields fields) {
-    file.withService(getContainer(file.getId()));
+    file.withService(getService(file));
     file.withDirectory(getDirectory(file));
   }
 
@@ -161,6 +167,10 @@ public class FileRepository extends EntityRepository<File> {
 
   private EntityReference getDirectory(File file) {
     return getFromEntityRef(file.getId(), Relationship.CONTAINS, DIRECTORY, false);
+  }
+
+  private EntityReference getService(File file) {
+    return getFromEntityRef(file.getId(), Relationship.CONTAINS, Entity.DRIVE_SERVICE, true);
   }
 
   @Override
@@ -190,7 +200,7 @@ public class FileRepository extends EntityRepository<File> {
               new CsvHeader().withName("directory").withRequired(true),
               new CsvHeader().withName("fileType"),
               new CsvHeader().withName("mimeType"),
-              new CsvHeader().withName("extension"),
+              new CsvHeader().withName("fileExtension"),
               new CsvHeader().withName("path"),
               new CsvHeader().withName("size"),
               new CsvHeader().withName("checksum"),
@@ -251,7 +261,7 @@ public class FileRepository extends EntityRepository<File> {
           .withDescription(csvRecord.get(2))
           .withFileType(FileType.valueOf(csvRecord.get(4)))
           .withMimeType(csvRecord.get(5))
-          .withExtension(csvRecord.get(6))
+          .withFileExtension(csvRecord.get(6))
           .withPath(csvRecord.get(7))
           .withSize(nullOrEmpty(csvRecord.get(8)) ? null : Integer.parseInt(csvRecord.get(8)))
           .withChecksum(csvRecord.get(9))
@@ -282,7 +292,7 @@ public class FileRepository extends EntityRepository<File> {
           entity.getDirectory() != null ? entity.getDirectory().getFullyQualifiedName() : "");
       addField(recordList, entity.getFileType().toString());
       addField(recordList, entity.getMimeType());
-      addField(recordList, entity.getExtension() != null ? entity.getExtension().toString() : "");
+      addField(recordList, entity.getFileExtension() != null ? entity.getFileExtension() : "");
       addField(recordList, entity.getPath());
       addField(recordList, entity.getSize() != null ? entity.getSize().toString() : "");
       addField(recordList, entity.getChecksum());
@@ -338,7 +348,7 @@ public class FileRepository extends EntityRepository<File> {
       recordChange("description", original.getDescription(), updated.getDescription());
       recordChange("fileType", original.getFileType(), updated.getFileType());
       recordChange("mimeType", original.getMimeType(), updated.getMimeType());
-      recordChange("extension", original.getExtension(), updated.getExtension());
+      recordChange("fileExtension", original.getFileExtension(), updated.getFileExtension());
       recordChange("path", original.getPath(), updated.getPath());
       recordChange("driveFileId", original.getDriveFileId(), updated.getDriveFileId());
       recordChange("size", original.getSize(), updated.getSize());

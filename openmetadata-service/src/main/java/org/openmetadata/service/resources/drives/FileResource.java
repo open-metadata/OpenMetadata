@@ -71,7 +71,7 @@ import org.openmetadata.service.util.ResultList;
 public class FileResource extends EntityResource<File, FileRepository> {
   public static final String COLLECTION_PATH = "v1/drives/files/";
   static final String FIELDS =
-      "owners,directory,usageSummary,tags,extension,domain,sourceHash,lifeCycle,votes,followers";
+      "owners,directory,usageSummary,tags,fileExtension,extension,domain,sourceHash,lifeCycle,votes,followers";
   private final FileMapper mapper = new FileMapper();
 
   @Override

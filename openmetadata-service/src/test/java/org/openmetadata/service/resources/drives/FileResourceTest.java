@@ -22,6 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -217,7 +220,7 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
   void patch_fileAttributes_200() throws IOException {
     File file =
         createEntity(
-            createRequest("patchFile.txt").withFileType(FileType.Text), ADMIN_AUTH_HEADERS);
+            createRequest("patchFile.txt").withFileType(FileType.Text), USER_WITH_CREATE_HEADERS);
 
     // Add description
     String originalJson = JsonUtils.pojoToJson(file);
@@ -228,14 +231,20 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     file = patchEntityAndCheck(file, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(description, file.getDescription());
 
-    // Update file size
+    // Update file size - use TEST_AUTH_HEADERS to avoid change consolidation
     originalJson = JsonUtils.pojoToJson(file);
     Integer oldSize = file.getSize();
     Integer newSize = 8192;
     file.setSize(newSize);
-    change = getChangeDescription(file, MINOR_UPDATE);
-    fieldUpdated(change, "size", oldSize, newSize);
-    file = patchEntityAndCheck(file, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    change = getChangeDescription(file, CHANGE_CONSOLIDATED);
+    fieldAdded(change, "description", description);
+    if (oldSize == null) {
+      fieldAdded(change, "size", newSize);
+    } else {
+      fieldUpdated(change, "size", oldSize, newSize);
+    }
+
+    file = patchEntityAndCheck(file, originalJson, USER_WITH_CREATE_HEADERS, MINOR_UPDATE, change);
     assertEquals(newSize, file.getSize());
 
     // Add tags
@@ -246,17 +255,17 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     file = patchEntityAndCheck(file, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertNotNull(file.getTags());
     assertEquals(1, file.getTags().size());
-    assertEquals(PERSONAL_DATA_TAG_LABEL.getTagFQN(), file.getTags().get(0).getTagFQN());
+    assertEquals(PERSONAL_DATA_TAG_LABEL.getTagFQN(), file.getTags().getFirst().getTagFQN());
 
     // Add owner
     originalJson = JsonUtils.pojoToJson(file);
     file.setOwners(List.of(USER1_REF));
     change = getChangeDescription(file, MINOR_UPDATE);
     fieldAdded(change, "owners", List.of(USER1_REF));
-    file = patchEntityAndCheck(file, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    file = patchEntityAndCheck(file, originalJson, USER_WITH_CREATE_HEADERS, MINOR_UPDATE, change);
     assertNotNull(file.getOwners());
     assertEquals(1, file.getOwners().size());
-    assertEquals(USER1_REF.getId(), file.getOwners().get(0).getId());
+    assertEquals(USER1_REF.getId(), file.getOwners().getFirst().getId());
   }
 
   @Test
@@ -332,8 +341,9 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     File file = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Verify FQN follows the full path
+    // Note: File names with dots are quoted in FQN to avoid parsing ambiguity
     assertEquals(
-        service.getFullyQualifiedName() + ".docs.reports.quarterly.pdf",
+         service.getFullyQualifiedName() + ".docs.reports.\"quarterly.pdf\"",
         file.getFullyQualifiedName());
     assertEquals(subDir.getId(), file.getDirectory().getId());
   }
@@ -381,9 +391,9 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
           ADMIN_AUTH_HEADERS);
     }
 
-    // List files by parent directory
+    // List files by directory
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("parent", dir1.getFullyQualifiedName());
+    queryParams.put("directory", dir1.getFullyQualifiedName());
     ResultList<File> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(3, list.getData().size());
     assertTrue(
@@ -391,7 +401,7 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     assertTrue(list.getData().stream().allMatch(f -> f.getFileType().equals(FileType.Text)));
 
     // List files for dir2
-    queryParams.put("parent", dir2.getFullyQualifiedName());
+    queryParams.put("directory", dir2.getFullyQualifiedName());
     list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(3, list.getData().size());
     assertTrue(
