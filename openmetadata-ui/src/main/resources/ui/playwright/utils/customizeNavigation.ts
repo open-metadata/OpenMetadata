@@ -46,7 +46,11 @@ export const validateLeftSidebarWithHiddenItems = async (
 ) => {
   for (const item of Object.values(SidebarItem)) {
     // Dropdown items are handled differently
-    if (item === SidebarItem.OBSERVABILITY || item === SidebarItem.GOVERNANCE) {
+    if (
+      item === SidebarItem.OBSERVABILITY ||
+      item === SidebarItem.GOVERNANCE ||
+      item === SidebarItem.DOMAINS
+    ) {
       await expect(page.getByTestId(item)).toBeVisible();
     } else {
       const items = SIDEBAR_LIST_ITEMS[item as keyof typeof SIDEBAR_LIST_ITEMS];
