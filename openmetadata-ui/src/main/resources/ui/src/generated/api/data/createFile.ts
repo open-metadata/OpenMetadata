@@ -49,7 +49,7 @@ export interface CreateFile {
     /**
      * File extension
      */
-    extension?: string;
+    fileExtension?: string;
     /**
      * Type of file based on content
      */

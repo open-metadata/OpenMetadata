@@ -64,7 +64,11 @@ export interface File {
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
-    fileType?:  FileType;
+    /**
+     * File extension
+     */
+    fileExtension?: string;
+    fileType?:      FileType;
     /**
      * File version information
      */
