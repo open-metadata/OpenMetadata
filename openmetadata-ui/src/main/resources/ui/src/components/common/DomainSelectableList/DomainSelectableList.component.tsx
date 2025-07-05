@@ -22,6 +22,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
+import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
@@ -109,15 +110,17 @@ const DomainSelectableList = ({
       <Popover
         destroyTooltipOnHide
         content={
-          <DomainSelectablTree
-            initialDomains={initialDomains}
-            isMultiple={multiple}
-            showAllDomains={showAllDomains}
-            value={selectedDomainsList as string[]}
-            visible={popupVisible || Boolean(popoverProps?.open)}
-            onCancel={handleCancel}
-            onSubmit={handleUpdate}
-          />
+          <FocusTrapWithContainer active={popoverProps?.open || false}>
+            <DomainSelectablTree
+              initialDomains={initialDomains}
+              isMultiple={multiple}
+              showAllDomains={showAllDomains}
+              value={selectedDomainsList as string[]}
+              visible={popupVisible || Boolean(popoverProps?.open)}
+              onCancel={handleCancel}
+              onSubmit={handleUpdate}
+            />
+          </FocusTrapWithContainer>
         }
         open={popupVisible}
         overlayClassName="domain-select-popover w-400"

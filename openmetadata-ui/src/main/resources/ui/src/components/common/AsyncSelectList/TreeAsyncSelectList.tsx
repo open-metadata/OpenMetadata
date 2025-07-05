@@ -354,6 +354,38 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     );
   }, [glossaries, searchOptions, expandableKeys.current, isParentSelectable]);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    switch (e.key) {
+      case 'Escape':
+        e.preventDefault();
+        onCancel?.();
+
+        break;
+      case 'Tab':
+        e.preventDefault();
+        e.stopPropagation();
+        form.submit();
+
+        break;
+      case 'Enter': {
+        e.preventDefault();
+        e.stopPropagation();
+        const active = document.querySelector(
+          '.ant-select-tree .ant-select-tree-treenode-active .ant-select-tree-checkbox'
+        );
+        if (active) {
+          (active as HTMLElement).click();
+        } else {
+          form.submit();
+        }
+
+        break;
+      }
+      default:
+        break;
+    }
+  };
+
   return (
     <TreeSelect
       showSearch
@@ -408,6 +440,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}
+      onKeyDown={handleKeyDown}
     />
   );
 };
