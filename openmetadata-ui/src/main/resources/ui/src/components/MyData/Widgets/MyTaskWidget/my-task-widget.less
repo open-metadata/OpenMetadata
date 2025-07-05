@@ -1,0 +1,160 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import url('../../../../styles/variables.less');
+
+.right-panel-heading {
+  margin-bottom: 8px !important;
+  color: @text-grey-muted;
+}
+
+.right-panel-list-item:last-child {
+  border-bottom: none;
+}
+
+.right-panel-list-item {
+  padding: 12px 24px;
+
+  &:hover {
+    background-color: @grey-1;
+  }
+
+  .entity-button-icon {
+    height: 20px;
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    svg {
+      height: 20px;
+      width: 20px;
+    }
+  }
+
+  .right-panel-list-item-link {
+    text-decoration: none;
+  }
+}
+
+.my-task-widget-container {
+  .ant-card-body {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0px;
+  }
+
+  .widget-title {
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 28px;
+    margin-bottom: 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .my-task-footer {
+    width: 100%;
+    background-color: @white;
+    border-bottom-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+  }
+
+  .my-task-header {
+    padding: 12px 20px 12px 20px;
+    border-bottom: 1px solid @grey-15;
+  }
+
+  .entity-list-body {
+    padding: 0;
+    margin-top: 0;
+    overflow-y: auto;
+  }
+
+  .footer-view-more-button {
+    margin-top: 8px;
+    margin-bottom: 8px;
+  }
+
+  .entity-list-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+  }
+
+  .entity-list-item-description {
+    font-size: 12px;
+    font-weight: 400;
+    text-align: left;
+    margin-bottom: 0;
+  }
+
+  .drag-widget-icon {
+    display: none;
+  }
+}
+
+.my-task-widget-container:hover {
+  .drag-widget-icon {
+    display: block;
+  }
+}
+
+.widget-header-options {
+  padding: 10px;
+  height: 40px;
+  min-width: 40px;
+  max-width: 100px;
+  border-radius: 8px;
+  border: 1px solid @grey-15;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: @white;
+
+  &:hover {
+    background-color: @grey-1;
+    border-color: @primary-color;
+  }
+
+  .widget-header-menu {
+    padding: 8px;
+    border-radius: 12px;
+  }
+}
+
+.ant-dropdown-menu-item {
+  padding: 16px 24px !important;
+  height: 40px !important;
+
+  &:hover {
+    color: @blue-34 !important;
+    background-color: @blue-33 !important;
+    font-weight: 500 !important;
+  }
+}
+
+.ant-dropdown-menu-item-active {
+  color: @blue-34 !important;
+  background-color: @blue-33 !important;
+  font-weight: 500 !important;
+}
+
+.entity-icon {
+  width: 40px;
+  height: 40px;
+  margin-right: 8px;
+}
