@@ -41,6 +41,8 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         pkce,
         tokenManager: {
           autoRenew: false,
+          storage: 'localStorage',
+          syncStorage: true,
           expireEarlySeconds: 60,
         },
         cookies: {
