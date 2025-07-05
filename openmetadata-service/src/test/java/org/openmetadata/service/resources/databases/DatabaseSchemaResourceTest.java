@@ -17,6 +17,7 @@ import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -31,8 +32,8 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
-import static org.pac4j.core.util.CommonHelper.assertTrue;
 
+import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,11 +50,15 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -345,5 +350,118 @@ public class DatabaseSchemaResourceTest
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  private SearchEntityRelationshipResult searchSchemaEntityRelationship(
+      String fqn, String queryFilter, boolean includeDeleted) throws HttpResponseException {
+    WebTarget target = getResource("databaseSchemas/entityRelationship");
+    if (fqn != null) {
+      target = target.queryParam("fqn", fqn);
+    }
+    if (queryFilter != null) {
+      target = target.queryParam("query_filter", queryFilter);
+    }
+    target = target.queryParam("includeDeleted", includeDeleted);
+
+    return TestUtils.get(target, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_schemaEntityRelationship() throws IOException {
+    // Create a schema for this test
+    TableResourceTest tableTest = new TableResourceTest();
+    CreateDatabaseSchema createSchema = createRequest("er_test_schema_direction");
+    DatabaseSchema schema = createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    String schemaFqn = schema.getFullyQualifiedName();
+
+    // Create tables and columns for FK relationships
+    Column c1 = new Column().withName("c1").withDataType(ColumnDataType.INT);
+    Column c2 = new Column().withName("c2").withDataType(ColumnDataType.INT);
+
+    Table upstreamTable =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_upstream_fk")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(c1)),
+            ADMIN_AUTH_HEADERS);
+
+    Table tableInSchema2 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_table2_fk")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(List.of(c2))
+                .withTableConstraints(null),
+            ADMIN_AUTH_HEADERS);
+
+    // Resolve column FQNs needed for FK definitions
+    Table upstreamRef =
+        tableTest.getEntityByName(upstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    Table table2Ref =
+        tableTest.getEntityByName(tableInSchema2.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Create table with FK to upstream table
+    Column c1Local = new Column().withName("c1_local").withDataType(ColumnDataType.INT);
+    Column c1FkCol = new Column().withName("c1_fk").withDataType(ColumnDataType.INT);
+    Table tableInSchema1 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_table1_fk")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(List.of(c1Local, c1FkCol))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(c1FkCol.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    upstreamRef.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Create downstream table with FK to table2
+    Column c2Local = new Column().withName("c2_local").withDataType(ColumnDataType.INT);
+    Column c2FkCol = new Column().withName("c2_fk").withDataType(ColumnDataType.INT);
+    Table downstreamTable =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_downstream_fk")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(List.of(c2Local, c2FkCol))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(c2FkCol.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    table2Ref.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Test the DatabaseSchema entityRelationship endpoint
+    SearchEntityRelationshipResult result = searchSchemaEntityRelationship(schemaFqn, null, false);
+
+    // Verify the response structure
+    assertNotNull(result);
+    assertNotNull(result.getNodes());
+    assertNotNull(result.getUpstreamEdges());
+    assertNotNull(result.getDownstreamEdges());
+
+    // Verify we get the expected number of nodes (4 tables in the schema)
+    assertEquals(4, result.getNodes().size());
+
+    // Verify we get the expected number of upstream edges (2 FK relationships)
+    assertEquals(2, result.getUpstreamEdges().size());
+
+    // Verify we get no downstream edges (as expected for this setup)
+    assertEquals(0, result.getDownstreamEdges().size());
+
+    // Verify all tables in the schema are present in the nodes
+    assertTrue(result.getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
+    assertTrue(result.getNodes().containsKey(tableInSchema2.getFullyQualifiedName()));
+    assertTrue(result.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
+    assertTrue(result.getNodes().containsKey(downstreamTable.getFullyQualifiedName()));
   }
 }

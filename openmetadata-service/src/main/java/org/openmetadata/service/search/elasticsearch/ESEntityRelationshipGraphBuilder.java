@@ -301,7 +301,7 @@ public class ESEntityRelationshipGraphBuilder {
   private static String buildERQueryFilter(String schemaFqn, String queryFilter) {
     String schemaFqnWildcardClause =
         String.format(
-            "{\"wildcard\":{\"fullyQualifiedName.keyword\":\"%s.*\"}}",
+            "{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}",
             ReindexingUtil.escapeDoubleQuotes(schemaFqn));
     String innerBoolFilter;
     if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(queryFilter)

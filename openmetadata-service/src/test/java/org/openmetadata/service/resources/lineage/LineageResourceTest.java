@@ -981,6 +981,55 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     deleteEdge(tableB, tableC);
   }
 
+  @Order(13)
+  @Test
+  void test_platformLineage() throws IOException {
+    // Create a comprehensive platform lineage scenario with multiple services
+    // This test will verify the platform lineage endpoint functionality for 'service' view only
+
+    // Create lineage relationships: table0 -> table1 -> table2 (within same service)
+    addEdge(TABLES.get(0), TABLES.get(1));
+    addEdge(TABLES.get(1), TABLES.get(2));
+
+    // Create cross-service lineage: table3 -> table4 (different services)
+    addEdge(TABLES.get(3), TABLES.get(4));
+
+    // Create a longer chain: table5 -> table6 -> table7
+    addEdge(TABLES.get(5), TABLES.get(6));
+    addEdge(TABLES.get(6), TABLES.get(7));
+
+    // Test platform lineage with 'service' view only
+    WebTarget serviceViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "service")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult serviceViewResult =
+        TestUtils.get(serviceViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Verify service view response
+    assertNotNull(serviceViewResult);
+    assertSearchLineageResponseFields(serviceViewResult);
+    assertFalse(serviceViewResult.getNodes().isEmpty(), "Service view should return nodes");
+    assertFalse(
+        serviceViewResult.getUpstreamEdges().isEmpty(),
+        "Upstream edges should not be empty for platformLineage");
+
+    // Check the number of upstream edges (downstreamEdges will always be empty for platformLineage)
+    // 5 edges are created
+    int expectedUpstreamEdges = serviceViewResult.getUpstreamEdges().size();
+    assertEquals(5, expectedUpstreamEdges, "Should have 3 upstream edges");
+    assertTrue(
+        serviceViewResult.getDownstreamEdges().isEmpty(),
+        "Downstream edges should be empty for platformLineage");
+    // Clean up all created lineage relationships
+    deleteEdge(TABLES.get(0), TABLES.get(1));
+    deleteEdge(TABLES.get(1), TABLES.get(2));
+    deleteEdge(TABLES.get(3), TABLES.get(4));
+    deleteEdge(TABLES.get(5), TABLES.get(6));
+    deleteEdge(TABLES.get(6), TABLES.get(7));
+  }
+
   public Edge getEdge(Table from, Table to) {
     return getEdge(from.getId(), to.getId(), null);
   }
@@ -1165,15 +1214,18 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
       assertTrue(keys.containsAll(nodesFields), err);
 
       List<Map<String, Object>> columns = (List<Map<String, Object>>) entity.get("columns");
-      columns.forEach(
-          c -> {
-            Set<String> columnsKeys = c.keySet();
-            Set<String> missingColumnKeys = new HashSet<>(nodesColumnsFields);
-            missingColumnKeys.removeAll(columnsKeys);
-            String columnErr =
-                String.format("Column nodes keys not found in the response: %s", missingColumnKeys);
-            assertTrue(columnsKeys.containsAll(nodesColumnsFields), columnErr);
-          });
+      if (columns != null) {
+        columns.forEach(
+            c -> {
+              Set<String> columnsKeys = c.keySet();
+              Set<String> missingColumnKeys = new HashSet<>(nodesColumnsFields);
+              missingColumnKeys.removeAll(columnsKeys);
+              String columnErr =
+                  String.format(
+                      "Column nodes keys not found in the response: %s", missingColumnKeys);
+              assertTrue(columnsKeys.containsAll(nodesColumnsFields), columnErr);
+            });
+      }
     }
   }
 
