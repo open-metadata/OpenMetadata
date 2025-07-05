@@ -26,6 +26,7 @@ export enum LandingPageWidgetKeys {
   FOLLOWING = 'KnowledgePanel.Following',
   KPI = 'KnowledgePanel.KPI',
   MY_DATA = 'KnowledgePanel.MyData',
+  MY_TASK = 'KnowledgePanel.MyTask',
   RECENTLY_VIEWED = 'KnowledgePanel.RecentlyViewed',
   TOTAL_DATA_ASSETS = 'KnowledgePanel.TotalAssets',
 }
