@@ -55,6 +55,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.rules.LogicOps;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -108,7 +109,7 @@ public class SystemResource {
     if (defaultSearchSettingsCache != null) {
       try {
         List<String> jsonDataFiles =
-            EntityUtil.getJsonDataResources(".*json/data/searchSettings/searchSettings.json$");
+            EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
         if (!jsonDataFiles.isEmpty()) {
           String json =
               CommonUtil.getResourceAsStream(
@@ -240,6 +241,26 @@ public class SystemResource {
         new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
+  }
+
+  @GET
+  @Path("/settings/customLogicOps")
+  @Operation(
+      operationId = "getCustomLogicOps",
+      summary = "Get a list of custom JSON logic operations",
+      description = "Get a list of custom JSON logic operations used in rules",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Custom Logic Operations Keys as Strings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
+      })
+  public Response getCustomLogicOps(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return Response.ok().entity(LogicOps.getCustomOpsKeys()).build();
   }
 
   @PUT

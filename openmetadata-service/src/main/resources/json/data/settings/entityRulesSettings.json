@@ -1,0 +1,17 @@
+{
+  "entitySemantics": [
+    {
+      "name": "Multiple Users or Single Team Ownership",
+      "description": "Validates that an entity has either multiple owners or a single team as the owner.",
+      "rule": "{\"multipleUsersOrSingleTeamOwnership\":{\"var\":\"owners\"}}",
+      "enabled": true
+    },
+    {
+      "name": "Tables can only have a single Glossary Term",
+      "description": "Ensures that an asset is associated with only one Glossary Term.",
+      "rule": "{\"<=\":[{\"length\":{\"filterTagsBySource\":[{\"var\":\"tags\"},\"Glossary\"]}},1]}",
+      "enabled": false,
+      "entityType": "table"
+    }
+  ]
+}
