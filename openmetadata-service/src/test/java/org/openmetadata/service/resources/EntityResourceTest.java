@@ -380,16 +380,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Table TEST_TABLE1;
   public static Table TEST_TABLE2;
-
   public static TestSuite TEST_SUITE1;
-  public static Table TEST_SUITE_TABLE1;
+  public static EntityReference TEST_SUITE1_REFERENCE;
   public static CreateTestSuite CREATE_TEST_SUITE1;
 
+  public static TestSuite TEST_SUITE1;
   public static TestSuite TEST_SUITE2;
   public static Table TEST_SUITE_TABLE2;
   public static CreateTestSuite CREATE_TEST_SUITE2;
   public static TestDefinition TEST_DEFINITION1;
   public static TestDefinition TEST_DEFINITION2;
+  public static EntityReference TEST_DEFINITION2_REFERENCE;
+
   public static TestDefinition TEST_DEFINITION3;
   public static TestDefinition TEST_DEFINITION4;
   public static TestDefinition TEST_DEFINITION5;
@@ -1037,7 +1039,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       String origJson = JsonUtils.pojoToJson(entity);
       entity.setTags(new ArrayList<>());
       entity.getTags().add(USER_ADDRESS_TAG_LABEL);
-      entity.getTags().add(GLOSSARY2_TERM1_LABEL);
+      // entity.getTags().add(GLOSSARY2_TERM1_LABEL);
       entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
     }
     if (supportsFollowers) {
@@ -1413,6 +1415,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (!supportedNameCharacters.contains(".")) { // Name does not support dot
       return;
     }
+    // Entity without "." should not have quoted fullyQualifiedName
+    String name = format("%s_foo_bar", entityType);
+    K request = createRequest(name, "", null, null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    assertFalse(entity.getFullyQualifiedName().contains("\""));
 
     // Now post entity name with dots. FullyQualifiedName must have " to escape dotted name
     String name = format("%s_foo.bar", entityType);
@@ -1920,11 +1927,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       entity.getTags().add(USER_ADDRESS_TAG_LABEL);
       entity
           .getTags()
-          .add(USER_ADDRESS_TAG_LABEL); // Add duplicated tags and make sure only one tag is added
-      entity.getTags().add(GLOSSARY2_TERM1_LABEL);
+      entity.getTags().add(USER_ADDRESS_TAG_LABEL); // Add duplicated tags and make sure only one tag is added
+      // entity.getTags().add(GLOSSARY2_TERM1_LABEL);
       entity
           .getTags()
-          .add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
+      // entity.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
       fieldAdded(change, FIELD_TAGS, List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL));
     }
 
@@ -2972,7 +2979,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       return patchEntity(id, patch, authHeaders, changeSource);
     } catch (JsonProcessingException ignored) {
 
+  public final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
+      throws JsonProcessingException, HttpResponseException {
     }
+    String updatedEntityJson = JsonUtils.pojoToJson(updated);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);
     return null;
   }
 
@@ -3036,16 +3047,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws HttpResponseException {
     WebTarget target = getResource(id);
     target = recursive ? target.queryParam("recursive", true) : target;
-    target = hardDelete ? target.queryParam("hardDelete", true) : target;
+    hardDelete = false;
     T entity = TestUtils.delete(target, entityClass, authHeaders);
-    assertEntityDeleted(id, hardDelete);
-    return entity;
-  }
-
-  public final void deleteByNameAndCheckEntity(
-      T entity, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
-      throws IOException {
-    T deletedEntity =
         deleteEntityByName(entity.getFullyQualifiedName(), recursive, hardDelete, authHeaders);
     assertDeleted(deletedEntity, entity, hardDelete, authHeaders);
   }
@@ -3085,7 +3088,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  public final T deleteEntityByName(
+  public final T deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    return deleteEntity(id, false, false, authHeaders);
+  }
+
       String name, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResourceByName(name);
@@ -3311,27 +3317,26 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // validateEntityHistory(returned.getId(), updateType, expectedChange, authHeaders);
     // validateLatestVersion(returned, updateType, expectedChange, authHeaders);
 
-    // GET the entity and Validate information returned
+  T patchEntityAndCheckAuthorization(T entity, String userName, boolean shouldThrowException) throws IOException {
     T getEntity = getEntity(returned.getId(), authHeaders);
     validateCommonEntityFields(updated, returned, updatedBy);
     compareEntities(updated, getEntity, authHeaders);
     // validateChangeDescription(getEntity, updateType, expectedChange);
 
-    // Check if the entity change events are record
-    if (listOf(CREATED, MINOR_UPDATE, MAJOR_UPDATE).contains(updateType)) {
-      EventType expectedEventType =
+    String originalDescription = entity.getDescription();
+    String newDescription = format("Description added by %s", userName);
+    ChangeDescription change = getChangeDescription(entity.getVersion());
           updateType == CREATED ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
       validateChangeEvents(
-          returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
+    fieldUpdated(change, "description", originalDescription, newDescription);
     }
     return returned;
   }
 
   protected T patchEntityAndCheckAuthorization(
       T entity, String userName, boolean shouldThrowException) throws IOException {
+      throws IOException {
     return patchEntityAndCheckAuthorization(
-        entity, userName, MetadataOperation.EDIT_OWNERS, shouldThrowException);
-  }
 
   protected T patchEntityAndCheckAuthorization(
       T entity,

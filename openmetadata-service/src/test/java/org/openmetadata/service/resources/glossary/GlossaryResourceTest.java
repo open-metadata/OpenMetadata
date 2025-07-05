@@ -128,16 +128,16 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   public void setupGlossaries() throws IOException {
-    CreateGlossary createGlossary = createRequest("g1", "", "", null);
-    GLOSSARY1 = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1" + UUID.randomUUID(), "", "", null);
+    GLOSSARY1 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
-    createGlossary = createRequest("g2", "", "", null);
-    GLOSSARY2 = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    createGlossary = glossaryResourceTest.createRequest("g2" + UUID.randomUUID(), "", "", null);
+    GLOSSARY2 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     CreateGlossaryTerm createGlossaryTerm =
         glossaryTermResourceTest
-            .createRequest("g1t1", "", "", null)
+            .createRequest("g1t1" + UUID.randomUUID(), "", "", null)
             .withRelatedTerms(null)
             .withGlossary(GLOSSARY1.getName())
             .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
@@ -148,9 +148,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     createGlossaryTerm =
         glossaryTermResourceTest
-            .createRequest("g2t1", "", "", null)
-            .withRelatedTerms(List.of(GLOSSARY1_TERM1.getFullyQualifiedName()))
-            .withGlossary(GLOSSARY2.getName())
+            .createRequest("g2t1" + UUID.randomUUID(), "", "", null)
+            .withRelatedTerms(List.of(GLOSSARY1_TERM1_REF))
+            .withGlossary(GLOSSARY2_REF)
             .withReviewers(GLOSSARY1.getReviewers());
     GLOSSARY2_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY2_TERM1_LABEL = EntityUtil.toTagLabel(GLOSSARY2_TERM1);
