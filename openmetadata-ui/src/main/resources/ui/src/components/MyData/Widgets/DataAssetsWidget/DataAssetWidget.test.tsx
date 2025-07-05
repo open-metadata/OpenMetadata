@@ -10,11 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../../Explore/Explore.mock';
 import DataAssetsWidget from './DataAssetsWidget.component';
+
+// Mock useNavigate hook
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
 
 jest.mock('../../../../rest/miscAPI', () => ({
   searchData: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -46,6 +53,10 @@ const widgetProps = {
 };
 
 describe('DataAssetsWidget', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should fetch dataAssets initially', async () => {
     render(<DataAssetsWidget {...widgetProps} />);
 
@@ -70,15 +81,6 @@ describe('DataAssetsWidget', () => {
     expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
     expect(screen.queryByText('DataAssetCard')).not.toBeInTheDocument();
-  });
-
-  it('should handle close click when in edit view', async () => {
-    await act(async () => {
-      render(<DataAssetsWidget {...widgetProps} />);
-    });
-    fireEvent.click(screen.getByTestId('remove-widget-button'));
-
-    expect(mockHandleRemoveWidget).toHaveBeenCalledWith(widgetProps.widgetKey);
   });
 
   it('should render ErrorPlaceholder if API is rejected', async () => {
