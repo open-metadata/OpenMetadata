@@ -1,5 +1,6 @@
 ---
 title: Try OpenMetadata in Docker
+description: Deploy OpenMetadata locally on Kubernetes in minutes! Step-by-step guide with commands, configurations, and troubleshooting for your metadata platform.
 slug: /quick-start/local-kubernetes-deployment
 ---
 

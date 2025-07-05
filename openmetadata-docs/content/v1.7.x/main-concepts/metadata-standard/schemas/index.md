@@ -1,5 +1,6 @@
 ---
 title: Schemas Index | OpenMetadata Metadata Schemas Overview
+description: Explore OpenMetadata's comprehensive schema standards and metadata structures. Learn how to define, manage, and implement data schemas effectively.
 slug: /main-concepts/metadata-standard/schemas
 ---
 

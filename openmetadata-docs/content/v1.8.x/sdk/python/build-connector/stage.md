@@ -1,5 +1,6 @@
 ---
 title: Stage
+description: Learn to build custom OpenMetadata Python connectors with our comprehensive stage development guide. Step-by-step tutorials and code examples included.
 slug: /sdk/python/build-connector/stage
 ---
 

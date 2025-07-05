@@ -1,5 +1,6 @@
 ---
 title: Add Custom Properties | OpenMetadata Custom Properties
+description: Learn how to add custom properties to external automator configurations in OpenMetadata. Complete schema documentation and implementation guide.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/addcustomproperties
 ---
 
