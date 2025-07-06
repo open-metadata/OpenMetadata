@@ -66,6 +66,15 @@
       "description": "Update descriptions, tags and Glossary Terms via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset, and incoming tags are merged with the existing ones.",
       "type": "boolean",
       "default": false
+    },
+    "propagationStopConfigs": {
+      "title": "Propagation Stop Configurations",
+      "description": "List of configurations to stop propagation based on conditions",
+      "type": "array",
+      "items": {
+        "$ref": "propagationStopConfig.json"
+      },
+      "default": null
     }
   },
   "required": ["type"],
