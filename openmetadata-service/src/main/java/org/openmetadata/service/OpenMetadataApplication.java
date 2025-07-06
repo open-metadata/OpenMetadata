@@ -382,9 +382,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
       cookieConfig.setHttpOnly(true);
       cookieConfig.setSecure(isHttps(config));
-      cookieConfig.setMaxAge(30 * 24 * 60 * 60); // 30 days
+      cookieConfig.setMaxAge(
+          config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
       cookieConfig.setPath("/");
-      sessionHandler.setMaxInactiveInterval(30 * 24 * 60 * 60);
+      sessionHandler.setMaxInactiveInterval(
+          config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
 
       AuthenticationCodeFlowHandler authenticationCodeFlowHandler =
           new AuthenticationCodeFlowHandler(

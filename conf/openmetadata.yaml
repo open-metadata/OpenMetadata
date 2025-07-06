@@ -224,6 +224,7 @@ authenticationConfiguration:
     customParams: ${OIDC_CUSTOM_PARAMS:-}
     maxAge: ${OIDC_MAX_AGE:-"0"}
     prompt: ${OIDC_PROMPT_TYPE:-"consent"}
+    sessionExpiry: ${OIDC_SESSION_EXPIRY:-"2592000"} #30 days
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
