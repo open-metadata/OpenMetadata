@@ -74,35 +74,54 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
 
   @Override
   public void prepare(Worksheet worksheet, boolean update) {
-    // Validate service
-    DriveService driveService = Entity.getEntity(worksheet.getService(), "", Include.NON_DELETED);
-    worksheet.setService(driveService.getEntityReference());
-    worksheet.setServiceType(driveService.getServiceType());
-
-    // Validate parent spreadsheet
-    Spreadsheet spreadsheet = Entity.getEntity(worksheet.getSpreadsheet(), "", Include.NON_DELETED);
+    // Validate parent spreadsheet first
+    Spreadsheet spreadsheet =
+        Entity.getEntity(worksheet.getSpreadsheet(), "service", Include.NON_DELETED);
     worksheet.setSpreadsheet(spreadsheet.getEntityReference());
+
+    // If service is not set or is incorrect, get it from the spreadsheet
+    if (worksheet.getService() == null
+        || !Entity.DRIVE_SERVICE.equals(worksheet.getService().getType())) {
+      worksheet.setService(spreadsheet.getService());
+      worksheet.setServiceType(spreadsheet.getServiceType());
+    } else {
+      // Validate service
+      DriveService driveService = Entity.getEntity(worksheet.getService(), "", Include.NON_DELETED);
+      worksheet.setService(driveService.getEntityReference());
+      worksheet.setServiceType(driveService.getServiceType());
+
+      // Ensure the spreadsheet belongs to the same service
+      if (!spreadsheet.getService().getId().equals(driveService.getId())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Spreadsheet %s does not belong to service %s",
+                spreadsheet.getFullyQualifiedName(), driveService.getFullyQualifiedName()));
+      }
+    }
   }
 
   @Override
   public void storeEntity(Worksheet worksheet, boolean update) {
     // Store the entity
     store(worksheet, update);
-
-    // Store service relationship
-    EntityReference service = worksheet.getService();
-    addRelationship(
-        service.getId(), worksheet.getId(), service.getType(), WORKSHEET, Relationship.CONTAINS);
-
-    // Store spreadsheet relationship
-    EntityReference spreadsheet = worksheet.getSpreadsheet();
-    addRelationship(
-        spreadsheet.getId(), worksheet.getId(), SPREADSHEET, WORKSHEET, Relationship.CONTAINS);
   }
 
   @Override
   public void storeRelationships(Worksheet worksheet) {
-    // No additional relationships to store
+    if (worksheet.getSpreadsheet() == null) {
+      LOG.error("Spreadsheet is null for worksheet {}", worksheet.getId());
+      return;
+    }
+    addRelationship(
+        worksheet.getSpreadsheet().getId(),
+        worksheet.getId(),
+        SPREADSHEET,
+        WORKSHEET,
+        Relationship.CONTAINS);
+    LOG.info(
+        "Added CONTAINS relationship from spreadsheet {} to worksheet {}",
+        worksheet.getSpreadsheet().getId(),
+        worksheet.getId());
   }
 
   @Override

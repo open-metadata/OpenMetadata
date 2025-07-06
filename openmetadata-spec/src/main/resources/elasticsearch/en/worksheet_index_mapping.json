@@ -201,14 +201,7 @@
         "type": "boolean"
       },
       "columnNames": {
-        "type": "text",
-        "analyzer": "om_analyzer",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
+        "type": "keyword"
       },
       "columnNamesFuzzy": {
         "type": "text",
@@ -469,6 +462,44 @@
       },
       "fqnParts": {
         "type": "keyword"
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "updatedBy": {
+            "type": "keyword"
+          },
+          "updatedAt": {
+            "type": "date"
+          }
+        }
       },
       "suggest": {
         "type": "completion",

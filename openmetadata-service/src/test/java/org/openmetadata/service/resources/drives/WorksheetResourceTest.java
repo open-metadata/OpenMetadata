@@ -19,23 +19,18 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.util.EntityUtil.fieldAdded;
-import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateDirectory;
@@ -49,7 +44,6 @@ import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
-import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DriveConnection;
@@ -62,9 +56,14 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorksheet> {
+public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorksheet> {
   private static Spreadsheet DEFAULT_SPREADSHEET;
   private static EntityReference DEFAULT_SPREADSHEET_REFERENCE;
+
+  @Override
+  public EntityReference getContainer() {
+    return DEFAULT_SPREADSHEET_REFERENCE;
+  }
 
   public WorksheetResourceTest() {
     super(
@@ -76,13 +75,7 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
     supportsSearchIndex = true;
   }
 
-  @BeforeAll
-  public void setup(TestInfo test) throws URISyntaxException, IOException {
-    super.setup(test);
-    setupDefaultSpreadsheet(test);
-  }
-
-  public void setupDefaultSpreadsheet(TestInfo test) throws HttpResponseException {
+  public void setupSpreadsheet(TestInfo test) throws HttpResponseException {
     if (DEFAULT_SPREADSHEET == null) {
       // Create drive service
       DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
@@ -140,7 +133,7 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[spreadsheet must not be null]");
+        "[query param spreadsheet must not be null]");
   }
 
   @Test
@@ -184,6 +177,7 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
     CreateWorksheet create =
         createRequest("products")
             .withSpreadsheet(spreadsheet.getFullyQualifiedName())
+            .withService(service.getFullyQualifiedName())
             .withColumns(columns);
     Worksheet worksheet = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
@@ -205,16 +199,9 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
     Worksheet worksheet = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Update description
-    String oldDescription = worksheet.getDescription();
-    String newDescription = "updated description";
-    ChangeDescription change = getChangeDescription(worksheet, MINOR_UPDATE);
-    fieldUpdated(change, "description", oldDescription, newDescription);
-
-    worksheet.setDescription(newDescription);
-    worksheet =
-        updateAndCheckEntity(
-            create.withDescription(newDescription), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(newDescription, worksheet.getDescription());
+    create.setDescription("updated description");
+    worksheet = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    assertEquals("updated description", worksheet.getDescription());
 
     // Add columns
     List<Column> columns = new ArrayList<>();
@@ -226,13 +213,8 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
     columns.add(
         new Column().withName("col2").withDataType(ColumnDataType.INT).withDescription("Column 2"));
 
-    change = getChangeDescription(worksheet, MINOR_UPDATE);
-    fieldAdded(change, "columns", columns);
-
-    worksheet.setColumns(columns);
-    worksheet =
-        updateAndCheckEntity(
-            create.withColumns(columns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    create.setColumns(columns);
+    worksheet = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
     assertEquals(2, worksheet.getColumns().size());
 
     // Update columns - add a new column
@@ -242,25 +224,14 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
             .withDataType(ColumnDataType.DECIMAL)
             .withDescription("Column 3"));
 
-    change = getChangeDescription(worksheet, MINOR_UPDATE);
-    fieldUpdated(change, "columns", worksheet.getColumns(), columns);
-
-    worksheet.setColumns(columns);
-    worksheet =
-        updateAndCheckEntity(
-            create.withColumns(columns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    create.setColumns(columns);
+    worksheet = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
     assertEquals(3, worksheet.getColumns().size());
 
     // Update isHidden flag
-    Boolean isHidden = true;
-    change = getChangeDescription(worksheet, MINOR_UPDATE);
-    fieldAdded(change, "isHidden", isHidden);
-
-    worksheet.setIsHidden(isHidden);
-    worksheet =
-        updateAndCheckEntity(
-            create.withIsHidden(isHidden), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(isHidden, worksheet.getIsHidden());
+    create.setIsHidden(true);
+    worksheet = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(true, worksheet.getIsHidden());
   }
 
   @Test
@@ -271,10 +242,7 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
     String originalJson = JsonUtils.pojoToJson(worksheet);
     String description = "patched description";
     worksheet.setDescription(description);
-    ChangeDescription change = getChangeDescription(worksheet, MINOR_UPDATE);
-    fieldAdded(change, "description", description);
-    worksheet =
-        patchEntityAndCheck(worksheet, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
     assertEquals(description, worksheet.getDescription());
 
     // Add columns
@@ -286,10 +254,7 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
             .withDataType(ColumnDataType.STRING)
             .withDescription("New column"));
     worksheet.setColumns(columns);
-    change = getChangeDescription(worksheet, MINOR_UPDATE);
-    fieldAdded(change, "columns", columns);
-    worksheet =
-        patchEntityAndCheck(worksheet, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
     assertNotNull(worksheet.getColumns());
     assertEquals(1, worksheet.getColumns().size());
     assertEquals("newCol", worksheet.getColumns().getFirst().getName());
@@ -299,10 +264,7 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
     // Add tags
     originalJson = JsonUtils.pojoToJson(worksheet);
     worksheet.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
-    change = getChangeDescription(worksheet, MINOR_UPDATE);
-    fieldAdded(change, "tags", List.of(PERSONAL_DATA_TAG_LABEL));
-    worksheet =
-        patchEntityAndCheck(worksheet, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
     assertNotNull(worksheet.getTags());
     assertEquals(1, worksheet.getTags().size());
     assertEquals(PERSONAL_DATA_TAG_LABEL.getTagFQN(), worksheet.getTags().getFirst().getTagFQN());
@@ -310,10 +272,7 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
     // Add owner
     originalJson = JsonUtils.pojoToJson(worksheet);
     worksheet.setOwners(List.of(USER1_REF));
-    change = getChangeDescription(worksheet, MINOR_UPDATE);
-    fieldAdded(change, "owners", List.of(USER1_REF));
-    worksheet =
-        patchEntityAndCheck(worksheet, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
     assertNotNull(worksheet.getOwners());
     assertEquals(1, worksheet.getOwners().size());
     assertEquals(USER1_REF.getId(), worksheet.getOwners().getFirst().getId());
@@ -375,6 +334,7 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
     CreateWorksheet create =
         createRequest("complexSheet")
             .withSpreadsheet(spreadsheet.getFullyQualifiedName())
+            .withService(service.getFullyQualifiedName())
             .withColumns(columns);
     Worksheet worksheet = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
@@ -419,10 +379,14 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
     // Create worksheets in each spreadsheet
     for (int i = 0; i < 3; i++) {
       createEntity(
-          createRequest("sheet1_" + i).withSpreadsheet(spreadsheet1.getFullyQualifiedName()),
+          createRequest("sheet1_" + i)
+              .withSpreadsheet(spreadsheet1.getFullyQualifiedName())
+              .withService(service.getFullyQualifiedName()),
           ADMIN_AUTH_HEADERS);
       createEntity(
-          createRequest("sheet2_" + i).withSpreadsheet(spreadsheet2.getFullyQualifiedName()),
+          createRequest("sheet2_" + i)
+              .withSpreadsheet(spreadsheet2.getFullyQualifiedName())
+              .withService(service.getFullyQualifiedName()),
           ADMIN_AUTH_HEADERS);
     }
 
@@ -465,7 +429,9 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
         spreadsheetResourceTest.createEntity(createDirectSpreadsheet, ADMIN_AUTH_HEADERS);
 
     CreateWorksheet create1 =
-        createRequest("Sheet1").withSpreadsheet(directSpreadsheet.getFullyQualifiedName());
+        createRequest("Sheet1")
+            .withSpreadsheet(directSpreadsheet.getFullyQualifiedName())
+            .withService(service.getFullyQualifiedName());
     Worksheet worksheet1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
     assertEquals(
         directSpreadsheet.getFullyQualifiedName() + ".Sheet1", worksheet1.getFullyQualifiedName());
@@ -474,11 +440,13 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
         worksheet1.getFullyQualifiedName());
 
     // Test 2: Worksheet in spreadsheet within nested directory
+    // Create directory directly with the correct service
     DirectoryResourceTest directoryResourceTest = new DirectoryResourceTest();
     CreateDirectory createDir =
-        directoryResourceTest
-            .createRequest("analytics")
-            .withService(service.getFullyQualifiedName());
+        new CreateDirectory()
+            .withName("analytics")
+            .withService(service.getFullyQualifiedName())
+            .withPath("/analytics");
     Directory directory = directoryResourceTest.createEntity(createDir, ADMIN_AUTH_HEADERS);
 
     CreateSpreadsheet createDirSpreadsheet =
@@ -490,7 +458,9 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
         spreadsheetResourceTest.createEntity(createDirSpreadsheet, ADMIN_AUTH_HEADERS);
 
     CreateWorksheet create2 =
-        createRequest("KPIs").withSpreadsheet(dirSpreadsheet.getFullyQualifiedName());
+        createRequest("KPIs")
+            .withSpreadsheet(dirSpreadsheet.getFullyQualifiedName())
+            .withService(service.getFullyQualifiedName());
     Worksheet worksheet2 = createAndCheckEntity(create2, ADMIN_AUTH_HEADERS);
     assertEquals(
         dirSpreadsheet.getFullyQualifiedName() + ".KPIs", worksheet2.getFullyQualifiedName());
@@ -540,9 +510,15 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
 
   @Override
   public CreateWorksheet createRequest(String name) {
+    if (DEFAULT_SPREADSHEET == null) {
+      // This should not happen as setup() is called before tests
+      throw new IllegalStateException(
+          "DEFAULT_SPREADSHEET not initialized. Call setupDefaultSpreadsheet() first.");
+    }
     return new CreateWorksheet()
         .withName(name)
-        .withSpreadsheet(getContainer().getFullyQualifiedName());
+        .withSpreadsheet(DEFAULT_SPREADSHEET.getFullyQualifiedName())
+        .withService(DEFAULT_SPREADSHEET.getService().getFullyQualifiedName());
   }
 
   @Override
@@ -587,7 +563,7 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwners(), entity.getTags());
 
-    fields = "owners,tags,columns";
+    fields = "owners,tags,columns,followers";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -604,11 +580,6 @@ class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateWorkshee
       return;
     }
     assertCommonFieldChange(fieldName, expected, actual);
-  }
-
-  @Override
-  public EntityReference getContainer() {
-    return DEFAULT_SPREADSHEET_REFERENCE;
   }
 
   @Override

@@ -343,10 +343,15 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Id of the spreadsheet", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -373,11 +378,11 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
-  @Path("/{id}/restore")
+  @Path("/restore")
   @Operation(
       operationId = "restoreSpreadsheet",
       summary = "Restore a soft deleted spreadsheet",
@@ -546,5 +551,34 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
     return repository
         .updateVote(securityContext.getUserPrincipal().getName(), id, request)
         .toResponse();
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteSpreadsheetAsync",
+      summary = "Asynchronously delete a spreadsheet by Id",
+      description = "Asynchronously delete a spreadsheet by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Spreadsheet for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Recursively delete related entities. (Default = `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Id of the spreadsheet", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 }

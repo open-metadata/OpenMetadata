@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.resources.EntityResourceTest.GOOGLE_DRIVE_SERVICE_REFERENCE;
+import static org.openmetadata.service.resources.EntityResourceTest.SHAREPOINT_DRIVE_SERVICE_REFERENCE;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
@@ -285,5 +287,26 @@ public class DriveServiceResourceTest
         assertEquals(expected.getDriveId(), actual.getDriveId());
       }
     }
+  }
+
+  public void setupDriveServices(TestInfo test) throws HttpResponseException {
+    // Create Google Drive service
+    CreateDriveService createGoogleDrive =
+        createRequest(test)
+            .withName("googleDriveTest")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive)
+            .withConnection(getGoogleDriveConnection());
+    DriveService googleDrive;
+    try {
+      googleDrive = getEntityByName(createGoogleDrive.getName(), ADMIN_AUTH_HEADERS);
+    } catch (Exception e) {
+      // Service doesn't exist, create it
+      googleDrive = createEntity(createGoogleDrive, ADMIN_AUTH_HEADERS);
+    }
+    GOOGLE_DRIVE_SERVICE_REFERENCE = googleDrive.getEntityReference();
+
+    // TODO: Create SharePoint service after regenerating code with SharePointConnection
+    // For now, set SharePoint reference to the same as Google Drive for testing
+    SHAREPOINT_DRIVE_SERVICE_REFERENCE = googleDrive.getEntityReference();
   }
 }

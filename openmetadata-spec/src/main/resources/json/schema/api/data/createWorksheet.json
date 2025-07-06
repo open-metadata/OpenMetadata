@@ -93,6 +93,10 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["name", "spreadsheet", "service"],

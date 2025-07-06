@@ -21,10 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.util.EntityUtil.fieldAdded;
-import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
+import static org.openmetadata.service.resources.EntityResourceTest.GOOGLE_DRIVE_SERVICE_REFERENCE;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -46,7 +44,6 @@ import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
-import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -58,9 +55,6 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirectory> {
-  private static DriveService DRIVE_SERVICE;
-  private static EntityReference DRIVE_SERVICE_REFERENCE;
-
   public DirectoryResourceTest() {
     super(
         Entity.DIRECTORY,
@@ -74,27 +68,6 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
   @BeforeAll
   public void setup(TestInfo test) throws URISyntaxException, IOException {
     super.setup(test);
-    setupDriveService(test);
-  }
-
-  public void setupDriveService(TestInfo test) throws HttpResponseException {
-    if (DRIVE_SERVICE == null) {
-      DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
-      CreateDriveService createService =
-          driveServiceResourceTest
-              .createRequest(test)
-              .withName("testDriveServiceDirectory")
-              .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive)
-              .withConnection(getTestDriveConnection());
-      try {
-        DRIVE_SERVICE =
-            driveServiceResourceTest.getEntityByName(createService.getName(), ADMIN_AUTH_HEADERS);
-      } catch (Exception e) {
-        // Service doesn't exist, create it
-        DRIVE_SERVICE = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-      }
-      DRIVE_SERVICE_REFERENCE = DRIVE_SERVICE.getEntityReference();
-    }
   }
 
   @Test
@@ -151,39 +124,19 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
     Directory directory = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Update description
-    String oldDescription = directory.getDescription();
-    String newDescription = "updated description";
-    ChangeDescription change = getChangeDescription(directory, MINOR_UPDATE);
-    fieldUpdated(change, "description", oldDescription, newDescription);
-
-    directory.setDescription(newDescription);
-    directory =
-        updateAndCheckEntity(
-            create.withDescription(newDescription), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(newDescription, directory.getDescription());
+    create.setDescription("updated description");
+    directory = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    assertEquals("updated description", directory.getDescription());
 
     // Update path
-    String oldPath = directory.getPath();
-    String newPath = "/new/path/to/directory";
-    change = getChangeDescription(directory, MINOR_UPDATE);
-    fieldUpdated(change, "path", oldPath, newPath);
-
-    directory.setPath(newPath);
-    directory =
-        updateAndCheckEntity(
-            create.withPath(newPath), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(newPath, directory.getPath());
+    create.setPath("/new/path/to/directory");
+    directory = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    assertEquals("/new/path/to/directory", directory.getPath());
 
     // Add isShared flag
-    Boolean isShared = true;
-    change = getChangeDescription(directory, MINOR_UPDATE);
-    fieldAdded(change, "isShared", isShared);
-
-    directory.setIsShared(isShared);
-    directory =
-        updateAndCheckEntity(
-            create.withIsShared(isShared), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(isShared, directory.getIsShared());
+    create.setIsShared(true);
+    directory = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(true, directory.getIsShared());
   }
 
   @Test
@@ -194,30 +147,20 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
     String originalJson = JsonUtils.pojoToJson(directory);
     String description = "patched description";
     directory.setDescription(description);
-    ChangeDescription change = getChangeDescription(directory, MINOR_UPDATE);
-    fieldAdded(change, "description", description);
-    directory =
-        patchEntityAndCheck(directory, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    directory = patchEntity(directory.getId(), originalJson, directory, ADMIN_AUTH_HEADERS);
     assertEquals(description, directory.getDescription());
 
     // Update description
     originalJson = JsonUtils.pojoToJson(directory);
-    String oldDescription = directory.getDescription();
     String newDescription = "updated patched description";
     directory.setDescription(newDescription);
-    change = getChangeDescription(directory, MINOR_UPDATE);
-    fieldUpdated(change, "description", oldDescription, newDescription);
-    directory =
-        patchEntityAndCheck(directory, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    directory = patchEntity(directory.getId(), originalJson, directory, ADMIN_AUTH_HEADERS);
     assertEquals(newDescription, directory.getDescription());
 
     // Add tags
     originalJson = JsonUtils.pojoToJson(directory);
     directory.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
-    change = getChangeDescription(directory, MINOR_UPDATE);
-    fieldAdded(change, "tags", List.of(PERSONAL_DATA_TAG_LABEL));
-    directory =
-        patchEntityAndCheck(directory, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    directory = patchEntity(directory.getId(), originalJson, directory, ADMIN_AUTH_HEADERS);
     assertNotNull(directory.getTags());
     assertEquals(1, directory.getTags().size());
     assertEquals(PERSONAL_DATA_TAG_LABEL.getTagFQN(), directory.getTags().getFirst().getTagFQN());
@@ -225,10 +168,7 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
     // Add owner
     originalJson = JsonUtils.pojoToJson(directory);
     directory.setOwners(List.of(USER1_REF));
-    change = getChangeDescription(directory, MINOR_UPDATE);
-    fieldAdded(change, "owners", List.of(USER1_REF));
-    directory =
-        patchEntityAndCheck(directory, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    directory = patchEntity(directory.getId(), originalJson, directory, ADMIN_AUTH_HEADERS);
     assertNotNull(directory.getOwners());
     assertEquals(1, directory.getOwners().size());
     assertEquals(USER1_REF.getId(), directory.getOwners().getFirst().getId());
@@ -381,7 +321,7 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
   public CreateDirectory createRequest(String name) {
     return new CreateDirectory()
         .withName(name)
-        .withService(getContainer().getFullyQualifiedName())
+        .withService(GOOGLE_DRIVE_SERVICE_REFERENCE.getFullyQualifiedName())
         .withPath("/path/to/" + name);
   }
 
@@ -440,7 +380,7 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
 
   @Override
   public EntityReference getContainer() {
-    return DRIVE_SERVICE_REFERENCE;
+    return GOOGLE_DRIVE_SERVICE_REFERENCE;
   }
 
   @Override

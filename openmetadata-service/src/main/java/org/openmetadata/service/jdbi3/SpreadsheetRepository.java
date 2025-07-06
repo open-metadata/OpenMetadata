@@ -109,27 +109,32 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   public void storeEntity(Spreadsheet spreadsheet, boolean update) {
     // Store the entity
     store(spreadsheet, update);
-
-    // Store service relationship
-    EntityReference service = spreadsheet.getService();
-    addRelationship(
-        service.getId(),
-        spreadsheet.getId(),
-        service.getType(),
-        SPREADSHEET,
-        Relationship.CONTAINS);
-
-    // Store directory relationship if present
-    if (spreadsheet.getDirectory() != null) {
-      EntityReference directory = spreadsheet.getDirectory();
-      addRelationship(
-          directory.getId(), spreadsheet.getId(), DIRECTORY, SPREADSHEET, Relationship.CONTAINS);
-    }
   }
 
   @Override
   public void storeRelationships(Spreadsheet spreadsheet) {
-    // No additional relationships to store
+    // Add relationship from service to spreadsheet
+    addRelationship(
+        spreadsheet.getService().getId(),
+        spreadsheet.getId(),
+        spreadsheet.getService().getType(),
+        SPREADSHEET,
+        Relationship.CONTAINS);
+
+    // Add relationship from directory to spreadsheet if present
+    if (spreadsheet.getDirectory() != null) {
+      addRelationship(
+          spreadsheet.getDirectory().getId(),
+          spreadsheet.getId(),
+          DIRECTORY,
+          SPREADSHEET,
+          Relationship.CONTAINS);
+    }
+    LOG.info(
+        "Stored relationships for spreadsheet {} with service {} and directory {}",
+        spreadsheet.getId(),
+        spreadsheet.getService().getId(),
+        spreadsheet.getDirectory() != null ? spreadsheet.getDirectory().getId() : "null");
   }
 
   @Override
@@ -159,7 +164,14 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   public void setFields(Spreadsheet spreadsheet, EntityUtil.Fields fields) {
     spreadsheet.withService(getContainer(spreadsheet.getId()));
     spreadsheet.withDirectory(getDirectory(spreadsheet));
-    spreadsheet.withWorksheets(fields.contains("worksheets") ? getWorksheets(spreadsheet) : null);
+    if (fields.contains("worksheets")) {
+      LOG.info("setFields: Getting worksheets for spreadsheet {}", spreadsheet.getId());
+      List<EntityReference> worksheets = getWorksheets(spreadsheet);
+      LOG.info("setFields: Found {} worksheets", worksheets.size());
+      spreadsheet.withWorksheets(worksheets);
+    } else {
+      spreadsheet.withWorksheets(null);
+    }
   }
 
   private EntityReference getDirectory(Spreadsheet spreadsheet) {
@@ -167,7 +179,23 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   }
 
   private List<EntityReference> getWorksheets(Spreadsheet spreadsheet) {
-    return findFrom(spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS, WORKSHEET);
+    // Based on the logs, the relationship is stored with worksheet as "from" and spreadsheet as
+    // "to"
+    // So we need to use findTo to find worksheets that point to this spreadsheet
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findTo(spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS.ordinal(), WORKSHEET);
+
+    List<EntityReference> worksheets = new ArrayList<>();
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      EntityReference ref =
+          Entity.getEntityReferenceById(WORKSHEET, record.getId(), Include.NON_DELETED);
+      if (ref != null) {
+        worksheets.add(ref);
+      }
+    }
+    return worksheets;
   }
 
   @Override
@@ -180,6 +208,22 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   public EntityRepository<Spreadsheet>.EntityUpdater getUpdater(
       Spreadsheet original, Spreadsheet updated, Operation operation) {
     return new SpreadsheetUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void deleteChildren(
+      List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+    // Log for debugging
+    if (!children.isEmpty()) {
+      LOG.info(
+          "SpreadsheetRepository.deleteChildren: Found {} children to delete (hardDelete={})",
+          children.size(),
+          hardDelete);
+      for (CollectionDAO.EntityRelationshipRecord child : children) {
+        LOG.info("  - Child: type={}, id={}", child.getType(), child.getId());
+      }
+    }
+    super.deleteChildren(children, hardDelete, updatedBy);
   }
 
   @Override

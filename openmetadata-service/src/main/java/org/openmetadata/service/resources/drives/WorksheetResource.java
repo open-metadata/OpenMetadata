@@ -393,6 +393,28 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restoreWorksheetById",
+      summary = "Restore a soft deleted worksheet by id",
+      description = "Restore a soft deleted worksheet by id.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the worksheet",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Worksheet.class)))
+      })
+  public Response restore(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -537,5 +559,32 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
     return repository
         .updateVote(securityContext.getUserPrincipal().getName(), id, request)
         .toResponse();
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteWorksheetAsync",
+      summary = "Asynchronously delete a worksheet by Id",
+      description = "Asynchronously delete a worksheet by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Worksheet for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Recursively delete related entities. (Default = `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Id of the worksheet", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 }

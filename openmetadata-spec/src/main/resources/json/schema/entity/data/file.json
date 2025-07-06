@@ -163,7 +163,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": []
+      "default": null
     },
     "version": {
       "description": "Metadata version of the entity.",

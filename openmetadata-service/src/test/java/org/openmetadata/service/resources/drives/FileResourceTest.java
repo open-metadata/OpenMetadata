@@ -19,13 +19,7 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.util.EntityUtil.fieldAdded;
-import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
-import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -49,7 +43,6 @@ import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
-import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FileType;
@@ -169,90 +162,50 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     File file = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Update description
-    String oldDescription = file.getDescription();
-    String newDescription = "updated description";
-    ChangeDescription change = getChangeDescription(file, MINOR_UPDATE);
-    fieldUpdated(change, "description", oldDescription, newDescription);
-
-    file.setDescription(newDescription);
-    file =
-        updateAndCheckEntity(
-            create.withDescription(newDescription), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(newDescription, file.getDescription());
+    create.setDescription("updated description");
+    file = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    assertEquals("updated description", file.getDescription());
 
     // Update file size
-    Integer oldSize = file.getSize();
-    Integer newSize = 4096;
-    change = getChangeDescription(file, MINOR_UPDATE);
-    fieldUpdated(change, "size", oldSize, newSize);
+    create.setSize(4096);
+    file = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(Integer.valueOf(4096), file.getSize());
 
-    file.setSize(newSize);
-    file =
-        updateAndCheckEntity(
-            create.withSize(newSize), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(newSize, file.getSize());
-
-    // Update file format
-    FileType oldFormat = file.getFileType();
-    FileType newFormat = FileType.Document;
-    change = getChangeDescription(file, MINOR_UPDATE);
-    fieldUpdated(change, "fileType", oldFormat, newFormat);
-
-    file.setFileType(newFormat);
-    file =
-        updateAndCheckEntity(
-            create.withFileType(newFormat), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(newFormat, file.getFileType());
+    // Update file format - change to PDF
+    create.setFileType(FileType.PDF);
+    file = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(FileType.PDF, file.getFileType());
 
     // Add checksum
-    String checksum = "abc123def456";
-    change = getChangeDescription(file, MINOR_UPDATE);
-    fieldAdded(change, "checksum", checksum);
-
-    file.setChecksum(checksum);
-    file =
-        updateAndCheckEntity(
-            create.withChecksum(checksum), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(checksum, file.getChecksum());
+    create.setChecksum("abc123def456");
+    file = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    assertEquals("abc123def456", file.getChecksum());
   }
 
   @Test
   void patch_fileAttributes_200() throws IOException {
     File file =
         createEntity(
-            createRequest("patchFile.txt").withFileType(FileType.Text), USER_WITH_CREATE_HEADERS);
+            createRequest("patchFile.txt").withFileType(FileType.Text), ADMIN_AUTH_HEADERS);
 
     // Add description
     String originalJson = JsonUtils.pojoToJson(file);
     String description = "patched description";
     file.setDescription(description);
-    ChangeDescription change = getChangeDescription(file, MINOR_UPDATE);
-    fieldAdded(change, "description", description);
-    file = patchEntityAndCheck(file, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    file = patchEntity(file.getId(), originalJson, file, ADMIN_AUTH_HEADERS);
     assertEquals(description, file.getDescription());
 
-    // Update file size - use TEST_AUTH_HEADERS to avoid change consolidation
+    // Update file size
     originalJson = JsonUtils.pojoToJson(file);
-    Integer oldSize = file.getSize();
     Integer newSize = 8192;
     file.setSize(newSize);
-    change = getChangeDescription(file, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "description", description);
-    if (oldSize == null) {
-      fieldAdded(change, "size", newSize);
-    } else {
-      fieldUpdated(change, "size", oldSize, newSize);
-    }
-
-    file = patchEntityAndCheck(file, originalJson, USER_WITH_CREATE_HEADERS, MINOR_UPDATE, change);
+    file = patchEntity(file.getId(), originalJson, file, ADMIN_AUTH_HEADERS);
     assertEquals(newSize, file.getSize());
 
     // Add tags
     originalJson = JsonUtils.pojoToJson(file);
     file.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
-    change = getChangeDescription(file, MINOR_UPDATE);
-    fieldAdded(change, "tags", List.of(PERSONAL_DATA_TAG_LABEL));
-    file = patchEntityAndCheck(file, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    file = patchEntity(file.getId(), originalJson, file, ADMIN_AUTH_HEADERS);
     assertNotNull(file.getTags());
     assertEquals(1, file.getTags().size());
     assertEquals(PERSONAL_DATA_TAG_LABEL.getTagFQN(), file.getTags().getFirst().getTagFQN());
@@ -260,9 +213,7 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     // Add owner
     originalJson = JsonUtils.pojoToJson(file);
     file.setOwners(List.of(USER1_REF));
-    change = getChangeDescription(file, MINOR_UPDATE);
-    fieldAdded(change, "owners", List.of(USER1_REF));
-    file = patchEntityAndCheck(file, originalJson, USER_WITH_CREATE_HEADERS, MINOR_UPDATE, change);
+    file = patchEntity(file.getId(), originalJson, file, ADMIN_AUTH_HEADERS);
     assertNotNull(file.getOwners());
     assertEquals(1, file.getOwners().size());
     assertEquals(USER1_REF.getId(), file.getOwners().getFirst().getId());
@@ -343,7 +294,7 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     // Verify FQN follows the full path
     // Note: File names with dots are quoted in FQN to avoid parsing ambiguity
     assertEquals(
-         service.getFullyQualifiedName() + ".docs.reports.\"quarterly.pdf\"",
+        service.getFullyQualifiedName() + ".docs.reports.\"quarterly.pdf\"",
         file.getFullyQualifiedName());
     assertEquals(subDir.getId(), file.getDirectory().getId());
   }

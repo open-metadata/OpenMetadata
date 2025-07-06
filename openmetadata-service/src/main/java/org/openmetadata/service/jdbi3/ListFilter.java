@@ -46,6 +46,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getDirectoryCondition(tableName));
+    conditions.add(getSpreadsheetCondition(tableName));
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
@@ -227,8 +228,18 @@ public class ListFilter extends Filter<ListFilter> {
     if (directoryFqn == null) {
       return "";
     }
-    return String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.directory.fullyQualifiedName')) = '%s'", 
-        directoryFqn);
+    return String.format(
+        "JSON_UNQUOTE(JSON_EXTRACT(json, '$.directory.fullyQualifiedName')) = '%s'", directoryFqn);
+  }
+
+  public String getSpreadsheetCondition(String tableName) {
+    String spreadsheetFqn = queryParams.get("spreadsheet");
+    if (spreadsheetFqn == null) {
+      return "";
+    }
+    return String.format(
+        "JSON_UNQUOTE(JSON_EXTRACT(json, '$.spreadsheet.fullyQualifiedName')) = '%s'",
+        spreadsheetFqn);
   }
 
   public String getFileTypeCondition(String tableName) {
@@ -236,8 +247,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (fileType == null) {
       return "";
     }
-    return String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.fileType')) = '%s'", 
-        fileType);
+    return String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.fileType')) = '%s'", fileType);
   }
 
   public String getDisabledCondition() {

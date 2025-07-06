@@ -103,23 +103,27 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   public void storeEntity(Directory directory, boolean update) {
     // Store the entity
     store(directory, update);
-
-    // Store service relationship
-    EntityReference service = directory.getService();
-    addRelationship(
-        service.getId(), directory.getId(), service.getType(), DIRECTORY, Relationship.CONTAINS);
-
-    // Store parent-child relationship if parent exists
-    if (directory.getParent() != null) {
-      EntityReference parent = directory.getParent();
-      addRelationship(
-          parent.getId(), directory.getId(), DIRECTORY, DIRECTORY, Relationship.CONTAINS);
-    }
   }
 
   @Override
   public void storeRelationships(Directory directory) {
-    // No additional relationships to store
+    // Add relationship from service to directory
+    addRelationship(
+        directory.getService().getId(),
+        directory.getId(),
+        directory.getService().getType(),
+        DIRECTORY,
+        Relationship.CONTAINS);
+
+    // Add relationship from parent directory to this directory if parent exists
+    if (directory.getParent() != null) {
+      addRelationship(
+          directory.getParent().getId(),
+          directory.getId(),
+          DIRECTORY,
+          DIRECTORY,
+          Relationship.CONTAINS);
+    }
   }
 
   @Override

@@ -110,21 +110,23 @@ public class FileRepository extends EntityRepository<File> {
   public void storeEntity(File file, boolean update) {
     // Store the entity
     store(file, update);
-
-    // Store service relationship
-    EntityReference service = file.getService();
-    addRelationship(service.getId(), file.getId(), service.getType(), FILE, Relationship.CONTAINS);
-
-    // Store directory relationship if present
-    if (file.getDirectory() != null) {
-      EntityReference directory = file.getDirectory();
-      addRelationship(directory.getId(), file.getId(), DIRECTORY, FILE, Relationship.CONTAINS);
-    }
   }
 
   @Override
   public void storeRelationships(File file) {
-    // No additional relationships to store
+    // Add relationship from service to file
+    addRelationship(
+        file.getService().getId(),
+        file.getId(),
+        file.getService().getType(),
+        FILE,
+        Relationship.CONTAINS);
+
+    // Add relationship from directory to file if present
+    if (file.getDirectory() != null) {
+      addRelationship(
+          file.getDirectory().getId(), file.getId(), DIRECTORY, FILE, Relationship.CONTAINS);
+    }
   }
 
   @Override
@@ -132,7 +134,8 @@ public class FileRepository extends EntityRepository<File> {
     // Inherit domain from directory if available, otherwise from service
     if (file.getDomain() == null) {
       if (file.getDirectory() != null) {
-        Directory directory = Entity.getEntity(file.getDirectory(), "domain,service", Include.NON_DELETED);
+        Directory directory =
+            Entity.getEntity(file.getDirectory(), "domain,service", Include.NON_DELETED);
         file.withDomain(directory.getDomain());
       } else {
         DriveService service = Entity.getEntity(file.getService(), "domain", Include.NON_DELETED);
@@ -144,8 +147,6 @@ public class FileRepository extends EntityRepository<File> {
   @Override
   public void clearFields(File file, EntityUtil.Fields fields) {
     file.withUsageSummary(fields.contains("usageSummary") ? file.getUsageSummary() : null);
-    file.withOwners(fields.contains("owners") ? file.getOwners() : null);
-    file.withTags(fields.contains("tags") ? file.getTags() : null);
   }
 
   @Override
