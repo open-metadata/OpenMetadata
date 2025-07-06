@@ -183,9 +183,11 @@ public class DirectoryRepository extends EntityRepository<Directory> {
         Entity.getCollectionDAO()
             .relationshipDAO()
             .findTo(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), DIRECTORY);
-    LOG.debug("Found {} subdirectory relationships for directory {}", subDirs.size(), directory.getId());
+    LOG.debug(
+        "Found {} subdirectory relationships for directory {}", subDirs.size(), directory.getId());
     for (CollectionDAO.EntityRelationshipRecord rel : subDirs) {
-      EntityReference ref = Entity.getEntityReferenceById(DIRECTORY, rel.getId(), Include.NON_DELETED);
+      EntityReference ref =
+          Entity.getEntityReferenceById(DIRECTORY, rel.getId(), Include.NON_DELETED);
       if (ref != null) {
         children.add(ref);
       }
@@ -209,7 +211,8 @@ public class DirectoryRepository extends EntityRepository<Directory> {
             .relationshipDAO()
             .findTo(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), SPREADSHEET);
     for (CollectionDAO.EntityRelationshipRecord rel : spreadsheets) {
-      EntityReference ref = Entity.getEntityReferenceById(SPREADSHEET, rel.getId(), Include.NON_DELETED);
+      EntityReference ref =
+          Entity.getEntityReferenceById(SPREADSHEET, rel.getId(), Include.NON_DELETED);
       if (ref != null) {
         children.add(ref);
       }

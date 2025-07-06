@@ -39,10 +39,6 @@ import org.openmetadata.schema.api.data.CreateDirectory;
 import org.openmetadata.schema.api.services.CreateDriveService;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.services.DriveService;
-import org.openmetadata.schema.security.credentials.GCPCredentials;
-import org.openmetadata.schema.security.credentials.GCPValues;
-import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
-import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -63,7 +59,6 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
     supportsSearchIndex = true;
   }
 
-
   @Test
   void post_entityCreateWithInvalidService_400() {
     // Create directory with non-existent service
@@ -80,7 +75,9 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
     // Create directory without required service field
     CreateDirectory create = createRequest("directory1").withService(null);
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[query param service must not be null]");
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param service must not be null]");
   }
 
   @Test
@@ -381,5 +378,4 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
   public EntityReference getContainer(Directory entity) {
     return entity.getService();
   }
-
 }

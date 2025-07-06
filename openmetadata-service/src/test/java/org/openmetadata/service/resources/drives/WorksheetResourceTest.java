@@ -84,7 +84,7 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
   public void setupSpreadsheet(TestInfo test) throws HttpResponseException {
     if (DEFAULT_SPREADSHEET == null) {
       LOG.info("Setting up DEFAULT_SPREADSHEET for WorksheetResourceTest");
-      
+
       // Use the global GOOGLE_DRIVE_SERVICE_REFERENCE
       if (GOOGLE_DRIVE_SERVICE_REFERENCE == null) {
         throw new IllegalStateException("GOOGLE_DRIVE_SERVICE_REFERENCE not initialized");
@@ -107,8 +107,10 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
             spreadsheetResourceTest.createEntity(createSpreadsheet, ADMIN_AUTH_HEADERS);
       }
       DEFAULT_SPREADSHEET_REFERENCE = DEFAULT_SPREADSHEET.getEntityReference();
-      LOG.info("DEFAULT_SPREADSHEET created: {} (id: {})", 
-          DEFAULT_SPREADSHEET.getFullyQualifiedName(), DEFAULT_SPREADSHEET.getId());
+      LOG.info(
+          "DEFAULT_SPREADSHEET created: {} (id: {})",
+          DEFAULT_SPREADSHEET.getFullyQualifiedName(),
+          DEFAULT_SPREADSHEET.getId());
     }
   }
 
@@ -374,12 +376,10 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
     // Create worksheets in each spreadsheet
     for (int i = 0; i < 3; i++) {
       createEntity(
-          createRequest("sheet1_" + i)
-              .withSpreadsheet(spreadsheet1.getFullyQualifiedName()),
+          createRequest("sheet1_" + i).withSpreadsheet(spreadsheet1.getFullyQualifiedName()),
           ADMIN_AUTH_HEADERS);
       createEntity(
-          createRequest("sheet2_" + i)
-              .withSpreadsheet(spreadsheet2.getFullyQualifiedName()),
+          createRequest("sheet2_" + i).withSpreadsheet(spreadsheet2.getFullyQualifiedName()),
           ADMIN_AUTH_HEADERS);
     }
 
@@ -422,8 +422,7 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
         spreadsheetResourceTest.createEntity(createDirectSpreadsheet, ADMIN_AUTH_HEADERS);
 
     CreateWorksheet create1 =
-        createRequest("Sheet1")
-            .withSpreadsheet(directSpreadsheet.getFullyQualifiedName());
+        createRequest("Sheet1").withSpreadsheet(directSpreadsheet.getFullyQualifiedName());
     Worksheet worksheet1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
     assertEquals(
         directSpreadsheet.getFullyQualifiedName() + ".Sheet1", worksheet1.getFullyQualifiedName());
@@ -450,8 +449,7 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
         spreadsheetResourceTest.createEntity(createDirSpreadsheet, ADMIN_AUTH_HEADERS);
 
     CreateWorksheet create2 =
-        createRequest("KPIs")
-            .withSpreadsheet(dirSpreadsheet.getFullyQualifiedName());
+        createRequest("KPIs").withSpreadsheet(dirSpreadsheet.getFullyQualifiedName());
     Worksheet worksheet2 = createAndCheckEntity(create2, ADMIN_AUTH_HEADERS);
     assertEquals(
         dirSpreadsheet.getFullyQualifiedName() + ".KPIs", worksheet2.getFullyQualifiedName());

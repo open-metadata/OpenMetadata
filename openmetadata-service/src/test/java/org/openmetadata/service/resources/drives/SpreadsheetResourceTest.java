@@ -83,7 +83,7 @@ class SpreadsheetResourceTest extends EntityResourceTest<Spreadsheet, CreateSpre
       DRIVE_SERVICE_REFERENCE = GOOGLE_DRIVE_SERVICE_REFERENCE;
       return;
     }
-    
+
     // Otherwise create local service (for standalone tests)
     if (DRIVE_SERVICE == null) {
       DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
