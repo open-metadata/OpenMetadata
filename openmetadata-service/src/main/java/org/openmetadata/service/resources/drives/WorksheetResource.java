@@ -372,28 +372,6 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
   }
 
   @PUT
-  @Path("/{id}/restore")
-  @Operation(
-      operationId = "restoreWorksheet",
-      summary = "Restore a soft deleted worksheet",
-      description = "Restore a soft deleted worksheet.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully restored the worksheet ",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Worksheet.class)))
-      })
-  public Response restoreWorksheet(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @PUT
   @Path("/restore")
   @Operation(
       operationId = "restoreWorksheetById",

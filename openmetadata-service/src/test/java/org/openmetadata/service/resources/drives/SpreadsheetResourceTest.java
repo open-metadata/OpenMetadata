@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.resources.EntityResourceTest.GOOGLE_DRIVE_SERVICE_REFERENCE;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -77,6 +78,13 @@ class SpreadsheetResourceTest extends EntityResourceTest<Spreadsheet, CreateSpre
   }
 
   public void setupDriveService(TestInfo test) throws HttpResponseException {
+    // Use the global GOOGLE_DRIVE_SERVICE_REFERENCE if available
+    if (GOOGLE_DRIVE_SERVICE_REFERENCE != null) {
+      DRIVE_SERVICE_REFERENCE = GOOGLE_DRIVE_SERVICE_REFERENCE;
+      return;
+    }
+    
+    // Otherwise create local service (for standalone tests)
     if (DRIVE_SERVICE == null) {
       DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
       CreateDriveService createService =
@@ -571,6 +579,11 @@ class SpreadsheetResourceTest extends EntityResourceTest<Spreadsheet, CreateSpre
 
   @Override
   public EntityReference getContainer() {
+    // Use the global GOOGLE_DRIVE_SERVICE_REFERENCE if available
+    if (GOOGLE_DRIVE_SERVICE_REFERENCE != null) {
+      return GOOGLE_DRIVE_SERVICE_REFERENCE;
+    }
+    // Fall back to local DRIVE_SERVICE_REFERENCE
     return DRIVE_SERVICE_REFERENCE;
   }
 

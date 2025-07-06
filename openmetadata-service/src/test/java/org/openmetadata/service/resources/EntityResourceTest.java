@@ -949,11 +949,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Finally, delete the container that contains the entities created for this test
     EntityReference container = getContainer();
     if (container != null) {
+      LOG.info("delete_recursiveTest: Testing with container: {} (id: {}, type: {})", 
+          container.getName(), container.getId(), container.getType());
+      
       // List both deleted and non deleted entities
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", Include.ALL.value());
       ResultList<T> listBeforeDeletion =
           listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+      LOG.info("delete_recursiveTest: Entities before deletion: {}", listBeforeDeletion.getData().size());
 
       // Delete non-empty container entity and ensure deletion is not allowed
       EntityResourceTest<? extends EntityInterface, ? extends CreateEntity> containerTest =
@@ -964,6 +968,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           entityIsNotEmpty(container.getType()));
 
       // Now soft-delete the container with recursive flag on
+      LOG.info("delete_recursiveTest: Soft-deleting container {} with recursive flag", container.getName());
       containerTest.deleteEntity(container.getId(), true, false, ADMIN_AUTH_HEADERS);
 
       // Make sure entities that belonged to the container are deleted and the new list operation
@@ -973,6 +978,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           .getData()
           .forEach(e -> assertNotEquals(getContainer(e).getId(), container.getId()));
       assertTrue(listAfterDeletion.getData().size() < listBeforeDeletion.getData().size());
+      LOG.info("delete_recursiveTest: Entities after deletion: {}", listAfterDeletion.getData().size());
 
       // Restore the soft-deleted container by PUT operation and make sure it is restored
       String containerName = container.getName();
@@ -982,6 +988,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         String parentOfContainer = containerTest.getContainer().getName();
         containerName = container.getName().replace(parentOfContainer + Entity.SEPARATOR, "");
       }
+      LOG.info("delete_recursiveTest: Attempting to restore container with name: {}", containerName);
       CreateEntity request = containerTest.createRequest(containerName, "", "", null);
       containerTest.updateEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS);
 

@@ -187,6 +187,6 @@
       "$ref": "../../type/assetCertification.json"
     }
   },
-  "required": ["id", "name", "service"],
+  "required": ["id", "name", "spreadsheet"],
   "additionalProperties": false
 }

@@ -99,6 +99,6 @@
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
-  "required": ["name", "spreadsheet", "service"],
+  "required": ["name", "spreadsheet"],
   "additionalProperties": false
 }

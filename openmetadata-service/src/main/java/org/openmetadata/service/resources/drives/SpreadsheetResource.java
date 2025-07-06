@@ -374,6 +374,11 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(
+          description = "Recursively delete this entity and it's children. (Default `false`)")
+      @QueryParam("recursive")
+      @DefaultValue("false")
+      boolean recursive,
+      @Parameter(
               description = "Fully qualified name of the spreadsheet",
               schema = @Schema(type = "string"))
           @PathParam("fqn")

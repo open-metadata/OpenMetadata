@@ -19,18 +19,21 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.resources.EntityResourceTest.GOOGLE_DRIVE_SERVICE_REFERENCE;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateDirectory;
@@ -41,12 +44,8 @@ import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.services.DriveService;
-import org.openmetadata.schema.security.credentials.GCPCredentials;
-import org.openmetadata.schema.security.credentials.GCPValues;
-import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -75,33 +74,29 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
     supportsSearchIndex = true;
   }
 
+  @Override
+  @BeforeAll
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
+    super.setup(test);
+    setupSpreadsheet(test);
+  }
+
   public void setupSpreadsheet(TestInfo test) throws HttpResponseException {
     if (DEFAULT_SPREADSHEET == null) {
-      // Create drive service
-      DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
-      CreateDriveService createService =
-          driveServiceResourceTest
-              .createRequest(test)
-              .withName("testDriveServiceWorksheet")
-              .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive)
-              .withConnection(getTestDriveConnection());
-      DriveService service;
-      try {
-        service =
-            driveServiceResourceTest.getEntityByName(createService.getName(), ADMIN_AUTH_HEADERS);
-      } catch (Exception e) {
-        // Service doesn't exist, create it
-        service = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+      LOG.info("Setting up DEFAULT_SPREADSHEET for WorksheetResourceTest");
+      
+      // Use the global GOOGLE_DRIVE_SERVICE_REFERENCE
+      if (GOOGLE_DRIVE_SERVICE_REFERENCE == null) {
+        throw new IllegalStateException("GOOGLE_DRIVE_SERVICE_REFERENCE not initialized");
       }
 
-      // Create default spreadsheet
+      // Create default spreadsheet under the global drive service
       SpreadsheetResourceTest spreadsheetResourceTest = new SpreadsheetResourceTest();
-      spreadsheetResourceTest.setupDriveService(test); // Make sure its drive service is set up
       CreateSpreadsheet createSpreadsheet =
           spreadsheetResourceTest
               .createRequest(test)
               .withName("defaultTestSpreadsheet")
-              .withService(service.getFullyQualifiedName());
+              .withService(GOOGLE_DRIVE_SERVICE_REFERENCE.getFullyQualifiedName());
       try {
         DEFAULT_SPREADSHEET =
             spreadsheetResourceTest.getEntityByName(
@@ -112,6 +107,8 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
             spreadsheetResourceTest.createEntity(createSpreadsheet, ADMIN_AUTH_HEADERS);
       }
       DEFAULT_SPREADSHEET_REFERENCE = DEFAULT_SPREADSHEET.getEntityReference();
+      LOG.info("DEFAULT_SPREADSHEET created: {} (id: {})", 
+          DEFAULT_SPREADSHEET.getFullyQualifiedName(), DEFAULT_SPREADSHEET.getId());
     }
   }
 
@@ -177,7 +174,6 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
     CreateWorksheet create =
         createRequest("products")
             .withSpreadsheet(spreadsheet.getFullyQualifiedName())
-            .withService(service.getFullyQualifiedName())
             .withColumns(columns);
     Worksheet worksheet = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
@@ -334,7 +330,6 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
     CreateWorksheet create =
         createRequest("complexSheet")
             .withSpreadsheet(spreadsheet.getFullyQualifiedName())
-            .withService(service.getFullyQualifiedName())
             .withColumns(columns);
     Worksheet worksheet = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
@@ -380,13 +375,11 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
     for (int i = 0; i < 3; i++) {
       createEntity(
           createRequest("sheet1_" + i)
-              .withSpreadsheet(spreadsheet1.getFullyQualifiedName())
-              .withService(service.getFullyQualifiedName()),
+              .withSpreadsheet(spreadsheet1.getFullyQualifiedName()),
           ADMIN_AUTH_HEADERS);
       createEntity(
           createRequest("sheet2_" + i)
-              .withSpreadsheet(spreadsheet2.getFullyQualifiedName())
-              .withService(service.getFullyQualifiedName()),
+              .withSpreadsheet(spreadsheet2.getFullyQualifiedName()),
           ADMIN_AUTH_HEADERS);
     }
 
@@ -430,8 +423,7 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
 
     CreateWorksheet create1 =
         createRequest("Sheet1")
-            .withSpreadsheet(directSpreadsheet.getFullyQualifiedName())
-            .withService(service.getFullyQualifiedName());
+            .withSpreadsheet(directSpreadsheet.getFullyQualifiedName());
     Worksheet worksheet1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
     assertEquals(
         directSpreadsheet.getFullyQualifiedName() + ".Sheet1", worksheet1.getFullyQualifiedName());
@@ -459,8 +451,7 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
 
     CreateWorksheet create2 =
         createRequest("KPIs")
-            .withSpreadsheet(dirSpreadsheet.getFullyQualifiedName())
-            .withService(service.getFullyQualifiedName());
+            .withSpreadsheet(dirSpreadsheet.getFullyQualifiedName());
     Worksheet worksheet2 = createAndCheckEntity(create2, ADMIN_AUTH_HEADERS);
     assertEquals(
         dirSpreadsheet.getFullyQualifiedName() + ".KPIs", worksheet2.getFullyQualifiedName());
@@ -517,8 +508,7 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
     }
     return new CreateWorksheet()
         .withName(name)
-        .withSpreadsheet(DEFAULT_SPREADSHEET.getFullyQualifiedName())
-        .withService(DEFAULT_SPREADSHEET.getService().getFullyQualifiedName());
+        .withSpreadsheet(DEFAULT_SPREADSHEET.getFullyQualifiedName());
   }
 
   @Override
@@ -585,22 +575,5 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
   @Override
   public EntityReference getContainer(Worksheet entity) {
     return entity.getSpreadsheet();
-  }
-
-  private DriveConnection getTestDriveConnection() {
-    GCPCredentials gcpCredentials =
-        new GCPCredentials()
-            .withGcpConfig(
-                new GCPValues()
-                    .withType("service_account")
-                    .withProjectId("test-project-id")
-                    .withPrivateKeyId("test-private-key-id")
-                    .withPrivateKey("test-private-key")
-                    .withClientEmail("test@test-project.iam.gserviceaccount.com")
-                    .withClientId("123456789"));
-
-    GoogleDriveConnection googleDriveConnection =
-        new GoogleDriveConnection().withDriveId("test-drive-id").withCredentials(gcpCredentials);
-    return new DriveConnection().withConfig(googleDriveConnection);
   }
 }

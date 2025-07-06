@@ -177,33 +177,45 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   private List<EntityReference> getChildrenRefs(Directory directory) {
     List<EntityReference> children = new ArrayList<>();
 
-    // Get subdirectories
+    // Get subdirectories - we stored parent as "from" and child as "to"
+    // So to find children, we use findTo with parent as "from"
     List<CollectionDAO.EntityRelationshipRecord> subDirs =
         Entity.getCollectionDAO()
             .relationshipDAO()
-            .findFrom(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), DIRECTORY);
+            .findTo(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), DIRECTORY);
+    LOG.debug("Found {} subdirectory relationships for directory {}", subDirs.size(), directory.getId());
     for (CollectionDAO.EntityRelationshipRecord rel : subDirs) {
-      children.add(Entity.getEntityReferenceById(DIRECTORY, rel.getId(), Include.NON_DELETED));
+      EntityReference ref = Entity.getEntityReferenceById(DIRECTORY, rel.getId(), Include.NON_DELETED);
+      if (ref != null) {
+        children.add(ref);
+      }
     }
 
     // Get files
     List<CollectionDAO.EntityRelationshipRecord> files =
         Entity.getCollectionDAO()
             .relationshipDAO()
-            .findFrom(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), FILE);
+            .findTo(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), FILE);
     for (CollectionDAO.EntityRelationshipRecord rel : files) {
-      children.add(Entity.getEntityReferenceById(FILE, rel.getId(), Include.NON_DELETED));
+      EntityReference ref = Entity.getEntityReferenceById(FILE, rel.getId(), Include.NON_DELETED);
+      if (ref != null) {
+        children.add(ref);
+      }
     }
 
     // Get spreadsheets
     List<CollectionDAO.EntityRelationshipRecord> spreadsheets =
         Entity.getCollectionDAO()
             .relationshipDAO()
-            .findFrom(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), SPREADSHEET);
+            .findTo(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), SPREADSHEET);
     for (CollectionDAO.EntityRelationshipRecord rel : spreadsheets) {
-      children.add(Entity.getEntityReferenceById(SPREADSHEET, rel.getId(), Include.NON_DELETED));
+      EntityReference ref = Entity.getEntityReferenceById(SPREADSHEET, rel.getId(), Include.NON_DELETED);
+      if (ref != null) {
+        children.add(ref);
+      }
     }
 
+    LOG.debug("Total children found for directory {}: {}", directory.getId(), children.size());
     return children;
   }
 

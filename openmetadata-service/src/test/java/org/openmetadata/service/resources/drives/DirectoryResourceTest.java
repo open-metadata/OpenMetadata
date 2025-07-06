@@ -28,13 +28,11 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateDirectory;
@@ -65,10 +63,6 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
     supportsSearchIndex = true;
   }
 
-  @BeforeAll
-  public void setup(TestInfo test) throws URISyntaxException, IOException {
-    super.setup(test);
-  }
 
   @Test
   void post_entityCreateWithInvalidService_400() {
@@ -86,7 +80,7 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
     // Create directory without required service field
     CreateDirectory create = createRequest("directory1").withService(null);
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[service must not be null]");
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[query param service must not be null]");
   }
 
   @Test
@@ -359,7 +353,7 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwners(), entity.getTags());
 
-    fields = "owners,tags,children";
+    fields = "owners,tags,children,followers";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -388,20 +382,4 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
     return entity.getService();
   }
 
-  private DriveConnection getTestDriveConnection() {
-    GCPCredentials gcpCredentials =
-        new GCPCredentials()
-            .withGcpConfig(
-                new GCPValues()
-                    .withType("service_account")
-                    .withProjectId("test-project-id")
-                    .withPrivateKeyId("test-private-key-id")
-                    .withPrivateKey("test-private-key")
-                    .withClientEmail("test@test-project.iam.gserviceaccount.com")
-                    .withClientId("123456789"));
-
-    GoogleDriveConnection googleDriveConnection =
-        new GoogleDriveConnection().withDriveId("test-drive-id").withCredentials(gcpCredentials);
-    return new DriveConnection().withConfig(googleDriveConnection);
-  }
 }
