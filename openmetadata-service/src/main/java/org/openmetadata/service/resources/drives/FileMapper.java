@@ -17,7 +17,6 @@ public class FileMapper implements EntityMapper<File, CreateFile> {
         .withMimeType(create.getMimeType())
         .withFileExtension(create.getFileExtension())
         .withPath(create.getPath())
-        .withDriveFileId(create.getDriveFileId())
         .withSize(create.getSize())
         .withChecksum(create.getChecksum())
         .withWebViewLink(create.getWebViewLink())

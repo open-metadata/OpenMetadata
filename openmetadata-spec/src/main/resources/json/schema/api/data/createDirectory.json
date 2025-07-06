@@ -35,10 +35,6 @@
       "description": "Full path to the directory",
       "type": "string"
     },
-    "driveId": {
-      "description": "Native drive/folder ID in the source system",
-      "type": "string"
-    },
     "isShared": {
       "description": "Whether this directory is shared",
       "type": "boolean",

@@ -395,7 +395,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
           original.getId());
       recordChange("directoryType", original.getDirectoryType(), updated.getDirectoryType());
       recordChange("path", original.getPath(), updated.getPath());
-      recordChange("driveId", original.getDriveId(), updated.getDriveId());
       recordChange("isShared", original.getIsShared(), updated.getIsShared());
       recordChange("numberOfFiles", original.getNumberOfFiles(), updated.getNumberOfFiles());
       recordChange(

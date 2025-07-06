@@ -42,7 +42,6 @@ public class DirectoryIndex implements SearchIndex {
     doc.put("parent", getEntityWithDisplayName(directory.getParent()));
     doc.put("directoryType", directory.getDirectoryType());
     doc.put("path", directory.getPath());
-    doc.put("driveId", directory.getDriveId());
     doc.put("isShared", directory.getIsShared());
     doc.put("numberOfFiles", directory.getNumberOfFiles());
     doc.put("numberOfSubDirectories", directory.getNumberOfSubDirectories());

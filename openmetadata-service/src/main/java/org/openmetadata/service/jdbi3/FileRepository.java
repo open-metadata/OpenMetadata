@@ -351,7 +351,6 @@ public class FileRepository extends EntityRepository<File> {
       recordChange("mimeType", original.getMimeType(), updated.getMimeType());
       recordChange("fileExtension", original.getFileExtension(), updated.getFileExtension());
       recordChange("path", original.getPath(), updated.getPath());
-      recordChange("driveFileId", original.getDriveFileId(), updated.getDriveFileId());
       recordChange("size", original.getSize(), updated.getSize());
       recordChange("checksum", original.getChecksum(), updated.getChecksum());
       recordChange("webViewLink", original.getWebViewLink(), updated.getWebViewLink());

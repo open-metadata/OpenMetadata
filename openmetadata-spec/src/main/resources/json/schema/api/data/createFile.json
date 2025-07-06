@@ -43,10 +43,6 @@
       "description": "Full path to the file",
       "type": "string"
     },
-    "driveFileId": {
-      "description": "Native file ID in the source system",
-      "type": "string"
-    },
     "size": {
       "description": "File size in bytes",
       "type": "integer"

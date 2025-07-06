@@ -43,7 +43,6 @@ public class FileIndex implements SearchIndex {
     doc.put("mimeType", file.getMimeType());
     doc.put("fileExtension", file.getFileExtension());
     doc.put("path", file.getPath());
-    doc.put("driveFileId", file.getDriveFileId());
     doc.put("size", file.getSize());
     doc.put("checksum", file.getChecksum());
     doc.put("isShared", file.getIsShared());

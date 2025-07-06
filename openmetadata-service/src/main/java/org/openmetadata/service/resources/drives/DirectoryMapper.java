@@ -17,7 +17,6 @@ public class DirectoryMapper implements EntityMapper<Directory, CreateDirectory>
                 ? getEntityReference(Entity.DIRECTORY, create.getParent())
                 : null)
         .withPath(create.getPath())
-        .withDriveId(create.getDriveId())
         .withIsShared(create.getIsShared())
         .withSourceUrl(create.getSourceUrl());
   }
