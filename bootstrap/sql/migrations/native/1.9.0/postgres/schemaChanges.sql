@@ -79,7 +79,7 @@ CREATE INDEX IF NOT EXISTS idx_worksheet_fqn ON worksheet_entity (fullyQualified
 CREATE INDEX IF NOT EXISTS idx_worksheet_deleted ON worksheet_entity (deleted);
 
 -- Add performance indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_directory_service ON directory_entity ((json ->> 'service' ->> 'id'));
-CREATE INDEX IF NOT EXISTS idx_file_directory ON file_entity ((json ->> 'directory' ->> 'id'));
-CREATE INDEX IF NOT EXISTS idx_spreadsheet_directory ON spreadsheet_entity ((json ->> 'directory' ->> 'id'));
-CREATE INDEX IF NOT EXISTS idx_worksheet_spreadsheet ON worksheet_entity ((json ->> 'spreadsheet' ->> 'id'));
+CREATE INDEX IF NOT EXISTS idx_directory_service ON directory_entity ((json -> 'service' ->> 'id'));
+CREATE INDEX IF NOT EXISTS idx_file_directory ON file_entity ((json -> 'directory' ->> 'id'));
+CREATE INDEX IF NOT EXISTS idx_spreadsheet_directory ON spreadsheet_entity ((json -> 'directory' ->> 'id'));
+CREATE INDEX IF NOT EXISTS idx_worksheet_spreadsheet ON worksheet_entity ((json -> 'spreadsheet' ->> 'id'));
