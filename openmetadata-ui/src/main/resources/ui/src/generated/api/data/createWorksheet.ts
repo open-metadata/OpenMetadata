@@ -39,6 +39,10 @@ export interface CreateWorksheet {
      */
     domain?: string;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Position/index of the worksheet in the spreadsheet
      */
     index?: number;
@@ -65,7 +69,7 @@ export interface CreateWorksheet {
     /**
      * Link to the drive service fully qualified name where this worksheet is hosted in
      */
-    service: string;
+    service?: string;
     /**
      * Source hash of the entity
      */

@@ -485,6 +485,7 @@ export interface AccessDetails {
 export enum DriveServiceType {
     CustomDrive = "CustomDrive",
     GoogleDrive = "GoogleDrive",
+    SharePoint = "SharePoint",
 }
 
 /**

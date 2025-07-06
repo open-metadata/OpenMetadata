@@ -823,6 +823,7 @@ export interface TableData {
 export enum DriveServiceType {
     CustomDrive = "CustomDrive",
     GoogleDrive = "GoogleDrive",
+    SharePoint = "SharePoint",
 }
 
 /**

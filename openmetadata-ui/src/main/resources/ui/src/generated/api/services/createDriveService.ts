@@ -53,15 +53,17 @@ export interface CreateDriveService {
  * Drive Connection.
  */
 export interface DriveConnection {
-    config?: ConfigClass;
+    config?: Connection;
 }
 
 /**
  * Google Drive Connection Config
  *
+ * SharePoint Connection Config
+ *
  * Custom Drive Connection to build a source that is not supported.
  */
-export interface ConfigClass {
+export interface Connection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
@@ -74,6 +76,8 @@ export interface ConfigClass {
     delegatedEmail?: string;
     /**
      * Specific shared drive ID to connect to
+     *
+     * SharePoint drive ID. If not provided, default document library will be used
      */
     driveId?: string;
     /**
@@ -89,6 +93,26 @@ export interface ConfigClass {
      * Service Type
      */
     type?: DriveServiceType;
+    /**
+     * Application (client) ID from Azure Active Directory
+     */
+    clientId?: string;
+    /**
+     * Application (client) secret from Azure Active Directory
+     */
+    clientSecret?: string;
+    /**
+     * SharePoint site name
+     */
+    siteName?: string;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl?: string;
+    /**
+     * Directory (tenant) ID from Azure Active Directory
+     */
+    tenantId?: string;
 }
 
 /**
@@ -215,6 +239,8 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Google Drive service type
  *
+ * SharePoint service type
+ *
  * Custom Drive service type
  *
  * Type of drive service
@@ -224,6 +250,7 @@ export interface GCPImpersonateServiceAccountValues {
 export enum DriveServiceType {
     CustomDrive = "CustomDrive",
     GoogleDrive = "GoogleDrive",
+    SharePoint = "SharePoint",
 }
 
 /**

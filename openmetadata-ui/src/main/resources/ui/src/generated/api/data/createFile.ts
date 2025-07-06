@@ -47,6 +47,10 @@ export interface CreateFile {
      */
     driveFileId?: string;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * File extension
      */
     fileExtension?: string;
