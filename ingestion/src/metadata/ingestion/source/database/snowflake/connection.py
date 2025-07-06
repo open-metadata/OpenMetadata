@@ -151,14 +151,8 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             url = f"{url}?{params}"
         return url
 
-    def get_connection(self) -> Engine:
-        """
-        Create connection
-        """
+    def _get_private_key(self) -> Optional[bytes]:
         connection = self.service_connection
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
-
         if connection.privateKey:
             snowflake_private_key_passphrase = (
                 connection.snowflakePrivatekeyPassphrase.get_secret_value()
@@ -180,13 +174,30 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
                 format=serialization.PrivateFormat.PKCS8,
                 encryption_algorithm=serialization.NoEncryption(),
             )
+            return pkb
+        return None
 
-            connection.connectionArguments.root["private_key"] = pkb
-
+    def _get_client_session_keep_alive(self) -> Optional[bool]:
+        connection = self.service_connection
         if connection.clientSessionKeepAlive:
+            return connection.clientSessionKeepAlive
+        return None
+
+    def get_connection(self) -> Engine:
+        """
+        Create connection
+        """
+        connection = self.service_connection
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+
+        if private_key := self._get_private_key():
+            connection.connectionArguments.root["private_key"] = private_key
+
+        if keep_alive := self._get_client_session_keep_alive():
             connection.connectionArguments.root[
                 "client_session_keep_alive"
-            ] = connection.clientSessionKeepAlive
+            ] = keep_alive
 
         engine = create_generic_db_connection(
             connection=connection,
