@@ -102,7 +102,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         .catch(async (err) => {
           // eslint-disable-next-line no-console
           console.error(err);
-          // Redirect to login on error
+          // Redirect to login on error.
           await customAuthHandler();
         });
     },
