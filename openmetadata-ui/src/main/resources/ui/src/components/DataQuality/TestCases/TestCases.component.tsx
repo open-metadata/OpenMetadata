@@ -134,7 +134,12 @@ export const TestCases = () => {
     value?: TestCaseSearchParams[K]
   ) => {
     navigate({
-      search: QueryString.stringify({ ...params, [key]: value || undefined }),
+      search: QueryString.stringify(
+        { ...params, [key]: value || undefined },
+        {
+          arrayFormat: 'brackets',
+        }
+      ),
     });
   };
 
