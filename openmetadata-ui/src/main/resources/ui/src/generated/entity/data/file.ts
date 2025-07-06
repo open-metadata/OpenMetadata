@@ -57,10 +57,6 @@ export interface File {
      */
     downloadLink?: string;
     /**
-     * Native file ID in the source system
-     */
-    driveFileId?: string;
-    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -125,10 +121,6 @@ export interface File {
      * Full path to the file
      */
     path?: string;
-    /**
-     * Access permissions
-     */
-    permissions?: EntityReference[];
     /**
      * Link to the drive service
      */

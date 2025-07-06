@@ -43,10 +43,6 @@ export interface CreateFile {
      */
     downloadLink?: string;
     /**
-     * Native file ID in the source system
-     */
-    driveFileId?: string;
-    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;

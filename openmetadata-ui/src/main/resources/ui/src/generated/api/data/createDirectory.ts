@@ -35,10 +35,6 @@ export interface CreateDirectory {
      */
     domain?: string;
     /**
-     * Native drive/folder ID in the source system
-     */
-    driveId?: string;
-    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;

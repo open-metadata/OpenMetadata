@@ -46,10 +46,6 @@ export interface Directory {
      */
     domain?: EntityReference;
     /**
-     * Native drive/folder ID in the source system
-     */
-    driveId?: string;
-    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -105,10 +101,6 @@ export interface Directory {
      * Full path to the directory
      */
     path?: string;
-    /**
-     * Access permissions for this directory
-     */
-    permissions?: EntityReference[];
     /**
      * Link to the drive service this directory belongs to
      */
