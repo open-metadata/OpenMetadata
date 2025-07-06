@@ -278,9 +278,9 @@ site_menu:
     url: /connectors/database/sqlite/yaml
   - category: Connectors / Database / SQLite / Troubleshooting
     url: /connectors/database/sqlite/troubleshooting
-  - category: Connectors / Database / Ssas
+  - category: Connectors / Database / SSAS
     url: /connectors/database/ssas
-  - category: Connectors / Database / Ssas / Run Externally
+  - category: Connectors / Database / SSAS / Run Externally
     url: /connectors/database/ssas/yaml
   - category: Connectors / Database / Synapse
     url: /connectors/database/synapse
