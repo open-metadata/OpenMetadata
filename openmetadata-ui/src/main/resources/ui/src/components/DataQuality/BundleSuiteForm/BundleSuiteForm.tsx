@@ -441,11 +441,15 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
     return (
       <Drawer
         destroyOnClose
+        className="custom-gradient-drawer"
         closable={false}
         footer={drawerFooter}
         maskClosable={false}
         placement="right"
         size="large"
+        title={t('label.add-entity', {
+          entity: t('label.bundle-suite'),
+        })}
         {...drawerProps}
         onClose={onCancel}>
         <div className="drawer-form-content">{formContent}</div>

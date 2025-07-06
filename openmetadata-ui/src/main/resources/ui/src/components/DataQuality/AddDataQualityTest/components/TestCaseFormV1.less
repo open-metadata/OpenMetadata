@@ -144,3 +144,38 @@
     width: auto;
   }
 }
+
+// Custom gradient header for drawer
+.custom-gradient-drawer {
+  .ant-drawer-header {
+    background: linear-gradient(90deg, #e3f0fa 0%, #e6f3e6 100%);
+    border-bottom: 1px solid #f0f0f0;
+    padding: 24px 32px 16px 32px;
+  }
+  .custom-drawer-header {
+    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0;
+    .drawer-title {
+      font-size: 2rem;
+      font-weight: 600;
+      color: #232323;
+    }
+    .drawer-header-icons {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      .drawer-icon {
+        font-size: 1.5rem;
+        color: #232323;
+        cursor: pointer;
+        transition: color 0.2s;
+        &:hover {
+          color: #1890ff;
+        }
+      }
+    }
+  }
+}

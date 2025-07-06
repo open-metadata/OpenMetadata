@@ -1171,11 +1171,15 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     return (
       <Drawer
         destroyOnClose
+        className="custom-gradient-drawer"
         closable={false}
         footer={drawerFooter}
         maskClosable={false}
         placement="right"
         size="large"
+        title={t('label.add-entity', {
+          entity: t('label.test-case'),
+        })}
         {...drawerProps}
         onClose={onCancel}>
         <div className="drawer-form-content">{formContent}</div>

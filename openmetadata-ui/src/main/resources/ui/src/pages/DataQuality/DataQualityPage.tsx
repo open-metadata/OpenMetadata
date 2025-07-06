@@ -98,7 +98,10 @@ const DataQualityPage = () => {
 
   return (
     <DataQualityProvider>
-      <Row data-testid="data-insight-container" gutter={[0, 16]}>
+      <Row
+        className="data-quality-page"
+        data-testid="data-insight-container"
+        gutter={[0, 16]}>
         <Col span={24}>
           <Card>
             <Row>
@@ -119,7 +122,7 @@ const DataQualityPage = () => {
                       type="primary"
                       onClick={handleOpenBundleSuiteModal}>
                       {t('label.add-entity', {
-                        entity: t('label.bundle-suite-plural'),
+                        entity: t('label.bundle-suite'),
                       })}
                     </Button>
                   )}
@@ -184,9 +187,6 @@ const DataQualityPage = () => {
         <BundleSuiteForm
           isDrawer
           drawerProps={{
-            title: t('label.add-entity', {
-              entity: t('label.bundle-suite-plural'),
-            }),
             open: isBundleSuiteModalOpen,
           }}
           onCancel={handleCloseBundleSuiteModal}

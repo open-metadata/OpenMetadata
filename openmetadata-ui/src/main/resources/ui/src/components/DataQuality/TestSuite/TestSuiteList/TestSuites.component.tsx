@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import {
-  Button,
+  Card,
   Col,
   Form,
   Radio,
@@ -28,7 +28,7 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { INITIAL_PAGING_VALUE, ROUTES } from '../../../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -300,45 +300,25 @@ export const TestSuites = () => {
   return (
     <Row data-testid="test-suite-container" gutter={[16, 16]}>
       <Col span={24}>
-        <Row justify="space-between">
-          <Col>
-            <Form layout="inline">
-              <Space
-                align="center"
-                className="w-full justify-between"
-                size={16}>
-                <Form.Item
-                  className="m-0"
-                  label={t('label.owner')}
-                  name="owner">
-                  <UserTeamSelectableList
-                    hasPermission
-                    owner={selectedOwner}
-                    onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
-                    <Select
-                      data-testid="owner-select-filter"
-                      open={false}
-                      placeholder={t('label.owner')}
-                      value={ownerFilterValue}
-                    />
-                  </UserTeamSelectableList>
-                </Form.Item>
-              </Space>
-            </Form>
-          </Col>
-          <Col>
-            {tab === DataQualityPageTabs.TEST_SUITES &&
-              testSuitePermission?.Create && (
-                <Link
-                  data-testid="add-test-suite-btn"
-                  to={ROUTES.ADD_TEST_SUITES}>
-                  <Button type="primary">
-                    {t('label.add-entity', { entity: t('label.test-suite') })}
-                  </Button>
-                </Link>
-              )}
-          </Col>
-        </Row>
+        <Card className="data-quality-filters-bar">
+          <Form layout="inline">
+            <Space align="center" className="w-full justify-between" size={16}>
+              <Form.Item className="m-0" label={t('label.owner')} name="owner">
+                <UserTeamSelectableList
+                  hasPermission
+                  owner={selectedOwner}
+                  onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
+                  <Select
+                    data-testid="owner-select-filter"
+                    open={false}
+                    placeholder={t('label.owner')}
+                    value={ownerFilterValue}
+                  />
+                </UserTeamSelectableList>
+              </Form.Item>
+            </Space>
+          </Form>
+        </Card>
       </Col>
 
       <Col span={24}>
