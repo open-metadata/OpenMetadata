@@ -1423,8 +1423,18 @@ public class SearchRepository {
     return searchClient.searchEntityRelationship(entityRelationshipRequest);
   }
 
-  public SearchEntityRelationshipResult searchEntityRelationshipsForSchema(
-      String fqn, String queryFilter, boolean includeDeleted) throws IOException {
-    return searchClient.searchSchemaEntityRelationshipForPrefix(fqn, queryFilter, includeDeleted);
+  public org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult
+      getSchemaEntityRelationship(
+          String schemaFqn,
+          String queryFilter,
+          String includeSourceFields,
+          int offset,
+          int limit,
+          int from,
+          int size,
+          boolean deleted)
+          throws IOException {
+    return searchClient.getSchemaEntityRelationship(
+        schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
   }
 }

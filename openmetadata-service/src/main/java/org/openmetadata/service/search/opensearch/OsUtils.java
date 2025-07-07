@@ -34,6 +34,8 @@ import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchModule;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
+import os.org.opensearch.search.sort.FieldSortBuilder;
+import os.org.opensearch.search.sort.SortOrder;
 
 @Slf4j
 public class OsUtils {
@@ -276,5 +278,27 @@ public class OsUtils {
         LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
       }
     }
+  }
+
+  public static SearchResponse searchEntitiesWithLimitOffset(
+      String index, String queryFilter, int offset, int limit, boolean deleted) throws IOException {
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(index);
+    os.org.opensearch.search.builder.SearchSourceBuilder searchSourceBuilder =
+        new os.org.opensearch.search.builder.SearchSourceBuilder();
+    searchSourceBuilder.from(offset).size(limit);
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
+    FieldSortBuilder nameSort =
+        new FieldSortBuilder("name.keyword").order(SortOrder.ASC).unmappedType("keyword");
+    searchSourceBuilder.sort(nameSort);
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+    searchRequest.source(searchSourceBuilder);
+
+    // Execute the search
+    RestHighLevelClient client =
+        (RestHighLevelClient) Entity.getSearchRepository().getSearchClient().getClient();
+    return client.search(searchRequest, RequestOptions.DEFAULT);
   }
 }

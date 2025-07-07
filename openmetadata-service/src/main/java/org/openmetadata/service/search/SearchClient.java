@@ -15,6 +15,7 @@ import java.util.concurrent.Executors;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
+import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -531,12 +532,20 @@ public interface SearchClient {
 
   void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns);
 
-  SearchEntityRelationshipResult searchSchemaEntityRelationshipForPrefix(
-      String schemaFqn, String queryFilter, boolean deleted) throws IOException;
-
   SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
 
   SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
+
+  SearchSchemaEntityRelationshipResult getSchemaEntityRelationship(
+      String schemaFqn,
+      String queryFilter,
+      String includeSourceFields,
+      int offset,
+      int limit,
+      int from,
+      int size,
+      boolean deleted)
+      throws IOException;
 }

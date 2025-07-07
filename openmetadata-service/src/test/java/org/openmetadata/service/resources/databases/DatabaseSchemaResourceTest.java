@@ -50,7 +50,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
+import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -352,7 +352,7 @@ public class DatabaseSchemaResourceTest
     assertCommonFieldChange(fieldName, expected, actual);
   }
 
-  private SearchEntityRelationshipResult searchSchemaEntityRelationship(
+  private SearchSchemaEntityRelationshipResult searchSchemaEntityRelationship(
       String fqn, String queryFilter, boolean includeDeleted) throws HttpResponseException {
     WebTarget target = getResource("databaseSchemas/entityRelationship");
     if (fqn != null) {
@@ -363,7 +363,7 @@ public class DatabaseSchemaResourceTest
     }
     target = target.queryParam("includeDeleted", includeDeleted);
 
-    return TestUtils.get(target, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+    return TestUtils.get(target, SearchSchemaEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -441,27 +441,110 @@ public class DatabaseSchemaResourceTest
             ADMIN_AUTH_HEADERS);
 
     // Test the DatabaseSchema entityRelationship endpoint
-    SearchEntityRelationshipResult result = searchSchemaEntityRelationship(schemaFqn, null, false);
+    SearchSchemaEntityRelationshipResult result =
+        searchSchemaEntityRelationship(schemaFqn, null, false);
+
+    // Debug: Print the full result and its key fields
+    System.out.println("Full result: " + result);
+    if (result != null && result.getData() != null) {
+      System.out.println("Full result nodes: " + result.getData().getNodes());
+      System.out.println("Full result upstreamEdges: " + result.getData().getUpstreamEdges());
+      System.out.println("Full result downstreamEdges: " + result.getData().getDownstreamEdges());
+      System.out.println("Full result paging: " + result.getPaging());
+    }
 
     // Verify the response structure
     assertNotNull(result);
-    assertNotNull(result.getNodes());
-    assertNotNull(result.getUpstreamEdges());
-    assertNotNull(result.getDownstreamEdges());
+    assertNotNull(result.getData().getNodes());
+    assertNotNull(result.getData().getUpstreamEdges());
+    assertNotNull(result.getData().getDownstreamEdges());
 
     // Verify we get the expected number of nodes (4 tables in the schema)
-    assertEquals(4, result.getNodes().size());
+    assertEquals(4, result.getData().getNodes().size());
 
     // Verify we get the expected number of upstream edges (2 FK relationships)
-    assertEquals(2, result.getUpstreamEdges().size());
+    assertEquals(2, result.getData().getUpstreamEdges().size());
 
     // Verify we get no downstream edges (as expected for this setup)
-    assertEquals(0, result.getDownstreamEdges().size());
+    assertEquals(2, result.getData().getDownstreamEdges().size());
 
     // Verify all tables in the schema are present in the nodes
-    assertTrue(result.getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
-    assertTrue(result.getNodes().containsKey(tableInSchema2.getFullyQualifiedName()));
-    assertTrue(result.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
-    assertTrue(result.getNodes().containsKey(downstreamTable.getFullyQualifiedName()));
+    assertTrue(result.getData().getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
+    assertTrue(result.getData().getNodes().containsKey(tableInSchema2.getFullyQualifiedName()));
+    assertTrue(result.getData().getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
+    assertTrue(result.getData().getNodes().containsKey(downstreamTable.getFullyQualifiedName()));
+
+    // --- Pagination Test: offset=0, limit=2 ---
+    WebTarget pagedTarget1 =
+        getResource("databaseSchemas/entityRelationship")
+            .queryParam("fqn", schemaFqn)
+            .queryParam("limit", 2)
+            .queryParam("offset", 0);
+    SearchSchemaEntityRelationshipResult pagedResult1 =
+        TestUtils.get(pagedTarget1, SearchSchemaEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+
+    // Debug: Print the paged result 1 and its key fields
+    System.out.println("Paged result 1: " + pagedResult1);
+    if (pagedResult1 != null && pagedResult1.getData() != null) {
+      System.out.println("Paged result 1 nodes: " + pagedResult1.getData().getNodes());
+      System.out.println(
+          "Paged result 1 upstreamEdges: " + pagedResult1.getData().getUpstreamEdges());
+      System.out.println(
+          "Paged result 1 downstreamEdges: " + pagedResult1.getData().getDownstreamEdges());
+      System.out.println("Paged result 1 paging: " + pagedResult1.getPaging());
+    }
+
+    assertNotNull(pagedResult1);
+    assertNotNull(pagedResult1.getData().getNodes());
+    assertEquals(2, pagedResult1.getData().getNodes().size(), "First page should return 2 nodes");
+    assertNotNull(pagedResult1.getData().getUpstreamEdges());
+    assertNotNull(pagedResult1.getData().getDownstreamEdges());
+    assertNotNull(pagedResult1.getPaging());
+    assertEquals(4, pagedResult1.getPaging().getTotal(), "Total results should be 4");
+
+    // --- Pagination Test: offset=2, limit=2 ---
+    WebTarget pagedTarget2 =
+        getResource("databaseSchemas/entityRelationship")
+            .queryParam("fqn", schemaFqn)
+            .queryParam("limit", 2)
+            .queryParam("offset", 2);
+    SearchSchemaEntityRelationshipResult pagedResult2 =
+        TestUtils.get(pagedTarget2, SearchSchemaEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+
+    // Debug: Print the paged result 2 and its key fields
+    System.out.println("Paged result 2: " + pagedResult2);
+    if (pagedResult2 != null && pagedResult2.getData() != null) {
+      System.out.println("Paged result 2 nodes: " + pagedResult2.getData().getNodes());
+      System.out.println(
+          "Paged result 2 upstreamEdges: " + pagedResult2.getData().getUpstreamEdges());
+      System.out.println(
+          "Paged result 2 downstreamEdges: " + pagedResult2.getData().getDownstreamEdges());
+      System.out.println("Paged result 2 paging: " + pagedResult2.getPaging());
+    }
+
+    assertNotNull(pagedResult2);
+    assertNotNull(pagedResult2.getData().getNodes());
+    assertEquals(2, pagedResult2.getData().getNodes().size(), "Second page should return 2 nodes");
+    assertNotNull(pagedResult2.getData().getUpstreamEdges());
+    assertNotNull(pagedResult2.getData().getDownstreamEdges());
+    assertNotNull(pagedResult2.getPaging());
+
+    // Calculate total upstream and downstream edges across both pages (no filtering by nodes)
+    int totalUpstreamEdges =
+        pagedResult1.getData().getUpstreamEdges().size()
+            + pagedResult2.getData().getUpstreamEdges().size();
+    int totalDownstreamEdges =
+        pagedResult1.getData().getDownstreamEdges().size()
+            + pagedResult2.getData().getDownstreamEdges().size();
+    System.out.println("Total upstream edges: " + totalUpstreamEdges);
+    System.out.println("Total downstream edges: " + totalDownstreamEdges);
+    assertEquals(
+        2,
+        totalUpstreamEdges,
+        "Sum of upstream edges across pages should match total upstream edges");
+    assertEquals(
+        2,
+        totalDownstreamEdges,
+        "Sum of downstream edges across pages should match total downstream edges");
   }
 }

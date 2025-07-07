@@ -1,10 +1,8 @@
 package org.openmetadata.service.search.opensearch;
 
-import static org.openmetadata.common.utils.CommonUtil.collectionOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchClient.TABLE_SEARCH_INDEX;
 import static org.openmetadata.service.search.SearchUtils.GRAPH_AGGREGATION;
 import static org.openmetadata.service.search.SearchUtils.buildDirectionToFqnSet;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipRef;
@@ -15,7 +13,6 @@ import static org.openmetadata.service.search.opensearch.OsUtils.getSearchReques
 
 import com.nimbusds.jose.util.Pair;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +25,6 @@ import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRe
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.entityRelationship.NodeInformation;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestHighLevelClient;
@@ -42,54 +38,6 @@ public class OSEntityRelationshipGraphBuilder {
 
   public OSEntityRelationshipGraphBuilder(RestHighLevelClient esClient) {
     this.esClient = esClient;
-  }
-
-  public SearchEntityRelationshipResult getSchemaEntityRelationship(
-      String schemaFqn, String queryFilter, boolean deleted) throws IOException {
-    SearchEntityRelationshipResult result =
-        new SearchEntityRelationshipResult()
-            .withNodes(new HashMap<>())
-            .withUpstreamEdges(new HashMap<>())
-            .withDownstreamEdges(new HashMap<>());
-
-    if (schemaFqn == null || schemaFqn.trim().isEmpty()) {
-      return result;
-    }
-
-    String finalQueryFilter = buildERQueryFilter(schemaFqn, queryFilter);
-
-    SearchResponse searchResponse =
-        OsUtils.searchEntities(TABLE_SEARCH_INDEX, finalQueryFilter, deleted);
-
-    Arrays.stream(searchResponse.getHits().getHits())
-        .map(hit -> collectionOrEmpty(hit.getSourceAsMap()))
-        .forEach(
-            sourceMap -> {
-              String fqn = sourceMap.get(FQN_FIELD).toString();
-              result.getNodes().putIfAbsent(fqn, new NodeInformation().withEntity(sourceMap));
-
-              List<EsEntityRelationshipData> upstreamEntityRelationshipListIfExist =
-                  getUpstreamEntityRelationshipListIfExist(sourceMap);
-              for (EsEntityRelationshipData esEntityRelationshipData :
-                  upstreamEntityRelationshipListIfExist) {
-                result
-                    .getUpstreamEdges()
-                    .putIfAbsent(
-                        esEntityRelationshipData.getDocId(),
-                        esEntityRelationshipData.withRelatedEntity(
-                            getEntityRelationshipRef(sourceMap)));
-                String fromFqn = esEntityRelationshipData.getEntity().getFullyQualifiedName();
-                if (!result.getNodes().containsKey(fromFqn)) {
-                  result
-                      .getNodes()
-                      .put(
-                          fromFqn,
-                          new NodeInformation().withEntity(esEntityRelationshipData.getEntity()));
-                }
-              }
-            });
-
-    return result;
   }
 
   public SearchEntityRelationshipResult getUpstreamEntityRelationship(
@@ -296,20 +244,5 @@ public class OSEntityRelationshipGraphBuilder {
 
     fetchDownstreamNodesRecursively(
         entityRelationshipRequest, result, hasToFqnMapForLayer, depth - 1);
-  }
-
-  private static String buildERQueryFilter(String schemaFqn, String queryFilter) {
-    String schemaFqnWildcardClause =
-        String.format(
-            "{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}",
-            ReindexingUtil.escapeDoubleQuotes(schemaFqn));
-    String innerBoolFilter;
-    if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(queryFilter)
-        && !"{}".equals(queryFilter)) {
-      innerBoolFilter = String.format("[ %s , %s ]", schemaFqnWildcardClause, queryFilter);
-    } else {
-      innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
-    }
-    return String.format("{\"query\":{\"bool\":{\"must\":%s}}}", innerBoolFilter);
   }
 }

@@ -20,6 +20,8 @@ import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.SearchModule;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
+import es.org.elasticsearch.search.sort.FieldSortBuilder;
+import es.org.elasticsearch.search.sort.SortOrder;
 import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
@@ -276,5 +278,27 @@ public class EsUtils {
         LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
       }
     }
+  }
+
+  public static SearchResponse searchEntitiesWithLimitOffset(
+      String index, String queryFilter, int offset, int limit, boolean deleted) throws IOException {
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(index);
+    es.org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder =
+        new es.org.elasticsearch.search.builder.SearchSourceBuilder();
+    searchSourceBuilder.from(offset).size(limit);
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
+    FieldSortBuilder nameSort =
+        new FieldSortBuilder("name.keyword").order(SortOrder.ASC).unmappedType("keyword");
+    searchSourceBuilder.sort(nameSort);
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+    searchRequest.source(searchSourceBuilder);
+
+    // Execute the search
+    RestHighLevelClient client =
+        (RestHighLevelClient) Entity.getSearchRepository().getSearchClient().getClient();
+    return client.search(searchRequest, RequestOptions.DEFAULT);
   }
 }
