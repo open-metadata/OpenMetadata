@@ -282,7 +282,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
       onSuccess?.(testSuite);
 
       showSuccessToast(
-        t('message.entity-created-successfully', {
+        t('server.create-entity-success', {
           entity: t('label.test-suite'),
         })
       );

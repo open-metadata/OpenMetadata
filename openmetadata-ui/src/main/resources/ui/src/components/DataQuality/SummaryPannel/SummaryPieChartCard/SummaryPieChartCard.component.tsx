@@ -12,7 +12,7 @@
  */
 import { Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import { SummaryPieChartCardProps } from '../SummaryPanel.interface';
 import './summary-pie-chart-card.style.less';
@@ -62,31 +62,29 @@ const SummaryPieChartCard = ({
             </Space>
           )}
 
-          <ResponsiveContainer height={120} width={120}>
-            <PieChart>
-              <Pie
-                cx="50%"
-                cy="50%"
-                data={chartData}
-                dataKey="value"
-                innerRadius={45}
-                outerRadius={60}
-                paddingAngle={paddingAngle}>
-                {chartData.map((entry, index) => (
-                  <Cell fill={entry.color} key={`cell-${index}`} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <text
-                className="chart-center-text"
-                dominantBaseline="middle"
-                textAnchor="middle"
-                x="50%"
-                y="50%">
-                {`${percentage}%`}
-              </text>
-            </PieChart>
-          </ResponsiveContainer>
+          <PieChart height={120} width={120}>
+            <Pie
+              cx="50%"
+              cy="50%"
+              data={chartData}
+              dataKey="value"
+              innerRadius={45}
+              outerRadius={60}
+              paddingAngle={paddingAngle}>
+              {chartData.map((entry, index) => (
+                <Cell fill={entry.color} key={`cell-${index}`} />
+              ))}
+            </Pie>
+            <Tooltip />
+            <text
+              className="chart-center-text"
+              dominantBaseline="middle"
+              textAnchor="middle"
+              x="50%"
+              y="50%">
+              {`${percentage}%`}
+            </text>
+          </PieChart>
         </div>
       </div>
     </Card>

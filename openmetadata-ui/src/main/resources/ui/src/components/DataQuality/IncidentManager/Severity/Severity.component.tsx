@@ -18,6 +18,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -110,18 +111,21 @@ const Severity = ({
           NO_DATA_PLACEHOLDER
         )}
         {onSubmit && hasEditPermission && (
-          <Tooltip
-            title={t('label.edit-entity', {
-              entity: t('label.severity'),
-            })}>
-            <EditIconButton
-              data-testid="edit-severity-icon"
-              icon={<EditIcon width="14px" />}
-              newLook={newLook}
-              size="small"
-              onClick={onEditSeverity}
-            />
-          </Tooltip>
+          <EditIconButton
+            newLook
+            className="flex-center"
+            data-testid="edit-severity-icon"
+            disabled={!hasEditPermission}
+            size="small"
+            title={
+              hasEditPermission
+                ? t('label.edit-entity', {
+                    entity: t('label.severity'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
+            }
+            onClick={onEditSeverity}
+          />
         )}
       </Space>
 

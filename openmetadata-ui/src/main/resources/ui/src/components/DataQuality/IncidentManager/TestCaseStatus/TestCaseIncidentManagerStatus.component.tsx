@@ -134,7 +134,11 @@ const TestCaseIncidentManagerStatus = ({
             disabled={!hasEditPermission}
             size="small"
             title={
-              hasEditPermission ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+              hasEditPermission
+                ? t('label.edit-entity', {
+                    entity: t('label.status'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
             }
             onClick={onEditStatus}
           />

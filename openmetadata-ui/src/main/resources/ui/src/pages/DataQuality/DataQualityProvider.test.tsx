@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable i18next/no-literal-string */
-import { act, render, screen } from '@testing-library/react';
+
+import { render, screen } from '@testing-library/react';
 import {
   fetchEntityCoveredWithDQ,
   fetchTestCaseSummary,
@@ -95,33 +95,44 @@ const MockComponent = () => {
 
 describe('DataQualityProvider', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseParam.tab = DataQualityPageTabs.TEST_CASES;
+    mockLocation.search = '';
+  });
+
+  it('renders children without crashing', async () => {
     render(
       <DataQualityProvider>
         <MockComponent />
       </DataQualityProvider>
     );
-  });
 
-  it('renders children without crashing', async () => {
     expect(await screen.findByText('Loader.component')).toBeInTheDocument();
-    expect(await screen.findByText('tables component')).toBeInTheDocument();
+    expect(await screen.findByText('test-cases component')).toBeInTheDocument();
   });
 
   it('isTestCaseSummaryLoading condition should work', async () => {
+    render(
+      <DataQualityProvider>
+        <MockComponent />
+      </DataQualityProvider>
+    );
+
     // Initially, the loader should be displayed
     expect(screen.getByText('Loader.component')).toBeInTheDocument();
 
-    // Advance timers to simulate the API call delay
-    act(() => {
-      jest.advanceTimersByTime(2000);
-    });
-
     // After the delay, the loader should be replaced by the component
-    expect(await screen.findByText('tables component')).toBeInTheDocument();
+    expect(await screen.findByText('test-cases component')).toBeInTheDocument();
   });
 
   it('should call fetchTestCaseSummary, fetchEntityCoveredWithDQ & fetchTotalEntityCount', async () => {
-    expect(await screen.findByText('tables component')).toBeInTheDocument();
+    render(
+      <DataQualityProvider>
+        <MockComponent />
+      </DataQualityProvider>
+    );
+
+    expect(await screen.findByText('test-cases component')).toBeInTheDocument();
     expect(fetchTestCaseSummary).toHaveBeenCalledTimes(1);
     expect(fetchEntityCoveredWithDQ).toHaveBeenCalledTimes(2);
     expect(fetchTotalEntityCount).toHaveBeenCalledTimes(1);
@@ -131,7 +142,13 @@ describe('DataQualityProvider', () => {
     mockLocation.search =
       '?testCaseType=table&testCaseStatus=Success&tier=Tier.Tier1';
 
-    expect(await screen.findByText('tables component')).toBeInTheDocument();
+    render(
+      <DataQualityProvider>
+        <MockComponent />
+      </DataQualityProvider>
+    );
+
+    expect(await screen.findByText('test-cases component')).toBeInTheDocument();
     expect(fetchTestCaseSummary).toHaveBeenCalledWith({
       entityFQN: undefined,
       ownerFqn: undefined,
@@ -156,5 +173,45 @@ describe('DataQualityProvider', () => {
       testCaseType: 'table',
       tier: ['Tier.Tier1'],
     });
+  });
+
+  it('should handle different tab values correctly', async () => {
+    mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
+
+    const MockTabComponent = () => {
+      const { activeTab } = useDataQualityProvider();
+
+      return <div>{activeTab} tab component</div>;
+    };
+
+    render(
+      <DataQualityProvider>
+        <MockTabComponent />
+      </DataQualityProvider>
+    );
+
+    expect(
+      await screen.findByText('test-suites tab component')
+    ).toBeInTheDocument();
+  });
+
+  it('should handle dashboard tab correctly', async () => {
+    mockUseParam.tab = DataQualityPageTabs.DASHBOARD;
+
+    const MockTabComponent = () => {
+      const { activeTab } = useDataQualityProvider();
+
+      return <div>{activeTab} tab component</div>;
+    };
+
+    render(
+      <DataQualityProvider>
+        <MockTabComponent />
+      </DataQualityProvider>
+    );
+
+    expect(
+      await screen.findByText('dashboard tab component')
+    ).toBeInTheDocument();
   });
 });
