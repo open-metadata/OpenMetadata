@@ -723,7 +723,7 @@ class PowerbiSource(DashboardServiceSource):
                 table = table_match[1] if len(table_match) > 1 else None
             return table
         except Exception as exc:
-            logger.debug(f"Error to parse snowflake table name: {exc}")
+            logger.debug(f"Error to parse display table name: {exc}")
             logger.debug(traceback.format_exc())
         return None
 
