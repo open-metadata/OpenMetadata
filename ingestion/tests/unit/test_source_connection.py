@@ -96,7 +96,9 @@ from metadata.generated.schema.entity.services.connections.database.singleStoreC
     SingleStoreScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
-    SnowflakeConnection,
+    SnowflakeConnection as SnowflakeConnectionConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
@@ -114,6 +116,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
+from metadata.ingestion.source.database.snowflake.connection import SnowflakeConnection
 from metadata.ingestion.source.database.trino.connection import TrinoConnection
 
 
@@ -782,31 +785,9 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url_common(db2_conn_obj)
 
     def test_snowflake_url(self):
-        # connection arguments without db
-
-        from metadata.ingestion.source.database.snowflake.connection import (
-            get_connection_url,
-        )
-
-        expected_url = "snowflake://coding:Abhi@ue18849.us-east-2.aws?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
-        snowflake_conn_obj = SnowflakeConnection(
-            scheme=SnowflakeScheme.snowflake,
-            username="coding",
-            password="Abhi",
-            warehouse="COMPUTE_WH",
-            account="ue18849.us-east-2.aws",
-        )
-
-        assert expected_url == get_connection_url(snowflake_conn_obj)
-
-    def test_snowflake_url(self):
-        from metadata.ingestion.source.database.snowflake.connection import (
-            get_connection_url,
-        )
-
         # Passing @ in username and password
         expected_url = "snowflake://coding%40444:Abhi%40123@ue18849.us-east-2.aws?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
-        snowflake_conn_obj = SnowflakeConnection(
+        snowflake_conn_obj = SnowflakeConnectionConfig(
             scheme=SnowflakeScheme.snowflake,
             username="coding@444",
             password="Abhi@123",
@@ -814,11 +795,13 @@ class SourceConnectionTest(TestCase):
             account="ue18849.us-east-2.aws",
         )
 
-        assert expected_url == get_connection_url(snowflake_conn_obj)
+        assert expected_url == SnowflakeConnection.get_connection_url(
+            snowflake_conn_obj
+        )
 
         # connection arguments with db
         expected_url = "snowflake://coding:Abhi@ue18849.us-east-2.aws/testdb?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
-        snowflake_conn_obj = SnowflakeConnection(
+        snowflake_conn_obj = SnowflakeConnectionConfig(
             scheme=SnowflakeScheme.snowflake,
             username="coding",
             password="Abhi",
@@ -826,7 +809,10 @@ class SourceConnectionTest(TestCase):
             warehouse="COMPUTE_WH",
             account="ue18849.us-east-2.aws",
         )
-        assert expected_url == get_connection_url(snowflake_conn_obj)
+
+        assert expected_url == SnowflakeConnection.get_connection_url(
+            snowflake_conn_obj
+        )
 
     def test_mysql_conn_arguments(self):
         # connection arguments without connectionArguments
@@ -1008,7 +994,7 @@ class SourceConnectionTest(TestCase):
     def test_snowflake_conn_arguments(self):
         # connection arguments without connectionArguments
         expected_args = {}
-        snowflake_conn_obj = SnowflakeConnection(
+        snowflake_conn_obj = SnowflakeConnectionConfig(
             username="user",
             password="test-pwd",
             database="tiny",
@@ -1020,7 +1006,7 @@ class SourceConnectionTest(TestCase):
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
-        snowflake_conn_obj = SnowflakeConnection(
+        snowflake_conn_obj = SnowflakeConnectionConfig(
             username="user",
             password="test-pwd",
             database="tiny",
