@@ -181,10 +181,15 @@ test.describe('User with different Roles', () => {
 
     await adminPage.getByTestId('edit-teams-button').click();
 
+    await adminPage.getByTestId('team-select').click();
+
+    await adminPage.waitForSelector('.ant-tree-select-dropdown', {
+      state: 'visible',
+    });
+
     await adminPage
-      .getByTestId('team-select')
       .locator('[title="' + team.responseData.displayName + '"]')
-      .locator('.selected-chip-tag-remove')
+      .first()
       .click();
 
     const userProfileResponse = adminPage.waitForResponse((response) =>
