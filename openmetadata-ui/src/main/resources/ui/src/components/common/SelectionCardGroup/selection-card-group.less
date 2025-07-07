@@ -128,5 +128,44 @@
         }
       }
     }
+
+    // Disabled state styles
+    &.disabled {
+      opacity: 0.6;
+      cursor: not-allowed !important;
+      pointer-events: none;
+
+      &:hover {
+        border-color: @grey-200;
+        background-color: @grey-50;
+
+        .selection-content {
+          .selection-icon {
+            background-color: @grey-100;
+
+            svg {
+              color: @grey-500;
+            }
+          }
+
+          .selection-title {
+            color: @grey-800;
+          }
+
+          .selection-description {
+            color: @grey-400;
+          }
+
+          .custom-radio.unchecked {
+            border-color: @grey-300;
+          }
+        }
+      }
+    }
+  }
+
+  // Disabled group styles
+  &.selection-card-group-disabled {
+    opacity: 0.7;
   }
 }

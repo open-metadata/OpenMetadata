@@ -24,10 +24,12 @@ export interface SelectionCardGroupProps {
   value?: string;
   onChange?: (value: string) => void;
   className?: string;
+  disabled?: boolean;
 }
 
 export interface SelectionCardProps {
   option: SelectionOption;
   isSelected: boolean;
   onClick: () => void;
+  disabled?: boolean;
 }

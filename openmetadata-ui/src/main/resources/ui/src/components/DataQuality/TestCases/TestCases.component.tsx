@@ -119,8 +119,6 @@ export const TestCases = () => {
   const [selectedFilter, setSelectedFilter] = useState<string[]>([
     TEST_CASE_FILTERS.status,
     TEST_CASE_FILTERS.type,
-    TEST_CASE_FILTERS.table,
-    TEST_CASE_FILTERS.tags,
   ]);
 
   const {

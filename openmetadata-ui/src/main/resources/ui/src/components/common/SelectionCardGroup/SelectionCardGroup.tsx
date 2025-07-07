@@ -24,12 +24,15 @@ const SelectionCard: FC<SelectionCardProps> = ({
   option,
   isSelected,
   onClick,
+  disabled = false,
 }: SelectionCardProps) => (
   <Card
     className={classNames('selection-card', {
       selected: isSelected,
+      disabled: disabled,
     })}
-    onClick={onClick}>
+    style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+    onClick={disabled ? undefined : onClick}>
     <div className="selection-content">
       <div className="d-flex gap-4">
         <span className="selection-icon">{option.icon}</span>
@@ -54,15 +57,22 @@ const SelectionCardGroup: FC<SelectionCardGroupProps> = ({
   value,
   onChange,
   className,
+  disabled = false,
 }: SelectionCardGroupProps) => {
   const handleOptionSelect = (selectedValue: string) => {
-    onChange?.(selectedValue);
+    if (!disabled) {
+      onChange?.(selectedValue);
+    }
   };
 
   return (
-    <div className={classNames('selection-card-group', className)}>
+    <div
+      className={classNames('selection-card-group', className, {
+        'selection-card-group-disabled': disabled,
+      })}>
       {options.map((option) => (
         <SelectionCard
+          disabled={disabled}
           isSelected={value === option.value}
           key={option.value}
           option={option}

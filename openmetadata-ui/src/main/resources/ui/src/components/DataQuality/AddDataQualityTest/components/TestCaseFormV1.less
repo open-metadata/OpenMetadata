@@ -128,9 +128,49 @@
   }
 }
 
+// Edit Test Case Modal V1 styles
+.edit-test-case-form-v1 {
+  .test-case-info-card,
+  .test-parameters-card,
+  .test-metadata-card {
+    background-color: @grey-1;
+    border: 1px solid @grey-200;
+    border-radius: @border-radius-sm;
+    margin-bottom: @size-lg;
+
+    .ant-card-body {
+      padding: @size-sm @size-mlg @size-mlg;
+    }
+
+    .ant-form-item {
+      margin-bottom: @size-lg;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .ant-form-item-label > label {
+      color: @grey-800;
+      font-weight: @font-medium;
+      font-size: @font-size-base;
+    }
+  }
+
+  .block-editor-wrapper.block-editor-wrapper--bar-menu .om-block-editor {
+    background-color: @white;
+    max-height: 150px;
+  }
+
+  .block-editor-wrapper .om-block-editor > p:last-child {
+    padding-bottom: 130px;
+  }
+}
+
 // Drawer specific styles
 .drawer-form-content {
-  .test-case-form-v1 {
+  .test-case-form-v1,
+  .edit-test-case-form-v1 {
     padding-bottom: 0;
   }
 }

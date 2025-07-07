@@ -58,7 +58,7 @@ import {
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
-import EditTestCaseModal from '../../../DataQuality/AddDataQualityTest/EditTestCaseModal';
+import EditTestCaseModalV1 from '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
@@ -548,12 +548,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         size="small"
         onChange={handleTableChange}
       />
-      <EditTestCaseModal
-        testCase={selectedTestCase?.data as TestCase}
-        visible={selectedTestCase?.action === 'UPDATE'}
-        onCancel={handleCancel}
-        onUpdate={onTestUpdate}
-      />
+      {selectedTestCase?.action === 'UPDATE' && (
+        <EditTestCaseModalV1
+          open
+          testCase={selectedTestCase?.data as TestCase}
+          onCancel={handleCancel}
+          onUpdate={onTestUpdate}
+        />
+      )}
 
       {removeFromTestSuite ? (
         <ConfirmationModal
