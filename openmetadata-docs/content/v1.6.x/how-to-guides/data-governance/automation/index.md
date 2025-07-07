@@ -91,6 +91,7 @@ For the Action Configuration:
    - **Propagate Glossary Terms**: Propagates the glossary terms from the source asset to the downstream assets. Works for both parent and column-level.
    - **Propagate Owners**: Only applicable for Parent assets. Propagates the owner information to downstream assets.
    - **Propagate Tier**: Only applicable for Parent assets. Propagated the tier information to downstream assets.
+   - **Propagate Domain**: Only applicable for Parent assets. Propagates the domain information to downstream assets.
 
 As with other actions, you can choose to **Overwrite Metadata** or keep the existing metadata and only apply the new metadata to assets that do not have the metadata already.
    
