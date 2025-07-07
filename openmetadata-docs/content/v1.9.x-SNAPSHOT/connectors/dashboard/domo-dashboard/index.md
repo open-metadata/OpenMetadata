@@ -1,5 +1,6 @@
 ---
 title: Domo Dashboard | OpenMetadata Connector Setup Guide
+description: Connect Domo dashboards to OpenMetadata with our comprehensive connector guide. Easy setup, configuration steps, and metadata extraction explained.
 slug: /connectors/dashboard/domo-dashboard
 ---
 
@@ -18,7 +19,7 @@ Configure and schedule DomoDashboard metadata and profiler workflows from the Op
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/dashboard/domo-dashboard/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/domo-dashboard/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/domo-dashboard/yaml"} /%}
 
 ## Requirements
 
@@ -28,12 +29,12 @@ For questions related to scopes, click [here](https://developer.domo.com/portal/
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Domo Dashboard", 
-    selectServicePath: "/images/v1.9connectors/domodashboard/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/domodashboard/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/domodashboard/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/domodashboard/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/domodashboard/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/domodashboard/service-connection.png",
 } 
 /%}
 
@@ -50,10 +51,10 @@ For questions related to scopes, click [here](https://developer.domo.com/portal/
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

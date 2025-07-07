@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { t } from 'i18next';
 import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
@@ -57,6 +56,7 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
+import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSettingPath } from './RouterUtils';
 import { showErrorToast } from './ToastUtils';
@@ -198,7 +198,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.broker-plural')}:</label>
+          <label className="m-b-0">{t('label.broker-plural') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="brokers">
@@ -212,7 +212,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase')}:</label>
+          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="dashboard-url">
@@ -226,7 +226,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase')}:</label>
+          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">

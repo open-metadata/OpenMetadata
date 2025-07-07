@@ -1,5 +1,6 @@
 ---
 title: Trino Connector | OpenMetadata Distributed SQL Integration
+description: Connect Trino to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration examples, and metadata extraction tips.
 slug: /connectors/database/trino
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/trino
 name="Trino"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -22,6 +23,9 @@ Configure and schedule Trino metadata and profiler workflows from the OpenMetada
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Troubleshooting](/connectors/database/trino/troubleshooting)
+{% collateContent %}
+- [Reverse Metadata](#reverse-metadata)
+{% /collateContent %}
 
 {% partial file="/v1.8/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/trino/yaml"} /%}
 
@@ -115,5 +119,9 @@ Find more details in [the Python requests library documentation](https://request
 {% partial file="/v1.8/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
+
+{% collateContent %}
+{% partial file="/v1.8/connectors/database/trino/reverse-metadata.md" /%}
+{% /collateContent %}
 
 {% partial file="/v1.8/connectors/database/related.md" /%}

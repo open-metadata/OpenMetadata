@@ -1,5 +1,6 @@
 ---
 title: Run the BigQuery Connector Externally
+description: Learn how to configure OpenMetadata's Bigtable database connector using YAML. Complete setup guide with examples, parameters, and best practices.
 slug: /connectors/database/bigtable/yaml
 ---
 
@@ -18,13 +19,13 @@ Configure and schedule BigTable metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the BigTable ingestion, you will need to install:
 
@@ -85,7 +86,7 @@ You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/common/gcp-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/gcp-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -120,7 +121,7 @@ source:
         gcpConfig:
 ```
 
-{% partial file="/v1.9connectors/yaml/common/gcp-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/gcp-config.md" /%}
 
 ```yaml {% srNumber=2 %}
       # connectionOptions:
@@ -131,14 +132,14 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.9connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}

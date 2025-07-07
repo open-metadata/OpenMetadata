@@ -1,5 +1,6 @@
 ---
 title: Exasol Connector | OpenMetadata High-Performance Database
+description: Connect Exasol database to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/database/exasol
 ---
 
@@ -20,9 +21,9 @@ Configure and schedule Exasol metadata from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/database/exasol/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/exasol/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/exasol/yaml"} /%}
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 {%inlineCallout icon="description" bold="OpenMetadata 1.6.1 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
@@ -35,12 +36,12 @@ The connector requires **Exasol version 7.1 or higher** to function correctly. E
 ## Metadata Ingestion
 
 {% partial
-  file="/v1.9connectors/metadata-ingestion-ui.md"
+  file="/v1.9/connectors/metadata-ingestion-ui.md"
   variables={
     connector: "Exasol",
-    selectServicePath: "/images/v1.9connectors/exasol/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/exasol/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/exasol/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/exasol/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/exasol/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/exasol/service-connection.png",
   }
 /%}
 
@@ -76,14 +77,14 @@ This mode is not recommended for production and should only be used in debugging
 Ensure that the appropriate TLS setting is chosen based on your security and deployment requirements.
 {% /note %}
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

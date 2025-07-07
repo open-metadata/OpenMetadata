@@ -35,11 +35,12 @@ import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
-import org.openmetadata.service.util.JsonUtils;
 
 @Getter
 @Setter
@@ -142,6 +143,10 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("objectStorage")
   @Valid
   private ObjectStorageConfiguration objectStorage;
+
+  @JsonProperty("cacheConfiguration")
+  @Valid
+  private CacheConfiguration cacheConfiguration;
 
   @JsonProperty("scimConfiguration")
   private ScimConfiguration scimConfiguration;

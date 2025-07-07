@@ -1,6 +1,7 @@
 ---
 title: Domo Dashboard Troubleshooting Guide | OpenMetadata Support
+description: Resolve Domo Dashboard connector issues in OpenMetadata with expert troubleshooting guides, common error fixes, and step-by-step solutions.
 slug: /connectors/dashboard/domo-dashboard/troubleshooting
 ---
 
-{% partial file="/v1.9connectors/troubleshooting.md" /%}
+{% partial file="/v1.9/connectors/troubleshooting.md" /%}

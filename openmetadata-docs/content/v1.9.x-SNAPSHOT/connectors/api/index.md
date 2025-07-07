@@ -1,5 +1,6 @@
 ---
 title: API Services | OpenMetadata Connector Integration Guide
+description: Discover OpenMetadata API connectors to seamlessly integrate your data sources. Complete documentation, setup guides, and examples for all supported APIs.
 slug: /connectors/api
 ---
 
@@ -11,7 +12,7 @@ The OpenMetadata API service facilitates metadata ingestion from RESTful APIs th
 
 This is the supported list of connectors for API Services:
 
-{% partial file="/v1.9connectors/api/connectors-list.md" /%}
+{% partial file="/v1.9/connectors/api/connectors-list.md" /%}
 
 ## Supported Features
 

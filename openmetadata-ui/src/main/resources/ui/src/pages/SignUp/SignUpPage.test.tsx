@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { createUser } from '../../rest/userAPI';
 import { getImages } from '../../utils/CommonUtils';
 import { mockChangedFormData, mockCreateUser } from './mocks/SignupData.mock';
@@ -24,12 +23,6 @@ let letExpectedUserName = {
 };
 
 const mockShowErrorToast = jest.fn();
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
-    push: jest.fn(),
-  }),
-}));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
@@ -68,6 +61,10 @@ jest.mock('../../utils/CommonUtils', () => ({
 
 jest.mock('../../utils/AuthProvider.util', () => ({
   getNameFromUserData: jest.fn().mockImplementation(() => letExpectedUserName),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 describe('SignUp page', () => {

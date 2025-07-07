@@ -1,5 +1,6 @@
 ---
 title: SingleStore Connector | OpenMetadata Scalable DB Guide
+description: Integrate SingleStore with OpenMetadata using our comprehensive connector guide. Set up data cataloging, lineage tracking, and metadata management seamlessly.
 slug: /connectors/database/singlestore
 ---
 
@@ -23,7 +24,7 @@ Configure and schedule SingleStore metadata and profiler workflows from the Open
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Troubleshooting](/connectors/database/singlestore/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/singlestore/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/singlestore/yaml"} /%}
 
 ## Requirements
 
@@ -51,12 +52,12 @@ Executing the profiler workflow or data quality tests, will require the user to 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Singlestore", 
-    selectServicePath: "/images/v1.9connectors/singlestore/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/singlestore/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/singlestore/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/singlestore/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/singlestore/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/singlestore/service-connection.png",
 } 
 /%}
 
@@ -70,16 +71,16 @@ Executing the profiler workflow or data quality tests, will require the user to 
 - **Host and Port**: Enter the fully qualified hostname and port number for your SingleStore deployment in the Host and Port field.
 - **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

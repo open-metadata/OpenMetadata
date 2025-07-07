@@ -1,5 +1,6 @@
 ---
 title: Fivetran Connector | OpenMetadata Data Integration
+description: Connect Fivetran pipelines to OpenMetadata for automated data lineage tracking, metadata discovery, and comprehensive pipeline monitoring and governance.
 slug: /connectors/pipeline/fivetran
 ---
 
@@ -19,7 +20,7 @@ Configure and schedule Fivetran metadata and profiler workflows from the OpenMet
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/pipeline/fivetran/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/fivetran/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/fivetran/yaml"} /%}
 
 ## Requirements
 
@@ -28,12 +29,12 @@ To access Fivetran APIs, a Fivetran account on a Standard, Enterprise, or Busine
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Fivetran", 
-    selectServicePath: "/images/v1.9connectors/fivetran/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/fivetran/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/fivetran/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/fivetran/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/fivetran/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/fivetran/service-connection.png",
 } 
 /%}
 
@@ -56,10 +57,10 @@ For more detailed documentation visit [here](https://fivetran.com/docs/rest-api/
 - **hostPort**: HostPort of the Fivetran instance. By default, OpenMetadata will use `https://api.fivetran.com` to connect to the Fivetran APIs.
 - **limit**: Fivetran API Limit For Pagination. This refers to the maximum number of records that can be returned in a single page of results when using Fivetran's API for pagination.
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

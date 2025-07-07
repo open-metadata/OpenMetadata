@@ -1,5 +1,6 @@
 ---
 title: PostgreSQL Connector | OpenMetadata Database Integration
+description: Connect PostgreSQL to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration examples, and metadata extraction tips.
 slug: /connectors/database/postgres
 ---
 
@@ -28,7 +29,7 @@ Configure and schedule PostgreSQL metadata and profiler workflows from the OpenM
 - [Reverse Metadata](#reverse-metadata)
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/postgres/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/postgres/yaml"} /%}
 
 ## Requirements
 
@@ -126,12 +127,12 @@ This ensures that statements executed within procedures are recorded.
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "PostgreSQL", 
-    selectServicePath: "/images/v1.9connectors/postgres/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/postgres/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/postgres/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/postgres/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/postgres/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/postgres/service-connection.png",
 } 
 /%}
 
@@ -226,15 +227,15 @@ There are a couple of types of SSL modes that PostgreSQL supports which can be a
 
 In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under sslConfig which is placed in the source.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -251,13 +252,13 @@ For IAM authentication, it is recommended to choose the `allow` mode or another 
 {% /note %}
 
 {% image
-  src="/images/v1.9connectors/ssl_connection.png"
+  src="/images/v1.9/connectors/ssl_connection.png"
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
 
 {% collateContent %}
-{% partial file="/v1.9connectors/database/postgres/reverse-metadata.md" /%}
+{% partial file="/v1.9/connectors/database/postgres/reverse-metadata.md" /%}
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

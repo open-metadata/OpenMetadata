@@ -182,6 +182,8 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -218,7 +220,6 @@ import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
@@ -229,7 +230,6 @@ import org.openmetadata.service.util.DeleteEntityMessage;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
@@ -250,12 +250,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       systemEntityName; // System entity provided by the system that can't be deleted
   protected final boolean supportsFollowers;
   protected final boolean supportsVotes;
-  protected final boolean supportsOwners;
+  protected boolean supportsOwners;
   protected boolean supportsTags;
   protected boolean supportsPatch = true;
   protected final boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected final boolean supportsEmptyDescription;
+  protected boolean supportsAdminOnly = false;
 
   // Special characters supported in the entity name
   protected String supportedNameCharacters = "_'-.&()[]" + RANDOM_STRING_GENERATOR.generate(1);
@@ -390,6 +391,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static TestDefinition TEST_DEFINITION1;
   public static TestDefinition TEST_DEFINITION2;
   public static TestDefinition TEST_DEFINITION3;
+  public static TestDefinition TEST_DEFINITION4;
+  public static TestDefinition TEST_DEFINITION5;
 
   public static DataInsightChart DI_CHART1;
 
@@ -1364,6 +1367,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
+    if (supportsOwners || supportsAdminOnly) {
+      return;
+    }
     // Ingestion bot can create and delete all the entities except websocket and bot
     if (List.of(Entity.EVENT_SUBSCRIPTION, Entity.BOT).contains(entityType)) {
       return;
@@ -1380,6 +1386,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_entity_as_non_admin_401(TestInfo test) {
+    if (supportsAdminOnly) {
+      return;
+    }
     assertResponse(
         () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
         FORBIDDEN,
@@ -1711,6 +1720,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
+    if (supportsEmptyDescription) {
+      return;
+    }
     // Create entity with non-empty description
     K request =
         createRequest(
@@ -1834,7 +1846,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void patch_entityDescriptionAndTestAuthorizer(TestInfo test) throws IOException {
-    if (!supportsPatch) {
+    if (!supportsPatch || supportsAdminOnly) {
       return;
     }
     T entity =
@@ -2171,6 +2183,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    if (supportsAdminOnly) {
+      return;
+    }
     // Deleting as non-owner and non-admin should fail
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -2223,6 +2238,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void delete_async_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    if (supportsEmptyDescription) {
+      return;
+    }
     // Create entity as admin
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -3454,6 +3472,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEntityReferences(expectedRefs, actualRefs);
   }
 
+  public void assertEntityReference(Object expected, Object actual) {
+    EntityReference expectedRef =
+        expected instanceof EntityReference
+            ? (EntityReference) expected
+            : JsonUtils.readValue(expected.toString(), EntityReference.class);
+    EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
+    assertEquals(expectedRef.getId(), actualRef.getId());
+    assertEquals(expectedRef.getDisplayName(), actualRef.getDisplayName());
+  }
+
   public static class EventHolder {
     @Getter ChangeEvent expectedEvent;
 
@@ -4267,7 +4295,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return null;
   }
 
-  private UUID getAdminUserId() throws HttpResponseException {
+  protected UUID getAdminUserId() throws HttpResponseException {
     UserResourceTest userResourceTest = new UserResourceTest();
     User adminUser = userResourceTest.getEntityByName("admin", ADMIN_AUTH_HEADERS);
     return adminUser.getId();

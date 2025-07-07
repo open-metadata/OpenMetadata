@@ -1,5 +1,6 @@
 ---
 title: Druid Connector | OpenMetadata Real-Time Analytics Guide
+description: Learn how to connect Apache Druid to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction.
 slug: /connectors/database/druid
 ---
 
@@ -22,17 +23,17 @@ Configure and schedule Druid metadata and profiler workflows from the OpenMetada
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Troubleshooting](/connectors/database/druid/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Druid", 
-    selectServicePath: "/images/v1.9connectors/druid/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/druid/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/druid/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/druid/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/druid/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/druid/service-connection.png",
 } 
 /%}
 
@@ -46,16 +47,16 @@ Configure and schedule Druid metadata and profiler workflows from the OpenMetada
 - **Host and Port**: Enter the fully qualified hostname and port number for your Druid deployment in the Host and Port field.
 - **Database Name**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

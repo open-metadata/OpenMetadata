@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import InlineEdit from './InlineEdit.component';
 
 const mockProps = {
@@ -47,7 +45,7 @@ describe('InlineEdit component', () => {
 
     expect(cancelBtn).toBeInTheDocument();
 
-    userEvent.click(cancelBtn);
+    fireEvent.click(cancelBtn);
 
     expect(mockProps.onCancel).toHaveBeenCalled();
   });
@@ -63,7 +61,7 @@ describe('InlineEdit component', () => {
 
     expect(saveBtn).toBeInTheDocument();
 
-    userEvent.click(saveBtn);
+    fireEvent.click(saveBtn);
 
     expect(mockProps.onSave).toHaveBeenCalled();
   });

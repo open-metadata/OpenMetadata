@@ -1,5 +1,6 @@
 ---
 title: Run the Superset Connector Externally
+description: Configure OpenMetadata's Apache Superset connector with YAML. Step-by-step setup guide for dashboard metadata integration and automated discovery.
 slug: /connectors/dashboard/superset/yaml
 ---
 
@@ -19,7 +20,7 @@ Configure and schedule Superset metadata and profiler workflows from the OpenMet
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-superset-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -33,7 +34,7 @@ The ingestion also works with Superset 2.0.0 🎉
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the Superset ingestion, you will need to install:
 
@@ -137,11 +138,11 @@ You can use Postgres Connection when you have SSO enabled and your Superset is b
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/dashboard/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/dashboard/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -184,11 +185,11 @@ source:
         # database: superset
 ```
 
-{% partial file="/v1.9connectors/yaml/dashboard/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -223,4 +224,4 @@ source:
             caCertificate: "/path/to/ca/certificate" 
 ```
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}

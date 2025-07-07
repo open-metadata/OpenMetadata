@@ -1,5 +1,6 @@
 ---
 title: MariaDB Connector | OpenMetadata Database Integration Guide
+description: Connect MariaDB to OpenMetadata with our comprehensive database connector guide. Easy setup, configuration steps, and metadata extraction for your data catalog.
 slug: /connectors/database/mariadb
 ---
 
@@ -22,7 +23,7 @@ Configure and schedule MariaDB metadata and profiler workflows from the OpenMeta
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Troubleshooting](/connectors/database/mariadb/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mariadb/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mariadb/yaml"} /%}
 
 ## Requirements
 
@@ -49,12 +50,12 @@ Executing the profiler workflow or data quality tests, will require the user to 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "MariaDB", 
-    selectServicePath: "/images/v1.9connectors/mariadb/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/mariadb/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/mariadb/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/mariadb/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/mariadb/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/mariadb/service-connection.png",
 } 
 /%}
 
@@ -69,16 +70,16 @@ Executing the profiler workflow or data quality tests, will require the user to 
 - **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 - **databaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

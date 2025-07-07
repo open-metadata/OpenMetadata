@@ -16,6 +16,7 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import {
+  CONDITIONS_MUST,
   selectOption,
   showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
@@ -100,11 +101,24 @@ test.describe('Advanced Search Custom Property', () => {
         'Custom Properties'
       );
 
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Table'
+      );
+
       // Perform click on custom property type to filter
       await selectOption(
         page,
         ruleLocator.locator('.rule--field .ant-select'),
         durationPropertyName
+      );
+
+      // Perform click on operator
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--operator .ant-select'),
+        CONDITIONS_MUST.equalTo.name
       );
 
       const inputElement = ruleLocator.locator(

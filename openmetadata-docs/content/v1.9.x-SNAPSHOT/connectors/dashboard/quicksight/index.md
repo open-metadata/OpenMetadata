@@ -1,5 +1,6 @@
 ---
 title: QuickSight Connector | OpenMetadata Dashboard Integration
+description: Connect Amazon QuickSight to OpenMetadata with our comprehensive dashboard connector guide. Step-by-step setup, configuration, and metadata extraction.
 slug: /connectors/dashboard/quicksight
 ---
 
@@ -20,7 +21,7 @@ Configure and schedule QuickSight metadata and profiler workflows from the OpenM
 - [Lineage](#lineage)
 - [Troubleshooting](/connectors/dashboard/quicksight)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/quicksight/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/quicksight/yaml"} /%}
 ## Requirements
 
 To execute metadata extraction and usage workflow successfully the IAM User should have enough access to fetch required data. Following table describes the minimum required permissions
@@ -75,12 +76,12 @@ Here is how to add Permissions to an IAM user.
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Quicksight", 
-    selectServicePath: "/images/v1.9connectors/quicksight/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/quicksight/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/quicksight/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/quicksight/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/quicksight/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/quicksight/service-connection.png",
 } 
 /%}
 
@@ -161,12 +162,12 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.9connectors/dashboard/dashboard-lineage.md" /%}
+{% partial file="/v1.9/connectors/dashboard/dashboard-lineage.md" /%}
