@@ -13,10 +13,12 @@
 Check the JSONPatch operations work as expected
 """
 from unittest import TestCase
+from unittest.mock import Mock, patch
 
 import jsonpatch
+from pydantic import BaseModel
 
-from metadata.ingestion.models.patch_request import JsonPatchUpdater
+from metadata.ingestion.models.patch_request import JsonPatchUpdater, build_patch
 
 
 class JsonPatchUpdaterTest(TestCase):
@@ -104,3 +106,141 @@ class JsonPatchUpdaterTest(TestCase):
         updated_operations = json_patch_updater.update(json_patch)
 
         self.assertEqual(expected, updated_operations)
+
+
+class BuildPatchTest(TestCase):
+    """Validate build_patch function operations with skip_on_failure parameter."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        
+        class TestModel(BaseModel):
+            name: str
+            value: int
+            description: str = None
+            
+        self.TestModel = TestModel
+        
+        self.source = TestModel(name="test", value=1, description="source")
+        self.destination = TestModel(name="test", value=2, description="destination")
+
+    def test_build_patch_skip_on_failure_true_with_exception(self):
+        """Test that build_patch returns None when skip_on_failure=True and exception occurs."""
+        
+        # Mock jsonpatch.make_patch to raise an exception
+        with patch("metadata.ingestion.models.patch_request.jsonpatch.make_patch") as mock_make_patch:
+            mock_make_patch.side_effect = Exception("Test exception")
+            
+            # Test with skip_on_failure=True (default)
+            result = build_patch(
+                source=self.source,
+                destination=self.destination,
+                skip_on_failure=True
+            )
+            
+            self.assertIsNone(result)
+            mock_make_patch.assert_called_once()
+
+    def test_build_patch_skip_on_failure_false_with_exception(self):
+        """Test that build_patch raises exception when skip_on_failure=False and exception occurs."""
+        
+        # Mock jsonpatch.make_patch to raise an exception
+        with patch("metadata.ingestion.models.patch_request.jsonpatch.make_patch") as mock_make_patch:
+            mock_make_patch.side_effect = Exception("Test exception")
+            
+            # Test with skip_on_failure=False
+            with self.assertRaises(Exception) as context:
+                build_patch(
+                    source=self.source,
+                    destination=self.destination,
+                    skip_on_failure=False
+                )
+            
+            self.assertEqual(str(context.exception), "Test exception")
+            mock_make_patch.assert_called_once()
+
+    def test_build_patch_skip_on_failure_default_behavior(self):
+        """Test that build_patch defaults to skip_on_failure=True."""
+        
+        # Mock jsonpatch.make_patch to raise an exception
+        with patch("metadata.ingestion.models.patch_request.jsonpatch.make_patch") as mock_make_patch:
+            mock_make_patch.side_effect = Exception("Test exception")
+            
+            # Test without explicitly setting skip_on_failure (should default to True)
+            result = build_patch(
+                source=self.source,
+                destination=self.destination
+            )
+            
+            self.assertIsNone(result)
+            mock_make_patch.assert_called_once()
+
+    def test_build_patch_success_with_skip_on_failure_false(self):
+        """Test that build_patch works normally when skip_on_failure=False and no exception occurs."""
+        
+        # Create a real patch to test successful operation
+        result = build_patch(
+            source=self.source,
+            destination=self.destination,
+            skip_on_failure=False
+        )
+        
+        self.assertIsNotNone(result)
+        self.assertIsInstance(result, jsonpatch.JsonPatch)
+        
+        # Verify the patch contains the expected operation
+        patch_operations = result.patch
+        self.assertEqual(len(patch_operations), 1)
+        self.assertEqual(patch_operations[0]["op"], "replace")
+        self.assertEqual(patch_operations[0]["path"], "/value")
+        self.assertEqual(patch_operations[0]["value"], 2)
+
+    def test_build_patch_success_with_skip_on_failure_true(self):
+        """Test that build_patch works normally when skip_on_failure=True and no exception occurs."""
+        
+        # Create a real patch to test successful operation
+        result = build_patch(
+            source=self.source,
+            destination=self.destination,
+            skip_on_failure=True
+        )
+        
+        self.assertIsNotNone(result)
+        self.assertIsInstance(result, jsonpatch.JsonPatch)
+        
+        # Verify the patch contains the expected operation
+        patch_operations = result.patch
+        self.assertEqual(len(patch_operations), 1)
+        self.assertEqual(patch_operations[0]["op"], "replace")
+        self.assertEqual(patch_operations[0]["path"], "/value")
+        self.assertEqual(patch_operations[0]["value"], 2)
+
+    def test_build_patch_with_json_patch_updater_exception(self):
+        """Test skip_on_failure behavior when JsonPatchUpdater.update raises an exception."""
+        
+        # Mock JsonPatchUpdater.update to raise an exception
+        with patch("metadata.ingestion.models.patch_request.JsonPatchUpdater.from_restrict_update_fields") as mock_updater_factory:
+            mock_updater = Mock()
+            mock_updater.update.side_effect = Exception("JsonPatchUpdater exception")
+            mock_updater_factory.return_value = mock_updater
+            
+            # Test with skip_on_failure=True
+            result = build_patch(
+                source=self.source,
+                destination=self.destination,
+                restrict_update_fields=["description"],
+                skip_on_failure=True
+            )
+            
+            self.assertIsNone(result)
+            
+            # Test with skip_on_failure=False
+            with self.assertRaises(Exception) as context:
+                build_patch(
+                    source=self.source,
+                    destination=self.destination,
+                    restrict_update_fields=["description"],
+                    skip_on_failure=False
+                )
+            
+            self.assertEqual(str(context.exception), "JsonPatchUpdater exception")
