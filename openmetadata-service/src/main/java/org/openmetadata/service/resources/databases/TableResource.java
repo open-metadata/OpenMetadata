@@ -97,7 +97,7 @@ import org.openmetadata.service.util.ResultList;
 public class TableResource extends EntityResource<Table, TableRepository> {
   private final TableMapper mapper = new TableMapper();
   public static final String COLLECTION_PATH = "v1/tables/";
-  static final String FIELDS =
+  public static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,"
           + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
 

@@ -112,6 +112,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
@@ -121,6 +122,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -172,6 +174,7 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
+import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
@@ -4419,6 +4422,276 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertTrue(
         updatedColumnFound,
         "Expected upstream lineage to reference the renamed column '.ID' but did not find it");
+  }
+
+  @Test
+  void test_bulkFetchWithOwners_pagination(TestInfo test) throws IOException {
+    // Create a database schema with multiple tables
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest
+                .createRequest(test.getDisplayName() + "_schema")
+                .withDatabase(DATABASE.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    UserResourceTest userResourceTest = new UserResourceTest();
+    // Create multiple tables with different owners
+    List<Table> tables = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      User owner =
+          userResourceTest.createEntity(
+              userResourceTest.createRequest(
+                  "table_owner_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_") + i,
+                  "table_owner_" + i + "@example.com",
+                  "Table Owner " + i,
+                  null),
+              ADMIN_AUTH_HEADERS);
+      CreateTable createTable =
+          createRequest(test.getDisplayName() + "_table" + i)
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withOwners(List.of(owner.getEntityReference()));
+      Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+      tables.add(table);
+    }
+
+    // Fetch tables with pagination and owners field
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("databaseSchema", schema.getFullyQualifiedName());
+    queryParams.put("fields", "owners");
+
+    ResultList<Table> tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Verify all tables are returned with owners populated
+    assertEquals(5, tableList.getData().size());
+    for (int i = 0; i < 5; i++) {
+      Table fetchedTable = tableList.getData().get(i);
+      assertNotNull(fetchedTable.getOwners());
+      assertEquals(
+          1,
+          fetchedTable.getOwners().size(),
+          "Table " + fetchedTable.getName() + " should have exactly one owner");
+      assertTrue(fetchedTable.getOwners().getFirst().getName().contains("table_owner_"));
+    }
+  }
+
+  @Test
+  void test_inheritedFieldsWithPagination(TestInfo test) throws IOException {
+    // Create resource test instances
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+    UserResourceTest userResourceTest = new UserResourceTest();
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+
+    // Create a domain
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName("test_table_domain_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"))
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Test domain for table inheritance");
+    Domain domain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    // Create database owners (multiple users instead of user + team to avoid validation error)
+    User databaseOwner1 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(
+                "table_db_owner1_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"),
+                "table_db_owner1@example.com",
+                "Table DB Owner 1",
+                null),
+            ADMIN_AUTH_HEADERS);
+    User databaseOwner2 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(
+                "table_db_owner2_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"),
+                "table_db_owner2@example.com",
+                "Table DB Owner 2",
+                null),
+            ADMIN_AUTH_HEADERS);
+
+    // Create a database with domain and multiple user owners
+    CreateDatabase createDb =
+        dbTest
+            .createRequest("test_table_db_inheritance_" + test.getDisplayName())
+            .withService(DATABASE.getService().getFullyQualifiedName())
+            .withOwners(
+                List.of(databaseOwner1.getEntityReference(), databaseOwner2.getEntityReference()))
+            .withDomain(domain.getFullyQualifiedName());
+    Database database = dbTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
+
+    // Create schemas with different inheritance scenarios
+    List<DatabaseSchema> schemas = new ArrayList<>();
+    User schemaOwner =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(
+                "table_schema_owner_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"),
+                "table_schema_owner@example.com",
+                "Table Schema Owner",
+                null),
+            ADMIN_AUTH_HEADERS);
+    Domain schemaDomain =
+        domainResourceTest.createEntity(
+            new CreateDomain()
+                .withName("table_schema_domain_" + test.getDisplayName())
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("Schema specific domain"),
+            ADMIN_AUTH_HEADERS);
+
+    // Schema 0: No owners or domain (inherits from database)
+    DatabaseSchema schema0 =
+        schemaTest.createEntity(
+            schemaTest
+                .createRequest(test.getDisplayName() + "_schema0")
+                .withDatabase(database.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    schemas.add(schema0);
+
+    // Schema 1: Has its own owner but no domain (inherits domain from database)
+    DatabaseSchema schema1 =
+        schemaTest.createEntity(
+            schemaTest
+                .createRequest(test.getDisplayName() + "_schema1")
+                .withDatabase(database.getFullyQualifiedName())
+                .withOwners(List.of(schemaOwner.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+    schemas.add(schema1);
+
+    // Schema 2: Has its own domain but no owners (inherits owners from database)
+    DatabaseSchema schema2 =
+        schemaTest.createEntity(
+            schemaTest
+                .createRequest(test.getDisplayName() + "_schema2")
+                .withDatabase(database.getFullyQualifiedName())
+                .withDomain(schemaDomain.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    schemas.add(schema2);
+
+    // Create tables in each schema with different configurations
+    List<Table> tables = new ArrayList<>();
+    User tableOwner =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(
+                "table_owner_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"),
+                "table_owner@example.com",
+                "Table Owner",
+                null),
+            ADMIN_AUTH_HEADERS);
+
+    // Tables in schema0 (inherits everything from database)
+    for (int i = 0; i < 2; i++) {
+      CreateTable createTable =
+          createRequest(test.getDisplayName() + "_s0_table" + i)
+              .withDatabaseSchema(schema0.getFullyQualifiedName());
+      if (i == 1) {
+        // Table 1 has its own owner
+        createTable.withOwners(List.of(tableOwner.getEntityReference()));
+      }
+      Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+      tables.add(table);
+    }
+
+    // Tables in schema1 (inherits domain from database, owners from schema)
+    for (int i = 0; i < 2; i++) {
+      CreateTable createTable =
+          createRequest(test.getDisplayName() + "_s1_table" + i)
+              .withDatabaseSchema(schema1.getFullyQualifiedName());
+      Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+      tables.add(table);
+    }
+
+    // Tables in schema2 (inherits owners from database, domain from schema)
+    for (int i = 0; i < 2; i++) {
+      CreateTable createTable =
+          createRequest(test.getDisplayName() + "_s2_table" + i)
+              .withDatabaseSchema(schema2.getFullyQualifiedName());
+      Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+      tables.add(table);
+    }
+
+    // Test 1: Fetch all tables with pagination including inherited fields
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("database", database.getFullyQualifiedName());
+    queryParams.put("fields", "owners,domain");
+
+    ResultList<Table> tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Verify inheritance behavior for each table
+    for (Table fetchedTable : tableList.getData()) {
+      String tableName = fetchedTable.getName();
+
+      if (tableName.contains("_s0_table")) {
+        // Tables in schema0
+        if (tableName.endsWith("0")) {
+          // Inherits from database
+          assertNotNull(fetchedTable.getDomain());
+          assertEquals(
+              domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+          assertTrue(
+              fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+
+          assertListNotNull(fetchedTable.getOwners());
+          assertEquals(
+              2, fetchedTable.getOwners().size(), "Should inherit both owners from database");
+          fetchedTable
+              .getOwners()
+              .forEach(
+                  owner ->
+                      assertTrue(owner.getInherited(), "Owners should be inherited from database"));
+        } else {
+          // Has its own owner but inherits domain
+          assertNotNull(fetchedTable.getDomain());
+          assertEquals(
+              domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+          assertTrue(
+              fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+
+          assertListNotNull(fetchedTable.getOwners());
+          assertEquals(1, fetchedTable.getOwners().size(), "Should have its own owner");
+          assertEquals(tableOwner.getName(), fetchedTable.getOwners().getFirst().getName());
+          assertNull(
+              fetchedTable.getOwners().getFirst().getInherited(),
+              "Own owner should not be marked as inherited");
+        }
+      } else if (tableName.contains("_s1_table")) {
+        // Tables in schema1 - inherit domain from database, owners from schema
+        assertNotNull(fetchedTable.getDomain());
+        assertEquals(
+            domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+        assertTrue(
+            fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+
+        assertListNotNull(fetchedTable.getOwners());
+        assertEquals(1, fetchedTable.getOwners().size(), "Should inherit owner from schema");
+        assertEquals(schemaOwner.getName(), fetchedTable.getOwners().getFirst().getName());
+        assertTrue(
+            fetchedTable.getOwners().getFirst().getInherited(),
+            "Owners should be inherited from schema");
+      } else if (tableName.contains("_s2_table")) {
+        // Tables in schema2 - inherit owners from database, domain from schema
+        assertNotNull(fetchedTable.getDomain());
+        assertEquals(
+            schemaDomain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+        assertTrue(
+            fetchedTable.getDomain().getInherited(), "Domain should be inherited from schema");
+
+        assertListNotNull(fetchedTable.getOwners());
+        assertEquals(
+            2, fetchedTable.getOwners().size(), "Should inherit both owners from database");
+        fetchedTable
+            .getOwners()
+            .forEach(
+                owner ->
+                    assertTrue(owner.getInherited(), "Owners should be inherited from database"));
+      }
+    }
+
+    // Test 2: Verify individual table fetch also shows correct inheritance
+    Table individualTable =
+        getEntityByName(
+            tables.getFirst().getFullyQualifiedName(), "owners,domain", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(individualTable.getDomain());
+    assertTrue(individualTable.getDomain().getInherited());
+    assertListNotNull(individualTable.getOwners());
+    assertEquals(2, individualTable.getOwners().size());
+    individualTable.getOwners().forEach(owner -> assertTrue(owner.getInherited()));
   }
 
   @Test
