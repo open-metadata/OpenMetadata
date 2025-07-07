@@ -32,7 +32,13 @@ const DomainRouter = () => {
   return (
     <Routes>
       <Route
-        element={<AddDomain />}
+        element={
+          <AddDomain
+            pageTitle={i18n.t('label.add-entity', {
+              entity: i18n.t('label.domain'),
+            })}
+          />
+        }
         path={ROUTES.ADD_DOMAIN.replace(ROUTES.DOMAIN, '')}
       />
       <Route

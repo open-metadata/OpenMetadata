@@ -38,6 +38,10 @@ jest.mock('../../../utils/CommonUtils', () => ({
   getIsErrorMatch: jest.fn().mockImplementation(() => Promise.resolve(error)),
 }));
 
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
+
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockImplementation(() => -1),
 }));
@@ -79,9 +83,13 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
+const mockProps = {
+  pageTitle: 'add-domain',
+};
+
 describe('AddDomain', () => {
   it('renders add domain', async () => {
-    render(<AddDomain />);
+    render(<AddDomain {...mockProps} />);
 
     expect(await screen.findByText('BreadCrumb')).toBeInTheDocument();
     expect(await screen.findByTestId('form-heading')).toHaveTextContent(
@@ -90,7 +98,7 @@ describe('AddDomain', () => {
   });
 
   it('Should call onSubmit function', async () => {
-    render(<AddDomain />);
+    render(<AddDomain {...mockProps} />);
 
     const submitButton = await screen.findByTestId('submit-button');
     await act(async () => {
@@ -101,7 +109,7 @@ describe('AddDomain', () => {
   });
 
   it('Should call onCancel function', async () => {
-    render(<AddDomain />);
+    render(<AddDomain {...mockProps} />);
 
     const cancelButton = await screen.findByTestId('cancel-button');
     fireEvent.click(cancelButton);
@@ -111,7 +119,7 @@ describe('AddDomain', () => {
 
   it('Should show error message when api fails', async () => {
     (addDomains as jest.Mock).mockRejectedValue(error);
-    render(<AddDomain />);
+    render(<AddDomain {...mockProps} />);
     const submitButton = await screen.findByTestId('submit-button');
     await act(async () => {
       fireEvent.click(submitButton);
