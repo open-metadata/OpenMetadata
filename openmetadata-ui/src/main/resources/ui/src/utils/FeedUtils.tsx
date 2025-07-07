@@ -626,6 +626,7 @@ export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
     [EntityField.EXPERTS]: t('label.expert-plural'),
     [EntityField.FIELDS]: t('label.field-plural'),
     [EntityField.PARAMETER_VALUES]: t('label.parameter-plural'),
+    [EntityField.DATA_TYPE_DISPLAY]: t('label.data-type-display'),
   };
 
   return isUndefined(fieldName) ? '' : fieldNameLabelMapping[fieldName];
