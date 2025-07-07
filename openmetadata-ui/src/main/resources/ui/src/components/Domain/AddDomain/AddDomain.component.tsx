@@ -19,6 +19,7 @@ import { ERROR_MESSAGE, ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../../../constants/Domain.constants';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { addDomains, getDomainList } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -171,4 +172,4 @@ const AddDomain = () => {
   );
 };
 
-export default AddDomain;
+export default withPageLayout(AddDomain);

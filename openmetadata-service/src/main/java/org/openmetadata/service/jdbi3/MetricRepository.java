@@ -14,9 +14,14 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.METRIC;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.EntityReference;
@@ -40,6 +45,9 @@ public class MetricRepository extends EntityRepository<Metric> {
         UPDATE_FIELDS);
     supportsSearch = true;
     renameAllowed = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put("relatedMetrics", this::fetchAndSetRelatedMetrics);
   }
 
   @Override
@@ -61,6 +69,15 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   protected void clearFields(Metric entity, EntityUtil.Fields fields) {
     entity.setRelatedMetrics(fields.contains("relatedMetrics") ? entity.getRelatedMetrics() : null);
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetRelatedMetrics(List<Metric> metrics, EntityUtil.Fields fields) {
+    if (!fields.contains("relatedMetrics") || metrics == null || metrics.isEmpty()) {
+      return;
+    }
+    // Use bulk relationship fetching for related metrics
+    setFieldFromMap(true, metrics, batchFetchRelatedMetrics(metrics), Metric::setRelatedMetrics);
   }
 
   @Override
@@ -137,5 +154,48 @@ public class MetricRepository extends EntityRepository<Metric> {
           updatedRelatedMetrics,
           true);
     }
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchRelatedMetrics(List<Metric> metrics) {
+    Map<UUID, List<EntityReference>> relatedMetricsMap = new HashMap<>();
+    if (metrics == null || metrics.isEmpty()) {
+      return relatedMetricsMap;
+    }
+
+    // Initialize empty lists for all metrics
+    for (Metric metric : metrics) {
+      relatedMetricsMap.put(metric.getId(), new ArrayList<>());
+    }
+
+    // For bidirectional relationships, we need to fetch both directions
+    // First, get relationships where these metrics are the source
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(metrics), Relationship.RELATED_TO.ordinal(), METRIC);
+
+    // Group related metrics by source metric ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID metricId = UUID.fromString(record.getFromId());
+      EntityReference relatedMetricRef =
+          Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getToId()), NON_DELETED);
+      relatedMetricsMap.get(metricId).add(relatedMetricRef);
+    }
+
+    // Second, get relationships where these metrics are the target (bidirectional)
+    List<CollectionDAO.EntityRelationshipObject> reverseRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(metrics), Relationship.RELATED_TO.ordinal());
+
+    // Group related metrics by target metric ID
+    for (CollectionDAO.EntityRelationshipObject record : reverseRecords) {
+      UUID metricId = UUID.fromString(record.getToId());
+      EntityReference relatedMetricRef =
+          Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getFromId()), NON_DELETED);
+      relatedMetricsMap.get(metricId).add(relatedMetricRef);
+    }
+
+    return relatedMetricsMap;
   }
 }

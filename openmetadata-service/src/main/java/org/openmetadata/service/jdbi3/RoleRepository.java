@@ -19,12 +19,16 @@ import static org.openmetadata.service.Entity.POLICIES;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
@@ -60,6 +64,106 @@ public class RoleRepository extends EntityRepository<Role> {
     role.setPolicies(fields.contains(POLICIES) ? role.getPolicies() : null);
     role.setTeams(fields.contains("teams") ? role.getTeams() : null);
     role.withUsers(fields.contains("users") ? role.getUsers() : null);
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Role> roles) {
+    if (roles == null || roles.isEmpty()) {
+      return;
+    }
+
+    if (fields.contains(POLICIES)) {
+      fetchAndSetPolicies(roles);
+    }
+
+    if (fields.contains("teams")) {
+      fetchAndSetTeams(roles);
+    }
+
+    if (fields.contains("users")) {
+      fetchAndSetUsers(roles);
+    }
+
+    // Handle standard fields that are managed by the parent class
+    super.setFieldsInBulk(fields, roles);
+  }
+
+  private void fetchAndSetPolicies(List<Role> roles) {
+    List<String> roleIds = roles.stream().map(Role::getId).map(UUID::toString).distinct().toList();
+
+    // Bulk fetch policies for all roles
+    List<CollectionDAO.EntityRelationshipObject> policyRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(roleIds, Relationship.HAS.ordinal(), Entity.ROLE, Entity.POLICY);
+
+    // Create a map of role ID to policy references
+    Map<UUID, List<EntityReference>> roleToPolicies = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : policyRecords) {
+      UUID roleId = UUID.fromString(record.getFromId());
+      EntityReference policyRef =
+          Entity.getEntityReferenceById(
+              Entity.POLICY, UUID.fromString(record.getToId()), Include.ALL);
+      roleToPolicies.computeIfAbsent(roleId, k -> new ArrayList<>()).add(policyRef);
+    }
+
+    // Set policies on roles
+    for (Role role : roles) {
+      List<EntityReference> policies = roleToPolicies.get(role.getId());
+      role.setPolicies(policies != null ? policies : new ArrayList<>());
+    }
+  }
+
+  private void fetchAndSetTeams(List<Role> roles) {
+    List<String> roleIds = roles.stream().map(Role::getId).map(UUID::toString).distinct().toList();
+
+    // Bulk fetch teams for all roles
+    List<CollectionDAO.EntityRelationshipObject> teamRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(roleIds, Relationship.HAS.ordinal(), Entity.ROLE, Entity.TEAM);
+
+    // Create a map of role ID to team references
+    Map<UUID, List<EntityReference>> roleToTeams = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
+      UUID roleId = UUID.fromString(record.getFromId());
+      EntityReference teamRef =
+          Entity.getEntityReferenceById(
+              Entity.TEAM, UUID.fromString(record.getToId()), Include.ALL);
+      roleToTeams.computeIfAbsent(roleId, k -> new ArrayList<>()).add(teamRef);
+    }
+
+    // Set teams on roles
+    for (Role role : roles) {
+      List<EntityReference> teams = roleToTeams.get(role.getId());
+      role.setTeams(teams != null ? teams : new ArrayList<>());
+    }
+  }
+
+  private void fetchAndSetUsers(List<Role> roles) {
+    List<String> roleIds = roles.stream().map(Role::getId).map(UUID::toString).distinct().toList();
+
+    // Bulk fetch users for all roles
+    List<CollectionDAO.EntityRelationshipObject> userRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(roleIds, Relationship.HAS.ordinal(), Entity.ROLE, Entity.USER);
+
+    // Create a map of role ID to user references
+    Map<UUID, List<EntityReference>> roleToUsers = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : userRecords) {
+      UUID roleId = UUID.fromString(record.getFromId());
+      EntityReference userRef =
+          Entity.getEntityReferenceById(
+              Entity.USER, UUID.fromString(record.getToId()), Include.ALL);
+      roleToUsers.computeIfAbsent(roleId, k -> new ArrayList<>()).add(userRef);
+    }
+
+    // Set users on roles
+    for (Role role : roles) {
+      List<EntityReference> users = roleToUsers.get(role.getId());
+      role.withUsers(users != null ? users : new ArrayList<>());
+    }
   }
 
   private List<EntityReference> getPolicies(@NonNull Role role) {
