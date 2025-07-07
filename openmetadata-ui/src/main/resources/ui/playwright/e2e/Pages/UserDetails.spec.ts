@@ -195,13 +195,6 @@ test.describe('User with different Roles', () => {
 
     await userProfileResponse;
 
-    const userResponse = adminPage.waitForResponse((response) =>
-      response.url().includes('api/v1/users/name/')
-    );
-
-    await adminPage.reload();
-    await userResponse;
-
     await expect(
       adminPage.locator('[data-testid="header-domain-container"]')
     ).not.toContainText(domain.responseData.displayName);
