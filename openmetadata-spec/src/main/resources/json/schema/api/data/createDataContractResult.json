@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createDataContractResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateDataContractResult",
+  "description": "Create data contract result API request.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateDataContractResult",
+  "properties": {
+    "dataContractFQN": {
+      "description": "Fully qualified name of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "timestamp": {
+      "description": "Timestamp when the data contract was executed.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "contractExecutionStatus": {
+      "description": "Overall status of the contract execution.",
+      "$ref": "../../type/contractExecutionStatus.json"
+    },
+    "result": {
+      "description": "Detailed result of the data contract execution.",
+      "type": "string"
+    },
+    "schemaValidation": {
+      "description": "Schema validation details.",
+      "$ref": "../../entity/datacontract/schemaValidation.json",
+      "default": null
+    },
+    "semanticsValidation": {
+      "description": "Semantics validation details.",
+      "$ref": "../../entity/datacontract/semanticsValidation.json",
+      "default": null
+    },
+    "qualityValidation": {
+      "description": "Quality expectations validation details.",
+      "$ref": "../../entity/datacontract/qualityValidation.json",
+      "default": null
+    },
+    "slaValidation": {
+      "description": "SLA validation details.",
+      "$ref": "../../entity/datacontract/slaValidation.json",
+      "default": null
+    },
+    "incidentId": {
+      "description": "Incident ID if the contract execution failed and an incident was created.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "executionTime": {
+      "description": "Time taken to execute the contract validation in milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["dataContractFQN", "timestamp", "contractExecutionStatus"],
+  "additionalProperties": false
+}
