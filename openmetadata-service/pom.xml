@@ -35,6 +35,7 @@
     <jetty.version>11.0.25</jetty.version>
     <logback-core.version>1.5.18</logback-core.version>
     <logback-classic.version>1.5.18</logback-classic.version>
+    <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
   </properties>
 
   <dependencyManagement>
@@ -415,6 +416,17 @@
       <artifactId>azure-identity-extensions</artifactId>
       <version>${azure-identity-extensions.version}</version>
     </dependency>
+    
+    <!-- Redis/Cache dependencies -->
+    <dependency>
+      <groupId>io.lettuce</groupId>
+      <artifactId>lettuce-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>elasticache</artifactId>
+    </dependency>
+    
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
       <artifactId>dropwizard-web</artifactId>
@@ -856,8 +868,13 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>33.3.1-jre</version>
+      <version>33.4.8-jre</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-ratelimiter</artifactId>
+      <version>${resilience4j-ratelimiter.version}</version>
     </dependency>
     <dependency>
       <groupId>org.junit.platform</groupId>
@@ -1082,6 +1099,57 @@
                     <includes>
                       <include>**/*Test.java</include>
                       <include>**/*ResourceTest.java</include>
+                    </includes>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
+      <profile>
+        <id>postgres-redis-tests</id>
+        <dependencies>
+          <!-- Testcontainers Redis module for integration testing -->
+          <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${org.testcontainers.version}</version>
+            <scope>test</scope>
+          </dependency>
+        </dependencies>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx2G</argLine>
+                <systemPropertyVariables>
+                  <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <redisContainerClassName>org.testcontainers.containers.GenericContainer</redisContainerClassName>
+                  <redisContainerImage>redis:7-alpine</redisContainerImage>
+                  <runESTestCases>false</runESTestCases>
+                  <enableCache>true</enableCache>
+                  <cacheType>redis</cacheType>
+                </systemPropertyVariables>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>postgres-redis-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*Test.java</include>
+                      <include>**/*ResourceTest.java</include>
+                      <include>**/cache/*Test.java</include>
                     </includes>
                   </configuration>
                 </execution>
