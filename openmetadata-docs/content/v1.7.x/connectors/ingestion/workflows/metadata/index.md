@@ -1,5 +1,6 @@
 ---
-title: Metadata Ingestion Workflow
+title: Metadata Ingestion Workflow | Collate Docs
+description: Get started with Collate's metadata. Setup instructions, features, and configuration details inside.
 slug: /connectors/ingestion/workflows/metadata
 ---
 

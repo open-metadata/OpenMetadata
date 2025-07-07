@@ -1,5 +1,6 @@
 ---
 title: Run the Snowflake Connector Externally
+description: Integrate Yaml with Collate for metadata sync, profiling, and lineage. Start configuring with our easy-to-follow guide.
 slug: /connectors/database/snowflake/yaml
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: subscriptionResourceDescriptor
+description: Get started with Collate's subscriptionresourcedescriptor. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/events/subscriptionresourcedescriptor
 ---
 

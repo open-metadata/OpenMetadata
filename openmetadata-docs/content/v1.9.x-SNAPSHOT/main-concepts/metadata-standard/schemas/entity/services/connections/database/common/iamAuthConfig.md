@@ -1,5 +1,6 @@
 ---
 title: IAM Auth Config | OpenMetadata IAM Authentication Config
+description: Get started with Collate's iamauthconfig. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/iamauthconfig
 ---
 

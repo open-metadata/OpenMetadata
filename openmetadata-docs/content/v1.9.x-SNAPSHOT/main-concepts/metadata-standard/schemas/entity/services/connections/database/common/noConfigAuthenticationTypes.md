@@ -1,5 +1,6 @@
 ---
-title: noConfigAuthenticationTypes
+title: Noconfigauthenticationtypes | Collate Docs
+description: Get started with Collate's noconfigauthenticationtypes. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/noconfigauthenticationtypes
 noindex: true
 nofollow: true
