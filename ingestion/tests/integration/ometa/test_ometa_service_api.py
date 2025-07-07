@@ -191,7 +191,7 @@ class OMetaServiceTest(TestCase):
             entity=DatabaseService, config=workflow_source
         )
         # Fix for 3.10 producing empty entityReferenceList
-        api_resp.owners = None
+        service.owners = None
         assert service == api_resp
 
     def test_create_dashboard_service_looker(self):
@@ -227,7 +227,7 @@ class OMetaServiceTest(TestCase):
             entity=DashboardService, config=workflow_source
         )
         # Fix for 3.10 producing empty entityReferenceList
-        api_resp.owners = None
+        service.owners = None
         assert service == api_resp
 
         # Clean
@@ -268,7 +268,7 @@ class OMetaServiceTest(TestCase):
             entity=DashboardService, config=workflow_source
         )
         # Fix for 3.10 producing empty entityReferenceList
-        api_resp.owners = None
+        service.owners = None
         assert service == api_resp
 
         # Clean
@@ -301,7 +301,7 @@ class OMetaServiceTest(TestCase):
             entity=MessagingService, config=workflow_source
         )
         # Fix for 3.10 producing empty entityReferenceList
-        api_resp.owners = None
+        service.owners = None
         assert service == api_resp
 
         # Clean
@@ -343,7 +343,7 @@ class OMetaServiceTest(TestCase):
             entity=DatabaseService, config=workflow_source
         )
         # Fix for 3.10 producing empty entityReferenceList
-        api_resp.owners = None
+        service.owners = None
         assert service == api_resp
 
         # Clean
@@ -386,7 +386,7 @@ class OMetaServiceTest(TestCase):
             entity=DashboardService, config=workflow_source
         )
         # Fix for 3.10 producing empty entityReferenceList
-        api_resp.owners = None
+        service.owners = None
         assert service == api_resp
 
         # Clean
