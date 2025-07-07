@@ -31,6 +31,7 @@ import {
   clickOutside,
   getApiContext,
   redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 import {
@@ -41,6 +42,7 @@ import {
   createDataProduct,
   createDomain,
   createSubDomain,
+  fillDomainForm,
   removeAssetsFromDataProduct,
   selectDataProduct,
   selectDataProductFromTab,
@@ -699,6 +701,42 @@ test.describe('Domains', () => {
 
       await expect(page.getByTestId('all-domains-selector')).toHaveClass(
         /selected-node/
+      );
+    } finally {
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Verify duplicate domain creation', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const domain1 = new Domain({
+      name: domain.data.name,
+      displayName: domain.data.displayName,
+      description: domain.data.description,
+      domainType: domain.data.domainType,
+    });
+    try {
+      await domain.create(apiContext);
+      await page.reload();
+      await sidebarClick(page, SidebarItem.DOMAIN);
+
+      await page.click('[data-testid="add-domain"]');
+      await page.waitForSelector('[data-testid="form-heading"]');
+
+      await expect(page.locator('[data-testid="form-heading"]')).toHaveText(
+        'Add Domain'
+      );
+
+      await fillDomainForm(page, domain1.data);
+      const domainRes = page.waitForResponse('/api/v1/domains');
+      await page.click('[data-testid="save-domain"]');
+      await domainRes;
+
+      await toastNotification(
+        page,
+        /already exists. Duplicated domains are not allowed./
       );
     } finally {
       await domain.delete(apiContext);

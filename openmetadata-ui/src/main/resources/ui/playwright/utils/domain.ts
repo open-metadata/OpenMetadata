@@ -202,7 +202,7 @@ const fillCommonFormItems = async (
   }
 };
 
-const fillDomainForm = async (
+export const fillDomainForm = async (
   page: Page,
   entity: Domain['data'] | SubDomain['data'],
   isDomain = true

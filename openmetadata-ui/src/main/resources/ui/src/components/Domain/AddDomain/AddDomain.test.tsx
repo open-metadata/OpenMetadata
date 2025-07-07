@@ -39,6 +39,10 @@ jest.mock('../../../utils/CommonUtils', () => ({
   getIsErrorMatch: jest.fn().mockImplementation(() => Promise.resolve(error)),
 }));
 
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
+
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));

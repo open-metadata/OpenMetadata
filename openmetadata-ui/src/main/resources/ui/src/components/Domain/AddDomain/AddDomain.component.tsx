@@ -19,9 +19,11 @@ import { ERROR_MESSAGE, ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../../../constants/Domain.constants';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { addDomains, getDomainList } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -171,4 +173,8 @@ const AddDomain = () => {
   );
 };
 
-export default AddDomain;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.domain'),
+  })
+)(AddDomain);
