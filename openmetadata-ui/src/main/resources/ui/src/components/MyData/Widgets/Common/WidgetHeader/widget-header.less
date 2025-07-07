@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import '../../../styles/variables.less';
+
 .widget-header {
   padding: 16px 16px 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid @border-color;
   margin-bottom: 16px;
 
   .widget-title {
@@ -20,15 +22,15 @@
     font-weight: 600;
     font-size: 16px;
     line-height: 24px;
-    color: var(--text-color);
+    color: @text-color;
   }
 
   .widget-header-options {
-    color: var(--text-color-secondary);
+    color: @text-color-secondary;
     transition: color 0.3s ease;
 
     &:hover {
-      color: var(--primary-color);
+      color: @primary-color;
     }
   }
 

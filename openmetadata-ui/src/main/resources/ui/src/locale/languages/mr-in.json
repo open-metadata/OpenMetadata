@@ -2,6 +2,7 @@
   "label": {
     "1-day": "1 दिवस",
     "1-hr": "1 तास",
+    "a-to-z": "अ ते ज",
     "aborted": "निरस्त केले",
     "accept": "स्वीकार करा",
     "accept-all": "सर्व स्वीकार करा",
@@ -1609,6 +1610,7 @@
     "yes-comma-confirm": "होय, पुष्टी करा",
     "yesterday": "काल",
     "your-entity": "तुमचे {{entity}}",
+    "z-to-a": "ज ते अ",
     "zoom-in": "झूम इन",
     "zoom-out": "झूम आउट"
   },

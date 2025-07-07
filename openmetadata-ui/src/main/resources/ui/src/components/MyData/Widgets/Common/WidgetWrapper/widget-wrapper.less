@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import '../../../styles/variables.less';
+
 .widget-wrapper-container {
   height: 100%;
   border-radius: 8px;
@@ -47,13 +49,13 @@
     z-index: 10;
 
     .widget-wrapper-more-button {
-      color: var(--text-color-secondary);
+      color: @text-color-secondary;
       border: none;
       background: transparent;
       transition: color 0.3s ease;
 
       &:hover {
-        color: var(--primary-color);
+        color: @primary-color;
       }
     }
 

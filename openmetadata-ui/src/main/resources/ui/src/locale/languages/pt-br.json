@@ -2,6 +2,7 @@
   "label": {
     "1-day": "1 dia",
     "1-hr": "1 hora",
+    "a-to-z": "A a Z",
     "aborted": "Abortado",
     "accept": "Aceitar",
     "accept-all": "Aceitar todos",
@@ -1609,6 +1610,7 @@
     "yes-comma-confirm": "Sim, confirmar",
     "yesterday": "Ontem",
     "your-entity": "Sua {{entity}}",
+    "z-to-a": "Z a A",
     "zoom-in": "Aumentar Zoom",
     "zoom-out": "Diminuir Zoom"
   },

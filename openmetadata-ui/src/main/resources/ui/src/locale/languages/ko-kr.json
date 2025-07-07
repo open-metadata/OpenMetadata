@@ -2,6 +2,7 @@
   "label": {
     "1-day": "1 일",
     "1-hr": "1 시간",
+    "a-to-z": "A에서 Z",
     "aborted": "중단됨",
     "accept": "수락",
     "accept-all": "모두 수락",
@@ -1609,6 +1610,7 @@
     "yes-comma-confirm": "예, 확인합니다",
     "yesterday": "어제",
     "your-entity": "당신의 {{entity}}",
+    "z-to-a": "Z에서 A",
     "zoom-in": "확대",
     "zoom-out": "축소"
   },

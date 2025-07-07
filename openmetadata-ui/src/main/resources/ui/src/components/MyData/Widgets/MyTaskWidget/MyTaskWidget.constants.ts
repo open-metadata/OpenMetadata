@@ -1,3 +1,5 @@
+import { t } from 'i18next';
+
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,14 +21,14 @@ export const MY_TASK_SORT_BY_KEYS = {
 export const MY_TASK_SORT_BY_OPTIONS = [
   {
     key: MY_TASK_SORT_BY_KEYS.LATEST,
-    label: 'Latest',
+    label: t('label.latest'),
   },
   {
     key: MY_TASK_SORT_BY_KEYS.A_TO_Z,
-    label: 'A to Z',
+    label: t('label.a-to-z'),
   },
   {
     key: MY_TASK_SORT_BY_KEYS.Z_TO_A,
-    label: 'Z to A',
+    label: t('label.z-to-a'),
   },
 ];

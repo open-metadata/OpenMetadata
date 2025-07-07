@@ -2,6 +2,7 @@
   "label": {
     "1-day": "1 روز",
     "1-hr": "1 ساعت",
+    "a-to-z": "A'dan Z'ye",
     "aborted": "لغو شده",
     "accept": "پذیرفتن",
     "accept-all": "پذیرفتن همه",
@@ -1609,6 +1610,7 @@
     "yes-comma-confirm": "بله، تأیید",
     "yesterday": "دیروز",
     "your-entity": "{{entity}} شما",
+    "z-to-a": "Z'den A'ya",
     "zoom-in": "بزرگنمایی",
     "zoom-out": "کوچک‌نمایی"
   },

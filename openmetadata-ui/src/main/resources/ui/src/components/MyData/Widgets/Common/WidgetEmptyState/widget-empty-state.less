@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import '../../../styles/variables.less';
+
 .widget-empty-state {
   display: flex;
   align-items: center;
@@ -18,7 +20,7 @@
   padding: 24px;
 
   .placeholder-text {
-    color: var(--text-color-secondary);
+    color: @text-color-secondary;
     text-align: center;
     max-width: 300px;
   }

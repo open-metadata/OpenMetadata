@@ -2,6 +2,7 @@
   "label": {
     "1-day": "1 天",
     "1-hr": "1 小时",
+    "a-to-z": "A到Z",
     "aborted": "已中止",
     "accept": "接受",
     "accept-all": "接受所有",
@@ -1609,6 +1610,7 @@
     "yes-comma-confirm": "是, 确认",
     "yesterday": "昨天",
     "your-entity": "您的{{entity}}",
+    "z-to-a": "Z到A",
     "zoom-in": "放大",
     "zoom-out": "缩小"
   },
