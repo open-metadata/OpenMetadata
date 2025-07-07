@@ -28,8 +28,7 @@ on:
       - 'openmetadata-dist/**'
       - 'docker/**'
       - '!docker/development/docker-compose.yml'
-      - '!docker/development/docker-compose-postgres.yml'
-      - 'openmetadata-ui/src/main/resources/ui/playwright/**'
+      - '!docker/development/docker-compose-postgres.yml'  
 
     
 permissions:
@@ -42,7 +41,7 @@ concurrency:
 jobs:
   playwright-ci-mysql:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || (github.event.action == 'labeled' && contains(github.event.label.name, 'Safe To test'))))) }}
+    if: ${{ !github.event.pull_request.draft }}
     environment: test
     strategy:
       fail-fast: false

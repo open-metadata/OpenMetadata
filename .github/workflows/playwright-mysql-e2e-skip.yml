@@ -28,7 +28,7 @@ on:
       - 'docker/**'
       - '!docker/development/docker-compose.yml'
       - '!docker/development/docker-compose-postgres.yml'
-      - 'openmetadata-ui/src/main/resources/ui/playwright/**'
+
 
 jobs:
   playwright-ci-mysql:
