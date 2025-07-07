@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../../styles/variables.less';
-
+@import (reference) url('../../../../../styles/variables.less');
 .widget-wrapper-container {
   height: 100%;
   border-radius: 8px;
@@ -49,7 +48,6 @@
     z-index: 10;
 
     .widget-wrapper-more-button {
-      color: @text-color-secondary;
       border: none;
       background: transparent;
       transition: color 0.3s ease;
@@ -65,6 +63,12 @@
         font-size: 14px;
         line-height: 20px;
       }
+    }
+  }
+
+  &:hover {
+    .drag-widget-icon {
+      display: block;
     }
   }
 }

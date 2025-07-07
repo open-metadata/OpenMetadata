@@ -27,7 +27,6 @@ const mockProps = {
     { key: 'share', label: 'Share', disabled: true },
   ],
   onMenuClick: jest.fn(),
-  isEditView: true,
   className: 'custom-more-class',
   dataTestId: 'test-more-options',
 };
@@ -45,16 +44,10 @@ describe('WidgetMoreOptions', () => {
     jest.clearAllMocks();
   });
 
-  it('renders more options button when in edit view', () => {
+  it('renders more options button', () => {
     renderWidgetMoreOptions();
 
     expect(screen.getByTestId('more-options-button')).toBeInTheDocument();
-  });
-
-  it('does not render when not in edit view', () => {
-    renderWidgetMoreOptions({ isEditView: false });
-
-    expect(screen.queryByTestId('more-options-button')).not.toBeInTheDocument();
   });
 
   it('shows menu items when button is clicked', () => {
@@ -108,15 +101,9 @@ describe('WidgetMoreOptions', () => {
   it('applies custom className', () => {
     renderWidgetMoreOptions();
 
-    const moreOptions = screen.getByTestId('test-more-options');
+    const moreOptions = screen.getByTestId('more-options-button');
 
     expect(moreOptions).toHaveClass('custom-more-class');
-  });
-
-  it('renders with custom data test id', () => {
-    renderWidgetMoreOptions({ dataTestId: 'custom-more' });
-
-    expect(screen.getByTestId('custom-more')).toBeInTheDocument();
   });
 
   it('handles empty menu items gracefully', () => {
@@ -156,17 +143,6 @@ describe('WidgetMoreOptions', () => {
     expect(screen.getByText('Edit')).toBeInTheDocument();
     expect(screen.getByText('Delete')).toBeInTheDocument();
     expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
-  });
-
-  it('handles single menu item', () => {
-    renderWidgetMoreOptions({
-      menuItems: [{ key: 'edit', label: 'Edit' }],
-    });
-
-    const moreButton = screen.getByTestId('more-options-button');
-    fireEvent.click(moreButton);
-
-    expect(screen.getByText('Edit')).toBeInTheDocument();
   });
 
   it('handles menu items with complex keys', () => {

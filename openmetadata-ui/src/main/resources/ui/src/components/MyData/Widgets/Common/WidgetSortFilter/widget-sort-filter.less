@@ -10,28 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.widget-sort-filter {
-  .ant-btn {
-    border-radius: 6px;
-    height: 32px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    background: var(--background-color);
-    transition: all 0.3s ease;
+@import (reference) '../../../../../styles/variables.less';
 
-    &:hover {
-      border-color: var(--primary-color);
-      color: var(--primary-color);
-    }
+.widget-sort-filter-icon {
+  svg {
+    font-size: 10px;
   }
+}
 
-  .widget-sort-filter-menu {
-    .ant-dropdown-menu-item {
-      padding: 8px 16px;
-      font-size: 14px;
-      line-height: 20px;
-    }
-  }
+.widget-sort-by-dropdown {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }

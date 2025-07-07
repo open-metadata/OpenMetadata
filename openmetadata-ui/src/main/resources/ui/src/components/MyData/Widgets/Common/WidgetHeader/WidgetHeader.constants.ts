@@ -10,24 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../../../styles/variables.less');
+import { t } from '../../../../../utils/i18next/LocalUtil';
 
-.widget-footer {
-  width: 100%;
-  background-color: @white;
-  border-bottom-right-radius: 12px;
-  border-bottom-left-radius: 12px;
-  padding: 0;
-
-  .ant-btn {
-    border-radius: 6px;
-    height: 40px;
-    font-weight: 400;
-    padding-top: 1px !important;
-  }
-
-  .footer-view-more-button {
-    margin-top: 8px;
-    margin-bottom: 8px;
-  }
-}
+export const WIDGET_MORE_MENU_ITEMS = [
+  {
+    key: 'half_size',
+    label: t('label.half-size'),
+  },
+  {
+    key: 'full_size',
+    label: t('label.full-size'),
+  },
+  {
+    key: 'remove',
+    label: t('label.remove'),
+  },
+];

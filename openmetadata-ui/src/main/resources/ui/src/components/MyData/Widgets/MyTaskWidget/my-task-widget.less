@@ -47,67 +47,58 @@
 }
 
 .my-task-widget-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
   .ant-card-body {
-    height: 100%;
     display: flex;
     flex-direction: column;
+    flex: 1;
     padding: 0px;
-  }
-
-  .widget-title {
-    font-weight: 500;
-    font-size: 16px;
-    line-height: 28px;
-    margin-bottom: 0;
-    text-overflow: ellipsis;
     overflow: hidden;
-    white-space: nowrap;
   }
 
-  .my-task-footer {
+  .my-task-header {
+    flex-shrink: 0;
+    padding: 12px 20px;
+    border-bottom: 1px solid @grey-15;
+  }
+
+  .widget-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .entity-list-body {
+    flex: 1;
+    padding: 20px 20px 0 20px;
+    margin: 0;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .my-task-footer,
+  .widget-footer {
+    flex-shrink: 0;
     width: 100%;
     background-color: @white;
     border-bottom-right-radius: 12px;
     border-bottom-left-radius: 12px;
-  }
-
-  .my-task-header {
-    padding: 12px 20px 12px 20px;
-    border-bottom: 1px solid @grey-15;
-  }
-
-  .entity-list-body {
-    padding: 0;
-    margin-top: 0;
-    overflow-y: auto;
-  }
-
-  .footer-view-more-button {
-    margin-top: 8px;
-    margin-bottom: 8px;
-  }
-
-  .entity-list-item-title {
-    font-size: 14px;
-    font-weight: 500;
-    text-align: left;
-  }
-
-  .entity-list-item-description {
-    font-size: 12px;
-    font-weight: 400;
-    text-align: left;
-    margin-bottom: 0;
-  }
-
-  .drag-widget-icon {
-    display: none;
   }
 }
 
 .my-task-widget-container:hover {
   .drag-widget-icon {
     display: block;
+    cursor: grabbing;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
   }
 }
 

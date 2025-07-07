@@ -28,14 +28,12 @@ const mockProps = {
   ],
   selectedSortBy: 'name',
   onSortChange: jest.fn(),
-  moreMenuItems: [
-    { key: 'edit', label: 'Edit' },
-    { key: 'delete', label: 'Delete' },
-  ],
-  onMoreMenuClick: jest.fn(),
   onEditClick: jest.fn(),
   className: 'custom-class',
-  dataTestId: 'test-widget-header',
+  widgetKey: 'test-widget-key',
+  handleLayoutUpdate: jest.fn(),
+  handleRemoveWidget: jest.fn(),
+  currentLayout: [],
 };
 
 const renderWidgetHeader = (props = {}) => {
@@ -62,27 +60,17 @@ describe('WidgetHeader', () => {
   it('renders sort dropdown when not in edit view', () => {
     renderWidgetHeader();
 
-    expect(screen.getByTestId('sort-by-button')).toBeInTheDocument();
+    expect(screen.getByTestId('widget-sort-by-dropdown')).toBeInTheDocument();
     expect(screen.getByText('Name')).toBeInTheDocument();
-  });
-
-  it('calls onSortChange when sort option is clicked', () => {
-    renderWidgetHeader();
-
-    const sortButton = screen.getByTestId('sort-by-button');
-    fireEvent.click(sortButton);
-
-    const dateOption = screen.getByText('Date');
-    fireEvent.click(dateOption);
-
-    expect(mockProps.onSortChange).toHaveBeenCalledWith('date');
   });
 
   it('renders edit controls when in edit view', () => {
     renderWidgetHeader({ isEditView: true });
 
     expect(screen.getByTestId('drag-widget-button')).toBeInTheDocument();
-    expect(screen.queryByTestId('sort-by-button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('widget-sort-by-dropdown')
+    ).not.toBeInTheDocument();
   });
 
   it('calls onEditClick when edit button is clicked', () => {
@@ -94,41 +82,24 @@ describe('WidgetHeader', () => {
     expect(mockProps.onEditClick).toHaveBeenCalled();
   });
 
-  it('renders more menu when in edit view', () => {
+  it('renders more options when in edit view', () => {
     renderWidgetHeader({ isEditView: true });
 
-    const moreButton = screen.getByTestId('more-button');
-    fireEvent.click(moreButton);
-
-    expect(screen.getByText('Edit')).toBeInTheDocument();
-    expect(screen.getByText('Delete')).toBeInTheDocument();
+    expect(screen.getByTestId('more-options-button')).toBeInTheDocument();
   });
 
-  it('calls onMoreMenuClick when more menu item is clicked', () => {
+  it('does not render sort dropdown when in edit view', () => {
     renderWidgetHeader({ isEditView: true });
 
-    const moreButton = screen.getByTestId('more-button');
-    fireEvent.click(moreButton);
-
-    const editOption = screen.getByText('Edit');
-    fireEvent.click(editOption);
-
-    expect(mockProps.onMoreMenuClick).toHaveBeenCalledWith(
-      expect.objectContaining({ key: 'edit' })
-    );
-  });
-
-  it('does not call onSortChange when in edit view', () => {
-    renderWidgetHeader({ isEditView: true });
-
-    // Sort dropdown should not be visible in edit view
-    expect(screen.queryByTestId('sort-by-button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('widget-sort-by-dropdown')
+    ).not.toBeInTheDocument();
   });
 
   it('applies custom className', () => {
     renderWidgetHeader();
 
-    const header = screen.getByTestId('test-widget-header');
+    const header = screen.getByTestId('widget-header');
 
     expect(header).toHaveClass('custom-class');
   });
@@ -140,22 +111,14 @@ describe('WidgetHeader', () => {
       sortOptions: undefined,
       selectedSortBy: undefined,
       onSortChange: undefined,
-      moreMenuItems: undefined,
-      onMoreMenuClick: undefined,
       onEditClick: undefined,
     });
 
     expect(screen.getByText('Test Widget')).toBeInTheDocument();
-    expect(screen.queryByTestId('sort-by-button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('widget-sort-by-dropdown')
+    ).not.toBeInTheDocument();
     expect(screen.queryByTestId('drag-widget-button')).not.toBeInTheDocument();
-  });
-
-  it('adjusts title width based on widget width', () => {
-    renderWidgetHeader({ widgetWidth: 1 });
-
-    const title = screen.getByText('Test Widget');
-
-    expect(title.parentElement).toHaveStyle({ maxWidth: '200px' });
   });
 
   it('shows ellipsis for long titles', () => {
@@ -167,6 +130,6 @@ describe('WidgetHeader', () => {
       'Very Long Widget Title That Should Be Truncated'
     );
 
-    expect(title).toHaveAttribute('title');
+    expect(title).toHaveClass('ant-typography-ellipsis');
   });
 });

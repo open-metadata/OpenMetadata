@@ -11,45 +11,45 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
-import { ReactNode } from 'react';
+import { ArrowRightOutlined } from '@ant-design/icons';
+import { Button, Divider, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import './widget-footer.less';
 
 export interface WidgetFooterProps {
   showMoreButton?: boolean;
   moreButtonText?: string;
   onMoreClick?: () => void;
-  children?: ReactNode;
   className?: string;
-  dataTestId?: string;
 }
 
 const WidgetFooter = ({
   showMoreButton = false,
   moreButtonText,
   onMoreClick,
-  children,
   className = '',
-  dataTestId = 'widget-footer',
 }: WidgetFooterProps) => {
   const { t } = useTranslation();
-
-  if (!showMoreButton && !children) {
+  const { currentUser } = useApplicationStore();
+  if (!showMoreButton) {
     return null;
   }
 
   return (
-    <div className={`widget-footer ${className}`} data-testid={dataTestId}>
-      {children}
+    <div className={`widget-footer ${className}`} data-testid="widget-footer">
       {showMoreButton && onMoreClick && (
-        <div className="p-x-md p-b-md">
-          <Button className="w-full" onClick={onMoreClick}>
-            <Typography.Text className="text-primary">
-              {moreButtonText || t('label.more')}
-            </Typography.Text>
+        <Row className="widget-footer">
+          <Divider className="mb-0 mt-0" />
+          <Button
+            className="text-primary hover:underline w-full footer-view-more-button"
+            href={`users/${currentUser?.name}/task`}
+            target="_blank"
+            type="link">
+            {moreButtonText || t('label.view-more')}
+            <ArrowRightOutlined data-testid="arrow-right-icon" />
           </Button>
-        </div>
+        </Row>
       )}
     </div>
   );

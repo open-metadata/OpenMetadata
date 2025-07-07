@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../../styles/variables.less';
+@import (reference) url('../../../../../styles/variables.less');
 
 .widget-header {
-  padding: 16px 16px 0;
-  border-bottom: 1px solid @border-color;
-  margin-bottom: 16px;
+  padding: 12px 20px 12px 20px;
+  border-bottom: 1px solid @grey-15;
 
   .widget-title {
     margin: 0;
@@ -26,7 +25,6 @@
   }
 
   .widget-header-options {
-    color: @text-color-secondary;
     transition: color 0.3s ease;
 
     &:hover {
@@ -43,7 +41,12 @@
   }
 
   .drag-widget-icon {
+    display: none;
     cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 
     &:active {
       cursor: grabbing;

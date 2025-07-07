@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) url('../../../../../styles/variables.less');
+
 .widget-more-options {
   .widget-more-options-button {
-    color: var(--text-color-secondary);
     border: none !important;
     background: transparent;
     transition: color 0.3s ease;
 
     &:hover {
-      color: var(--primary-color);
+      color: @primary-color;
     }
   }
 

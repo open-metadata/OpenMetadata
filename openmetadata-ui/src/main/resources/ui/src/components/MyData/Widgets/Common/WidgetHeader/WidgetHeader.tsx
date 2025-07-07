@@ -12,31 +12,34 @@
  */
 
 import { DragOutlined, MoreOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
+import { Layout } from 'react-grid-layout';
+import { WidgetConfig } from '../../../../../pages/CustomizablePage/CustomizablePage.interface';
+import WidgetMoreOptions from '../WidgetMoreOptions/WidgetMoreOptions';
+import WidgetSortFilter from '../WidgetSortFilter/WidgetSortFilter';
 import './widget-header.less';
+import { WIDGET_MORE_MENU_ITEMS } from './WidgetHeader.constants';
 
 export interface WidgetHeaderProps {
-  title: string;
-  icon?: ReactNode;
   badge?: ReactNode;
+  className?: string;
+  currentLayout?: Layout[];
+  handleLayoutUpdate?: (layout: Layout[]) => void;
+  handleRemoveWidget?: (widgetKey: string) => void;
+  icon?: ReactNode;
   isEditView?: boolean;
-  widgetWidth?: number;
+  onEditClick?: () => void;
+  onSortChange?: (key: string) => void;
+  selectedSortBy?: string;
   sortOptions?: Array<{
     key: string;
     label: string;
   }>;
-  selectedSortBy?: string;
-  onSortChange?: (key: string) => void;
-  moreMenuItems?: Array<{
-    key: string;
-    label: string;
-  }>;
-  onMoreMenuClick?: (e: MenuInfo) => void;
-  onEditClick?: () => void;
-  className?: string;
-  dataTestId?: string;
+  title: string;
+  widgetKey: string;
+  widgetWidth?: number;
 }
 
 const WidgetHeader = ({
@@ -48,25 +51,44 @@ const WidgetHeader = ({
   sortOptions,
   selectedSortBy,
   onSortChange,
-  moreMenuItems,
-  onMoreMenuClick,
   onEditClick,
   className = '',
-  dataTestId = 'widget-header',
+  handleLayoutUpdate,
+  handleRemoveWidget,
+  widgetKey,
+  currentLayout,
 }: WidgetHeaderProps) => {
   const handleSortByClick = (e: MenuInfo) => {
-    if (!isEditView && onSortChange) {
-      onSortChange(e.key);
+    onSortChange?.(e.key);
+  };
+
+  const handleSizeChange = (value: number) => {
+    if (handleLayoutUpdate) {
+      const updatedLayout = currentLayout?.map((layout: WidgetConfig) =>
+        layout.i === widgetKey ? { ...layout, w: value } : layout
+      );
+
+      handleLayoutUpdate(updatedLayout as Layout[]);
+    }
+  };
+
+  const handleMoreClick = (e: MenuInfo) => {
+    if (e.key === 'remove') {
+      handleRemoveWidget?.(widgetKey);
+    } else if (e.key === 'half_size') {
+      handleSizeChange(1);
+    } else if (e.key === 'full_size') {
+      handleSizeChange(2);
     }
   };
 
   return (
     <Row
       className={`widget-header ${className}`}
-      data-testid={dataTestId}
+      data-testid="widget-header"
       justify="space-between">
       <Col className="d-flex items-center h-full min-h-8">
-        <div className="d-flex h-6 w-6 m-r-xs">{icon}</div>
+        {icon && <div className="d-flex h-6 w-6 m-r-xs">{icon}</div>}
 
         <Typography.Paragraph
           className="widget-title"
@@ -95,54 +117,20 @@ const WidgetHeader = ({
                   onClick={onEditClick}
                 />
               )}
-              {moreMenuItems && onMoreMenuClick && (
-                <Dropdown
-                  className="widget-header-options"
-                  data-testid="more-button"
-                  menu={{
-                    items: moreMenuItems,
-                    selectable: true,
-                    multiple: false,
-                    onClick: onMoreMenuClick,
-                    className: 'widget-header-menu',
-                  }}
-                  placement="bottomLeft"
-                  trigger={['click']}>
-                  <Button
-                    className=""
-                    data-testid="more-button"
-                    icon={
-                      <MoreOutlined
-                        data-testid="more-widget-button"
-                        size={20}
-                      />
-                    }
-                  />
-                </Dropdown>
-              )}
+
+              <WidgetMoreOptions
+                menuItems={WIDGET_MORE_MENU_ITEMS}
+                onMenuClick={handleMoreClick}
+              />
             </>
           ) : (
             sortOptions &&
             selectedSortBy && (
-              <Dropdown
-                className="widget-header-options"
-                data-testid="sort-by-button"
-                menu={{
-                  items: sortOptions,
-                  selectable: true,
-                  multiple: false,
-                  activeKey: selectedSortBy,
-                  onClick: handleSortByClick,
-                  className: 'widget-header-menu',
-                }}
-                trigger={['click']}>
-                <Button data-testid="filter-button">
-                  {
-                    sortOptions.find((option) => option.key === selectedSortBy)
-                      ?.label
-                  }
-                </Button>
-              </Dropdown>
+              <WidgetSortFilter
+                selectedSortBy={selectedSortBy}
+                sortOptions={sortOptions}
+                onSortChange={handleSortByClick}
+              />
             )
           )}
         </div>

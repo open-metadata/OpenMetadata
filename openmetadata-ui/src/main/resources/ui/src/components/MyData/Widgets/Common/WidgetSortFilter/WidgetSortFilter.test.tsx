@@ -13,7 +13,6 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ReactComponent as TaskIcon } from '../../../../../assets/svg/ic-task.svg';
 import WidgetSortFilter from './WidgetSortFilter';
 
 const mockProps = {
@@ -25,9 +24,6 @@ const mockProps = {
   selectedSortBy: 'name',
   onSortChange: jest.fn(),
   isEditView: false,
-  icon: <TaskIcon data-testid="sort-icon" />,
-  className: 'custom-sort-class',
-  dataTestId: 'test-sort-filter',
 };
 
 const renderWidgetSortFilter = (props = {}) => {
@@ -46,62 +42,39 @@ describe('WidgetSortFilter', () => {
   it('renders sort dropdown with selected option', () => {
     renderWidgetSortFilter();
 
-    expect(screen.getByTestId('sort-filter-button')).toBeInTheDocument();
+    expect(screen.getByTestId('widget-sort-by-dropdown')).toBeInTheDocument();
     expect(screen.getByText('Name')).toBeInTheDocument();
-  });
-
-  it('displays icon when provided', () => {
-    renderWidgetSortFilter();
-
-    expect(screen.getByTestId('sort-icon')).toBeInTheDocument();
   });
 
   it('calls onSortChange when sort option is clicked', () => {
     renderWidgetSortFilter();
 
-    const sortButton = screen.getByTestId('sort-filter-button');
+    const sortButton = screen.getByTestId('widget-sort-by-dropdown');
     fireEvent.click(sortButton);
 
     const dateOption = screen.getByText('Date');
     fireEvent.click(dateOption);
 
-    expect(mockProps.onSortChange).toHaveBeenCalledWith('date');
+    expect(mockProps.onSortChange).toHaveBeenCalledWith(
+      expect.objectContaining({ key: 'date' })
+    );
   });
 
   it('does not render when in edit view', () => {
     renderWidgetSortFilter({ isEditView: true });
 
-    expect(screen.queryByTestId('sort-filter-button')).not.toBeInTheDocument();
-  });
-
-  it('does not call onSortChange when in edit view', () => {
-    renderWidgetSortFilter({ isEditView: true });
-
-    // Component should not be rendered in edit view
-    expect(screen.queryByTestId('sort-filter-button')).not.toBeInTheDocument();
-  });
-
-  it('applies custom className', () => {
-    renderWidgetSortFilter();
-
-    const sortFilter = screen.getByTestId('test-sort-filter');
-
-    expect(sortFilter).toHaveClass('custom-sort-class');
-  });
-
-  it('renders with custom data test id', () => {
-    renderWidgetSortFilter({ dataTestId: 'custom-sort' });
-
-    expect(screen.getByTestId('custom-sort')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('widget-sort-by-dropdown')
+    ).not.toBeInTheDocument();
   });
 
   it('shows all sort options in dropdown', () => {
     renderWidgetSortFilter();
 
-    const sortButton = screen.getByTestId('sort-filter-button');
+    const sortButton = screen.getByTestId('widget-sort-by-dropdown');
     fireEvent.click(sortButton);
 
-    expect(screen.getByText('Name')).toBeInTheDocument();
+    expect(screen.getAllByText('Name')).toHaveLength(2);
     expect(screen.getByText('Date')).toBeInTheDocument();
     expect(screen.getByText('Type')).toBeInTheDocument();
   });
@@ -109,35 +82,17 @@ describe('WidgetSortFilter', () => {
   it('handles empty sort options gracefully', () => {
     renderWidgetSortFilter({ sortOptions: [] });
 
-    expect(screen.getByTestId('sort-filter-button')).toBeInTheDocument();
-    expect(screen.getByText('')).toBeInTheDocument();
+    const sortButton = screen.getByTestId('widget-sort-by-dropdown');
+
+    expect(sortButton).toHaveTextContent('');
   });
 
   it('handles missing selectedSortBy gracefully', () => {
     renderWidgetSortFilter({ selectedSortBy: undefined });
 
-    expect(screen.getByTestId('sort-filter-button')).toBeInTheDocument();
-    expect(screen.getByText('')).toBeInTheDocument();
-  });
+    const sortButton = screen.getByTestId('widget-sort-by-dropdown');
 
-  it('handles missing icon gracefully', () => {
-    renderWidgetSortFilter({ icon: undefined });
-
-    expect(screen.getByTestId('sort-filter-button')).toBeInTheDocument();
-    expect(screen.queryByTestId('sort-icon')).not.toBeInTheDocument();
-  });
-
-  it('handles missing onSortChange gracefully', () => {
-    renderWidgetSortFilter({ onSortChange: undefined });
-
-    const sortButton = screen.getByTestId('sort-filter-button');
-    fireEvent.click(sortButton);
-
-    const dateOption = screen.getByText('Date');
-    fireEvent.click(dateOption);
-
-    // Should not throw error when onSortChange is undefined
-    expect(screen.getByTestId('sort-filter-button')).toBeInTheDocument();
+    expect(sortButton).toHaveTextContent('');
   });
 
   it('renders with different selected option', () => {

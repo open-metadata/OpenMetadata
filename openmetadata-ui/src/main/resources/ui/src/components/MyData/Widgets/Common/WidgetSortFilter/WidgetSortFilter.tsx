@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import { ReactNode } from 'react';
+import { useState } from 'react';
 import './widget-sort-filter.less';
 
 export interface SortOption {
@@ -24,11 +25,8 @@ export interface SortOption {
 export interface WidgetSortFilterProps {
   sortOptions: SortOption[];
   selectedSortBy: string;
-  onSortChange: (key: string) => void;
+  onSortChange: (e: MenuInfo) => void;
   isEditView?: boolean;
-  icon?: ReactNode;
-  className?: string;
-  dataTestId?: string;
 }
 
 const WidgetSortFilter = ({
@@ -36,13 +34,12 @@ const WidgetSortFilter = ({
   selectedSortBy,
   onSortChange,
   isEditView = false,
-  icon,
-  className = '',
-  dataTestId = 'widget-sort-filter',
 }: WidgetSortFilterProps) => {
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+
   const handleSortByClick = (e: MenuInfo) => {
     if (!isEditView) {
-      onSortChange(e.key);
+      onSortChange(e);
     }
   };
 
@@ -52,20 +49,27 @@ const WidgetSortFilter = ({
 
   return (
     <Dropdown
-      className={`widget-sort-filter ${className}`}
-      data-testid={dataTestId}
+      className="widget-header-options"
       menu={{
         items: sortOptions,
         selectable: true,
         multiple: false,
         activeKey: selectedSortBy,
         onClick: handleSortByClick,
-        className: 'widget-sort-filter-menu',
+        className: 'widget-header-menu',
       }}
-      trigger={['click']}>
-      <Button data-testid="sort-filter-button">
-        {icon}
+      open={isOpen}
+      trigger={['click']}
+      onOpenChange={(open) => setIsOpen(open)}>
+      <Button
+        className="widget-sort-by-dropdown"
+        data-testid="widget-sort-by-dropdown">
         {sortOptions.find((option) => option.key === selectedSortBy)?.label}
+        {isOpen ? (
+          <UpOutlined className="widget-sort-filter-icon" />
+        ) : (
+          <DownOutlined className="widget-sort-filter-icon" />
+        )}
       </Button>
     </Dropdown>
   );

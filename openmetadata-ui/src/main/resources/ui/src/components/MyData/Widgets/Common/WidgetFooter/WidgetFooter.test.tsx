@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import WidgetFooter from './WidgetFooter';
 
@@ -19,9 +19,7 @@ const mockProps = {
   showMoreButton: true,
   moreButtonText: 'View More',
   onMoreClick: jest.fn(),
-  children: <div data-testid="footer-children">Footer Content</div>,
   className: 'custom-footer-class',
-  dataTestId: 'test-widget-footer',
 };
 
 const renderWidgetFooter = (props = {}) => {
@@ -41,43 +39,17 @@ describe('WidgetFooter', () => {
     renderWidgetFooter();
 
     expect(screen.getByText('View More')).toBeInTheDocument();
-    expect(screen.getByTestId('footer-children')).toBeInTheDocument();
-  });
-
-  it('calls onMoreClick when more button is clicked', () => {
-    renderWidgetFooter();
-
-    const moreButton = screen.getByText('View More');
-    fireEvent.click(moreButton);
-
-    expect(mockProps.onMoreClick).toHaveBeenCalled();
+    expect(screen.getByTestId('arrow-right-icon')).toBeInTheDocument();
   });
 
   it('uses default more button text when not provided', () => {
     renderWidgetFooter({ moreButtonText: undefined });
 
-    expect(screen.getByText('label.more')).toBeInTheDocument();
+    expect(screen.getByText('label.view-more')).toBeInTheDocument();
   });
 
-  it('renders only children when showMoreButton is false', () => {
-    renderWidgetFooter({ showMoreButton: false });
-
-    expect(screen.getByTestId('footer-children')).toBeInTheDocument();
-    expect(screen.queryByText('View More')).not.toBeInTheDocument();
-  });
-
-  it('renders only more button when no children provided', () => {
-    renderWidgetFooter({ children: undefined });
-
-    expect(screen.getByText('View More')).toBeInTheDocument();
-    expect(screen.queryByTestId('footer-children')).not.toBeInTheDocument();
-  });
-
-  it('returns null when neither showMoreButton nor children are provided', () => {
-    const { container } = renderWidgetFooter({
-      showMoreButton: false,
-      children: undefined,
-    });
+  it('returns null when showMoreButton is false', () => {
+    const { container } = renderWidgetFooter({ showMoreButton: false });
 
     expect(container.firstChild).toBeNull();
   });
@@ -85,7 +57,7 @@ describe('WidgetFooter', () => {
   it('applies custom className', () => {
     renderWidgetFooter();
 
-    const footer = screen.getByTestId('test-widget-footer');
+    const footer = screen.getByTestId('widget-footer');
 
     expect(footer).toHaveClass('custom-footer-class');
   });
@@ -96,35 +68,12 @@ describe('WidgetFooter', () => {
     expect(screen.queryByText('View More')).not.toBeInTheDocument();
   });
 
-  it('renders with custom data test id', () => {
-    renderWidgetFooter({ dataTestId: 'custom-footer' });
+  it('renders with correct href attribute', () => {
+    renderWidgetFooter();
 
-    expect(screen.getByTestId('custom-footer')).toBeInTheDocument();
-  });
+    const link = screen.getByText('View More').closest('a');
 
-  it('renders multiple children correctly', () => {
-    renderWidgetFooter({
-      children: (
-        <>
-          <div data-testid="child-1">Child 1</div>
-          <div data-testid="child-2">Child 2</div>
-        </>
-      ),
-    });
-
-    expect(screen.getByTestId('child-1')).toBeInTheDocument();
-    expect(screen.getByTestId('child-2')).toBeInTheDocument();
-  });
-
-  it('handles complex children with buttons', () => {
-    renderWidgetFooter({
-      children: (
-        <button data-testid="custom-button" onClick={jest.fn()}>
-          Custom Button
-        </button>
-      ),
-    });
-
-    expect(screen.getByTestId('custom-button')).toBeInTheDocument();
+    expect(link).toHaveAttribute('href', 'users/undefined/task');
+    expect(link).toHaveAttribute('target', '_blank');
   });
 });

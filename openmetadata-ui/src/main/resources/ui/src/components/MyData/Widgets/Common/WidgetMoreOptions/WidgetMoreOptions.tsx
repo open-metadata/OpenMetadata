@@ -27,7 +27,6 @@ export interface MoreOption {
 export interface WidgetMoreOptionsProps {
   menuItems: MoreOption[];
   onMenuClick: (e: MenuInfo) => void;
-  isEditView?: boolean;
   className?: string;
   dataTestId?: string;
 }
@@ -35,14 +34,9 @@ export interface WidgetMoreOptionsProps {
 const WidgetMoreOptions = ({
   menuItems,
   onMenuClick,
-  isEditView = false,
   className = '',
   dataTestId = 'widget-more-options',
 }: WidgetMoreOptionsProps) => {
-  if (!isEditView) {
-    return null;
-  }
-
   return (
     <Dropdown
       className={`widget-more-options ${className}`}

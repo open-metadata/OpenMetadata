@@ -19,9 +19,7 @@ const mockProps = {
   children: <div data-testid="widget-content">Widget Content</div>,
   loading: false,
   dataLength: 5,
-  skeletonContainerStyle: { marginLeft: '20px', marginTop: '20px' },
   className: 'custom-wrapper-class',
-  dataTestId: 'test-widget-wrapper',
 };
 
 const renderWidgetWrapper = (props = {}) => {
@@ -43,23 +41,16 @@ describe('WidgetWrapper', () => {
   it('renders with loading state', () => {
     renderWidgetWrapper({ loading: true });
 
-    expect(screen.getByTestId('test-widget-wrapper')).toBeInTheDocument();
-    // EntityListSkeleton should be rendered when loading is true
-    expect(screen.getByTestId('test-widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId('entity-list-skeleton')).toBeInTheDocument();
   });
 
   it('applies custom className', () => {
     renderWidgetWrapper();
 
-    const wrapper = screen.getByTestId('test-widget-wrapper');
+    const wrapper = screen.getByTestId('widget-wrapper');
 
     expect(wrapper).toHaveClass('custom-wrapper-class');
-  });
-
-  it('renders with custom data test id', () => {
-    renderWidgetWrapper({ dataTestId: 'custom-wrapper' });
-
-    expect(screen.getByTestId('custom-wrapper')).toBeInTheDocument();
   });
 
   it('renders with default props', () => {
@@ -67,26 +58,11 @@ describe('WidgetWrapper', () => {
       children: <div>Default Content</div>,
       loading: undefined,
       dataLength: undefined,
-      skeletonContainerStyle: undefined,
       className: undefined,
-      dataTestId: undefined,
     });
 
     expect(screen.getByText('Default Content')).toBeInTheDocument();
     expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
-  });
-
-  it('renders with custom data length', () => {
-    renderWidgetWrapper({ dataLength: 10 });
-
-    expect(screen.getByTestId('test-widget-wrapper')).toBeInTheDocument();
-  });
-
-  it('renders with custom skeleton container style', () => {
-    const customStyle = { marginLeft: '30px', marginTop: '30px' };
-    renderWidgetWrapper({ skeletonContainerStyle: customStyle });
-
-    expect(screen.getByTestId('test-widget-wrapper')).toBeInTheDocument();
   });
 
   it('renders complex children content', () => {
@@ -108,13 +84,13 @@ describe('WidgetWrapper', () => {
   it('handles empty children gracefully', () => {
     renderWidgetWrapper({ children: null });
 
-    expect(screen.getByTestId('test-widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
   });
 
   it('renders with different loading states', () => {
     const { rerender } = renderWidgetWrapper({ loading: false });
 
-    expect(screen.getByTestId('test-widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
 
     rerender(
       <MemoryRouter>
@@ -122,23 +98,13 @@ describe('WidgetWrapper', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('test-widget-wrapper')).toBeInTheDocument();
-  });
-
-  it('renders with different data lengths', () => {
-    renderWidgetWrapper({ dataLength: 3 });
-
-    expect(screen.getByTestId('test-widget-wrapper')).toBeInTheDocument();
-
-    renderWidgetWrapper({ dataLength: 7 });
-
-    expect(screen.getByTestId('test-widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
   });
 
   it('applies card widget class', () => {
     renderWidgetWrapper();
 
-    const wrapper = screen.getByTestId('test-widget-wrapper');
+    const wrapper = screen.getByTestId('widget-wrapper');
 
     expect(wrapper).toHaveClass('card-widget');
   });

@@ -77,7 +77,7 @@ describe('WidgetEmptyState', () => {
       actionButtonLink: '/explore',
     });
 
-    const actionLink = screen.getByText('label.explore');
+    const actionLink = screen.getByText('Add Item');
 
     expect(actionLink.closest('a')).toHaveAttribute('href', '/explore');
   });
@@ -139,26 +139,5 @@ describe('WidgetEmptyState', () => {
 
     // Should still render the empty state container
     expect(screen.getByTestId('test-empty-state')).toBeInTheDocument();
-  });
-
-  it('renders with both action button and link when both are provided', () => {
-    renderWidgetEmptyState({
-      actionButtonLink: '/explore',
-    });
-
-    expect(screen.getByText('Add Item')).toBeInTheDocument();
-    expect(screen.getByText('label.explore')).toBeInTheDocument();
-  });
-
-  it('prioritizes action button over link when both are provided', () => {
-    renderWidgetEmptyState({
-      actionButtonLink: '/explore',
-    });
-
-    const actionButton = screen.getByText('Add Item');
-    const actionLink = screen.getByText('label.explore');
-
-    expect(actionButton).toBeInTheDocument();
-    expect(actionLink).toBeInTheDocument();
   });
 });

@@ -11,26 +11,24 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import { get, isEmpty, orderBy, toLower } from 'lodash';
+import { isEmpty, orderBy, toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TaskIcon } from '../../../../assets/svg/ic-task.svg';
 import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/my-task-no-data-placeholder.svg';
-import { ROUTES } from '../../../../constants/constants';
 import { SIZE, SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { FeedFilter } from '../../../../enums/mydata.enum';
 import {
+  Thread,
   ThreadTaskStatus,
   ThreadType,
 } from '../../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useFqn } from '../../../../hooks/useFqn';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import FeedPanelBodyV1New from '../../../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTabs } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
@@ -52,34 +50,32 @@ const MyTaskWidget = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { fqn } = useFqn();
   const { currentUser } = useApplicationStore();
-  const [sortedData, setSortedData] = useState<any[]>([]);
+  const [sortedData, setSortedData] = useState<Thread[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     MY_TASK_SORT_BY_KEYS.LATEST
   );
 
-  const { loading, entityThread, entityPaging, getFeedData } =
-    useActivityFeedProvider();
+  const { loading, entityThread, getFeedData } = useActivityFeedProvider();
 
   const myTaskData = useMemo(() => {
     return currentLayout?.find((layout) => layout.i === widgetKey);
   }, [currentLayout, widgetKey]);
 
-  const handleSortData = useCallback((data: any[], sortBy: string) => {
+  const handleSortData = useCallback((data: Thread[], sortBy: string) => {
     let newSortedData = data;
     if (sortBy === MY_TASK_SORT_BY_KEYS.LATEST) {
       newSortedData = orderBy(data, ['updatedAt'], [SORT_ORDER.DESC]);
     } else if (sortBy === MY_TASK_SORT_BY_KEYS.A_TO_Z) {
       newSortedData = orderBy(
         data,
-        [(item) => toLower(getEntityName(item))],
+        [(item) => toLower(item?.feedInfo?.fieldName)],
         [SORT_ORDER.ASC]
       );
     } else if (sortBy === MY_TASK_SORT_BY_KEYS.Z_TO_A) {
       newSortedData = orderBy(
         data,
-        [(item) => toLower(getEntityName(item))],
+        [(item) => toLower(item?.feedInfo?.fieldName)],
         [SORT_ORDER.DESC]
       );
     }
@@ -102,17 +98,15 @@ const MyTaskWidget = ({
   }, [currentUser, navigate]);
 
   useEffect(() => {
-    if (fqn) {
-      getFeedData(
-        currentUser?.isAdmin ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS,
-        undefined,
-        ThreadType.Task,
-        undefined,
-        fqn,
-        ThreadTaskStatus.Open
-      );
-    }
-  }, [getFeedData, currentUser?.isAdmin, fqn]);
+    getFeedData(
+      FeedFilter.OWNER,
+      undefined,
+      ThreadType.Task,
+      undefined,
+      undefined,
+      ThreadTaskStatus.Open
+    );
+  }, [getFeedData]);
 
   useEffect(() => {
     if (entityThread.length > 0 && selectedSortBy) {
@@ -123,70 +117,34 @@ const MyTaskWidget = ({
     }
   }, [entityThread, handleSortData, selectedSortBy]);
 
-  const entityList = useMemo(
-    () => (
-      <div className="entity-list-body h-full w-full">
-        {sortedData.length > 0
-          ? sortedData.map((item) => {
-              const title = getEntityName(item);
-              const description = get(item, 'description');
+  const handleFeedFetchFromFeedList = useCallback(() => {
+    getFeedData(
+      FeedFilter.OWNER,
+      undefined,
+      ThreadType.Task,
+      undefined,
+      undefined,
+      ThreadTaskStatus.Open
+    );
+  }, [getFeedData]);
 
-              return (
-                <div
-                  className="right-panel-list-item flex items-center w-full"
-                  data-testid={`My Task-${title}`}
-                  key={item.id}>
-                  <TaskIcon
-                    className="entity-icon"
-                    data-testid="task-item-icon"
-                  />
-                  <div className="flex items-center">
-                    <Link
-                      className="flex items-center right-panel-list-item-link"
-                      to={entityUtilClassBase.getEntityLink(
-                        item.type || '',
-                        item.fullyQualifiedName as string
-                      )}>
-                      <div
-                        className="flex flex-col"
-                        style={{
-                          width: myTaskData?.w === 1 ? '320px' : '760px',
-                        }}>
-                        <Typography.Text
-                          className="entity-list-item-title"
-                          ellipsis={{ tooltip: true }}>
-                          {title}
-                        </Typography.Text>
-
-                        {description && (
-                          <Typography.Paragraph
-                            className="entity-list-item-description"
-                            ellipsis={{ rows: 2 }}>
-                            {description}
-                          </Typography.Paragraph>
-                        )}
-                      </div>
-                    </Link>
-                  </div>
-                </div>
-              );
-            })
-          : null}
-      </div>
-    ),
-    [sortedData, myTaskData?.w]
-  );
+  const handleAfterTaskClose = () => {
+    handleFeedFetchFromFeedList();
+  };
 
   const widgetContent = (
-    <>
+    <div className="my-task-widget-container">
       {/* Widget Header */}
       <WidgetHeader
-        dataTestId="my-task-header"
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
         icon={<TaskIcon data-testid="task-icon" />}
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}
         sortOptions={MY_TASK_SORT_BY_OPTIONS}
         title={t('label.my-task-plural')}
+        widgetKey={widgetKey}
         widgetWidth={myTaskData?.w}
         onSortChange={handleSortByClick}
       />
@@ -207,35 +165,40 @@ const MyTaskWidget = ({
               />
             }
             title={t('label.no-tasks-yet')}
-            onActionClick={() => navigate(ROUTES.EXPLORE)}
+            onActionClick={() => navigate(`users/${currentUser?.name}/task`)}
           />
         ) : (
-          entityList
+          <>
+            <div className="entity-list-body">
+              {sortedData.map((feed) => (
+                <FeedPanelBodyV1New
+                  isForFeedTab
+                  isFullWidth
+                  feed={feed}
+                  hideCardBorder={false}
+                  hidePopover={isEditView}
+                  isOpenInDrawer={myTaskData?.w === 1 ? true : false}
+                  key={feed.id}
+                  showThread={false}
+                  onAfterClose={handleAfterTaskClose}
+                />
+              ))}
+            </div>
+
+            {/* Widget Footer */}
+            <WidgetFooter
+              moreButtonText={t('label.view-more')}
+              showMoreButton={Boolean(!loading)}
+              onMoreClick={redirectToUserPage}
+            />
+          </>
         )}
       </div>
-
-      {/* Widget Footer */}
-      <WidgetFooter
-        dataTestId="my-task-footer"
-        moreButtonText={t('label.view-more')}
-        showMoreButton={Boolean(!loading && entityPaging.after)}
-        onMoreClick={redirectToUserPage}
-      />
-    </>
+    </div>
   );
 
   return (
-    <WidgetWrapper
-      className="my-task-widget-wrapper"
-      currentLayout={currentLayout}
-      dataLength={sortedData.length || 5}
-      dataTestId="my-task-widget-wrapper"
-      handleLayoutUpdate={handleLayoutUpdate}
-      handleRemoveWidget={handleRemoveWidget}
-      isEditView={isEditView}
-      loading={loading}
-      widgetConfig={myTaskData}
-      widgetKey={widgetKey}>
+    <WidgetWrapper dataLength={sortedData.length || 5} loading={loading}>
       {widgetContent}
     </WidgetWrapper>
   );
