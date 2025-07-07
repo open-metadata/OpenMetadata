@@ -248,45 +248,34 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             ]
 
         with self.get_client_context() as client:
-            # Check if we have array columns that need special handling
-            array_columns = [
-                col for col in sqa_columns if self._handle_array_column(col)
-            ]
 
-            if array_columns:
-                # Handle array columns with special query modification
-                max_elements = self._get_max_array_elements()
-                select_columns = []
+            # Handle array columns with special query modification
+            max_elements = self._get_max_array_elements()
+            select_columns = []
+            has_array_columns = False
 
-                for col in sqa_columns:
-                    if self._handle_array_column(col):
-                        slice_expression = self._get_slice_expression(col)
-                        select_columns.append(slice_expression)
-                        logger.debug(
-                            f"Limiting array column {col.name} to {max_elements} elements to prevent OOM"
-                        )
-                    else:
-                        select_columns.append(col)
+            for col in sqa_columns:
+                if self._handle_array_column(col):
+                    slice_expression = self._get_slice_expression(col)
+                    select_columns.append(slice_expression)
+                    logger.debug(
+                        f"Limiting array column {col.name} to {max_elements} elements to prevent OOM"
+                    )
+                    has_array_columns = True
+                else:
+                    select_columns.append(col)
 
-                # Create query with modified columns
-                sqa_sample = (
-                    client.query(*select_columns)
-                    .select_from(ds)
-                    .limit(self.sample_limit)
-                    .all()
-                )
-            else:
-                # Use standard approach for non-array columns
-                sqa_sample = (
-                    client.query(*sqa_columns)
-                    .select_from(ds)
-                    .limit(self.sample_limit)
-                    .all()
-                )
+            # Create query with modified columns
+            sqa_sample = (
+                client.query(*select_columns)
+                .select_from(ds)
+                .limit(self.sample_limit)
+                .all()
+            )
 
         # Process array columns manually if we used text() expressions
         processed_rows = []
-        if array_columns:
+        if has_array_columns:
             for row in sqa_sample:
                 processed_row = []
                 for i, col in enumerate(sqa_columns):
