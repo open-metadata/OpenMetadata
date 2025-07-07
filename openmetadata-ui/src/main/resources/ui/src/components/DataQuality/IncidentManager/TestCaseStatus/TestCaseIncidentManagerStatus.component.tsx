@@ -14,8 +14,10 @@
 import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -35,6 +37,7 @@ const TestCaseIncidentManagerStatus = ({
   headerName,
 }: TestCaseStatusIncidentManagerProps) => {
   const [isEditStatus, setIsEditStatus] = useState<boolean>(false);
+  const { t } = useTranslation();
 
   const statusType = useMemo(() => data.testCaseResolutionStatusType, [data]);
   const { permissions } = usePermissionProvider();
@@ -107,31 +110,36 @@ const TestCaseIncidentManagerStatus = ({
 
   return (
     <>
-      <Tooltip
-        placement="bottom"
-        title={
-          data?.updatedAt &&
-          `${formatDate(data.updatedAt)}
+      <Space
+        align="center"
+        data-testid={`${data.testCaseReference?.name}-status`}>
+        <Tooltip
+          placement="bottom"
+          title={
+            data?.updatedAt &&
+            `${formatDate(data.updatedAt)}
                 ${data.updatedBy ? 'by ' + getEntityName(data.updatedBy) : ''}`
-        }>
-        <Space
-          align="center"
-          data-testid={`${data.testCaseReference?.name}-status`}>
+          }>
           <AppBadge
             className={classNames('resolution', statusType.toLocaleLowerCase())}
             label={statusType}
           />
-          {hasEditPermission && (
-            <EditIconButton
-              data-testid="edit-resolution-icon"
-              icon={<EditIcon width="14px" />}
-              newLook={newLook}
-              size="small"
-              onClick={onEditStatus}
-            />
-          )}
-        </Space>
-      </Tooltip>
+        </Tooltip>
+
+        {hasEditPermission && (
+          <EditIconButton
+            newLook
+            className="flex-center"
+            data-testid="edit-resolution-icon"
+            disabled={!hasEditPermission}
+            size="small"
+            title={
+              hasEditPermission ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+            }
+            onClick={onEditStatus}
+          />
+        )}
+      </Space>
 
       {isEditStatus && (
         <TestCaseStatusModal
