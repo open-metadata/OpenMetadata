@@ -11,7 +11,7 @@ collate: false
 Before upgrading your OpenMetadata version we strongly recommend backing up the metadata.
 
 The source of truth is stored in the underlying database (MySQL and Postgres supported). During each version upgrade there
-is a database migration process that needs to run. It will directly attack your database and update the shape of the
+is a database migration process that needs to run. It will make changes to the OpenMetadata Application schema in the database and update the shape of the
 data to the newest OpenMetadata release.
 
 It is important that we backup the data because if we face any unexpected issues during the upgrade process,
