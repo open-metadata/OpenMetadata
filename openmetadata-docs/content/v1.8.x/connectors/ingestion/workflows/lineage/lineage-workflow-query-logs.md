@@ -67,9 +67,12 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  loggerLevel: INFO
   openMetadataServerConfig:
     hostPort: <OpenMetadata host and port>
     authProvider: <OpenMetadata auth provider>
+    securityConfig:
+      jwtToken: "{bot_jwt_token}"
 ```
 
 The `serviceName` should be a service already ingested in OpenMetadata.
