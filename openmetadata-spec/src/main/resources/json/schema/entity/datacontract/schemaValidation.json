@@ -1,0 +1,30 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/datacontract/schemaValidation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SchemaValidation",
+  "description": "Schema validation details for data contract.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.datacontract.SchemaValidation",
+  "properties": {
+    "passed": {
+      "description": "Number of schema checks passed.",
+      "type": "integer"
+    },
+    "failed": {
+      "description": "Number of schema checks failed.",
+      "type": "integer"
+    },
+    "total": {
+      "description": "Total number of schema checks.",
+      "type": "integer"
+    },
+    "failedFields": {
+      "description": "List of fields that failed validation.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

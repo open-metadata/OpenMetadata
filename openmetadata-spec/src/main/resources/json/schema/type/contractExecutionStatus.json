@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/type/contractExecutionStatus.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContractExecutionStatus",
+  "javaType": "org.openmetadata.schema.type.ContractExecutionStatus",
+  "description": "Status of the data contract execution.",
+  "type": "string",
+  "enum": [
+    "Success",
+    "Failed",
+    "PartialSuccess",
+    "Aborted",
+    "Queued"
+  ],
+  "javaEnums": [
+    {
+      "name": "Success"
+    },
+    {
+      "name": "Failed"
+    },
+    {
+      "name": "PartialSuccess"
+    },
+    {
+      "name": "Aborted"
+    },
+    {
+      "name": "Queued"
+    }
+  ]
+}
