@@ -89,7 +89,7 @@
     "sessionExpiry": {
       "description": "Validity for the Session in case of confidential clients",
       "type": "integer",
-      "default": "2592000"
+      "default": "604800"
     }
   },
   "additionalProperties": false
