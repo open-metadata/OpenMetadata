@@ -19,6 +19,7 @@ import { ERROR_MESSAGE, ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../../../constants/Domain.constants';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { addDomains, getDomainList } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -26,7 +27,6 @@ import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../DomainPage.interface';
 import './add-domain.less';
@@ -132,49 +132,44 @@ const AddDomain = () => {
   );
 
   return (
-    <PageLayoutV1
+    <ResizablePanels
+      className="content-height-with-resizable-panel p-x-box"
+      firstPanel={{
+        className: 'content-resizable-panel-container',
+        children: (
+          <div>
+            <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+            <Typography.Title
+              className="m-t-md"
+              data-testid="form-heading"
+              level={5}>
+              {t('label.add-entity', {
+                entity: t('label.domain'),
+              })}
+            </Typography.Title>
+            <AddDomainForm
+              isFormInDialog={false}
+              loading={isLoading}
+              type={DomainFormType.DOMAIN}
+              onCancel={handleCancel}
+              onSubmit={onSave}
+            />
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
       pageTitle={t('label.add-entity', {
         entity: t('label.domain'),
-      })}>
-      <ResizablePanels
-        className="content-height-with-resizable-panel p-x-box"
-        firstPanel={{
-          className: 'content-resizable-panel-container',
-          children: (
-            <div>
-              <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-              <Typography.Title
-                className="m-t-md"
-                data-testid="form-heading"
-                level={5}>
-                {t('label.add-entity', {
-                  entity: t('label.domain'),
-                })}
-              </Typography.Title>
-              <AddDomainForm
-                isFormInDialog={false}
-                loading={isLoading}
-                type={DomainFormType.DOMAIN}
-                onCancel={handleCancel}
-                onSubmit={onSave}
-              />
-            </div>
-          ),
-          minWidth: 700,
-          flex: 0.7,
-        }}
-        pageTitle={t('label.add-entity', {
-          entity: t('label.domain'),
-        })}
-        secondPanel={{
-          children: rightPanel,
-          className: 'content-resizable-panel-container',
-          minWidth: 400,
-          flex: 0.3,
-        }}
-      />
-    </PageLayoutV1>
+      })}
+      secondPanel={{
+        children: rightPanel,
+        className: 'content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
+      }}
+    />
   );
 };
 
-export default AddDomain;
+export default withPageLayout(AddDomain);
