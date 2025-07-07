@@ -24,28 +24,28 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -76,6 +76,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   public static final String COLLECTION_PATH = "v1/dashboards/";
   protected static final String FIELDS =
       "owners,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts,sourceHash";
+  private final DashboardMapper mapper = new DashboardMapper();
 
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
@@ -134,8 +135,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           String serviceParam,
       @Parameter(description = "Limit the number dashboards returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -310,7 +311,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDashboard create) {
-    Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
+    Dashboard dashboard =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dashboard);
   }
 
@@ -391,7 +393,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDashboard create) {
-    Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
+    Dashboard dashboard =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dashboard);
   }
 
@@ -493,6 +496,29 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteDashboardAsync",
+      summary = "Asynchronously delete a dashboard by Id",
+      description = "Asynchronously delete a dashboard by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteDashboardByFQN",
@@ -544,17 +570,5 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Dashboard getDashboard(CreateDashboard create, String user) {
-    return repository
-        .copy(new Dashboard(), create, user)
-        .withService(getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
-        .withCharts(getEntityReferences(Entity.CHART, create.getCharts()))
-        .withDataModels(getEntityReferences(Entity.DASHBOARD_DATA_MODEL, create.getDataModels()))
-        .withSourceUrl(create.getSourceUrl())
-        .withDashboardType(create.getDashboardType())
-        .withProject(create.getProject())
-        .withSourceHash(create.getSourceHash());
   }
 }

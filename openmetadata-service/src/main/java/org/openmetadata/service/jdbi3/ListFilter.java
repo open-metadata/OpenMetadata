@@ -11,9 +11,12 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
+  public static final String NULL_PARAM = "null";
+
   public ListFilter() {
     this(Include.NON_DELETED);
   }
@@ -43,11 +46,34 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getAssignee());
+    conditions.add(getCreatedByCondition());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
+    conditions.add(getEntityLinkCondition());
+    conditions.add(getAgentTypeCondition());
+    conditions.add(getProviderCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
+  }
+
+  public ResourceContext getResourceContext(String entityType) {
+    if (queryParams.containsKey("service") && queryParams.get("service") != null) {
+      return new ResourceContext<>(
+          Entity.getServiceType(entityType), null, queryParams.get("service"));
+    } else if (queryParams.containsKey(Entity.DATABASE)
+        && queryParams.get(Entity.DATABASE) != null) {
+      return new ResourceContext<>(Entity.DATABASE, null, queryParams.get(Entity.DATABASE));
+    } else if (queryParams.containsKey(Entity.DATABASE_SCHEMA)
+        && queryParams.get(Entity.DATABASE_SCHEMA) != null) {
+      return new ResourceContext<>(
+          Entity.DATABASE_SCHEMA, null, queryParams.get(Entity.DATABASE_SCHEMA));
+    } else if (queryParams.containsKey(Entity.API_COLLCECTION)
+        && queryParams.get(Entity.API_COLLCECTION) != null) {
+      return new ResourceContext<>(
+          Entity.API_COLLCECTION, null, queryParams.get(Entity.API_COLLCECTION));
+    }
+    return new ResourceContext<>(entityType);
   }
 
   private String getAssignee() {
@@ -55,11 +81,52 @@ public class ListFilter extends Filter<ListFilter> {
     return assignee == null ? "" : String.format("assignee = '%s'", assignee);
   }
 
+  private String getCreatedByCondition() {
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      String createdBy = queryParams.get("createdBy");
+      return createdBy == null ? "" : "json->>'$.createdBy' = :createdBy";
+    } else {
+      String createdBy = queryParams.get("createdBy");
+      return createdBy == null ? "" : "json->>'createdBy' = :createdBy";
+    }
+  }
+
   private String getWorkflowDefinitionIdCondition() {
     String workflowDefinitionId = queryParams.get("workflowDefinitionId");
     return workflowDefinitionId == null
         ? ""
         : String.format("workflowDefinitionId = '%s'", workflowDefinitionId);
+  }
+
+  private String getEntityLinkCondition() {
+    String entityLinkStr = queryParams.get("entityLink");
+    return entityLinkStr == null ? "" : String.format("entityLink = '%s'", entityLinkStr);
+  }
+
+  private String getAgentTypeCondition() {
+    String agentType = queryParams.get("agentType");
+    if (agentType == null) {
+      return "";
+    } else {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format("JSON_EXTRACT(json, '$.agentType') = '%s'", agentType);
+      } else {
+        return String.format("json->>'agentType' = '%s'", agentType);
+      }
+    }
+  }
+
+  public String getProviderCondition() {
+    String provider = queryParams.get("provider");
+    if (provider == null) {
+      return "";
+    } else {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format("JSON_EXTRACT(json, '$.provider') = '%s'", provider);
+      } else {
+        return String.format("json->>'provider' = '%s'", provider);
+      }
+    }
   }
 
   private String getEventSubscriptionAlertType() {
@@ -116,12 +183,24 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getDomainCondition(String tableName) {
     String domainId = getQueryParam("domainId");
-    return domainId == null
-        ? ""
-        : String.format(
-            "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
-                + "relation=10))",
-            nullOrEmpty(tableName) ? "id" : String.format("%s.id", tableName), domainId);
+    String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+    if (domainId == null) {
+      return "";
+    } else if (NULL_PARAM.equals(domainId)) {
+      String entityType = getQueryParam("entityType");
+      String entityTypeCondition =
+          nullOrEmpty(entityType)
+              ? ""
+              : String.format("AND entity_relationship.toEntity='%s'", entityType);
+      return String.format(
+          "(%s NOT IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' %s AND relation=10))",
+          entityIdColumn, entityTypeCondition);
+    } else {
+      return String.format(
+          "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
+              + "relation=10))",
+          entityIdColumn, domainId);
+    }
   }
 
   public String getApiCollectionCondition(String apiEndpoint) {
@@ -258,22 +337,22 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return switch (testSuiteType) {
-      case ("executable") -> {
+        // We'll clean up the executable when we deprecate the /executable endpoints
+      case "basic", "executable" -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
           yield String.format(
-              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) = 'true')", tableName);
+              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) = 'true')", tableName);
         }
-        yield String.format("(%s.json->>'executable' = 'true')", tableName);
+        yield String.format("(%s.json->>'basic' = 'true')", tableName);
       }
-      case ("logical") -> {
+      case "logical" -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
           yield String.format(
-              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) IS NULL)",
+              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) IS NULL)",
               tableName, tableName);
         }
         yield String.format(
-            "(%s.json->>'executable' = 'false' or %s.json -> 'executable' is null)",
-            tableName, tableName);
+            "(%s.json->>'basic' = 'false' or %s.json -> 'basic' is null)", tableName, tableName);
       }
       default -> "";
     };

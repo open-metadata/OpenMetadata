@@ -10,95 +10,116 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataNode } from 'antd/lib/tree';
+import { TreeDataNode } from 'antd/lib';
+import { isEmpty } from 'lodash';
+import { LeftSidebarItem } from '../../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
+import leftSidebarClassBase from '../LeftSidebarClassBase';
 
-export const filterAndArrangeTreeByKeys = <
-  T extends { key: string | number; children?: T[] }
->(
-  tree: T[],
-  keys: Array<string | number>
-): T[] => {
-  // Sort nodes according to the keys order
-  function sortByKeys(nodeArray: T[]) {
-    return nodeArray.sort((a, b) => keys.indexOf(a.key) - keys.indexOf(b.key));
-  }
+const leftSidebarItems = leftSidebarClassBase.getSidebarItems();
 
-  // Helper function to recursively filter and arrange the tree
-  function filterAndArrange(node: T) {
-    // If the current node's key is in the keys array, process it
-    if (keys.includes(node.key)) {
-      // If the node has children, we recursively filter and arrange them
-      if (node.children && node.children.length > 0) {
-        node.children = node.children
-          .map(filterAndArrange) // Recursively filter and arrange children
-          .filter((t): t is T => t !== null); // Remove any undefined children
+// Create nested map including all sidebar items and their children
+const createSidebarMap = (
+  items: LeftSidebarItem[]
+): Map<string, LeftSidebarItem> => {
+  const map = new Map<string, LeftSidebarItem>();
 
-        // Sort the children according to the order of the keys array
-        node.children = sortByKeys(node.children);
-      }
+  const addToMap = (item: LeftSidebarItem) => {
+    map.set(item.key, item);
+    item.children?.forEach((child) => addToMap(child));
+  };
 
-      return node; // Return the node if it has the required key
-    }
+  items.forEach((item) => addToMap(item));
 
-    return null; // Return null if the key doesn't match
-  }
-
-  // Apply the filter and arrange function to the entire tree
-  let filteredTree = tree
-    .map(filterAndArrange)
-    .filter((t): t is T => t !== null);
-
-  // Sort the filtered tree based on the order of keys at the root level
-  filteredTree = sortByKeys(filteredTree);
-
-  return filteredTree;
+  return map;
 };
 
-export const getNestedKeys = <
-  T extends { key: string | number; children?: T[] }
->(
-  data: T[]
-): string[] =>
-  data.reduce((acc: string[], item: T): string[] => {
-    if (item.children) {
-      return [
-        ...acc,
-        item.key as string,
-        ...getNestedKeys(item.children ?? []),
-      ];
+const sidebarMap = createSidebarMap(leftSidebarItems);
+
+export const getTreeDataForNavigationItems = (
+  navigationItems?: NavigationItem[]
+): TreeDataNode[] => {
+  return isEmpty(navigationItems)
+    ? leftSidebarItems.map((item) => {
+        return {
+          title: item.title,
+          key: item.key ?? '',
+          icon: item.icon as TreeDataNode['icon'],
+          children: item.children?.map((i) => {
+            return {
+              title: i.title,
+              key: i.key,
+              icon: i.icon as TreeDataNode['icon'],
+            };
+          }),
+        };
+      })
+    : navigationItems?.map((item) => {
+        const sidebarItem = sidebarMap.get(item.id);
+
+        return {
+          title: item.title,
+          key: item.id,
+          icon: sidebarItem?.icon as TreeDataNode['icon'],
+          children: item.children?.map((i) => {
+            const sidebarItem = sidebarMap.get(i.id);
+
+            return {
+              title: i.title,
+              key: i.id,
+              icon: sidebarItem?.icon as TreeDataNode['icon'],
+            };
+          }),
+        };
+      }) ?? [];
+};
+
+export const getHiddenKeysFromNavigationItems = (
+  navigationItems?: NavigationItem[]
+) => {
+  return (
+    navigationItems?.reduce((keys, item) => {
+      if (item.isHidden) {
+        keys.push(item.id);
+      }
+
+      if (item.children) {
+        keys.push(...item.children.filter((i) => i.isHidden).map((i) => i.id));
+      }
+
+      return keys;
+    }, [] as string[]) ?? []
+  );
+};
+
+export const filterHiddenNavigationItems = (
+  navigationItems?: NavigationItem[] | null
+): LeftSidebarItem[] => {
+  if (!navigationItems || isEmpty(navigationItems)) {
+    return leftSidebarItems;
+  }
+
+  const enhanceNavItem = (
+    navItem: NavigationItem,
+    sidebarMap: Map<string, LeftSidebarItem>
+  ): LeftSidebarItem | null => {
+    const sidebarItem = sidebarMap.get(navItem.id);
+
+    if (navItem.isHidden || !sidebarItem) {
+      return null;
     }
 
-    return [...acc, item.key as string];
-  }, [] as string[]);
+    const childrenItems = navItem.children
+      ?.map((child) => enhanceNavItem(child, sidebarMap))
+      .filter((item) => item !== null);
 
-export const getNavigationItems = (items: DataNode[]): NavigationItem[] =>
-  items
-    .map((item) =>
-      item.children
-        ? ({
-            id: item.key,
-            title: item.title,
-            pageId: item.key,
-            children: getNavigationItems(item.children),
-          } as NavigationItem)
-        : ({
-            id: item.key,
-            title: item.title,
-            pageId: item.key,
-          } as NavigationItem)
-    )
-    .filter(Boolean);
+    return {
+      ...sidebarItem,
+      children: isEmpty(childrenItems) ? undefined : childrenItems,
+    } as LeftSidebarItem;
+  };
 
-export const getNestedKeysFromNavigationItems = (data: NavigationItem[]) =>
-  data.reduce((acc: string[], item: NavigationItem): string[] => {
-    if (item.children) {
-      return [
-        ...acc,
-        item.id,
-        ...getNestedKeysFromNavigationItems(item.children),
-      ];
-    }
-
-    return [...acc, item.id];
-  }, [] as string[]);
+  return navigationItems
+    .map((navItem) => enhanceNavItem(navItem, sidebarMap))
+    .filter((item): item is LeftSidebarItem => item !== null);
+};

@@ -6,9 +6,9 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.USER;
 
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.*;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Query;
@@ -20,11 +20,12 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
@@ -48,6 +49,13 @@ public class QueryRepository extends EntityRepository<Query> {
   public void setFullyQualifiedName(Query query) {
     query.setFullyQualifiedName(
         FullyQualifiedName.add(query.getService().getFullyQualifiedName(), query.getName()));
+  }
+
+  @Override
+  protected void entitySpecificCleanup(Query entityInterface) {
+    daoCollection
+        .queryCostRecordTimeSeriesDAO()
+        .deleteWithEntityFqnHash(entityInterface.getFullyQualifiedName());
   }
 
   @Override
@@ -116,7 +124,8 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Query original, Query updated, Operation operation) {
+  public EntityRepository<Query>.EntityUpdater getUpdater(
+      Query original, Query updated, Operation operation, ChangeSource changeSource) {
     return new QueryUpdater(original, updated, operation);
   }
 
@@ -164,7 +173,7 @@ public class QueryRepository extends EntityRepository<Query> {
             oldQuery.getUsedBy(),
             query.getUsers(),
             withHref(uriInfo, query));
-    update(uriInfo, oldQuery, query);
+    update(uriInfo, oldQuery, query, updatedBy);
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
@@ -246,12 +255,12 @@ public class QueryRepository extends EntityRepository<Query> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateFromRelationships(
           "users",
           USER,
           original.getUsers(),
-          updated.getUsers(),
+          updated.getUsers() == null ? new ArrayList<>() : updated.getUsers(),
           Relationship.USES,
           Entity.QUERY,
           original.getId());

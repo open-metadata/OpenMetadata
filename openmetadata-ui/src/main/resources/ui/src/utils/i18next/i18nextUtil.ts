@@ -20,16 +20,20 @@ import frFR from '../../locale/languages/fr-fr.json';
 import glES from '../../locale/languages/gl-es.json';
 import heHE from '../../locale/languages/he-he.json';
 import jaJP from '../../locale/languages/ja-jp.json';
+import koKR from '../../locale/languages/ko-kr.json';
+import mrIN from '../../locale/languages/mr-in.json';
 import nlNL from '../../locale/languages/nl-nl.json';
 import prPR from '../../locale/languages/pr-pr.json';
 import ptBR from '../../locale/languages/pt-br.json';
 import ptPT from '../../locale/languages/pt-pt.json';
 import ruRU from '../../locale/languages/ru-ru.json';
 import thTH from '../../locale/languages/th-th.json';
+import trTR from '../../locale/languages/tr-tr.json';
 import zhCN from '../../locale/languages/zh-cn.json';
 
 export enum SupportedLocales {
   English = 'en-US',
+  한국어 = 'ko-KR',
   Français = 'fr-FR',
   简体中文 = 'zh-CN',
   日本語 = 'ja-JP',
@@ -43,6 +47,8 @@ export enum SupportedLocales {
   Nederlands = 'nl-NL',
   Persian = 'pr-PR',
   Thai = 'th-TH',
+  मराठी = 'mr-IN',
+  Türkçe = 'tr-TR',
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -56,6 +62,7 @@ export const getInitOptions = (): InitOptions => {
     supportedLngs: Object.values(SupportedLocales),
     resources: {
       'en-US': { translation: enUS },
+      'ko-KR': { translation: koKR },
       'fr-FR': { translation: frFR },
       'zh-CN': { translation: zhCN },
       'ja-JP': { translation: jaJP },
@@ -69,10 +76,12 @@ export const getInitOptions = (): InitOptions => {
       'nl-NL': { translation: nlNL },
       'pr-PR': { translation: prPR },
       'th-TH': { translation: thTH },
+      'mr-IN': { translation: mrIN },
+      'tr-TR': { translation: trTR },
     },
     fallbackLng: ['en-US'],
     detection: {
-      order: ['cookie'],
+      order: ['querystring', 'cookie', 'navigator'],
       caches: ['cookie'], // cache user language on
     },
     interpolation: {

@@ -46,11 +46,3 @@ export const createBot = async (data: CreateBot) => {
 
   return response.data;
 };
-
-export const deleteBot = async (id: string, hardDelete?: boolean) => {
-  const response = await axiosClient.delete(`${BASE_URL}/${id}`, {
-    params: { hardDelete },
-  });
-
-  return response.data;
-};

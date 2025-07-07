@@ -13,8 +13,8 @@
 
 import { Carousel } from 'antd';
 import { uniqueId } from 'lodash';
-import React from 'react';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import collateIcon from '../../../assets/svg/ic-collate.svg';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FeaturesCarouselProps } from './FeaturesCarousel.interface';
 
 const FeaturesCarousel = ({ data }: FeaturesCarouselProps) => {
@@ -23,9 +23,16 @@ const FeaturesCarousel = ({ data }: FeaturesCarouselProps) => {
       <Carousel autoplay dots autoplaySpeed={3000} easing="ease-in-out">
         {data.map((d) => (
           <div className="p-x-xss" key={uniqueId()}>
-            <p className="text-sm font-medium mb-2">{d.title}</p>
+            <div className="d-flex gap-2 align-center">
+              <p className="text-sm font-medium mb-2">{d.title}</p>
+              {d.isCollate && (
+                <a href="https://www.getcollate.io/">
+                  <img alt="collate" src={collateIcon} />
+                </a>
+              )}
+            </div>
             <div className="text-sm m-b-xs">
-              <RichTextEditorPreviewer
+              <RichTextEditorPreviewerV1
                 enableSeeMoreVariant={false}
                 markdown={d.description}
               />

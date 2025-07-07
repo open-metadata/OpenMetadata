@@ -24,10 +24,9 @@ import {
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
-import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -44,6 +43,7 @@ import {
   getChangeEventDataFromTypedEvent,
   getLabelsForEventDetails,
 } from '../../../../utils/Alerts/AlertsUtil';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -75,7 +75,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     handlePageSizeChange,
     showPagination,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_BASE);
+  } = usePaging();
 
   const { id, alertName } = useMemo(
     () => ({
@@ -134,7 +134,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
       return (
         <Collapse className="recent-events-collapse" expandIconPosition="end">
           {Array.from({ length: 5 }).map((_, index) => (
-            <Panel header={<Skeleton active paragraph={false} />} key={index} />
+            <Panel
+              data-testid="skeleton-loading-panel"
+              header={<Skeleton active paragraph={false} />}
+              key={index}
+            />
           ))}
         </Collapse>
       );
@@ -146,11 +150,17 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           className="p-y-lg"
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography.Paragraph className="w-max-500">
-            {filter === AlertRecentEventFilters.ALL
-              ? t('message.no-data-available-entity', {
+            {filter === AlertRecentEventFilters.ALL ? (
+              <Transi18next
+                i18nKey="message.no-data-available-entity"
+                renderElement={<b />}
+                values={{
                   entity: t('label.recent-event-plural'),
-                })
-              : t('message.no-data-available-for-selected-filter')}
+                }}
+              />
+            ) : (
+              t('message.no-data-available-for-selected-filter')
+            )}
           </Typography.Paragraph>
         </ErrorPlaceHolder>
       );
@@ -158,10 +168,9 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
     return (
       <Row gutter={[16, 16]}>
-        <Col span={24}>
+        <Col data-testid="recent-events-list" span={24}>
           <Collapse
             className="recent-events-collapse"
-            data-testid="recent-events-list"
             defaultActiveKey={['1']}
             expandIconPosition="end">
             {alertRecentEvents?.map((typedEvent) => {
@@ -172,7 +181,9 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
               return (
                 <Panel
                   header={
-                    <Row justify="space-between">
+                    <Row
+                      data-testid={`event-collapse-${changeEventData.id}`}
+                      justify="space-between">
                       <Col>
                         <Row align="middle" gutter={[16, 16]}>
                           <Col>
@@ -211,23 +222,31 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                     </Row>
                   }
                   key={`${changeEventData.id}-${changeEventData.timestamp}`}>
-                  <Row gutter={[16, 16]}>
+                  <Row
+                    data-testid={`event-details-${changeEventData.id}`}
+                    gutter={[16, 16]}>
                     <Col>
                       <Row gutter={[16, 16]}>
                         {Object.entries(changeEventDataToDisplay).map(
                           ([key, value]) =>
                             isUndefined(value) ? null : (
                               <Col key={key} span={key === 'reason' ? 24 : 8}>
-                                <Row gutter={[4, 4]}>
+                                <Row
+                                  data-testid={`event-data-${key}`}
+                                  gutter={[4, 4]}>
                                   <Col span={24}>
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography.Text
+                                      className="text-grey-muted"
+                                      data-testid="event-data-key">
                                       {`${getLabelsForEventDetails(
                                         key as keyof AlertEventDetailsToDisplay
                                       )}:`}
                                     </Typography.Text>
                                   </Col>
                                   <Col span={24}>
-                                    <Typography.Text className="font-medium">
+                                    <Typography.Text
+                                      className="font-medium"
+                                      data-testid="event-data-value">
                                       {value}
                                     </Typography.Text>
                                   </Col>
@@ -326,7 +345,9 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                 data-testid="filter-button"
                 icon={<FilterIcon height={16} />}>
                 {filter !== AlertRecentEventFilters.ALL && (
-                  <Typography.Text className="font-medium">{` : ${getAlertEventsFilterLabels(
+                  <Typography.Text
+                    className="font-medium"
+                    data-testid="applied-filter-text">{` : ${getAlertEventsFilterLabels(
                     filter as AlertRecentEventFilters
                   )}`}</Typography.Text>
                 )}

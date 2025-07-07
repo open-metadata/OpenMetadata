@@ -1,12 +1,19 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+
 import com.google.common.annotations.VisibleForTesting;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -22,6 +29,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  *
  * <p>As multiple threads don't access this, the class is not thread-safe by design.
  */
+@Slf4j
 public class ResourceContext<T extends EntityInterface> implements ResourceContextInterface {
   @NonNull @Getter private final String resource;
   private final EntityRepository<T> entityRepository;
@@ -73,7 +81,36 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     } else if (Entity.USER.equals(entityRepository.getEntityType())) {
       return List.of(entity.getEntityReference()); // Owner for a user is same as the user
     }
-    return entity.getOwners();
+
+    // Check for parent owners
+    List<EntityReference> owners = entity.getOwners();
+    EntityInterface parentEntity = resolveParentEntity(entity);
+    if (parentEntity != null && parentEntity.getOwners() != null) {
+      if (owners == null) owners = new ArrayList<>();
+      owners.addAll(parentEntity.getOwners());
+    }
+
+    return owners;
+  }
+
+  private EntityInterface resolveParentEntity(T entity) {
+    Fields fields = new Fields(new HashSet<>(Collections.singleton(FIELD_OWNERS)));
+    try {
+      EntityReference parentReference =
+          switch (entityRepository.getEntityType()) {
+            case Entity.GLOSSARY_TERM -> ((GlossaryTerm) entity).getGlossary();
+            case Entity.TAG -> ((Tag) entity).getClassification();
+            case Entity.DATA_PRODUCT -> entity.getDomain();
+            default -> null;
+          };
+
+      if (parentReference == null || parentReference.getId() == null) return null;
+      EntityRepository<?> rootRepository = Entity.getEntityRepository(parentReference.getType());
+      return rootRepository.get(null, parentReference.getId(), fields);
+    } catch (Exception e) {
+      LOG.error("Failed to resolve parent entity: {}", e.getMessage(), e);
+      return null;
+    }
   }
 
   @Override

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -48,6 +48,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
@@ -115,7 +116,7 @@ class RedashSource(DashboardServiceSource):
         return dashboard["name"]
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
-        return self.client.get_dashboard(dashboard["slug"])
+        return self.client.get_dashboard(dashboard["id"])
 
     def get_owner_ref(self, dashboard_details) -> Optional[EntityReferenceList]:
         """
@@ -160,9 +161,9 @@ class RedashSource(DashboardServiceSource):
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details["id"])),
                 displayName=dashboard_details.get("name"),
-                description=Markdown(dashboard_description)
-                if dashboard_description
-                else None,
+                description=(
+                    Markdown(dashboard_description) if dashboard_description else None
+                ),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -197,14 +198,15 @@ class RedashSource(DashboardServiceSource):
             )
 
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
-        self, dashboard_details: dict, db_service_name: str
+        self,
+        dashboard_details: dict,
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         In redash we do not get table, database_schema or database name but we do get query
         the lineage is being generated based on the query
         """
-
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
@@ -229,17 +231,17 @@ class RedashSource(DashboardServiceSource):
                         database_schema_name = self.check_database_schema_name(
                             database_schema
                         )
-                        from_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=Table,
-                            service_name=db_service_name,
-                            schema_name=database_schema_name,
-                            table_name=database_schema_table.get("table"),
+                        if not database_schema_table.get("table"):
+                            continue
+                        fqn_search_string = build_es_fqn_search_string(
                             database_name=database_schema_table.get("database"),
+                            schema_name=database_schema_name,
+                            service_name=db_service_name or "*",
+                            table_name=database_schema_table.get("table"),
                         )
-                        from_entity = self.metadata.get_by_name(
-                            entity=Table,
-                            fqn=from_fqn,
+                        from_entity = self.metadata.search_in_any_service(
+                            entity_type=Table,
+                            fqn_search_string=fqn_search_string,
                         )
                         if from_entity and to_entity:
                             yield self._get_add_lineage_request(
@@ -275,9 +277,11 @@ class RedashSource(DashboardServiceSource):
                 yield Either(
                     right=CreateChartRequest(
                         name=EntityName(str(widgets["id"])),
-                        displayName=chart_display_name
-                        if visualization and visualization["query"]
-                        else "",
+                        displayName=(
+                            chart_display_name
+                            if visualization and visualization["query"]
+                            else ""
+                        ),
                         chartType=get_standard_chart_type(
                             visualization["type"] if visualization else ""
                         ),
@@ -285,9 +289,11 @@ class RedashSource(DashboardServiceSource):
                             self.context.get().dashboard_service
                         ),
                         sourceUrl=SourceUrl(self.get_dashboard_url(dashboard_details)),
-                        description=Markdown(visualization["description"])
-                        if visualization
-                        else None,
+                        description=(
+                            Markdown(visualization["description"])
+                            if visualization
+                            else None
+                        ),
                     )
                 )
             except Exception as exc:

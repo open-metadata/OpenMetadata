@@ -12,7 +12,6 @@
  */
 
 import { filter, startCase } from 'lodash';
-import React from 'react';
 import {
   SubscriptionCategory,
   SubscriptionType,
@@ -72,3 +71,5 @@ export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
   [SubscriptionType.Webhook]: 'https://example.com',
   [SubscriptionType.Email]: 'Add ↵ separated Email addresses',
 };
+
+export const DEFAULT_READ_TIMEOUT = 12;

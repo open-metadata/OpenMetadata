@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { isArray } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import Table from '../../Table/Table';
@@ -47,7 +47,6 @@ const TableTypePropertyView: FC<TableTypePropertyViewProps> = ({
 
   return (
     <Table
-      bordered
       resizableColumns
       className="w-full table-type-custom-property"
       columns={tableColumns}

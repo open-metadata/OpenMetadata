@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import TierCard from './TierCard';
 
 const mockTierData = [
@@ -72,7 +71,7 @@ jest.mock('antd', () => ({
     }),
 }));
 
-jest.mock('../RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
 });
 

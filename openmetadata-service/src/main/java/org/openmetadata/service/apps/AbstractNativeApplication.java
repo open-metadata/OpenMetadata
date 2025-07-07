@@ -1,11 +1,14 @@
 package org.openmetadata.service.apps;
 
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANUAL_TRIGGER_ERR;
 import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPES;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +19,6 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
-import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -27,6 +29,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
@@ -36,7 +39,6 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
@@ -48,7 +50,6 @@ public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
-  protected boolean isJobInterrupted = false;
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
@@ -61,15 +62,18 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void init(App app) {
     this.app = app;
+    ApplicationContext.getInstance().registerApp(this);
   }
 
   @Override
-  public void install() {
+  public void install(String installedBy) {
     // If the app does not have any Schedule Return without scheduling
-    if (Boolean.TRUE.equals(app.getDeleted()) || (app.getAppSchedule() == null)) {
-      return;
-    }
-    if (app.getAppType().equals(AppType.Internal)
+    if (Boolean.TRUE.equals(app.getDeleted())
+        || (app.getAppSchedule() == null)
+        || Set.of(ScheduleType.NoSchedule, ScheduleType.OnlyManual)
+            .contains(app.getScheduleType())) {
+      LOG.debug("App {} does not support scheduling.", app.getName());
+    } else if (app.getAppType().equals(AppType.Internal)
         && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
       try {
         ApplicationHandler.getInstance().removeOldJobs(app);
@@ -84,21 +88,46 @@ public class AbstractNativeApplication implements NativeApplication {
       scheduleInternal();
     } else if (app.getAppType() == AppType.External
         && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
-      scheduleExternal();
+      scheduleExternal(installedBy);
     }
   }
 
   @Override
+  public void uninstall() {
+    ApplicationContext.getInstance().unregisterApp(this);
+  }
+
+  @Override
   public void triggerOnDemand() {
+    triggerOnDemand(null);
+  }
+
+  @Override
+  public void triggerOnDemand(Map<String, Object> config) {
     // Validate Native Application
-    if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
+    if (Set.of(ScheduleType.ScheduledOrManual, ScheduleType.OnlyManual)
+        .contains(app.getScheduleType())) {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
-      // Trigger the application
-      AppScheduler.getInstance().triggerOnDemandApplication(app);
+      // Trigger the application with the provided configuration payload
+      Map<String, Object> appConfig = JsonUtils.getMap(app.getAppConfiguration());
+      if (config != null) {
+        appConfig.putAll(config);
+      }
+      validateConfig(appConfig);
+      AppScheduler.getInstance().triggerOnDemandApplication(app, config);
     } else {
       throw new IllegalArgumentException(NO_MANUAL_TRIGGER_ERR);
     }
+  }
+
+  /**
+   * Validate the configuration of the application. This method is called before the application is
+   * triggered.
+   * @param config
+   */
+  protected void validateConfig(Map<String, Object> config) {
+    LOG.warn("validateConfig is not implemented for this application. Skipping validation.");
   }
 
   public void scheduleInternal() {
@@ -106,19 +135,21 @@ public class AbstractNativeApplication implements NativeApplication {
     AppRuntime runtime = JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
     validateServerExecutableApp(runtime);
     // Schedule New Application Run
-    AppScheduler.getInstance().addApplicationSchedule(app);
+    AppScheduler.getInstance().scheduleApplication(app);
   }
 
-  public void scheduleExternal() {
+  public void scheduleExternal(String updatedBy) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
-      updateAppConfig(ingestionPipelineRepository, this.getApp().getAppConfiguration());
+      updateAppConfig(
+          ingestionPipelineRepository,
+          JsonUtils.getMap(this.getApp().getAppConfiguration()),
+          updatedBy);
     } catch (EntityNotFoundException ex) {
-      ApplicationConfig config =
-          JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class);
+      Map<String, Object> config = JsonUtils.getMap(this.getApp().getAppConfiguration());
       createAndBindIngestionPipeline(ingestionPipelineRepository, config);
     }
   }
@@ -153,7 +184,10 @@ public class AbstractNativeApplication implements NativeApplication {
     }
   }
 
-  private void updateAppConfig(IngestionPipelineRepository repository, Object appConfiguration) {
+  private void updateAppConfig(
+      IngestionPipelineRepository repository,
+      Map<String, Object> appConfiguration,
+      String updatedBy) {
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
     ApplicationPipeline appPipeline =
@@ -161,11 +195,11 @@ public class AbstractNativeApplication implements NativeApplication {
     IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
     updated.setSourceConfig(
         updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
-    repository.update(null, original, updated);
+    repository.update(null, original, updated, updatedBy);
   }
 
   private void createAndBindIngestionPipeline(
-      IngestionPipelineRepository ingestionPipelineRepository, ApplicationConfig config) {
+      IngestionPipelineRepository ingestionPipelineRepository, Map<String, Object> config) {
     MetadataServiceRepository serviceEntityRepository =
         (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
     EntityReference service =
@@ -235,6 +269,9 @@ public class AbstractNativeApplication implements NativeApplication {
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
     App jobApp = collectionDAO.applicationDAO().findEntityByName(appName);
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
+    jobApp.setAppConfiguration(
+        JsonUtils.getMapFromJson(
+            (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));
     // Initialise the Application
     this.init(jobApp);
 
@@ -299,6 +336,11 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void interrupt() throws UnableToInterruptJobException {
     LOG.info("Interrupting the job for app: {}", this.app.getName());
-    isJobInterrupted = true;
+    stop();
+  }
+
+  protected void stop() {
+    LOG.info("Default stop behavior for app: {}", this.app.getName());
+    // Default implementation: no-op or generic cleanup logic
   }
 }

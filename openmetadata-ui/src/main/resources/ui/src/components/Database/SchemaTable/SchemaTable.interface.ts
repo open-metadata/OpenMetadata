@@ -12,36 +12,13 @@
  */
 
 import { ReactNode } from 'react';
-import { ThreadType } from '../../../generated/api/feed/createThread';
-import { Column, Table } from '../../../generated/entity/data/table';
-import { TestSummary } from '../../../generated/tests/testCase';
-
-export interface SchemaTableProps {
-  hasDescriptionEditAccess: boolean;
-  hasTagEditAccess: boolean;
-  hasGlossaryTermEditAccess: boolean;
-  searchText?: string;
-  isReadOnly?: boolean;
-  onUpdate: (columns: Column[]) => Promise<void>;
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
-  table?: Table;
-  testCaseSummary?: TestSummary;
-}
+import { Column } from '../../../generated/entity/data/table';
 
 export type TableCellRendered<T, K extends keyof T> = (
   value: T[K],
   record: T,
   index: number
 ) => ReactNode;
-
-export interface DataTypeDisplayCellProps {
-  dataTypeDisplay: Column['dataTypeDisplay'];
-}
-
-export interface EditColumnTag {
-  column: Column;
-  index: number;
-}
 
 export interface UpdatedColumnFieldData {
   fqn: string;

@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, List, Popover, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Divider,
+  List,
+  Popover,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
@@ -30,7 +38,6 @@ import {
   UnitOfMeasurement,
 } from '../../../generated/entity/data/metric';
 import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricUtils';
-import { ExtraInfoLabel } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import './metric-header-info.less';
 
 interface MetricInfoItemOption {
@@ -142,37 +149,46 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
   );
 
   return (
-    <Space data-testid={modiFiedLabel}>
-      <ExtraInfoLabel
-        dataTestId={modiFiedLabel}
-        label={label}
-        value={value ?? NO_DATA_PLACEHOLDER}
-      />
-      {hasPermission && !metricDetails.deleted && (
-        <Popover
-          destroyTooltipOnHide
-          content={list}
-          open={popupVisible}
-          overlayClassName="metric-header-info-popover"
-          placement="bottomRight"
-          showArrow={false}
-          trigger="click"
-          onOpenChange={setPopupVisible}>
-          <Tooltip
-            title={t('label.edit-entity', {
-              entity: label,
-            })}>
-            <Button
-              className="flex-center p-0"
-              data-testid={`edit-${modiFiedLabel}-button`}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              loading={isUpdating}
-              size="small"
-              type="text"
-            />
-          </Tooltip>
-        </Popover>
-      )}
+    <Space
+      className="d-flex metric-header-info-container align-start"
+      data-testid={modiFiedLabel}>
+      <div className="d-flex extra-info-container align-start ">
+        <Typography.Text
+          className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+          data-testid={modiFiedLabel}>
+          <div className="d-flex items-center gap-1">
+            <span className="extra-info-label-heading">{label}</span>
+            {hasPermission && !metricDetails.deleted && (
+              <Popover
+                destroyTooltipOnHide
+                content={list}
+                open={popupVisible}
+                overlayClassName="metric-header-info-popover"
+                placement="bottomRight"
+                showArrow={false}
+                trigger="click"
+                onOpenChange={setPopupVisible}>
+                <Tooltip
+                  title={t('label.edit-entity', {
+                    entity: label,
+                  })}>
+                  <Button
+                    className="flex-center edit-metrics p-0"
+                    data-testid={`edit-${modiFiedLabel}-button`}
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+                    loading={isUpdating}
+                    size="small"
+                    type="text"
+                  />
+                </Tooltip>
+              </Popover>
+            )}
+          </div>
+          <div className={classNames('font-medium extra-info-value')}>
+            {value ?? NO_DATA_PLACEHOLDER}
+          </div>
+        </Typography.Text>
+      </div>
     </Space>
   );
 };
@@ -187,6 +203,7 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
 
   return (
     <>
+      <Divider className="self-center vertical-divider" type="vertical" />
       <MetricInfoItem
         hasPermission={hasPermission}
         label={t('label.metric-type')}
@@ -200,6 +217,8 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
         valueKey="metricType"
         onUpdateMetricDetails={onUpdateMetricDetails}
       />
+      <Divider className="self-center vertical-divider" type="vertical" />
+
       <MetricInfoItem
         hasPermission={hasPermission}
         label={t('label.unit-of-measurement')}
@@ -213,6 +232,8 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
         valueKey="unitOfMeasurement"
         onUpdateMetricDetails={onUpdateMetricDetails}
       />
+      <Divider className="self-center vertical-divider" type="vertical" />
+
       <MetricInfoItem
         hasPermission={hasPermission}
         label={t('label.granularity')}

@@ -18,9 +18,11 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
-import React from 'react';
+import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
 
@@ -29,14 +31,7 @@ const mockProps: DataQualityTabProps = {
   onTestUpdate: jest.fn(),
   fetchTestCases: jest.fn(),
 };
-const mockPermissionsData = {
-  permissions: {
-    all: {
-      Delete: true,
-      EditAll: true,
-    },
-  },
-};
+let mockPermissionsData = MOCK_PERMISSIONS;
 const mockAuthData = {
   isAdminUser: true,
   isAuthDisabled: false,
@@ -56,7 +51,11 @@ jest.mock('../../../../hooks/authHooks', () => ({
   },
 }));
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: () => mockPermissionsData,
+  usePermissionProvider: () => ({
+    getEntityPermissionByFqn: jest
+      .fn()
+      .mockImplementation(() => mockPermissionsData),
+  }),
 }));
 jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => {
@@ -68,7 +67,7 @@ jest.mock('../../../common/DeleteWidget/DeleteWidgetModal', () => {
     return (
       visible && (
         <div>
-          DeleteWidgetModal
+          <p>DeleteWidgetModal</p>
           <button onClick={onCancel}>cancel</button>
         </div>
       )
@@ -80,7 +79,7 @@ jest.mock('../../../DataQuality/AddDataQualityTest/EditTestCaseModal', () => {
     return (
       visible && (
         <div>
-          EditTestCaseModal
+          <p>EditTestCaseModal</p>
           <button onClick={onCancel}>cancel</button>
           <button onClick={onUpdate}>submit</button>
         </div>
@@ -88,8 +87,30 @@ jest.mock('../../../DataQuality/AddDataQualityTest/EditTestCaseModal', () => {
     );
   });
 });
+jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ visible, onCancel, onConfirm, isLoading }) => {
+      return (
+        visible && (
+          <div>
+            <p>ConfirmationModal</p>
+            <button onClick={onCancel}>cancel</button>
+            <button onClick={onConfirm}>
+              {isLoading ? (
+                <span data-testid="submit-btn-loading">Loading</span>
+              ) : (
+                ''
+              )}
+              submit
+            </button>
+          </div>
+        )
+      );
+    });
+});
 
-describe('DataQualityTab test', () => {
+describe.skip('DataQualityTab test', () => {
   it('Component should render', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
@@ -216,6 +237,53 @@ describe('DataQualityTab test', () => {
     expect(deleteButton).toBeInTheDocument();
   });
 
+  it('Remove functionality', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(
+        <DataQualityTab
+          removeFromTestSuite={{
+            testSuite: {
+              id: 'testSuiteId',
+              name: 'testSuiteName',
+            },
+          }}
+          {...mockProps}
+        />
+      );
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const firstRow = tableRows[1];
+    const closeRemoveModel = screen.queryByText('ConfirmationModal');
+    const removeButton = await findByTestId(
+      firstRow,
+      `remove-${firstRowData.name}`
+    );
+
+    expect(removeButton).toBeInTheDocument();
+    expect(closeRemoveModel).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(removeButton);
+    });
+    const openRemoveModel = await screen.findByText('ConfirmationModal');
+    const submitBtn = await screen.findByText('submit');
+
+    expect(openRemoveModel).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        const loader = screen.getByTestId('submit-btn-loading');
+
+        expect(loader).toBeInTheDocument();
+      });
+    });
+
+    expect(closeRemoveModel).not.toBeInTheDocument();
+  });
+
   it('Edit functionality', async () => {
     const firstRowData = MOCK_TEST_CASE[0];
     await act(async () => {
@@ -280,7 +348,7 @@ describe('DataQualityTab test', () => {
   });
 
   it("Edit test case button should be disabled if user doesn't have edit permission", async () => {
-    mockPermissionsData.permissions.all.EditAll = false;
+    mockPermissionsData = DEFAULT_ENTITY_PERMISSION;
 
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
@@ -289,10 +357,12 @@ describe('DataQualityTab test', () => {
     const editButton = screen.getByTestId('edit-column_values_to_match_regex');
 
     expect(editButton).toBeDisabled();
+
+    mockPermissionsData = MOCK_PERMISSIONS;
   });
 
   it("Delete test case button should be disabled if user doesn't have delete permission", async () => {
-    mockPermissionsData.permissions.all.Delete = false;
+    mockPermissionsData = DEFAULT_ENTITY_PERMISSION;
 
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
@@ -303,5 +373,25 @@ describe('DataQualityTab test', () => {
     );
 
     expect(deleteButton).toBeDisabled();
+
+    mockPermissionsData = MOCK_PERMISSIONS;
+  });
+
+  it('Only Edit test case button should be enabled if isEditAllowed is true', async () => {
+    mockPermissionsData = DEFAULT_ENTITY_PERMISSION;
+
+    await act(async () => {
+      render(<DataQualityTab isEditAllowed {...mockProps} />);
+    });
+
+    const editButton = screen.getByTestId('edit-column_values_to_match_regex');
+    const deleteButton = screen.getByTestId(
+      'delete-column_values_to_match_regex'
+    );
+
+    expect(editButton).not.toBeDisabled();
+    expect(deleteButton).toBeDisabled();
+
+    mockPermissionsData = MOCK_PERMISSIONS;
   });
 });

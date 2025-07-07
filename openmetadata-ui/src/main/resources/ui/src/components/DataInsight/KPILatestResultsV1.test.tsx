@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { findByTestId, render, screen } from '@testing-library/react';
-import React from 'react';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import KPILatestResultsV1 from './KPILatestResultsV1';
 
@@ -49,6 +48,10 @@ const mockProps = {
     displayName: 'Ownership Coverage',
   },
 } as Record<string, UIKpiResult>;
+
+jest.mock('../../utils/DataInsightUtils', () => ({
+  getKpiResultFeedback: jest.fn(),
+}));
 
 describe('KPILatestResultsV1', () => {
   it('Component. should render', async () => {

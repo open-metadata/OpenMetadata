@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -186,7 +187,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Dashboard original, Dashboard updated, Operation operation) {
+  public EntityRepository<Dashboard>.EntityUpdater getUpdater(
+      Dashboard original, Dashboard updated, Operation operation, ChangeSource changeSource) {
     return new DashboardUpdater(original, updated, operation);
   }
 
@@ -209,7 +211,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       update(
           Entity.CHART,
           "charts",

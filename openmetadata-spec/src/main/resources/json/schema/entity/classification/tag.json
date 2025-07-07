@@ -79,6 +79,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
@@ -99,9 +103,14 @@
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "owners": {
+      "description": "Owners of this glossary term.",
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": [
+    "id",
     "name",
     "description"
   ],

@@ -35,19 +35,19 @@ import {
   uniq,
 } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   TIER_CATEGORY,
 } from '../../../constants/constants';
 import {
   DEFAULT_SORT_ORDER,
+  TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
@@ -83,7 +83,7 @@ import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
 export const TestCases = () => {
   const [form] = useForm();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -110,8 +110,8 @@ export const TestCases = () => {
 
     return params as TestCaseSearchParams;
   }, [location.search]);
-  const { searchValue = '' } = params;
 
+  const { searchValue = '' } = params;
   const [testCase, setTestCase] = useState<TestCase[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedFilter, setSelectedFilter] = useState<string[]>([
@@ -127,13 +127,13 @@ export const TestCases = () => {
     paging,
     handlePagingChange,
     showPagination,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging();
 
   const handleSearchParam = <K extends keyof TestCaseSearchParams>(
     key: K,
     value?: TestCaseSearchParams[K]
   ) => {
-    history.push({
+    navigate({
       search: QueryString.stringify({ ...params, [key]: value || undefined }),
     });
   };
@@ -253,7 +253,7 @@ export const TestCases = () => {
       });
 
       setTierOptions(options);
-    } catch (error) {
+    } catch {
       setTierOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -285,7 +285,7 @@ export const TestCases = () => {
         });
 
       setTagOptions(options);
-    } catch (error) {
+    } catch {
       setTagOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -323,7 +323,7 @@ export const TestCases = () => {
         };
       });
       setTableOptions(options);
-    } catch (error) {
+    } catch {
       setTableOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -361,7 +361,7 @@ export const TestCases = () => {
         };
       });
       setServiceOptions(options);
-    } catch (error) {
+    } catch {
       setServiceOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -415,7 +415,6 @@ export const TestCases = () => {
       key: filter,
       label: startCase(name),
       value: filter,
-      onClick: handleMenuClick,
     }));
   }, []);
 
@@ -470,11 +469,19 @@ export const TestCases = () => {
   );
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.test-case'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
-    <Row className="p-x-md" data-testid="test-case-container" gutter={[16, 16]}>
+    <Row data-testid="test-case-container" gutter={[16, 16]}>
       <Col span={24}>
         <Form<TestCaseSearchParams>
           form={form}
@@ -496,6 +503,7 @@ export const TestCases = () => {
                 menu={{
                   items: filterMenu,
                   selectedKeys: selectedFilter,
+                  onClick: handleMenuClick,
                 }}
                 trigger={['click']}>
                 <Button
@@ -621,11 +629,26 @@ export const TestCases = () => {
                 />
               </Form.Item>
             )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.dimension) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.dimension')}
+                name="dataQualityDimension">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="dimension-select-filter"
+                  options={TEST_CASE_DIMENSIONS_OPTION}
+                  placeholder={t('label.dimension')}
+                />
+              </Form.Item>
+            )}
           </Space>
         </Form>
       </Col>
       <Col span={24}>
         <SummaryPanel
+          showAdditionalSummary
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
         />

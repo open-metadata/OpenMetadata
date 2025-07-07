@@ -24,11 +24,29 @@ import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
-import org.openmetadata.schema.services.connections.database.*;
+import org.openmetadata.schema.services.connections.database.BigQueryConnection;
+import org.openmetadata.schema.services.connections.database.BigTableConnection;
+import org.openmetadata.schema.services.connections.database.CassandraConnection;
+import org.openmetadata.schema.services.connections.database.CockroachConnection;
+import org.openmetadata.schema.services.connections.database.DatalakeConnection;
+import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
+import org.openmetadata.schema.services.connections.database.GreenplumConnection;
+import org.openmetadata.schema.services.connections.database.HiveConnection;
+import org.openmetadata.schema.services.connections.database.IcebergConnection;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
+import org.openmetadata.schema.services.connections.database.RedshiftConnection;
+import org.openmetadata.schema.services.connections.database.SalesforceConnection;
+import org.openmetadata.schema.services.connections.database.SapHanaConnection;
+import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
 import org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem;
+import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
+import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
+import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
 
@@ -72,7 +90,14 @@ public final class ClassConverterFactory {
                 TestServiceConnectionRequest.class,
                 new TestServiceConnectionRequestClassConverter()),
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
-            Map.entry(Workflow.class, new WorkflowClassConverter()));
+            Map.entry(Workflow.class, new WorkflowClassConverter()),
+            Map.entry(CockroachConnection.class, new CockroachConnectionClassConverter()),
+            Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
+            Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
+            Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()));
+    Map.entry(Workflow.class, new WorkflowClassConverter());
+    Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
+    Map.entry(SSISConnection.class, new SsisConnectionClassConverter());
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {

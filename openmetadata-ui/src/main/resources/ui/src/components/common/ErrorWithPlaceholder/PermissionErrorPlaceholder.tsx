@@ -12,20 +12,22 @@
  */
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { ReactComponent as NoAccessPlaceHolderIcon } from '../../../assets/svg/no-access-placeholder.svg';
+import { ReactComponent as NoAccessPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { SIZE } from '../../../enums/common.enum';
+import { Transi18next } from '../../../utils/CommonUtils';
 import { PermissionPlaceholderProps } from './placeholder.interface';
 
 const PermissionErrorPlaceholder = ({
   size = SIZE.LARGE,
   className,
+  permissionValue,
 }: PermissionPlaceholderProps) => {
-  const { t } = useTranslation();
-
   return (
-    <div className={classNames('h-full flex-center', className)}>
+    <div
+      className={classNames(
+        'full-height flex-center border-default border-radius-sm bg-white',
+        className
+      )}>
       <Space
         align="center"
         data-testid="permission-error-placeholder"
@@ -37,8 +39,14 @@ const PermissionErrorPlaceholder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography.Paragraph className="w-80" style={{ marginBottom: '0' }}>
-            {t('message.no-access-placeholder')}
+          <Typography.Paragraph className="w-68" style={{ marginBottom: '0' }}>
+            <Transi18next
+              i18nKey="message.no-access-placeholder"
+              renderElement={<b />}
+              values={{
+                entity: permissionValue,
+              }}
+            />
           </Typography.Paragraph>
         </div>
       </Space>

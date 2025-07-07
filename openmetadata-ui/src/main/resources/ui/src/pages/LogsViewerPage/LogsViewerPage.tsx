@@ -12,10 +12,11 @@
  */
 
 import { DownloadOutlined } from '@ant-design/icons';
+import { LazyLog } from '@melloware/react-logviewer';
 import { Button, Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, round, toNumber } from 'lodash';
-import React, {
+import {
   Fragment,
   useCallback,
   useEffect,
@@ -24,8 +25,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LazyLog } from 'react-lazylog';
-import { useParams } from 'react-router-dom';
 import { CopyToClipboardButton } from '../../components/common/CopyToClipboardButton/CopyToClipboardButton';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -54,15 +53,19 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { downloadIngestionLog } from '../../utils/IngestionLogs/LogsUtils';
+import {
+  downloadAppLogs,
+  downloadIngestionLog,
+} from '../../utils/IngestionLogs/LogsUtils';
 import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './logs-viewer-page.style.less';
 import { LogViewerParams } from './LogsViewerPage.interfaces';
 import LogViewerPageSkeleton from './LogsViewerPageSkeleton.component';
 
 const LogsViewerPage = () => {
-  const { logEntityType } = useParams<LogViewerParams>();
+  const { logEntityType } = useRequiredParams<LogViewerParams>();
   const { fqn: ingestionName } = useFqn();
 
   const { t } = useTranslation();
@@ -112,40 +115,45 @@ const LogsViewerPage = () => {
 
       switch (pipelineType || ingestionDetails?.pipelineType) {
         case PipelineType.Metadata:
-          setLogs(logs.concat(res.data?.ingestion_task || ''));
+          setLogs(logs.concat(res.data?.ingestion_task ?? ''));
 
           break;
         case PipelineType.Application:
-          setLogs(logs.concat(res.data?.application_task || ''));
+          setLogs(logs.concat(res.data?.application_task ?? ''));
 
           break;
         case PipelineType.Profiler:
-          setLogs(logs.concat(res.data?.profiler_task || ''));
+          setLogs(logs.concat(res.data?.profiler_task ?? ''));
 
           break;
         case PipelineType.Usage:
-          setLogs(logs.concat(res.data?.usage_task || ''));
+          setLogs(logs.concat(res.data?.usage_task ?? ''));
 
           break;
         case PipelineType.Lineage:
-          setLogs(logs.concat(res.data?.lineage_task || ''));
+          setLogs(logs.concat(res.data?.lineage_task ?? ''));
 
           break;
         case PipelineType.Dbt:
-          setLogs(logs.concat(res.data?.dbt_task || ''));
+          setLogs(logs.concat(res.data?.dbt_task ?? ''));
 
           break;
         case PipelineType.TestSuite:
-          setLogs(logs.concat(res.data?.test_suite_task || ''));
+          setLogs(logs.concat(res.data?.test_suite_task ?? ''));
 
           break;
         case PipelineType.DataInsight:
-          setLogs(logs.concat(res.data?.data_insight_task || ''));
+          setLogs(logs.concat(res.data?.data_insight_task ?? ''));
 
           break;
 
         case PipelineType.ElasticSearchReindex:
-          setLogs(logs.concat(res.data?.elasticsearch_reindex_task || ''));
+          setLogs(logs.concat(res.data?.elasticsearch_reindex_task ?? ''));
+
+          break;
+
+        case PipelineType.AutoClassification:
+          setLogs(logs.concat(res.data?.auto_classification_task ?? ''));
 
           break;
 
@@ -269,8 +277,8 @@ const LogsViewerPage = () => {
       return (
         <IngestionRecentRuns
           appRuns={appRuns}
+          fetchStatus={!isApplicationType}
           ingestion={ingestionDetails}
-          isApplicationType={isApplicationType}
         />
       );
     }
@@ -302,18 +310,24 @@ const LogsViewerPage = () => {
       );
 
       updateProgress(paging?.after ? progress : 1);
-
-      const logs = await downloadIngestionLog(
-        ingestionDetails?.id,
+      let logs = '';
+      let fileName = `${getEntityName(ingestionDetails)}-${
         ingestionDetails?.pipelineType
-      );
+      }.log`;
+      if (isApplicationType) {
+        logs = await downloadAppLogs(ingestionName);
+        fileName = `${ingestionName}.log`;
+      } else {
+        logs = await downloadIngestionLog(
+          ingestionDetails?.id,
+          ingestionDetails?.pipelineType
+        );
+      }
 
       const element = document.createElement('a');
       const file = new Blob([logs || ''], { type: 'text/plain' });
       element.href = URL.createObjectURL(file);
-      element.download = `${getEntityName(ingestionDetails)}-${
-        ingestionDetails?.pipelineType
-      }.log`;
+      element.download = fileName;
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);

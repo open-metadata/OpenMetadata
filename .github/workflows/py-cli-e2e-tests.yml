@@ -61,11 +61,11 @@ jobs:
         docker-images: false
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: configure aws credentials
       if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
-      uses: aws-actions/configure-aws-credentials@v1
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}
         role-session-name: github-ci-aws-e2e-tests
@@ -74,7 +74,7 @@ jobs:
     - name: Setup Openmetadata Test Environment
       uses: ./.github/actions/setup-openmetadata-test-environment
       with:
-        python-version: 3.9
+        python-version: '3.10'
 
 
     - name: Run Python Tests & record coverage
@@ -97,7 +97,8 @@ jobs:
         E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
         E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
         E2E_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
-        E2E_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
+        E2E_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD_YAML }}
+        E2E_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
         E2E_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
         E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
         E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
@@ -164,21 +165,21 @@ jobs:
 
     - name: Upload coverage artifact for Python tests
       if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage
 
     - name: Upload coverage artifact for CLI E2E tests
       if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
 
     - name: Upload tests artifact
       if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tests-${{ matrix.e2e-test }}
         path: ingestion/junit/test-results-*.xml
@@ -215,12 +216,12 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: '3.10'
 
       - name: Install Ubuntu dependencies
         run: |

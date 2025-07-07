@@ -11,32 +11,44 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Switch, Typography } from 'antd';
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
-  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../../../constants/constants';
+import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
-import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getDataModels } from '../../../../rest/dashboardAPI';
+import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import {
+  dataProductTableObject,
+  domainTableObject,
+  ownerTableObject,
+  tagTableObject,
+} from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 
 const DataModelTable = () => {
@@ -59,9 +71,9 @@ const DataModelTable = () => {
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'displayName',
-        key: 'displayName',
-        width: 350,
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
+        width: 300,
         render: (_, record: ServicePageData) => {
           const dataModelDisplayName = getEntityName(record);
 
@@ -82,11 +94,12 @@ const DataModelTable = () => {
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        width: 400,
         render: (description: ServicePageData['description']) =>
           !isUndefined(description) && description.trim() ? (
-            <RichTextEditorPreviewer markdown={description} />
+            <RichTextEditorPreviewerNew markdown={description} />
           ) : (
             <span className="text-grey-muted">
               {t('label.no-entity', {
@@ -97,9 +110,14 @@ const DataModelTable = () => {
       },
       {
         title: t('label.data-model-type'),
-        dataIndex: 'dataModelType',
-        key: 'dataModelType',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_MODEL_TYPE,
+        key: TABLE_COLUMNS_KEYS.DATA_MODEL_TYPE,
+        width: 200,
       },
+      ...ownerTableObject<ServicePageData>(),
+      ...domainTableObject<ServicePageData>(),
+      ...dataProductTableObject<ServicePageData>(),
+      ...tagTableObject<ServicePageData>(),
     ],
     []
   );
@@ -112,6 +130,7 @@ const DataModelTable = () => {
           service: fqn,
           limit: pageSize,
           include: showDeleted ? Include.Deleted : Include.NonDeleted,
+          fields: commonTableFields,
           ...pagingData,
         });
         setDataModels(data);
@@ -148,50 +167,43 @@ const DataModelTable = () => {
   }, [pageSize, showDeleted]);
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col className="p-t-sm p-x-lg" span={24}>
-        <Row justify="end">
-          <Col>
-            <Switch
-              checked={showDeleted}
-              data-testid="show-deleted"
-              onClick={handleShowDeletedChange}
-            />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>{' '}
-          </Col>
-        </Row>
-      </Col>
-      <Col className="p-x-lg" data-testid="table-container" span={24}>
-        <Table
-          bordered
-          className="mt-4 table-shadow"
-          columns={tableColumn}
-          data-testid="data-models-table"
-          dataSource={dataModels}
-          loading={isLoading}
-          locale={{
-            emptyText: <ErrorPlaceHolder className="m-y-md" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-      </Col>
-      <Col className="p-b-sm" span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleDataModelPageChange}
-            onShowSizeChange={handlePageSizeChange}
+    <Table
+      columns={tableColumn}
+      customPaginationProps={{
+        currentPage,
+        isLoading,
+        pageSize,
+        paging,
+        pagingHandler: handleDataModelPageChange,
+        onShowSizeChange: handlePageSizeChange,
+        showPagination,
+      }}
+      data-testid="data-models-table"
+      dataSource={dataModels}
+      defaultVisibleColumns={DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS}
+      entityType="dashboardDataModelTable"
+      extraTableFilters={
+        <span>
+          <Switch
+            checked={showDeleted}
+            data-testid="show-deleted"
+            onClick={handleShowDeletedChange}
           />
-        )}
-      </Col>
-    </Row>
+          <Typography.Text className="m-l-xs">
+            {t('label.deleted')}
+          </Typography.Text>
+        </span>
+      }
+      loading={isLoading}
+      locale={{
+        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+      }}
+      pagination={false}
+      rowKey="id"
+      scroll={TABLE_SCROLL_VALUE}
+      size="small"
+      staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+    />
   );
 };
 

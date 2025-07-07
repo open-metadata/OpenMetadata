@@ -12,17 +12,19 @@
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Collapse, Divider, Space, Tooltip, Typography } from 'antd';
+import { LazyLog } from '@melloware/react-logviewer';
+import { Button, Collapse, Divider, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LazyLog } from 'react-lazylog';
 import { ReactComponent as AttentionIcon } from '../../../../assets/svg/attention.svg';
 import { ReactComponent as FailIcon } from '../../../../assets/svg/fail-badge.svg';
+import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
 import { ReactComponent as SuccessIcon } from '../../../../assets/svg/success-badge.svg';
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
+import { useClipboard } from '../../../../hooks/useClipBoard';
 import { requiredField } from '../../../../utils/CommonUtils';
 import './connection-step-card.less';
 
@@ -52,6 +54,16 @@ const ConnectionStepCard = ({
   const logs =
     testConnectionStepResult?.errorLog ??
     t('label.no-entity', { entity: t('label.log-plural') });
+
+  const { onCopyToClipBoard } = useClipboard(logs ?? '');
+
+  const handleCopyToClipBoard = (
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onCopyToClipBoard();
+  };
 
   return (
     <div
@@ -142,6 +154,16 @@ const ConnectionStepCard = ({
                 <Panel
                   className="connection-step-card-content-logs"
                   data-testid="lazy-log"
+                  extra={
+                    <Tooltip title={t('message.copy-to-clipboard')}>
+                      <Button
+                        className="flex-center bg-white"
+                        data-testid="query-entity-copy-button"
+                        icon={<CopyIcon height={16} width={16} />}
+                        onClick={handleCopyToClipBoard}
+                      />
+                    </Tooltip>
+                  }
                   header={t('label.show-log-plural')}
                   key="show-log">
                   <LazyLog

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,7 +30,14 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    DataType,
+    PartitionIntervalTypes,
+    PartitionProfilerConfig,
+    ProfileSampleType,
+    TableProfilerConfig,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -253,6 +260,7 @@ class TestE2EWorkflow(unittest.TestCase):
 
                 workflow = TestSuiteWorkflow.create(test_suite_config)
                 workflow.execute()
+                workflow.print_status()
                 workflow.raise_from_status()
 
                 test_case_1 = self.metadata.get_by_name(
@@ -270,8 +278,8 @@ class TestE2EWorkflow(unittest.TestCase):
                 assert test_case_2
 
                 test_case_result_1 = self.metadata.client.get(
-                    f"/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
-                    ".my_test_case/testCaseResult",
+                    f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
+                    ".my_test_case",
                     data={
                         "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
                         * 1000,
@@ -280,8 +288,8 @@ class TestE2EWorkflow(unittest.TestCase):
                     },
                 )
                 test_case_result_2 = self.metadata.client.get(
-                    f"/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
-                    ".id.table_column_to_be_not_null/testCaseResult",
+                    f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
+                    ".id.table_column_to_be_not_null",
                     data={
                         "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
                         * 1000,
@@ -297,3 +305,133 @@ class TestE2EWorkflow(unittest.TestCase):
                 assert data_test_case_result_1[0]["testCaseStatus"] == "Success"
                 assert data_test_case_result_2
                 assert data_test_case_result_2[0]["testCaseStatus"] == status
+
+    def test_e2e_cli_sampled_workflow(self):
+        """test cli workflow e2e"""
+        fqn = "test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+
+        test_suite_config["source"]["sourceConfig"]["config"].update(
+            {"entityFullyQualifiedName": fqn}
+        )
+        self.metadata.create_or_update_table_profiler_config(
+            fqn=fqn,
+            table_profiler_config=TableProfilerConfig(
+                profileSampleType=ProfileSampleType.PERCENTAGE,
+                profileSample=50.0,
+            ),
+        )
+
+        workflow = TestSuiteWorkflow.create(test_suite_config)
+        workflow.execute()
+        workflow.raise_from_status()
+
+        test_case_1 = self.metadata.get_by_name(
+            entity=TestCase,
+            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case",
+            fields=["testDefinition", "testSuite"],
+        )
+        test_case_2 = self.metadata.get_by_name(
+            entity=TestCase,
+            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.id.table_column_to_be_not_null",
+            fields=["testDefinition", "testSuite"],
+        )
+
+        assert test_case_1
+        assert test_case_2
+
+        test_case_result_1 = self.metadata.client.get(
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            ".my_test_case",
+            data={
+                "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
+                "endTs": int((datetime.now() + timedelta(days=3)).timestamp()) * 1000,
+            },
+        )
+        test_case_result_2 = self.metadata.client.get(
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            ".id.table_column_to_be_not_null",
+            data={
+                "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
+                "endTs": int((datetime.now() + timedelta(days=3)).timestamp()) * 1000,
+            },
+        )
+
+        data_test_case_result_1: dict = test_case_result_1.get("data")  # type: ignore
+        data_test_case_result_2: dict = test_case_result_2.get("data")  # type: ignore
+
+        assert data_test_case_result_1
+        assert data_test_case_result_1[0]["testCaseStatus"] == "Success"
+        assert data_test_case_result_2
+        assert data_test_case_result_2[0]["testCaseStatus"] == "Success"
+        self.assertAlmostEqual(
+            data_test_case_result_2[0]["passedRows"],
+            15,
+            delta=8,
+            msg="This is a 99% confidence interval. Run the test again to validate failure.",
+        )
+
+    def test_e2e_cli_partitioned_workflow(self):
+        """test cli workflow e2e"""
+        fqn = "test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+
+        test_suite_config["source"]["sourceConfig"]["config"].update(
+            {"entityFullyQualifiedName": fqn}
+        )
+        self.metadata.create_or_update_table_profiler_config(
+            fqn=fqn,
+            table_profiler_config=TableProfilerConfig(
+                profileSampleType=ProfileSampleType.PERCENTAGE,
+                profileSample=100.0,
+                partitioning=PartitionProfilerConfig(
+                    enablePartitioning=True,
+                    partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                    partitionValues=["John"],
+                    partitionColumnName="name",
+                ),
+            ),
+        )
+
+        workflow = TestSuiteWorkflow.create(test_suite_config)
+        workflow.execute()
+        workflow.print_status()
+        workflow.raise_from_status()
+
+        test_case_1 = self.metadata.get_by_name(
+            entity=TestCase,
+            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case",
+            fields=["testDefinition", "testSuite"],
+        )
+        test_case_2 = self.metadata.get_by_name(
+            entity=TestCase,
+            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.id.table_column_to_be_not_null",
+            fields=["testDefinition", "testSuite"],
+        )
+
+        assert test_case_1
+        assert test_case_2
+
+        test_case_result_1 = self.metadata.client.get(
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            ".my_test_case",
+            data={
+                "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
+                "endTs": int((datetime.now() + timedelta(days=3)).timestamp()) * 1000,
+            },
+        )
+        test_case_result_2 = self.metadata.client.get(
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            ".id.table_column_to_be_not_null",
+            data={
+                "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
+                "endTs": int((datetime.now() + timedelta(days=3)).timestamp()) * 1000,
+            },
+        )
+
+        data_test_case_result_1: dict = test_case_result_1.get("data")  # type: ignore
+        data_test_case_result_2: dict = test_case_result_2.get("data")  # type: ignore
+
+        assert data_test_case_result_1
+        assert data_test_case_result_1[0]["testCaseStatus"] == "Success"
+        assert data_test_case_result_2
+        assert data_test_case_result_2[0]["testCaseStatus"] == "Success"
+        self.assertEqual(data_test_case_result_2[0]["passedRows"], 20)

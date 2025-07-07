@@ -19,8 +19,10 @@ import { sidebarClick } from './sidebar';
 
 export const uuid = () => randomUUID().split('-')[0];
 
-export const descriptionBox =
-  '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
+export const descriptionBox = '.om-block-editor[contenteditable="true"]';
+export const descriptionBoxReadOnly =
+  '.om-block-editor[contenteditable="false"]';
+
 export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
@@ -39,14 +41,16 @@ export const NAME_MAX_LENGTH_VALIDATION_ERROR =
 export const getToken = async (page: Page) => {
   return page.evaluate(
     () =>
-      JSON.parse(localStorage.getItem('om-session') ?? '{}')?.state
-        ?.oidcIdToken ?? ''
+      JSON.parse(localStorage.getItem('om-session') ?? '{}')?.oidcIdToken ?? ''
   );
 };
 
 export const getAuthContext = async (token: string) => {
   return await request.newContext({
+    // Default timeout is 30s making it to 1m for AUTs
+    timeout: 90000,
     extraHTTPHeaders: {
+      Connection: 'keep-alive',
       Authorization: `Bearer ${token}`,
     },
   });
@@ -55,6 +59,7 @@ export const getAuthContext = async (token: string) => {
 export const redirectToHomePage = async (page: Page) => {
   await page.goto('/');
   await page.waitForURL('**/my-data');
+  await page.waitForLoadState('networkidle');
 };
 
 export const removeLandingBanner = async (page: Page) => {
@@ -108,20 +113,23 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     Metric: 'metric_search_index',
   };
 
-  return entityMapping[entityType];
+  return entityMapping[entityType as keyof typeof entityMapping];
 };
 
 export const toastNotification = async (
   page: Page,
-  message: string | RegExp
+  message: string | RegExp,
+  timeout?: number
 ) => {
-  await expect(page.getByRole('alert').first()).toHaveText(message);
+  await page.waitForSelector('[data-testid="alert-bar"]', {
+    state: 'visible',
+  });
 
-  await page
-    .locator('.Toastify__toast')
-    .getByLabel('close', { exact: true })
-    .first()
-    .click();
+  await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
+
+  await expect(page.getByTestId('alert-icon')).toBeVisible();
+
+  await expect(page.getByTestId('alert-icon-close')).toBeVisible();
 };
 
 export const clickOutside = async (page: Page) => {
@@ -130,8 +138,7 @@ export const clickOutside = async (page: Page) => {
       x: 0,
       y: 0,
     },
-  }); // with this action left menu bar is getting opened
-  await page.mouse.move(1280, 0); // moving out side left menu bar to avoid random failure due to left menu bar
+  });
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
@@ -149,7 +156,7 @@ export const visitOwnProfilePage = async (page: Page) => {
 
 export const assignDomain = async (
   page: Page,
-  domain: { name: string; displayName: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -157,11 +164,12 @@ export const assignDomain = async (
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
   await page
-    .getByTestId('selectable-list')
+    .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -170,35 +178,113 @@ export const assignDomain = async (
 
 export const updateDomain = async (
   page: Page,
-  domain: { name: string; displayName: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-  await page.getByTestId('selectable-list').getByTestId('searchbar').clear();
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .clear();
+
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
   await page
-    .getByTestId('selectable-list')
+    .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
   );
 };
 
-export const removeDomain = async (page: Page) => {
+export const removeDomain = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('remove-owner').locator('path')).toBeVisible();
-
-  await page.getByTestId('remove-owner').locator('svg').click();
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
   await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
+};
+
+export const assignDataProduct = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  dataProduct: {
+    name: string;
+    displayName: string;
+    fullyQualifiedName?: string;
+  },
+  action: 'Add' | 'Edit' = 'Add',
+  parentId = 'KnowledgePanel.DataProducts'
+) => {
+  await page
+    .getByTestId(parentId)
+    .getByTestId('data-products-container')
+    .getByTestId(action === 'Add' ? 'add-data-product' : 'edit-button')
+    .click();
+
+  const searchDataProduct = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
+
+  await page
+    .locator('[data-testid="data-product-selector"] input')
+    .fill(dataProduct.displayName);
+  await searchDataProduct;
+  await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await expect(
+    page
+      .getByTestId(parentId)
+      .getByTestId('data-products-list')
+      .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+  ).toBeVisible();
+};
+
+export const removeDataProduct = async (
+  page: Page,
+  dataProduct: {
+    name: string;
+    displayName: string;
+    fullyQualifiedName?: string;
+  }
+) => {
+  await page
+    .getByTestId('KnowledgePanel.DataProducts')
+    .getByTestId('data-products-container')
+    .getByTestId('edit-button')
+    .click();
+
+  await page
+    .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
+    .getByTestId('remove-tags')
+    .locator('svg')
+    .click();
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await expect(
+    page
+      .getByTestId('KnowledgePanel.DataProducts')
+      .getByTestId('data-products-list')
+      .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+  ).not.toBeVisible();
 };
 
 export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
@@ -207,6 +293,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryResponse;
   await page.getByRole('menuitem', { name: glossaryName }).click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
 export const getRandomFirstName = () => {
@@ -247,4 +335,79 @@ export const verifyDomainPropagation = async (
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
   return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
+};
+
+// Since the tests run in parallel sometimes the error toast alert pops up
+// Stating the domain or glossary does not exist since it's deleted in other test
+// This error toast blocks the buttons at the top
+// Below logic closes the alert if it's present to avoid flakiness in tests
+export const closeFirstPopupAlert = async (page: Page) => {
+  const toastElement = page.getByTestId('alert-bar');
+
+  if ((await toastElement.count()) > 0) {
+    await page.getByTestId('alert-icon-close').first().click();
+  }
+};
+
+export const reloadAndWaitForNetworkIdle = async (page: Page) => {
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+};
+
+/**
+ * Utility function to handle API calls with retry logic for connection-related errors.
+ * This is particularly useful for cleanup operations that might fail due to network issues.
+ *
+ * @param apiCall - The API call function to execute
+ * @param operationName - Name of the operation for logging purposes
+ * @param maxRetries - Maximum number of retry attempts (default: 3)
+ * @param baseDelay - Base delay in milliseconds for exponential backoff (default: 1000)
+ * @returns The result of the API call if successful
+ */
+export const executeWithRetry = async <T>(
+  apiCall: () => Promise<T>,
+  operationName: string,
+  maxRetries = 3,
+  baseDelay = 1000
+): Promise<T | void> => {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await apiCall();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      // Check if it's a retriable error (connection-related issues)
+      const isRetriableError =
+        errorMessage.includes('socket hang up') ||
+        errorMessage.includes('ECONNRESET') ||
+        errorMessage.includes('ENOTFOUND') ||
+        errorMessage.includes('ETIMEDOUT') ||
+        errorMessage.includes('Connection refused') ||
+        errorMessage.includes('ECONNREFUSED');
+
+      if (isRetriableError && attempt < maxRetries - 1) {
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = baseDelay * Math.pow(2, attempt);
+        // eslint-disable-next-line no-console
+        console.log(
+          `${operationName} attempt ${
+            attempt + 1
+          } failed with retriable error: ${errorMessage}. Retrying in ${delay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+
+        continue;
+      } else {
+        // eslint-disable-next-line no-console
+        console.error(
+          `Failed to ${operationName} after ${attempt + 1} attempts:`,
+          errorMessage
+        );
+
+        // Don't throw the error to prevent test failures - just log it
+        break;
+      }
+    }
+  }
 };

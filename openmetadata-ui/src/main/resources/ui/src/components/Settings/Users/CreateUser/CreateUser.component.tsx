@@ -25,7 +25,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { compact, isEmpty, isUndefined, map, trim } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
@@ -50,7 +50,7 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
-import { checkEmailInUse, generateRandomPwd } from '../../../../rest/auth-API';
+import { generateRandomPwd } from '../../../../rest/auth-API';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -60,11 +60,8 @@ import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToC
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
-
-const { Option } = Select;
 
 const CreateUser = ({
   roles,
@@ -195,6 +192,21 @@ const CreateUser = ({
     onSave(userProfile);
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+      },
+    }),
+    []
+  );
+
   useEffect(() => {
     generateRandomPassword();
   }, []);
@@ -220,24 +232,6 @@ const CreateUser = ({
             message: t('message.field-text-is-invalid', {
               fieldText: t('label.email'),
             }),
-          },
-          {
-            type: 'email',
-            required: true,
-            validator: async (_, value) => {
-              if (EMAIL_REG_EX.test(value) && !forceBot) {
-                const isEmailAlreadyExists = await checkEmailInUse(value);
-                if (isEmailAlreadyExists) {
-                  return Promise.reject(
-                    t('message.entity-already-exists', {
-                      entity: value,
-                    })
-                  );
-                }
-
-                return Promise.resolve();
-              }
-            },
           },
         ]}>
         <Input
@@ -266,19 +260,12 @@ const CreateUser = ({
             className="w-full"
             data-testid="token-expiry"
             placeholder={t('message.select-token-expiration')}>
-            {getJWTTokenExpiryOptions().map((option) => (
-              <Option key={option.value}>{option.label}</Option>
-            ))}
+            {getJWTTokenExpiryOptions()}
           </Select>
         </Form.Item>
       )}
-      <Form.Item
-        label={t('label.description')}
-        name="description"
-        trigger="onTextChange"
-        valuePropName="initialValue">
-        <RichTextEditor />
-      </Form.Item>
+
+      {getField(descriptionField)}
 
       {!forceBot && (
         <>
@@ -404,6 +391,7 @@ const CreateUser = ({
                   data-testid="roles-dropdown"
                   disabled={isEmpty(roles)}
                   filterOption={handleSearchFilterOption}
+                  getPopupContainer={(triggerNode) => triggerNode.parentElement}
                   mode="multiple"
                   options={roleOptions}
                   placeholder={t('label.please-select-entity', {
@@ -430,19 +418,21 @@ const CreateUser = ({
         </>
       )}
 
-      <div className="m-t-xs">
-        {getField(domainsField)}
-        {selectedDomain && selectedDomain.length > 0 && (
-          <DomainLabel
-            multiple
-            domain={selectedDomain}
-            entityFqn=""
-            entityId=""
-            entityType={EntityType.USER}
-            hasPermission={false}
-          />
-        )}
-      </div>
+      {!isBot && (
+        <div className="m-t-xs">
+          {getField(domainsField)}
+          {selectedDomain && selectedDomain.length > 0 && (
+            <DomainLabel
+              multiple
+              domain={selectedDomain}
+              entityFqn=""
+              entityId=""
+              entityType={EntityType.USER}
+              hasPermission={false}
+            />
+          )}
+        </div>
+      )}
       {!isUndefined(inlineAlertDetails) && (
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}

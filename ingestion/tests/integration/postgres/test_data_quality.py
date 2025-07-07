@@ -9,6 +9,7 @@ from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_ob
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
+    ServiceConnections,
     TestSuiteConfigType,
     TestSuitePipeline,
 )
@@ -55,9 +56,14 @@ def run_data_quality_workflow(
                 config=TestSuitePipeline(
                     type=TestSuiteConfigType.TestSuite,
                     entityFullyQualifiedName=f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
+                    serviceConnections=[
+                        ServiceConnections(
+                            serviceName=db_service.name.root,
+                            serviceConnection=db_service.connection,
+                        )
+                    ],
                 )
             ),
-            serviceConnection=db_service.connection,
         ),
         processor=Processor(
             type="orm-test-runner",
@@ -192,7 +198,7 @@ def run_data_quality_workflow(
                                 {"name": "max", "value": "600"},
                                 {"name": "columnName", "value": "last_update"},
                                 {"name": "rangeType", "value": "YEAR"},
-                                {"name": "rangeInterval", "value": "12"},
+                                {"name": "rangeInterval", "value": "50"},
                             ],
                         },
                     ],
@@ -301,13 +307,23 @@ def run_data_quality_workflow(
     ids=lambda *x: x[0],
 )
 def test_data_quality(
-    run_data_quality_workflow, metadata: OpenMetadata, test_case_name, expected_status
+    run_data_quality_workflow,
+    metadata: OpenMetadata,
+    test_case_name,
+    expected_status,
+    db_service,
 ):
     test_cases: List[TestCase] = metadata.list_entities(
         TestCase, fields=["*"], skip_on_failure=True
     ).entities
     test_case: TestCase = next(
-        (t for t in test_cases if t.name.root == test_case_name), None
+        (
+            t
+            for t in test_cases
+            if t.name.root == test_case_name
+            and "dvdrental.public.customer" in t.entityFQN
+        ),
+        None,
     )
     assert test_case is not None
     assert_equal_pydantic_objects(

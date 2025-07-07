@@ -15,7 +15,6 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
-  MOCK_INITIAL_ASSIGNEE,
   MOCK_TEST_CASE_DATA,
   MOCK_TEST_CASE_INCIDENT,
   MOCK_TEST_CASE_RESOLUTION_STATUS,
@@ -47,7 +46,6 @@ const mockUseActivityFeedProviderValue = {
   postFeed: jest.fn(),
   testCaseResolutionStatus: MOCK_TEST_CASE_RESOLUTION_STATUS,
   updateTestCaseIncidentStatus: jest.fn(),
-  initialAssignees: MOCK_INITIAL_ASSIGNEE,
 };
 
 const mockOnOwnerUpdate = jest.fn();
@@ -55,7 +53,6 @@ const mockFetchTaskCount = jest.fn();
 
 const mockProps: IncidentManagerPageHeaderProps = {
   onOwnerUpdate: mockOnOwnerUpdate,
-  testCaseData: MOCK_TEST_CASE_DATA,
   fetchTaskCount: mockFetchTaskCount,
 };
 
@@ -104,6 +101,9 @@ jest.mock('../../../../utils/CommonUtils', () => ({
 
 jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('getEntityName'),
+  getColumnNameFromEntityLink: jest
+    .fn()
+    .mockReturnValue('getColumnNameFromEntityLink'),
 }));
 
 jest.mock('../../../../utils/FeedUtils', () => ({
@@ -125,17 +125,19 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest
     .fn()
-    .mockImplementation(({ children, onUpdate, ...rest }) => (
+    .mockImplementation(({ children, onUpdate, placeHolder, ...rest }) => (
       <div {...rest} data-testid="owner-component" onClick={onUpdate}>
+        <div data-testid="placeholder">{placeHolder}</div>
         {children}
       </div>
     )),
 }));
 
 jest.mock('../Severity/Severity.component', () => {
-  return jest.fn().mockImplementation(({ onSubmit }) => (
+  return jest.fn().mockImplementation(({ headerName, onSubmit }) => (
     <div>
-      Severity.component
+      <div data-testid="severity-header">{headerName}</div>
+      <div>Severity.component</div>
       <button
         data-testid="update-severity"
         onClick={() => onSubmit(Severities.Severity4)}
@@ -145,9 +147,10 @@ jest.mock('../Severity/Severity.component', () => {
 });
 
 jest.mock('../TestCaseStatus/TestCaseIncidentManagerStatus.component', () => {
-  return jest.fn().mockImplementation(({ onSubmit }) => (
+  return jest.fn().mockImplementation(({ headerName, onSubmit }) => (
     <div>
-      TestCaseIncidentManagerStatus.component
+      <div data-testid="status-header">{headerName}</div>
+      <div>TestCaseIncidentManagerStatus.component</div>
       <button
         data-testid="test-case-incident-manager-status"
         onClick={() => onSubmit(MOCK_TEST_CASE_RESOLUTION_STATUS[1])}
@@ -155,6 +158,16 @@ jest.mock('../TestCaseStatus/TestCaseIncidentManagerStatus.component', () => {
     </div>
   ));
 });
+
+const mockUseTestCaseStore = {
+  testCase: { ...MOCK_TEST_CASE_DATA, incidentId: '123' },
+};
+jest.mock(
+  '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
+  () => ({
+    useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCaseStore),
+  })
+);
 
 describe('Incident Manager Page Header component', () => {
   it('getFeedData should be call on mount', async () => {
@@ -233,10 +246,10 @@ describe('Incident Manager Page Header component', () => {
 
     expect(screen.getByTestId('owner-component')).toBeInTheDocument();
     // If Table FQN is present
-    expect(screen.getByText('label.table:')).toBeInTheDocument();
+    expect(screen.getByText('label.table')).toBeInTheDocument();
     expect(screen.getByText('getNameFromFQN')).toBeInTheDocument();
     // Test Type
-    expect(screen.getByText('label.test-type:')).toBeInTheDocument();
+    expect(screen.getByText('label.test-type')).toBeInTheDocument();
     expect(screen.getByText('getEntityName')).toBeInTheDocument();
   });
 
@@ -245,30 +258,36 @@ describe('Incident Manager Page Header component', () => {
       render(
         <IncidentManagerPageHeader
           {...mockProps}
-          testCaseData={{ ...MOCK_TEST_CASE_DATA, incidentId: '123' }}
+          testCaseData={{
+            ...MOCK_TEST_CASE_DATA,
+            incidentId: '123',
+          }}
         />
       );
     });
 
     expect(screen.getAllByTestId('owner-component')).toHaveLength(2);
     // Incident
-    expect(screen.getByText('label.incident:')).toBeInTheDocument();
+    expect(screen.getByText('label.incident')).toBeInTheDocument();
     expect(screen.getByText('#9')).toBeInTheDocument();
     // Incident
-    expect(screen.getByText('label.incident-status:')).toBeInTheDocument();
+    expect(screen.getByText('label.incident-status')).toBeInTheDocument();
     expect(
       screen.getByText('TestCaseIncidentManagerStatus.component')
     ).toBeInTheDocument();
     // Assignee
-    expect(screen.getByText('label.assignee:')).toBeInTheDocument();
+    expect(screen.getByTestId('assignee')).toBeInTheDocument();
     // Severity
-    expect(screen.getByText('label.severity:')).toBeInTheDocument();
+    expect(screen.getByText('label.severity')).toBeInTheDocument();
     expect(screen.getByText('Severity.component')).toBeInTheDocument();
     // If Table FQN is present
-    expect(screen.getByText('label.table:')).toBeInTheDocument();
+    expect(screen.getByText('label.table')).toBeInTheDocument();
     expect(screen.getByText('getNameFromFQN')).toBeInTheDocument();
     // Test Type
-    expect(screen.getByText('label.test-type:')).toBeInTheDocument();
+    expect(screen.getByText('label.test-type')).toBeInTheDocument();
     expect(screen.getByText('getEntityName')).toBeInTheDocument();
+    // If Column is present
+    expect(screen.getByText('label.column')).toBeInTheDocument();
+    expect(screen.getByText('getColumnNameFromEntityLink')).toBeInTheDocument();
   });
 });

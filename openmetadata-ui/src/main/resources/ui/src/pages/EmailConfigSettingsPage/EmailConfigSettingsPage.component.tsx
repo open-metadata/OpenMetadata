@@ -15,9 +15,9 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ButtonSkeleton from '../../components/common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
@@ -40,7 +40,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 function EmailConfigSettingsPage() {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { isAdminUser } = useAuth();
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
@@ -77,7 +77,7 @@ function EmailConfigSettingsPage() {
   }, [setEmailConfigValues]);
 
   const handleEditClick = () => {
-    history.push(ROUTES.SETTINGS_EDIT_EMAIL_CONFIG);
+    navigate(ROUTES.SETTINGS_EDIT_EMAIL_CONFIG);
   };
 
   const handleTestEmailModal = useCallback(() => {
@@ -127,6 +127,9 @@ function EmailConfigSettingsPage() {
         <ErrorPlaceHolder
           className="mt-24"
           heading={t('label.email-configuration-lowercase')}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.email-configuration'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
         />
       );
@@ -137,11 +140,9 @@ function EmailConfigSettingsPage() {
         {loading ? (
           <Skeleton title paragraph={{ rows: 8 }} />
         ) : (
-          <>
-            <Row align="middle" gutter={[16, 16]}>
-              {configValues}
-            </Row>
-          </>
+          <Row align="middle" gutter={[16, 16]}>
+            {configValues}
+          </Row>
         )}
       </>
     );
@@ -152,8 +153,11 @@ function EmailConfigSettingsPage() {
   }, []);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.email')}>
-      <Row align="middle" className="page-container" gutter={[0, 16]}>
+    <PageLayoutV1 pageTitle={t('label.email-configuration')}>
+      <Row
+        align="middle"
+        className="p-lg bg-white border-radius-sm"
+        gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

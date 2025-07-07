@@ -12,8 +12,8 @@
  */
 
 import { Typography } from 'antd';
-import { isNil, isObject } from 'lodash';
-import React, { Fragment, useCallback, useMemo, useState } from 'react';
+import { isNil, isObject, noop } from 'lodash';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import SchemaModal from '../../Modals/SchemaModal/SchemaModal';
 import { SampleDataType } from './SampleData.interface';
@@ -54,7 +54,12 @@ export const RowData = ({ data }: { data: SampleDataType }) => {
     <Fragment>
       {dataElementRenderer}
       {isFullView && (
-        <SchemaModal data={data} visible={isFullView} onClose={onClose} />
+        <SchemaModal
+          data={data}
+          visible={isFullView}
+          onClose={onClose}
+          onSave={noop}
+        />
       )}
     </Fragment>
   );

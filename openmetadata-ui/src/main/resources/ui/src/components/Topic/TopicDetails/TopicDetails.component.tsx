@@ -13,53 +13,60 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { ThreadType } from '../../../generated/entity/feed/thread';
+import { PageType } from '../../../generated/system/ui/page';
 import { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
+import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
+import {
+  createTagObject,
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import topicClassBase from '../../../utils/TopicClassBase';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import Loader from '../../common/Loader/Loader';
 import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
-import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SampleDataWithMessages from '../../Database/SampleDataWithMessages/SampleDataWithMessages';
-import EntityRightPanel from '../../Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import TopicSchemaFields from '../TopicSchema/TopicSchema';
 import { TopicDetailsProps } from './TopicDetails.interface';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
@@ -69,7 +76,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   followTopicHandler,
   unFollowTopicHandler,
   versionHandler,
-  createThread,
   onTopicUpdate,
   topicPermissions,
   handleToggleDelete,
@@ -77,19 +83,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedTopicFQN } = useFqn();
-  const history = useHistory();
-  const [isEdit, setIsEdit] = useState(false);
-  const [threadLink, setThreadLink] = useState<string>('');
+  const navigate = useNavigate();
+  const { customizedPage, isLoading } = useCustomPages(PageType.Topic);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
+
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
-  );
-
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
   );
 
   const {
@@ -135,14 +137,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     );
   };
 
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
-  const onThreadPanelClose = () => setThreadLink('');
-
   const handleSchemaFieldsUpdate = async (
     updatedMessageSchema: Topic['messageSchema']
   ) => {
@@ -165,8 +159,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.topic'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -181,15 +174,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
-        getEntityDetailsPath(EntityType.TOPIC, decodedTopicFQN, activeKey)
+      navigate(
+        getEntityDetailsPath(EntityType.TOPIC, decodedTopicFQN, activeKey),
+        { replace: true }
       );
     }
   };
-
-  const onDescriptionEdit = (): void => setIsEdit(true);
-
-  const onCancel = () => setIsEdit(false);
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
@@ -201,11 +191,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         await onTopicUpdate(updatedTopicDetails, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setIsEdit(false);
       }
-    } else {
-      setIsEdit(false);
     }
   };
   const onOwnerUpdate = useCallback(
@@ -260,8 +246,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     getFeedCounts(EntityType.TOPIC, decodedTopicFQN, handleFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
@@ -301,210 +286,135 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     getEntityFeedCount();
   }, [topicPermissions, decodedTopicFQN]);
 
-  const tabs = useMemo(
-    () => [
-      {
-        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
-        key: EntityTabs.SCHEMA,
-        children: (
-          <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height-with-resizable-panel" span={24}>
-              <ResizablePanels
-                firstPanel={{
-                  className: 'entity-resizable-panel-container',
-                  children: (
-                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
-                      <DescriptionV1
-                        description={topicDetails.description}
-                        entityFqn={decodedTopicFQN}
-                        entityName={entityName}
-                        entityType={EntityType.TOPIC}
-                        hasEditAccess={editDescriptionPermission}
-                        isDescriptionExpanded={isEmpty(
-                          topicDetails.messageSchema?.schemaFields
-                        )}
-                        isEdit={isEdit}
-                        owner={topicDetails.owners}
-                        showActions={!deleted}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                      <TopicSchemaFields
-                        entityFqn={decodedTopicFQN}
-                        hasDescriptionEditAccess={editDescriptionPermission}
-                        hasGlossaryTermEditAccess={editGlossaryTermsPermission}
-                        hasTagEditAccess={editTagsPermission}
-                        isReadOnly={Boolean(topicDetails.deleted)}
-                        messageSchema={topicDetails.messageSchema}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                        onUpdate={handleSchemaFieldsUpdate}
-                      />
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-                }}
-                secondPanel={{
-                  children: (
-                    <div data-testid="entity-right-panel">
-                      <EntityRightPanel<EntityType.TOPIC>
-                        customProperties={topicDetails}
-                        dataProducts={topicDetails?.dataProducts ?? []}
-                        domain={topicDetails?.domain}
-                        editCustomAttributePermission={
-                          editCustomAttributePermission
-                        }
-                        editGlossaryTermsPermission={
-                          editGlossaryTermsPermission
-                        }
-                        editTagPermission={editTagsPermission}
-                        entityFQN={decodedTopicFQN}
-                        entityId={topicDetails.id}
-                        entityType={EntityType.TOPIC}
-                        selectedTags={topicTags}
-                        viewAllPermission={viewAllPermission}
-                        onExtensionUpdate={onExtensionUpdate}
-                        onTagSelectionChange={handleTagSelection}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                  className:
-                    'entity-resizable-right-panel-container entity-resizable-panel-container',
-                }}
-              />
-            </Col>
-          </Row>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount.totalCount}
-            id={EntityTabs.ACTIVITY_FEED}
-            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-and-task-plural')}
-          />
-        ),
-        key: EntityTabs.ACTIVITY_FEED,
-        children: (
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.TOPIC}
-            fqn={topicDetails?.fullyQualifiedName ?? ''}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchTopic}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.SAMPLE_DATA}
-            name={t('label.sample-data')}
-          />
-        ),
-        key: EntityTabs.SAMPLE_DATA,
-        children: !viewSampleDataPermission ? (
-          <div className="m-t-xlg">
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          </div>
-        ) : (
-          <SampleDataWithMessages
-            entityId={topicDetails.id}
-            entityType={EntityType.TOPIC}
-          />
-        ),
-      },
-      {
-        label: <TabsLabel id={EntityTabs.CONFIG} name={t('label.config')} />,
-        key: EntityTabs.CONFIG,
-        children: (
-          <QueryViewer
-            sqlQuery={JSON.stringify(topicDetails.topicConfig)}
-            title={t('label.config')}
-          />
-        ),
-      },
-      {
-        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
-        key: EntityTabs.LINEAGE,
-        children: (
-          <LineageProvider>
-            <Lineage
-              deleted={topicDetails.deleted}
-              entity={topicDetails as SourceType}
-              entityType={EntityType.TOPIC}
-              hasEditAccess={editLineagePermission}
-            />
-          </LineageProvider>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: topicDetails && (
-          <div className="m-sm">
-            <CustomPropertyTable<EntityType.TOPIC>
-              entityDetails={topicDetails}
-              entityType={EntityType.TOPIC}
-              handleExtensionUpdate={onExtensionUpdate}
-              hasEditAccess={editCustomAttributePermission}
-              hasPermission={viewAllPermission}
-            />
-          </div>
-        ),
-      },
-    ],
+  const tabs = useMemo(() => {
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
-    [
-      isEdit,
-      activeTab,
-      feedCount.totalCount,
-      topicTags,
-      entityName,
-      topicDetails,
-      decodedTopicFQN,
-      fetchTopic,
-      deleted,
-      onCancel,
-      onDescriptionEdit,
-      handleFeedCount,
-      onExtensionUpdate,
-      onThreadLinkSelect,
-      handleTagSelection,
-      onDescriptionUpdate,
-      onDataProductsUpdate,
-      handleSchemaFieldsUpdate,
-      editTagsPermission,
-      editGlossaryTermsPermission,
-      editDescriptionPermission,
-      editCustomAttributePermission,
-      editLineagePermission,
-      editAllPermission,
+    const tabs = topicClassBase.getTopicDetailPageTabs({
+      schemaCount: topicDetails.messageSchema?.schemaFields?.length ?? 0,
+      activityFeedTab: (
+        <ActivityFeedTab
+          refetchFeed
+          entityFeedTotalCount={feedCount.totalCount}
+          entityType={EntityType.TOPIC}
+          feedCount={feedCount}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={fetchTopic}
+          onUpdateFeedCount={handleFeedCount}
+        />
+      ),
+      sampleDataTab: !viewSampleDataPermission ? (
+        <div className="border-default border-radius-sm p-y-lg">
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
+        </div>
+      ) : (
+        <SampleDataWithMessages
+          entityId={topicDetails.id}
+          entityType={EntityType.TOPIC}
+        />
+      ),
+      queryViewerTab: (
+        <QueryViewer
+          isActive={activeTab === EntityTabs.CONFIG}
+          sqlQuery={JSON.stringify(topicDetails.topicConfig)}
+          title={t('label.config')}
+        />
+      ),
+      lineageTab: (
+        <LineageProvider>
+          <Lineage
+            deleted={topicDetails.deleted}
+            entity={topicDetails as SourceType}
+            entityType={EntityType.TOPIC}
+            hasEditAccess={editLineagePermission}
+          />
+        </LineageProvider>
+      ),
+      customPropertiesTab: topicDetails && (
+        <CustomPropertyTable<EntityType.TOPIC>
+          entityType={EntityType.TOPIC}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
+      ),
       viewSampleDataPermission,
-      viewAllPermission,
-    ]
+      activeTab,
+      feedCount,
+      labelMap: tabLabelMap,
+    });
+
+    return getDetailsTabWithNewLabel(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.SCHEMA
+    );
+  }, [
+    activeTab,
+    feedCount.totalCount,
+    topicTags,
+    entityName,
+    topicDetails,
+    decodedTopicFQN,
+    fetchTopic,
+    deleted,
+    handleFeedCount,
+    onExtensionUpdate,
+    handleTagSelection,
+    onDescriptionUpdate,
+    onDataProductsUpdate,
+    handleSchemaFieldsUpdate,
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editLineagePermission,
+    editAllPermission,
+    viewSampleDataPermission,
+    viewAllPermission,
+  ]);
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (topicDetails) {
+        const certificationTag: Topic['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTopicDetails = {
+          ...topicDetails,
+          certification: certificationTag,
+        };
+
+        await onTopicUpdate(updatedTopicDetails, 'certification');
+      }
+    },
+    [topicDetails, onTopicUpdate]
   );
+
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Topic),
+    [tabs[0], activeTab]
+  );
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.topic'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateTopicDetailsState}
@@ -512,6 +422,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             entityType={EntityType.TOPIC}
             openTaskCount={feedCount.openTaskCount}
             permissions={topicPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followTopic}
             onOwnerUpdate={onOwnerUpdate}
@@ -521,32 +432,38 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             onVersionClick={versionHandler}
           />
         </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.SCHEMA}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<Topic>
+          customizedPage={customizedPage}
+          data={topicDetails}
+          isTabExpanded={isTabExpanded}
+          permissions={topicPermissions}
+          type={EntityType.TOPIC}
+          onUpdate={onTopicUpdate}>
+          <Col className="entity-details-page-tabs" span={24}>
+            <Tabs
+              activeKey={activeTab}
+              className="tabs-new"
+              data-testid="tabs"
+              items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
       <LimitWrapper resource="topic">
         <></>
       </LimitWrapper>
-
-      {threadLink ? (
-        <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
-          open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
-          threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
-          onCancel={onThreadPanelClose}
-        />
-      ) : null}
     </PageLayoutV1>
   );
 };

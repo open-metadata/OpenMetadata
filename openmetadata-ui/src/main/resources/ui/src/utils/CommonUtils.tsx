@@ -13,9 +13,9 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import {
   capitalize,
   get,
@@ -27,7 +27,6 @@ import {
   toLower,
   toNumber,
 } from 'lodash';
-import { Duration } from 'luxon';
 import {
   CurrentState,
   ExtraInfo,
@@ -36,24 +35,20 @@ import {
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
+import { BASE_COLORS } from '../constants/DataInsight.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
-import {
-  UrlEntityCharRegEx,
-  VALIDATE_ESCAPE_START_END_REGEX,
-} from '../constants/regex.constants';
+import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { EntityReference, User } from '../generated/entity/teams/user';
@@ -63,9 +58,8 @@ import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
-import { history } from './HistoryUtils';
+import { t } from './i18next/LocalUtil';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const arraySorterByKey = <T extends object>(
@@ -252,17 +246,6 @@ export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
   return [];
 };
 
-export const getRecentlySearchedData = (): Array<RecentlySearchedData> => {
-  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_SEARCHED
-  ) as RecentlySearched;
-  if (recentlySearch?.data) {
-    return recentlySearch.data;
-  }
-
-  return [];
-};
-
 export const setRecentlyViewedData = (
   recentData: Array<RecentlyViewedData>
 ): void => {
@@ -301,18 +284,6 @@ export const addToRecentSearched = (searchTerm: string): void => {
       arrSearchedData = [searchData];
     }
     setRecentlySearchedData(arrSearchedData);
-  }
-};
-
-export const removeRecentSearchTerm = (searchTerm: string) => {
-  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_SEARCHED
-  ) as RecentlySearched;
-  if (recentlySearch?.data) {
-    const arrData = recentlySearch.data.filter(
-      (item) => item.term !== searchTerm
-    );
-    setRecentlySearchedData(arrData);
   }
 };
 
@@ -385,19 +356,6 @@ export const getServiceLogo = (
   return null;
 };
 
-export const isValidUrl = (href?: string) => {
-  if (!href) {
-    return false;
-  }
-  try {
-    const url = new URL(href);
-
-    return Boolean(url.href);
-  } catch {
-    return false;
-  }
-};
-
 export const getEntityMissingError = (entityType: string, fqn: string) => {
   return (
     <p>
@@ -446,10 +404,6 @@ export const getRandomColor = (name: string) => {
     backgroundColor: `hsl(${hue}, 100%, 92%)`,
     character: firstAlphabet.toUpperCase(),
   };
-};
-
-export const isUrlFriendlyName = (value: string) => {
-  return !UrlEntityCharRegEx.test(value);
 };
 
 /**
@@ -559,14 +513,6 @@ export const getFeedCounts = async (
   }
 };
 
-/**
- *
- * @param entityType type of the entity
- * @returns true if entity type exists in TASK_ENTITIES otherwise false
- */
-export const isTaskSupported = (entityType: EntityType) =>
-  TASK_ENTITIES.includes(entityType);
-
 export const formatNumberWithComma = (number: number) => {
   return new Intl.NumberFormat('en-US').format(number);
 };
@@ -596,45 +542,6 @@ export const digitFormatter = (value: number) => {
   }).format(value);
 };
 
-/**
- * Converts a duration in seconds to a human-readable format.
- * The function returns the largest time unit (years, months, days, hours, minutes, or seconds)
- * that is greater than or equal to one, rounded to the nearest whole number.
- *
- * @param {number} seconds - The duration in seconds to be converted.
- * @returns {string} A string representing the duration in a human-readable format,
- *                  e.g., "1 hour", "2 days", "3 months", etc.
- *
- * @example
- * formatTimeFromSeconds(1); // returns "1 second"
- * formatTimeFromSeconds(60); // returns "1 minute"
- * formatTimeFromSeconds(3600); // returns "1 hour"
- * formatTimeFromSeconds(86400); // returns "1 day"
- */
-export const formatTimeFromSeconds = (seconds: number): string => {
-  const duration = Duration.fromObject({ seconds });
-  let unit: keyof Duration;
-
-  if (duration.as('years') >= 1) {
-    unit = 'years';
-  } else if (duration.as('months') >= 1) {
-    unit = 'months';
-  } else if (duration.as('days') >= 1) {
-    unit = 'days';
-  } else if (duration.as('hours') >= 1) {
-    unit = 'hours';
-  } else if (duration.as('minutes') >= 1) {
-    unit = 'minutes';
-  } else {
-    unit = 'seconds';
-  }
-
-  const value = Math.round(duration.as(unit));
-  const unitSingular = unit.slice(0, -1);
-
-  return `${value} ${value === 1 ? unitSingular : unit}`;
-};
-
 export const getTeamsUser = (
   data: ExtraInfo,
   currentUser: User
@@ -655,27 +562,6 @@ export const getTeamsUser = (
   }
 
   return;
-};
-
-export const getHostNameFromURL = (url: string) => {
-  if (isValidUrl(url)) {
-    const domain = new URL(url);
-
-    return domain.hostname;
-  } else {
-    return '';
-  }
-};
-
-export const getOwnerValue = (owner?: EntityReference) => {
-  switch (owner?.type) {
-    case 'team':
-      return getTeamAndUserDetailsPath(owner?.name || '');
-    case 'user':
-      return getUserPath(owner?.fullyQualifiedName ?? '');
-    default:
-      return '';
-  }
 };
 
 export const getEmptyPlaceholder = () => {
@@ -699,13 +585,6 @@ export const getLoadingStatus = (
 
   return children;
 };
-
-export const refreshPage = () => {
-  history.go(0);
-};
-// return array of id as  strings
-export const getEntityIdArray = (entities: EntityReference[]): string[] =>
-  entities.map((item) => item.id);
 
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
   if (isString(tag)) {
@@ -746,10 +625,6 @@ export const getTrimmedContent = (content: string, limit: number) => {
   return refinedContent.join(' ');
 };
 
-export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
-  return tags;
-};
-
 export const Transi18next = ({
   i18nKey,
   values,
@@ -758,7 +633,7 @@ export const Transi18next = ({
 }: {
   i18nKey: string;
   values?: object;
-  renderElement: JSX.Element | HTMLElement;
+  renderElement: ReactNode;
 }): JSX.Element => (
   <Trans i18nKey={i18nKey} values={values} {...otherProps}>
     {renderElement}
@@ -837,11 +712,6 @@ export const reduceColorOpacity = (hex: string, opacity: number): string => {
   return `rgba(${red}, ${green}, ${blue}, ${opacity})`; // Create RGBA color
 };
 
-export const getUniqueArray = (count: number) =>
-  [...Array(count)].map((_, index) => ({
-    key: `key${index}`,
-  }));
-
 /**
  * @param searchValue search input
  * @param option select options list
@@ -885,11 +755,13 @@ export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
 
 export const filterSelectOptions = (
   input: string,
-  option?: { label: string; value: string }
+  option?: DefaultOptionType
 ) => {
   return (
-    toLower(option?.label).includes(toLower(input)) ||
-    toLower(option?.value).includes(toLower(input))
+    toLower(option?.labelValue).includes(toLower(input)) ||
+    toLower(isString(option?.value) ? option?.value : '').includes(
+      toLower(input)
+    )
   );
 };
 
@@ -912,4 +784,47 @@ export const removeOuterEscapes = (input: string) => {
 
   // Return the middle part without the outer escape characters or the original input if no match
   return match && match.length > 3 ? match[2] : input;
+};
+
+/**
+ * Generate a color with decreasing opacity after the first 24 colors.
+ * @param index - The index of the label
+ * @returns {string} - RGBA color string
+ */
+export const entityChartColor = (index: number): string => {
+  const baseColor = BASE_COLORS[index % BASE_COLORS.length]; // Cycle through base colors
+  const opacity =
+    index < BASE_COLORS.length
+      ? 1 // Full opacity for the first 24 labels
+      : Math.max(1 - Math.floor(index / BASE_COLORS.length) * 0.1, 0.1); // Decrease opacity for subsequent labels
+
+  return hexToRgba(baseColor, opacity);
+};
+
+/**
+ * Convert hex color to RGBA
+ * @param hex - Hex color string
+ * @param opacity - Opacity value (0-1)
+ * @returns {string} - RGBA color string
+ */
+const hexToRgba = (hex: string, opacity: number): string => {
+  const bigint = parseInt(hex.replace('#', ''), 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
+};
+
+/**
+ * Provide the calculated percentage value from the number provided
+ * @param value - value on which percentage will be calculated
+ * @param percentageValue - PercentageValue like 20, 35 or 50
+ * @returns {number} - value derived after calculating percentage, like for 1000 on 10% = 100
+ */
+export const calculatePercentageFromValue = (
+  value: number,
+  percentageValue: number
+) => {
+  return (value * percentageValue) / 100;
 };

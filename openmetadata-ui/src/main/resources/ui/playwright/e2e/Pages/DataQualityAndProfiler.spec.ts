@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 import { expect, Page, test } from '@playwright/test';
-import { getCurrentMillis } from '../../../src/utils/date-time/DateTimeUtils';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
 import {
   assignDomain,
   clickOutside,
@@ -26,6 +29,7 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
+import { getCurrentMillis } from '../../utils/dateTime';
 import { visitEntityPage } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
@@ -36,22 +40,39 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const table1 = new TableClass();
 const table2 = new TableClass();
 
+// Test data for tags and glossary terms
+const testClassification = new ClassificationClass();
+const testTag1 = new TagClass({
+  classification: testClassification.data.name,
+});
+const testTag2 = new TagClass({
+  classification: testClassification.data.name,
+});
+const testGlossary = new Glossary();
+const testGlossaryTerm1 = new GlossaryTerm(testGlossary);
+const testGlossaryTerm2 = new GlossaryTerm(testGlossary);
+
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table1.create(apiContext);
   await table2.create(apiContext);
-  const { testSuiteData } = await table2.createTestSuiteAndPipelines(
-    apiContext
-  );
   await table2.createTestCase(apiContext, {
     name: `email_column_values_to_be_in_set_${uuid()}`,
-    entityLink: `<#E::table::${table2.entityResponseData?.['fullyQualifiedName']}::columns::email>`,
+    entityLink: `<#E::table::${table2.entityResponseData?.['fullyQualifiedName']}::columns::${table2.entity?.columns[3].name}>`,
     parameterValues: [
       { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
     ],
     testDefinition: 'columnValuesToBeInSet',
-    testSuite: testSuiteData?.['fullyQualifiedName'],
   });
+
+  // Create test tags and glossary terms
+  await testClassification.create(apiContext);
+  await testTag1.create(apiContext);
+  await testTag2.create(apiContext);
+  await testGlossary.create(apiContext);
+  await testGlossaryTerm1.create(apiContext);
+  await testGlossaryTerm2.create(apiContext);
+
   await afterAction();
 });
 
@@ -59,6 +80,15 @@ test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table1.delete(apiContext);
   await table2.delete(apiContext);
+
+  // Clean up test tags and glossary terms
+  await testGlossaryTerm1.delete(apiContext);
+  await testGlossaryTerm2.delete(apiContext);
+  await testGlossary.delete(apiContext);
+  await testTag1.delete(apiContext);
+  await testTag2.delete(apiContext);
+  await testClassification.delete(apiContext);
+
   await afterAction();
 });
 
@@ -90,7 +120,36 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '#tableTestForm_params_columnName',
       NEW_TABLE_TEST_CASE.field
     );
-    await page.fill(descriptionBox, NEW_TABLE_TEST_CASE.description);
+    await page.locator(descriptionBox).fill(NEW_TABLE_TEST_CASE.description);
+
+    // Add tags to test case
+    await page.click('[data-testid="tags-selector"] input');
+    const tagsSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*index=tag_search_index*`
+    );
+    await page.fill('[data-testid="tags-selector"] input', testTag1.data.name);
+    await tagsSearchResponse;
+    await page
+      .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
+      .click();
+
+    await clickOutside(page);
+    // Add glossary terms to test case
+    await page.click('[data-testid="glossary-terms-selector"] input');
+    const glossarySearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*index=glossary_term_search_index*`
+    );
+    await page.fill(
+      '[data-testid="glossary-terms-selector"] input',
+      testGlossaryTerm1.data.name
+    );
+    await glossarySearchResponse;
+    await page
+      .getByTestId(`tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`)
+      .click();
+
+    await clickOutside(page);
+
     await page.click('[data-testid="submit-test"]');
 
     await page.waitForSelector('[data-testid="success-line"]');
@@ -111,13 +170,9 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const deploy = page.waitForResponse(
       '/api/v1/services/ingestionPipelines/deploy/*'
     );
-    const status = page.waitForResponse(
-      '/api/v1/services/ingestionPipelines/status'
-    );
     await page.click('[data-testid="deploy-button"]');
     await ingestionPipelines;
     await deploy;
-    await status;
 
     // check success
     await page.waitForSelector('[data-testid="success-line"]', {
@@ -143,6 +198,43 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.waitForSelector('.ant-modal-title');
     await page.locator('#tableTestForm_params_columnName').clear();
     await page.fill('#tableTestForm_params_columnName', 'new_column_name');
+
+    // Remove existing tag and add new one
+    await page.click(
+      `[data-testid="selected-tag-${testTag1.responseData.fullyQualifiedName}"] svg`
+    );
+
+    await page.click('[data-testid="tags-selector"] input');
+    const newTagsSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*index=tag_search_index*`
+    );
+    await page.fill('[data-testid="tags-selector"] input', testTag2.data.name);
+    await newTagsSearchResponse;
+    await page
+      .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
+      .click();
+
+    await clickOutside(page);
+
+    // Remove existing glossary term and add new one
+    await page.click(
+      `[data-testid="glossary-terms-selector"] [data-testid="remove-tags"]`
+    );
+    await page.click('[data-testid="glossary-terms-selector"] input');
+    const newGlossarySearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*index=glossary_term_search_index*`
+    );
+    await page.fill(
+      '[data-testid="glossary-terms-selector"] input',
+      testGlossaryTerm2.data.name
+    );
+    await newGlossarySearchResponse;
+    await page
+      .getByTestId(`tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`)
+      .click();
+
+    await clickOutside(page);
+
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
@@ -170,7 +262,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   const NEW_COLUMN_TEST_CASE = {
     name: 'email_column_value_lengths_to_be_between',
-    column: 'email',
+    column: table1.entity?.columns[3].name,
     type: 'columnValueLengthsToBeBetween',
     label: 'Column Value Lengths To Be Between',
     min: '3',
@@ -191,7 +283,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await testDefinitionResponse;
     await page.fill('#tableTestForm_testName', NEW_COLUMN_TEST_CASE.name);
     await page.click('#tableTestForm_testTypeId');
-    await page.click(`[title="${NEW_COLUMN_TEST_CASE.label}"]`);
+    await page.click(`[data-testid="${NEW_COLUMN_TEST_CASE.type}"]`);
     await page.fill(
       '#tableTestForm_params_minLength',
       NEW_COLUMN_TEST_CASE.min
@@ -200,7 +292,36 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '#tableTestForm_params_maxLength',
       NEW_COLUMN_TEST_CASE.max
     );
-    await page.fill(descriptionBox, NEW_COLUMN_TEST_CASE.description);
+    await page.locator(descriptionBox).fill(NEW_COLUMN_TEST_CASE.description);
+
+    // Add tags to column test case
+    await page.click('[data-testid="tags-selector"] input');
+    const columnTagsSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*index=tag_search_index*`
+    );
+    await page.fill('[data-testid="tags-selector"] input', testTag1.data.name);
+    await columnTagsSearchResponse;
+    await page
+      .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
+      .click();
+
+    await clickOutside(page);
+
+    // Add glossary terms to column test case
+    await page.click('[data-testid="glossary-terms-selector"] input');
+    const columnGlossarySearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*index=glossary_term_search_index*`
+    );
+    await page.fill(
+      '[data-testid="glossary-terms-selector"] input',
+      testGlossaryTerm1.data.name
+    );
+    await columnGlossarySearchResponse;
+    await page
+      .getByTestId(`tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`)
+      .click();
+
+    await clickOutside(page);
 
     await page.click('[data-testid="submit-test"]');
     await page.waitForSelector('[data-testid="success-line"]');
@@ -227,6 +348,42 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.waitForSelector('#tableTestForm_params_minLength');
     await page.locator('#tableTestForm_params_minLength').clear();
     await page.fill('#tableTestForm_params_minLength', '4');
+
+    // Remove existing tag and add new one for column test case
+    await page.click(
+      `[data-testid="selected-tag-${testTag1.responseData.fullyQualifiedName}"] svg`
+    );
+    await page.click('[data-testid="tags-selector"] input');
+    const columnNewTagsSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*index=tag_search_index*`
+    );
+    await page.fill('[data-testid="tags-selector"] input', testTag2.data.name);
+    await columnNewTagsSearchResponse;
+    await page
+      .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
+      .click();
+
+    await clickOutside(page);
+
+    // Remove existing glossary term and add new one for column test case
+    await page.click(
+      `[data-testid="glossary-terms-selector"] [data-testid="remove-tags"]`
+    );
+    await page.click('[data-testid="glossary-terms-selector"] input');
+    const columnNewGlossarySearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*index=glossary_term_search_index*`
+    );
+    await page.fill(
+      '[data-testid="glossary-terms-selector"] input',
+      testGlossaryTerm2.data.name
+    );
+    await columnNewGlossarySearchResponse;
+    await page
+      .getByTestId(`tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`)
+      .click();
+
+    await clickOutside(page);
+
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
@@ -265,14 +422,14 @@ test(
       searchTerm: DATA_QUALITY_TABLE.term,
       dataTestId: `${DATA_QUALITY_TABLE.serviceName}-${DATA_QUALITY_TABLE.term}`,
     });
-    await page.waitForSelector(`[data-testid="entity-header-display-name"]`);
+    await page.waitForSelector(`[data-testid="entity-header-name"]`);
 
     await expect(
-      page.locator(`[data-testid="entity-header-display-name"]`)
+      page.locator(`[data-testid="entity-header-name"]`)
     ).toContainText(DATA_QUALITY_TABLE.term);
 
     const profilerResponse = page.waitForResponse(
-      `/api/v1/tables/*/tableProfile/latest`
+      `/api/v1/tables/*/tableProfile/latest?includeColumnProfile=false`
     );
     await page.click('[data-testid="profiler"]');
     await profilerResponse;
@@ -306,7 +463,7 @@ test(
       '/api/v1/dataQuality/testCases/name/*?fields=*'
     );
     const getTestResult = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/*/testCaseResult?*'
+      '/api/v1/dataQuality/testCases/testCaseResults/*?*'
     );
     await page
       .locator(`[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`)
@@ -365,7 +522,9 @@ test(
       await expect(page.locator('#tableTestForm_table')).toHaveValue(
         table2.entityResponseData?.['name']
       );
-      await expect(page.locator('#tableTestForm_column')).toHaveValue('email');
+      await expect(page.locator('#tableTestForm_column')).toHaveValue(
+        table2.entity?.columns[3].name
+      );
       await expect(page.locator('#tableTestForm_name')).toHaveValue(
         testCaseName
       );
@@ -395,7 +554,7 @@ test(
 
       // Edit test case description
       await page.click(`[data-testid="edit-${testCaseName}"]`);
-      await page.fill(descriptionBox, 'Test case description');
+      await page.locator(descriptionBox).fill('Test case description');
       const updateTestCaseResponse2 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/dataQuality/testCases/') &&
@@ -407,7 +566,11 @@ test(
 
       expect(body2).toEqual(
         JSON.stringify([
-          { op: 'add', path: '/description', value: 'Test case description' },
+          {
+            op: 'add',
+            path: '/description',
+            value: '<p>Test case description</p>',
+          },
         ])
       );
 
@@ -482,9 +645,9 @@ test(
       profileSample: '60',
       sampleDataCount: '100',
       profileQuery: 'select * from table',
-      excludeColumns: 'user_id',
-      includeColumns: 'shop_id',
-      partitionColumnName: 'name',
+      excludeColumns: table1.entity?.columns[0].name,
+      includeColumns: table1.entity?.columns[1].name,
+      partitionColumnName: table1.entity?.columns[2].name,
       partitionIntervalType: 'COLUMN-VALUE',
       partitionValues: 'test',
     };
@@ -493,81 +656,143 @@ test(
     await page.getByTestId('profiler').click();
     await page
       .getByTestId('profiler-tab-left-panel')
-      .getByText('Table Profile')
+      .getByText('Data Quality')
       .click();
 
-    await page.click('[data-testid="profiler-setting-btn"]');
-    await page.waitForSelector('.ant-modal-body');
-    await page.locator('[data-testid="slider-input"]').clear();
-    await page
-      .locator('[data-testid="slider-input"]')
-      .fill(profilerSetting.profileSample);
+    await page.reload();
+    await page.waitForLoadState('networkidle');
 
-    await page.locator('[data-testid="sample-data-count-input"]').clear();
-    await page
-      .locator('[data-testid="sample-data-count-input"]')
-      .fill(profilerSetting.sampleDataCount);
-    await page.locator('[data-testid="exclude-column-select"]').click();
-    await page.keyboard.type(`${profilerSetting.excludeColumns}`);
-    await page.keyboard.press('Enter');
-    await page.locator('.CodeMirror-scroll').click();
-    await page.keyboard.type(profilerSetting.profileQuery);
+    await test.step('Update profiler setting', async () => {
+      await page.click('[data-testid="profiler-setting-btn"]');
+      await page.waitForSelector('.ant-modal-body');
 
-    await page.locator('[data-testid="include-column-select"]').click();
-    await page
-      .locator('.ant-select-dropdown')
-      .locator(
-        `[title="${profilerSetting.includeColumns}"]:not(.ant-select-dropdown-hidden)`
-      )
-      .last()
-      .click();
-    await page.locator('[data-testid="enable-partition-switch"]').click();
-    await page.locator('[data-testid="interval-type"]').click();
-    await page
-      .locator('.ant-select-dropdown')
-      .locator(
-        `[title="${profilerSetting.partitionIntervalType}"]:not(.ant-select-dropdown-hidden)`
-      )
-      .click();
+      await page.locator('[data-testid="slider-input"]').clear();
+      await page
+        .locator('[data-testid="slider-input"]')
+        .fill(profilerSetting.profileSample);
 
-    await page.locator('#includeColumnsProfiler_partitionColumnName').click();
-    await page
-      .locator('.ant-select-dropdown')
-      .locator(
-        `[title="${profilerSetting.partitionColumnName}"]:not(.ant-select-dropdown-hidden)`
-      )
-      .last()
-      .click();
-    await page
-      .locator('[data-testid="partition-value"]')
-      .fill(profilerSetting.partitionValues);
+      await page.locator('[data-testid="sample-data-count-input"]').clear();
+      await page
+        .locator('[data-testid="sample-data-count-input"]')
+        .fill(profilerSetting.sampleDataCount);
+      await page.locator('[data-testid="exclude-column-select"]').click();
+      await page.keyboard.type(`${profilerSetting.excludeColumns}`);
+      await page.keyboard.press('Enter');
+      await page.locator('.CodeMirror-scroll').click();
+      await page.keyboard.type(profilerSetting.profileQuery);
 
-    const updateTableProfilerConfigResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/tables/') &&
-        response.url().includes('/tableProfilerConfig') &&
-        response.request().method() === 'PUT'
-    );
-    await page.getByRole('button', { name: 'Save' }).click();
-    const updateResponse = await updateTableProfilerConfigResponse;
-    const requestBody = await updateResponse.request().postData();
+      await page.locator('[data-testid="include-column-select"]').click();
+      await page
+        .locator('.ant-select-dropdown')
+        .locator(
+          `[title="${profilerSetting.includeColumns}"]:not(.ant-select-dropdown-hidden)`
+        )
+        .last()
+        .click();
+      await page.locator('[data-testid="enable-partition-switch"]').click();
+      await page.locator('[data-testid="interval-type"]').click();
+      await page
+        .locator('.ant-select-dropdown')
+        .locator(
+          `[title="${profilerSetting.partitionIntervalType}"]:not(.ant-select-dropdown-hidden)`
+        )
+        .click();
 
-    expect(requestBody).toEqual(
-      JSON.stringify({
-        excludeColumns: ['user_id'],
-        profileQuery: 'select * from table',
-        profileSample: 60,
-        profileSampleType: 'PERCENTAGE',
-        includeColumns: [{ columnName: 'shop_id' }],
-        partitioning: {
-          partitionColumnName: 'name',
-          partitionIntervalType: 'COLUMN-VALUE',
-          partitionValues: ['test'],
-          enablePartitioning: true,
-        },
-        sampleDataCount: 100,
-      })
-    );
+      await page.locator('#includeColumnsProfiler_partitionColumnName').click();
+      await page
+        .locator('.ant-select-dropdown')
+        .locator(
+          `[title="${profilerSetting.partitionColumnName}"]:not(.ant-select-dropdown-hidden)`
+        )
+        .last()
+        .click();
+      await page
+        .locator('[data-testid="partition-value"]')
+        .fill(profilerSetting.partitionValues);
+
+      const updateTableProfilerConfigResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tables/') &&
+          response.url().includes('/tableProfilerConfig') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByRole('button', { name: 'Save' }).click();
+      const updateResponse = await updateTableProfilerConfigResponse;
+      const requestBody = await updateResponse.request().postData();
+
+      expect(requestBody).toEqual(
+        JSON.stringify({
+          excludeColumns: [table1.entity?.columns[0].name],
+          profileQuery: 'select * from table',
+          profileSample: 60,
+          profileSampleType: 'PERCENTAGE',
+          includeColumns: [{ columnName: table1.entity?.columns[1].name }],
+          partitioning: {
+            partitionColumnName: table1.entity?.columns[2].name,
+            partitionIntervalType: 'COLUMN-VALUE',
+            partitionValues: ['test'],
+            enablePartitioning: true,
+          },
+          sampleDataCount: 100,
+        })
+      );
+    });
+
+    await test.step('Reset profile sample type', async () => {
+      await page.click('[data-testid="profiler-setting-btn"]');
+      await page.waitForSelector('.ant-modal-body');
+
+      await expect(
+        page.locator('[data-testid="profile-sample"]')
+      ).toBeVisible();
+
+      await page.getByTestId('clear-slider-input').click();
+
+      await expect(page.locator('[data-testid="slider-input"]')).toBeEmpty();
+
+      const updateTableProfilerConfigResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tables/') &&
+          response.url().includes('/tableProfilerConfig') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByRole('button', { name: 'Save' }).click();
+      const updateResponse = await updateTableProfilerConfigResponse;
+      const requestBody = await updateResponse.request().postData();
+
+      expect(requestBody).toEqual(
+        JSON.stringify({
+          excludeColumns: [table1.entity?.columns[0].name],
+          profileQuery: 'select * from table',
+          profileSample: null,
+          profileSampleType: 'PERCENTAGE',
+          includeColumns: [{ columnName: table1.entity?.columns[1].name }],
+          partitioning: {
+            partitionColumnName: table1.entity?.columns[2].name,
+            partitionIntervalType: 'COLUMN-VALUE',
+            partitionValues: ['test'],
+            enablePartitioning: true,
+          },
+          sampleDataCount: 100,
+        })
+      );
+
+      await page.waitForSelector('.ant-modal-body', {
+        state: 'detached',
+      });
+
+      // Validate the profiler setting is updated
+      await page.click('[data-testid="profiler-setting-btn"]');
+      await page.waitForSelector('.ant-modal-body');
+
+      await expect(
+        page.locator('[data-testid="profile-sample"]')
+      ).toBeVisible();
+      await expect(page.locator('[data-testid="slider-input"]')).toBeEmpty();
+      await expect(
+        page.getByTestId('profile-sample').locator('div')
+      ).toBeVisible();
+    });
   }
 );
 
@@ -630,7 +855,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await filterTable1.createTestSuiteAndPipelines(apiContext);
   const { testSuiteData: testSuite2Response } =
     await filterTable1.createTestSuiteAndPipelines(apiContext, {
-      executableEntityReference: filterTable2Response?.['fullyQualifiedName'],
+      basicEntityReference: filterTable2Response?.['fullyQualifiedName'],
     });
 
   const testCaseResult = {
@@ -660,7 +885,6 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const testCase2 = await filterTable1.createTestCase(apiContext, {
       name: smilerNameTestCase[i],
       entityLink: `<#E::table::${filterTable2Response?.['fullyQualifiedName']}>`,
-      testSuite: testSuite2Response?.['fullyQualifiedName'],
     });
     await filterTable1.addTestCaseResult(
       apiContext,
@@ -934,10 +1158,12 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await expect(page.locator('[value="tier"]')).not.toBeVisible();
 
     // Apply domain globally
-    await page.locator('[data-testid="domain-dropdown"]').click();
+    await page.getByTestId('domain-dropdown').click();
+
     await page
-      .locator(`li[data-menu-id*='${domain.responseData?.['name']}']`)
+      .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
+
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
     const getTestCaseList = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*'

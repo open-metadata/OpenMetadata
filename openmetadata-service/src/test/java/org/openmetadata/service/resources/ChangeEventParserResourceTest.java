@@ -43,13 +43,13 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.TagLabel.State;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 @TestInstance(Lifecycle.PER_CLASS)
@@ -141,7 +141,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, threadWithMessages.size());
 
     assertEquals(
-        "Added **owners**: <span class=\"diff-added\">User One</span>",
+        "Added **owners**: <span data-diff='true' class=\"diff-added\">User One</span>",
         threadWithMessages.get(0).getMessage());
   }
 
@@ -156,8 +156,8 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, threadMessages.size());
 
     assertEquals(
-        "Updated **description**: <span class=\"diff-removed\">old</span> "
-            + "<span class=\"diff-added\">new</span> description",
+        "Updated **description**: <span data-diff='true' class=\"diff-removed\">old</span> "
+            + "<span data-diff='true' class=\"diff-added\">new</span> description",
         threadMessages.get(0).getMessage());
 
     // test if it updates correctly with one add and one delete change
@@ -225,7 +225,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, threadWithMessages.size());
 
     assertEquals(
-        "Updated **columns**: lo_order <span class=\"diff-added\">priority</span>",
+        "Updated **columns**: lo_order <span data-diff='true' class=\"diff-added\">priority</span>",
         threadWithMessages.get(0).getMessage());
 
     // Simulate a change of datatype change in column
@@ -261,7 +261,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, threadWithMessages.size());
 
     assertEquals(
-        "Updated **columns**: lo_orderpriority <span class=\"diff-added\">, newColumn</span>",
+        "Updated **columns**: lo_orderpriority <span data-diff='true' class=\"diff-added\">, newColumn</span>",
         threadWithMessages.get(0).getMessage());
   }
 

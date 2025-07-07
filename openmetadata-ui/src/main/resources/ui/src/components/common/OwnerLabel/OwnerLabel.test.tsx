@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { OwnerLabel } from './OwnerLabel.component';
 
@@ -88,8 +87,9 @@ describe('OwnerLabel component', () => {
   it('should render team icon and team name if owner is team', async () => {
     render(<OwnerLabel owners={mockTeamOwner} />, { wrapper: MemoryRouter });
 
-    expect(await screen.findByText(mockTeamOwner[0].name)).toBeInTheDocument();
-    expect(await screen.findByTestId('team-owner-icon')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(`${mockTeamOwner[0].name}`)
+    ).toBeInTheDocument();
   });
 
   it('should render UserTeamSelectableList if onUpdate function is provided', async () => {

@@ -14,11 +14,10 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Card, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { getEntityName } from '../../../utils/EntityUtils';
-import './inherited-roles-card.style.less';
 import { InheritedRolesCardProps } from './InheritedRolesCard.interface';
 
 const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
@@ -26,17 +25,13 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
 
   return (
     <Card
-      className="relative page-layout-v1-left-panel"
+      className="bot-page-roles-card-header"
       key="inherited-roles-card-component"
-      title={
-        <Typography.Text data-testid="inherited-roles-heading">
-          {t('label.inherited-role-plural')}
-        </Typography.Text>
-      }>
+      title={t('label.inherited-role-plural')}>
       <Fragment>
         {isEmpty(userData.inheritedRoles) ? (
           <div className="mb-4">
-            <span className="inherited-no-description">
+            <span className="text-grey-muted">
               {t('message.no-inherited-roles-found')}
             </span>
           </div>

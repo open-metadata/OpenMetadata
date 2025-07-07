@@ -49,6 +49,7 @@
         "Dbt",
         "SapHana",
         "MongoDB",
+        "Cassandra",
         "Couchbase",
         "Greenplum",
         "Doris",
@@ -58,7 +59,9 @@
         "Teradata",
         "SapErp",
         "Synapse",
-        "Exasol"
+        "Exasol",
+        "Cockroach",
+        "SSAS"
       ],
       "javaEnums": [
         {
@@ -164,6 +167,9 @@
           "name": "MongoDB"
         },
         {
+          "name": "Cassandra"
+        },
+        {
           "name": "Couchbase"
         },
         {
@@ -192,6 +198,12 @@
         },
         {
           "name": "Exasol"
+        },
+        {
+          "name": "Cockroach"
+        },
+        {
+          "name": "SSAS"
         }
       ]
     },
@@ -302,6 +314,9 @@
               "$ref": "./connections/database/mongoDBConnection.json"
             },
             {
+              "$ref": "./connections/database/cassandraConnection.json"
+            },
+            {
               "$ref": "./connections/database/couchbaseConnection.json"
             },
             {
@@ -330,6 +345,12 @@
             },
             {
               "$ref": "./connections/database/exasolConnection.json"
+            },
+            {
+              "$ref": "./connections/database/cockroachConnection.json"
+            },
+            {
+              "$ref": "./connections/database/ssasConnection.json"
             }
           ]
         }
@@ -401,7 +422,15 @@
       "description": "Link to the resource corresponding to this database service.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
@@ -416,6 +445,10 @@
     },
     "domain" : {
       "description": "Domain the Database service belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }
   },

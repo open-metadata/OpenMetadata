@@ -12,17 +12,31 @@
  */
 
 import { expect, Page, test as base } from '@playwright/test';
-import { GlobalSettingOptions } from '../../constant/settings';
-import { USER_DESCRIPTION } from '../../constant/user';
+import { Domain } from '../../support/domain/Domain';
+import { TeamClass } from '../../support/team/TeamClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { descriptionBox, redirectToHomePage } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
+import { uuid } from '../../utils/common';
+import { redirectToUserPage } from '../../utils/userDetails';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
 const admin = new AdminClass();
+const domain = new Domain({
+  name: `PW%domain`,
+  displayName: `PWDomain`,
+  description: 'playwright domain description',
+  domainType: 'Aggregate',
+  // eslint-disable-next-line no-useless-escape
+  fullyQualifiedName: `PW%domain`,
+});
+const team = new TeamClass({
+  name: `a-new-team-${uuid()}`,
+  displayName: `A New Team ${uuid()}`,
+  description: 'playwright team description',
+  teamType: 'Group',
+});
 
 // Create 2 page and authenticate 1 with admin and another with normal user
 const test = base.extend<{
@@ -50,6 +64,9 @@ test.describe('User with different Roles', () => {
     await user1.create(apiContext);
     await user2.create(apiContext);
 
+    await team.create(apiContext);
+    await domain.create(apiContext);
+
     await afterAction();
   });
 
@@ -59,198 +76,133 @@ test.describe('User with different Roles', () => {
     await user1.delete(apiContext);
     await user2.delete(apiContext);
 
+    await team.delete(apiContext);
+    await domain.delete(apiContext);
+
     await afterAction();
+  });
+
+  test('Admin user can get all the teams hierarchy and edit teams', async ({
+    adminPage,
+  }) => {
+    await redirectToUserPage(adminPage);
+
+    // Check if the avatar is visible
+    await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
+
+    await adminPage.getByTestId('edit-teams-button').click();
+
+    await expect(adminPage.getByTestId('team-select')).toBeVisible();
+
+    await adminPage.getByTestId('team-select').click();
+
+    await adminPage.waitForSelector('.ant-tree-select-dropdown', {
+      state: 'visible',
+    });
+
+    await adminPage.getByText('Accounting').click();
+
+    await adminPage.getByTestId('teams-edit-save-btn').click();
+
+    await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
+      'Accounting'
+    );
+  });
+
+  test('User can search for a domain', async ({ adminPage }) => {
+    await redirectToUserPage(adminPage);
+
+    await expect(adminPage.getByTestId('edit-domains')).toBeVisible();
+
+    await adminPage.getByTestId('edit-domains').click();
+
+    await expect(adminPage.locator('.custom-domain-edit-select')).toBeVisible();
+
+    await adminPage.locator('.custom-domain-edit-select').click();
+
+    const searchPromise = adminPage.waitForResponse('/api/v1/search/query?q=*');
+    await adminPage
+      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .fill('PWDomain');
+
+    await searchPromise;
+
+    await adminPage.waitForSelector('.domain-custom-dropdown-class', {
+      state: 'visible',
+    });
+
+    await expect(
+      adminPage.locator('.domain-custom-dropdown-class')
+    ).toContainText('PWDomain');
+  });
+
+  test('Admin user can get all the roles hierarchy and edit roles', async ({
+    adminPage,
+  }) => {
+    await redirectToUserPage(adminPage);
+
+    await expect(adminPage.getByTestId('user-profile-roles')).toBeVisible();
+
+    await adminPage.getByTestId('edit-roles-button').click();
+
+    await expect(
+      adminPage.getByTestId('profile-edit-roles-select')
+    ).toBeVisible();
+
+    await adminPage.getByTestId('profile-edit-roles-select').click();
+
+    await adminPage.waitForSelector('.ant-select-dropdown', {
+      state: 'visible',
+    });
+
+    await adminPage.getByText('Application bot role').click();
+
+    await adminPage.getByTestId('user-profile-edit-roles-save-button').click();
+
+    await expect(adminPage.getByTestId('user-profile-roles')).toContainText(
+      'Application bot role'
+    );
   });
 
   test('Non admin user should be able to edit display name and description on own profile', async ({
     userPage,
   }) => {
-    await redirectToHomePage(userPage);
-
-    await userPage.getByTestId('dropdown-profile').click();
-
-    // Hover on the profile avatar to close the name tooltip
-    await userPage.getByTestId('profile-avatar').hover();
-
-    await userPage.waitForSelector('.profile-dropdown', { state: 'visible' });
-
-    const getUserDetails = userPage.waitForResponse(`/api/v1/users/name/*`);
-
-    await userPage
-      .locator('.profile-dropdown')
-      .getByTestId('user-name')
-      .click();
-
-    await getUserDetails;
-
-    // Close the profile dropdown
-    await userPage.getByTestId('dropdown-profile').click();
+    await redirectToUserPage(userPage);
 
     // Check if the display name is present
-    await expect(
-      userPage.getByTestId('user-profile-details').getByTestId('user-name')
-    ).toHaveText(user1.responseData.displayName);
-
-    // Remove the display name
-    await userPage.getByTestId('edit-displayName').click();
-
-    await userPage
-      .getByTestId('inline-edit-container')
-      .getByTestId('displayName')
-      .clear();
-
-    const removeDisplayName = userPage.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    await expect(userPage.getByTestId('user-display-name')).toHaveText(
+      user1.responseData.displayName
     );
 
-    await userPage
-      .getByTestId('inline-edit-container')
-      .getByTestId('inline-save-btn')
-      .click();
-
-    await removeDisplayName;
-
-    // Check if the display name is removed
-    await expect(
-      userPage.getByTestId('user-profile-details').getByTestId('user-name')
-    ).not.toBeVisible();
-
-    // Description edit checks
-    await userPage
-      .locator('.user-profile-container [data-icon="right"]')
-      .click();
-
-    // Check if the description is not present
-    await expect(
-      userPage.getByTestId('asset-description-container')
-    ).toContainText('No description');
-
-    await userPage
-      .getByTestId('asset-description-container')
-      .getByTestId('edit-description')
-      .click();
-
-    // Add description content
-    await userPage.locator(descriptionBox).fill(USER_DESCRIPTION);
-
-    const addUserDescription = userPage.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    await userPage.click('[data-testid="user-profile-manage-btn"]');
+    await userPage.click('[data-testid="edit-displayname"]');
+    await userPage.waitForSelector('[role="dialog"].ant-modal', {
+      state: 'visible',
+    });
+    await userPage.fill(
+      '[data-testid="displayName-input"]',
+      'New Display Name'
     );
+    await userPage.getByText('Save').click();
 
-    await userPage
-      .locator('.description-markdown-editor')
-      .getByTestId('save')
-      .click();
-
-    await addUserDescription;
-
-    // Check if the description is added
-    await expect(
-      userPage.getByTestId('asset-description-container')
-    ).not.toContainText('No description');
-
-    // Remove the description
-    await userPage
-      .getByTestId('asset-description-container')
-      .getByTestId('edit-description')
-      .click();
-
-    await userPage.locator(descriptionBox).clear();
-
-    const removeUserDescription = userPage.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    await expect(userPage.getByTestId('user-display-name')).toHaveText(
+      'New Display Name'
     );
-
-    await userPage
-      .locator('.description-markdown-editor')
-      .getByTestId('save')
-      .click();
-
-    await removeUserDescription;
-
-    // Check if the description is removed
-    await expect(
-      userPage.getByTestId('asset-description-container')
-    ).toContainText('No description');
   });
 
-  test('Non logged in user should not be able to edit display name and description on other users', async ({
+  test('Non admin user should not be able to edit the persona or roles', async ({
     userPage,
-    adminPage,
   }) => {
-    // Checks for the admins
-    await redirectToHomePage(adminPage);
+    await redirectToUserPage(userPage);
 
-    const fetchUserResponse = adminPage.waitForResponse('/api/v1/users?**');
-
-    await settingClick(adminPage, GlobalSettingOptions.USERS);
-
-    await fetchUserResponse;
-
-    await adminPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    const userSearchResponse = adminPage.waitForResponse(
-      '/api/v1/search/query?q=**&from=0&size=*&index=*'
-    );
-    await adminPage.getByTestId('searchbar').fill(user2.responseData.name);
-    await userSearchResponse;
-
-    await adminPage.getByTestId(user2.responseData.name).click();
-
+    await expect(userPage.getByTestId('persona-details-card')).toBeVisible();
     await expect(
-      adminPage
-        .getByTestId('user-profile-details')
-        .getByTestId('edit-displayName')
-    ).not.toBeAttached();
-
-    // Description edit checks
-    await adminPage
-      .locator('.user-profile-container [data-icon="right"]')
-      .click();
-
+      userPage.getByTestId('edit-user-persona').getByTestId('edit-persona')
+    ).not.toBeVisible();
+    await expect(userPage.getByTestId('user-profile-roles')).toBeVisible();
+    // Edit Roles icon shouldn't be visible
     await expect(
-      adminPage
-        .getByTestId('asset-description-container')
-        .getByTestId('edit-description')
-    ).not.toBeAttached();
-
-    // Checks for the normal user
-    await redirectToHomePage(userPage);
-
-    const fetchUserResponse2 = userPage.waitForResponse('/api/v1/users?**');
-
-    await settingClick(userPage, GlobalSettingOptions.USERS);
-
-    await fetchUserResponse2;
-
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    const userResponse = userPage.waitForResponse(
-      '/api/v1/search/query?q=**&from=0&size=*&index=*'
-    );
-    await userPage.getByTestId('searchbar').fill(user2.responseData.name);
-    await userResponse;
-    await userPage.getByTestId(user2.responseData.name).click();
-
-    await expect(
-      userPage
-        .getByTestId('user-profile-details')
-        .getByTestId('edit-displayName')
-    ).not.toBeAttached();
-
-    // Description edit checks
-    await userPage
-      .locator('.user-profile-container [data-icon="right"]')
-      .click();
-
-    await expect(
-      userPage
-        .getByTestId('asset-description-container')
-        .getByTestId('edit-description')
-    ).not.toBeAttached();
+      userPage.getByTestId('user-profile-edit-roles-save-button')
+    ).not.toBeVisible();
   });
 });

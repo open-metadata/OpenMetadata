@@ -12,9 +12,9 @@
  */
 
 import { Button, Form, Input, Space } from 'antd';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   PAGE_SIZE_MEDIUM,
   VALIDATION_MESSAGES,
@@ -22,11 +22,15 @@ import {
 import { NAME_FIELD_RULES } from '../../../../constants/Form.constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { TestSuite } from '../../../../generated/tests/testSuite';
+import {
+  FieldProp,
+  FieldTypes,
+} from '../../../../interface/FormUtils.interface';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuites } from '../../../../rest/testAPI';
+import { getField } from '../../../../utils/formUtils';
 import { getDataQualityPagePath } from '../../../../utils/RouterUtils';
 import Loader from '../../../common/Loader/Loader';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import { AddTestSuiteFormProps } from '../TestSuiteStepper/TestSuiteStepper.interface';
 
 const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
@@ -37,7 +41,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
   const [form] = Form.useForm();
   const [testSuites, setTestSuites] = useState<Array<TestSuite>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const fetchTestSuites = async () => {
     try {
@@ -55,8 +59,23 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
   };
 
   const handleCancelClick = () => {
-    history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
+    navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
+
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: `${t('label.description')}:`,
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'test-suite-description',
+        initialValue: testSuite?.description ?? '',
+      },
+    }),
+    [testSuite?.description]
+  );
 
   useEffect(() => {
     fetchTestSuites();
@@ -101,15 +120,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
           })}
         />
       </Form.Item>
-      <Form.Item label={t('label.description')} name="description">
-        <RichTextEditor
-          data-testid="test-suite-description"
-          height="200px"
-          initialValue={testSuite?.description ?? ''}
-          onTextChange={(value) => form.setFieldsValue({ description: value })}
-        />
-      </Form.Item>
-
+      {getField(descriptionField)}
       <Form.Item noStyle>
         <Space className="w-full justify-end" size={16}>
           <Button data-testid="cancel-button" onClick={handleCancelClick}>

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table.svg';
 import DataQualityPage from './DataQualityPage';
@@ -19,9 +18,6 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 
 const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
   tab?: DataQualityPageTabs;
-};
-const mockUseHistory = {
-  push: jest.fn(),
 };
 
 // mock components
@@ -52,6 +48,7 @@ jest.mock('./DataQualityClassBase', () => {
       },
     ]),
     getDefaultActiveTab: jest.fn().mockReturnValue('tables'),
+    getManageExtraOptions: jest.fn().mockReturnValue([]),
   };
 });
 jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
@@ -63,25 +60,28 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
   ));
 });
 
-jest.mock('react-router-dom', () => {
-  return {
-    ...jest.requireActual('react-router-dom'),
-    Switch: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-    Route: jest
-      .fn()
-      .mockImplementation(({ component }) => (
-        <div data-testid="route">{component}</div>
-      )),
-    useParams: jest.fn().mockImplementation(() => mockUseParam),
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
-  };
-});
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+}));
+
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest
+    .fn()
+    .mockImplementation(() => ({ tab: mockUseParam })),
+}));
+
+const mockProps = {
+  pageTitle: 'data-quality',
+};
 
 describe('DataQualityPage', () => {
   it('component should render', async () => {
-    render(<DataQualityPage />, { wrapper: MemoryRouter });
+    render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(await screen.findByTestId('page-title')).toBeInTheDocument();
     expect(await screen.findByTestId('page-sub-title')).toBeInTheDocument();

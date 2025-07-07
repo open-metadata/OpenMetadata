@@ -13,10 +13,8 @@
 import { Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, unionBy } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseFailureReasonType } from '../../../generated/tests/resolved';
@@ -24,12 +22,22 @@ import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCase
 import Assignees from '../../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../../pages/TasksPage/TasksPage.interface';
 import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
-import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import {
+  getEntityReferenceFromEntity,
+  getEntityReferenceListFromEntities,
+} from '../../../utils/EntityUtils';
 import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import {
+  PAGE_SIZE_MEDIUM,
+  VALIDATION_MESSAGES,
+} from '../../../constants/constants';
+import { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { getUsers } from '../../../rest/userAPI';
+import { generateFormFields } from '../../../utils/formUtils';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 export const TestCaseStatusModal = ({
@@ -38,14 +46,13 @@ export const TestCaseStatusModal = ({
   testCaseFqn,
   onSubmit,
   onCancel,
-  usersList,
 }: TestCaseStatusModalProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [form] = Form.useForm();
-  const markdownRef = useRef<EditorContentRef>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
+  const [usersList, setUsersList] = useState<EntityReference[]>([]);
 
   const { assigneeOptions } = useMemo(() => {
     const initialAssignees = data?.testCaseResolutionStatusDetails?.assignee
@@ -127,6 +134,57 @@ export const TestCaseStatusModal = ({
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: ['testCaseResolutionStatusDetails', 'testCaseFailureComment'],
+      required: true,
+      label: t('label.comment'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      rules: [
+        {
+          required: true,
+        },
+      ],
+      props: {
+        'data-testid': 'description',
+        initialValue:
+          data?.testCaseResolutionStatusDetails?.testCaseFailureComment ?? '',
+        placeHolder: t('message.write-your-text', {
+          text: t('label.comment'),
+        }),
+
+        onTextChange: (value: string) =>
+          form.setFieldValue(
+            ['testCaseResolutionStatusDetails', 'testCaseFailureComment'],
+            value
+          ),
+      },
+    }),
+    [data?.testCaseResolutionStatusDetails?.testCaseFailureComment]
+  );
+  const fetchInitialAssign = useCallback(async () => {
+    try {
+      const { data } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+
+        isBot: false,
+      });
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+      setUsersList(filterData);
+    } catch (error) {
+      setUsersList([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // fetch users once and store in state
+    fetchInitialAssign();
+  }, []);
+
   useEffect(() => {
     const assignee = data?.testCaseResolutionStatusDetails?.assignee;
     if (
@@ -204,38 +262,7 @@ export const TestCaseStatusModal = ({
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item
-              label={t('label.comment')}
-              name={[
-                'testCaseResolutionStatusDetails',
-                'testCaseFailureComment',
-              ]}
-              rules={[
-                {
-                  required: true,
-                },
-              ]}>
-              <RichTextEditor
-                height="200px"
-                initialValue={
-                  data?.testCaseResolutionStatusDetails
-                    ?.testCaseFailureComment ?? ''
-                }
-                placeHolder={t('message.write-your-text', {
-                  text: t('label.comment'),
-                })}
-                ref={markdownRef}
-                onTextChange={(value) =>
-                  form.setFieldValue(
-                    [
-                      'testCaseResolutionStatusDetails',
-                      'testCaseFailureComment',
-                    ],
-                    value
-                  )
-                }
-              />
-            </Form.Item>
+            {generateFormFields([descriptionField])}
           </>
         )}
         {statusType === TestCaseResolutionStatusTypes.Assigned && (

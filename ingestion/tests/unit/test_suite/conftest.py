@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,12 +15,14 @@ shared test cases
 
 import os
 from datetime import datetime, timedelta
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
 
+from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
@@ -89,18 +91,18 @@ def create_sqlite_table():
         databaseMode=db_path + "?check_same_thread=False",
     )  # type: ignore
 
-    sampler = SQASampler(
-        service_connection_config=sqlite_conn,
-        ometa_client=None,
-        entity=TABLE,
-        orm_table=User,
-    )
+    with patch.object(SQASampler, "build_table_orm", return_value=User):
+        sampler = SQASampler(
+            service_connection_config=sqlite_conn,
+            ometa_client=None,
+            entity=TABLE,
+        )
     sqa_profiler_interface = SQATestSuiteInterface(
         sqlite_conn,
         None,
         sampler,
         TABLE,
-        orm_table=User,
+        validator_builder=ValidatorBuilder,
     )
 
     runner = sqa_profiler_interface.runner

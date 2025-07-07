@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import React from 'react';
+import { Badge, Typography } from 'antd';
+import { useTranslation } from 'react-i18next';
 import './page-header.less';
 import { HeaderProps } from './PageHeader.interface';
 
@@ -20,7 +20,10 @@ const PageHeader = ({
   data: { header, subHeader },
   titleProps,
   subHeaderProps,
+  isBeta,
 }: HeaderProps) => {
+  const { t } = useTranslation();
+
   return (
     <div className="page-header-container" data-testid="page-header-container">
       <Typography.Title
@@ -29,6 +32,15 @@ const PageHeader = ({
         level={5}
         {...titleProps}>
         {header}
+
+        {isBeta && (
+          <Badge
+            className="service-beta-page-header m-l-sm"
+            count={t('label.beta')}
+            data-testid="beta-badge"
+            size="small"
+          />
+        )}
       </Typography.Title>
       <Typography.Paragraph
         className="sub-heading"

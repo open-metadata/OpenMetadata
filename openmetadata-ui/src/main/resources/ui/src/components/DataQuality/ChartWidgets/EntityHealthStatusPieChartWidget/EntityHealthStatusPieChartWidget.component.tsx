@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as HealthCheckIcon } from '../../../../assets/svg/ic-green-heart-border.svg';
 import {
@@ -26,6 +26,7 @@ import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.compone
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 
 const EntityHealthStatusPieChartWidget = ({
+  className = '',
   chartFilter,
 }: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
@@ -95,7 +96,7 @@ const EntityHealthStatusPieChartWidget = ({
       const total = parseInt(totalData[0].originEntityFQN);
 
       setEntityHealthStates({ unhealthy, healthy: total - unhealthy, total });
-    } catch (error) {
+    } catch {
       setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
     } finally {
       setIsLoading(false);
@@ -107,11 +108,11 @@ const EntityHealthStatusPieChartWidget = ({
   }, [chartFilter]);
 
   return (
-    <Card loading={isLoading}>
+    <Card className={className} loading={isLoading}>
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <HealthCheckIcon height={20} width={20} />
-          <Typography.Text className="font-medium text-md text-grey-muted">
+          <Typography.Text className="font-medium text-md">
             {t('label.healthy-data-asset-plural')}
           </Typography.Text>
         </div>

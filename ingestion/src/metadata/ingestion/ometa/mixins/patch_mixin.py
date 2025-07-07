@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,6 +28,9 @@ from metadata.generated.schema.entity.data.table import Column, Table, TableCons
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.reverseIngestionResponse import (
+    ReverseIngestionResponse,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import EntityLink, Markdown
@@ -488,7 +491,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     def patch_automation_workflow_response(
         self,
         automation_workflow: AutomationWorkflow,
-        test_connection_result: TestConnectionResult,
+        result: Union[TestConnectionResult, ReverseIngestionResponse],
         workflow_status: WorkflowStatus,
     ) -> None:
         """
@@ -496,14 +499,21 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         """
         result_data: Dict = {
             PatchField.PATH: PatchPath.RESPONSE,
-            PatchField.VALUE: test_connection_result.model_dump(),
+            PatchField.VALUE: result.model_dump(),
             PatchField.OPERATION: PatchOperation.ADD,
         }
 
         # for deserializing into json convert enum object to string
-        result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE][
-            "status"
-        ].value
+        if isinstance(result, TestConnectionResult):
+            result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE][
+                "status"
+            ].value
+        else:
+            # Convert UUID in string
+            data = result_data[PatchField.VALUE]
+            data["serviceId"] = str(data["serviceId"])
+            for operation_result in data["results"]:
+                operation_result["id"] = str(operation_result["id"])
 
         status_data: Dict = {
             PatchField.PATH: PatchPath.STATUS,

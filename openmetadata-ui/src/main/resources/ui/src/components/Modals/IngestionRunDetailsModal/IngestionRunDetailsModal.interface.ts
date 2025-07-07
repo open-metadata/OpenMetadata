@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
+import { AppRunRecord } from '../../../generated/entity/applications/appRunRecord';
 import { PipelineStatus } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
-export interface IngestionRunDetailsModalProps {
-  pipelineStatus?: PipelineStatus;
+export interface IngestionRunDetailsModalProps<
+  T extends PipelineStatus | AppRunRecord
+> {
+  pipelineStatus?: T;
   handleCancel: () => void;
 }

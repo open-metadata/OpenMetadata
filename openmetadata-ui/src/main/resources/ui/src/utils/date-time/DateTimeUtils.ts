@@ -13,6 +13,9 @@
 import { capitalize, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 
+export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
+export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
+export const DATE_TIME_WEEKDAY_WITH_ORDINAL = "ccc d'th' MMMM, yyyy, hh:mm a"; // e.g. Mon 1st January, 2025, 12:00 AM
 /**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
@@ -47,10 +50,15 @@ export const formatDate = (date?: number, supportUTC = false) => {
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
-export const formatDateTimeLong = (timestamp: number, format?: string) =>
-  DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
-    format || "ccc d'th' MMMM, yyyy, hh:mm a"
+export const formatDateTimeLong = (timestamp?: number, format?: string) => {
+  if (isNil(timestamp)) {
+    return '';
+  }
+
+  return DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
+    format ?? DATE_TIME_WITH_OFFSET_FORMAT
   );
+};
 
 /**
  *
@@ -228,15 +236,6 @@ export const calculateInterval = (
   }
 };
 
-const intervals: [string, number][] = [
-  ['Y', 933120000000], // 1000 * 60 * 60 * 24 * 30 * 360
-  ['M', 2592000000], // 1000 * 60 * 60 * 24 * 30
-  ['d', 86400000], // 1000 * 60 * 60 * 24
-  ['h', 3600000], // 1000 * 60 * 60
-  ['m', 60000], // 1000 * 60
-  ['s', 1000], // 1000
-];
-
 /**
  * Converts a given time in milliseconds to a human-readable format.
  *
@@ -244,25 +243,73 @@ const intervals: [string, number][] = [
  * @returns A human-readable string representation of the time duration.
  */
 export const convertMillisecondsToHumanReadableFormat = (
-  milliseconds: number
+  timestamp: number,
+  length?: number,
+  showMilliseconds = false,
+  prependForNegativeValue = '-'
 ): string => {
-  if (milliseconds <= 0) {
+  // Handle zero and very small positive values
+  if (
+    timestamp === 0 ||
+    (!showMilliseconds && timestamp > 0 && timestamp < 1000)
+  ) {
     return '0s';
   }
 
-  const result: string[] = [];
-  let remainingMilliseconds = milliseconds;
+  // Handle negative values
+  const isNegative = timestamp < 0;
+  const absoluteTimestamp = Math.abs(timestamp);
 
-  for (const [name, count] of intervals) {
-    if (remainingMilliseconds < count) {
-      continue; // Skip smaller units
-    }
-    const value = Math.floor(remainingMilliseconds / count);
-    remainingMilliseconds %= count;
-    result.push(`${value}${name}`);
+  const duration = Duration.fromMillis(absoluteTimestamp);
+  const result: string[] = [];
+
+  // Extract each unit from the duration
+  const years = Math.floor(duration.as('years'));
+  const months = Math.floor(duration.as('months')) % 12;
+  const days = Math.floor(duration.as('days')) % 30;
+  const hours = Math.floor(duration.as('hours')) % 24;
+  const minutes = Math.floor(duration.as('minutes')) % 60;
+  const seconds = Math.floor(duration.as('seconds')) % 60;
+  const milliseconds = Math.floor(duration.as('milliseconds')) % 1000;
+
+  // Add non-zero units to the result
+  if (years > 0) {
+    result.push(`${years}Y`);
+  }
+  if (months > 0) {
+    result.push(`${months}M`);
+  }
+  if (days > 0) {
+    result.push(`${days}d`);
+  }
+  if (hours > 0) {
+    result.push(`${hours}h`);
+  }
+  if (minutes > 0) {
+    result.push(`${minutes}m`);
+  }
+  if (seconds > 0) {
+    result.push(`${seconds}s`);
+  }
+  if (showMilliseconds && milliseconds > 0) {
+    result.push(`${milliseconds}ms`);
   }
 
-  return result.join(' ');
+  // If no units found, return 0s
+  if (result.length === 0) {
+    return '0s';
+  }
+
+  let formattedResult = result.join(' ');
+
+  if (length && result.length > length) {
+    formattedResult = result.slice(0, length).join(' ');
+  }
+
+  // Prepend minus sign for negative values
+  return isNegative
+    ? `${prependForNegativeValue}${formattedResult}`
+    : formattedResult;
 };
 
 export const formatDuration = (ms: number) => {
@@ -281,9 +328,27 @@ export const formatDuration = (ms: number) => {
     return pluralize(hours, 'hour');
   }
 };
+export const formatDurationToHHMMSS = (ms: number) => {
+  return Duration.fromMillis(ms).toFormat('hh:mm:ss');
+};
 
 export const getStartOfDayInMillis = (timestamp: number) =>
   DateTime.fromMillis(timestamp).toUTC().startOf('day').toMillis();
 
 export const getEndOfDayInMillis = (timestamp: number) =>
   DateTime.fromMillis(timestamp).toUTC().endOf('day').toMillis();
+
+export const getCurrentDayStartGMTinMillis = () =>
+  DateTime.now().setZone('GMT').startOf('day').toMillis();
+
+export const getDayAgoStartGMTinMillis = (days: number) =>
+  DateTime.now().setZone('GMT').minus({ days }).startOf('day').toMillis();
+
+export const getSevenDaysStartGMTArrayInMillis = () => {
+  const sevenDaysStartGMTArrayInMillis = [];
+  for (let i = 6; i >= 0; i--) {
+    sevenDaysStartGMTArrayInMillis.push(getDayAgoStartGMTinMillis(i));
+  }
+
+  return sevenDaysStartGMTArrayInMillis;
+};

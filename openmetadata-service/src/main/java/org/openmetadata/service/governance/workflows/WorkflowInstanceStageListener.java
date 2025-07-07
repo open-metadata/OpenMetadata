@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.STAGE_INSTANCE_STATE_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
@@ -16,23 +17,34 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 public class WorkflowInstanceStageListener implements JavaDelegate {
   @Override
   public void execute(DelegateExecution execution) {
-    WorkflowInstanceStateRepository workflowInstanceStateRepository =
-        (WorkflowInstanceStateRepository)
-            Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
+    WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
+    try {
+      WorkflowInstanceStateRepository workflowInstanceStateRepository =
+          (WorkflowInstanceStateRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
 
-    switch (execution.getEventName()) {
-      case "start" -> addNewStage(execution, workflowInstanceStateRepository);
-      case "end" -> updateStage(execution, workflowInstanceStateRepository);
-      default -> LOG.debug(
+      switch (execution.getEventName()) {
+        case "start" -> addNewStage(varHandler, execution, workflowInstanceStateRepository);
+        case "end" -> updateStage(varHandler, execution, workflowInstanceStateRepository);
+        default -> LOG.debug(
+            String.format(
+                "WorkflowStageUpdaterListener does not support listening for the event: '%s'",
+                execution.getEventName()));
+      }
+    } catch (Exception exc) {
+      LOG.error(
           String.format(
-              "WorkflowStageUpdaterListener does not support listening for the event: '%s'",
-              execution.getEventName()));
+              "[%s] Failed due to: %s ",
+              getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc.getMessage()),
+          exc);
     }
   }
 
   private void addNewStage(
+      WorkflowVariableHandler varHandler,
       DelegateExecution execution,
       WorkflowInstanceStateRepository workflowInstanceStateRepository) {
+    execution.removeTransientVariable(FAILURE_VARIABLE);
     String workflowDefinitionName =
         getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
@@ -47,13 +59,15 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
             workflowInstanceId,
             workflowDefinitionName,
             System.currentTimeMillis());
-    execution.setVariable(STAGE_INSTANCE_STATE_ID_VARIABLE, workflowInstanceStateId);
+    varHandler.setNodeVariable(STAGE_INSTANCE_STATE_ID_VARIABLE, workflowInstanceStateId);
   }
 
   private void updateStage(
+      WorkflowVariableHandler varHandler,
       DelegateExecution execution,
       WorkflowInstanceStateRepository workflowInstanceStateRepository) {
-    UUID workflowInstanceStateId = (UUID) execution.getVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
+    UUID workflowInstanceStateId =
+        (UUID) varHandler.getNodeVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
     workflowInstanceStateRepository.updateStage(
         workflowInstanceStateId, System.currentTimeMillis(), execution.getVariables());
   }

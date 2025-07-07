@@ -30,6 +30,7 @@ import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.security.ssl.VerifySSL;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -91,10 +92,6 @@ public class OpenMetadataConnectionBuilder {
         String type = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
         botName = String.format("%sApplicationBot", type);
       }
-        // TODO: Remove this once we internalize the DataInsights app
-        // For now we need it since DataInsights has its own pipelineType inherited from when it was
-        // a standalone workflow
-      case DATA_INSIGHT -> botName = "DataInsightsApplicationBot";
       default -> botName =
           String.format("%s-bot", ingestionPipeline.getPipelineType().toString().toLowerCase());
     }
@@ -192,7 +189,8 @@ public class OpenMetadataConnectionBuilder {
   private User retrieveBotUser(String botName) {
     User botUser = retrieveIngestionBotUser(botName);
     if (botUser == null) {
-      throw new IllegalArgumentException("Please, verify that the ingestion-bot is present.");
+      throw new IllegalArgumentException(
+          String.format("Please, verify that the bot [%s] is present.", botName));
     }
     return botUser;
   }

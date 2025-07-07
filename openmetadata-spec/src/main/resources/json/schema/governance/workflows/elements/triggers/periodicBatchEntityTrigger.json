@@ -3,10 +3,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PeriodicBatchEntityTriggerDefinition",
   "description": "Periodic Batch Entity Trigger.",
-  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicBatchEntityTriggerDefinition",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface"
+  ],
   "type": "object",
   "definitions": {
     "config": {
+      "title": "Trigger Configuration",
       "description": "Entity Event Trigger Configuration.",
       "type": "object",
       "properties": {
@@ -15,27 +19,34 @@
           "description": "Defines the schedule of the Periodic Trigger."
         },
         "entityType": {
+          "title": "Entity Type",
           "description": "Entity Type for which it should be triggered.",
           "type": "string"
         },
         "filters": {
-          "description": "Search Filters to filter down the entities fetched.",
+          "title": "Filters",
+          "description": "Select the Search Filters to filter down the entities fetched.",
           "type": "string"
         },
         "batchSize": {
+          "title": "Batch Size",
           "description": "Number of Entities to process at once.",
           "type": "integer",
-          "default": 1000
+          "default": 500
         }
       },
-      "required": ["schedule", "entityType", "filters"],
+      "required": [
+        "schedule",
+        "entityType",
+        "filters"
+      ],
       "additionalProperties": false
     }
   },
   "properties": {
     "type": {
       "type": "string",
-      "default": "periodicBatchEntityTrigger"
+      "default": "periodicBatchEntity"
     },
     "config": {
       "$ref": "#/definitions/config"
@@ -45,7 +56,9 @@
       "items": {
         "type": "string"
       },
-      "default": ["relatedEntity"],
+      "default": [
+        "relatedEntity"
+      ],
       "additionalItems": false,
       "minItems": 1,
       "maxItems": 1,

@@ -13,14 +13,15 @@
 
 import { Button, Card, Space, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { FormSubmitType } from '../../../enums/form.enum';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 import Loader from '../Loader/Loader';
 
@@ -88,7 +89,11 @@ const SuccessScreen = ({
             height={100}
             width={100}
           />
-          <Typography>{t('message.pipeline-scheduler-message')}</Typography>
+          <Typography>
+            {t('message.pipeline-scheduler-message', {
+              brandName: brandClassBase.getPageTitle(),
+            })}
+          </Typography>
         </Space>
       ),
     [isAirflowPlatform]
@@ -101,10 +106,7 @@ const SuccessScreen = ({
       <Card>
         <Space>
           <IconSuccessBadge data-testid="success-icon" width="20px" />
-          <Typography.Paragraph
-            className="m-b-0"
-            data-testid="success-line"
-            ellipsis={{ rows: 3 }}>
+          <Typography.Paragraph className="m-b-0" data-testid="success-line">
             {isUndefined(successMessage) ? (
               <span>
                 <span className="m-r-xss font-semibold">

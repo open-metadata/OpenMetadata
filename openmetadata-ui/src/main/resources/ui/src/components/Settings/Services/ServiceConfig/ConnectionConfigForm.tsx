@@ -12,60 +12,43 @@
  */
 
 import Form, { IChangeEvent } from '@rjsf/core';
+import { RegistryFieldsType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Alert } from 'antd';
-import { t } from 'i18next';
-import { cloneDeep, isEmpty, isNil, isUndefined } from 'lodash';
-import { LoadingState } from 'Models';
-import React, {
-  Fragment,
-  FunctionComponent,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import { ServiceCategory } from '../../../../enums/service.enum';
-import { MetadataServiceType } from '../../../../generated/api/services/createMetadataService';
-import { MlModelServiceType } from '../../../../generated/api/services/createMlModelService';
-import { StorageServiceType } from '../../../../generated/entity/data/container';
-import { APIServiceType } from '../../../../generated/entity/services/apiService';
-import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
-import { DatabaseServiceType } from '../../../../generated/entity/services/databaseService';
-import { MessagingServiceType } from '../../../../generated/entity/services/messagingService';
-import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
-import { SearchServiceType } from '../../../../generated/entity/services/searchService';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+
+import { isEmpty, isUndefined } from 'lodash';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  ConfigData,
-  ServicesType,
-} from '../../../../interface/service.interface';
+  AIRFLOW_HYBRID,
+  COLLATE_SAAS,
+  COLLATE_SAAS_RUNNER,
+  RUNNER,
+} from '../../../../constants/constants';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { ConfigData } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
+import i18n from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import {
+  getConnectionSchemas,
+  getFilteredSchema,
+  getUISchemaWithNestedDefaultFilterFieldsHidden,
+} from '../../../../utils/ServiceConnectionUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
+import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
+import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import TestConnection from '../../../common/TestConnection/TestConnection';
+import { ConnectionConfigFormProps } from './ConnectionConfigForm.interface';
 
-interface Props {
-  data?: ServicesType;
-  okText?: string;
-  cancelText?: string;
-  serviceType: string;
-  serviceCategory: ServiceCategory;
-  status: LoadingState;
-  onFocus: (id: string) => void;
-  onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
-  disableTestConnection?: boolean;
-  onCancel?: () => void;
-}
-
-const ConnectionConfigForm: FunctionComponent<Props> = ({
+const ConnectionConfigForm = ({
   data,
-  okText = 'Save',
-  cancelText = 'Cancel',
+  okText = i18n.t('label.save'),
+  cancelText = i18n.t('label.cancel'),
   serviceType,
   serviceCategory,
   status,
@@ -73,15 +56,14 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   onSave,
   onFocus,
   disableTestConnection = false,
-}: Props) => {
-  const config = !isNil(data)
-    ? ((data as ServicesType).connection?.config as ConfigData)
-    : ({} as ConfigData);
+}: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
+  const { t } = useTranslation();
+  const [ingestionRunner, setIngestionRunner] = useState<string | undefined>();
 
   const formRef = useRef<Form<ConfigData>>(null);
 
-  const { isAirflowAvailable } = useAirflowStatus();
+  const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
 
   const fetchHostIp = async () => {
@@ -92,7 +74,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       } else {
         setHostIp(undefined);
       }
-    } catch (error) {
+    } catch {
       setHostIp('[error - unknown]');
     }
   };
@@ -113,97 +95,77 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     await onSave({ ...data, formData: updatedFormData });
   };
 
-  const getConfigFields = () => {
-    let connSch = {
-      schema: {},
-      uiSchema: {},
-    };
+  const customFields: RegistryFieldsType = {
+    BooleanField: BooleanFieldTemplate,
+    ArrayField: WorkflowArrayFieldTemplate,
+  };
 
-    const validConfig = cloneDeep(config || {});
+  const { connSch, validConfig } = useMemo(
+    () =>
+      getConnectionSchemas({
+        data,
+        serviceCategory,
+        serviceType,
+      }),
+    [data, serviceCategory, serviceType]
+  );
 
-    for (const [key, value] of Object.entries(validConfig)) {
-      if (isNil(value)) {
-        delete validConfig[key as keyof ConfigData];
-      }
-    }
-
-    switch (serviceCategory) {
-      case ServiceCategory.DATABASE_SERVICES: {
-        connSch = serviceUtilClassBase.getDatabaseServiceConfig(
-          serviceType as DatabaseServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.MESSAGING_SERVICES: {
-        connSch = serviceUtilClassBase.getMessagingServiceConfig(
-          serviceType as MessagingServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.DASHBOARD_SERVICES: {
-        connSch = serviceUtilClassBase.getDashboardServiceConfig(
-          serviceType as DashboardServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.PIPELINE_SERVICES: {
-        connSch = serviceUtilClassBase.getPipelineServiceConfig(
-          serviceType as PipelineServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.ML_MODEL_SERVICES: {
-        connSch = serviceUtilClassBase.getMlModelServiceConfig(
-          serviceType as MlModelServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.METADATA_SERVICES: {
-        connSch = serviceUtilClassBase.getMetadataServiceConfig(
-          serviceType as MetadataServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.STORAGE_SERVICES: {
-        connSch = serviceUtilClassBase.getStorageServiceConfig(
-          serviceType as StorageServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.SEARCH_SERVICES: {
-        connSch = serviceUtilClassBase.getSearchServiceConfig(
-          serviceType as SearchServiceType
-        );
-
-        break;
-      }
-
-      case ServiceCategory.API_SERVICES: {
-        connSch = serviceUtilClassBase.getAPIServiceConfig(
-          serviceType as APIServiceType
-        );
-
-        break;
-      }
-    }
-
+  const shouldShowIPAlert = useMemo(() => {
     return (
+      !isEmpty(connSch.schema) &&
+      isAirflowAvailable &&
+      hostIp &&
+      (platform !== AIRFLOW_HYBRID ||
+        ingestionRunner === COLLATE_SAAS ||
+        ingestionRunner === COLLATE_SAAS_RUNNER)
+    );
+  }, [connSch.schema, isAirflowAvailable, hostIp, platform, ingestionRunner]);
+
+  // Remove the filters property from the schema
+  // Since it'll have a separate form in the next step
+  const propertiesWithoutDefaultFilterPatternFields = useMemo(
+    () => getFilteredSchema(connSch.schema.properties),
+    [connSch.schema.properties]
+  );
+
+  const schemaWithoutDefaultFilterPatternFields = useMemo(
+    () => ({
+      ...connSch.schema,
+      properties: propertiesWithoutDefaultFilterPatternFields,
+    }),
+    [connSch.schema, propertiesWithoutDefaultFilterPatternFields]
+  );
+
+  // UI Schema to hide the nested default filter pattern fields
+  // Since some connections have reference to the other connections
+  const uiSchema = useMemo(() => {
+    return getUISchemaWithNestedDefaultFilterFieldsHidden(connSch.uiSchema);
+  }, [connSch.uiSchema]);
+
+  useEffect(() => {
+    const current = (
+      formRef.current?.state?.formData as Record<string, unknown>
+    )?.[RUNNER];
+    if (typeof current === 'string') {
+      setIngestionRunner(current);
+    } else {
+      setIngestionRunner(undefined);
+    }
+  }, [formRef.current?.state?.formData]);
+
+  return (
+    <Fragment>
+      <AirflowMessageBanner />
       <FormBuilder
-        cancelText={cancelText}
+        cancelText={cancelText ?? ''}
+        fields={customFields}
         formData={validConfig}
-        okText={okText}
+        okText={okText ?? ''}
         ref={formRef}
-        schema={connSch.schema}
+        schema={schemaWithoutDefaultFilterPatternFields}
         serviceCategory={serviceCategory}
         status={status}
-        uiSchema={connSch.uiSchema}
+        uiSchema={uiSchema}
         validator={validator}
         onCancel={onCancel}
         onFocus={onFocus}
@@ -215,16 +177,14 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
             {t('message.no-config-available')}
           </div>
         )}
-        {!isEmpty(connSch.schema) && isAirflowAvailable && hostIp && (
+        {shouldShowIPAlert && (
           <Alert
             data-testid="ip-address"
             description={
               <Transi18next
                 i18nKey="message.airflow-host-ip-address"
                 renderElement={<strong />}
-                values={{
-                  hostIp,
-                }}
+                values={{ hostIp }}
               />
             }
             type="info"
@@ -236,6 +196,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
             <TestConnection
               connectionType={serviceType}
               getData={() => formRef.current?.state?.formData}
+              hostIp={hostIp}
               isTestingDisabled={disableTestConnection}
               serviceCategory={serviceCategory}
               serviceName={data?.name}
@@ -246,13 +207,6 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
         )}
       </FormBuilder>
-    );
-  };
-
-  return (
-    <Fragment>
-      <AirflowMessageBanner />
-      {getConfigFields()}
     </Fragment>
   );
 };

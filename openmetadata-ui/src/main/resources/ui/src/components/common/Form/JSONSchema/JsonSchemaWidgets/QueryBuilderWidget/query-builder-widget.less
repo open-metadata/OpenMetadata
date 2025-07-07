@@ -26,7 +26,36 @@
   }
 }
 
+.query-builder-form-field
+  .query-builder-card.jsonlogic
+  .query-builder-container {
+  .group-or-rule-container.group-container {
+    & > .group.group-or-rule {
+      & > .group--header {
+        order: 0;
+
+        .action.action--ADD-RULE {
+          position: absolute !important;
+          margin-top: 0;
+          right: 0;
+          top: -56px; // updating this as size of button is increased
+        }
+      }
+    }
+  }
+}
+
+.query-filter-label {
+  text-transform: capitalize;
+}
+
 .query-builder-form-field {
+  .ant-select-disabled.ant-select:not(.ant-select-customize-input)
+    .ant-select-selector {
+    color: @black;
+    background-color: @background-color;
+  }
+
   .hide--line.one--child {
     margin-top: 0;
     padding-top: 16px;
@@ -176,10 +205,59 @@
       }
     }
   }
+
+  .rule {
+    align-items: center;
+  }
 }
 
 .query-builder-card.elasticsearch {
   .rule-container:first-child .action--DELETE {
     display: none;
+  }
+}
+
+.json-logic-field-select {
+  .ant-select-item-group {
+    padding-left: 8px;
+    position: relative;
+    color: @text-color;
+    font-size: 14px;
+    background-color: @grey-6;
+  }
+
+  /* Add vertical line for children */
+  .ant-select-item-option-grouped {
+    position: relative;
+    padding-left: 32px;
+    /* Indentation for child items */
+  }
+
+  /* Add vertical line before each child */
+  .ant-select-item-option-grouped::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: @border-color;
+  }
+
+  /* Adjust line height for last child */
+  .ant-select-item-option-grouped:last-child::before {
+    height: 16px;
+    bottom: auto;
+  }
+
+  /* Add horizontal connector for each child */
+  .ant-select-item-option-grouped::after {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 16px;
+    width: 10px;
+    height: 1px;
+    background-color: @border-color;
   }
 }

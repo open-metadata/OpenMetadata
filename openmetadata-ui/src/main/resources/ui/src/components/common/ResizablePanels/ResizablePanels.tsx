@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from 'antd';
+import { Button, Card, Tooltip } from 'antd';
 import classNames from 'classnames';
-import React, { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
-import { ReactComponent as CollapseIcon } from '../../../assets/svg/ic-collapse.svg';
+import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
-import PanelContainer from './PanelContainer/PanelContainer';
 import './resizable-panels.less';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
 
@@ -31,6 +30,13 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+  const isFirstPanelWrapInCard = useMemo(() => {
+    return firstPanel.wrapInCard ?? true;
+  }, [firstPanel.wrapInCard]);
+
+  const isSecondPanelWrapInCard = useMemo(() => {
+    return secondPanel.wrapInCard ?? true;
+  }, [secondPanel.wrapInCard]);
 
   const handleCollapse = () => {
     setIsRightPanelCollapsed((prev) => !prev);
@@ -40,11 +46,12 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     <>
       {pageTitle && <DocumentTitle title={pageTitle} />}
       <ReflexContainer
-        className={classNames(className, 'bg-white resizable-panels-layout')}
+        className={classNames(className, 'resizable-panels-layout bg-grey')}
         orientation={orientation}>
         <ReflexElement
           className={classNames(firstPanel.className, 'resizable-first-panel', {
             'full-width': hideSecondPanel || isRightPanelCollapsed,
+            'h-full overflow-y-auto': firstPanel.allowScroll,
           })}
           data-testid={firstPanel.className}
           flex={firstPanel.flex}
@@ -52,32 +59,39 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           onStopResize={(args) => {
             firstPanel.onStopResize?.(args.component.props.flex);
           }}>
-          <PanelContainer overlay={firstPanel.overlay}>
-            {firstPanel.children}
-          </PanelContainer>
+          {isFirstPanelWrapInCard ? (
+            <Card
+              className={classNames(firstPanel.cardClassName, {
+                // If allowScroll is true, the card will not have a scrollbar
+                'h-full overflow-y-auto': !firstPanel.allowScroll,
+              })}>
+              {firstPanel.children}
+            </Card>
+          ) : (
+            firstPanel.children
+          )}
         </ReflexElement>
 
         <ReflexSplitter
           className={classNames(
-            'splitter',
+            'splitter right-panel-splitter',
             { hidden: hideSecondPanel },
             { collapsed: isRightPanelCollapsed }
           )}>
-          <Tooltip
-            placement={isRightPanelCollapsed ? 'left' : 'top'}
-            title={
-              isRightPanelCollapsed ? t('label.expand') : t('label.collapse')
-            }>
-            <Button
-              className={classNames('collapse-button', {
-                collapsed: isRightPanelCollapsed,
-              })}
-              data-testid="collapse-button"
-              type="ghost"
-              onClick={handleCollapse}>
-              <CollapseIcon className="collapse-icon" />
-            </Button>
-          </Tooltip>
+          {isRightPanelCollapsed && (
+            <Card className="reflex-card card-padding-0">
+              <Tooltip placement="right" title={t('label.expand')}>
+                <Button
+                  className="mr-2 header-collapse-button"
+                  data-testid="sidebar-toggle"
+                  icon={<SidebarCollapsedIcon height={20} width={20} />}
+                  size="middle"
+                  type="text"
+                  onClick={handleCollapse}
+                />
+              </Tooltip>
+            </Card>
+          )}
           {!isRightPanelCollapsed && (
             <div
               className={classNames({
@@ -109,11 +123,12 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           onStopResize={(args) => {
             secondPanel.onStopResize?.(args.component.props.flex);
           }}>
-          {!hideSecondPanel && (
-            <PanelContainer overlay={secondPanel.overlay}>
-              <div className="p-l-sm">{secondPanel.children}</div>
-            </PanelContainer>
-          )}
+          {!hideSecondPanel &&
+            (isSecondPanelWrapInCard ? (
+              <Card className="reflex-card">{secondPanel.children}</Card>
+            ) : (
+              secondPanel.children
+            ))}
         </ReflexElement>
       </ReflexContainer>
     </>

@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.indexes;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -13,10 +12,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.search.models.SearchSuggest;
 
 public record TestCaseIndex(TestCase testCase) implements SearchIndex {
-  private static final Set<String> excludeFields = Set.of("changeDescription", "failedRowsSample");
+  private static final Set<String> excludeFields =
+      Set.of("changeDescription", "failedRowsSample", "incrementalChangeDescription");
 
   @Override
   public Object getEntity() {
@@ -37,18 +36,10 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
   @SneakyThrows
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     // Build Index Doc
-    List<SearchSuggest> suggest = new ArrayList<>();
     TestDefinition testDefinition =
         Entity.getEntity(
             Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
-    suggest.add(SearchSuggest.builder().input(testCase.getFullyQualifiedName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(testCase.getName()).weight(10).build());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            testCase.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
+    doc.put("fqnParts", getFQNParts(testCase.getFullyQualifiedName()));
     doc.put("entityType", Entity.TEST_CASE);
     doc.put("owners", getEntitiesWithDisplayName(testCase.getOwners()));
     doc.put("tags", testCase.getTags());
@@ -69,8 +60,10 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
       return;
     }
     TestSuite testSuite = Entity.getEntityOrNull(testSuiteEntityReference, "", Include.ALL);
-    EntityReference entityReference = testSuite.getExecutableEntityReference();
-    TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    EntityReference entityReference = testSuite.getBasicEntityReference();
+    if (entityReference != null) {
+      TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    }
   }
 
   public static Map<String, Float> getFields() {

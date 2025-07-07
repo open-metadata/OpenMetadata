@@ -13,14 +13,12 @@
 import { Space, Tooltip, Typography } from 'antd';
 import { omit, startCase } from 'lodash';
 import Qs from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  getEntityDetailsPath,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { useFqn } from '../../../hooks/useFqn';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { TableProfilerTab } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import TestIndicator from '../TestIndicator/TestIndicator';
 import { TestCaseStatusSummaryIndicatorProps } from './TestCaseStatusSummaryIndicator.interface';

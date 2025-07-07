@@ -19,6 +19,12 @@
 @grayColor: #dde3ea;
 
 .table-profiler-container {
+  height: 100%;
+  flex-grow: 1;
+  border-radius: @border-radius-sm;
+  border: 1px solid @grey-15;
+  display: flex;
+
   .overall-summery-card:not(:first-child) {
     border-left: 1px solid rgb(229, 231, 235);
     padding-left: 16px;
@@ -27,9 +33,11 @@
   .success {
     color: @succesColor;
   }
+
   .failed {
     color: @failedColor;
   }
+
   .aborted {
     color: @abortedColor;
   }
@@ -39,27 +47,23 @@
     padding-left: 16px;
   }
 
-  .data-quality-left-panel,
-  .data-quality-content-panel {
-    height: calc(100vh - 236px);
-  }
-
-  .data-quality-left-panel {
+  .custom-menu.data-quality-left-panel.ant-menu-inline {
+    flex: 0.17;
     border-right: @global-border;
     // need to add !important as in AntD menu padding is given inline
     padding-right: 1px !important;
+    padding-top: @padding-xs;
+    border-top-left-radius: @border-radius-sm;
   }
+
   .data-quality-content-panel {
+    flex: 0.83;
     overflow-y: scroll;
+    padding: @padding-md;
+    background-color: @white;
   }
 }
-.sql-editor-container {
-  .CodeMirror {
-    .CodeMirror-foldgutter {
-      width: 2em;
-    }
-  }
-}
+
 .include-columns-add-button.ant-btn-icon-only.ant-btn-sm {
   width: 18px;
   height: 18px;

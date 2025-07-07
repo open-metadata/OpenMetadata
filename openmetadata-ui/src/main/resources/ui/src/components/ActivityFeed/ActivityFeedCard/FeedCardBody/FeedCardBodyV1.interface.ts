@@ -26,4 +26,6 @@ export interface FeedCardBodyV1Props {
   isOpenInDrawer?: boolean;
   onUpdate?: (message: string) => void;
   onEditCancel?: () => void;
+  showThread?: boolean;
+  isForFeedTab?: boolean;
 }

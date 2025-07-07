@@ -17,9 +17,14 @@ import {
   uuid,
   visitGlossaryPage,
 } from '../../utils/common';
+import {
+  EntityReference,
+  EntityTypeEndpoint,
+} from '../entity/Entity.interface';
+import { EntityClass } from '../entity/EntityClass';
 import { GlossaryData, GlossaryResponseDataType } from './Glossary.interface';
 
-export class Glossary {
+export class Glossary extends EntityClass {
   randomName = getRandomFirstName();
   randomId = uuid();
   data: GlossaryData = {
@@ -36,10 +41,16 @@ export class Glossary {
     fullyQualifiedName: `\"PW%${this.randomId}.${this.randomName}\"`,
   };
 
-  responseData: GlossaryResponseDataType;
+  responseData: GlossaryResponseDataType = {} as GlossaryResponseDataType;
 
-  constructor(name?: string) {
+  constructor(name?: string, reviewers?: EntityReference[]) {
+    super(EntityTypeEndpoint.Glossary);
     this.data.name = name ?? this.data.name;
+    this.data.reviewers = reviewers ?? this.data.reviewers;
+  }
+
+  async visitEntityPage(page: Page) {
+    await this.visitPage(page);
   }
 
   async visitPage(page: Page) {

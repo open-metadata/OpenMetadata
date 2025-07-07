@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -43,10 +43,12 @@ from metadata.ingestion.source.database.dbt.constants import (
     DBT_CATALOG_FILE_NAME,
     DBT_MANIFEST_FILE_NAME,
     DBT_RUN_RESULTS_FILE_NAME,
+    DBT_SOURCES_FILE_NAME,
 )
 from metadata.ingestion.source.database.dbt.models import DbtFiles
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils.credentials import set_google_credentials
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ometa_logger
 from metadata.utils.s3_utils import list_s3_objects
 
@@ -85,6 +87,7 @@ def _(config: DbtLocalConfig):
             config.dbtManifestFilePath,
             config.dbtCatalogFilePath,
             config.dbtRunResultsFilePath,
+            config.dbtSourcesFilePath,
         ]
         yield from download_dbt_files(
             blob_grouped_by_directory=blob_grouped_by_directory,
@@ -123,12 +126,22 @@ def _(config: DbtHttpConfig):
             dbt_catalog = requests.get(  # pylint: disable=missing-timeout
                 config.dbtCatalogHttpPath
             )
+
+        dbt_sources = None
+        if config.dbtSourcesHttpPath:
+            logger.debug(
+                f"Requesting [dbtSourcesHttpPath] to: {config.dbtSourcesHttpPath}"
+            )
+            dbt_sources = requests.get(  # pylint: disable=missing-timeout
+                config.dbtSourcesHttpPath
+            )
         if not dbt_manifest:
             raise DBTConfigException("Manifest file not found in file server")
         yield DbtFiles(
             dbt_catalog=dbt_catalog.json() if dbt_catalog else None,
             dbt_manifest=dbt_manifest.json(),
             dbt_run_results=[dbt_run_results.json()] if dbt_run_results else None,
+            dbt_sources=dbt_sources.json() if dbt_sources else None,
         )
     except DBTConfigException as exc:
         raise exc
@@ -151,7 +164,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
         client_config = ClientConfig(
-            base_url=str(config.dbtCloudUrl),
+            base_url=clean_uri(config.dbtCloudUrl),
             api_version="api/v2",
             auth_token=lambda: auth_token,
             auth_header="Authorization",
@@ -164,7 +177,11 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         logger.debug(
             "Requesting [dbt_catalog], [dbt_manifest] and [dbt_run_results] data"
         )
-        params_data = {"order_by": "-finished_at", "limit": "1", "status": "10"}
+        params_data = {
+            "order_by": "-finished_at",
+            "limit": "1",
+            "status__in": "[10,20]",
+        }
         if project_id:
             params_data["project_id"] = project_id
 
@@ -182,7 +199,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             last_run = runs_data[0]
             run_id = last_run["id"]
             logger.info(
-                f"Retrieved last successful run [{str(run_id)}]: "
+                f"Retrieved last completed run [{str(run_id)}]: "
                 f"Finished {str(last_run['finished_at_humanized'])} (duration: {str(last_run['duration_humanized'])})"
             )
             try:
@@ -238,11 +255,13 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
             DBT_MANIFEST_FILE_NAME == blob_file_name.lower()
             or DBT_CATALOG_FILE_NAME == blob_file_name.lower()
             or DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower()
+            or DBT_SOURCES_FILE_NAME == blob_file_name.lower()
         ):
             blob_grouped_by_directory[subdirectory].append(blob)
     return blob_grouped_by_directory
 
 
+# pylint: disable=too-many-locals, too-many-branches
 def download_dbt_files(
     blob_grouped_by_directory: Dict, config, client, bucket_name: Optional[str]
 ) -> Iterable[DbtFiles]:
@@ -255,6 +274,7 @@ def download_dbt_files(
     ) in blob_grouped_by_directory.items():
         dbt_catalog = None
         dbt_manifest = None
+        dbt_sources = None
         dbt_run_results = []
         kwargs = {}
         if bucket_name:
@@ -285,12 +305,16 @@ def download_dbt_files(
                             logger.warning(
                                 f"{DBT_RUN_RESULTS_FILE_NAME} not found in {key}: {exc}"
                             )
+                    if DBT_SOURCES_FILE_NAME == blob_file_name.lower():
+                        logger.debug(f"{DBT_SOURCES_FILE_NAME} found in {key}")
+                        dbt_sources = reader.read(path=blob, **kwargs)
             if not dbt_manifest:
                 raise DBTConfigException(f"Manifest file not found at: {key}")
             yield DbtFiles(
                 dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
                 dbt_manifest=json.loads(dbt_manifest),
                 dbt_run_results=dbt_run_results if dbt_run_results else None,
+                dbt_sources=json.loads(dbt_sources) if dbt_sources else None,
             )
         except DBTConfigException as exc:
             logger.warning(exc)
@@ -330,40 +354,103 @@ def _(config: DbtS3Config):
 def _(config: DbtGcsConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        from google.cloud import storage  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError
+        from google.cloud import storage
 
-        set_google_credentials(gcp_credentials=config.dbtSecurityConfig)
-
-        client = storage.Client()
-        if not bucket_name:
-            buckets = client.list_buckets()
-        else:
-            buckets = [client.get_bucket(bucket_name)]
-        for bucket in buckets:
-            if prefix:
-                obj_list = client.list_blobs(bucket.name, prefix=prefix)
-            else:
-                obj_list = client.list_blobs(bucket.name)
-
-            yield from download_dbt_files(
-                blob_grouped_by_directory=get_blobs_grouped_by_dir(
-                    blobs=[blob.name for blob in obj_list]
-                ),
-                config=config,
-                client=client,
-                bucket_name=bucket.name,
+        try:
+            set_google_credentials(
+                gcp_credentials=config.dbtSecurityConfig, single_project=True
             )
+        except (ValueError, GoogleAuthError) as cred_exc:
+            logger.error(
+                f"Failed to set Google Cloud credentials: {str(cred_exc)}. "
+                "Please ensure your credentials are properly formatted and valid."
+            )
+            raise DBTConfigException(
+                "Invalid Google Cloud credentials. Please check the format and validity of your credentials."
+            ) from cred_exc
+
+        try:
+            client = storage.Client()
+        except DefaultCredentialsError as client_exc:
+            logger.error(
+                f"Failed to create Google Cloud Storage client: {str(client_exc)}. "
+                "Please ensure you have valid credentials configured."
+            )
+            raise DBTConfigException(
+                "Failed to initialize Google Cloud Storage client. Please verify your credentials."
+            ) from client_exc
+
+        if not bucket_name:
+            try:
+                buckets = client.list_buckets()
+            except Exception as bucket_exc:
+                logger.error(f"Failed to list GCS buckets: {str(bucket_exc)}")
+                raise DBTConfigException(
+                    "Unable to list GCS buckets. Please check your permissions and credentials."
+                ) from bucket_exc
+        else:
+            try:
+                buckets = [client.get_bucket(bucket_name)]
+            except Exception as bucket_exc:
+                logger.error(
+                    f"Failed to access GCS bucket {bucket_name}: {str(bucket_exc)}"
+                )
+                raise DBTConfigException(
+                    f"Unable to access GCS bucket {bucket_name}."
+                    "Please verify the bucket exists and you have proper permissions."
+                ) from bucket_exc
+
+        for bucket in buckets:
+            try:
+                obj_list = client.list_blobs(
+                    bucket.name, prefix=prefix if prefix else None
+                )
+
+                yield from download_dbt_files(
+                    blob_grouped_by_directory=get_blobs_grouped_by_dir(
+                        blobs=[blob.name for blob in obj_list]
+                    ),
+                    config=config,
+                    client=client,
+                    bucket_name=bucket.name,
+                )
+            except Exception as blob_exc:
+                logger.error(
+                    f"Failed to process blobs in bucket {bucket.name}: {str(blob_exc)}"
+                )
+                logger.debug(traceback.format_exc())
+
+    except DBTConfigException as dbt_exc:
+        raise dbt_exc
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from gcs: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from GCS: {exc}")
 
 
 @get_dbt_details.register
 def _(config: DbtAzureConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
+        # pylint: disable=import-outside-toplevel
+        from azure.core.exceptions import AzureError, ClientAuthenticationError
 
-        client = AzureClient(config.dbtSecurityConfig).create_blob_client()
+        try:
+            client = AzureClient(config.dbtSecurityConfig).create_blob_client()
+        except ClientAuthenticationError as auth_exc:
+            logger.error(
+                f"Failed to authenticate with Azure: {str(auth_exc)}. "
+                "Please check your Azure credentials and permissions."
+            )
+            raise DBTConfigException(
+                "Authentication failed with Azure. Please verify your credentials and permissions."
+            ) from auth_exc
+        except AzureError as azure_exc:
+            logger.error(f"Failed to create Azure client: {str(azure_exc)}")
+            raise DBTConfigException(
+                "Failed to initialize Azure client. Please check your Azure configuration."
+            ) from azure_exc
 
         if not bucket_name:
             container_dicts = client.list_containers()

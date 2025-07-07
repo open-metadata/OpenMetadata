@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,7 +32,8 @@ BIGQUERY_STATEMENT = textwrap.dedent(
    end_time,
    query as query_text,
    null as schema_name,
-   total_slot_ms as duration
+   total_slot_ms as duration,
+   (total_bytes_billed / POWER(2, 40)) * {cost_per_tib} as cost
 FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
 WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   {filters}
@@ -62,7 +63,7 @@ BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
 
 BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
-    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES where table_type != 'VIEW'
+    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES where table_type NOT IN  ('VIEW', 'MATERIALIZED VIEW')
     """
 )
 
@@ -95,7 +96,7 @@ SELECT
   routine_name as name,
   routine_definition as definition,
   external_language as language
-FROM `{schema_name}`.INFORMATION_SCHEMA.ROUTINES
+FROM `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.ROUTINES
 WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
   AND routine_catalog = '{database_name}'
   AND routine_schema = '{schema_name}'
@@ -163,7 +164,7 @@ BIGQUERY_LIFE_CYCLE_QUERY = textwrap.dedent(
 select
 table_name as table_name,
 creation_time as created_at
-from `{schema_name}`.INFORMATION_SCHEMA.TABLES
+from `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLES
 where table_schema = '{schema_name}'
 and table_catalog = '{database_name}'
 """
@@ -179,6 +180,18 @@ AND (
 AND resource.labels.project_id = "{project}"
 AND resource.labels.dataset_id = "{dataset}"
 AND timestamp >= "{start_date}"
+"""
+
+BIGQUERY_GET_SCHEMA_NAMES = """
+SELECT schema_name FROM `{project}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMATA;
+"""
+
+BIGQUERY_GET_VIEW_NAMES = """
+SELECT table_name FROM `{project}`.`{dataset}`.INFORMATION_SCHEMA.VIEWS;
+"""
+
+BIGQUERY_GET_MATERIALIZED_VIEW_NAMES = """
+SELECT table_name FROM `{project}`.`{dataset}`.INFORMATION_SCHEMA.MATERIALIZED_VIEWS;
 """
 
 

@@ -33,6 +33,12 @@
       "type": "string",
       "format": "password"
     },
+    "connectionTimeout": {
+      "title": "Connection Timeout",
+      "description": "Connection timeout in seconds.",
+      "type": "number",
+      "default": 120
+    },
     "httpPath": {
       "title": "Http Path",
       "description": "Databricks compute resources URL.",
@@ -41,6 +47,11 @@
     "connectionArguments": {
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

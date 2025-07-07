@@ -18,7 +18,9 @@ import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.flowable.bpmn.model.UserTask;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateApprovalTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
@@ -30,13 +32,13 @@ import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTa
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.UserTaskBuilder;
-import org.openmetadata.service.util.JsonUtils;
 
 public class UserApprovalTask implements NodeInterface {
   private final SubProcess subProcess;
+  private final BoundaryEvent runtimeExceptionBoundaryEvent;
   private final List<Message> messages = new ArrayList<>();
 
-  public UserApprovalTask(UserApprovalTaskDefinition nodeDefinition) {
+  public UserApprovalTask(UserApprovalTaskDefinition nodeDefinition, WorkflowConfiguration config) {
     String subProcessId = nodeDefinition.getName();
     String assigneesVarName = getFlowableElementId(subProcessId, "assignees");
 
@@ -52,15 +54,22 @@ public class UserApprovalTask implements NodeInterface {
             .fieldValue(assigneesVarName)
             .build();
 
+    FieldExtension inputNamespaceMapExpr =
+        new FieldExtensionBuilder()
+            .fieldName("inputNamespaceMapExpr")
+            .fieldValue(JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()))
+            .build();
+
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
     ServiceTask setAssigneesVariable =
-        getSetAssigneesVariableServiceTask(subProcessId, assigneesExpr, assigneesVarNameExpr);
+        getSetAssigneesVariableServiceTask(
+            subProcessId, assigneesExpr, assigneesVarNameExpr, inputNamespaceMapExpr);
 
-    UserTask userTask = getUserTask(subProcessId, assigneesVarNameExpr);
+    UserTask userTask = getUserTask(subProcessId, assigneesVarNameExpr, inputNamespaceMapExpr);
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
@@ -90,43 +99,57 @@ public class UserApprovalTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(userTask.getId(), endEvent.getId()));
     subProcess.addFlowElement(new SequenceFlow(terminationEvent.getId(), terminatedEvent.getId()));
 
-    attachWorkflowInstanceStageListeners(subProcess);
+    if (config.getStoreStageStatus()) {
+      attachWorkflowInstanceStageListeners(subProcess);
+    }
 
+    this.runtimeExceptionBoundaryEvent =
+        getRuntimeExceptionBoundaryEvent(subProcess, config.getStoreStageStatus());
     this.subProcess = subProcess;
   }
 
-  private ServiceTask getSetAssigneesVariableServiceTask(
-      String subProcessId, FieldExtension assigneesExpr, FieldExtension assigneesVarNameExpr) {
-    ServiceTask serviceTask =
-        new ServiceTaskBuilder()
-            .id(getFlowableElementId(subProcessId, "setAssigneesVariable"))
-            .implementation(SetApprovalAssigneesImpl.class.getName())
-            .build();
-    serviceTask.getFieldExtensions().add(assigneesExpr);
-    serviceTask.getFieldExtensions().add(assigneesVarNameExpr);
-    return serviceTask;
+  @Override
+  public BoundaryEvent getRuntimeExceptionBoundaryEvent() {
+    return runtimeExceptionBoundaryEvent;
   }
 
-  private UserTask getUserTask(String subProcessId, FieldExtension assigneesVarNameExpr) {
+  private ServiceTask getSetAssigneesVariableServiceTask(
+      String subProcessId,
+      FieldExtension assigneesExpr,
+      FieldExtension assigneesVarNameExpr,
+      FieldExtension inputNamespaceMapExpr) {
+    return new ServiceTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "setAssigneesVariable"))
+        .implementation(SetApprovalAssigneesImpl.class.getName())
+        .addFieldExtension(assigneesExpr)
+        .addFieldExtension(assigneesVarNameExpr)
+        .addFieldExtension(inputNamespaceMapExpr)
+        .build();
+  }
+
+  private UserTask getUserTask(
+      String subProcessId,
+      FieldExtension assigneesVarNameExpr,
+      FieldExtension inputNamespaceMapExpr) {
     FlowableListener setCandidateUsersListener =
         new FlowableListenerBuilder()
             .event("create")
             .implementation(SetCandidateUsersImpl.class.getName())
+            .addFieldExtension(assigneesVarNameExpr)
             .build();
-    setCandidateUsersListener.getFieldExtensions().add(assigneesVarNameExpr);
 
     FlowableListener createOpenMetadataTaskListener =
         new FlowableListenerBuilder()
             .event("create")
             .implementation(CreateApprovalTaskImpl.class.getName())
+            .addFieldExtension(inputNamespaceMapExpr)
             .build();
 
-    UserTask userTask =
-        new UserTaskBuilder().id(getFlowableElementId(subProcessId, "approvalTask")).build();
-    userTask.getTaskListeners().add(setCandidateUsersListener);
-    userTask.getTaskListeners().add(createOpenMetadataTaskListener);
-
-    return userTask;
+    return new UserTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "approvalTask"))
+        .addListener(setCandidateUsersListener)
+        .addListener(createOpenMetadataTaskListener)
+        .build();
   }
 
   private BoundaryEvent getTerminationEvent() {
@@ -146,6 +169,7 @@ public class UserApprovalTask implements NodeInterface {
 
   public void addToWorkflow(BpmnModel model, Process process) {
     process.addFlowElement(subProcess);
+    process.addFlowElement(runtimeExceptionBoundaryEvent);
     for (Message message : messages) {
       model.addMessage(message);
     }

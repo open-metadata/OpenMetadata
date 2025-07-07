@@ -25,12 +25,12 @@ import static org.openmetadata.service.security.policyevaluator.OperationContext
 import static org.openmetadata.service.util.EntityUtil.getRuleField;
 import static org.openmetadata.service.util.EntityUtil.ruleMatch;
 
+import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -38,6 +38,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.policies.PolicyResource;
@@ -96,7 +97,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public PolicyUpdater getUpdater(Policy original, Policy updated, Operation operation) {
+  public EntityRepository<Policy>.EntityUpdater getUpdater(
+      Policy original, Policy updated, Operation operation, ChangeSource changeSource) {
     return new PolicyUpdater(original, updated, operation);
   }
 
@@ -165,7 +167,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
       updateRules(original.getRules(), updated.getRules());
     }

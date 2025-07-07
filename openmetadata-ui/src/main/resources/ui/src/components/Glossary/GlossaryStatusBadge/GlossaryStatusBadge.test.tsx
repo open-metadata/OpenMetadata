@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { Status } from '../../../generated/entity/data/glossaryTerm';
 import { GlossaryStatusBadge } from './GlossaryStatusBadge.component';
 
@@ -27,7 +26,7 @@ describe('GlossaryStatusBadge', () => {
     render(<GlossaryStatusBadge status={Status.Draft} />);
     const statusElement = screen.getByText('Draft');
 
-    expect(statusElement).toHaveClass('warning');
+    expect(statusElement).toHaveClass('pending');
   });
 
   it('renders the correct class based on rejected status', () => {
@@ -41,6 +40,6 @@ describe('GlossaryStatusBadge', () => {
     render(<GlossaryStatusBadge status={Status.Deprecated} />);
     const statusElement = screen.getByText('Deprecated');
 
-    expect(statusElement).toHaveClass('warning');
+    expect(statusElement).toHaveClass('deprecated');
   });
 });

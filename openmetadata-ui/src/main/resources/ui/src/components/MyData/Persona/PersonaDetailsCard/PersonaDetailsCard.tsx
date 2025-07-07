@@ -11,25 +11,25 @@
  *  limitations under the License.
  */
 import { Card, Space, Typography } from 'antd';
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 
 interface PersonaDetailsCardProps {
   persona: Persona;
 }
 
 export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const handleCardClick = useCallback(() => {
     if (persona.fullyQualifiedName) {
-      history.push(getPersonaDetailsPath(persona.fullyQualifiedName));
+      navigate(getPersonaDetailsPath(persona.fullyQualifiedName));
     }
   }, [persona]);
 
@@ -43,7 +43,7 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
         <Card.Meta
           description={
             persona.description ? (
-              <RichTextEditorPreviewer
+              <RichTextEditorPreviewerV1
                 className="text-grey-muted max-two-lines"
                 markdown={persona.description ?? ''}
               />

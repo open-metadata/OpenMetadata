@@ -12,7 +12,6 @@
  */
 
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { DefaultOptionType } from 'antd/lib/select';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -91,7 +90,7 @@ export interface ExploreProps {
   sortOrder: string;
   onChangeSortOder: (sortOder: SORT_ORDER) => void;
 
-  showDeleted: boolean;
+  showDeleted?: boolean;
   onChangeShowDeleted: (showDeleted: boolean) => void;
 
   onChangePage?: (page: number, size?: number) => void;
@@ -106,22 +105,6 @@ export interface ExploreQuickFilterField {
   key: string;
   label: string;
   value: SearchDropdownOption[] | undefined;
-}
-
-export interface ExploreQuickFilterProps {
-  index: SearchIndex;
-  field: ExploreQuickFilterField;
-  onFieldRemove: (value: string) => void;
-  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
-}
-
-export interface SearchInputProps {
-  options: DefaultOptionType[];
-  value: string | undefined;
-  handleChange: (value: string) => void;
-  handleSearch: (value: string) => void;
-  handleSelect: (value: string) => void;
-  handleClear: () => void;
 }
 
 // Type for all the explore tab entities

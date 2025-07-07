@@ -21,11 +21,12 @@ export interface IngestionPipelineLogByIdInterface {
   data_insight_task?: string;
   dbt_task?: string;
   elasticsearch_reindex_task?: string;
+  auto_classification_task?: string;
   total?: string;
   after?: string;
 }
 
-export interface LogViewerParams {
+export type LogViewerParams = {
   logEntityType: string;
   fqn: string;
-}
+};

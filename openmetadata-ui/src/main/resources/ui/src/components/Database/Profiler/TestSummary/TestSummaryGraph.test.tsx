@@ -18,7 +18,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import TestSummaryGraph from './TestSummaryGraph';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
@@ -56,11 +55,6 @@ const mockProps: TestSummaryGraphProps = {
     },
   ] as TestSummaryGraphProps['testCaseResults'],
   selectedTimeRange: 'Last 30 days',
-};
-
-const mockHistory = {
-  push: jest.fn(),
-  goBack: jest.fn(),
 };
 
 jest.mock('recharts', () => ({
@@ -110,13 +104,6 @@ jest.mock('recharts', () => ({
   XAxis: jest.fn().mockImplementation(() => <div>XAxis</div>),
   YAxis: jest.fn().mockImplementation(() => <div>YAxis</div>),
 }));
-
-jest.mock('react-router-dom', () => {
-  return {
-    ...jest.requireActual('react-router-dom'),
-    useHistory: jest.fn().mockImplementation(() => mockHistory),
-  };
-});
 
 jest.mock('../../../common/DatePickerMenu/DatePickerMenu.component', () => {
   return jest

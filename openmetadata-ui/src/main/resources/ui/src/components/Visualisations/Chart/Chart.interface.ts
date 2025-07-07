@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { ColumnProfile } from '../../../generated/entity/data/table';
 import { MetricChartType } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 
@@ -18,6 +19,7 @@ export interface CustomBarChartProps {
   chartCollection: MetricChartType;
   name: string;
   tickFormatter?: string;
+  noDataPlaceholderText?: ReactNode;
 }
 
 export interface DataDistributionHistogramProps {
@@ -25,6 +27,7 @@ export interface DataDistributionHistogramProps {
     firstDayData?: ColumnProfile;
     currentDayData?: ColumnProfile;
   };
+  noDataPlaceholderText?: ReactNode;
 }
 
 export type CustomPieChartData = {

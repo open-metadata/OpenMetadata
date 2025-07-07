@@ -32,10 +32,12 @@ export interface ModifiedDestination extends Destination {
 export interface ModifiedEventSubscription extends EventSubscription {
   destinations: ModifiedDestination[];
   timeout: number;
+  readTimeout: number;
 }
 
 export interface ModifiedCreateEventSubscription
   extends CreateEventSubscription {
   destinations: ModifiedDestination[];
   timeout: number;
+  readTimeout: number;
 }

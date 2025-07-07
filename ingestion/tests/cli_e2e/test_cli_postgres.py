@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -102,11 +102,14 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 2
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return len(self.insert_data_queries)
 
     def view_column_lineage_count(self) -> int:
-        return None
+        return 22
+
+    def expected_lineage_node(self) -> str:
+        return "local_postgres.E2EDB.public.view_all_datatypes"
 
     @staticmethod
     def fqn_created_table() -> str:

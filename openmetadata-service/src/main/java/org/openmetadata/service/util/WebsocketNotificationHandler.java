@@ -16,6 +16,9 @@ package org.openmetadata.service.util;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -23,10 +26,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -35,7 +36,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -64,8 +68,10 @@ public class WebsocketNotificationHandler {
     CSVExportMessage message = new CSVExportMessage(jobId, "COMPLETED", csvData, null);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    WebSocketManager.getInstance()
-        .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+    }
   }
 
   public static void bulkAssetsOperationCompleteNotification(
@@ -74,8 +80,10 @@ public class WebsocketNotificationHandler {
         new BulkAssetsOperationMessage(jobId, "COMPLETED", result, null);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    WebSocketManager.getInstance()
-        .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+    }
   }
 
   public static void bulkAssetsOperationFailedNotification(
@@ -83,8 +91,10 @@ public class WebsocketNotificationHandler {
     CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    WebSocketManager.getInstance()
-        .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+    }
   }
 
   private void handleNotifications(ContainerResponseContext responseContext) {
@@ -185,13 +195,118 @@ public class WebsocketNotificationHandler {
     CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    WebSocketManager.getInstance()
-        .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+    }
   }
 
   private static UUID getUserIdFromSecurityContext(SecurityContext securityContext) {
-    String username = securityContext.getUserPrincipal().getName();
-    User user = Entity.getCollectionDAO().userDAO().findEntityByName(username);
-    return user.getId();
+    try {
+      String username = securityContext.getUserPrincipal().getName();
+      User user =
+          Entity.getCollectionDAO()
+              .userDAO()
+              .findEntityByName(FullyQualifiedName.quoteName(username));
+      return user.getId();
+    } catch (EntityNotFoundException e) {
+      LOG.error("User not found ", e);
+    }
+    return null;
+  }
+
+  public static void sendCsvImportCompleteNotification(
+      String jobId, SecurityContext securityContext, CsvImportResult result) {
+    CSVImportMessage message = new CSVImportMessage(jobId, "COMPLETED", result, null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendCsvImportFailedNotification(
+      String jobId, SecurityContext securityContext, String errorMessage) {
+    CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendDeleteOperationCompleteNotification(
+      String jobId, SecurityContext securityContext, EntityInterface entity) {
+    DeleteEntityMessage message =
+        new DeleteEntityMessage(jobId, "COMPLETED", entity.getName(), null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.info(
+        "[AsyncDelete] Delete operation completed successfully - jobId: {}, userId:{}, entity: {}, ",
+        jobId,
+        userId,
+        entity.getName());
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.DELETE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendDeleteOperationFailedNotification(
+      String jobId, SecurityContext securityContext, EntityInterface entity, String error) {
+    DeleteEntityMessage message = new DeleteEntityMessage(jobId, "FAILED", entity.getName(), error);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.error(
+        "[AsyncDelete] Delete operation failed - jobId: {}, userId:{} ,entity: {}, error: {}",
+        jobId,
+        userId,
+        entity.getName(),
+        error);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.DELETE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendMoveOperationCompleteNotification(
+      String jobId, SecurityContext securityContext, EntityInterface entity) {
+    MoveGlossaryTermMessage message =
+        new MoveGlossaryTermMessage(
+            jobId, "COMPLETED", entity.getName(), entity.getFullyQualifiedName(), null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.info(
+        "[AsyncMove] Move operation completed successfully - jobId: {}, userId:{}, entity: {}, ",
+        jobId,
+        userId,
+        entity.getName());
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.MOVE_GLOSSARY_TERM_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendMoveOperationFailedNotification(
+      String jobId, SecurityContext securityContext, EntityInterface entity, String error) {
+    MoveGlossaryTermMessage message =
+        new MoveGlossaryTermMessage(
+            jobId, "FAILED", entity.getName(), entity.getFullyQualifiedName(), error);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.error(
+        "[AsyncMove] Move operation failed - jobId: {}, userId:{} ,entity: {}, error: {}",
+        jobId,
+        userId,
+        entity.getName(),
+        error);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.MOVE_GLOSSARY_TERM_CHANNEL, jsonMessage);
+    }
   }
 }

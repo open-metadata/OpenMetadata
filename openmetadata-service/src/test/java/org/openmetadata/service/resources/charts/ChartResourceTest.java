@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.resources.charts;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -23,7 +23,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -48,12 +47,12 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChartType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResource.ChartList;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -71,7 +70,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     assertResponse(
         () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
   }
 
   @Test
@@ -164,12 +163,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     // Update description, chartType and chart url and verify patch
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(chart);
-    change = getChangeDescription(chart, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "description", "desc2");
-    fieldAdded(change, "chartType", type2);
-    fieldAdded(change, "sourceUrl", "url2");
+    change = getChangeDescription(chart, MINOR_UPDATE);
+    fieldUpdated(change, "description", "desc1", "desc2");
+    fieldUpdated(change, "chartType", type1, type2);
+    fieldUpdated(change, "sourceUrl", "url1", "url2");
     chart.withChartType(type2).withSourceUrl("url2").withDescription("desc2");
-    patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -277,13 +276,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     // Update description, chartType and chart url and verify patch
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(chart);
-    change = getChangeDescription(chart, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "description", "desc2");
-    fieldAdded(change, "chartType", type2);
-    fieldAdded(change, "sourceUrl", "url2");
+    change = getChangeDescription(chart, MINOR_UPDATE);
+    fieldUpdated(change, "description", "desc1", "desc2");
+    fieldUpdated(change, "chartType", type1, type2);
+    fieldUpdated(change, "sourceUrl", "url1", "url2");
     chart.withChartType(type2).withSourceUrl("url2").withDescription("desc2");
-    patchEntityUsingFqnAndCheck(
-        chart, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityUsingFqnAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test

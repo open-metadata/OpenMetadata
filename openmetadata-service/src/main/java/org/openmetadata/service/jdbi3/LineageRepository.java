@@ -13,7 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.collectionOrDefault;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.EntityCsv.getCsvDocumentation;
@@ -21,6 +24,14 @@ import static org.openmetadata.service.Entity.API_ENDPOINT;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_SERVICE;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.PIPELINE;
@@ -29,20 +40,25 @@ import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TOPIC;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
+import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.opencsv.CSVWriter;
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
+import java.util.function.Function;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -50,7 +66,13 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.RelationshipRef;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -66,19 +88,20 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.CSVExportException;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -106,8 +129,12 @@ public class LineageRepository {
   }
 
   @Transaction
-  public void addLineage(AddLineage addLineage) {
+  public void addLineage(AddLineage addLineage, String updatedBy) {
     // Validate from entity
+    LineageDetails lineageDetails =
+        addLineage.getEdge().getLineageDetails() != null
+            ? addLineage.getEdge().getLineageDetails()
+            : new LineageDetails();
     EntityReference from = addLineage.getEdge().getFromEntity();
     from = Entity.getEntityReferenceById(from.getType(), from.getId(), Include.NON_DELETED);
 
@@ -115,20 +142,31 @@ public class LineageRepository {
     EntityReference to = addLineage.getEdge().getToEntity();
     to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
 
-    if (addLineage.getEdge().getLineageDetails() != null
-        && addLineage.getEdge().getLineageDetails().getPipeline() != null) {
+    boolean relationAlreadyExists =
+        Boolean.FALSE.equals(
+            nullOrEmpty(
+                dao.relationshipDAO()
+                    .getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal())));
 
+    if (lineageDetails.getPipeline() != null) {
       // Validate pipeline entity
-      EntityReference pipeline = addLineage.getEdge().getLineageDetails().getPipeline();
+      EntityReference pipeline = lineageDetails.getPipeline();
       pipeline =
           Entity.getEntityReferenceById(pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
 
       // Add pipeline entity details to lineage details
-      addLineage.getEdge().getLineageDetails().withPipeline(pipeline);
+      lineageDetails.withPipeline(pipeline);
     }
 
+    // Update the lineage details with user and time
+    long currentTime = System.currentTimeMillis();
+    lineageDetails.setCreatedAt(currentTime);
+    lineageDetails.setCreatedBy(updatedBy);
+    lineageDetails.setUpdatedAt(System.currentTimeMillis());
+    lineageDetails.setUpdatedBy(updatedBy);
+
     // Validate lineage details
-    String detailsJson = validateLineageDetails(from, to, addLineage.getEdge().getLineageDetails());
+    String detailsJson = validateLineageDetails(from, to, lineageDetails);
 
     // Finally, add lineage relationship
     dao.relationshipDAO()
@@ -139,87 +177,275 @@ public class LineageRepository {
             to.getType(),
             Relationship.UPSTREAM.ordinal(),
             detailsJson);
-    addLineageToSearch(from, to, addLineage.getEdge().getLineageDetails());
+    addLineageToSearch(from, to, lineageDetails);
+
+    // build Extended Lineage
+    buildExtendedLineage(from, to, lineageDetails, relationAlreadyExists);
+  }
+
+  private void buildExtendedLineage(
+      EntityReference from,
+      EntityReference to,
+      LineageDetails lineageDetails,
+      boolean childRelationExists) {
+    boolean addService =
+        Entity.entityHasField(from.getType(), FIELD_SERVICE)
+            && Entity.entityHasField(to.getType(), FIELD_SERVICE);
+    boolean addDomain =
+        Entity.entityHasField(from.getType(), FIELD_DOMAIN)
+            && Entity.entityHasField(to.getType(), FIELD_DOMAIN);
+    boolean addDataProduct =
+        Entity.entityHasField(from.getType(), FIELD_DATA_PRODUCTS)
+            && Entity.entityHasField(to.getType(), FIELD_DATA_PRODUCTS);
+
+    String fields = getExtendedLineageFields(addService, addDomain, addDataProduct);
+    EntityInterface fromEntity =
+        Entity.getEntity(from.getType(), from.getId(), fields, Include.ALL);
+    EntityInterface toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
+
+    addServiceLineage(fromEntity, toEntity, lineageDetails, childRelationExists);
+    addDomainLineage(fromEntity, toEntity, lineageDetails, childRelationExists);
+    addDataProductsLineage(fromEntity, toEntity, lineageDetails, childRelationExists);
+  }
+
+  private void addServiceLineage(
+      EntityInterface fromEntity,
+      EntityInterface toEntity,
+      LineageDetails entityLineageDetails,
+      boolean childRelationExists) {
+    if (!shouldAddServiceLineage(fromEntity, toEntity)) {
+      return;
+    }
+    // Add Service Level Lineage
+    EntityReference fromService = fromEntity.getService();
+    EntityReference toService = toEntity.getService();
+    if (!fromService.getId().equals(toService.getId())) {
+      LineageDetails serviceLineageDetails =
+          getOrCreateLineageDetails(
+              fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists);
+      insertLineage(fromService, toService, serviceLineageDetails);
+    }
+  }
+
+  private void addDomainLineage(
+      EntityInterface fromEntity,
+      EntityInterface toEntity,
+      LineageDetails entityLineageDetails,
+      boolean childRelationExists) {
+
+    if (!shouldAddDomainsLineage(fromEntity, toEntity)) {
+      return;
+    }
+
+    EntityReference fromDomain = fromEntity.getDomain();
+    EntityReference toDomain = toEntity.getDomain();
+    if (Boolean.FALSE.equals(fromDomain.getId().equals(toDomain.getId()))) {
+      LineageDetails domainLineageDetails =
+          getOrCreateLineageDetails(
+              fromDomain.getId(), toDomain.getId(), entityLineageDetails, childRelationExists);
+      insertLineage(fromDomain, toDomain, domainLineageDetails);
+    }
+  }
+
+  private void addDataProductsLineage(
+      EntityInterface fromEntity,
+      EntityInterface toEntity,
+      LineageDetails entityLineageDetails,
+      boolean childRelationExists) {
+
+    if (!shouldAddDataProductLineage(fromEntity, toEntity)) {
+      return;
+    }
+
+    for (EntityReference fromEntityRef : fromEntity.getDataProducts()) {
+      for (EntityReference toEntityRef : toEntity.getDataProducts()) {
+        if (!fromEntityRef.getId().equals(toEntityRef.getId())) {
+          LineageDetails dataProductsLineageDetails =
+              getOrCreateLineageDetails(
+                  fromEntityRef.getId(),
+                  toEntityRef.getId(),
+                  entityLineageDetails,
+                  childRelationExists);
+
+          insertLineage(fromEntityRef, toEntityRef, dataProductsLineageDetails);
+        }
+      }
+    }
+  }
+
+  private boolean shouldAddDataProductLineage(
+      EntityInterface fromEntity, EntityInterface toEntity) {
+    return Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_DATA_PRODUCTS)
+        && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_DATA_PRODUCTS)
+        && !nullOrEmpty(fromEntity.getDataProducts())
+        && !nullOrEmpty(toEntity.getDataProducts());
+  }
+
+  private boolean shouldAddDomainsLineage(EntityInterface fromEntity, EntityInterface toEntity) {
+    return Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_DOMAIN)
+        && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_DOMAIN)
+        && fromEntity.getDomain() != null
+        && toEntity.getDomain() != null;
+  }
+
+  private boolean shouldAddServiceLineage(EntityInterface fromEntity, EntityInterface toEntity) {
+    return Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_SERVICE)
+        && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_SERVICE)
+        && fromEntity.getService() != null
+        && toEntity.getService() != null;
+  }
+
+  private LineageDetails getOrCreateLineageDetails(
+      UUID fromId, UUID toId, LineageDetails entityLineageDetails, boolean childRelationExists) {
+
+    CollectionDAO.EntityRelationshipObject existingRelation =
+        dao.relationshipDAO().getRecord(fromId, toId, Relationship.UPSTREAM.ordinal());
+
+    if (existingRelation != null) {
+      LineageDetails lineageDetails =
+          JsonUtils.readValue(existingRelation.getJson(), LineageDetails.class)
+              .withPipeline(entityLineageDetails.getPipeline());
+      if (!childRelationExists) {
+        lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() + 1);
+      }
+      return lineageDetails;
+    }
+
+    return new LineageDetails()
+        .withCreatedAt(entityLineageDetails.getCreatedAt())
+        .withCreatedBy(entityLineageDetails.getCreatedBy())
+        .withUpdatedAt(entityLineageDetails.getUpdatedAt())
+        .withUpdatedBy(entityLineageDetails.getUpdatedBy())
+        .withSource(LineageDetails.Source.CHILD_ASSETS)
+        .withPipeline(entityLineageDetails.getPipeline())
+        .withAssetEdges(1);
+  }
+
+  private void insertLineage(
+      EntityReference from, EntityReference to, LineageDetails lineageDetails) {
+    dao.relationshipDAO()
+        .insert(
+            from.getId(),
+            to.getId(),
+            from.getType(),
+            to.getType(),
+            Relationship.UPSTREAM.ordinal(),
+            JsonUtils.pojoToJson(lineageDetails));
+    addLineageToSearch(from, to, lineageDetails);
+  }
+
+  private String getExtendedLineageFields(boolean service, boolean domain, boolean dataProducts) {
+    StringBuilder fieldsBuilder = new StringBuilder();
+
+    if (service) {
+      fieldsBuilder.append(FIELD_SERVICE);
+      fieldsBuilder.append(",");
+    }
+    if (domain) {
+      fieldsBuilder.append(FIELD_DOMAIN);
+      fieldsBuilder.append(",");
+    }
+    if (dataProducts) {
+      fieldsBuilder.append(FIELD_DATA_PRODUCTS);
+    }
+    return fieldsBuilder.toString();
   }
 
   private void addLineageToSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    IndexMapping sourceIndexMapping =
-        Entity.getSearchRepository().getIndexMapping(fromEntity.getType());
-    String sourceIndexName =
-        sourceIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
     IndexMapping destinationIndexMapping =
         Entity.getSearchRepository().getIndexMapping(toEntity.getType());
     String destinationIndexName =
         destinationIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
-    Map<String, Object> relationshipDetails =
-        buildRelationshipDetailsMap(fromEntity, toEntity, lineageDetails);
-    Pair<String, String> from = new ImmutablePair<>("_id", fromEntity.getId().toString());
+    // For lineage from -> to (not stored) since the doc itself is the toEntity
+    EsLineageData lineageData =
+        buildEntityLineageData(fromEntity, toEntity, lineageDetails).withToEntity(null);
     Pair<String, String> to = new ImmutablePair<>("_id", toEntity.getId().toString());
-    searchClient.updateLineage(sourceIndexName, from, relationshipDetails);
-    searchClient.updateLineage(destinationIndexName, to, relationshipDetails);
+    searchClient.updateLineage(destinationIndexName, to, lineageData);
   }
 
-  public static Map<String, Object> buildEntityRefMap(EntityReference entityRef) {
-    Map<String, Object> details = new HashMap<>();
-    details.put("id", entityRef.getId().toString());
-    details.put("type", entityRef.getType());
-    details.put("fqn", entityRef.getFullyQualifiedName());
-    details.put("fqnHash", FullyQualifiedName.buildHash(entityRef.getFullyQualifiedName()));
-    return details;
+  public static RelationshipRef buildEntityRefLineage(EntityReference entityRef) {
+    return new RelationshipRef()
+        .withId(entityRef.getId())
+        .withType(entityRef.getType())
+        .withFullyQualifiedName(entityRef.getFullyQualifiedName())
+        .withFqnHash(FullyQualifiedName.buildHash(entityRef.getFullyQualifiedName()));
   }
 
-  public static Map<String, Object> buildRelationshipDetailsMap(
+  public static EsLineageData buildEntityLineageData(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    Map<String, Object> relationshipDetails = new HashMap<>();
-    relationshipDetails.put(
-        "doc_id", fromEntity.getId().toString() + "-" + toEntity.getId().toString());
-    relationshipDetails.put("fromEntity", buildEntityRefMap(fromEntity));
-    relationshipDetails.put("toEntity", buildEntityRefMap(toEntity));
+    EsLineageData lineageData =
+        new EsLineageData()
+            .withDocId(getDocumentIdWithFqn(fromEntity, toEntity, lineageDetails))
+            .withDocUniqueId(getDocumentUniqueId(fromEntity, toEntity))
+            .withFromEntity(buildEntityRefLineage(fromEntity));
     if (lineageDetails != null) {
       // Add Pipeline Details
-      addPipelineDetails(relationshipDetails, lineageDetails.getPipeline());
-      relationshipDetails.put(
-          "description",
-          CommonUtil.nullOrEmpty(lineageDetails.getDescription())
-              ? null
-              : lineageDetails.getDescription());
-      if (!CommonUtil.nullOrEmpty(lineageDetails.getColumnsLineage())) {
-        List<Map<String, Object>> colummnLineageList = new ArrayList<>();
-        for (ColumnLineage columnLineage : lineageDetails.getColumnsLineage()) {
-          colummnLineageList.add(JsonUtils.getMap(columnLineage));
-        }
-        relationshipDetails.put("columns", colummnLineageList);
-      }
-      relationshipDetails.put(
-          "sqlQuery",
-          CommonUtil.nullOrEmpty(lineageDetails.getSqlQuery())
-              ? null
-              : lineageDetails.getSqlQuery());
-      relationshipDetails.put(
-          "source",
-          CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null : lineageDetails.getSource());
+      addPipelineDetails(lineageData, lineageDetails.getPipeline());
+      lineageData.setDescription(nullOrDefault(lineageDetails.getDescription(), null));
+      lineageData.setColumns(collectionOrDefault(lineageDetails.getColumnsLineage(), null));
+      lineageData.setSqlQuery(nullOrDefault(lineageDetails.getSqlQuery(), null));
+      lineageData.setSource(nullOrDefault(lineageDetails.getSource().value(), null));
+      lineageData.setCreatedAt(nullOrDefault(lineageDetails.getCreatedAt(), null));
+      lineageData.setCreatedBy(nullOrDefault(lineageDetails.getCreatedBy(), null));
+      lineageData.setUpdatedAt(nullOrDefault(lineageDetails.getUpdatedAt(), null));
+      lineageData.setUpdatedBy(nullOrDefault(lineageDetails.getUpdatedBy(), null));
+      lineageData.setAssetEdges(nullOrDefault(lineageDetails.getAssetEdges(), null));
     }
-    return relationshipDetails;
+    return lineageData;
   }
 
-  public static void addPipelineDetails(
-      Map<String, Object> relationshipDetails, EntityReference pipelineRef) {
-    if (CommonUtil.nullOrEmpty(pipelineRef)) {
-      relationshipDetails.put(PIPELINE, JsonUtils.getMap(null));
+  private static String getDocumentIdWithFqn(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    if (lineageDetails != null && !nullOrEmpty(lineageDetails.getPipeline())) {
+      EntityReference ref = lineageDetails.getPipeline();
+      return String.format(
+          "%s--->%s:%s--->%s",
+          fromEntity.getFullyQualifiedName(),
+          ref.getType(),
+          ref.getId(),
+          toEntity.getFullyQualifiedName());
     } else {
-      Map<String, Object> pipelineMap;
-      if (pipelineRef.getType().equals(PIPELINE)) {
-        pipelineMap =
-            JsonUtils.getMap(
-                Entity.getEntity(pipelineRef, "pipelineStatus,tags,owners", Include.ALL));
-      } else {
-        pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owners", Include.ALL));
-      }
-      pipelineMap.remove("changeDescription");
-      relationshipDetails.put("pipelineEntityType", pipelineRef.getType());
-      relationshipDetails.put(PIPELINE, pipelineMap);
+      return String.format(
+          "%s--->%s", fromEntity.getFullyQualifiedName(), toEntity.getFullyQualifiedName());
     }
+  }
+
+  public static String getDocumentUniqueId(EntityReference fromEntity, EntityReference toEntity) {
+    return String.format("%s--->%s", fromEntity.getId().toString(), toEntity.getId().toString());
+  }
+
+  public static void addPipelineDetails(EsLineageData lineageData, EntityReference pipelineRef) {
+    if (nullOrEmpty(pipelineRef)) {
+      lineageData.setPipeline(null);
+    } else {
+      Pair<String, Map<String, Object>> pipelineOrStoredProcedure =
+          getPipelineOrStoredProcedure(
+              pipelineRef, List.of("changeDescription", "incrementalChangeDescription"));
+      lineageData.setPipelineEntityType(pipelineOrStoredProcedure.getLeft());
+      lineageData.setPipeline(pipelineOrStoredProcedure.getRight());
+    }
+  }
+
+  public static Pair<String, Map<String, Object>> getPipelineOrStoredProcedure(
+      EntityReference pipelineRef, List<String> fieldsToRemove) {
+    Map<String, Object> pipelineMap;
+    if (pipelineRef.getType().equals(PIPELINE)) {
+      pipelineMap =
+          JsonUtils.getMap(
+              Entity.getEntity(pipelineRef, "pipelineStatus,tags,owners", Include.ALL));
+    } else {
+      pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owners", Include.ALL));
+    }
+
+    // Remove fields
+    fieldsToRemove.forEach(pipelineMap::remove);
+
+    // Add fqnHash
+    pipelineMap.put(
+        "fqnHash",
+        FullyQualifiedName.buildHash((String) pipelineMap.get(Entity.FIELD_FULLY_QUALIFIED_NAME)));
+    return Pair.of(pipelineRef.getType(), pipelineMap);
   }
 
   private String validateLineageDetails(
@@ -228,12 +454,22 @@ public class LineageRepository {
       return null;
     }
     List<ColumnLineage> columnsLineage = details.getColumnsLineage();
+    Set<String> fromColumns = getChildrenNames(from);
+    Set<String> toColumns = getChildrenNames(to);
+
     if (columnsLineage != null && !columnsLineage.isEmpty()) {
       for (ColumnLineage columnLineage : columnsLineage) {
         for (String fromColumn : columnLineage.getFromColumns()) {
-          validateChildren(fromColumn, from);
+          if (!fromColumns.contains(fromColumn.replace(from.getFullyQualifiedName() + ".", ""))) {
+            throw new IllegalArgumentException(
+                CatalogExceptionMessage.invalidFieldName("column", fromColumn));
+          }
         }
-        validateChildren(columnLineage.getToColumn(), to);
+        if (!toColumns.contains(
+            columnLineage.getToColumn().replace(to.getFullyQualifiedName() + ".", ""))) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.invalidFieldName("column", columnLineage.getToColumn()));
+        }
       }
     }
     return JsonUtils.pojoToJson(details);
@@ -247,15 +483,16 @@ public class LineageRepository {
       boolean deleted,
       String entityType)
       throws IOException {
-    CsvDocumentation documentation = getCsvDocumentation("lineage");
+    CsvDocumentation documentation = getCsvDocumentation("lineage", false);
     List<CsvHeader> headers = documentation.getHeaders();
-    Map<String, Object> lineageMap =
+    SearchLineageResult result =
         Entity.getSearchRepository()
             .searchLineageForExport(
                 fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
     CsvFile csvFile = new CsvFile().withHeaders(headers);
 
-    addRecords(csvFile, lineageMap);
+    addRecords(csvFile, result.getUpstreamEdges().values().stream().toList());
+    addRecords(csvFile, result.getDownstreamEdges().values().stream().toList());
     return CsvUtil.formatCsv(csvFile);
   }
 
@@ -278,17 +515,26 @@ public class LineageRepository {
       String entityType,
       boolean deleted) {
     try {
-      Response response =
+      SearchLineageResult response =
           Entity.getSearchRepository()
-              .searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
-      String jsonResponse = JsonUtils.pojoToJson(response.getEntity());
+              .searchLineage(
+                  new SearchLineageRequest()
+                      .withFqn(fqn)
+                      .withUpstreamDepth(upstreamDepth)
+                      .withDownstreamDepth(downstreamDepth)
+                      .withQueryFilter(queryFilter)
+                      .withIncludeDeleted(deleted)
+                      .withIsConnectedVia(isConnectedVia(entityType))
+                      .withDirection(LineageDirection.UPSTREAM));
+      String jsonResponse = JsonUtils.pojoToJson(response);
       JsonNode rootNode = JsonUtils.readTree(jsonResponse);
 
       Map<String, JsonNode> entityMap = new HashMap<>();
       JsonNode nodes = rootNode.path("nodes");
       for (JsonNode node : nodes) {
-        String id = node.path("id").asText();
-        entityMap.put(id, node);
+        JsonNode entityNode = node.path("entity");
+        String id = entityNode.path("id").asText();
+        entityMap.put(id, entityNode);
       }
 
       StringWriter csvContent = new StringWriter();
@@ -307,6 +553,7 @@ public class LineageRepository {
         "fromChildEntityFQN",
         "toChildEntityFQN",
         "pipelineName",
+        "pipelineDisplayName",
         "pipelineType",
         "pipelineDescription",
         "pipelineOwners",
@@ -316,79 +563,102 @@ public class LineageRepository {
       };
       csvWriter.writeNext(headers);
 
-      JsonNode edges = rootNode.path("edges");
-      for (JsonNode edge : edges) {
-        String fromEntityId = edge.path("fromEntity").path("id").asText();
-        String toEntityId = edge.path("toEntity").path("id").asText();
-
-        JsonNode fromEntity = entityMap.getOrDefault(fromEntityId, null);
-        JsonNode toEntity = entityMap.getOrDefault(toEntityId, null);
-
-        Map<String, String> baseRow = new HashMap<>();
-        baseRow.put("fromEntityFQN", getText(fromEntity, "fullyQualifiedName"));
-        baseRow.put("fromServiceName", getText(fromEntity.path("service"), "name"));
-        baseRow.put("fromServiceType", getText(fromEntity, "serviceType"));
-        baseRow.put("fromOwners", getOwners(fromEntity.path("owners")));
-        baseRow.put("fromDomain", getDomainFQN(fromEntity.path("domain")));
-
-        baseRow.put("toEntityFQN", getText(toEntity, "fullyQualifiedName"));
-        baseRow.put("toServiceName", getText(toEntity.path("service"), "name"));
-        baseRow.put("toServiceType", getText(toEntity, "serviceType"));
-        baseRow.put("toOwners", getOwners(toEntity.path("owners")));
-        baseRow.put("toDomain", getDomainFQN(toEntity.path("domain")));
-
-        JsonNode columns = edge.path("columns");
-        if (columns.isArray() && !columns.isEmpty()) {
-          List<ColumnMapping> explicitColumnMappings = extractColumnMappingsFromEdge(columns);
-          for (ColumnMapping mapping : explicitColumnMappings) {
-            writeCsvRow(
-                csvWriter,
-                baseRow,
-                mapping.getFromChildFQN(),
-                mapping.getToChildFQN(),
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "");
-            LOG.debug(
-                "Exported explicit ColumnMapping: from='{}', to='{}'",
-                mapping.getFromChildFQN(),
-                mapping.getToChildFQN());
-          }
-        }
-
-        JsonNode pipeline = edge.path("pipeline");
-        if (!pipeline.isMissingNode() && !pipeline.isNull()) {
-          String pipelineName = getText(pipeline, "name");
-          String pipelineType = getText(pipeline, "serviceType");
-          String pipelineDescription = getText(pipeline, "description");
-          String pipelineOwners = getOwners(pipeline.path("owners"));
-          String pipelineServiceName = getText(pipeline.path("service"), "name");
-          String pipelineServiceType = getText(pipeline, "serviceType");
-          String pipelineDomain = getDomainFQN(pipeline.path("domain"));
-          writeCsvRow(
-              csvWriter,
-              baseRow,
-              "",
-              "",
-              pipelineName,
-              pipelineType,
-              pipelineDescription,
-              pipelineOwners,
-              pipelineDomain,
-              pipelineServiceName,
-              pipelineServiceType);
-          LOG.debug("Exported Pipeline Information: {}", pipelineName);
-        }
-      }
+      JsonNode upstreamEdges = rootNode.path("upstreamEdges");
+      writeEdge(csvWriter, entityMap, upstreamEdges);
+      JsonNode downstreamEdges = rootNode.path("downstreamEdges");
+      writeEdge(csvWriter, entityMap, downstreamEdges);
       csvWriter.close();
       return csvContent.toString();
     } catch (IOException e) {
       throw CSVExportException.byMessage("Failed to export lineage data to CSV", e.getMessage());
     }
+  }
+
+  private void writeEdge(CSVWriter csvWriter, Map<String, JsonNode> entityMap, JsonNode edges) {
+    for (JsonNode edge : edges) {
+      String fromEntityId = edge.path("fromEntity").path("id").asText();
+      String toEntityId = edge.path("toEntity").path("id").asText();
+
+      JsonNode fromEntity = entityMap.getOrDefault(fromEntityId, null);
+      JsonNode toEntity = entityMap.getOrDefault(toEntityId, null);
+
+      if (fromEntity == null || toEntity == null) {
+        LOG.error(
+            "Entity not found for IDs: fromEntityId={}, toEntityId={}", fromEntityId, toEntityId);
+        return;
+      }
+
+      Map<String, String> baseRow = new HashMap<>();
+      baseRow.put("fromEntityFQN", getText(fromEntity, FIELD_FULLY_QUALIFIED_NAME));
+      baseRow.put("fromServiceName", getText(fromEntity.path(FIELD_SERVICE), FIELD_NAME));
+      baseRow.put("fromServiceType", getText(fromEntity, "serviceType"));
+      baseRow.put("fromOwners", getOwners(fromEntity.path(FIELD_OWNERS)));
+      baseRow.put("fromDomain", getDomainFQN(fromEntity.path(FIELD_DOMAIN)));
+
+      baseRow.put("toEntityFQN", getText(toEntity, FIELD_FULLY_QUALIFIED_NAME));
+      baseRow.put("toServiceName", getText(toEntity.path(FIELD_SERVICE), FIELD_NAME));
+      baseRow.put("toServiceType", getText(toEntity, "serviceType"));
+      baseRow.put("toOwners", getOwners(toEntity.path(FIELD_OWNERS)));
+      baseRow.put("toDomain", getDomainFQN(toEntity.path(FIELD_DOMAIN)));
+
+      JsonNode columns = edge.path("columns");
+      JsonNode pipeline = edge.path("pipeline");
+
+      if (columns.isArray() && !columns.isEmpty()) {
+        // Process column mappings
+        List<ColumnMapping> columnMappings = extractColumnMappingsFromEdge(columns);
+        for (ColumnMapping mapping : columnMappings) {
+          writeCsvRow(
+              csvWriter,
+              baseRow,
+              mapping.getFromChildFQN(),
+              mapping.getToChildFQN(),
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "");
+          LOG.debug(
+              "Exported ColumnMapping: from='{}', to='{}'",
+              mapping.getFromChildFQN(),
+              mapping.getToChildFQN());
+        }
+      } else if (!pipeline.isMissingNode() && !pipeline.isNull()) {
+        writePipelineRow(csvWriter, baseRow, pipeline);
+      } else {
+        writeCsvRow(csvWriter, baseRow, "", "", "", "", "", "", "", "", "", "");
+      }
+    }
+  }
+
+  private void writePipelineRow(
+      CSVWriter csvWriter, Map<String, String> baseRow, JsonNode pipeline) {
+    String pipelineName = getText(pipeline, FIELD_NAME);
+    String pipelineDisplayName = getText(pipeline, FIELD_DISPLAY_NAME);
+    String pipelineType = getText(pipeline, "serviceType");
+    String pipelineDescription = getText(pipeline, FIELD_DESCRIPTION);
+    String pipelineOwners = getOwners(pipeline.path(FIELD_OWNERS));
+    String pipelineServiceName = getText(pipeline.path(FIELD_SERVICE), FIELD_NAME);
+    String pipelineServiceType = getText(pipeline, "serviceType");
+    String pipelineDomain = getDomainFQN(pipeline.path(FIELD_DOMAIN));
+
+    writeCsvRow(
+        csvWriter,
+        baseRow,
+        "",
+        "",
+        pipelineName,
+        pipelineDisplayName,
+        pipelineType,
+        pipelineDescription,
+        pipelineOwners,
+        pipelineDomain,
+        pipelineServiceName,
+        pipelineServiceType);
+    LOG.debug("Exported Pipeline Information: {}", pipelineName);
   }
 
   private static void writeCsvRow(
@@ -397,6 +667,7 @@ public class LineageRepository {
       String fromChildFQN,
       String toChildFQN,
       String pipelineName,
+      String pipelineDisplayName,
       String pipelineType,
       String pipelineDescription,
       String pipelineOwners,
@@ -417,6 +688,7 @@ public class LineageRepository {
       fromChildFQN,
       toChildFQN,
       pipelineName,
+      pipelineDisplayName,
       pipelineType,
       pipelineDescription,
       pipelineOwners,
@@ -477,119 +749,152 @@ public class LineageRepository {
     return mappings;
   }
 
-  private String getStringOrNull(HashMap map, String key) {
+  private String getStringOrNull(Map<String, Object> map, String key) {
     return nullOrEmpty(map.get(key)) ? "" : map.get(key).toString();
   }
 
-  private String getStringOrNull(HashMap map, String key, String nestedKey) {
+  private String getStringOrNull(Map<String, Object> map, String key, String nestedKey) {
     return nullOrEmpty(map.get(key))
         ? ""
-        : getStringOrNull((HashMap<String, Object>) map.get(key), nestedKey);
+        : getStringOrNull((Map<String, Object>) map.get(key), nestedKey);
   }
 
-  private String processColumnLineage(HashMap lineageMap) {
+  private String getStringOrNull(String value) {
+    return nullOrEmpty(value) ? "" : value;
+  }
 
-    if (lineageMap.get("columns") != null) {
-      StringBuilder str = new StringBuilder();
-      Collection collection = (Collection<ColumnLineage>) lineageMap.get("columns");
-      HashSet<HashMap> hashSet = new HashSet<HashMap>(collection);
-      for (HashMap colLineage : hashSet) {
-        for (String fromColumn : (List<String>) colLineage.get("fromColumns")) {
-          str.append(fromColumn);
-          str.append(":");
-          str.append(colLineage.get("toColumn"));
-          str.append(";");
-        }
-      }
-      // remove the last ;
-      return str.substring(0, str.toString().length() - 1);
+  private String processColumnLineage(List<ColumnLineage> columns) {
+    if (nullOrEmpty(columns)) {
+      return "";
     }
-    return "";
-  }
 
-  protected void addRecords(CsvFile csvFile, Map<String, Object> lineageMap) {
-    if (lineageMap.get("edges") != null && lineageMap.get("edges") instanceof Collection<?>) {
-      Collection collection = (Collection<HashMap>) lineageMap.get("edges");
-      HashSet<HashMap> edges = new HashSet<HashMap>(collection);
-      List<List<String>> finalRecordList = csvFile.getRecords();
-      for (HashMap edge : edges) {
-        List<String> recordList = new ArrayList<>();
-        addField(recordList, getStringOrNull(edge, "fromEntity", "id"));
-        addField(recordList, getStringOrNull(edge, "fromEntity", "type"));
-        addField(recordList, getStringOrNull(edge, "fromEntity", "fqn"));
-        addField(recordList, getStringOrNull(edge, "toEntity", "id"));
-        addField(recordList, getStringOrNull(edge, "toEntity", "type"));
-        addField(recordList, getStringOrNull(edge, "toEntity", "fqn"));
-        addField(recordList, getStringOrNull(edge, "description"));
-        addField(recordList, getStringOrNull(edge, "pipeline", "id"));
-        addField(recordList, getStringOrNull(edge, "pipeline", "fullyQualifiedName"));
-        addField(recordList, processColumnLineage(edge));
-        addField(recordList, getStringOrNull(edge, "sqlQuery"));
-        addField(recordList, getStringOrNull(edge, "source"));
-        finalRecordList.add(recordList);
+    StringBuilder str = new StringBuilder();
+    for (ColumnLineage colLineage : columns) {
+      for (String fromColumn : colLineage.getFromColumns()) {
+        str.append(fromColumn);
+        str.append(":");
+        str.append(colLineage.getToColumn());
+        str.append(";");
       }
-      csvFile.withRecords(finalRecordList);
     }
+    return str.substring(0, str.toString().length() - 1);
   }
 
-  private void validateChildren(String columnFQN, EntityReference entityReference) {
+  protected void addRecords(CsvFile csvFile, List<EsLineageData> edges) {
+    List<List<String>> finalRecordList = csvFile.getRecords();
+    for (EsLineageData data : edges) {
+      List<String> recordList = new ArrayList<>();
+      Map<String, Object> pipeline =
+          nullOrEmpty(data.getPipeline()) ? new HashMap<>() : JsonUtils.getMap(data.getPipeline());
+      addField(recordList, getStringOrNull(data.getFromEntity().getId().toString()));
+      addField(recordList, getStringOrNull(data.getFromEntity().getType()));
+      addField(recordList, getStringOrNull(data.getFromEntity().getFullyQualifiedName()));
+      addField(recordList, getStringOrNull(data.getToEntity().getId().toString()));
+      addField(recordList, getStringOrNull(data.getToEntity().getType()));
+      addField(recordList, getStringOrNull(data.getToEntity().getFullyQualifiedName()));
+      addField(recordList, getStringOrNull(data.getDescription()));
+      addField(recordList, getStringOrNull(pipeline, "pipeline", "id"));
+      addField(recordList, getStringOrNull(pipeline, "pipeline", "fullyQualifiedName"));
+      addField(recordList, getStringOrNull(pipeline, "pipeline", "displayName"));
+      addField(recordList, processColumnLineage(data.getColumns()));
+      addField(recordList, getStringOrNull(data.getSqlQuery()));
+      addField(recordList, getStringOrNull(data.getSource()));
+      finalRecordList.add(recordList);
+    }
+    csvFile.withRecords(finalRecordList);
+  }
+
+  private Set<String> getChildrenNames(EntityReference entityReference) {
     switch (entityReference.getType()) {
       case TABLE -> {
         Table table =
             Entity.getEntity(TABLE, entityReference.getId(), "columns", Include.NON_DELETED);
-        ColumnUtil.validateColumnFQN(table.getColumns(), columnFQN);
+        return CommonUtil.getChildrenNames(
+            table.getColumns(), "getChildren", table.getFullyQualifiedName());
       }
       case SEARCH_INDEX -> {
         SearchIndex searchIndex =
             Entity.getEntity(SEARCH_INDEX, entityReference.getId(), "fields", Include.NON_DELETED);
-        ColumnUtil.validateSearchIndexFieldFQN(searchIndex.getFields(), columnFQN);
+        return CommonUtil.getChildrenNames(
+            searchIndex.getFields(), "getChildren", searchIndex.getFullyQualifiedName());
       }
       case TOPIC -> {
         Topic topic =
             Entity.getEntity(TOPIC, entityReference.getId(), "messageSchema", Include.NON_DELETED);
-        ColumnUtil.validateFieldFQN(topic.getMessageSchema().getSchemaFields(), columnFQN);
+        if (topic.getMessageSchema() == null
+            || topic.getMessageSchema().getSchemaFields() == null) {
+          return new HashSet<>();
+        }
+        return CommonUtil.getChildrenNames(
+            topic.getMessageSchema().getSchemaFields(),
+            "getChildren",
+            topic.getFullyQualifiedName());
       }
       case CONTAINER -> {
         Container container =
             Entity.getEntity(CONTAINER, entityReference.getId(), "dataModel", Include.NON_DELETED);
-        ColumnUtil.validateColumnFQN(container.getDataModel().getColumns(), columnFQN);
+        if (container.getDataModel() == null || container.getDataModel().getColumns() == null) {
+          return new HashSet<>();
+        }
+        return CommonUtil.getChildrenNames(
+            container.getDataModel().getColumns(),
+            "getChildren",
+            container.getFullyQualifiedName());
       }
       case DASHBOARD_DATA_MODEL -> {
         DashboardDataModel dashboardDataModel =
             Entity.getEntity(
                 DASHBOARD_DATA_MODEL, entityReference.getId(), "columns", Include.NON_DELETED);
-        ColumnUtil.validateColumnFQN(dashboardDataModel.getColumns(), columnFQN);
+        return CommonUtil.getChildrenNames(
+            dashboardDataModel.getColumns(),
+            "getChildren",
+            dashboardDataModel.getFullyQualifiedName());
       }
       case DASHBOARD -> {
         Dashboard dashboard =
             Entity.getEntity(DASHBOARD, entityReference.getId(), "charts", Include.NON_DELETED);
-        dashboard.getCharts().stream()
-            .filter(c -> c.getFullyQualifiedName().equals(columnFQN))
-            .findAny()
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        CatalogExceptionMessage.invalidFieldName("chart", columnFQN)));
+        Set<String> result = new HashSet<>();
+        for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
+          result.add(
+              chart.getFullyQualifiedName().replace(dashboard.getFullyQualifiedName() + ".", ""));
+        }
+        return result;
       }
       case MLMODEL -> {
         MlModel mlModel =
             Entity.getEntity(MLMODEL, entityReference.getId(), "", Include.NON_DELETED);
-        mlModel.getMlFeatures().stream()
-            .filter(f -> f.getFullyQualifiedName().equals(columnFQN))
-            .findAny()
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        CatalogExceptionMessage.invalidFieldName("feature", columnFQN)));
+        Set<String> result = new HashSet<>();
+        for (MlFeature feature : listOrEmpty(mlModel.getMlFeatures())) {
+          result.add(
+              feature.getFullyQualifiedName().replace(mlModel.getFullyQualifiedName() + ".", ""));
+        }
+        return result;
       }
       case API_ENDPOINT -> {
         APIEndpoint apiEndpoint =
             Entity.getEntity(
-                API_ENDPOINT, entityReference.getId(), "responseSchema", Include.NON_DELETED);
-        ColumnUtil.validateFieldFQN(apiEndpoint.getResponseSchema().getSchemaFields(), columnFQN);
+                API_ENDPOINT,
+                entityReference.getId(),
+                "responseSchema,requestSchema",
+                Include.NON_DELETED);
+        if (apiEndpoint.getResponseSchema() != null) {
+          return CommonUtil.getChildrenNames(
+              apiEndpoint.getResponseSchema().getSchemaFields(),
+              "getChildren",
+              apiEndpoint.getFullyQualifiedName());
+        }
+        return CommonUtil.getChildrenNames(
+            apiEndpoint.getRequestSchema().getSchemaFields(),
+            "getChildren",
+            apiEndpoint.getFullyQualifiedName());
       }
       case METRIC -> {
         LOG.info("Metric column level lineage is not supported");
+        return new HashSet<>();
+      }
+      case PIPELINE -> {
+        LOG.info("Pipeline column level lineage is not supported");
+        return new HashSet<>();
       }
       default -> throw new IllegalArgumentException(
           String.format("Unsupported Entity Type %s for lineage", entityReference.getType()));
@@ -599,21 +904,28 @@ public class LineageRepository {
   @Transaction
   public boolean deleteLineageByFQN(
       String fromEntity, String fromFQN, String toEntity, String toFQN) {
-    EntityReference from =
-        Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
-    EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.NON_DELETED);
+    EntityReference from = Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.ALL);
+    EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.ALL);
+    CollectionDAO.EntityRelationshipObject relationshipObject =
+        dao.relationshipDAO().getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
     // Finally, delete lineage relationship
-    boolean result =
-        dao.relationshipDAO()
-                .delete(
-                    from.getId(),
-                    from.getType(),
-                    to.getId(),
-                    to.getType(),
-                    Relationship.UPSTREAM.ordinal())
-            > 0;
-    deleteLineageFromSearch(from, to);
-    return result;
+    if (!nullOrEmpty(relationshipObject)) {
+      // Finally, delete lineage relationship
+      boolean result =
+          dao.relationshipDAO()
+                  .delete(
+                      from.getId(),
+                      from.getType(),
+                      to.getId(),
+                      to.getType(),
+                      Relationship.UPSTREAM.ordinal())
+              > 0;
+      LineageDetails lineageDetails =
+          JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
+      deleteLineageFromSearch(from, to, lineageDetails);
+      return result;
+    }
+    return false;
   }
 
   @Transaction
@@ -625,7 +937,7 @@ public class LineageRepository {
               .findLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
       // Finally, delete lineage relationship
       dao.relationshipDAO()
-          .deleteLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
+          .deleteLineageBySourcePipeline(toId, toEntity, Relationship.UPSTREAM.ordinal());
     } else {
       relations =
           dao.relationshipDAO()
@@ -641,45 +953,140 @@ public class LineageRepository {
   public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) {
     // Validate from entity
     EntityReference from =
-        Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.NON_DELETED);
+        Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.ALL);
 
     // Validate to entity
     EntityReference to =
-        Entity.getEntityReferenceById(toEntity, UUID.fromString(toId), Include.NON_DELETED);
+        Entity.getEntityReferenceById(toEntity, UUID.fromString(toId), Include.ALL);
 
-    // Finally, delete lineage relationship
-    boolean result =
+    CollectionDAO.EntityRelationshipObject relationshipObject =
+        dao.relationshipDAO().getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
+
+    if (!nullOrEmpty(relationshipObject)) {
+      // Finally, delete lineage relationship
+      boolean result =
+          dao.relationshipDAO()
+                  .delete(
+                      from.getId(),
+                      from.getType(),
+                      to.getId(),
+                      to.getType(),
+                      Relationship.UPSTREAM.ordinal())
+              > 0;
+      LineageDetails lineageDetails =
+          JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
+      deleteLineageFromSearch(from, to, lineageDetails);
+      if (result) {
+        cleanUpExtendedLineage(from, to);
+      }
+      return result;
+    }
+    return false;
+  }
+
+  private void cleanUpExtendedLineage(EntityReference from, EntityReference to) {
+    boolean addService = hasField(from, FIELD_SERVICE) && hasField(to, FIELD_SERVICE);
+    boolean addDomain = hasField(from, FIELD_DOMAIN) && hasField(to, FIELD_DOMAIN);
+    boolean addDataProduct =
+        hasField(from, FIELD_DATA_PRODUCTS) && hasField(to, FIELD_DATA_PRODUCTS);
+
+    String fields = getExtendedLineageFields(addService, addDomain, addDataProduct);
+    EntityInterface fromEntity =
+        Entity.getEntity(from.getType(), from.getId(), fields, Include.ALL);
+    EntityInterface toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
+
+    cleanUpLineage(fromEntity, toEntity, FIELD_SERVICE, EntityInterface::getService);
+    cleanUpLineage(fromEntity, toEntity, FIELD_DOMAIN, EntityInterface::getDomain);
+    cleanUpLineageForDataProducts(
+        fromEntity, toEntity, FIELD_DATA_PRODUCTS, EntityInterface::getDataProducts);
+  }
+
+  private boolean hasField(EntityReference entity, String field) {
+    return Entity.entityHasField(entity.getType(), field);
+  }
+
+  private void cleanUpLineage(
+      EntityInterface fromEntity,
+      EntityInterface toEntity,
+      String field,
+      Function<EntityInterface, EntityReference> getter) {
+    boolean hasField =
+        hasField(fromEntity.getEntityReference(), field)
+            && hasField(toEntity.getEntityReference(), field);
+    if (!hasField) return;
+
+    EntityReference fromRef = getter.apply(fromEntity);
+    EntityReference toRef = getter.apply(toEntity);
+    processExtendedLineageCleanup(fromRef, toRef);
+  }
+
+  private void cleanUpLineageForDataProducts(
+      EntityInterface fromEntity,
+      EntityInterface toEntity,
+      String field,
+      Function<EntityInterface, List<EntityReference>> getter) {
+    boolean hasField =
+        hasField(fromEntity.getEntityReference(), field)
+            && hasField(toEntity.getEntityReference(), field);
+    if (!hasField) return;
+
+    for (EntityReference fromRef : getter.apply(fromEntity)) {
+      for (EntityReference toRef : getter.apply(toEntity)) {
+        processExtendedLineageCleanup(fromRef, toRef);
+      }
+    }
+  }
+
+  private void processExtendedLineageCleanup(EntityReference fromRef, EntityReference toRef) {
+    if (fromRef == null || toRef == null) return;
+
+    CollectionDAO.EntityRelationshipObject relation =
         dao.relationshipDAO()
-                .delete(
-                    from.getId(),
-                    from.getType(),
-                    to.getId(),
-                    to.getType(),
-                    Relationship.UPSTREAM.ordinal())
-            > 0;
-    deleteLineageFromSearch(from, to);
-    return result;
+            .getRecord(fromRef.getId(), toRef.getId(), Relationship.UPSTREAM.ordinal());
+
+    if (relation == null) return;
+
+    LineageDetails lineageDetails = JsonUtils.readValue(relation.getJson(), LineageDetails.class);
+    if (lineageDetails.getAssetEdges() - 1 < 1) {
+      dao.relationshipDAO()
+          .delete(
+              fromRef.getId(),
+              fromRef.getType(),
+              toRef.getId(),
+              toRef.getType(),
+              Relationship.UPSTREAM.ordinal());
+      deleteLineageFromSearch(fromRef, toRef, lineageDetails);
+    } else {
+      lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() - 1);
+      dao.relationshipDAO()
+          .insert(
+              fromRef.getId(),
+              toRef.getId(),
+              fromRef.getType(),
+              toRef.getType(),
+              Relationship.UPSTREAM.ordinal(),
+              JsonUtils.pojoToJson(lineageDetails));
+      addLineageToSearch(fromRef, toRef, lineageDetails);
+    }
   }
 
   private void deleteLineageFromSearch(List<CollectionDAO.EntityRelationshipObject> relations) {
     for (CollectionDAO.EntityRelationshipObject obj : relations) {
+      LineageDetails lineageDetails = JsonUtils.readValue(obj.getJson(), LineageDetails.class);
       deleteLineageFromSearch(
           new EntityReference().withId(UUID.fromString(obj.getFromId())),
-          new EntityReference().withId(UUID.fromString(obj.getToId())));
+          new EntityReference().withId(UUID.fromString(obj.getToId())),
+          lineageDetails);
     }
   }
 
-  private void deleteLineageFromSearch(EntityReference fromEntity, EntityReference toEntity) {
+  private void deleteLineageFromSearch(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
-        new ImmutablePair<>(
-            "lineage.doc_id.keyword",
-            fromEntity.getId().toString() + "-" + toEntity.getId().toString()),
-        new ImmutablePair<>(
-            String.format(
-                REMOVE_LINEAGE_SCRIPT,
-                fromEntity.getId().toString() + "-" + toEntity.getId().toString()),
-            null));
+        new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
+        new ImmutablePair<>(String.format(REMOVE_LINEAGE_SCRIPT, uniqueValue), null));
   }
 
   private EntityLineage getLineage(
@@ -751,7 +1158,12 @@ public class LineageRepository {
   }
 
   public Response patchLineageEdge(
-      String fromEntity, UUID fromId, String toEntity, UUID toId, JsonPatch patch) {
+      String fromEntity,
+      UUID fromId,
+      String toEntity,
+      UUID toId,
+      JsonPatch patch,
+      String updatedBy) {
     EntityReference from = Entity.getEntityReferenceById(fromEntity, fromId, Include.NON_DELETED);
     EntityReference to = Entity.getEntityReferenceById(toEntity, toId, Include.NON_DELETED);
     String json = dao.relationshipDAO().getRelation(fromId, toId, Relationship.UPSTREAM.ordinal());
@@ -768,7 +1180,13 @@ public class LineageRepository {
                 pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
         updated.withPipeline(pipeline);
       }
-      String detailsJson = JsonUtils.pojoToJson(updated);
+
+      // Update the lineage details with user and time
+      updated.setUpdatedAt(System.currentTimeMillis());
+      updated.setUpdatedBy(updatedBy);
+
+      // Validate Lineage Details
+      String detailsJson = validateLineageDetails(from, to, updated);
       dao.relationshipDAO()
           .insert(fromId, toId, fromEntity, toEntity, Relationship.UPSTREAM.ordinal(), detailsJson);
       addLineageToSearch(from, to, updated);
@@ -821,5 +1239,107 @@ public class LineageRepository {
     for (EntityReference entity : downstreamEntityReferences) {
       getDownstreamLineage(entity.getId(), entity.getType(), lineage, downstreamDepth);
     }
+  }
+
+  @Transaction
+  public void updateColumnLineage(
+      UUID tableId,
+      Map<String, String> renamed,
+      List<String> deleted,
+      String schemaDefinition,
+      String updatedBy) {
+    if ((renamed == null || renamed.isEmpty()) && (deleted == null || deleted.isEmpty())) {
+      return;
+    }
+
+    final Map<String, String> fqnRenameMap = Optional.ofNullable(renamed).orElse(Map.of());
+    final Set<String> deletedFqns = new HashSet<>(Optional.ofNullable(deleted).orElse(List.of()));
+
+    List<CollectionDAO.EntityRelationshipObject> lineageRows = new ArrayList<>();
+    List<String> tableIdList = List.of(tableId.toString());
+
+    // Table is upstream
+    lineageRows.addAll(
+        dao.relationshipDAO().findFromBatch(tableIdList, Relationship.UPSTREAM.ordinal()));
+    // Table is downstream
+    lineageRows.addAll(
+        dao.relationshipDAO()
+            .findToBatch(tableIdList, Relationship.UPSTREAM.ordinal(), Entity.TABLE, Entity.TABLE));
+
+    for (CollectionDAO.EntityRelationshipObject row : lineageRows) {
+      try {
+        LineageDetails details = JsonUtils.readValue(row.getJson(), LineageDetails.class);
+        boolean rowModified = rewriteColumnMappings(details, fqnRenameMap, deletedFqns);
+        if (rowModified) {
+          details.setSqlQuery(schemaDefinition);
+          details.setUpdatedAt(System.currentTimeMillis());
+          details.setUpdatedBy(updatedBy);
+          // UPSERT the updated lineage JSON back into the relationship table
+          dao.relationshipDAO()
+              .insert(
+                  UUID.fromString(row.getFromId()),
+                  UUID.fromString(row.getToId()),
+                  row.getFromEntity(),
+                  row.getToEntity(),
+                  row.getRelation(),
+                  JsonUtils.pojoToJson(details));
+        }
+      } catch (Exception ex) {
+        LOG.warn(
+            "Failed to update column lineage for relationship {} -> {}. Skipping this row.",
+            row.getFromId(),
+            row.getToId(),
+            ex);
+      }
+    }
+  }
+
+  private boolean rewriteColumnMappings(
+      LineageDetails details, Map<String, String> renameMap, Set<String> deletedFqns) {
+    if (details.getColumnsLineage() == null) {
+      return false;
+    }
+
+    boolean modified = false;
+
+    for (Iterator<ColumnLineage> mappingIter = details.getColumnsLineage().iterator();
+        mappingIter.hasNext(); ) {
+      ColumnLineage mapping = mappingIter.next();
+
+      if (mapping.getToColumn() != null) {
+        String renamed = renameMap.get(mapping.getToColumn());
+        if (renamed != null) {
+          mapping.setToColumn(renamed);
+          modified = true;
+        } else if (deletedFqns.contains(mapping.getToColumn())) {
+          mappingIter.remove();
+          modified = true;
+          continue; // No need to touch upstream side now
+        }
+      }
+
+      if (mapping.getFromColumns() != null) {
+        ListIterator<String> fromIter = mapping.getFromColumns().listIterator();
+        while (fromIter.hasNext()) {
+          String upstream = fromIter.next();
+
+          if (deletedFqns.contains(upstream)) {
+            fromIter.remove();
+            modified = true;
+          } else {
+            String renamed = renameMap.get(upstream);
+            if (renamed != null) {
+              fromIter.set(renamed);
+              modified = true;
+            }
+          }
+        }
+        // If nothing left on upstream side, drop the whole mapping
+        if (mapping.getFromColumns().isEmpty()) {
+          mappingIter.remove();
+        }
+      }
+    }
+    return modified;
   }
 }

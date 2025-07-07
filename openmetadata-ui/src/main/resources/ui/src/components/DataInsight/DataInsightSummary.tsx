@@ -13,10 +13,10 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { WEB_CHARTS } from '../../constants/DataInsight.constants';
+import { SystemChartType } from '../../enums/DataInsight.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -32,7 +32,6 @@ import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightP
 import {
   getAggregateChartData,
   getMultiChartsPreviewByName,
-  SystemChartType,
 } from '../../rest/DataInsightAPI';
 import { getTeamByName } from '../../rest/teamsAPI';
 import {
@@ -42,6 +41,7 @@ import {
 } from '../../utils/DataInsightUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import { SummaryCard } from '../common/SummaryCard/SummaryCard.component';
 import './data-insight-detail.less';
@@ -53,7 +53,7 @@ interface Props {
 
 const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   const { tab = DataInsightTabs.DATA_ASSETS } =
-    useParams<{ tab: DataInsightTabs }>();
+    useRequiredParams<{ tab: DataInsightTabs }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [webCharts, setWebCharts] = useState<

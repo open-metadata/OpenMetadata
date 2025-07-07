@@ -1,0 +1,55 @@
+# 1.8.1 Release 🎉
+
+{% note noteType="Tip" %}
+**30th June 2025**
+{% /note %}
+
+{% inlineCalloutContainer %}
+{% inlineCallout
+color="violet-70"
+icon="celebration"
+bold="Upgrade OpenMetadata"
+href="/deployment/upgrade" %}
+Learn how to upgrade your OpenMetadata instance to 1.8.1!
+{% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.8.1-release).
+
+# What's New
+
+## Improvements
+
+- REST service process nested objects inside array dtype in schema.
+- Throw an error on query filter parsing and an error on column test case.
+- Display object column type.
+- Add support for adding tags in test case form.
+- Add Postgres SP and UDF descriptions.
+- Enhance AutomatorTestCaseField with tag and glossary support.
+
+## Fixes
+
+- Cache to have immutable entities.
+- Remove edit permission from version page.
+- Table pagination count issue in the Schema page.
+- Version link and fetch logic with 1 hour wait time.
+- Tableau Lineage in multiple schema model.
+- Soft deleted entities are not removed rom system, so relations are still valid if there is entry in DB.
+- Custom properties display issue in advanced search.
+- Image was not rendering correctly in description editor.
+- Handle sampler SQA sessions.
+- Typo on query cost record index.
+- Reply count being shown as 0 in task feed card.
+- Pagination state lost after multiple back navigations in table list view.
+- query_cost_record_search_index Search exception for elasticsearch instance.
+- Search functionality for domain edit in user profile.
+- Username issue in comments card.
+- Quickcloud get script tables.
+- Added Databricks pipeline Lineage.
+- Add parquet alternate filetypes in table fileformat.
+- Snowflake reverse ingestion.
+- Typo for Chart preview.
+- Update version link for Collate.
+- Sorting issue for charts.
+
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.8.0-release...1.8.1-release)

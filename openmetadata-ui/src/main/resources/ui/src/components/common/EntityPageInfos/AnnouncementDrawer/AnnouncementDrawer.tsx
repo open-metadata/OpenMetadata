@@ -15,15 +15,14 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import React, { FC, useCallback, useState } from 'react';
+import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post } from '../../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { postFeedById } from '../../../../rest/feedsAPI';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
@@ -57,7 +56,7 @@ const AnnouncementDrawer: FC<Props> = ({
       <Typography.Text className="font-medium break-all">
         {t('label.announcement-plural')}
       </Typography.Text>
-      <CloseOutlined onClick={onClose} />
+      <CloseOutlined data-testid="announcement-close" onClick={onClose} />
     </Space>
   );
 

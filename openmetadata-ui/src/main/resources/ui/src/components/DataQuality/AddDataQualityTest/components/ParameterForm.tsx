@@ -25,22 +25,13 @@ import {
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
-import React, {
-  ReactElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../../constants/profiler.constant';
-import {
-  SUPPORTED_SERVICES_FOR_TABLE_DIFF,
-  TABLE_DIFF,
-} from '../../../../constants/TestSuite.constant';
+import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
@@ -71,6 +62,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     data: TestCaseParameterDefinition,
     DynamicField?: ReactElement
   ) => {
+    const label = getEntityName(data);
     const ruleValidation: RuleRender = ({ getFieldValue }) => ({
       validator(_, formValue) {
         if (data?.validationRule) {
@@ -100,7 +92,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     let Field = (
       <Input
         placeholder={`${t('message.enter-a-field', {
-          field: data.displayName,
+          field: label,
         })}`}
       />
     );
@@ -108,7 +100,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
       Field = (
         <Select
           placeholder={`${t('label.please-select-entity', {
-            entity: data.displayName,
+            entity: label,
           })}`}>
           {data.optionValues.map((value) => (
             <Select.Option key={value}>{value}</Select.Option>
@@ -171,7 +163,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             Field = (
               <Input
                 placeholder={`${t('message.enter-a-field', {
-                  field: data.displayName,
+                  field: label,
                 })}`}
               />
             );
@@ -187,7 +179,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             <InputNumber
               className="w-full"
               placeholder={`${t('message.enter-a-field', {
-                field: data.displayName,
+                field: label,
               })}`}
             />
           );
@@ -206,7 +198,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           Field = (
             <Input
               placeholder={`${t('message.enter-comma-separated-field', {
-                field: data.displayName,
+                field: label,
               })}`}
             />
           );
@@ -243,14 +235,14 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                           {
                             required: data.required,
                             message: `${t('message.field-text-is-required', {
-                              fieldText: data.displayName,
+                              fieldText: label,
                             })}`,
                           },
                         ]}>
                         {DynamicField ?? (
                           <Input
                             placeholder={`${t('message.enter-a-field', {
-                              field: data.displayName,
+                              field: label,
                             })}`}
                           />
                         )}
@@ -279,13 +271,13 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
       <Form.Item
         data-testid="parameter"
         key={data.name}
-        label={`${data.displayName}:`}
+        label={label}
         name={data.name}
         rules={[
           {
             required: data.required,
             message: `${t('message.field-text-is-required', {
-              fieldText: data.displayName,
+              fieldText: label,
             })}`,
           },
           ruleValidation,
@@ -323,19 +315,6 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,
           searchIndex: SearchIndex.TABLE,
-          queryFilter: {
-            query: {
-              bool: {
-                must: [
-                  {
-                    terms: {
-                      serviceType: SUPPORTED_SERVICES_FOR_TABLE_DIFF,
-                    },
-                  },
-                ],
-              },
-            },
-          },
           fetchSource: true,
           includeFields: ['name', 'fullyQualifiedName', 'displayName'],
         });
@@ -393,7 +372,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                 ]);
 
                 const columns = table?.columns.map((column) => ({
-                  label: column.displayName ?? column.name,
+                  label: getEntityName(column),
                   value: column.name,
                   // Check if column.name is in the combined Set to determine if it should be disabled
                   disabled: selectedColumnsSet.has(column.name),

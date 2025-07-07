@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Drawer, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { get } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -22,66 +23,28 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { ExplorePageTabs } from '../../../enums/Explore.enum';
-import { Tag } from '../../../generated/entity/classification/tag';
-import { APICollection } from '../../../generated/entity/data/apiCollection';
-import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
-import { Chart } from '../../../generated/entity/data/chart';
-import { Container } from '../../../generated/entity/data/container';
-import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
-import { Database } from '../../../generated/entity/data/database';
-import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { Metric } from '../../../generated/entity/data/metric';
-import { Mlmodel } from '../../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../../generated/entity/data/pipeline';
-import { SearchIndex } from '../../../generated/entity/data/searchIndex';
-import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
-import { Table } from '../../../generated/entity/data/table';
-import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { APIService } from '../../../generated/entity/services/apiService';
-import { DashboardService } from '../../../generated/entity/services/dashboardService';
-import { DatabaseService } from '../../../generated/entity/services/databaseService';
-import { MessagingService } from '../../../generated/entity/services/messagingService';
-import { MlmodelService } from '../../../generated/entity/services/mlmodelService';
-import { PipelineService } from '../../../generated/entity/services/pipelineService';
-import { SearchService } from '../../../generated/entity/services/searchService';
-import { StorageService } from '../../../generated/entity/services/storageService';
-import { getEntityLinkFromType } from '../../../utils/EntityUtils';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityLinkFromType,
+} from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import APICollectionSummary from './APICollectionSummary/APICollectionSummary';
-import APIEndpointSummary from './APIEndpointSummary/APIEndpointSummary';
-import ChartSummary from './ChartSummary/ChartSummary.component';
-import ContainerSummary from './ContainerSummary/ContainerSummary.component';
-import DashboardSummary from './DashboardSummary/DashboardSummary.component';
-import DatabaseSchemaSummary from './DatabaseSchemaSummary/DatabaseSchemaSummary.component';
-import DatabaseSummary from './DatabaseSummary/DatabaseSummary.component';
-import DataModelSummary from './DataModelSummary/DataModelSummary.component';
-import DataProductSummary from './DataProductSummary/DataProductSummary.component';
+import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
-import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.component';
-import MetricSummary from './MetricSummary/MetricSummary';
-import MlModelSummary from './MlModelSummary/MlModelSummary.component';
-import PipelineSummary from './PipelineSummary/PipelineSummary.component';
-import SearchIndexSummary from './SearchIndexSummary/SearchIndexSummary.component';
-import ServiceSummary from './ServiceSummary/ServiceSummary.component';
-import StoredProcedureSummary from './StoredProcedureSummary/StoredProcedureSummary.component';
-import TableSummary from './TableSummary/TableSummary.component';
-import TagsSummary from './TagsSummary/TagsSummary.component';
-import TopicSummary from './TopicSummary/TopicSummary.component';
 
 export default function EntitySummaryPanel({
   entityDetails,
   highlights,
 }: EntitySummaryPanelProps) {
-  const { tab } = useParams<{ tab: string }>();
+  const { tab } = useRequiredParams<{ tab: string }>();
+  const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const [isPermissionLoading, setIsPermissionLoading] =
     useState<boolean>(false);
@@ -101,7 +64,7 @@ export default function EntitySummaryPanel({
         get(entityDetails, 'details.entityType') ?? ResourceEntity.TABLE;
       const permissions = await getEntityPermission(type, entityFqn);
       setEntityPermissions(permissions);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsPermissionLoading(false);
@@ -126,6 +89,10 @@ export default function EntitySummaryPanel({
     if (!viewPermission) {
       return (
         <ErrorPlaceHolder
+          className="border-none h-min-80"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-asset'),
+          })}
           size={SIZE.MEDIUM}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
@@ -133,221 +100,42 @@ export default function EntitySummaryPanel({
     }
     const type = get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
     const entity = entityDetails.details;
-    switch (type) {
-      case EntityType.TABLE:
-        return (
-          <TableSummary
-            entityDetails={entity as Table}
-            highlights={highlights}
-          />
-        );
 
-      case EntityType.TOPIC:
-        return (
-          <TopicSummary
-            entityDetails={entity as Topic}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.DASHBOARD:
-        return (
-          <DashboardSummary
-            entityDetails={entity as Dashboard}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.CHART:
-        return (
-          <ChartSummary
-            entityDetails={entity as Chart}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.PIPELINE:
-        return (
-          <PipelineSummary
-            entityDetails={entity as Pipeline}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.MLMODEL:
-        return (
-          <MlModelSummary
-            entityDetails={entity as Mlmodel}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.CONTAINER:
-        return (
-          <ContainerSummary
-            entityDetails={entity as Container}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.STORED_PROCEDURE:
-        return (
-          <StoredProcedureSummary
-            entityDetails={entity as StoredProcedure}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return (
-          <DataModelSummary
-            entityDetails={entity as DashboardDataModel}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.GLOSSARY_TERM:
-        return <GlossaryTermSummary entityDetails={entity as GlossaryTerm} />;
-
-      case EntityType.TAG:
-        return <TagsSummary entityDetails={entity as Tag} />;
-
-      case EntityType.DATA_PRODUCT:
-        return <DataProductSummary entityDetails={entity as DataProduct} />;
-
-      case EntityType.SEARCH_INDEX:
-        return (
-          <SearchIndexSummary
-            entityDetails={entity as SearchIndex}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.DATABASE:
-        return (
-          <DatabaseSummary
-            entityDetails={entity as Database}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.DATABASE_SCHEMA:
-        return (
-          <DatabaseSchemaSummary
-            entityDetails={entity as DatabaseSchema}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.DATABASE_SERVICE:
-        return (
-          <ServiceSummary
-            entityDetails={entity as DatabaseService}
-            highlights={highlights}
-            type={ExplorePageTabs.DATABASE_SERVICE}
-          />
-        );
-      case EntityType.MESSAGING_SERVICE:
-        return (
-          <ServiceSummary
-            entityDetails={entity as MessagingService}
-            highlights={highlights}
-            type={ExplorePageTabs.MESSAGING_SERVICE}
-          />
-        );
-      case EntityType.DASHBOARD_SERVICE:
-        return (
-          <ServiceSummary
-            entityDetails={entity as DashboardService}
-            highlights={highlights}
-            type={ExplorePageTabs.DASHBOARD_SERVICE}
-          />
-        );
-      case EntityType.PIPELINE_SERVICE:
-        return (
-          <ServiceSummary
-            entityDetails={entity as PipelineService}
-            highlights={highlights}
-            type={ExplorePageTabs.PIPELINE_SERVICE}
-          />
-        );
-
-      case EntityType.MLMODEL_SERVICE:
-        return (
-          <ServiceSummary
-            entityDetails={entity as MlmodelService}
-            highlights={highlights}
-            type={ExplorePageTabs.ML_MODEL_SERVICE}
-          />
-        );
-
-      case EntityType.STORAGE_SERVICE:
-        return (
-          <ServiceSummary
-            entityDetails={entity as StorageService}
-            highlights={highlights}
-            type={ExplorePageTabs.STORAGE_SERVICE}
-          />
-        );
-
-      case EntityType.SEARCH_SERVICE:
-        return (
-          <ServiceSummary
-            entityDetails={entity as SearchService}
-            highlights={highlights}
-            type={ExplorePageTabs.SEARCH_INDEX_SERVICE}
-          />
-        );
-      case EntityType.API_SERVICE:
-        return (
-          <ServiceSummary
-            entityDetails={entity as APIService}
-            highlights={highlights}
-            type={ExplorePageTabs.API_SERVICE}
-          />
-        );
-      case EntityType.API_ENDPOINT:
-        return (
-          <APIEndpointSummary
-            entityDetails={entity as APIEndpoint}
-            highlights={highlights}
-          />
-        );
-      case EntityType.API_COLLECTION:
-        return (
-          <APICollectionSummary
-            entityDetails={entity as APICollection}
-            highlights={highlights}
-          />
-        );
-
-      case EntityType.METRIC:
-        return (
-          <MetricSummary
-            entityDetails={entity as Metric}
-            highlights={highlights}
-          />
-        );
-
-      default:
-        return searchClassBase.getEntitySummaryComponent(entity);
-    }
+    return (
+      <DataAssetSummaryPanel
+        componentType={
+          tab === DRAWER_NAVIGATION_OPTIONS.lineage
+            ? tab
+            : DRAWER_NAVIGATION_OPTIONS.explore
+        }
+        dataAsset={
+          entity as SearchedDataProps['data'][number]['_source'] & {
+            dataProducts: DataProduct[];
+          }
+        }
+        entityType={type}
+        highlights={highlights}
+      />
+    );
   }, [tab, entityDetails, viewPermission, isPermissionLoading]);
 
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),
     [entityDetails, getEntityLinkFromType]
   );
+  const entityIcon = useMemo(() => {
+    return (
+      <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle entity-icon">
+        {searchClassBase.getEntityIcon(
+          get(entityDetails, 'details.entityType') ?? ''
+        )}
+      </span>
+    );
+  }, [entityDetails]);
 
   return (
-    <Drawer
-      destroyOnClose
-      open
+    <Card
       className="summary-panel-container"
-      closable={false}
-      getContainer={false}
-      headerStyle={{ padding: 16 }}
-      mask={false}
       title={
         viewPermission && (
           <Link
@@ -358,15 +146,15 @@ export default function EntitySummaryPanel({
             )}
             to={entityLink}>
             <Typography.Text className="m-b-0 d-block summary-panel-title">
+              {entityIcon}
               {stringToHTML(
                 searchClassBase.getEntityName(entityDetails.details)
               )}
             </Typography.Text>
           </Link>
         )
-      }
-      width="100%">
+      }>
       {summaryComponent}
-    </Drawer>
+    </Card>
   );
 }

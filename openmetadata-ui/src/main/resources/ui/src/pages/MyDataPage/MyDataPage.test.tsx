@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import {
   mockActiveAnnouncementData,
   mockCustomizePageClassBase,
@@ -44,16 +43,6 @@ Object.defineProperty(window, 'localStorage', {
   value: mockLocalStorage,
 });
 
-jest.mock(
-  '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ children }) => (
-        <div data-testid="activity-feed-provider">{children}</div>
-      ));
-  }
-);
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
@@ -78,7 +67,7 @@ jest.mock(
   }
 );
 
-let mockSelectedPersona: Record<string, string> = {
+let mockSelectedPersona: Record<string, string> | null = {
   fullyQualifiedName: mockPersonaName,
 };
 
@@ -145,6 +134,16 @@ jest.mock('../DataInsightPage/DataInsightProvider', async () => {
   return jest.fn().mockImplementation(({ children }) => <>{children}</>);
 });
 
+jest.mock('../../hooks/useWelcomeStore', () => ({
+  useWelcomeStore: jest.fn().mockReturnValue({
+    isWelcomeVisible: true,
+  }),
+}));
+
+jest.mock('../../components/AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((Component) => Component),
+}));
+
 jest.mock('../DataInsightPage/DataInsightProvider', () => {
   return {
     __esModule: true,
@@ -166,59 +165,51 @@ describe('MyDataPage component', () => {
   it('MyDataPage should only display WelcomeScreen when user logs in for the first time', async () => {
     // Simulate no user is logged in condition
     localStorage.clear();
-    await act(async () => {
-      render(<MyDataPage />);
-    });
 
-    expect(screen.getByText('WelcomeScreen')).toBeInTheDocument();
-    expect(screen.queryByTestId('activity-feed-provider')).toBeNull();
+    render(<MyDataPage />);
+
+    expect(await screen.findByText('WelcomeScreen')).toBeInTheDocument();
   });
 
   it('MyDataPage should display the main content after the WelcomeScreen is closed', async () => {
     // Simulate no user is logged in condition
     localStorage.clear();
-    await act(async () => {
-      render(<MyDataPage />);
-    });
-    const welcomeScreen = screen.getByText('WelcomeScreen');
+
+    render(<MyDataPage />);
+
+    const welcomeScreen = await screen.findByText('WelcomeScreen');
 
     expect(welcomeScreen).toBeInTheDocument();
-    expect(screen.queryByTestId('activity-feed-provider')).toBeNull();
 
-    await act(async () => userEvent.click(welcomeScreen));
+    userEvent.click(welcomeScreen);
 
+    expect(await screen.findByTestId('react-grid-layout')).toBeInTheDocument();
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
-    expect(screen.getByTestId('activity-feed-provider')).toBeInTheDocument();
-    expect(screen.getByTestId('react-grid-layout')).toBeInTheDocument();
   });
 
   it('MyDataPage should display loader initially while loading data', async () => {
-    await act(async () => {
-      render(<MyDataPage />);
+    render(<MyDataPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-      expect(screen.queryByTestId('react-grid-layout')).toBeNull();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('react-grid-layout')).toBeNull();
 
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
-
-    expect(
-      await screen.findByTestId('activity-feed-provider')
-    ).toBeInTheDocument();
   });
 
   it('MyDataPage should display all the widgets in the config and the announcements widget if there are announcements', async () => {
-    await act(async () => {
-      render(<MyDataPage />);
-    });
+    render(<MyDataPage />);
 
-    expect(screen.getByText('KnowledgePanel.ActivityFeed')).toBeInTheDocument();
-    expect(screen.getByText('KnowledgePanel.Following')).toBeInTheDocument();
     expect(
-      screen.getByText('KnowledgePanel.RecentlyViewed')
+      await screen.findByText('KnowledgePanel.ActivityFeed')
     ).toBeInTheDocument();
     expect(
-      screen.getByText('KnowledgePanel.Announcements')
+      await screen.findByText('KnowledgePanel.Following')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.RecentlyViewed')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.Announcements')
     ).toBeInTheDocument();
     expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
@@ -232,14 +223,16 @@ describe('MyDataPage component', () => {
         data: [],
       })
     );
-    await act(async () => {
-      render(<MyDataPage />);
-    });
+    render(<MyDataPage />);
 
-    expect(screen.getByText('KnowledgePanel.ActivityFeed')).toBeInTheDocument();
-    expect(screen.getByText('KnowledgePanel.Following')).toBeInTheDocument();
     expect(
-      screen.getByText('KnowledgePanel.RecentlyViewed')
+      await screen.findByText('KnowledgePanel.ActivityFeed')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.Following')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
     expect(screen.queryByText('KnowledgePanel.Announcements')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
@@ -251,28 +244,32 @@ describe('MyDataPage component', () => {
     (getDocumentByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.reject(new Error('API failure'))
     );
-    await act(async () => {
-      render(<MyDataPage />);
-    });
+    render(<MyDataPage />);
 
-    expect(screen.getByText('KnowledgePanel.ActivityFeed')).toBeInTheDocument();
     expect(
-      screen.getByText('KnowledgePanel.RecentlyViewed')
+      await screen.findByText('KnowledgePanel.ActivityFeed')
     ).toBeInTheDocument();
-    expect(screen.getByText('KnowledgePanel.Following')).toBeInTheDocument();
     expect(
-      screen.getByText('KnowledgePanel.Announcements')
+      await screen.findByText('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
-    expect(screen.getByText('KnowledgePanel.KPI')).toBeInTheDocument();
-    expect(screen.getByText('KnowledgePanel.TotalAssets')).toBeInTheDocument();
-    expect(screen.getByText('KnowledgePanel.MyData')).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.Following')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.Announcements')
+    ).toBeInTheDocument();
+    expect(await screen.findByText('KnowledgePanel.KPI')).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.TotalAssets')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.MyData')
+    ).toBeInTheDocument();
   });
 
   it('MyDataPage should render default widgets when there is no selected persona', async () => {
-    mockSelectedPersona = {};
-    await act(async () => {
-      render(<MyDataPage />);
-    });
+    mockSelectedPersona = null;
+    render(<MyDataPage />);
 
     expect(
       await screen.findByText('KnowledgePanel.ActivityFeed')

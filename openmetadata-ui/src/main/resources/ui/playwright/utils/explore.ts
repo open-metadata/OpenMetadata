@@ -12,6 +12,13 @@
  */
 import { expect } from '@playwright/test';
 import { Page } from 'playwright';
+import { EXPECTED_BUCKETS } from '../constant/explore';
+import { getApiContext } from './common';
+
+export interface Bucket {
+  key: string;
+  doc_count: number;
+}
 
 export const searchAndClickOnOption = async (
   page: Page,
@@ -31,14 +38,15 @@ export const searchAndClickOnOption = async (
     testId = filter.value ?? '';
   }
 
-  await page.waitForSelector(`[data-testid="${testId}"]`);
-  await page.click(`[data-testid="${testId}"]`);
+  await page.getByTestId(testId).click();
+
   await checkCheckboxStatus(page, `${testId}-checkbox`, checkedAfterClick);
 };
 
 export const selectNullOption = async (
   page: Page,
-  filter: { key: string; label: string; value?: string }
+  filter: { key: string; label: string; value?: string },
+  clearFilter = true
 ) => {
   const queryFilter = JSON.stringify({
     query: {
@@ -94,7 +102,9 @@ export const selectNullOption = async (
 
   expect(isQueryFilterPresent).toBeTruthy();
 
-  await page.click(`[data-testid="clear-filters"]`);
+  if (clearFilter) {
+    await page.click(`[data-testid="clear-filters"]`);
+  }
 };
 
 export const checkCheckboxStatus = async (
@@ -112,7 +122,35 @@ export const selectDataAssetFilter = async (
   page: Page,
   filterValue: string
 ) => {
+  await page.waitForResponse(
+    '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
+  );
   await page.getByRole('button', { name: 'Data Assets' }).click();
   await page.getByTestId(`${filterValue}-checkbox`).check();
   await page.getByTestId('update-btn').click();
+};
+
+export const validateBucketsForIndex = async (page: Page, index: string) => {
+  const { apiContext } = await getApiContext(page);
+
+  const response = await apiContext
+    .get(
+      `/api/v1/search/query?q=&index=${index}&from=0&size=10&deleted=false&query_filter=%7B%22query%22:%7B%22bool%22:%7B%7D%7D%7D&sort_field=totalVotes&sort_order=desc`
+    )
+    .then((res) => res.json());
+
+  const buckets = response.aggregations?.['sterms#entityType']?.buckets ?? [];
+
+  EXPECTED_BUCKETS.forEach((expectedKey) => {
+    const bucket = buckets.find((b: Bucket) => b.key === expectedKey);
+
+    // Expect the bucket to exist
+    expect(bucket, `Bucket with key "${expectedKey}" is missing`).toBeDefined();
+
+    // Expect the bucket's doc_count to be greater than 0
+    expect(
+      bucket?.doc_count,
+      `Bucket "${expectedKey}" has doc_count <= 0`
+    ).toBeGreaterThan(0);
+  });
 };

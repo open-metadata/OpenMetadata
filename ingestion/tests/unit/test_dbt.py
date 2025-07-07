@@ -8,7 +8,11 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+from collate_dbt_artifacts_parser.parser import (
+    parse_catalog,
+    parse_manifest,
+    parse_run_results,
+)
 from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
@@ -51,7 +55,9 @@ mock_dbt_config = {
                     "dbtCatalogFilePath": "sample/dbt_files/catalog.json",
                     "dbtManifestFilePath": "sample/dbt_files/manifest.json",
                     "dbtRunResultsFilePath": "sample/dbt_files/run_results.json",
+                    "dbtSourcesFilePath": "sample/dbt_files/sources.json",
                 },
+                "dbtUpdateOwners": True,
             }
         },
     },
@@ -674,6 +680,7 @@ class DbtUnitTest(TestCase):
                     data_model_link.right.table_entity.fullyQualifiedName.root,
                     EXPECTED_DATA_MODEL_FQNS,
                 )
+                self.check_process_dbt_owners(data_model_link.right)
                 data_model_list.append(data_model_link.right.datamodel)
 
         for _, (expected, original) in enumerate(
@@ -681,8 +688,14 @@ class DbtUnitTest(TestCase):
         ):
             self.assertEqual(expected, original)
 
+    def check_process_dbt_owners(self, data_model_link):
+        process_dbt_owners = self.dbt_source_obj.process_dbt_owners(data_model_link)
+        for entity in process_dbt_owners:
+            entity_owner = entity.right.new_entity.owners
+            self.assertEqual(entity_owner, MOCK_OWNER)
+
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
-    def test_updtream_nodes_for_lineage(self, es_search_from_fqn):
+    def test_upstream_nodes_for_lineage(self, es_search_from_fqn):
         expected_upstream_nodes = [
             "model.jaffle_shop.stg_customers",
             "model.jaffle_shop.stg_orders",

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -28,7 +27,6 @@ const mockParams = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
@@ -40,6 +38,10 @@ jest.mock('../../rest/tableAPI', () => ({
 
 jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'test-fqn' }),
+}));
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock(
@@ -54,10 +56,14 @@ jest.mock(
   })
 );
 
+const mockProps = {
+  pageTitle: 'add-data-quality-tests',
+};
+
 describe('AddDataQualityTestPage', () => {
   it('renders Add DataQuality Test Page', async () => {
     await act(async () => {
-      render(<AddDataQualityTestPage />);
+      render(<AddDataQualityTestPage {...mockProps} />);
     });
 
     const testContainer = screen.getByTestId('testv1-container');
@@ -66,7 +72,7 @@ describe('AddDataQualityTestPage', () => {
   });
 
   it('should fetch table data on mount', () => {
-    render(<AddDataQualityTestPage />);
+    render(<AddDataQualityTestPage {...mockProps} />);
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('test-fqn', {
       fields: ['testSuite', 'customMetrics', 'columns'],
@@ -78,7 +84,7 @@ describe('AddDataQualityTestPage', () => {
       new Error('Fetch failed')
     );
     await act(async () => {
-      render(<AddDataQualityTestPage />);
+      render(<AddDataQualityTestPage {...mockProps} />);
     });
 
     expect(showErrorToast).toHaveBeenCalled();

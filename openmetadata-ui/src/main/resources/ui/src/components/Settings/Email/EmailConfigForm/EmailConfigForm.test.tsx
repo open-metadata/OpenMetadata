@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { TransportationStrategy } from '../../../../generated/email/smtpSettings';
 import EmailConfigForm from './EmailConfigForm.component';
 
@@ -33,7 +32,6 @@ const emailConfigValues = {
   emailingEntity: 'OpenMetadata',
   supportUrl: 'https://slack.open-metadata.org',
   enableSmtpServer: false,
-  openMetadataUrl: 'http://localhost:3000/',
   senderMail: 'test@gmail.com',
   serverEndpoint: 'http://localhost:3000',
   serverPort: 357,
@@ -65,7 +63,6 @@ describe('Email Config Form Component', () => {
     expect(screen.getByText('label.username')).toBeInTheDocument();
     expect(screen.getByText('label.password')).toBeInTheDocument();
     expect(screen.getByText('label.sender-email')).toBeInTheDocument();
-    expect(screen.getByText('label.open-metadata-url')).toBeInTheDocument();
     expect(screen.getByText('label.server-endpoint')).toBeInTheDocument();
     expect(screen.getByText('label.server-port')).toBeInTheDocument();
     expect(screen.getByText('label.emailing-entity')).toBeInTheDocument();
@@ -80,7 +77,6 @@ describe('Email Config Form Component', () => {
     expect(screen.getByTestId('username-input')).toBeInTheDocument();
     expect(screen.getByTestId('password-input')).toBeInTheDocument();
     expect(screen.getByTestId('sender-email-input')).toBeInTheDocument();
-    expect(screen.getByTestId('open-metadata-url-input')).toBeInTheDocument();
     expect(screen.getByTestId('server-endpoint-input')).toBeInTheDocument();
     expect(screen.getByTestId('server-port-input')).toBeInTheDocument();
     expect(screen.getByTestId('emailing-entity-input')).toBeInTheDocument();
@@ -130,7 +126,6 @@ describe('Email Config Form Component', () => {
         emailConfigValues={{
           username: 'test',
           password: 'test',
-          openMetadataUrl: '',
           senderMail: '',
           serverEndpoint: '',
           serverPort: 0,

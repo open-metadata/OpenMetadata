@@ -10,59 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Button, Typography } from 'antd';
-import React from 'react';
+import { Badge } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
-
-interface LeftSidebarItemProps {
-  data: {
-    key: string;
-    title: string;
-    dataTestId: string;
-    redirect_url?: string;
-    icon: SvgComponent;
-    isBeta?: boolean;
-    onClick?: () => void;
-  };
-}
+import { LeftSidebarItemProps } from './LeftSidebar.interface';
 
 const LeftSidebarItem = ({
-  data: { title, redirect_url, dataTestId, icon, isBeta, onClick },
+  data: { title, redirect_url, dataTestId, isBeta },
 }: LeftSidebarItemProps) => {
   const { t } = useTranslation();
 
   return redirect_url ? (
     <NavLink
-      className="left-panel-item no-underline"
+      className="left-panel-item left-panel-label no-underline"
       data-testid={dataTestId}
       to={{
         pathname: redirect_url,
       }}>
-      <div className="d-flex items-center">
-        <Icon component={icon} />
-        <Typography.Text className="left-panel-label">{title}</Typography.Text>
+      {title}
 
-        {isBeta && (
-          <Badge
-            className="service-beta-tag"
-            count={t('label.beta')}
-            offset={[10, 0]}
-            size="small"
-          />
-        )}
-      </div>
+      {isBeta && (
+        <Badge
+          className="service-beta-tag"
+          count={t('label.beta')}
+          offset={[10, 0]}
+          size="small"
+        />
+      )}
     </NavLink>
   ) : (
-    <Button
-      className="left-panel-item d-flex items-center p-0"
-      data-testid={dataTestId}
-      type="text"
-      onClick={onClick}>
-      <Icon component={icon} />
-      <Typography.Text className="left-panel-label">{title}</Typography.Text>
-    </Button>
+    <span
+      className="left-panel-item left-panel-label p-0"
+      data-testid={dataTestId}>
+      {title}
+    </span>
   );
 };
 

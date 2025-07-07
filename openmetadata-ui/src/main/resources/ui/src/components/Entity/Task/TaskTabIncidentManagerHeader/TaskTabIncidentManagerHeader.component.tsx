@@ -12,7 +12,7 @@
  */
 import { Col, Row, Space, Steps, Typography } from 'antd';
 import { isEmpty, isUndefined, last, toLower } from 'lodash';
-import React, { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { TEST_CASE_STATUS } from '../../../../constants/TestSuite.constant';
@@ -22,7 +22,7 @@ import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import './task-tab-incident-manager-header.style.less';
 
@@ -172,7 +172,7 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
           <Typography.Text className="text-grey-muted">
             {`${t('label.failure-comment')}: `}
           </Typography.Text>
-          <RichTextEditorPreviewer
+          <RichTextEditorPreviewerV1
             markdown={
               latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
                 ?.testCaseFailureComment ?? ''

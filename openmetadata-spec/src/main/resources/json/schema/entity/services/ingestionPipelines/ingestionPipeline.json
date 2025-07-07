@@ -43,6 +43,14 @@
         "status": {
           "description": "Ingestion Pipeline summary status. Informed at the end of the execution.",
           "$ref": "status.json#/definitions/ingestionStatus"
+        },
+        "config": {
+          "description": "Pipeline configuration for this particular execution.",
+          "$ref": "../../../type/basic.json#/definitions/map"
+        },
+        "metadata": {
+          "description": "Metadata for the pipeline status.",
+          "$ref": "../../../type/basic.json#/definitions/map"
         }
       },
       "additionalProperties": false
@@ -172,6 +180,11 @@
       "description": "Set the logging level for the workflow.",
       "$ref": "../../../metadataIngestion/workflow.json#/definitions/logLevels"
     },
+    "raiseOnError": {
+      "description": "Control if we want to flag the workflow as failed if we encounter any processing errors.",
+      "type": "boolean",
+      "default": true
+    },
     "deployed": {
       "description": "Indicates if the workflow has been successfully deployed to Airflow.",
       "type": "boolean",
@@ -202,6 +215,14 @@
       "description": "Change that led to this version of the entity.",
       "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../../type/entityReferenceList.json"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -217,6 +238,14 @@
     "applicationType": {
       "description": "Type of the application when pipelineType is 'application'.",
       "type": "string"
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../../type/entityReference.json"
+    },
+    "processingEngine": {
+      "description": "The processing engine responsible for executing the ingestion pipeline logic.",
+      "$ref": "../../../type/entityReference.json"
     }
   },
   "required": [

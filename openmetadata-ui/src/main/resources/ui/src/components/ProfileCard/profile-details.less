@@ -1,0 +1,59 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../styles/variables.less');
+.profile-management-popover .ant-popover-inner-content::before,
+.profile-management-popover .ant-popover-arrow {
+  display: none !important;
+}
+.profile-management-popover.ant-popover-placement-bottomLeft {
+  top: 125px !important;
+}
+.profile-management-popover .ant-popover-inner-content {
+  padding: 0px;
+}
+.profile-management-popover {
+  color: #52525b;
+
+  .ant-menu-item-selected {
+    background-color: #f3f8ff !important;
+    color: #1677ff !important;
+    font-weight: 600;
+  }
+}
+.profile-manage-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  .ant-typography {
+    color: text-color;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+    cursor: pointer;
+  }
+
+  .ant-btn-text {
+    padding: 0px;
+  }
+
+  &:hover {
+    background-color: @primary-25;
+    svg path {
+      fill: @primary-color;
+    }
+  }
+
+  &:hover .ant-typography {
+    color: @primary-color;
+  }
+}

@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.services;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -12,12 +12,12 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -29,9 +29,9 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionResultS
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.SearchConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.searchIndexes.SearchServiceResource;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class SearchServiceResourceTest
@@ -42,7 +42,7 @@ public class SearchServiceResourceTest
         SearchService.class,
         SearchServiceResource.SearchServiceList.class,
         "services/searchServices",
-        "owners");
+        SearchServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 
@@ -76,7 +76,7 @@ public class SearchServiceResourceTest
     assertResponse(
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[serviceType must not be null]");
+        "[query param serviceType must not be null]");
   }
 
   @Test
@@ -186,7 +186,7 @@ public class SearchServiceResourceTest
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwners());
 
-    fields = "owners,tags";
+    fields = "owners,tags,followers";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

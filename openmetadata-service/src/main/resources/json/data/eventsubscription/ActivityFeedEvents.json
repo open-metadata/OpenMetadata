@@ -10,31 +10,25 @@
       {
         "name": "matchAnyEventType",
         "effect": "include",
-        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !matchUpdatedBy({'ingestion-bot'}) && !matchAnySource({'user', 'ingestionPipeline', 'workflow'})",
+        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !isBot() && !matchAnySource({'user', 'team', 'owners', 'databaseService', 'messagingService', 'dashboardService', 'pipelineService', 'storageService', 'mlmodelService', 'metadataService', 'searchService', 'apiService', 'ingestionPipeline', 'workflow', 'testCase', 'testSuite'})",
         "prefixCondition": "AND"
       },
       {
         "name": "matchAnyFieldChange",
         "effect": "include",
-        "condition": "matchAnyFieldChange({'testCaseResult'})",
-        "prefixCondition": "OR"
-      },
-      {
-        "name": "matchAnyFieldChange",
-        "effect": "include",
-        "condition": "matchAnyFieldChange({'description', 'domain', 'owners', 'tags', 'followers', 'extension','parameterValues', 'assets'})",
+        "condition": "matchAnyFieldChange({'description', 'domain', 'owners', 'tags', 'followers','parameterValues', 'assets'})",
         "prefixCondition": "OR"
       },
       {
         "name": "matchAnySource",
         "effect": "include",
         "prefixCondition": "AND",
-        "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic','testSuite','testCase', 'domain', 'dataProduct'})"
+        "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic', 'domain', 'dataProduct', 'metric'})"
       },
       {
-        "name": "matchUpdatedBy",
+        "name": "isBot",
         "effect": "exclude",
-        "condition": "matchUpdatedBy({'ingestion-bot'})",
+        "condition": "isBot()",
         "prefixCondition": "AND"
       }
     ]
@@ -76,9 +70,7 @@
               "owners",
               "tags",
               "followers",
-              "extension",
               "parameterValues",
-              "testCaseResult",
               "pipelineStatus"
             ]
           }
@@ -108,8 +100,6 @@
               "storedProcedure",
               "table",
               "topic",
-              "testSuite",
-              "testCase",
               "domain",
               "dataProduct"
             ]
@@ -117,17 +107,9 @@
         ]
       },
       {
-        "name": "filterByUpdaterName",
+        "name": "filterByUpdaterIsBot",
         "effect" : "exclude",
-        "prefixCondition": "AND",
-        "arguments": [
-          {
-            "name": "updateByUserList",
-            "input": [
-              "ingestion-bot"
-            ]
-          }
-        ]
+        "prefixCondition": "AND"
       }
     ]
   },

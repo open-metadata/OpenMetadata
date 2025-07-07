@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { pagingObject } from '../../../constants/constants';
+import { CursorType } from '../../../enums/pagination.enum';
+import { PagingHandlerParams } from '../NextPrevious/NextPrevious.interface';
 import { ListView } from './ListView.component';
 
 const mockCardRenderer = jest.fn().mockImplementation(() => <>Card</>);
@@ -26,11 +28,48 @@ jest.mock('../SearchBarComponent/SearchBar.component', () => {
   return jest.fn().mockImplementation(() => <p>Searchbar</p>);
 });
 
+jest.mock('../NextPrevious/NextPrevious', () => {
+  return ({
+    pagingHandler,
+  }: {
+    pagingHandler: ({ cursorType, currentPage }: PagingHandlerParams) => void;
+  }) => (
+    <div data-testid="next-previous-container">
+      NextPrevious
+      <button
+        data-testid="next-previous-button"
+        onClick={() =>
+          pagingHandler({
+            currentPage: 0,
+            cursorType: CursorType.AFTER,
+          })
+        }>
+        NextPrevious
+      </button>
+    </div>
+  );
+});
+
+const mockPagingHandler = jest.fn();
+const mockOnShowSizeChange = jest.fn();
+
+const mockCustomPaginationProps = {
+  showPagination: true,
+  currentPage: 0,
+  isLoading: false,
+  isNumberBased: false,
+  pageSize: 10,
+  paging: pagingObject,
+  pagingHandler: mockPagingHandler,
+  onShowSizeChange: mockOnShowSizeChange,
+};
+
 describe('ListView component', () => {
   it('should render toggle button for card and table', async () => {
     render(
       <ListView
         cardRenderer={mockCardRenderer}
+        customPaginationProps={mockCustomPaginationProps}
         deleted={false}
         handleDeletedSwitchChange={mockHandleDeletedSwitchChange}
         searchProps={{
@@ -52,6 +91,7 @@ describe('ListView component', () => {
     render(
       <ListView
         cardRenderer={mockCardRenderer}
+        customPaginationProps={mockCustomPaginationProps}
         deleted={false}
         handleDeletedSwitchChange={mockHandleDeletedSwitchChange}
         searchProps={{
@@ -71,6 +111,7 @@ describe('ListView component', () => {
     render(
       <ListView
         cardRenderer={mockCardRenderer}
+        customPaginationProps={mockCustomPaginationProps}
         deleted={false}
         handleDeletedSwitchChange={mockHandleDeletedSwitchChange}
         searchProps={{
@@ -95,6 +136,7 @@ describe('ListView component', () => {
     render(
       <ListView
         cardRenderer={mockCardRenderer}
+        customPaginationProps={mockCustomPaginationProps}
         deleted={false}
         handleDeletedSwitchChange={mockHandleDeletedSwitchChange}
         searchProps={{
@@ -114,5 +156,58 @@ describe('ListView component', () => {
     });
 
     expect(mockHandleDeletedSwitchChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('should call pagingHandler in ListView', async () => {
+    render(
+      <ListView
+        cardRenderer={mockCardRenderer}
+        customPaginationProps={mockCustomPaginationProps}
+        deleted={false}
+        handleDeletedSwitchChange={mockHandleDeletedSwitchChange}
+        searchProps={{
+          onSearch: mockOnSearch,
+        }}
+        tableProps={{
+          columns: [],
+          dataSource: [{ name: 'test' }],
+        }}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('grid'));
+    });
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('next-previous-button'));
+    });
+
+    expect(mockPagingHandler).toHaveBeenCalledWith({
+      currentPage: 0,
+      cursorType: CursorType.AFTER,
+    });
+  });
+
+  it('should not  visible pagination in TableView', async () => {
+    render(
+      <ListView
+        cardRenderer={mockCardRenderer}
+        customPaginationProps={mockCustomPaginationProps}
+        deleted={false}
+        handleDeletedSwitchChange={mockHandleDeletedSwitchChange}
+        searchProps={{
+          onSearch: mockOnSearch,
+        }}
+        tableProps={{
+          columns: [],
+          dataSource: [{ name: 'test' }],
+        }}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('next-previous-button')
+    ).not.toBeInTheDocument();
   });
 });

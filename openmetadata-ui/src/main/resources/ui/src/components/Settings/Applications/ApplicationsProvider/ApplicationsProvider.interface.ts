@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { App } from '../../../../generated/entity/applications/app';
+import { EntityReference } from '../../../../generated/entity/type';
 
 export type ApplicationsContextType = {
-  applications: App[];
-  loading: boolean;
+  applications: EntityReference[];
 };

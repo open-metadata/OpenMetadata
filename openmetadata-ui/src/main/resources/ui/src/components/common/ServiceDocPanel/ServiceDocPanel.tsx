@@ -12,7 +12,7 @@
  */
 import { Col, Row } from 'antd';
 import { first, last } from 'lodash';
-import React, { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENDS_WITH_NUMBER_REGEX,
@@ -21,6 +21,7 @@ import {
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/i18nextUtil';
+import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import './service-doc-panel.less';
@@ -104,10 +105,10 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
 
       if (translation.status === 'fulfilled') {
         response = translation.value;
-      }
-
-      if (!isEnglishLanguage && fallbackTranslation.status === 'fulfilled') {
-        response = fallbackTranslation.value;
+      } else {
+        if (fallbackTranslation.status === 'fulfilled') {
+          response = fallbackTranslation.value;
+        }
       }
 
       setMarkdownContent(response);
@@ -123,7 +124,10 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   }, [serviceName, serviceType]);
 
   useEffect(() => {
-    const fieldName = getActiveFieldName(activeField);
+    const fieldName =
+      serviceType === 'Applications'
+        ? getActiveFieldNameForAppDocs(activeField)
+        : getActiveFieldName(activeField);
     if (fieldName) {
       const element = document.querySelector(`[data-id="${fieldName}"]`);
       if (element) {
@@ -135,7 +139,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         element.setAttribute('data-highlighted', 'true');
       }
     }
-  }, [activeField, getActiveFieldName]);
+  }, [activeField, getActiveFieldName, serviceType]);
 
   if (isLoading) {
     return <Loader />;

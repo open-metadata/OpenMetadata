@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@ from pydantic import Field
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.ingestion.models.custom_pydantic import BaseModel
@@ -62,6 +63,9 @@ class TableAndTests(BaseModel):
     )
     executable_test_suite: Optional[CreateTestSuiteRequest] = Field(
         None, description="If no executable test suite is found, we'll create one"
+    )
+    service_connection: DatabaseConnection = Field(
+        ..., description="Service connection for the given table"
     )
 
 

@@ -15,7 +15,7 @@
 FROM ubuntu:xenial-20210416
 
 # environment variables
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 # update
 RUN apt update -y && \
@@ -32,7 +32,7 @@ RUN apt install -y python-dev && \
     python /tmp/get-pip.py
 
 # java
-RUN apt install -y openjdk-17-jdk
+RUN apt install -y openjdk-21-jdk
 # maven
 #RUN apt install -y maven=3.3.9-3
 

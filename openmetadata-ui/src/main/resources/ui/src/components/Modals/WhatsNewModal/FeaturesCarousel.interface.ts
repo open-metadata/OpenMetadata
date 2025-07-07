@@ -16,6 +16,7 @@ export type CarousalData = {
   description: string;
   isImage: boolean;
   path: string;
+  isCollate?: boolean;
 };
 
 export type FeaturesCarouselProps = {

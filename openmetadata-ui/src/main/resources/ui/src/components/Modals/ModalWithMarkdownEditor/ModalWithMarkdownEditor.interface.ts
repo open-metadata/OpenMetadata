@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 
-export type EditorContentRef = {
-  getEditorContent: () => string;
-};
-
-export type ModalWithMarkdownEditorProps = {
+export interface ModalWithMarkdownEditorProps {
   header: string;
   value: string;
   placeholder: string;
   onSave?: (text: string) => Promise<void>;
   onCancel?: () => void;
   visible: boolean;
-};
+  allowFileUpload?: boolean;
+}

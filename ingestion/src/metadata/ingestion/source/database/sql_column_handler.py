@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.table import (
     ConstraintType,
     DataType,
     TableConstraint,
+    TableType,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -94,6 +95,12 @@ class SqlColumnHandlerMixin:
                 parsed_string["name"] = column["name"]
         else:
             col_type = ColumnTypeParser.get_column_type(column["type"])
+            # For arrays, we'll get the item type if possible, or parse the string representation of the column
+            # if SQLAlchemy does not provide any further information
+            if col_type == "ARRAY" and getattr(column["type"], "item_type", None):
+                arr_data_type = ColumnTypeParser.get_column_type(
+                    column["type"].item_type
+                )
             if col_type == "ARRAY" and re.match(
                 r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
             ):
@@ -196,29 +203,30 @@ class SqlColumnHandlerMixin:
             ]
         return Column(**parsed_string)
 
-    @calculate_execution_time()
-    def process_json_type_column_fields(  # pylint: disable=too-many-locals
-        self, schema_name: str, table_name: str, column_name: str, inspector: Inspector
-    ) -> Optional[List[Column]]:
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,
+    ):
         """
-        Parse fields column with json data types
+        Get columns list
         """
-        try:
-            if hasattr(inspector, "get_json_fields_and_type"):
-                result = inspector.get_json_fields_and_type(
-                    table_name, column_name, schema_name
-                )
-                return result
 
-        except NotImplementedError:
-            logger.debug(
-                "Cannot parse json fields for table column [{schema_name}.{table_name}.{col_name}]: NotImplementedError"
-            )
-        return None
+        return inspector.get_columns(
+            table_name, schema_name, table_type=table_type, db_name=db_name
+        )
 
     @calculate_execution_time()
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
-        self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,
     ) -> Tuple[
         Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
     ]:
@@ -240,12 +248,16 @@ class SqlColumnHandlerMixin:
             if len(col) == 1:
                 column_level_unique_constraints.add(col[0])
             else:
-                table_constraints.append(
-                    TableConstraint(
-                        constraintType=ConstraintType.UNIQUE,
-                        columns=col,
+                if not any(
+                    tc.constraintType == ConstraintType.UNIQUE and tc.columns == col
+                    for tc in table_constraints
+                ):
+                    table_constraints.append(
+                        TableConstraint(
+                            constraintType=ConstraintType.UNIQUE,
+                            columns=col,
+                        )
                     )
-                )
         if len(pk_columns) > 1:
             table_constraints.append(
                 TableConstraint(
@@ -256,79 +268,87 @@ class SqlColumnHandlerMixin:
 
         table_columns = []
 
-        columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
-        for column in columns:
-            try:
-                children = None
-                (
-                    data_type_display,
-                    arr_data_type,
-                    parsed_string,
-                ) = self._process_col_type(column, schema_name)
-                self.process_additional_table_constraints(
-                    column=column, table_constraints=table_constraints
+        columns = self._get_columns_internal(
+            schema_name, table_name, db_name, inspector, table_type
+        )
+
+        def process_column(column: dict):
+            (
+                data_type_display,
+                arr_data_type,
+                parsed_string,
+            ) = self._process_col_type(column, schema_name)
+            self.process_additional_table_constraints(
+                column=column, table_constraints=table_constraints
+            )
+            if parsed_string is None:
+                col_type = ColumnTypeParser.get_column_type(column["type"])
+                col_constraint = self._get_column_constraints(
+                    column, pk_columns, column_level_unique_constraints
                 )
-                if parsed_string is None:
-                    col_type = ColumnTypeParser.get_column_type(column["type"])
-                    col_constraint = self._get_column_constraints(
-                        column, pk_columns, column_level_unique_constraints
+                col_data_length = self._check_col_length(col_type, column["type"])
+                precision = ColumnTypeParser.check_col_precision(
+                    col_type, column["type"]
+                )
+                if col_type is None:
+                    col_type = DataType.UNKNOWN.name
+                    data_type_display = col_type.lower()
+                    logger.warning(
+                        f"Unknown type {repr(column['type'])}: {column['name']}"
                     )
-                    col_data_length = self._check_col_length(col_type, column["type"])
-                    precision = ColumnTypeParser.check_col_precision(
-                        col_type, column["type"]
-                    )
-                    if col_type is None:
-                        col_type = DataType.UNKNOWN.name
-                        data_type_display = col_type.lower()
-                        logger.warning(
-                            f"Unknown type {repr(column['type'])}: {column['name']}"
-                        )
-                    data_type_display = self._get_display_datatype(
-                        data_type_display,
-                        col_type,
-                        col_data_length,
-                        arr_data_type,
-                        precision,
-                    )
-                    col_data_length = 1 if col_data_length is None else col_data_length
+                data_type_display = self._get_display_datatype(
+                    data_type_display,
+                    col_type,
+                    col_data_length,
+                    arr_data_type,
+                    precision,
+                )
+                col_data_length = 1 if col_data_length is None else col_data_length
 
-                    if col_type == "JSON":
-                        children = self.process_json_type_column_fields(
-                            schema_name, table_name, column.get("name"), inspector
-                        )
-
-                    om_column = Column(
-                        name=ColumnName(
-                            root=column["name"]
+                om_column = Column(
+                    name=ColumnName(
+                        root=(
+                            column["name"]
                             # Passing whitespace if column name is an empty string
                             # since pydantic doesn't accept empty string
                             if column["name"]
                             else " "
-                        ),
-                        description=column.get("comment"),
-                        dataType=col_type,
-                        dataTypeDisplay=column.get(
-                            "system_data_type", data_type_display
-                        ),
-                        dataLength=col_data_length,
-                        constraint=col_constraint,
-                        children=children,
-                        arrayDataType=arr_data_type,
-                        ordinalPosition=column.get("ordinalPosition"),
-                    )
-                    if precision:
-                        # Precision and scale must be integer values
-                        om_column.precision = int(precision[0])
-                        om_column.scale = int(precision[1])
-
-                else:
-                    col_obj = self._process_complex_col_type(
-                        column=column, parsed_string=parsed_string
-                    )
-                    om_column = col_obj
-                om_column.tags = self.get_column_tag_labels(
-                    table_name=table_name, column=column
+                        )
+                    ),
+                    description=column.get("comment"),
+                    dataType=col_type,
+                    dataTypeDisplay=column.get("system_data_type", data_type_display),
+                    dataLength=col_data_length,
+                    constraint=col_constraint,
+                    arrayDataType=arr_data_type,
+                    ordinalPosition=column.get("ordinalPosition"),
                 )
+                if precision:
+                    # Precision and scale must be integer values
+                    om_column.precision = int(precision[0])
+                    om_column.scale = int(precision[1])
+            else:
+                col_obj = self._process_complex_col_type(
+                    column=column, parsed_string=parsed_string
+                )
+                om_column = col_obj
+
+                if column.get("children"):
+                    # Prioritize source-provided children for column processing.
+                    # If 'children' are directly provided in the source metadata,
+                    # process and assign them to the output column, overriding any derived children.
+                    # Currently, this is only used for BigQuery.
+                    om_column.children = [
+                        process_column(children) for children in column.get("children")
+                    ]
+            om_column.tags = self.get_column_tag_labels(
+                table_name=table_name, column=column
+            )
+            return om_column
+
+        for column in columns:
+            try:
+                om_column = process_column(column)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(

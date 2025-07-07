@@ -17,6 +17,7 @@ import org.openmetadata.schema.analytics.WebAnalyticEntityViewReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.WebAnalyticUserActivityReportData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
+import org.openmetadata.schema.entity.applications.configuration.internal.AppAnalyticsConfig;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
@@ -38,6 +39,7 @@ public class WebAnalyticsWorkflow {
   private final Long startTimestamp;
   private final Long endTimestamp;
   private final int batchSize;
+  private final AppAnalyticsConfig webAnalyticsConfig;
   private static final int WEB_ANALYTIC_EVENTS_RETENTION_DAYS = 7;
   private final List<PaginatedWebAnalyticEventDataSource> sources = new ArrayList<>();
   private WebAnalyticsEntityViewProcessor webAnalyticsEntityViewProcessor;
@@ -58,7 +60,10 @@ public class WebAnalyticsWorkflow {
   public static final String ENTITY_VIEW_REPORT_DATA_KEY = "entityViewReportData";
 
   public WebAnalyticsWorkflow(
-      Long timestamp, int batchSize, Optional<DataInsightsApp.Backfill> backfill) {
+      AppAnalyticsConfig webAnalyticsConfig,
+      Long timestamp,
+      int batchSize,
+      Optional<DataInsightsApp.Backfill> backfill) {
     if (backfill.isPresent()) {
       Long oldestPossibleTimestamp =
           TimestampUtils.getStartOfDayTimestamp(
@@ -86,6 +91,7 @@ public class WebAnalyticsWorkflow {
       this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
     }
     this.batchSize = batchSize;
+    this.webAnalyticsConfig = webAnalyticsConfig;
   }
 
   private void initialize() {
@@ -112,6 +118,10 @@ public class WebAnalyticsWorkflow {
   }
 
   public void process() throws SearchIndexException {
+    if (!webAnalyticsConfig.getEnabled()) {
+      return;
+    }
+    LOG.info("[Data Insights] Processing App Analytics.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 

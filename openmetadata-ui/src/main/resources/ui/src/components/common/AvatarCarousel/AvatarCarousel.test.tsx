@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import AvatarCarousel from './AvatarCarousel';
 
 const suggestions = [
@@ -29,21 +28,31 @@ const suggestions = [
   },
 ];
 
-const suggByUser = new Map([
-  ['Avatar 1', [suggestions[0]]],
-  ['Avatar 2', [suggestions[1]]],
+const suggestionByUser = new Map([
+  [
+    'Avatar 1',
+    {
+      combinedData: [suggestions[0]],
+    },
+  ],
+  [
+    'Avatar 2',
+    {
+      combinedData: [suggestions[1]],
+    },
+  ],
 ]);
 
 jest.mock('../../Suggestions/SuggestionsProvider/SuggestionsProvider', () => ({
   useSuggestionsContext: jest.fn().mockImplementation(() => ({
-    suggestions: suggestions,
-    suggestionsByUser: suggByUser,
+    suggestionsByUser: suggestionByUser,
     allSuggestionsUsers: [
       { id: '1', name: 'Avatar 1', type: 'user' },
       { id: '2', name: 'Avatar 2', type: 'user' },
     ],
-    acceptRejectSuggestion: jest.fn(),
-    selectedUserSuggestions: [],
+    selectedUserSuggestions: {
+      combinedData: [],
+    },
     onUpdateActiveUser: jest.fn(),
   })),
   __esModule: true,
@@ -57,12 +66,6 @@ jest.mock('../ProfilePicture/ProfilePicture', () =>
       <span data-testid="mocked-profile-picture">{name}</span>
     ))
 );
-
-jest.mock('../../../rest/suggestionsAPI', () => ({
-  getSuggestionsList: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(suggestions)),
-}));
 
 describe('AvatarCarousel', () => {
   it('renders without crashing', () => {

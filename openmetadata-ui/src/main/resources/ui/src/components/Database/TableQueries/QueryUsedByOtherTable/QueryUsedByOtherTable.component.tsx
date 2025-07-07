@@ -13,11 +13,10 @@
 import { Col, Popover, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
-  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
@@ -25,7 +24,8 @@ import { QUERY_USED_BY_TABLE_VIEW_CAP } from '../../../../constants/Query.consta
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityLabel, getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import Loader from '../../../common/Loader/Loader';
 import {
@@ -113,7 +113,7 @@ const QueryUsedByOtherTable = ({
 
   const handleOnChange = (
     _: string[],
-    options: DefaultOptionType | DefaultOptionType[]
+    options?: DefaultOptionType | DefaultOptionType[]
   ) => {
     if (isArray(options)) {
       onChange(options);
@@ -135,8 +135,9 @@ const QueryUsedByOtherTable = ({
       );
 
       return data.hits.hits.map((value) => ({
-        label: getEntityName(value._source),
+        label: getEntityLabel(value._source),
         value: value._source.id,
+        labelName: getEntityName(value._source),
       }));
     } catch (error) {
       return [];
@@ -149,11 +150,12 @@ const QueryUsedByOtherTable = ({
       const options = await fetchTableEntity();
       const { queryUsedIn = [] } = query;
       const selectedValue = queryUsedIn.map((table) => ({
-        label: getEntityName(table),
+        label: getEntityLabel(table),
         value: table.id,
+        labelName: getEntityName(table),
       }));
 
-      setInitialOptions(uniqBy([...selectedValue, ...options], 'value'));
+      setInitialOptions(uniqBy([...selectedValue, ...options], 'labelName'));
     } catch (error) {
       setInitialOptions([]);
     } finally {
@@ -171,10 +173,11 @@ const QueryUsedByOtherTable = ({
     ) : (
       <AsyncSelect
         api={fetchTableEntity}
-        className="w-min-15 w-full"
+        className="w-min-30 w-full"
         data-testid="edit-query-used-in"
         defaultValue={defaultValue}
         mode="multiple"
+        optionLabelProp="labelName"
         options={initialOptions}
         placeholder={t('label.please-select-entity', {
           entity: t('label.query-used-in'),

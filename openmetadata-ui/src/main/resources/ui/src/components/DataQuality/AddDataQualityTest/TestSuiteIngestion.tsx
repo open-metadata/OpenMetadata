@@ -15,9 +15,9 @@ import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { camelCase, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -65,7 +65,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   onViewServiceClick,
 }) => {
   const { ingestionFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [ingestionData, setIngestionData] = useState<
     IngestionPipeline | undefined
@@ -124,6 +124,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       testCases,
       name: ingestionPipeline?.displayName,
       selectAllTestCases: !isEmpty(ingestionPipeline) && isUndefined(testCases),
+      raiseOnError: ingestionPipeline?.raiseOnError ?? true,
     };
   }, [ingestionPipeline]);
 
@@ -157,7 +158,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const createIngestionPipeline = async (data: TestSuiteIngestionDataType) => {
     const tableName = replaceAllSpacialCharWith_(
       getNameFromFQN(
-        testSuite.executableEntityReference?.fullyQualifiedName ?? ''
+        (testSuite.basic
+          ? testSuite.basicEntityReference?.fullyQualifiedName
+          : testSuite.fullyQualifiedName) ?? ''
       )
     );
     const updatedName =
@@ -171,6 +174,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       name: generateUUID(),
       loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       pipelineType: PipelineType.TestSuite,
+      raiseOnError: data.raiseOnError ?? true,
       service: {
         id: testSuite.id ?? '',
         type: camelCase(PipelineType.TestSuite),
@@ -179,16 +183,19 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         config: {
           type: ConfigType.TestSuite,
           entityFullyQualifiedName:
-            testSuite.executableEntityReference?.fullyQualifiedName,
+            testSuite.basicEntityReference?.fullyQualifiedName,
           testCases: data?.testCases,
         },
       },
     };
+    try {
+      const ingestion = await addIngestionPipeline(ingestionPayload);
 
-    const ingestion = await addIngestionPipeline(ingestionPayload);
-
-    setIngestionData(ingestion);
-    handleIngestionDeploy(ingestion.id);
+      setIngestionData(ingestion);
+      handleIngestionDeploy(ingestion.id);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const onUpdateIngestionPipeline = async (
@@ -205,6 +212,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         ...ingestionPipeline?.airflowConfig,
         scheduleInterval: data.cron,
       },
+      raiseOnError: data.raiseOnError ?? true,
       loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       sourceConfig: {
         ...ingestionPipeline?.sourceConfig,
@@ -251,8 +259,8 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   );
 
   const handleViewTestSuiteClick = useCallback(() => {
-    history.goBack();
-  }, [history]);
+    navigate(-1);
+  }, [navigate]);
 
   const handleDeployClick = () => {
     setShowDeployModal(true);
@@ -290,7 +298,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
             includePeriodOptions={schedulerOptions}
             initialData={initialFormData}
             isLoading={isLoading}
-            testSuiteFQN={testSuite?.fullyQualifiedName}
+            testSuite={testSuite}
             onCancel={onCancel}
             onSubmit={handleIngestionSubmit}
           />

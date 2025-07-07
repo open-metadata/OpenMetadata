@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Operation } from 'fast-json-patch';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Chart } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
@@ -29,25 +28,15 @@ export interface ChartsPermissions {
 }
 export interface DashboardDetailsProps {
   updateDashboardDetailsState?: (data: DataAssetWithDomains) => void;
-  charts: Array<ChartType>;
+  charts: Array<EntityReference>;
   dashboardDetails: Dashboard;
   fetchDashboard: () => void;
-  createThread: (data: CreateThread) => Promise<void>;
   followDashboardHandler: () => Promise<void>;
   unFollowDashboardHandler: () => Promise<void>;
-  chartDescriptionUpdateHandler: (
-    index: number,
-    chartId: string,
-    patch: Array<Operation>
-  ) => Promise<void>;
-  chartTagUpdateHandler: (
-    chartId: string,
-    patch: Array<Operation>
-  ) => Promise<void>;
   versionHandler: () => void;
   onDashboardUpdate: (
     updatedDashboard: Dashboard,
-    key: keyof Dashboard
+    key?: keyof Dashboard
   ) => Promise<void>;
   handleToggleDelete: (version?: number) => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;

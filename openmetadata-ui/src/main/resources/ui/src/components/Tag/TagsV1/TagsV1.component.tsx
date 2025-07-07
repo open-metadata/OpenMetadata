@@ -12,7 +12,7 @@
  */
 import { Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
@@ -41,6 +41,7 @@ const TagsV1 = ({
   tooltipOverride,
   tagType,
   size,
+  isEditTags,
 }: TagsV1Props) => {
   const color = useMemo(
     () => (isVersionPage ? undefined : tag.style?.color),
@@ -120,6 +121,7 @@ const TagsV1 = ({
           ) : (
             startIcon
           )}
+
           <Typography.Paragraph
             ellipsis
             className="m-0 tags-label"
@@ -144,7 +146,8 @@ const TagsV1 = ({
             ),
           },
           'tag-chip tag-chip-content',
-          size
+          size,
+          'cursor-pointer'
         )}
         data-testid="tags"
         style={
@@ -185,14 +188,19 @@ const TagsV1 = ({
   }
 
   return (
-    <Tooltip
-      className="cursor-pointer"
-      mouseEnterDelay={0.5}
-      placement="bottomLeft"
-      title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
-      trigger="hover">
-      {tagChip}
-    </Tooltip>
+    <>
+      {isEditTags ? (
+        tagChip
+      ) : (
+        <Tooltip
+          mouseEnterDelay={0.5}
+          placement="bottomLeft"
+          title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
+          trigger="hover">
+          {tagChip}
+        </Tooltip>
+      )}
+    </>
   );
 };
 

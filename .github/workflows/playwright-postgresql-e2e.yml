@@ -21,11 +21,14 @@ on:
       - opened
       - synchronize
       - reopened
+      - ready_for_review
     paths-ignore:
-      - openmetadata-docs/**
-      - .github/**
-      - openmetadata-dist/**
-      - docker/**
+      - 'openmetadata-docs/**'
+      - '.github/**'
+      - 'openmetadata-dist/**'
+      - 'docker/**'
+      - '!docker/development/docker-compose.yml'
+      - '!docker/development/docker-compose-postgres.yml' 
 
 permissions:
   contents: read
@@ -37,12 +40,13 @@ concurrency:
 jobs:
   playwright-ci-postgresql:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     environment: test
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2]
-        shardTotal: [2]
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -55,7 +59,7 @@ jobs:
           swap-storage: true
           docker-images: false
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.3
+        uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -79,7 +83,7 @@ jobs:
 
       - name: Cache Maven Dependencies
         id: cache-output
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -91,16 +95,21 @@ jobs:
         with:
           python-version: '3.9'
           args: "-d postgresql"
-          ingestion_dependency: "all"
+          ingestion_dependency: "playwright"
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
       - name: Install Playwright Browsers
-        run: npx playwright@1.44.1 install --with-deps
+        run: npx playwright@1.48.2 install --with-deps
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
-        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+        run: |
+          if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
+            npx playwright test --grep @ingestion --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          else
+            npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          fi
         env:
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
@@ -108,6 +117,7 @@ jobs:
           PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
           PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
           PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+          PLAYWRIGHT_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
           PLAYWRIGHT_PROJECT_ID: ${{ steps.cypress-project-id.outputs.CYPRESS_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}

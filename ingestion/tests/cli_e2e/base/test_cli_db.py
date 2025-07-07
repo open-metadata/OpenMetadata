@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -53,7 +53,7 @@ class CliDBBase(TestCase):
 
         @pytest.mark.order(2)
         def test_create_table_with_profiler(self) -> None:
-            """2. create a new table + deploy ingestion with views, sample data, and profiler.
+            """2. create a new table + deploy ingestion with views, and profiler.
 
             We will perform the following steps:
                 1. delete table in case it exists
@@ -76,6 +76,27 @@ class CliDBBase(TestCase):
             self.system_profile_assertions()
 
         @pytest.mark.order(3)
+        def test_auto_classify_data(self) -> None:
+            """2. Run the auto classification workflow and validate the sample data
+
+            We will perform the following steps:
+                1. build config file for ingest
+                2. run ingest with new tables `self.run_command()` defaults to `ingestion`
+                3. build config file for auto classification
+                4. run auto classification
+            """
+            self.delete_table_and_view()
+            self.create_table_and_view()
+            self.build_config_file()
+            self.run_command()
+            self.build_config_file(
+                E2EType.AUTO_CLASSIFICATION, {"includes": self.get_includes_schemas()}
+            )
+            result = self.run_command("classify")
+            sink_status, source_status = self.retrieve_statuses(result)
+            self.assert_auto_classification_sample_data(source_status, sink_status)
+
+        @pytest.mark.order(4)
         def test_delete_table_is_marked_as_deleted(self) -> None:
             """3. delete the new table + deploy marking tables as deleted
 
@@ -93,7 +114,7 @@ class CliDBBase(TestCase):
                 source_status, sink_status
             )
 
-        @pytest.mark.order(4)
+        @pytest.mark.order(5)
         def test_schema_filter_includes(self) -> None:
             """4. vanilla ingestion + include schema filter pattern
 
@@ -110,7 +131,7 @@ class CliDBBase(TestCase):
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_schemas_includes(source_status, sink_status)
 
-        @pytest.mark.order(5)
+        @pytest.mark.order(6)
         def test_schema_filter_excludes(self) -> None:
             """5. vanilla ingestion + exclude schema filter pattern
 
@@ -126,7 +147,7 @@ class CliDBBase(TestCase):
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_schemas_excludes(source_status, sink_status)
 
-        @pytest.mark.order(6)
+        @pytest.mark.order(7)
         def test_table_filter_includes(self) -> None:
             """6. Vanilla ingestion + include table filter pattern
 
@@ -142,7 +163,7 @@ class CliDBBase(TestCase):
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_tables_includes(source_status, sink_status)
 
-        @pytest.mark.order(7)
+        @pytest.mark.order(8)
         def test_table_filter_excludes(self) -> None:
             """7. Vanilla ingestion + exclude table filter pattern
 
@@ -157,7 +178,7 @@ class CliDBBase(TestCase):
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_tables_excludes(source_status, sink_status)
 
-        @pytest.mark.order(8)
+        @pytest.mark.order(9)
         def test_table_filter_mix(self) -> None:
             """8. Vanilla ingestion + include schema filter pattern + exclude table filter pattern
 
@@ -179,21 +200,39 @@ class CliDBBase(TestCase):
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_mix(source_status, sink_status)
 
-        @pytest.mark.order(9)
+        @pytest.mark.order(10)
         def test_usage(self) -> None:
             """9. Run queries in the source (creates, inserts, views) and ingest metadata & Lineage
 
             This test will need to be implemented on the database specific test classes
             """
 
-        @pytest.mark.order(10)
+        @pytest.mark.order(11)
         def test_lineage(self) -> None:
             """10. Run queries in the source (creates, inserts, views) and ingest metadata & Lineage
 
             This test will need to be implemented on the database specific test classes
             """
+            self.delete_table_and_view()
+            self.create_table_and_view()
+            self.build_config_file(
+                E2EType.INGEST_DB_FILTER_SCHEMA,
+                {"includes": self.get_includes_schemas()},
+            )
+            service_type = self.get_connector_name()
+            if hasattr(self, "get_service_type"):
+                service_type = self.get_service_type()
 
-        @pytest.mark.order(11)
+            self.run_command()
+            self.build_config_file(
+                E2EType.LINEAGE,
+                {"source": f"{service_type}-lineage"},
+            )
+            result = self.run_command()
+            sink_status, source_status = self.retrieve_statuses(result)
+            self.assert_for_test_lineage(source_status, sink_status)
+
+        @pytest.mark.order(12)
         def test_profiler_with_time_partition(self) -> None:
             """11. Test time partitioning for the profiler"""
             time_partition = self.get_profiler_time_partition()
@@ -215,7 +254,7 @@ class CliDBBase(TestCase):
                     sink_status,
                 )
 
-        @pytest.mark.order(12)
+        @pytest.mark.order(13)
         def test_data_quality(self) -> None:
             """12. Test data quality for the connector"""
             if self.get_data_quality_table() is None:
@@ -224,6 +263,7 @@ class CliDBBase(TestCase):
             self.create_table_and_view()
             self.build_config_file()
             self.run_command()
+            self.add_table_profile_config()
             table: Table = self.openmetadata.get_by_name(
                 Table, self.get_data_quality_table(), nullable=False
             )
@@ -307,7 +347,19 @@ class CliDBBase(TestCase):
             raise NotImplementedError()
 
         @abstractmethod
+        def assert_for_test_lineage(
+            self, source_status: Status, sink_status: Status
+        ) -> None:
+            raise NotImplementedError()
+
+        @abstractmethod
         def assert_for_table_with_profiler(
+            self, source_status: Status, sink_status: Status
+        ):
+            raise NotImplementedError()
+
+        @abstractmethod
+        def assert_auto_classification_sample_data(
             self, source_status: Status, sink_status: Status
         ):
             raise NotImplementedError()
@@ -451,3 +503,6 @@ class CliDBBase(TestCase):
         def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
             """Return a list of tuples with the table fqn and the expected system profile"""
             return []
+
+        def add_table_profile_config(self):
+            pass

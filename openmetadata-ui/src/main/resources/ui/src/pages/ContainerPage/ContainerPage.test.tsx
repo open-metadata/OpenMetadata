@@ -10,23 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityTabs } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import {
   addContainerFollower,
   getContainerByName,
 } from '../../rest/storageAPI';
 import ContainerPage from './ContainerPage';
-import { CONTAINER_DATA, CONTAINER_DATA_1 } from './ContainerPage.mock';
+import {
+  MOCK_CONTAINER_DATA,
+  MOCK_CONTAINER_DATA_1,
+} from './ContainerPage.mock';
 
 const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
   ViewBasic: true,
 });
-
-const mockGetContainerByName = jest.fn().mockResolvedValue(CONTAINER_DATA);
 
 jest.mock(
   '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
@@ -62,6 +64,13 @@ jest.mock(
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
     id: 'userid',
+    selectedPersona: {
+      id: 'personaid',
+      name: 'persona name',
+      description: 'persona description',
+      type: 'persona type',
+      owner: 'persona owner',
+    },
   }),
 }));
 
@@ -94,7 +103,7 @@ jest.mock(
   '../../components/Container/ContainerChildren/ContainerChildren',
   () =>
     jest.fn().mockImplementation(({ isLoading }) => {
-      getContainerByName(CONTAINER_DATA_1.fullyQualifiedName, {
+      getContainerByName(MOCK_CONTAINER_DATA_1.fullyQualifiedName, {
         fields: 'children',
       });
 
@@ -156,7 +165,7 @@ jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
-jest.mock('../../constants/constants', () => ({
+jest.mock('../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest.fn().mockReturnValue('/container-detail-path'),
   getVersionPath: jest.fn().mockReturnValue('/version-path'),
 }));
@@ -165,17 +174,7 @@ jest.mock('../../rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../rest/storageAPI', () => ({
-  addContainerFollower: jest.fn(),
-  getContainerByName: jest
-    .fn()
-    .mockImplementation((...params) => mockGetContainerByName(params)),
-  patchContainerDetails: jest.fn().mockImplementation(() => Promise.resolve()),
-  removeContainerFollower: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve()),
-  restoreContainer: jest.fn().mockImplementation(() => Promise.resolve()),
-}));
+jest.mock('../../rest/storageAPI');
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
@@ -184,10 +183,23 @@ jest.mock('../../utils/CommonUtils', () => ({
   sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
 }));
 
+jest.mock('../../hooks/paging/usePaging', () => ({
+  usePaging: jest.fn().mockReturnValue({
+    currentPage: 1,
+    showPagination: true,
+    pageSize: 10,
+    handlePageChange: jest.fn(),
+    handlePagingChange: jest.fn(),
+    handlePageSizeChange: jest.fn(),
+  }),
+}));
+
 jest.mock('../../utils/EntityUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name ?? 'entityName'),
+  getEntityFeedLink: jest.fn(),
+  getColumnSorter: jest.fn(),
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({
@@ -206,6 +218,7 @@ jest.mock('../../utils/TableUtils', () => ({
 jest.mock('../../utils/TagsUtils', () => ({
   createTagObject: jest.fn().mockImplementation((tagObject) => tagObject),
   updateTierTag: jest.fn().mockImplementation((tagObject) => tagObject),
+  getTagPlaceholder: jest.fn().mockReturnValue(''),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -214,16 +227,14 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 const mockUseParams = jest.fn().mockReturnValue({
-  fqn: CONTAINER_DATA.fullyQualifiedName,
+  fqn: MOCK_CONTAINER_DATA.fullyQualifiedName,
   tab: 'schema',
 });
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockUseParams()),
 }));
 
@@ -237,45 +248,44 @@ describe('Container Page Component', () => {
       ViewBasic: false,
     });
 
-    await act(async () => {
-      render(<ContainerPage />);
+    render(<ContainerPage />);
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    expect(screen.getByText('Loader')).toBeVisible();
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
 
     expect(getContainerByName).not.toHaveBeenCalled();
 
     expect(
-      screen.getByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
+      await screen.findByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
     ).toBeInTheDocument();
   });
 
   it('fetch container data, if have view permission', async () => {
-    await act(async () => {
-      render(<ContainerPage />);
+    render(<ContainerPage />);
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    expect(screen.getByText('Loader')).toBeVisible();
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-    expect(getContainerByName).toHaveBeenCalledWith(
-      CONTAINER_DATA.fullyQualifiedName,
-      {
-        fields: [
-          'parent',
-          'dataModel',
-          'owners',
-          'tags',
-          'followers',
-          'extension',
-          'domain',
-          'dataProducts',
-          'votes',
-        ],
-        include: Include.All,
-      }
+
+    await waitFor(() =>
+      expect(getContainerByName).toHaveBeenCalledWith(
+        MOCK_CONTAINER_DATA.fullyQualifiedName,
+        {
+          fields: [
+            'parent',
+            'dataModel',
+            'owners',
+            'tags',
+            'followers',
+            'extension',
+            'domain',
+            'dataProducts',
+            'votes',
+          ],
+          include: Include.All,
+        }
+      )
     );
   });
 
@@ -284,27 +294,47 @@ describe('Container Page Component', () => {
       'failed to fetch container data'
     );
 
-    await act(async () => {
-      render(<ContainerPage />);
+    render(<ContainerPage />);
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    expect(screen.getByText('Loader')).toBeVisible();
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-    expect(getContainerByName).toHaveBeenCalled();
+
+    await waitFor(() => expect(getContainerByName).toHaveBeenCalled());
 
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
   it('should render the page container data, with the schema tab selected', async () => {
-    await act(async () => {
-      render(<ContainerPage />);
+    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+      MOCK_CONTAINER_DATA
+    );
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    render(<ContainerPage />);
+
+    expect(screen.getByText('Loader')).toBeVisible();
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-    expect(getContainerByName).toHaveBeenCalled();
+
+    await waitFor(() =>
+      expect(getContainerByName).toHaveBeenCalledWith(
+        's3_storage_sample.transactions',
+        {
+          fields: [
+            'parent',
+            'dataModel',
+            'owners',
+            'tags',
+            'followers',
+            'extension',
+            'domain',
+            'dataProducts',
+            'votes',
+          ],
+          include: 'all',
+        }
+      )
+    );
 
     expect(screen.getByTestId('data-asset-header')).toBeInTheDocument();
 
@@ -314,79 +344,76 @@ describe('Container Page Component', () => {
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('DescriptionV1')).toBeVisible();
     expect(screen.getByText('ContainerDataModel')).toBeVisible();
-    expect(screen.getByText('EntityRightPanel')).toBeVisible();
-  });
-
-  it('activity thread panel should render after selecting thread link', async () => {
-    await act(async () => {
-      render(<ContainerPage />);
-
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
-
-    const DescriptionV1 = screen.getByText('DescriptionV1');
-
-    expect(DescriptionV1).toBeVisible();
-
-    expect(screen.queryByText('ActivityThreadPanel')).not.toBeInTheDocument();
-
-    userEvent.click(DescriptionV1);
-
-    expect(screen.getByText('ActivityThreadPanel')).toBeInTheDocument();
+    expect(screen.getByText('CustomPropertyTable')).toBeVisible();
+    expect(screen.getByText('label.glossary-term')).toBeVisible();
+    expect(screen.getByText('label.tag-plural')).toBeVisible();
+    expect(screen.getByText('label.data-product-plural')).toBeVisible();
   });
 
   it('onClick of follow container should call addContainerFollower', async () => {
-    await act(async () => {
-      render(<ContainerPage />);
+    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+      MOCK_CONTAINER_DATA
+    );
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    render(<ContainerPage />);
 
-    const followButton = screen.getByRole('button', {
+    expect(screen.getByText('Loader')).toBeVisible();
+
+    const followButton = await screen.findByRole('button', {
       name: 'Follow Container',
     });
 
     userEvent.click(followButton);
 
-    expect(addContainerFollower).toHaveBeenCalled();
+    await waitFor(() => expect(addContainerFollower).toHaveBeenCalled());
   });
 
   it('tab switch should work', async () => {
-    await act(async () => {
-      render(<ContainerPage />);
+    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+      MOCK_CONTAINER_DATA
+    );
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    render(<ContainerPage />);
 
-    const childrenTab = screen.getByRole('tab', {
+    expect(screen.getByText('Loader')).toBeVisible();
+
+    const childrenTab = await screen.findByRole('tab', {
       name: 'label.children',
     });
 
     userEvent.click(childrenTab);
 
-    expect(mockPush).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith(
+        { pathname: '/container-detail-path' },
+        { replace: true }
+      )
+    );
   });
 
   it('children should render on children tab', async () => {
+    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+      MOCK_CONTAINER_DATA_1
+    );
     mockUseParams.mockReturnValue({
-      fqn: CONTAINER_DATA_1.fullyQualifiedName,
-      tab: 'children',
+      fqn: MOCK_CONTAINER_DATA_1.fullyQualifiedName,
+      tab: EntityTabs.CHILDREN,
     });
 
-    await act(async () => {
-      render(<ContainerPage />);
+    render(<ContainerPage />);
 
-      expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByText('Loader')).toBeVisible();
+
+    const childrenTab = await screen.findByRole('tab', {
+      name: 'label.children',
     });
-
-    const childrenTab = screen.getByRole('tab', { name: 'label.children' });
 
     expect(childrenTab).toHaveAttribute('aria-selected', 'true');
 
     expect(screen.getByText('ContainerChildren')).toBeVisible();
 
     expect(getContainerByName).toHaveBeenCalledWith(
-      CONTAINER_DATA_1.fullyQualifiedName,
+      MOCK_CONTAINER_DATA_1.fullyQualifiedName,
       {
         fields: 'children',
       }

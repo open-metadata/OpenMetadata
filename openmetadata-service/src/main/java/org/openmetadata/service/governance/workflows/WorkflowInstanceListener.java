@@ -13,16 +13,25 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 public class WorkflowInstanceListener implements JavaDelegate {
   @Override
   public void execute(DelegateExecution execution) {
-    WorkflowInstanceRepository workflowInstanceRepository =
-        (WorkflowInstanceRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+    try {
+      WorkflowInstanceRepository workflowInstanceRepository =
+          (WorkflowInstanceRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
 
-    switch (execution.getEventName()) {
-      case "start" -> addWorkflowInstance(execution, workflowInstanceRepository);
-      case "end" -> updateWorkflowInstance(execution, workflowInstanceRepository);
-      default -> LOG.debug(
+      switch (execution.getEventName()) {
+        case "start" -> addWorkflowInstance(execution, workflowInstanceRepository);
+        case "end" -> updateWorkflowInstance(execution, workflowInstanceRepository);
+        default -> LOG.debug(
+            String.format(
+                "WorkflowStageUpdaterListener does not support listening for the event: '%s'",
+                execution.getEventName()));
+      }
+    } catch (Exception exc) {
+      LOG.error(
           String.format(
-              "WorkflowStageUpdaterListener does not support listening for the event: '%s'",
-              execution.getEventName()));
+              "[%s] Failed due to: %s ",
+              getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc.getMessage()),
+          exc);
     }
   }
 
@@ -45,13 +54,22 @@ public class WorkflowInstanceListener implements JavaDelegate {
         workflowInstanceId,
         System.currentTimeMillis(),
         execution.getVariables());
+    LOG.debug(
+        String.format(
+            "Workflow '%s' Triggered. Instance: '%s'", workflowDefinitionName, workflowInstanceId));
   }
 
   private void updateWorkflowInstance(
       DelegateExecution execution, WorkflowInstanceRepository workflowInstanceRepository) {
+    String workflowDefinitionName =
+        getMainWorkflowDefinitionNameFromTrigger(
+            getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()));
     UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
     workflowInstanceRepository.updateWorkflowInstance(
-        workflowInstanceId, System.currentTimeMillis());
+        workflowInstanceId, System.currentTimeMillis(), execution.getVariables());
+    LOG.debug(
+        String.format(
+            "Workflow '%s' Finished. Instance: '%s'", workflowDefinitionName, workflowInstanceId));
   }
 
   private String getMainWorkflowDefinitionNameFromTrigger(String triggerWorkflowDefinitionName) {

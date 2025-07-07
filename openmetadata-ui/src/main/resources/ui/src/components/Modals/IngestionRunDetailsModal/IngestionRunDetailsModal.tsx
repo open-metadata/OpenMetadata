@@ -11,24 +11,28 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Typography } from 'antd';
+import { Button, Col, Modal, Row, Typography } from 'antd';
 import { ColumnType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { startCase } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { isArray, startCase } from 'lodash';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA } from '../../../constants/constants';
-import { StepSummary } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { AppRunRecord } from '../../../generated/entity/applications/appRunRecord';
+import {
+  PipelineStatus,
+  StepSummary,
+} from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Table from '../../common/Table/Table';
 import ConnectionStepCard from '../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRunDetailsModalProps } from './IngestionRunDetailsModal.interface';
 
-function IngestionRunDetailsModal({
+function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
   pipelineStatus,
   handleCancel,
-}: Readonly<IngestionRunDetailsModalProps>) {
+}: Readonly<IngestionRunDetailsModalProps<T>>) {
   const { t } = useTranslation();
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
 
@@ -87,26 +91,30 @@ function IngestionRunDetailsModal({
   const expandable: ExpandableConfig<StepSummary> = useMemo(
     () => ({
       expandedRowRender: (record) => {
-        return (
-          record.failures?.map((failure) => (
-            <ConnectionStepCard
-              isTestingConnection={false}
-              key={failure.name}
-              testConnectionStep={{
-                name: failure.name,
-                mandatory: false,
-                description: failure.error,
-              }}
-              testConnectionStepResult={{
-                name: failure.name,
-                passed: false,
-                mandatory: false,
-                message: failure.error,
-                errorLog: failure.stackTrace,
-              }}
-            />
-          )) ?? []
-        );
+        return record.failures ? (
+          <Row gutter={[16, 16]}>
+            {record.failures.map((failure) => (
+              <Col key={failure.name} span={24}>
+                <ConnectionStepCard
+                  isTestingConnection={false}
+                  key={failure.name}
+                  testConnectionStep={{
+                    name: failure.name,
+                    mandatory: false,
+                    description: failure.error,
+                  }}
+                  testConnectionStepResult={{
+                    name: failure.name,
+                    passed: false,
+                    mandatory: false,
+                    message: failure.error,
+                    errorLog: failure.stackTrace,
+                  }}
+                />
+              </Col>
+            ))}
+          </Row>
+        ) : undefined;
       },
       indentSize: 0,
       expandIcon: () => null,
@@ -125,15 +133,19 @@ function IngestionRunDetailsModal({
       maskClosable={false}
       okButtonProps={{ style: { display: 'none' } }}
       title={t('message.run-status-at-timestamp', {
-        status: startCase(pipelineStatus?.pipelineState),
+        status: startCase(
+          (pipelineStatus as PipelineStatus)?.pipelineState ??
+            (pipelineStatus as AppRunRecord)?.status
+        ),
         timestamp: formatDateTime(pipelineStatus?.timestamp),
       })}
       width="80%"
       onCancel={handleCancel}>
       <Table
-        bordered
         columns={columns}
-        dataSource={pipelineStatus?.status ?? []}
+        dataSource={
+          isArray(pipelineStatus?.status) ? pipelineStatus?.status : []
+        }
         expandable={expandable}
         indentSize={0}
         pagination={false}

@@ -1,0 +1,60 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../styles/variables.less';
+
+.service-details-page {
+  background-color: @grey-9;
+
+  /* Tabs */
+  .ant-tabs-top > .ant-tabs-nav::before {
+    display: none;
+  }
+
+  // Entity Details Page css
+  .entity-details-page-tabs {
+    .ant-tabs-nav {
+      .ant-tabs-nav-wrap {
+        overflow: initial;
+      }
+    }
+  }
+
+  .ant-tabs-tab + .ant-tabs-tab {
+    margin: 0 0 0 24px;
+  }
+
+  .ant-tabs-nav {
+    padding: 4px 20px 8px 20px;
+    background-color: @white;
+    border-radius: @border-radius-sm;
+    border: 1px solid @grey-15;
+  }
+
+  .ant-tabs.tabs-new .ant-tabs-tabpane {
+    background-color: transparent;
+  }
+
+  .connection-tab-content {
+    background-color: @white;
+    border-radius: @border-radius-sm;
+    border: 1px solid @grey-15;
+  }
+
+  .connection-tab-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}

@@ -12,34 +12,33 @@
  */
 
 import { useOktaAuth } from '@okta/okta-react';
-import React, {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useImperativeHandle,
-} from 'react';
+import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
 
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
   children: ReactNode;
-  onLogoutSuccess: () => void;
 }
 
 const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
-  ({ children, onLogoutSuccess }: Props, ref) => {
+  ({ children }: Props, ref) => {
     const { oktaAuth } = useOktaAuth();
-    const { setIsAuthenticated, setOidcToken } = useApplicationStore();
+    const { handleSuccessfulLogout } = useAuthProvider();
 
     const login = async () => {
       oktaAuth.signInWithRedirect();
     };
 
     const logout = async () => {
-      setIsAuthenticated(false);
-      oktaAuth.tokenManager.clear();
-      onLogoutSuccess();
+      try {
+        // Perform logout on Okta
+        oktaAuth.tokenManager.clear();
+      } finally {
+        // Cleanup application state
+        handleSuccessfulLogout();
+      }
     };
 
     const renewToken = async () => {
@@ -49,7 +48,7 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
         renewToken?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
       setOidcToken(newToken);
 
-      return Promise.resolve(newToken);
+      return newToken;
     };
 
     useImperativeHandle(ref, () => ({

@@ -1,11 +1,11 @@
 package org.openmetadata.service.clients.pipeline;
 
 import io.prometheus.client.Counter;
+import jakarta.ws.rs.core.Response;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import javax.ws.rs.core.Response;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
@@ -78,6 +78,15 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     return this.respondWithMetering(
         RUN, () -> this.decoratedClient.runPipeline(ingestionPipeline, service));
+  }
+
+  @Override
+  public PipelineServiceClientResponse runPipeline(
+      IngestionPipeline ingestionPipeline,
+      ServiceEntityInterface service,
+      Map<String, Object> config) {
+    return this.respondWithMetering(
+        RUN, () -> this.decoratedClient.runPipeline(ingestionPipeline, service, config));
   }
 
   @Override

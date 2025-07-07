@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,6 +26,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_nosql_source import (
     SAMPLE_SIZE,
     CommonNoSQLSource,
+    TableNameAndType,
 )
 from metadata.ingestion.source.database.couchbase.models import IndexObject as Index
 from metadata.ingestion.source.database.couchbase.queries import (
@@ -96,13 +97,18 @@ class CouchbaseSource(CommonNoSQLSource):
             logger.debug(traceback.format_exc())
         return []
 
-    def get_table_name_list(self, schema_name: str) -> List[str]:
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
         Method to get list of table names available within schema db
         """
         try:
             scope_object = self.context.get().scope_dict.get(schema_name)
-            return [collection.name for collection in scope_object.collections]
+            return [
+                TableNameAndType(name=collection.name)
+                for collection in scope_object.collections
+            ]
         except Exception as exp:
             logger.debug(
                 f"Failed to list collection names for scope [{schema_name}]: {exp}"

@@ -12,10 +12,10 @@
  */
 
 import { Form } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
-import { t } from 'i18next';
+import Select, { DefaultOptionType } from 'antd/lib/select';
 import { toString } from 'lodash';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
+import Certification from '../../components/Certification/Certification.component';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
@@ -23,12 +23,16 @@ import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ModalWithCustomPropertyEditor } from '../../components/Modals/ModalWithCustomProperty/ModalWithCustomPropertyEditor.component';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import SchemaModal from '../../components/Modals/SchemaModal/SchemaModal';
+import { ENTITY_TYPE_OPTIONS } from '../../constants/BulkImport.constant';
+import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
 import Fqn from '../Fqn';
+import { t } from '../i18next/LocalUtil';
 import { EditorProps } from './CSV.utils';
 
 class CSVUtilsClassBase {
@@ -42,8 +46,13 @@ class CSVUtilsClassBase {
       'extension',
       'synonyms',
       'description',
+      'tags',
       'glossaryTerms',
       'relatedTerms',
+      'column.description',
+      'column.tags',
+      'column.glossaryTerms',
+      'storedProcedure.code',
     ];
   }
 
@@ -93,6 +102,7 @@ class CSVUtilsClassBase {
               popoverProps={{
                 open: true,
               }}
+              onClose={props.onCancel}
               onUpdate={handleChange}>
               {' '}
             </UserTeamSelectableList>
@@ -133,15 +143,16 @@ class CSVUtilsClassBase {
             : undefined;
 
           const handleChange = (tags: TagLabel[]) => {
-            props.onChange(
-              tags.map((tag) => tag.tagFQN.replaceAll('"', '""')).join(';')
-            );
+            props.onChange(tags.map((tag) => tag.tagFQN).join(';'));
           };
 
           return (
             <InlineEdit onCancel={props.onCancel} onSave={props.onComplete}>
               <TagSuggestion
-                selectProps={{ className: 'w-48', size: 'small', style: {} }}
+                selectProps={{
+                  className: 'react-grid-select-dropdown',
+                  size: 'small',
+                }}
                 value={tags}
                 onChange={handleChange}
               />
@@ -196,6 +207,31 @@ class CSVUtilsClassBase {
             </TierCard>
           );
         };
+
+      case 'certification':
+        return ({ value, ...props }) => {
+          const handleChange = async (tag?: Tag) => {
+            props.onChange(tag?.fullyQualifiedName);
+
+            setTimeout(() => {
+              props.onComplete(tag?.fullyQualifiedName);
+            }, 1);
+          };
+
+          const onClose = () => {
+            props.onCancel();
+          };
+
+          return (
+            <Certification
+              permission
+              currentCertificate={value}
+              popoverProps={{ open: true }}
+              onCertificationUpdate={handleChange}
+              onClose={onClose}
+            />
+          );
+        };
       case 'domain':
         return ({ value, ...props }) => {
           const handleChange = async (domain?: EntityReference) => {
@@ -229,7 +265,12 @@ class CSVUtilsClassBase {
               popoverProps={{ open: true }}
               selectedDomain={
                 value
-                  ? { type: EntityType.DOMAIN, name: value, id: '' }
+                  ? {
+                      type: EntityType.DOMAIN,
+                      name: value,
+                      id: '',
+                      fullyQualifiedName: value,
+                    }
                   : undefined
               }
               onUpdate={(domain) => handleChange(domain as EntityReference)}>
@@ -304,6 +345,45 @@ class CSVUtilsClassBase {
               value={value}
               onCancel={props.onCancel}
               onSave={handleSave}
+            />
+          );
+        };
+      case 'entityType*':
+        return ({ value, ...props }) => {
+          const handleChange = (typeValue: string) => {
+            props.onChange(typeValue);
+          };
+
+          return (
+            <InlineEdit onCancel={props.onCancel} onSave={props.onComplete}>
+              <Select
+                data-testid="entity-type-select"
+                options={ENTITY_TYPE_OPTIONS}
+                size="small"
+                style={{ width: '155px' }}
+                value={value}
+                onChange={handleChange}
+              />
+            </InlineEdit>
+          );
+        };
+
+      case 'code':
+        return ({ value, ...props }) => {
+          const handleChange = (value: string) => {
+            props.onChange(value);
+          };
+
+          return (
+            <SchemaModal
+              isFooterVisible
+              visible
+              data={value}
+              editorClass="custom-code-mirror-theme full-screen-editor-height"
+              mode={{ name: CSMode.SQL }}
+              onChange={handleChange}
+              onClose={props.onCancel}
+              onSave={props.onComplete}
             />
           );
         };

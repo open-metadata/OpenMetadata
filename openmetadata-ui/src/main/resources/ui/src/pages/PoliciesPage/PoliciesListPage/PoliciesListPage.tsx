@@ -15,15 +15,14 @@ import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -64,7 +63,7 @@ import './policies-list.less';
 
 const PoliciesListPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -112,7 +111,7 @@ const PoliciesListPage = () => {
   const columns: ColumnsType<Policy> = useMemo(() => {
     return [
       {
-        title: t('label.name'),
+        title: t('label.name').toString(),
         dataIndex: 'name',
         width: '200px',
         key: 'name',
@@ -130,18 +129,18 @@ const PoliciesListPage = () => {
         ),
       },
       {
-        title: t('label.description'),
+        title: t('label.description').toString(),
         dataIndex: 'description',
         key: 'description',
         render: (_, record) =>
           isEmpty(record?.description) ? (
             NO_DATA_PLACEHOLDER
           ) : (
-            <RichTextEditorPreviewer markdown={record?.description || ''} />
+            <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
           ),
       },
       {
-        title: t('label.role-plural'),
+        title: t('label.role-plural').toString(),
         dataIndex: 'roles',
         width: '250px',
         key: 'roles',
@@ -202,7 +201,7 @@ const PoliciesListPage = () => {
         },
       },
       {
-        title: t('label.action-plural'),
+        title: t('label.action-plural').toString(),
         dataIndex: 'actions',
         width: '80px',
         align: 'center',
@@ -256,7 +255,7 @@ const PoliciesListPage = () => {
   }, [fetchPolicies]);
 
   const handleAddPolicy = () => {
-    history.push(ROUTES.ADD_POLICY);
+    navigate(ROUTES.ADD_POLICY);
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
@@ -276,7 +275,7 @@ const PoliciesListPage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.policy-plural')}>
       <Row
-        className="policies-list-container page-container"
+        className="policies-list-container"
         data-testid="policies-list-container"
         gutter={[0, 16]}>
         <Col span={24}>
@@ -298,17 +297,29 @@ const PoliciesListPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            bordered
-            className="policies-list-table"
             columns={columns}
+            containerClassName="policies-list-table"
+            customPaginationProps={{
+              currentPage,
+              isLoading,
+              showPagination,
+              pageSize,
+              paging,
+              pagingHandler: handlePaging,
+              onShowSizeChange: handlePageSizeChange,
+            }}
             data-testid="policies-list-table"
             dataSource={policies}
             loading={isLoading}
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
+                  className="border-none"
                   heading={t('label.policy')}
                   permission={addPolicyPermission}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.policy'),
+                  })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={handleAddPolicy}
                 />
@@ -330,18 +341,6 @@ const PoliciesListPage = () => {
               entityType={EntityType.POLICY}
               visible={!isUndefined(selectedPolicy)}
               onCancel={() => setSelectedPolicy(undefined)}
-            />
-          )}
-        </Col>
-        <Col span={24}>
-          {showPagination && (
-            <NextPrevious
-              currentPage={currentPage}
-              isLoading={isLoading}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={handlePaging}
-              onShowSizeChange={handlePageSizeChange}
             />
           )}
         </Col>

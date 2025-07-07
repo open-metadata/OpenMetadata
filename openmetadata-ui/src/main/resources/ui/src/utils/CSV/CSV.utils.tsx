@@ -19,10 +19,11 @@ import {
   isUndefined,
   startCase,
 } from 'lodash';
-import React from 'react';
+import { parse } from 'papaparse';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
   ExtensionDataProps,
   ExtensionDataTypes,
@@ -51,16 +52,15 @@ export const COLUMNS_WIDTH: Record<string, number> = {
   description: 300,
   tags: 280,
   glossaryTerms: 280,
+  'entityType*': 230,
+  arrayDataType: 210,
+  dataTypeDisplay: 220,
+  fullyQualifiedName: 300,
   tiers: 120,
   status: 70,
 };
 
-const statusRenderer = ({
-  value,
-}: {
-  value: Status;
-  data: { details: string };
-}) => {
+const statusRenderer = (value: Status) => {
   return value === Status.Failure ? (
     <FailBadgeIcon
       className="m-t-xss"
@@ -78,6 +78,32 @@ const statusRenderer = ({
   );
 };
 
+const renderColumnDataEditor = (
+  column: string,
+  recordData: {
+    value: string;
+    data: { details: string };
+  }
+) => {
+  const { value } = recordData;
+  switch (column) {
+    case 'status':
+    case 'glossaryStatus':
+      return statusRenderer(value as Status);
+    case 'description':
+      return (
+        <RichTextEditorPreviewerV1
+          enableSeeMoreVariant={false}
+          markdown={value}
+          reducePreviewLineClass="max-one-line"
+        />
+      );
+
+    default:
+      return value;
+  }
+};
+
 export const getColumnConfig = (
   column: string,
   entityType: EntityType
@@ -91,7 +117,7 @@ export const getColumnConfig = (
     sortable: false,
     renderEditor: csvUtilsClassBase.getEditor(colType, entityType),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
-    render: column === 'status' ? statusRenderer : undefined,
+    render: (recordData) => renderColumnDataEditor(colType, recordData),
   } as TypeColumn;
 };
 
@@ -428,4 +454,35 @@ export const convertEntityExtensionToCustomPropertyString = (
   });
 
   return `${convertedString}`;
+};
+
+/**
+ * Splits a CSV string into an array of values, properly handling quoted values and commas.
+ * Uses Papa Parse for robust CSV parsing.
+ * @param input The CSV string to split
+ * @returns Array of string values
+ */
+export const splitCSV = (input: string): string[] => {
+  // First, normalize the input by replacing escaped quotes with a temporary marker
+  const normalizedInput = input.replace(/\\"/g, '__ESCAPED_QUOTE__');
+
+  const result = parse<string[]>(normalizedInput, {
+    delimiter: ',',
+    skipEmptyLines: true,
+    transformHeader: (header: string) => header.trim(),
+    transform: (value: string) => {
+      // Remove outer quotes if they exist and trim
+      const trimmed = value.trim();
+      if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+        return trimmed.slice(1, -1).trim();
+      }
+
+      return trimmed;
+    },
+  });
+
+  // Restore the escaped quotes in the result and ensure no trailing spaces
+  return (result.data[0] || []).map((value) =>
+    value.replace(/__ESCAPED_QUOTE__/g, '"').trim()
+  );
 };

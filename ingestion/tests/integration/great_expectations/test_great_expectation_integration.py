@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,10 +15,11 @@ Validate great expectation integration
 
 import logging
 import os
+import subprocess
+import sys
 from datetime import datetime, timedelta
 from unittest import TestCase
 
-from great_expectations import DataContext
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
@@ -175,6 +176,17 @@ class TestGreatExpectationIntegration(TestCase):
         """
         Test great expectation integration
         """
+        self.install_gx_018x()
+        import great_expectations as gx
+
+        try:
+            self.assertTrue(gx.__version__.startswith("0.18."))
+        except AssertionError as exc:
+            # module versions are cached, so we need to skip the test if the version is not 0.18.x
+            # e.g. we run the 1.x.x test before this one, 0.18.x version will be cached and used here
+            # The test will run if we run this test alone without the 1.x.x test
+            self.skipTest(f"GX version is not 0.18.x: {exc}")
+
         table_entity = self.metadata.get_by_name(
             entity=Table,
             fqn="test_sqlite.default.main.users",
@@ -186,10 +198,9 @@ class TestGreatExpectationIntegration(TestCase):
         # GE config file
         ge_folder = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "great_expectations",
         )
-        ometa_config = os.path.join(ge_folder, "ometa_config")
-        context = DataContext(ge_folder)
+        ometa_config = os.path.join(ge_folder, "gx/ometa_config")
+        context = gx.get_context(project_root_dir=ge_folder)
         checkpoint = context.get_checkpoint("sqlite")
         # update our checkpoint file at runtime to dynamically pass the ometa config file
         checkpoint.action_list[-1].update(
@@ -227,3 +238,9 @@ class TestGreatExpectationIntegration(TestCase):
         )
 
         assert test_case_results
+
+    def install_gx_018x(self):
+        """Install GX 0.18.x at runtime as we support 0.18.x and 1.x.x and setup will install 1 default version"""
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "great-expectations~=0.18.0"]
+        )

@@ -15,12 +15,7 @@ import { Button, Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
-import React, {
-  FunctionComponent,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+import { FunctionComponent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -69,24 +64,18 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const readMoreRenderElement = useMemo(
     () => (
       <div data-testid="read-more-element">
-        {isOpen && (
-          <div className="m-t-xs d-flex flex-wrap gap-2">
-            {sortedTagsBySource
-              .slice(sizeCap)
-              .map((tag) => getTagsElement(tag))}
-          </div>
-        )}
-
         {hasMoreElement && (
           <Button
-            className="m-t-xss"
+            className="show-more-tags-button"
             data-testid="read-button"
             size="small"
             type="link"
             onClick={() => setIsOpen(!isOpen)}>
-            {t('label.read-type', {
-              type: isOpen ? t('label.less') : t('label.more'),
-            })}
+            {isOpen
+              ? t('label.less')
+              : t('label.plus-count-more', {
+                  count: sortedTagsBySource.length - sizeCap,
+                })}
           </Button>
         )}
       </div>
@@ -97,7 +86,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const popoverRenderElement = useMemo(
     () =>
       sortedTagsBySource.slice(sizeCap).length > 0 && (
-        <div className="m-t-xs" data-testid="popover-element">
+        <div className="m-t-xss" data-testid="popover-element">
           <Popover
             content={
               <div className="d-flex flex-column flex-wrap gap-2">
@@ -133,15 +122,18 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
     return <>{sortedTagsBySource.map(getTagsElement)}</>;
   }
 
+  // Display tags based on open state
+  const displayedTags = isOpen
+    ? sortedTagsBySource
+    : sortedTagsBySource.slice(0, sizeCap);
+
   return (
     <>
       <div className="d-flex flex-wrap gap-2">
-        {sortedTagsBySource.slice(0, sizeCap).map(getTagsElement)}
+        {displayedTags.map(getTagsElement)}
+        {displayType === DisplayType.POPOVER && popoverRenderElement}
       </div>
-      {displayType === DisplayType.POPOVER
-        ? popoverRenderElement
-        : readMoreRenderElement}
-      {}
+      {displayType === DisplayType.READ_MORE && readMoreRenderElement}
     </>
   );
 };

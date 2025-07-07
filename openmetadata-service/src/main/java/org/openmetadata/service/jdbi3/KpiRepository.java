@@ -20,6 +20,7 @@ import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.kpi.KpiResource;
@@ -131,7 +132,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Kpi original, Kpi updated, Operation operation) {
+  public EntityRepository<Kpi>.EntityUpdater getUpdater(
+      Kpi original, Kpi updated, Operation operation, ChangeSource changeSource) {
     return new KpiUpdater(original, updated, operation);
   }
 
@@ -142,7 +144,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateToRelationship(
           "dataInsightChart",
           KPI,

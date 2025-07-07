@@ -12,11 +12,12 @@
  */
 
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Loader from '../../components/common/Loader/Loader';
 import AddDataQualityTestV1 from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTestV1';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -59,4 +60,4 @@ const AddDataQualityTestPage = () => {
   );
 };
 
-export default AddDataQualityTestPage;
+export default withPageLayout(AddDataQualityTestPage);

@@ -13,12 +13,14 @@
 
 package org.openmetadata.service.resources.databases;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CREATED;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static java.lang.String.format;
 import static java.util.Collections.singletonList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -47,6 +49,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.Entity.getEntityTypeFromObject;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidColumnFQN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -59,17 +62,19 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.service.util.TestUtils.*;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 
 import com.google.common.collect.Lists;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -80,15 +85,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
+import org.junit.Ignore;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -98,6 +103,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -105,6 +111,8 @@ import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -114,6 +122,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestCase;
@@ -121,17 +130,23 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
+import org.openmetadata.schema.type.Edge;
+import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
@@ -146,9 +161,14 @@ import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
@@ -156,16 +176,17 @@ import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
+import org.openmetadata.service.resources.lineage.LineageResourceTest;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
+import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -427,7 +448,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Change the case of the column name for column2, and it shouldn't update
     column2.setName("COLUMN2");
     change = getChangeDescription(table, NO_CHANGE);
-    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   public static Column getColumn(String name, ColumnDataType columnDataType, TagLabel tag) {
@@ -1428,6 +1449,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table1 = getLatestTableProfile(table1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
     verifyTableProfile(table1.getProfile(), table1ProfileList.get(table1ProfileList.size() - 1));
+    table1 = getLatestTableProfile(table1.getFullyQualifiedName(), false, ADMIN_AUTH_HEADERS);
+    assertNotNull(table1.getColumns());
 
     // Table profile with column profile as null
     timestamp = TestUtils.dateToTimestamp("2022-09-09");
@@ -1833,25 +1856,30 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                 .withConstraintType(ConstraintType.UNIQUE)
                 .withColumns(List.of(C2)));
     originalJson = JsonUtils.pojoToJson(table);
-    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
     table.withTableType(TableType.External).withTableConstraints(tableConstraints1);
-    fieldAdded(change, "tableType", TableType.External);
+    fieldUpdated(change, "tableType", TableType.Regular, TableType.External);
     fieldAdded(change, "tableConstraints", tableConstraints1);
-    table =
-        patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    fieldDeleted(change, "tableConstraints", tableConstraints);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove tableType, tableConstraints
     // Changes from this PATCH is consolidated with the previous changes resulting in no change
+    change = getChangeDescription(table, MINOR_UPDATE);
+    fieldDeleted(change, "tableType", TableType.External);
+    fieldDeleted(change, "tableConstraints", tableConstraints1);
     originalJson = JsonUtils.pojoToJson(table);
     table.withTableType(null).withTableConstraints(null);
-    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, REVERT, null);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // add retention period
     originalJson = JsonUtils.pojoToJson(table);
     table.withRetentionPeriod("10D");
-    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
     fieldAdded(change, "retentionPeriod", "10D");
-    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -1890,13 +1918,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Now reduce the precision and make sure it is a backward incompatible change
     // Changes from this PATCH is consolidated with the previous changes
-    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
-    fieldAdded(change, build("columns", C1, "description"), "new0");
-    fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
-    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
-    fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
-    fieldAdded(change, build("columns", C3, "precision"), 7); // Change in this patch
-    fieldAdded(change, build("columns", C3, "scale"), 3);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    fieldUpdated(change, build("columns", C3, "precision"), 10, 7); // Change in this patch
     originalJson = JsonUtils.pojoToJson(table);
     columns = table.getColumns();
     columns
@@ -1904,19 +1927,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withPrecision(7)
         .withScale(3); // Precision change from 10 to 7. Scale remains the same
     table.setColumns(columns);
-    table =
-        patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertColumns(columns, table.getColumns());
 
     // Now reduce the scale and make sure it is a backward incompatible change
     // Changes from this PATCH is consolidated with the previous changes
-    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
-    fieldAdded(change, build("columns", C1, "description"), "new0");
-    fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
-    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
-    fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
-    fieldAdded(change, build("columns", C3, "precision"), 7);
-    fieldAdded(change, build("columns", C3, "scale"), 1); // Change in this patch
+    change = getChangeDescription(table, MINOR_UPDATE);
+    fieldUpdated(change, build("columns", C3, "scale"), 3, 1); // Change in this patch
     originalJson = JsonUtils.pojoToJson(table);
     columns = table.getColumns();
     columns
@@ -1924,8 +1941,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withPrecision(7)
         .withScale(1); // Scale change from 10 to 7. Scale remains the same
     table.setColumns(columns);
-    table =
-        patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertColumns(columns, table.getColumns());
   }
 
@@ -1987,6 +2003,180 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void patch_withChangeSource(TestInfo test) throws IOException {
+    Column nestedColumns = getColumn("testNested", INT, null);
+    CreateTable create =
+        createRequest(test)
+            .withColumns(
+                List.of(
+                    getColumn(C1, INT, null),
+                    getColumn(C2, BIGINT, null),
+                    getColumn("withNested", STRUCT, null).withChildren(List.of(nestedColumns))));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    Table updated = JsonUtils.deepCopy(table, Table.class);
+    updated.setDescription("manual description");
+    updated =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(table),
+            updated,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.MANUAL);
+    assertEquals(
+        ChangeSource.MANUAL,
+        updated
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get("description")
+            .getChangeSource());
+
+    // changeSummary is no longer included in search results
+    // assertChangeSummaryInSearch(updated);
+
+    Table automatedUpdate = JsonUtils.deepCopy(updated, Table.class);
+    automatedUpdate.setDescription("automated description");
+    automatedUpdate =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(updated),
+            automatedUpdate,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.AUTOMATED);
+    assertEquals(
+        1,
+        automatedUpdate.getChangeDescription().getChangeSummary().getAdditionalProperties().size());
+    assertEquals(
+        ChangeSource.AUTOMATED,
+        automatedUpdate
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get("description")
+            .getChangeSource());
+
+    Table columnUpdate = JsonUtils.deepCopy(automatedUpdate, Table.class);
+    columnUpdate.getColumns().get(0).setDescription("suggested column description");
+    columnUpdate =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(automatedUpdate),
+            columnUpdate,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.SUGGESTED);
+
+    assertEquals(
+        2, columnUpdate.getChangeDescription().getChangeSummary().getAdditionalProperties().size());
+    assertEquals(
+        ChangeSource.SUGGESTED,
+        columnUpdate
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get(
+                FullyQualifiedName.build(
+                    "columns", automatedUpdate.getColumns().get(0).getName(), "description"))
+            .getChangeSource());
+
+    Table columnDelete = JsonUtils.deepCopy(columnUpdate, Table.class);
+    columnDelete.getTableConstraints().remove(0);
+    columnDelete.getColumns().remove(0);
+    columnDelete =
+        patchEntity(
+            table.getId(), JsonUtils.pojoToJson(columnUpdate), columnDelete, ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        1, columnDelete.getChangeDescription().getChangeSummary().getAdditionalProperties().size());
+    assertNull(
+        columnDelete
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get(
+                FullyQualifiedName.build(
+                    "columns", automatedUpdate.getColumns().get(0).getName(), "description")));
+
+    Table nestedColumnUpdate = JsonUtils.deepCopy(columnDelete, Table.class);
+    nestedColumnUpdate
+        .getColumns()
+        .get(1)
+        .getChildren()
+        .get(0)
+        .setDescription("nested description");
+    nestedColumnUpdate =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(columnDelete),
+            nestedColumnUpdate,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.AUTOMATED);
+
+    assertEquals(
+        nestedColumnUpdate
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get(
+                FullyQualifiedName.build(
+                    "columns",
+                    nestedColumnUpdate.getColumns().get(1).getName(),
+                    nestedColumnUpdate.getColumns().get(1).getChildren().get(0).getName(),
+                    "description"))
+            .getChangeSource(),
+        ChangeSource.AUTOMATED);
+
+    Table updateNonTrackedField = JsonUtils.deepCopy(nestedColumnUpdate, Table.class);
+    updateNonTrackedField.setTags(List.of(USER_ADDRESS_TAG_LABEL));
+    updateNonTrackedField =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(nestedColumnUpdate),
+            updateNonTrackedField,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.AUTOMATED);
+
+    assertNotNull(updateNonTrackedField.getChangeDescription().getChangeSummary());
+    assertFalse(
+        updateNonTrackedField
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .isEmpty());
+  }
+
+  private void assertChangeSummaryInSearch(EntityInterface entity) throws IOException {
+    RestClient searchClient = getSearchClient();
+    IndexMapping index =
+        Entity.getSearchRepository().getIndexMapping(getEntityTypeFromObject(entity));
+    Request request =
+        new Request(
+            "GET",
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        format(
+            "{\"size\": 1, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            entity.getId().toString());
+    request.setJsonEntity(query);
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+    Map<String, Object> source = (Map<String, Object>) hitsList.get(0).get("_source");
+    Map<String, Object> actualChangeSummary = (Map<String, Object>) source.get("changeSummary");
+    assertEquals(
+        entity.getChangeDescription().getChangeSummary().getAdditionalProperties().size(),
+        actualChangeSummary.size());
+    assertEquals(
+        entity.getChangeDescription().getChangeSummary(),
+        JsonUtils.convertValue(actualChangeSummary, ChangeSummaryMap.class));
+  }
+
+  @Test
   void patch_usingFqn_tableAttributes_200_ok(TestInfo test) throws IOException {
     // Create table without tableType, and tableConstraints
     Table table = createEntity(createRequest(test).withTableConstraints(null), ADMIN_AUTH_HEADERS);
@@ -2014,27 +2204,32 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                 .withConstraintType(ConstraintType.UNIQUE)
                 .withColumns(List.of(C2)));
     originalJson = JsonUtils.pojoToJson(table);
-    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(table, MINOR_UPDATE);
     table.withTableType(TableType.External).withTableConstraints(tableConstraints1);
-    fieldAdded(change, "tableType", TableType.External);
+    fieldUpdated(change, "tableType", TableType.Regular, TableType.External);
+    fieldDeleted(change, "tableConstraints", tableConstraints);
     fieldAdded(change, "tableConstraints", tableConstraints1);
     table =
-        patchEntityUsingFqnAndCheck(
-            table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+        patchEntityUsingFqnAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove tableType, tableConstraints
     // Changes from this PATCH is consolidated with the previous changes resulting in no change
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    fieldDeleted(change, "tableType", TableType.External);
+    fieldDeleted(change, "tableConstraints", tableConstraints1);
     originalJson = JsonUtils.pojoToJson(table);
     table.withTableType(null).withTableConstraints(null);
-    patchEntityUsingFqnAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, REVERT, null);
+    table =
+        patchEntityUsingFqnAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // add retention period
     originalJson = JsonUtils.pojoToJson(table);
     table.withRetentionPeriod("10D");
-    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
     fieldAdded(change, "retentionPeriod", "10D");
-    patchEntityUsingFqnAndCheck(
-        table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityUsingFqnAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -2074,13 +2269,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Now reduce the precision and make sure it is a backward incompatible change
     // Changes from this PATCH is consolidated with the previous changes
-    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
-    fieldAdded(change, build("columns", C1, "description"), "new0");
-    fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
-    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
-    fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
-    fieldAdded(change, build("columns", C3, "precision"), 7); // Change in this patch
-    fieldAdded(change, build("columns", C3, "scale"), 3);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    fieldUpdated(change, build("columns", C3, "precision"), 10, 7); // Change in this patch
     originalJson = JsonUtils.pojoToJson(table);
     columns = table.getColumns();
     columns
@@ -2089,19 +2279,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withScale(3); // Precision change from 10 to 7. Scale remains the same
     table.setColumns(columns);
     table =
-        patchEntityUsingFqnAndCheck(
-            table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+        patchEntityUsingFqnAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertColumns(columns, table.getColumns());
 
     // Now reduce the scale and make sure it is a backward incompatible change
     // Changes from this PATCH is consolidated with the previous changes
-    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
-    fieldAdded(change, build("columns", C1, "description"), "new0");
-    fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
-    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
-    fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
-    fieldAdded(change, build("columns", C3, "precision"), 7);
-    fieldAdded(change, build("columns", C3, "scale"), 1); // Change in this patch
+    change = getChangeDescription(table, MINOR_UPDATE);
+    fieldUpdated(change, build("columns", C3, "scale"), 3, 1);
     originalJson = JsonUtils.pojoToJson(table);
     columns = table.getColumns();
     columns
@@ -2110,8 +2294,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withScale(1); // Scale change from 10 to 7. Scale remains the same
     table.setColumns(columns);
     table =
-        patchEntityUsingFqnAndCheck(
-            table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+        patchEntityUsingFqnAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertColumns(columns, table.getColumns());
   }
 
@@ -2225,14 +2408,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
     TestSuite testSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestSuite(testSuite.getFullyQualifiedName())
-            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
     TestCase testCase = testCaseResourceTest.assertOwnerInheritance(createTestCase, USER1_REF);
 
     // Check owners properly updated in search
@@ -2267,6 +2449,45 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void test_listTablesWithTestSuite(TestInfo test) throws IOException {
+    CreateDatabase createDb = dbTest.createRequest(test).withOwners(Lists.newArrayList(USER1_REF));
+    Database db = dbTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
+    CreateDatabaseSchema createSchema =
+        schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    CreateTable createTable =
+        createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    CreateTestSuite createTestSuite =
+        testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+    TestSuite testSuite =
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest(test)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    TestCase testCase = testCaseResourceTest.createEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+
+    ResultList<Table> allTables = listEntities(null, ADMIN_AUTH_HEADERS);
+    ResultList<Table> tablesWithTestSuite =
+        tableRepository.getEntitiesWithTestSuite(
+            new ListFilter(),
+            10,
+            "MA==",
+            new Fields(
+                Set.of(
+                    "tags", "testSuite", "columns", "table.tableProfile", "table.columnProfile")));
+
+    // Ensure the number of tables with test suite is less than the total number of tables
+    assertTrue(allTables.getData().size() > tablesWithTestSuite.getData().size());
+  }
+
+  @Test
   void test_domainInheritance(TestInfo test) throws IOException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
@@ -2293,14 +2514,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
     TestSuite testSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestSuite(testSuite.getFullyQualifiedName())
-            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
     TestCase testCase =
         testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());
 
@@ -2433,8 +2653,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTestSuite createExecutableTestSuite =
         testSuiteResourceTest.createRequest(table1.getFullyQualifiedName());
     TestSuite executableTestSuite =
-        testSuiteResourceTest.createExecutableTestSuite(
-            createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
 
     HashMap<String, String> queryParams = new HashMap<>();
     queryParams.put("includeEmptyTestSuite", "false");
@@ -2442,7 +2661,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams.put("limit", "100");
 
     ResultList<Table> tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(4, tables.getData().size());
+    assertEquals(5, tables.getData().size());
     assertNotNull(tables.getData().get(0).getTestSuite());
   }
 
@@ -2946,12 +3165,56 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     //  Restore the soft-deleted tables present in other containers
     for (UUID id : createdUUIDs) {
       restoreEntity(
-          new RestoreEntity().withId(id), javax.ws.rs.core.Response.Status.OK, ADMIN_AUTH_HEADERS);
+          new RestoreEntity().withId(id),
+          jakarta.ws.rs.core.Response.Status.OK,
+          ADMIN_AUTH_HEADERS);
     }
     restoreEntity(
         new RestoreEntity().withId(entity.getId()),
-        javax.ws.rs.core.Response.Status.OK,
+        jakarta.ws.rs.core.Response.Status.OK,
         ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void put_tableTableConstraintDuplicate_400(TestInfo test) throws IOException {
+    // Create table with a constraint
+    CreateTable request =
+        createRequest(test)
+            .withColumns(List.of(getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL)))
+            .withTableConstraints(null);
+    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Attempt to add duplicate constraints
+    TableConstraint constraint =
+        new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C1));
+
+    request = request.withTableConstraints(List.of(constraint, constraint)); // Duplicate constraint
+    CreateTable finalRequest = request;
+    assertResponseContains(
+        () -> updateEntity(finalRequest, OK, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Duplicate constraint found in request: ");
+  }
+
+  @Test
+  void put_tableTableConstraintInvalidColumn_400(TestInfo test) throws IOException {
+    CreateTable request =
+        createRequest(test)
+            .withColumns(List.of(getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL)))
+            .withTableConstraints(null);
+    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    TableConstraint constraint =
+        new TableConstraint()
+            .withConstraintType(ConstraintType.UNIQUE)
+            .withColumns(List.of("invalid_column")); // Non-existent column
+
+    request = request.withTableConstraints(List.of(constraint));
+    CreateTable finalRequest = request;
+    assertResponseContains(
+        () -> updateEntity(finalRequest, OK, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid column name found in table constraint");
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {
@@ -3132,10 +3395,17 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 
-  public Table getLatestTableProfile(String fqn, Map<String, String> authHeaders)
+  public Table getLatestTableProfile(
+      String fqn, boolean includeColumnProfile, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/tableProfile/latest");
+    target = target.queryParam("includeColumnProfile", includeColumnProfile);
     return TestUtils.get(target, Table.class, authHeaders);
+  }
+
+  public Table getLatestTableProfile(String fqn, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return getLatestTableProfile(fqn, true, authHeaders);
   }
 
   public Table putTableProfileData(
@@ -3425,6 +3695,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       List<TableConstraint> actualConstraints =
           JsonUtils.readObjects(actual.toString(), TableConstraint.class);
       assertEquals(expectedConstraints, actualConstraints);
+    } else if (fieldName.contains("columns") && fieldName.equals("precision")) {
+      assertEquals(expected, actual);
     } else if (fieldName.contains("columns") && !fieldName.endsWith(FIELD_TAGS)) {
       assertColumnsFieldChange(expected, actual);
     } else if (fieldName.endsWith("tableType")) {
@@ -3471,5 +3743,681 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withColumnName(columnName)
         .withJoinedWith(
             List.of(new JoinedWith().withJoinCount(1).withFullyQualifiedName(joinedWithFQN)));
+  }
+
+  @Test
+  void test_getTableColumnsById_200(TestInfo test) throws IOException {
+
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 10; i++) {
+      columns.add(getColumn("column" + i, STRING, null).withOrdinalPosition(i));
+    }
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test default pagination (limit=50, offset=0)
+    WebTarget target = getResource("tables/" + table.getId() + "/columns");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(10, response.getData().size());
+    assertEquals(10, response.getPaging().getTotal());
+
+    // Test with custom limit
+    target = getResource("tables/" + table.getId() + "/columns").queryParam("limit", "5");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(10, response.getPaging().getTotal());
+    assertEquals("column1", response.getData().get(0).getName());
+    assertEquals("column5", response.getData().get(4).getName());
+
+    // Test with offset
+    target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "5")
+            .queryParam("offset", "5");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(10, response.getPaging().getTotal());
+    assertEquals("column6", response.getData().get(0).getName());
+    assertEquals("column10", response.getData().get(4).getName());
+
+    // Test with offset beyond available data
+    target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "5")
+            .queryParam("offset", "15");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(0, response.getData().size());
+    assertEquals(10, response.getPaging().getTotal());
+  }
+
+  @Ignore
+  void test_getTableColumnsByFQN_200(TestInfo test) throws IOException {
+    // Create a table with multiple columns for pagination testing
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 15; i++) {
+      columns.add(getColumn("col" + i, INT, null).withOrdinalPosition(i));
+    }
+    CreateTable create =
+        new CreateTable()
+            .withName("test_table_fqn")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test default pagination
+    WebTarget target =
+        getResource(
+            "tables/name/"
+                + URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                + "/columns");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(15, response.getData().size());
+    assertEquals(15, response.getPaging().getTotal());
+
+    // Test with limit smaller than total
+    target =
+        getResource(
+                "tables/name/"
+                    + URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                    + "/columns")
+            .queryParam("limit", "7");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(7, response.getData().size());
+    assertEquals(15, response.getPaging().getTotal());
+
+    // Test pagination with offset
+    target =
+        getResource(
+                "tables/name/"
+                    + URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                    + "/columns")
+            .queryParam("limit", "7")
+            .queryParam("offset", "7");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(8, response.getData().size()); // Remaining columns
+    assertEquals(15, response.getPaging().getTotal());
+  }
+
+  @Test
+  void test_getTableColumnsWithFields_200(TestInfo test) throws IOException {
+    // Create a table with columns that have tags
+    List<Column> columns =
+        Arrays.asList(
+            getColumn("tagged_col1", STRING, USER_ADDRESS_TAG_LABEL).withOrdinalPosition(1),
+            getColumn("tagged_col2", INT, GLOSSARY1_TERM1_LABEL).withOrdinalPosition(2),
+            getColumn("plain_col", BIGINT, null).withOrdinalPosition(3));
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test with tags field
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("fields", "tags")
+            .queryParam("limit", "2");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(2, response.getData().size());
+    assertEquals(3, response.getPaging().getTotal());
+
+    // Verify tags are loaded for columns that have them
+    assertTrue(
+        response.getData().get(0).getTags() != null
+            && !response.getData().get(0).getTags().isEmpty());
+    assertTrue(
+        response.getData().get(1).getTags() != null
+            && !response.getData().get(1).getTags().isEmpty());
+  }
+
+  @Test
+  void test_getTableColumnsValidation_400(TestInfo test) throws IOException {
+    // Create a simple table
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(COLUMNS);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test invalid limit - too small
+    WebTarget target1 =
+        getResource("tables/" + table.getId() + "/columns").queryParam("limit", "0");
+    assertResponse(
+        () -> TestUtils.get(target1, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be greater than or equal to 1]");
+
+    // Test invalid limit - too large
+    WebTarget target2 =
+        getResource("tables/" + table.getId() + "/columns").queryParam("limit", "1001");
+    assertResponse(
+        () -> TestUtils.get(target2, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be less than or equal to 1000]");
+  }
+
+  @Test
+  void test_searchTableColumns_comprehensive(TestInfo test) throws IOException {
+    List<Column> columns = new ArrayList<>();
+
+    columns.add(
+        getColumn("user_id", INT, null)
+            .withOrdinalPosition(1)
+            .withDescription("Primary key for user identification"));
+    columns.add(
+        getColumn("customer_name", VARCHAR, null)
+            .withOrdinalPosition(2)
+            .withDescription("Full name of the customer")
+            .withDataLength(255));
+    columns.add(
+        getColumn("email_address", VARCHAR, null)
+            .withOrdinalPosition(3)
+            .withDescription("Customer email for communication")
+            .withDataLength(320));
+    columns.add(
+        getColumn("order_total", DECIMAL, null)
+            .withOrdinalPosition(4)
+            .withDescription("Total price of the order"));
+    columns.add(
+        getColumn("created_timestamp", STRING, null)
+            .withOrdinalPosition(5)
+            .withDescription("When the record was created"));
+    columns.add(
+        getColumn("is_active", STRING, null)
+            .withOrdinalPosition(6)
+            .withDescription("Whether the user account is active"));
+    columns.add(
+        getColumn("metadata_json", STRING, null)
+            .withOrdinalPosition(7)
+            .withDescription("Additional metadata in JSON format"));
+    columns.add(
+        getColumn("price_history", STRING, null)
+            .withOrdinalPosition(8)
+            .withDescription("Historical price data"));
+
+    CreateTable create =
+        new CreateTable()
+            .withName("search_test_table")
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns/search").queryParam("q", "user_id");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    assertEquals("user_id", response.getData().getFirst().getName());
+    assertEquals(1, response.getPaging().getTotal());
+
+    target = getResource("tables/" + table.getId() + "/columns/search").queryParam("q", "price");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    // Both order_total (description contains "price") and price_history should be in results
+    Set<String> resultNames =
+        response.getData().stream().map(Column::getName).collect(Collectors.toSet());
+    assertTrue(resultNames.contains("price_history"));
+    assertEquals(1, response.getPaging().getTotal());
+
+    target = getResource("tables/" + table.getId() + "/columns/search").queryParam("q", "EMAIL");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    assertEquals("email_address", response.getData().getFirst().getName());
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam(
+                "q", "a") // Should match 6 columns: customer_name, email_address, order_total,
+            // created_timestamp, is_active, metadata_json
+            .queryParam("limit", "3");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(3, response.getData().size());
+    assertEquals(6, response.getPaging().getTotal());
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "a") // Should match multiple columns
+            .queryParam("limit", "2")
+            .queryParam("offset", "2");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertTrue(response.getData().size() <= 2);
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "")
+            .queryParam("limit", "5");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(8, response.getPaging().getTotal()); // Total columns in table
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "nonexistent_column");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(0, response.getData().size());
+    assertEquals(0, response.getPaging().getTotal());
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "user_id")
+            .queryParam("fields", "tags,customMetrics");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    assertNotNull(response.getData().get(0)); // Should include requested fields
+
+    final WebTarget invalidTarget =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "user")
+            .queryParam("limit", "0");
+    assertResponse(
+        () -> TestUtils.get(invalidTarget, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be greater than or equal to 1]");
+  }
+
+  @Test
+  void test_getTableColumnsNotFound_404(TestInfo test) {
+    // Test with non-existent table ID
+    UUID nonExistentId = UUID.randomUUID();
+    WebTarget target1 = getResource("tables/" + nonExistentId + "/columns");
+    assertResponse(
+        () -> TestUtils.get(target1, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("table", nonExistentId));
+
+    // Test with non-existent table FQN
+    String nonExistentFqn = "nonexistent.database.schema.table";
+    WebTarget target2 =
+        getResource(
+            "tables/name/"
+                + URLEncoder.encode(nonExistentFqn, StandardCharsets.UTF_8)
+                + "/columns");
+    assertResponse(
+        () -> TestUtils.get(target2, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("table", nonExistentFqn));
+  }
+
+  @Test
+  void test_getTableColumnsEmptyTable_200(TestInfo test) throws IOException {
+    // Create a table with no columns
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(new ArrayList<>());
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test pagination on empty columns
+    WebTarget target = getResource("tables/" + table.getId() + "/columns");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(0, response.getData().size());
+    assertEquals(0, response.getPaging().getTotal());
+  }
+
+  @Test
+  void test_getTableColumnsLargeDataset_200(TestInfo test) throws IOException {
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 100; i++) {
+      columns.add(
+          getColumn("column_" + String.format("%03d", i), STRING, null).withOrdinalPosition(i));
+    }
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test first page
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "25")
+            .queryParam("offset", "0");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(25, response.getData().size());
+    assertEquals(100, response.getPaging().getTotal());
+    assertEquals("column_001", response.getData().get(0).getName());
+    assertEquals("column_025", response.getData().get(24).getName());
+
+    target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "25")
+            .queryParam("offset", "50");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(25, response.getData().size());
+    assertEquals(100, response.getPaging().getTotal());
+    assertEquals("column_051", response.getData().get(0).getName());
+    assertEquals("column_075", response.getData().get(24).getName());
+
+    // Test last page
+    target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "25")
+            .queryParam("offset", "75");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(25, response.getData().size());
+    assertEquals(100, response.getPaging().getTotal());
+    assertEquals("column_076", response.getData().get(0).getName());
+    assertEquals("column_100", response.getData().get(24).getName());
+  }
+
+  @Test
+  void test_getTableColumnsWithCustomMetrics_200(TestInfo test) throws IOException {
+    List<Column> columns =
+        Arrays.asList(
+            getColumn("metric_col1", STRING, null).withOrdinalPosition(1),
+            getColumn("metric_col2", INT, null).withOrdinalPosition(2));
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("fields", "customMetrics")
+            .queryParam("limit", "10");
+    org.openmetadata.service.resources.databases.TableResource.TableColumnList response =
+        TestUtils.get(
+            target,
+            org.openmetadata.service.resources.databases.TableResource.TableColumnList.class,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(2, response.getData().size());
+    assertEquals(2, response.getPaging().getTotal());
+    assertNotNull(response.getData().get(0));
+    assertNotNull(response.getData().get(1));
+  }
+
+  // Column Update Permission Tests
+  @Test
+  void test_updateColumn_adminCanUpdateAnyColumn(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setDisplayName("Admin Updated Name");
+    updateColumn.setDescription("Admin updated description");
+
+    Column updatedColumn = updateColumnByFQN(columnFQN, updateColumn, ADMIN_AUTH_HEADERS);
+
+    assertEquals("Admin Updated Name", updatedColumn.getDisplayName());
+    assertEquals("Admin updated description", updatedColumn.getDescription());
+  }
+
+  @Test
+  void test_updateColumn_ownerCanUpdateOwnedTableColumns(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withOwners(listOf(DATA_STEWARD.getEntityReference()));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    String columnFQN = table.getColumns().getFirst().getFullyQualifiedName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setDisplayName("Owner Updated Name");
+    updateColumn.setDescription("Owner updated description");
+
+    Map<String, String> ownerAuthHeaders = authHeaders(DATA_STEWARD.getName());
+    Column updatedColumn = updateColumnByFQN(columnFQN, updateColumn, ownerAuthHeaders);
+
+    assertEquals("Owner Updated Name", updatedColumn.getDisplayName());
+    assertEquals("Owner updated description", updatedColumn.getDescription());
+  }
+
+  @Test
+  void test_updateColumn_dataStewardCanUpdateDescriptionAndTags(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withOwners(listOf(USER1.getEntityReference()));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    String columnFQN = table.getColumns().get(0).getFullyQualifiedName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setDescription("Data steward updated description");
+
+    TagLabel testTag =
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    updateColumn.setTags(listOf(testTag));
+
+    Map<String, String> dataStewardAuthHeaders = authHeaders(DATA_STEWARD.getName());
+    Column updatedColumn = updateColumnByFQN(columnFQN, updateColumn, dataStewardAuthHeaders);
+
+    assertEquals("Data steward updated description", updatedColumn.getDescription());
+    assertEquals(1, updatedColumn.getTags().size());
+    assertEquals("PersonalData.Personal", updatedColumn.getTags().get(0).getTagFQN());
+  }
+
+  @Test
+  void test_updateColumn_dataConsumerCannotUpdateColumns(TestInfo test) throws IOException {
+    // Temporarily remove Organization's default roles to ensure USER3 has no permissions
+    Team org = getOrganization();
+    List<EntityReference> originalDefaultRoles = org.getDefaultRoles();
+    updateOrganizationDefaultRoles(null);
+
+    try {
+      CreateTable create = createRequest(test).withOwners(listOf(USER1.getEntityReference()));
+      Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      String columnFQN = table.getColumns().getFirst().getFullyQualifiedName();
+
+      org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+          new org.openmetadata.schema.api.data.UpdateColumn();
+      updateColumn.setDescription("Data consumer trying to update");
+
+      assertResponse(
+          () -> updateColumnByFQN(columnFQN, updateColumn, authHeaders(USER3.getName())),
+          FORBIDDEN,
+          permissionNotAllowed(USER3.getName(), List.of(MetadataOperation.EDIT_DESCRIPTION)));
+    } finally {
+      // Restore original default roles
+      updateOrganizationDefaultRoles(originalDefaultRoles);
+    }
+  }
+
+  @Test
+  void test_updateColumn_nonOwnerCannotUpdateDisplayName(TestInfo test) throws IOException {
+    Team org = getOrganization();
+    List<EntityReference> originalDefaultRoles = org.getDefaultRoles();
+    updateOrganizationDefaultRoles(null);
+
+    try {
+      CreateTable create =
+          createRequest(test).withOwners(listOf(DATA_STEWARD.getEntityReference()));
+      Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      String columnFQN = table.getColumns().getFirst().getFullyQualifiedName();
+
+      UpdateColumn updateColumn = new UpdateColumn();
+      updateColumn.setDisplayName("Non-owner trying to update display name");
+
+      Map<String, String> user3AuthHeaders = authHeaders(USER3.getName());
+
+      assertResponse(
+          () -> updateColumnByFQN(columnFQN, updateColumn, user3AuthHeaders),
+          FORBIDDEN,
+          permissionNotAllowed(USER3.getName(), List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
+    } finally {
+      updateOrganizationDefaultRoles(originalDefaultRoles);
+    }
+  }
+
+  @Test
+  void test_updateColumn_nonOwnerCannotUpdateConstraints(TestInfo test) throws IOException {
+    // Temporarily remove Organization's default roles to ensure USER3 has no permissions
+    Team org = getOrganization();
+    List<EntityReference> originalDefaultRoles = org.getDefaultRoles();
+    updateOrganizationDefaultRoles(null);
+
+    try {
+      CreateTable create =
+          createRequest(test).withOwners(listOf(DATA_STEWARD.getEntityReference()));
+      Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      String columnFQN = table.getColumns().getFirst().getFullyQualifiedName();
+
+      UpdateColumn updateColumn = new UpdateColumn();
+      updateColumn.setConstraint(ColumnConstraint.UNIQUE);
+
+      Map<String, String> user3AuthHeaders = authHeaders(USER3.getName());
+
+      assertResponse(
+          () -> updateColumnByFQN(columnFQN, updateColumn, user3AuthHeaders),
+          FORBIDDEN,
+          permissionNotAllowed(USER3.getName(), List.of(MetadataOperation.EDIT_ALL)));
+    } finally {
+      // Restore original default roles
+      updateOrganizationDefaultRoles(originalDefaultRoles);
+    }
+  }
+
+  @Test
+  void test_updateColumn_userCannotUpdateOtherUsersTableColumns(TestInfo test) throws IOException {
+    // Temporarily remove Organization's default roles to ensure USER3 has no permissions
+    Team org = getOrganization();
+    List<EntityReference> originalDefaultRoles = org.getDefaultRoles();
+    updateOrganizationDefaultRoles(null);
+
+    try {
+      CreateTable create = createRequest(test).withOwners(listOf(USER1.getEntityReference()));
+      Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+
+      UpdateColumn updateColumn = new UpdateColumn();
+      updateColumn.setDescription("USER3 trying to update USER1's table");
+
+      Map<String, String> user3AuthHeaders = authHeaders(USER3.getName());
+
+      assertResponse(
+          () -> updateColumnByFQN(columnFQN, updateColumn, user3AuthHeaders),
+          FORBIDDEN,
+          permissionNotAllowed(USER3.getName(), List.of(MetadataOperation.EDIT_DESCRIPTION)));
+    } finally {
+      updateOrganizationDefaultRoles(originalDefaultRoles);
+    }
+  }
+
+  @Test
+  void test_updateColumn_noAuthHeadersReturnsUnauthorized(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setDisplayName("Should Fail");
+
+    assertResponse(
+        () -> updateColumnByFQN(columnFQN, updateColumn, null),
+        UNAUTHORIZED,
+        "Not authorized; User's Email is not present");
+  }
+
+  private Column updateColumnByFQN(
+      String columnFQN,
+      org.openmetadata.schema.api.data.UpdateColumn updateColumn,
+      Map<String, String> authHeaders)
+      throws IOException {
+    String encodedFQN = EntityUtil.encodeEntityFqn(columnFQN);
+    WebTarget target = getResource("columns/name/" + encodedFQN).queryParam("entityType", "table");
+    return TestUtils.put(target, updateColumn, Column.class, OK, authHeaders);
+  }
+
+  private Team getOrganization() throws IOException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    return teamResourceTest.getEntityByName(
+        "Organization", teamResourceTest.getAllowedFields(), ADMIN_AUTH_HEADERS);
+  }
+
+  private void updateOrganizationDefaultRoles(List<EntityReference> defaultRoles)
+      throws IOException {
+    Team org = getOrganization();
+    String json = JsonUtils.pojoToJson(org);
+    org.setDefaultRoles(defaultRoles);
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    teamResourceTest.patchEntity(org.getId(), json, org, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_lineageColumnRenamePropagates(TestInfo test) throws IOException {
+    // 1. Create upstream base table with a single column "id"
+    Column srcCol = getColumn("id", INT, null);
+    CreateTable createSrc =
+        createRequest(getEntityName(test, 0) + "_src")
+            .withColumns(List.of(srcCol))
+            .withTableConstraints(null); // No constraints so we can freely delete/rename columns
+    Table sourceTable = createAndCheckEntity(createSrc, ADMIN_AUTH_HEADERS);
+
+    // 2. Create downstream view with the same column name
+    Column viewCol = getColumn("id", INT, null);
+    CreateTable createView =
+        createRequest(getEntityName(test, 1) + "_view")
+            .withTableType(TableType.View)
+            .withColumns(List.of(viewCol))
+            .withTableConstraints(null)
+            .withSchemaDefinition(
+                "SELECT id FROM " + sourceTable.getFullyQualifiedName()); // minimal definition
+    Table viewTable = createAndCheckEntity(createView, ADMIN_AUTH_HEADERS);
+
+    // 3. Add lineage with column mapping source.id -> view.id
+    String srcColFqn = FullyQualifiedName.add(sourceTable.getFullyQualifiedName(), "id");
+    String viewColFqn = FullyQualifiedName.add(viewTable.getFullyQualifiedName(), "id");
+    ColumnLineage columnMapping =
+        new ColumnLineage().withToColumn(viewColFqn).withFromColumns(List.of(srcColFqn));
+    LineageDetails lineageDetails = new LineageDetails().withColumnsLineage(List.of(columnMapping));
+    EntitiesEdge edge =
+        new EntitiesEdge()
+            .withFromEntity(sourceTable.getEntityReference())
+            .withToEntity(viewTable.getEntityReference())
+            .withLineageDetails(lineageDetails);
+    AddLineage addLineage = new AddLineage().withEdge(edge);
+
+    LineageResourceTest lineageTestHelper = new LineageResourceTest();
+    lineageTestHelper.addLineage(addLineage, ADMIN_AUTH_HEADERS);
+
+    // 4. PATCH the view column name from "id" to "ID" (upper-case)
+    Table viewV1 = viewTable;
+    String originalJson = JsonUtils.pojoToJson(viewV1);
+    Table viewV2 = JsonUtils.deepCopy(viewV1, Table.class);
+    viewV2.getColumns().getFirst().setName("ID");
+    viewV2.getColumns().getFirst().setDisplayName("ID");
+    viewV2.setSchemaDefinition("SELECT ID FROM " + sourceTable.getFullyQualifiedName());
+    // Apply patch without asserting the change description – focus of the test is lineage update
+    viewV2 = patchEntity(viewV1.getId(), originalJson, viewV2, ADMIN_AUTH_HEADERS);
+
+    // 5. Fetch lineage for the view and assert the toColumn has been updated to the new name
+    EntityLineage lineage =
+        lineageTestHelper.getLineage(Entity.TABLE, viewV2.getId(), 1, 0, ADMIN_AUTH_HEADERS);
+
+    boolean updatedColumnFound = false;
+    for (Edge edgeObj : lineage.getUpstreamEdges()) {
+      if (edgeObj.getLineageDetails() == null
+          || edgeObj.getLineageDetails().getColumnsLineage() == null) {
+        continue;
+      }
+      for (ColumnLineage cl : edgeObj.getLineageDetails().getColumnsLineage()) {
+        if (cl.getToColumn() != null && cl.getToColumn().endsWith(".ID")) {
+          updatedColumnFound = true;
+          break;
+        }
+      }
+    }
+    assertTrue(
+        updatedColumnFound,
+        "Expected upstream lineage to reference the renamed column '.ID' but did not find it");
   }
 }

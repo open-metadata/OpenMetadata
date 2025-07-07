@@ -4,8 +4,7 @@
   ],
   "data_stream": {},
   "composed_of": [
-    "di-data-assets-mapping",
-    "di-data-assets-settings"
+    "di-data-assets-mapping"
   ],
   "priority": 500
 }

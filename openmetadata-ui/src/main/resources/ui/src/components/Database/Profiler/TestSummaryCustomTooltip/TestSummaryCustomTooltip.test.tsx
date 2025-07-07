@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
 
 const mockProps = {
@@ -38,8 +37,33 @@ const mockProps = {
     },
   ],
 };
+const mockPropsWithFreshness = {
+  active: true,
+  payload: [
+    {
+      stroke: '#7147E8',
+      strokeOpacity: 1,
+      strokeWidth: 1,
+      fill: '#fff',
+      dataKey: 'freshness',
+      name: 'freshness',
+      color: '#7147E8',
+      value: 224813364.39,
+      payload: {
+        name: 1748045364386,
+        status: 'Failed',
+        freshness: 224813364.39,
+      },
+    },
+  ],
+};
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
-  formatDateTime: jest.fn().mockReturnValue('Jan 3, 2024, 6:45 PM'),
+  formatDateTimeLong: jest
+    .fn()
+    .mockReturnValue('Jan 3, 2024, 6:45 PM (UTC+05:30)'),
+  convertMillisecondsToHumanReadableFormat: jest
+    .fn()
+    .mockReturnValue('7Y 2M 22d 9m 24s'),
 }));
 
 jest.mock('../../../../utils/TasksUtils', () => ({
@@ -53,8 +77,8 @@ jest.mock('../../../../utils/CommonUtils', () => ({
   formatTimeFromSeconds: jest.fn().mockReturnValue('1 hour'),
 }));
 
-describe('Test AddServicePage component', () => {
-  it('AddServicePage component should render', async () => {
+describe('Test TestSummaryCustomTooltip component', () => {
+  it('should render', async () => {
     render(<TestSummaryCustomTooltip {...mockProps} />);
 
     expect(
@@ -79,5 +103,14 @@ describe('Test AddServicePage component', () => {
       (await screen.findByTestId('failedRowsPercentage')).textContent
     ).toEqual('40%');
     expect(screen.queryByText('name')).not.toBeInTheDocument();
+  });
+
+  it('should display freshness in values in milliseconds', async () => {
+    render(<TestSummaryCustomTooltip {...mockPropsWithFreshness} />);
+
+    expect((await screen.findByTestId('status')).textContent).toEqual('Failed');
+    expect((await screen.findByTestId('freshness')).textContent).toEqual(
+      '7Y 2M 22d 9m 24s'
+    );
   });
 });

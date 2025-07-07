@@ -17,7 +17,6 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import React from 'react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   MOCK_CURRENT_TEAM,
@@ -31,24 +30,48 @@ import {
 import { getTeamsWithFqnPath } from '../../../utils/RouterUtils';
 import ImportTeamsPage from './ImportTeamsPage';
 
+const mockCsvImportResult = {
+  dryRun: true,
+  status: 'success',
+  numberOfRowsProcessed: 1,
+  numberOfRowsPassed: 1,
+  numberOfRowsFailed: 0,
+  importResultsCsv:
+    'status,details,name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\r\nsuccess,Entity updated,Applications,,,Group,Engineering,,true,,\r\n',
+};
+
+const mockAsyncImportJob = {
+  jobId: '1234',
+  message: 'Import initiated successfully',
+};
+
+const mockAsyncImportJob1 = {
+  jobId: '123',
+  message: 'Import initiated successfully',
+};
+
 jest.mock(
   '../../../components/common/EntityImport/EntityImport.component',
   () => ({
     EntityImport: jest
       .fn()
-      .mockImplementation(({ children, onImport, onCancel }) => {
-        return (
-          <div data-testid="entity-import">
-            {children}{' '}
-            <button data-testid="import" onClick={onImport}>
-              import
-            </button>
-            <button data-testid="cancel" onClick={onCancel}>
-              cancel
-            </button>
-          </div>
-        );
-      }),
+      .mockImplementation(
+        ({ children, onImport, onCancel, onCsvResultUpdate }) => {
+          onCsvResultUpdate(mockCsvImportResult);
+
+          return (
+            <div data-testid="entity-import">
+              {children}{' '}
+              <button data-testid="import" onClick={onImport}>
+                import
+              </button>
+              <button data-testid="cancel" onClick={onCancel}>
+                cancel
+              </button>
+            </div>
+          );
+        }
+      ),
   })
 );
 jest.mock(
@@ -106,9 +129,7 @@ const mockParams = {
 const mockLocation = {
   search: '?type=teams',
 };
-const mockHistory = {
-  push: jest.fn(),
-};
+const mockNavigate = jest.fn();
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
@@ -116,7 +137,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   }));
 });
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 jest.mock('../../../rest/teamsAPI', () => ({
@@ -184,17 +205,7 @@ describe('ImportTeamsPage', () => {
 
   it('TeamImportResult should visible', async () => {
     (importTeam as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        data: {
-          dryRun: true,
-          status: 'success',
-          numberOfRowsProcessed: 1,
-          numberOfRowsPassed: 1,
-          numberOfRowsFailed: 0,
-          importResultsCsv:
-            'status,details,name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\r\nsuccess,Entity updated,Applications,,,Group,Engineering,,true,,\r\n',
-        },
-      })
+      Promise.resolve(mockAsyncImportJob)
     );
     act(() => {
       render(<ImportTeamsPage />);
@@ -229,11 +240,9 @@ describe('ImportTeamsPage', () => {
     });
     const cancelBtn = await screen.findByTestId('cancel');
 
-    await act(async () => {
-      fireEvent.click(cancelBtn);
-    });
+    fireEvent.click(cancelBtn);
 
-    expect(mockHistory.push).toHaveBeenCalledWith({
+    expect(mockNavigate).toHaveBeenCalledWith({
       pathname: getTeamsWithFqnPath(MOCK_CURRENT_TEAM.fullyQualifiedName),
       search: 'activeTab=teams',
     });
@@ -243,18 +252,7 @@ describe('ImportTeamsPage', () => {
   it('UserImportResult should visible', async () => {
     mockLocation.search = '?type=users';
     (importUserInTeam as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        data: {
-          dryRun: true,
-          status: 'success',
-          numberOfRowsProcessed: 1,
-          numberOfRowsPassed: 1,
-          numberOfRowsFailed: 0,
-          importResultsCsv:
-            // eslint-disable-next-line max-len
-            'status,details,name*,displayName,description,email*,timezone,isAdmin,teams*,Roles\r\nsuccess,Entity updated,aaron_johnson0,Aaron Johnson,,aaron_johnson0@gmail.com,,false,Applications,DataSteward\r\n',
-        },
-      })
+      Promise.resolve(mockAsyncImportJob1)
     );
     act(() => {
       render(<ImportTeamsPage />);
@@ -278,7 +276,7 @@ describe('ImportTeamsPage', () => {
       fireEvent.click(cancelBtn);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledWith({
+    expect(mockNavigate).toHaveBeenCalledWith({
       pathname: getTeamsWithFqnPath(MOCK_CURRENT_TEAM.fullyQualifiedName),
       search: 'activeTab=users',
     });

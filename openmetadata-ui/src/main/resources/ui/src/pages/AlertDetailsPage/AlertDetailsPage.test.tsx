@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { useFqn } from '../../hooks/useFqn';
@@ -23,10 +21,9 @@ import {
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import * as AlertsAPIs from '../../rest/alertsAPI';
 import * as ObservabilityAPIs from '../../rest/observabilityAPI';
-import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
 import AlertDetailsPage from './AlertDetailsPage';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockUpdateNotificationAlert = jest.fn();
 const mockUpdateObservabilityAlert = jest.fn();
 
@@ -35,9 +32,7 @@ jest.mock('../../hooks/useFqn', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: 'container',
   }),
@@ -85,6 +80,10 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
+
 jest.mock(
   '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails',
   () => jest.fn().mockImplementation(() => <div>AlertConfigDetails</div>)
@@ -115,23 +114,16 @@ jest.mock('../../components/common/OwnerLabel/OwnerLabel.component', () => ({
     )),
 }));
 
-jest.mock(
-  '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
-  () => ({
-    ExtraInfoLabel: jest
-      .fn()
-      .mockImplementation(() => <div>ExtraInfoLabel</div>),
-  })
-);
+jest.mock('../../utils/DataAssetsHeader.utils', () => ({
+  ExtraInfoLabel: jest.fn().mockImplementation(() => <div>ExtraInfoLabel</div>),
+}));
 
-jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
-  jest
-    .fn()
-    .mockImplementation(({ firstPanel }) => <div>{firstPanel.children}</div>)
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
 
@@ -178,22 +170,6 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByText('DeleteWidgetModal')).toBeInTheDocument();
   });
 
-  it('should not render the description if alert description is not present', async () => {
-    (getObservabilityAlertByFQN as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ...mockAlertDetails,
-        description: undefined,
-      })
-    );
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    expect(screen.queryByText('RichTextEditorPreviewer')).toBeNull();
-  });
-
   it('should render the description if alert description is present', async () => {
     await act(async () => {
       render(<AlertDetailsPage isNotificationAlert />, {
@@ -205,35 +181,26 @@ describe('AlertDetailsPage', () => {
   });
 
   it('should redirect to notification alert edit path on click of edit button if isNotificationAlert is true', async () => {
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
-      });
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: MemoryRouter,
     });
 
-    const editButton = screen.getByTestId('edit-button');
+    const editButton = await screen.findByTestId('edit-button');
+    fireEvent.click(editButton);
 
-    await act(async () => {
-      userEvent.click(editButton);
-    });
-
-    expect(mockPush).toHaveBeenCalledWith('notification-alert-edit-path');
+    expect(mockNavigate).toHaveBeenCalledWith('notification-alert-edit-path');
   });
 
   it('should redirect to observability alert edit path on click of edit button if isNotificationAlert is false', async () => {
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert={false} />, {
-        wrapper: MemoryRouter,
-      });
+    render(<AlertDetailsPage isNotificationAlert={false} />, {
+      wrapper: MemoryRouter,
     });
 
-    const editButton = screen.getByTestId('edit-button');
+    const editButton = await screen.findByTestId('edit-button');
 
-    await act(async () => {
-      userEvent.click(editButton);
-    });
+    fireEvent.click(editButton);
 
-    expect(mockPush).toHaveBeenCalledWith('observability-alert-edit-path');
+    expect(mockNavigate).toHaveBeenCalledWith('observability-alert-edit-path');
   });
 
   it('should call mockUpdateNotificationAlert on owner update if isNotificationAlert is true', async () => {
@@ -241,17 +208,13 @@ describe('AlertDetailsPage', () => {
       .spyOn(AlertsAPIs, 'updateNotificationAlert')
       .mockImplementation(mockUpdateNotificationAlert);
 
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
-      });
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: MemoryRouter,
     });
 
-    const ownerLabel = screen.getByText('OwnerLabel');
+    const ownerLabel = await screen.findByText('OwnerLabel');
 
-    await act(async () => {
-      userEvent.click(ownerLabel);
-    });
+    fireEvent.click(ownerLabel);
 
     expect(mockUpdateNotificationAlert).toHaveBeenCalledTimes(1);
   });
@@ -261,17 +224,13 @@ describe('AlertDetailsPage', () => {
       .spyOn(ObservabilityAPIs, 'updateObservabilityAlert')
       .mockImplementation(mockUpdateObservabilityAlert);
 
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert={false} />, {
-        wrapper: MemoryRouter,
-      });
+    render(<AlertDetailsPage isNotificationAlert={false} />, {
+      wrapper: MemoryRouter,
     });
 
-    const ownerLabel = screen.getByText('OwnerLabel');
+    const ownerLabel = await screen.findByText('OwnerLabel');
 
-    await act(async () => {
-      userEvent.click(ownerLabel);
-    });
+    fireEvent.click(ownerLabel);
 
     expect(mockUpdateObservabilityAlert).toHaveBeenCalledTimes(1);
   });
@@ -286,10 +245,9 @@ describe('AlertDetailsPage', () => {
         })
       ),
     }));
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
-      });
+
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: MemoryRouter,
     });
 
     expect(screen.queryByTestId('edit-button')).toBeNull();

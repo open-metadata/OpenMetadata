@@ -1,0 +1,73 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../styles/variables.less');
+
+.custom-navigation-tree-container {
+  .ant-tree-list {
+    width: 420px;
+    .ant-tree-treenode {
+      padding: 12px 0;
+      border-radius: 12px;
+
+      .ant-tree-node-content-wrapper {
+        &.ant-tree-node-selected {
+          background-color: transparent;
+        }
+        .ant-tree-title {
+          margin-left: 8px;
+        }
+
+        &:hover {
+          background: transparent;
+        }
+      }
+
+      &:hover {
+        background: @primary-25;
+      }
+    }
+    .ant-tree-node-content-wrapper.ant-tree-node-selected {
+      color: @text-color;
+      .ant-tree-title {
+        font-weight: inherit;
+        color: @text-color;
+      }
+    }
+    .ant-tree-switcher.ant-tree-switcher-noop {
+      display: none;
+    }
+
+    .ant-tree-title {
+      width: 100%;
+      & > div {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+    }
+
+    .ant-tree-treenode-draggable {
+      .ant-tree-draggable-icon {
+        visibility: hidden;
+      }
+
+      &:hover {
+        .ant-tree-draggable-icon {
+          visibility: visible;
+          color: @grey-4;
+        }
+      }
+    }
+  }
+}

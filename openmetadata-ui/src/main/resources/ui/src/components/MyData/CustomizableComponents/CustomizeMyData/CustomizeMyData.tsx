@@ -13,8 +13,12 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import RGL, { Layout, WidthProvider } from 'react-grid-layout';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import RGL, {
+  Layout,
+  ReactGridLayoutProps,
+  WidthProvider,
+} from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
 import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
@@ -40,14 +44,16 @@ import {
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ActivityFeedProvider from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
 
-const ReactGridLayout = WidthProvider(RGL);
+const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
+  ReactGridLayoutProps & { children?: React.ReactNode }
+>;
 
 function CustomizeMyData({
   personaDetails,
@@ -205,7 +211,7 @@ function CustomizeMyData({
   useGridLayoutDirection();
 
   return (
-    <ActivityFeedProvider>
+    <>
       <PageLayoutV1
         mainContainerClassName="p-t-0"
         pageContainerStyle={{
@@ -246,8 +252,8 @@ function CustomizeMyData({
           placeholderWidgetKey={placeholderWidgetKey}
         />
       )}
-    </ActivityFeedProvider>
+    </>
   );
 }
 
-export default CustomizeMyData;
+export default withActivityFeed(CustomizeMyData);

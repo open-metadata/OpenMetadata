@@ -12,14 +12,18 @@
  */
 import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
+  assignDomain,
   createNewPage,
   descriptionBox,
   redirectToHomePage,
+  removeDomain,
   toastNotification,
+  updateDomain,
   uuid,
 } from '../../utils/common';
 import { addMultiOwner, removeOwnersFromList } from '../../utils/entity';
@@ -31,6 +35,8 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const table = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
+const domain1 = new Domain();
+const domain2 = new Domain();
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
@@ -39,6 +45,8 @@ test.beforeAll(async ({ browser }) => {
   await user2.create(apiContext);
   await table.createTestCase(apiContext);
   await table.createTestCase(apiContext);
+  await domain1.create(apiContext);
+  await domain2.create(apiContext);
   await afterAction();
 });
 
@@ -47,6 +55,8 @@ test.afterAll(async ({ browser }) => {
   await table.delete(apiContext);
   await user1.delete(apiContext);
   await user2.delete(apiContext);
+  await domain1.delete(apiContext);
+  await domain2.delete(apiContext);
   await afterAction();
 });
 
@@ -64,6 +74,7 @@ test('Logical TestSuite', async ({ page }) => {
   const testCaseName1 = table.testCasesResponseData?.[0]?.['name'];
   const testCaseName2 = table.testCasesResponseData?.[1]?.['name'];
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
+  await page.waitForLoadState('networkidle');
   const testSuite = page.waitForResponse(
     '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*'
   );
@@ -73,11 +84,11 @@ test('Logical TestSuite', async ({ page }) => {
   await test.step('Create', async () => {
     await page.click('[data-testid="add-test-suite-btn"]');
     await page.fill('[data-testid="test-suite-name"]', NEW_TEST_SUITE.name);
-    await page.fill(descriptionBox, NEW_TEST_SUITE.description);
+    await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
 
     await page.click('[data-testid="submit-button"]');
     const getTestCase = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=test_case_search_index*'
+      `/api/v1/dataQuality/testCases/search/list?*${testCaseName1}*`
     );
     await page.fill('[data-testid="searchbar"]', testCaseName1);
     await getTestCase;
@@ -98,6 +109,12 @@ test('Logical TestSuite', async ({ page }) => {
     );
     await page.click(`[data-testid="view-service-button"]`);
     await testSuiteResponse;
+  });
+
+  await test.step('Domain Add, Update and Remove', async () => {
+    await assignDomain(page, domain1.responseData);
+    await updateDomain(page, domain2.responseData);
+    await removeDomain(page, domain2.responseData);
   });
 
   await test.step(
@@ -127,13 +144,13 @@ test('Logical TestSuite', async ({ page }) => {
 
   await test.step('Add test case to logical test suite', async () => {
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=test_case_search_index*'
+      '/api/v1/dataQuality/testCases/search/list*'
     );
     await page.click('[data-testid="add-test-case-btn"]');
     await testCaseResponse;
 
     const getTestCase = page.waitForResponse(
-      `/api/v1/search/query?q=*${testCaseName2}*&index=test_case_search_index*`
+      `/api/v1/dataQuality/testCases/search/list?*${testCaseName2}*`
     );
     await page.fill('[data-testid="searchbar"]', testCaseName2);
     await getTestCase;
@@ -147,6 +164,31 @@ test('Logical TestSuite', async ({ page }) => {
     await page.waitForSelector('.ant-modal-content', {
       state: 'detached',
     });
+  });
+
+  await test.step('Add test suite pipeline', async () => {
+    await page.getByRole('tab', { name: 'Pipeline' }).click();
+
+    await expect(page.getByTestId('add-placeholder-button')).toBeVisible();
+
+    await page.getByTestId('add-placeholder-button').click();
+    await page.getByTestId('select-all-test-cases').click();
+
+    await expect(page.getByTestId('cron-type').getByText('Day')).toBeAttached();
+
+    await page.getByTestId('deploy-button').click();
+
+    await expect(page.getByTestId('view-service-button')).toBeVisible();
+
+    await page.waitForSelector('[data-testid="body-text"]', {
+      state: 'detached',
+    });
+
+    await expect(page.getByTestId('success-line')).toContainText(
+      /has been created and deployed successfully/
+    );
+
+    await page.getByTestId('view-service-button').click();
   });
 
   await test.step('Remove test case from logical test suite', async () => {
@@ -176,7 +218,12 @@ test('Logical TestSuite', async ({ page }) => {
     await page.waitForSelector("[data-testid='select-owner-tabs']", {
       state: 'visible',
     });
-    const getOwnerList = page.waitForResponse('/api/v1/users?*isBot=false*');
+    await page.waitForSelector(`[data-testid="loader"]`, {
+      state: 'detached',
+    });
+    const getOwnerList = page.waitForResponse(
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+    );
     await page.click('.ant-tabs [id*=tab-users]');
     await getOwnerList;
     await page.waitForSelector(`[data-testid="loader"]`, {

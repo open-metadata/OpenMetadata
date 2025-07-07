@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import test, { expect } from '@playwright/test';
+import { Page, test as base } from '@playwright/test';
 import {
-  ALERT_UPDATED_DESCRIPTION,
   INGESTION_PIPELINE_NAME,
   TEST_CASE_NAME,
   TEST_SUITE_NAME,
@@ -21,133 +20,228 @@ import {
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
-  addDomainFilter,
-  addEntityFQNFilter,
-  addExternalDestination,
-  addGetSchemaChangesAction,
-  addInternalDestination,
-  addOwnerFilter,
-  addPipelineStatusUpdatesAction,
+  commonCleanup,
+  commonPrerequisites,
+  createAlert,
   deleteAlert,
   generateAlertName,
-  getObservabilityCreationDetails,
   inputBasicAlertInformation,
   saveAlertAndVerifyResponse,
   verifyAlertDetails,
   visitAlertDetailsPage,
-  visitEditAlertPage,
-  visitObservabilityAlertPage,
 } from '../../utils/alert';
+import { getApiContext } from '../../utils/common';
 import {
-  clickOutside,
-  createNewPage,
-  descriptionBox,
-} from '../../utils/common';
+  addExternalDestination,
+  checkAlertDetailsForWithPermissionUser,
+  checkAlertFlowForWithoutPermissionUser,
+  createCommonObservabilityAlert,
+  editObservabilityAlert,
+  getObservabilityCreationDetails,
+  visitObservabilityAlertPage,
+} from '../../utils/observabilityAlert';
 
 const table1 = new TableClass();
 const table2 = new TableClass();
 const pipeline = new PipelineClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
+const admin = new AdminClass();
 const domain = new Domain();
 
 const SOURCE_NAME_1 = 'container';
 const SOURCE_DISPLAY_NAME_1 = 'Container';
 const SOURCE_NAME_2 = 'pipeline';
 const SOURCE_DISPLAY_NAME_2 = 'Pipeline';
+const SOURCE_NAME_3 = 'table';
+const SOURCE_DISPLAY_NAME_3 = 'Table';
 
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+// Create 2 page and authenticate 1 with admin and another with normal user
+const test = base.extend<{
+  page: Page;
+  userWithPermissionsPage: Page;
+  userWithoutPermissionsPage: Page;
+}>({
+  page: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await admin.login(page);
+    await use(page);
+    await page.close();
+  },
+  userWithPermissionsPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await user1.login(page);
+    await use(page);
+    await page.close();
+  },
+  userWithoutPermissionsPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await user2.login(page);
+    await use(page);
+    await page.close();
+  },
+});
 
-test.describe('Observability Alert Flow', () => {
-  const data = {
-    alertDetails: {
-      id: '',
-      name: '',
-      displayName: '',
-      description: '',
-      filteringRules: { resources: [] },
-      input: { filters: [], actions: [] },
-      destinations: [],
-    },
-  };
+const data = {
+  alertDetails: {
+    id: '',
+    name: '',
+    displayName: '',
+    description: '',
+    filteringRules: { resources: [] },
+    input: { filters: [], actions: [] },
+    destinations: [],
+  },
+};
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await table1.create(apiContext);
-    await table2.create(apiContext);
-    await table1.createTestSuiteAndPipelines(apiContext, {
-      name: TEST_SUITE_NAME,
+test.beforeAll(async ({ browser }) => {
+  test.slow();
+
+  const { afterAction, apiContext } = await performAdminLogin(browser);
+  await commonPrerequisites({
+    apiContext,
+    table: table2,
+    user1,
+    user2,
+    domain,
+  });
+
+  await table1.create(apiContext);
+  await table1.createTestSuiteAndPipelines(apiContext, {
+    name: TEST_SUITE_NAME,
+  });
+  await table1.createTestCase(apiContext, { name: TEST_CASE_NAME });
+  await pipeline.create(apiContext);
+  await pipeline.createIngestionPipeline(apiContext, INGESTION_PIPELINE_NAME);
+
+  await afterAction();
+});
+
+test.afterAll(async ({ browser }) => {
+  const { afterAction, apiContext } = await performAdminLogin(browser);
+  await commonCleanup({
+    apiContext,
+    table: table2,
+    user1,
+    user2,
+    domain,
+  });
+  await table1.delete(apiContext);
+  await pipeline.delete(apiContext);
+
+  await afterAction();
+});
+
+test.beforeEach(async ({ page }) => {
+  test.slow();
+
+  await visitObservabilityAlertPage(page);
+});
+
+test('Pipeline Alert', async ({ page }) => {
+  test.slow();
+
+  const ALERT_NAME = generateAlertName();
+
+  await test.step('Create alert', async () => {
+    data.alertDetails = await createAlert({
+      page,
+      alertName: ALERT_NAME,
+      sourceName: SOURCE_NAME_1,
+      sourceDisplayName: SOURCE_DISPLAY_NAME_1,
+      user: user1,
+      createButtonId: 'create-observability',
+      selectId: 'Owner Name',
+      addTrigger: true,
     });
-    await table1.createTestCase(apiContext, { name: TEST_CASE_NAME });
-    await pipeline.create(apiContext);
-    await pipeline.createIngestionPipeline(apiContext, INGESTION_PIPELINE_NAME);
-    await user1.create(apiContext);
-    await user2.create(apiContext);
-    await domain.create(apiContext);
-    await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await table1.delete(apiContext);
-    await table2.delete(apiContext);
-    await pipeline.delete(apiContext);
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-    await domain.delete(apiContext);
-    await afterAction();
-  });
-
-  test.beforeEach(async ({ page }) => {
+  await test.step('Verify diagnostic info tab', async () => {
     await visitObservabilityAlertPage(page);
+    await visitAlertDetailsPage(page, data.alertDetails);
+
+    const diagnosticTab = page.getByRole('tab', { name: /diagnostic info/i });
+    const diagnosticInfoResponse = page.waitForResponse(
+      `/api/v1/events/subscriptions/**/diagnosticInfo`
+    );
+    await diagnosticTab.click();
+    await diagnosticInfoResponse;
   });
 
-  test('Pipeline Alert', async ({ page }) => {
-    test.slow();
+  await test.step('Check created alert details', async () => {
+    await visitObservabilityAlertPage(page);
+    await visitAlertDetailsPage(page, data.alertDetails);
 
+    // Verify alert details
+    await verifyAlertDetails({ page, alertDetails: data.alertDetails });
+  });
+
+  await test.step('Edit alert', async () => {
+    await editObservabilityAlert({
+      page,
+      alertDetails: data.alertDetails,
+      sourceName: SOURCE_NAME_2,
+      sourceDisplayName: SOURCE_DISPLAY_NAME_2,
+      user: user1,
+      domain,
+      pipeline,
+    });
+
+    // Click save
+    const updateAlert = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/events/subscriptions') &&
+        response.request().method() === 'PATCH' &&
+        response.status() === 200
+    );
+    await page.click('[data-testid="save-button"]');
+    await updateAlert.then(async (response) => {
+      data.alertDetails = await response.json();
+
+      test.expect(response.status()).toEqual(200);
+
+      // Verify the edited alert changes
+      await verifyAlertDetails({ page, alertDetails: data.alertDetails });
+    });
+  });
+
+  await test.step('Delete alert', async () => {
+    await deleteAlert(page, data.alertDetails, false);
+  });
+});
+
+const OBSERVABILITY_CREATION_DETAILS = getObservabilityCreationDetails({
+  tableName1: table1.entity.name,
+  tableName2: table2.entity.name,
+  testSuiteFQN: TEST_SUITE_NAME,
+  testCaseName: TEST_CASE_NAME,
+  ingestionPipelineName: INGESTION_PIPELINE_NAME,
+  domainName: domain.data.name,
+  domainDisplayName: domain.data.displayName,
+  userName: `${user1.data.firstName}${user1.data.lastName}`,
+});
+
+for (const alertDetails of OBSERVABILITY_CREATION_DETAILS) {
+  const { source, sourceDisplayName, filters, actions } = alertDetails;
+
+  test(`${sourceDisplayName} alert`, async ({ page }) => {
     const ALERT_NAME = generateAlertName();
 
+    test.slow(true);
+
     await test.step('Create alert', async () => {
-      await inputBasicAlertInformation({
+      await createCommonObservabilityAlert({
         page,
-        name: ALERT_NAME,
-        sourceName: SOURCE_NAME_1,
-        sourceDisplayName: SOURCE_DISPLAY_NAME_1,
-        createButtonId: 'create-observability',
-      });
-
-      // Select filters
-      await page.click('[data-testid="add-filters"]');
-
-      await addOwnerFilter({
-        page,
-        filterNumber: 0,
-        ownerName: user1.getUserName(),
-        selectId: 'Owner Name',
-      });
-
-      // Select trigger
-      await page.click('[data-testid="add-trigger"]');
-
-      await addGetSchemaChangesAction({
-        page,
-        filterNumber: 0,
-      });
-
-      await page.getByTestId('connection-timeout-input').clear();
-      await page.fill('[data-testid="connection-timeout-input"]', '26');
-
-      // Select Destination
-      await page.click('[data-testid="add-destination-button"]');
-
-      await addInternalDestination({
-        page,
-        destinationNumber: 0,
-        category: 'Admins',
-        type: 'Email',
+        alertName: ALERT_NAME,
+        sourceName: source,
+        sourceDisplayName: sourceDisplayName,
+        alertDetails,
+        filters: filters,
+        actions: actions,
       });
 
       // Click save
@@ -162,273 +256,144 @@ test.describe('Observability Alert Flow', () => {
       await verifyAlertDetails({ page, alertDetails: data.alertDetails });
     });
 
-    await test.step('Edit alert', async () => {
-      await visitEditAlertPage(page, data.alertDetails, false);
-
-      // Update description
-      await page.locator(descriptionBox).clear();
-      await page.locator(descriptionBox).fill(ALERT_UPDATED_DESCRIPTION);
-
-      // Update source
-      await page.click('[data-testid="source-select"]');
-      await page
-        .getByTestId(`${SOURCE_NAME_2}-option`)
-        .getByText(SOURCE_DISPLAY_NAME_2)
-        .click();
-
-      // Filters should reset after source change
-      await expect(page.getByTestId('filter-select-0')).not.toBeAttached();
-
-      // Add owner filter
-      await page.click('[data-testid="add-filters"]');
-      await addOwnerFilter({
-        page,
-        filterNumber: 0,
-        ownerName: user1.getUserName(),
-        selectId: 'Owner Name',
-      });
-
-      // Add entityFQN filter
-      await page.click('[data-testid="add-filters"]');
-      await addEntityFQNFilter({
-        page,
-        filterNumber: 1,
-        entityFQN: (
-          pipeline.entityResponseData as { fullyQualifiedName: string }
-        ).fullyQualifiedName,
-        selectId: 'Pipeline Name',
-        exclude: true,
-      });
-      // Add domain filter
-      await page.click('[data-testid="add-filters"]');
-      await addDomainFilter({
-        page,
-        filterNumber: 2,
-        domainName: domain.responseData.name,
-        domainDisplayName: domain.responseData.displayName,
-      });
-
-      // Add trigger
-      await page.click('[data-testid="add-trigger"]');
-
-      await addPipelineStatusUpdatesAction({
-        page,
-        filterNumber: 0,
-        statusName: 'Successful',
-        exclude: true,
-      });
-
-      // Add multiple destinations
-      await page.click('[data-testid="add-destination-button"]');
-      await addInternalDestination({
-        page,
-        destinationNumber: 0,
-        category: 'Owners',
-        type: 'G Chat',
-      });
-
-      // Add team Slack destination
-      await page.click('[data-testid="add-destination-button"]');
-      await addInternalDestination({
-        page,
-        destinationNumber: 1,
-        category: 'Teams',
-        type: 'Slack',
-        typeId: 'Team-select',
-        searchText: 'Organization',
-      });
-
-      // Click save
-      const updateAlert = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/events/subscriptions') &&
-          response.request().method() === 'PATCH' &&
-          response.status() === 200
-      );
-      await page.click('[data-testid="save-button"]');
-      await updateAlert.then(async (response) => {
-        data.alertDetails = await response.json();
-
-        expect(response.status()).toEqual(200);
-
-        // Verify the edited alert changes
-        await verifyAlertDetails({ page, alertDetails: data.alertDetails });
-      });
-    });
-
     await test.step('Delete alert', async () => {
       await deleteAlert(page, data.alertDetails, false);
     });
   });
+}
 
-  const OBSERVABILITY_CREATION_DETAILS = getObservabilityCreationDetails({
-    tableName1: table1.entity.name,
-    tableName2: table2.entity.name,
-    testSuiteFQN: TEST_SUITE_NAME,
-    testCaseName: TEST_CASE_NAME,
-    ingestionPipelineName: INGESTION_PIPELINE_NAME,
-    domainName: domain.data.name,
-    domainDisplayName: domain.data.displayName,
-    userName: `${user1.data.firstName}${user1.data.lastName}`,
+test('Alert operations for a user with and without permissions', async ({
+  page,
+  userWithPermissionsPage,
+  userWithoutPermissionsPage,
+}) => {
+  test.slow();
+
+  const ALERT_NAME = generateAlertName();
+  const { apiContext } = await getApiContext(page);
+  await visitObservabilityAlertPage(userWithPermissionsPage);
+
+  await test.step('Create and trigger alert', async () => {
+    await inputBasicAlertInformation({
+      page: userWithPermissionsPage,
+      name: ALERT_NAME,
+      sourceName: SOURCE_NAME_3,
+      sourceDisplayName: SOURCE_DISPLAY_NAME_3,
+      createButtonId: 'create-observability',
+    });
+    await userWithPermissionsPage.click('[data-testid="add-filters"]');
+
+    // Select filter
+    await userWithPermissionsPage.click('[data-testid="filter-select-0"]');
+    await userWithPermissionsPage.click(
+      '.ant-select-dropdown:visible [data-testid="Table Name-filter-option"]'
+    );
+
+    // Search and select filter input value
+    const searchOptions = userWithPermissionsPage.waitForResponse(
+      '/api/v1/search/query?q=*'
+    );
+    await userWithPermissionsPage.fill(
+      `[data-testid="fqn-list-select"] [role="combobox"]`,
+      table1.entity.name,
+      {
+        force: true,
+      }
+    );
+
+    await searchOptions;
+
+    await userWithPermissionsPage.click(
+      `.ant-select-dropdown:visible [title="${table1.entity.name}"]`
+    );
+
+    // Check if option is selected
+    await test
+      .expect(
+        userWithPermissionsPage.locator(
+          `[data-testid="fqn-list-select"] [title="${table1.entity.name}"]`
+        )
+      )
+      .toBeAttached();
+
+    await userWithPermissionsPage.click('[data-testid="add-trigger"]');
+
+    // Select action
+    await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
+
+    // Adding the dropdown visibility check to avoid flakiness here
+    await userWithPermissionsPage.waitForSelector(
+      `.ant-select-dropdown:visible`,
+      {
+        state: 'visible',
+      }
+    );
+    await userWithPermissionsPage.click(
+      '.ant-select-dropdown:visible [data-testid="Get Schema Changes-filter-option"]:visible'
+    );
+    await userWithPermissionsPage.waitForSelector(
+      `.ant-select-dropdown:visible`,
+      {
+        state: 'hidden',
+      }
+    );
+
+    await userWithPermissionsPage.click(
+      '[data-testid="add-destination-button"]'
+    );
+    await addExternalDestination({
+      page: userWithPermissionsPage,
+      destinationNumber: 0,
+      category: 'Slack',
+      input: 'https://slack.com',
+    });
+
+    // Click save
+    data.alertDetails = await saveAlertAndVerifyResponse(
+      userWithPermissionsPage
+    );
+
+    // Trigger alert
+    await table1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/columns/4',
+          value: {
+            name: 'new_field',
+            dataType: 'VARCHAR',
+            dataLength: 100,
+            dataTypeDisplay: 'varchar(100)',
+          },
+        },
+      ],
+    });
   });
 
-  for (const alertDetails of OBSERVABILITY_CREATION_DETAILS) {
-    const { source, sourceDisplayName, filters, actions } = alertDetails;
-
-    test(`${sourceDisplayName} alert`, async ({ page }) => {
-      const ALERT_NAME = generateAlertName();
-
-      test.slow(true);
-
-      await test.step('Create alert', async () => {
-        await inputBasicAlertInformation({
-          page,
-          name: ALERT_NAME,
-          sourceName: source,
-          sourceDisplayName: sourceDisplayName,
-          createButtonId: 'create-observability',
-        });
-
-        for (const filter of filters) {
-          const filterNumber = filters.indexOf(filter);
-
-          await page.click('[data-testid="add-filters"]');
-
-          // Select filter
-          await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-          await page.click(
-            `.ant-select-dropdown:visible [data-testid="${filter.name}-filter-option"]`
-          );
-
-          // Search and select filter input value
-          const searchOptions = page.waitForResponse(
-            '/api/v1/search/query?q=*'
-          );
-          await page.fill(
-            `[data-testid="${filter.inputSelector}"] [role="combobox"]`,
-            filter.inputValue,
-            {
-              force: true,
-            }
-          );
-
-          await searchOptions;
-
-          await page.click(
-            `.ant-select-dropdown:visible [title="${
-              filter.inputValueId ?? filter.inputValue
-            }"]`
-          );
-
-          // Check if option is selected
-          await expect(
-            page.locator(
-              `[data-testid="${filter.inputSelector}"] [title="${
-                filter.inputValueId ?? filter.inputValue
-              }"]`
-            )
-          ).toBeAttached();
-
-          if (filter.exclude) {
-            // Change filter effect
-            await page.click(`[data-testid="filter-switch-${filterNumber}"]`);
-          }
-        }
-
-        // Add triggers
-        for (const action of actions) {
-          const actionNumber = actions.indexOf(action);
-
-          await page.click('[data-testid="add-trigger"]');
-
-          // Select action
-          await page.click(`[data-testid="trigger-select-${actionNumber}"]`);
-
-          // Adding the dropdown visibility check to avoid flakiness here
-          await page.waitForSelector(`.ant-select-dropdown:visible`, {
-            state: 'visible',
-          });
-          await page.click(
-            `.ant-select-dropdown:visible [data-testid="${action.name}-filter-option"]:visible`
-          );
-          await page.waitForSelector(`.ant-select-dropdown:visible`, {
-            state: 'hidden',
-          });
-
-          if (action.inputs && action.inputs.length > 0) {
-            for (const input of action.inputs) {
-              const getSearchResult = page.waitForResponse(
-                '/api/v1/search/query?q=*'
-              );
-              await page.fill(
-                `[data-testid="${input.inputSelector}"] [role="combobox"]`,
-                input.inputValue,
-                {
-                  force: true,
-                }
-              );
-              if (input.waitForAPI) {
-                await getSearchResult;
-              }
-              await page.click(`[title="${input.inputValue}"]:visible`);
-
-              // eslint-disable-next-line jest/no-conditional-expect
-              await expect(page.getByTestId(input.inputSelector)).toHaveText(
-                input.inputValue
-              );
-
-              await clickOutside(page);
-            }
-          }
-
-          if (action.exclude) {
-            // Change filter effect
-            await page.click(`[data-testid="trigger-switch-${actionNumber}"]`);
-          }
-        }
-
-        // Add Destinations
-        for (const destination of alertDetails.destinations) {
-          const destinationNumber =
-            alertDetails.destinations.indexOf(destination);
-
-          await page.click('[data-testid="add-destination-button"]');
-
-          if (destination.mode === 'internal') {
-            await addInternalDestination({
-              page,
-              destinationNumber,
-              category: destination.category,
-              type: destination.type,
-              typeId: destination.inputSelector,
-              searchText: destination.inputValue,
-            });
-          } else {
-            await addExternalDestination({
-              page,
-              destinationNumber,
-              category: destination.category,
-              input: destination.inputValue,
-              secretKey: destination.secretKey,
-            });
-          }
-        }
-
-        // Click save
-        data.alertDetails = await saveAlertAndVerifyResponse(page);
-      });
-
-      await test.step('Check created alert details', async () => {
-        await visitObservabilityAlertPage(page);
-        await visitAlertDetailsPage(page, data.alertDetails);
-
-        // Verify alert details
-        await verifyAlertDetails({ page, alertDetails: data.alertDetails });
-      });
-
-      await test.step('Delete alert', async () => {
-        await deleteAlert(page, data.alertDetails, false);
-      });
+  await test.step('Checks for user without permission', async () => {
+    await checkAlertFlowForWithoutPermissionUser({
+      page: userWithoutPermissionsPage,
+      alertDetails: data.alertDetails,
+      sourceName: SOURCE_NAME_3,
+      table: table1,
     });
-  }
+  });
+
+  await test.step(
+    'Check alert details page and Recent Events tab',
+    async () => {
+      await checkAlertDetailsForWithPermissionUser({
+        page: userWithPermissionsPage,
+        alertDetails: data.alertDetails,
+        sourceName: SOURCE_NAME_3,
+        table: table1,
+        user: user2,
+      });
+    }
+  );
+
+  await test.step('Delete alert', async () => {
+    await deleteAlert(userWithPermissionsPage, data.alertDetails, false);
+  });
 });

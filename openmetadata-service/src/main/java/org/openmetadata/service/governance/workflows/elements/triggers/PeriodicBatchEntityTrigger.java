@@ -1,7 +1,10 @@
 package org.openmetadata.service.governance.workflows.elements.triggers;
 
+import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +22,7 @@ import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.TimerEventDefinition;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
-import org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicBatchEntityTriggerDefinition;
+import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchEntitiesImpl;
@@ -53,6 +56,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(triggerWorkflowId, "startEvent")).build();
+    startEvent.setAsynchronousLeave(true);
     oTimerDefinition.ifPresent(startEvent::addEventDefinition);
     process.addFlowElement(startEvent);
 
@@ -118,9 +122,14 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
     IOParameter inputParameter = new IOParameter();
     inputParameter.setSource(RELATED_ENTITY_VARIABLE);
-    inputParameter.setTarget(RELATED_ENTITY_VARIABLE);
+    inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
+
+    IOParameter outputParameter = new IOParameter();
+    outputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
+    outputParameter.setTarget(EXCEPTION_VARIABLE);
 
     workflowTrigger.setInParameters(List.of(inputParameter));
+    workflowTrigger.setOutParameters(List.of(outputParameter));
     workflowTrigger.setLoopCharacteristics(multiInstance);
 
     return workflowTrigger;
@@ -135,7 +144,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
             .build();
 
     FieldExtension searchFilterExpr =
-        new FieldExtensionBuilder()
+        new FieldExtensionBuilder(false)
             .fieldName("searchFilterExpr")
             .fieldValue(triggerDefinition.getConfig().getFilters())
             .build();
@@ -155,6 +164,8 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     serviceTask.getFieldExtensions().add(entityTypeExpr);
     serviceTask.getFieldExtensions().add(searchFilterExpr);
     serviceTask.getFieldExtensions().add(batchSizeExpr);
+
+    serviceTask.setAsynchronousLeave(true);
 
     return serviceTask;
   }

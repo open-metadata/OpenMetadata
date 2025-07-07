@@ -13,10 +13,10 @@
 import { Space, SpaceProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './airflow-message-banner.less';
 
 const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
@@ -33,7 +33,7 @@ const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
       data-testid="no-airflow-placeholder"
       size={16}>
       <IconRetry className="align-middle" height={24} width={24} />
-      <RichTextEditorPreviewer
+      <RichTextEditorPreviewerV1
         enableSeeMoreVariant={false}
         markdown={reason ?? ''}
       />

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +17,7 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
@@ -30,6 +30,7 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
@@ -37,6 +38,7 @@ from metadata.ingestion.ometa.mixins.custom_property_mixin import (
 )
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
+from metadata.ingestion.ometa.mixins.domain_mixin import OMetaDomainMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
@@ -89,6 +91,16 @@ class EmptyPayloadException(Exception):
     """
 
 
+class OpenMetadataSettings(BaseSettings):
+    """OpenMetadataConnection settings wrapper"""
+
+    model_config = SettingsConfigDict(
+        env_prefix="OPENMETADATA__", env_nested_delimiter="__", case_sensitive=True
+    )
+
+    connection: OpenMetadataConnection
+
+
 class OpenMetadata(
     OMetaPipelineMixin,
     OMetaMlModelMixin,
@@ -109,6 +121,7 @@ class OpenMetadata(
     OMetaSearchIndexMixin,
     OMetaCustomPropertyMixin,
     OMetaSuggestionsMixin,
+    OMetaDomainMixin,
     Generic[T, C],
 ):
     """
@@ -145,11 +158,14 @@ class OpenMetadata(
 
         get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 
+        extra_headers: Optional[dict[str, str]] = None
+        if self.config.extraHeaders:
+            extra_headers = self.config.extraHeaders.root
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
-            extra_headers=self.config.extraHeaders,
+            extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
         )
@@ -157,6 +173,11 @@ class OpenMetadata(
         self._use_raw_data = raw_data
         if self.config.enableVersionValidation:
             self.validate_versions()
+
+    @classmethod
+    def from_env(cls) -> "OpenMetadata":
+        settings = OpenMetadataSettings()
+        return cls(settings.connection)
 
     @staticmethod
     def get_suffix(entity: Type[T]) -> str:
@@ -268,7 +289,11 @@ class OpenMetadata(
             )
 
         fn = getattr(self.client, method)
-        resp = fn(self.get_suffix(entity), data=data.model_dump_json())
+        resp = fn(
+            # this might be a regular pydantic model so we build the context manually
+            self.get_suffix(entity),
+            data=data.model_dump_json(context={"mask_secrets": False}),
+        )
         if not resp:
             raise EmptyPayloadException(
                 f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.model_dump_json()}"
@@ -378,12 +403,13 @@ class OpenMetadata(
         logger.debug("Cannot find the Entity %s", fqn)
         return None
 
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-arguments
     def list_entities(
         self,
         entity: Type[T],
         fields: Optional[List[str]] = None,
         after: Optional[str] = None,
+        before: Optional[str] = None,
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
         skip_on_failure: bool = False,
@@ -395,9 +421,10 @@ class OpenMetadata(
         suffix = self.get_suffix(entity)
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
+        url_before = f"&before={before}" if before else ""
         url_fields = f"&fields={','.join(fields)}" if fields else ""
         resp = self.client.get(
-            path=f"{suffix}{url_limit}{url_after}{url_fields}", data=params
+            path=f"{suffix}{url_limit}{url_after}{url_before}{url_fields}", data=params
         )
 
         if self._use_raw_data:
@@ -421,7 +448,8 @@ class OpenMetadata(
 
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
-        return EntityList(entities=entities, total=total, after=after)
+        before = resp["paging"]["before"] if "before" in resp["paging"] else None
+        return EntityList(entities=entities, total=total, after=after, before=before)
 
     def list_all_entities(
         self,

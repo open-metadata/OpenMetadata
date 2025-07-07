@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { mergeAttributes, Node } from '@tiptap/core';
+import { Node } from '@tiptap/core';
 
 export default Node.create({
   name: 'diffView',
@@ -23,18 +23,55 @@ export default Node.create({
       class: {
         default: '',
       },
+      'data-testid': {
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-testid'),
+        renderHTML: (attributes) => {
+          if (!attributes['data-testid']) {
+            return {};
+          }
+
+          return {
+            'data-testid': attributes['data-testid'],
+          };
+        },
+      },
+      'data-diff': {
+        default: true,
+        parseHTML: (element) => element.getAttribute('data-diff'),
+        renderHTML: (attributes) => {
+          if (!attributes['data-diff']) {
+            return {};
+          }
+
+          return {
+            'data-diff': attributes['data-diff'],
+          };
+        },
+      },
     };
   },
 
   parseHTML() {
     return [
       {
-        tag: 'diff-view',
+        tag: 'span[data-diff]',
       },
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
-    return ['diff-view', mergeAttributes(HTMLAttributes), 0];
+  renderHTML({ HTMLAttributes, node }) {
+    const diffNode = document.createElement('span');
+
+    Object.keys(HTMLAttributes).forEach((key) => {
+      diffNode.setAttribute(key, HTMLAttributes[key]);
+    });
+
+    diffNode.setAttribute('data-diff', 'true');
+    diffNode.innerHTML = node.textContent;
+
+    return {
+      dom: diffNode,
+    };
   },
 });

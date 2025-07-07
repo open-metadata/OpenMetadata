@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.apis.APICollectionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -39,7 +40,6 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
         "",
         "");
     supportsSearch = true;
-    parent = true;
   }
 
   @Override
@@ -104,7 +104,10 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
 
   @Override
   public EntityRepository<APICollection>.EntityUpdater getUpdater(
-      APICollection original, APICollection updated, Operation operation) {
+      APICollection original,
+      APICollection updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new APICollectionUpdater(original, updated, operation);
   }
 
@@ -122,7 +125,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }

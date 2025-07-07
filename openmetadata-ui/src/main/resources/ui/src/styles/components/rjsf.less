@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../variables.less');
+@import (reference) url('../variables.less');
 
 .rjsf.no-header #root__title,
 .rjsf.no-header #root__description,
@@ -24,12 +24,6 @@
   margin: 12px 0;
 }
 
-.rjsf .additional-fields .form-group.field,
-.rjsf .array-fields .form-group.field {
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
 .rjsf .property-wrapper.additional-fields ~ .button-comp {
   margin-top: 6px;
 }
@@ -38,6 +32,7 @@
   text-transform: capitalize;
   line-height: 2;
 }
+
 .rjsf .control-label .required {
   margin-left: 2px;
   color: @failed-color;
@@ -60,6 +55,7 @@
   &:hover {
     border: 1px solid @grey-3;
   }
+
   &:focus {
     outline: 2px solid transparent;
     outline-offset: 2px;
@@ -140,4 +136,8 @@
   margin-right: 4px;
   cursor: pointer;
   accent-color: @primary-color;
+}
+
+.rjsf .has-error input {
+  border-color: @error-color !important;
 }

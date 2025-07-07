@@ -9,12 +9,14 @@
     "userToken": {
       "title": "User Token",
       "description": "User Token",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "botToken": {
       "title": "Bot Token",
       "description": "Bot Token",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     }
   },
   "additionalProperties": false,

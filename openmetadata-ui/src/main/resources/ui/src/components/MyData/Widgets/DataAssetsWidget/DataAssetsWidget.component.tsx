@@ -15,7 +15,7 @@ import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DataAssetsIcon } from '../../../../assets/svg/data-assets-widget.svg';
 import { HOW_TO_GUIDE_DOCS } from '../../../../constants/docs.constants';
@@ -101,6 +101,7 @@ const DataAssetsWidget = ({
         <Col className="data-assets-explore-widget-body" span={24}>
           {isEmpty(services) ? (
             <ErrorPlaceHolder
+              className="border-none"
               icon={<DataAssetsIcon height={SIZE.SMALL} width={SIZE.SMALL} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               <Typography.Paragraph

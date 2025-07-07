@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,11 +15,11 @@ import traceback
 from copy import deepcopy
 from typing import Optional, cast
 
-from sqlalchemy import MetaData
-from sqlalchemy.orm import DeclarativeMeta
-
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -37,12 +37,11 @@ from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig
-from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.profiler.source.metadata import ProfilerSourceAndEntity
 from metadata.sampler.config import get_config_for_table
 from metadata.sampler.models import SampleConfig, SampleData, SamplerResponse
 from metadata.sampler.sampler_interface import SamplerInterface
-from metadata.utils.constants import NON_SQA_DATABASE_CONNECTIONS
+from metadata.utils.bigquery_utils import copy_service_config
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import import_sampler_class
 
@@ -86,9 +85,6 @@ class SamplerProcessor(Processor):
                 self.config, database_entity
             )
 
-            _orm = self._build_table_orm(
-                entity, conn_type=str(service_conn_config.type.value)
-            )
             sampler_interface: SamplerInterface = self.sampler_class.create(
                 service_connection_config=service_conn_config,
                 ometa_client=self.metadata,
@@ -96,19 +92,14 @@ class SamplerProcessor(Processor):
                 schema_entity=schema_entity,
                 database_entity=database_entity,
                 table_config=get_config_for_table(entity, self.profiler_config),
-                default_sample_config=SampleConfig(
-                    profile_sample=self.source_config.profileSample,
-                    profile_sample_type=self.source_config.profileSampleType,
-                    sampling_method_type=self.source_config.samplingMethodType,
-                ),
+                default_sample_config=SampleConfig(),
                 default_sample_data_count=self.source_config.sampleDataCount,
-                orm_table=_orm,
             )
             sample_data = SampleData(
                 data=sampler_interface.generate_sample_data(),
                 store=self.source_config.storeSampleData,
             )
-
+            sampler_interface.close()
             return Either(
                 right=SamplerResponse(
                     table=entity,
@@ -135,14 +126,6 @@ class SamplerProcessor(Processor):
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 
-    def _build_table_orm(
-        self, entity: Table, conn_type: str
-    ) -> Optional[DeclarativeMeta]:
-        """Build the ORM table if needed for the sampler and profiler interfaces"""
-        if conn_type not in NON_SQA_DATABASE_CONNECTIONS:
-            return ometa_to_sqa_orm(entity, self.metadata, MetaData())
-        return None
-
     def _copy_service_config(
         self, config: OpenMetadataWorkflowConfig, database: Database
     ) -> DatabaseConnection:
@@ -154,6 +137,9 @@ class SamplerProcessor(Processor):
         Returns:
             DatabaseService.__config__
         """
+        if isinstance(config.source.serviceConnection.root.config, BigQueryConnection):
+            return copy_service_config(config, database.name.root)
+
         config_copy = deepcopy(
             config.source.serviceConnection.root.config  # type: ignore
         )

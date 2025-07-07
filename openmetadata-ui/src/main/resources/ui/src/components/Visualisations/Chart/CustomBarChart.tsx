@@ -12,10 +12,11 @@
  */
 
 import { Col, Row } from 'antd';
-import React, { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
+  Brush,
   CartesianGrid,
   Legend,
   LegendProps,
@@ -25,13 +26,14 @@ import {
   YAxis,
 } from 'recharts';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
+import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
 import {
   axisTickFormatter,
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
 import { CustomTooltip } from '../../../utils/DataInsightUtils';
-import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
 
@@ -39,15 +41,26 @@ const CustomBarChart = ({
   chartCollection,
   tickFormatter,
   name,
+  noDataPlaceholderText,
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
+
+  const { showBrush, endIndex } = useMemo(() => {
+    return {
+      showBrush: data.length > PROFILER_CHART_DATA_SIZE,
+      endIndex: PROFILER_CHART_DATA_SIZE,
+    };
+  }, [data.length]);
 
   if (data.length === 0) {
     return (
       <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder className="mt-0-important" />
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            placeholderText={noDataPlaceholderText}
+          />
         </Col>
       </Row>
     );
@@ -81,7 +94,7 @@ const CustomBarChart = ({
         <Tooltip
           content={
             <CustomTooltip
-              dateTimeFormatter={formatDateTime}
+              dateTimeFormatter={formatDateTimeLong}
               timeStampKey="timestamp"
               valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
             />
@@ -100,6 +113,15 @@ const CustomBarChart = ({
           />
         ))}
         <Legend onClick={handleClick} />
+        {showBrush && (
+          <Brush
+            data={data}
+            endIndex={endIndex}
+            gap={5}
+            height={30}
+            padding={{ left: 16, right: 16 }}
+          />
+        )}
       </BarChart>
     </ResponsiveContainer>
   );

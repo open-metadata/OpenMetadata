@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,8 +20,10 @@ select
 	s.description,
     	s.datasource_id,
     	s.viz_type,
+	t.id AS table_id,
 	t.table_name,
 	t.schema,
+	t.sql,
 	db.database_name,
     db.sqlalchemy_uri
 from 
@@ -91,9 +93,10 @@ LIMIT 1
 FETCH_COLUMN = """
 select 
 	tc.id, 
-    	table_name ,
-    	column_name, 
-    	type,
+    	t.table_name ,
+    	tc.column_name, 
+		tc.table_id, 
+    	tc.type,
     	tc.description 
 from 
 	table_columns  tc  
@@ -102,5 +105,5 @@ inner join
 on 
 	t.id=tc.table_id  
 where 
-	table_name=%(table_name)s
+	tc.table_id=%(table_id)s
 """

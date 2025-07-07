@@ -13,9 +13,9 @@
 import { Button, Col, Form, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -25,7 +25,6 @@ import SingleColumnProfile from '../../components/Database/Profiler/TableProfile
 import TableProfilerChart from '../../components/Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart';
 import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
 import CustomMetricForm from '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component';
-import { getEntityDetailsPath } from '../../constants/constants';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import {
   EntityTabs,
@@ -34,23 +33,26 @@ import {
 } from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { CustomMetric, Table } from '../../generated/entity/data/table';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const AddCustomMetricPage = () => {
   const { dashboardType } =
-    useParams<{ dashboardType: ProfilerDashboardType }>();
+    useRequiredParams<{ dashboardType: ProfilerDashboardType }>();
   const { fqn } = useFqn();
+  const { t } = useTranslation();
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const isColumnMetric = dashboardType === ProfilerDashboardType.COLUMN;
-  const { t } = useTranslation();
   const [form] = Form.useForm<CustomMetric>();
   const [table, setTable] = useState<Table>();
   const [isLoading, setIsLoading] = useState(true);
@@ -101,7 +103,7 @@ const AddCustomMetricPage = () => {
   );
 
   const handleBackClick = () => {
-    history.push({
+    navigate({
       pathname: getEntityDetailsPath(
         EntityType.TABLE,
         entityFqn,
@@ -161,7 +163,7 @@ const AddCustomMetricPage = () => {
       (column) => column.name === columnName
     );
     if (selectedColumn) {
-      history.push({
+      navigate({
         search: QueryString.stringify({
           activeColumnFqn: selectedColumn?.fullyQualifiedName,
         }),
@@ -204,10 +206,10 @@ const AddCustomMetricPage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-custom-metric-page-container">
+          <div data-testid="add-custom-metric-page-container">
             <Row gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -260,7 +262,7 @@ const AddCustomMetricPage = () => {
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         flex: 0.5,
         minWidth: 400,
       }}
@@ -268,4 +270,4 @@ const AddCustomMetricPage = () => {
   );
 };
 
-export default AddCustomMetricPage;
+export default withPageLayout(AddCustomMetricPage);

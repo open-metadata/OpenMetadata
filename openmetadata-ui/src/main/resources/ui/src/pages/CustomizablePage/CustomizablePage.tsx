@@ -14,9 +14,9 @@ import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import CustomizeGlossaryTermDetailPage from '../../components/MyData/CustomizableComponents/CustomiseGlossaryTermDetailPage/CustomiseGlossaryTermDetailPage';
@@ -43,12 +43,14 @@ import { getPersonaByName } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { CustomizeTableDetailPage } from '../CustomizeTableDetailPage/CustomizeTableDetailPage';
+import { useRequiredParams } from '../../utils/useRequiredParams';
+import CustomizableDomainPage from '../CustomizableDomainPage/CustomizableDomainPage';
+import { CustomizeDetailsPage } from '../CustomizeDetailsPage/CustomizeDetailsPage';
 import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
 import { useCustomizeStore } from './CustomizeStore';
 
 export const CustomizablePage = () => {
-  const { pageFqn } = useParams<{ pageFqn: string }>();
+  const { pageFqn } = useRequiredParams<{ pageFqn: string }>();
   const { fqn: personaFQN } = useFqn();
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -180,7 +182,10 @@ export const CustomizablePage = () => {
               name: `${personaDetails.name}-${personaFQN}`,
               fullyQualifiedName: pageLayoutFQN,
               entityType: EntityType.PAGE,
-              data: {},
+              data: {
+                pages: [],
+                navigation: [],
+              },
             });
             setCurrentPageType(pageFqn as PageType);
           } else {
@@ -251,6 +256,14 @@ export const CustomizablePage = () => {
           onSaveLayout={handlePageCustomizeSave}
         />
       );
+    case PageType.Domain:
+      return (
+        <CustomizableDomainPage
+          initialPageData={currentPage}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
 
     case PageType.Glossary:
     case PageType.GlossaryTerm:
@@ -263,14 +276,28 @@ export const CustomizablePage = () => {
         />
       );
     case PageType.Table:
+    case PageType.Topic:
+    case PageType.StoredProcedure:
+    case PageType.DashboardDataModel:
+    case PageType.Dashboard:
+    case PageType.Pipeline:
+    case PageType.DatabaseSchema:
+    case PageType.Database:
+    case PageType.Container:
+    case PageType.SearchIndex:
+    case PageType.Metric:
+    case PageType.MlModel:
+    case PageType.APIEndpoint:
+    case PageType.APICollection:
       return (
-        <CustomizeTableDetailPage
+        <CustomizeDetailsPage
           initialPageData={currentPage}
           isGlossary={false}
           personaDetails={personaDetails}
           onSaveLayout={handlePageCustomizeSave}
         />
       );
+
     default:
       return <ErrorPlaceHolder />;
   }

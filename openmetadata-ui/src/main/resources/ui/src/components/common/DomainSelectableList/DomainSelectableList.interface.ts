@@ -21,4 +21,7 @@ export interface DomainSelectableListProps {
   popoverProps?: PopoverProps;
   selectedDomain?: EntityReference | EntityReference[];
   multiple?: boolean;
+  onCancel?: () => void;
+  wrapInButton?: boolean;
+  showAllDomains?: boolean;
 }

@@ -10,21 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TabsProps } from 'antd';
-import { isUndefined, uniqueId } from 'lodash';
-import React from 'react';
+import { isUndefined } from 'lodash';
+import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
+import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
+import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
+import { ReviewerLabelV2 } from '../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2';
+import GlossaryTermReferences from '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermReferences';
+import GlossaryTermSynonyms from '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermSynonyms';
+import RelatedTerms from '../../components/Glossary/GlossaryTerms/tabs/RelatedTerms';
 import EmptyWidgetPlaceholder from '../../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../../enums/common.enum';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
-import { EntityTabs } from '../../enums/entity.enum';
-import { Document } from '../../generated/entity/docStore/document';
-import { Tab } from '../../generated/system/ui/uiCustomization';
+import { EntityType } from '../../enums/entity.enum';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
-import { moveEmptyWidgetToTheEnd } from '../CustomizableLandingPageUtils';
-import customizeMyDataPageClassBase from '../CustomizeMyDataPageClassBase';
-import { getEntityName } from '../EntityUtils';
+import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 
 export const getWidgetFromKey = ({
   widgetConfig,
@@ -62,13 +61,9 @@ export const getWidgetFromKey = ({
     );
   }
 
-  const widgetKey = customizeGlossaryTermPageClassBase.getKeyFromWidgetName(
+  const Widget = customizeGlossaryTermPageClassBase.getWidgetFromKey(
     widgetConfig.i
   );
-
-  const Widget = customizeGlossaryTermPageClassBase.getWidgetsFromKey<
-    typeof widgetKey
-  >(widgetConfig.i as GlossaryTermDetailPageWidgetKeys);
 
   return (
     <Widget
@@ -80,135 +75,37 @@ export const getWidgetFromKey = ({
   );
 };
 
-const getNewWidgetPlacement = (
-  currentLayout: WidgetConfig[],
-  widgetWidth: number
-) => {
-  const lowestWidgetLayout = currentLayout.reduce(
-    (acc, widget) => {
-      if (
-        widget.y >= acc.y &&
-        widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-      ) {
-        if (widget.y === acc.y && widget.x < acc.x) {
-          return acc;
-        }
-
-        return widget;
-      }
-
-      return acc;
-    },
-    { y: 0, x: 0, w: 0 }
-  );
-
-  // Check if there's enough space to place the new widget on the same row
+export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
   if (
-    customizeMyDataPageClassBase.landingPageMaxGridSize -
-      (lowestWidgetLayout.x + lowestWidgetLayout.w) >=
-    widgetWidth
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.RELATED_TERMS)
   ) {
-    return {
-      x: lowestWidgetLayout.x + lowestWidgetLayout.w,
-      y: lowestWidgetLayout.y,
-    };
+    return <RelatedTerms />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.SYNONYMS)
+  ) {
+    return <GlossaryTermSynonyms />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REFERENCES)
+  ) {
+    return <GlossaryTermReferences />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.OWNER)
+  ) {
+    return <OwnerLabelV2 />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
+  ) {
+    return <ReviewerLabelV2 />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.DOMAIN)
+  ) {
+    return <DomainLabelV2 showDomainHeading />;
   }
-
-  // Otherwise, move to the next row
-  return {
-    x: 0,
-    y: lowestWidgetLayout.y + 1,
-  };
-};
-
-export const getAddWidgetHandler =
-  (
-    newWidgetData: Document,
-    placeholderWidgetKey: string,
-    widgetWidth: number,
-    maxGridSize: number
-  ) =>
-  (currentLayout: Array<WidgetConfig>) => {
-    const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
-    const widgetHeight = customizeMyDataPageClassBase.getWidgetHeight(
-      newWidgetData.name
-    );
-
-    // The widget with key "ExtraWidget.EmptyWidgetPlaceholder" will always remain in the bottom
-    // and is not meant to be replaced hence
-    // if placeholderWidgetKey is "ExtraWidget.EmptyWidgetPlaceholder"
-    // append the new widget in the array
-    // else replace the new widget with other placeholder widgets
-    if (
-      placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-    ) {
-      return [
-        ...moveEmptyWidgetToTheEnd(currentLayout),
-        {
-          w: widgetWidth,
-          h: widgetHeight,
-          i: widgetFQN,
-          static: false,
-          ...getNewWidgetPlacement(currentLayout, widgetWidth),
-        },
-      ];
-    } else {
-      return currentLayout.map((widget: WidgetConfig) => {
-        const widgetX =
-          widget.x + widgetWidth <= maxGridSize
-            ? widget.x
-            : maxGridSize - widgetWidth;
-
-        return widget.i === placeholderWidgetKey
-          ? {
-              ...widget,
-              i: widgetFQN,
-              h: widgetHeight,
-              w: widgetWidth,
-              x: widgetX,
-            }
-          : widget;
-      });
-    }
-  };
-
-export const getGlossaryTermDetailTabs = (
-  defaultTabs: TabsProps['items'],
-  customizedTabs?: Tab[],
-  defaultTabId: EntityTabs = EntityTabs.OVERVIEW
-) => {
-  if (!customizedTabs) {
-    return defaultTabs;
-  }
-  const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
-
-  const newTabs =
-    customizedTabs?.map((t) => {
-      const tabItemDetails = defaultTabs?.find((i) => i.key === t.id);
-
-      return (
-        tabItemDetails ?? {
-          label: getEntityName(t),
-          key: t.id,
-          children: overviewTab?.children,
-        }
-      );
-    }) ?? defaultTabs;
-
-  return newTabs;
-};
-
-export const getTabLabelMap = (tabs?: Tab[]): Record<EntityTabs, string> => {
-  const labelMap = {} as Record<EntityTabs, string>;
 
   return (
-    tabs?.reduce((acc: Record<EntityTabs, string>, item) => {
-      if (item.id && item.displayName) {
-        const tab = item.id as EntityTabs;
-        acc[tab] = item.displayName;
-      }
-
-      return acc;
-    }, labelMap) ?? labelMap
+    <CommonWidgets
+      entityType={EntityType.GLOSSARY_TERM}
+      widgetConfig={widgetConfig}
+    />
   );
 };

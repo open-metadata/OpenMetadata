@@ -14,7 +14,7 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Row, Switch, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -95,43 +95,38 @@ const SearchRBACSettingsPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.login')}>
-      <Row className="page-container" gutter={[0, 16]}>
+    <PageLayoutV1 pageTitle={t('label.search-rbac')}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={24}>
           <Row align="middle" justify="space-between">
             <Col>
-              <PageHeader data={PAGE_HEADERS.SEARCH_RBAC} />
+              <PageHeader isBeta data={PAGE_HEADERS.SEARCH_RBAC} />
             </Col>
           </Row>
         </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
-                {t('label.enable-roles-polices-in-search')}
-                <Tooltip
-                  placement="top"
-                  title={t('message.enable-access-control-description')}
-                  trigger="hover">
-                  <InfoCircleOutlined
-                    className="m-x-xss"
-                    data-testid="enable-access-control-info"
-                    style={{ color: GRAYED_OUT_COLOR }}
-                  />
-                </Tooltip>
-              </Typography.Text>
-            </Col>
-            <Col>
-              <Switch
-                checked={searchConfig?.enableAccessControl}
-                disabled={isUpdating}
-                onChange={handleUpdateClick}
+        <Col className="d-flex items-center" span={12}>
+          <Typography.Text className="m-0 text-grey-muted">
+            {t('label.enable-roles-polices-in-search')}
+            <Tooltip
+              placement="top"
+              title={t('message.enable-access-control-description')}
+              trigger="hover">
+              <InfoCircleOutlined
+                className="m-x-xss"
+                data-testid="enable-access-control-info"
+                style={{ color: GRAYED_OUT_COLOR }}
               />
-            </Col>
-          </Row>
+            </Tooltip>
+          </Typography.Text>
+          <Switch
+            checked={searchConfig?.globalSettings?.enableAccessControl}
+            className="m-l-xlg"
+            disabled={isUpdating}
+            onChange={handleUpdateClick}
+          />
         </Col>
       </Row>
     </PageLayoutV1>

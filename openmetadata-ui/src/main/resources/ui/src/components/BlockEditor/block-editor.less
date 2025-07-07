@@ -18,7 +18,7 @@
 @hover-bg: #00000005;
 @callout-bg: #f8f8fa;
 @callout-warning-bg: #fff3dc;
-@callout-info-bg: #d1e9ff;
+@callout-info-bg: @primary-1;
 @callout-danger-bg: #ff4c3b33;
 @callout-border: #afafc1;
 
@@ -157,12 +157,12 @@
       border-radius: @border-radius;
       margin-top: 10px;
       max-width: 100%;
+      display: block;
     }
 
     p {
       margin-top: 10px;
       margin-bottom: 0px;
-      color: @text-color;
       word-break: break-word;
       line-height: 20px;
       &:first-child {
@@ -197,11 +197,74 @@
         }
       }
     }
+
+    &.drag-over {
+      position: relative;
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border: 2px dashed @primary-color;
+        border-radius: 6px;
+        pointer-events: none;
+      }
+
+      * {
+        cursor: copy;
+      }
+    }
+
+    // For block movement
+    &.is-dragging {
+      * {
+        cursor: grabbing;
+      }
+    }
   }
 
   // Custom CSS for Tippy
   .tippy-box {
     max-width: 400px !important;
+  }
+
+  &.block-editor-wrapper--bar-menu {
+    border: 1px solid #dadde6;
+    border-radius: 4px;
+
+    // do not show drag handle and block handle in bar menu mode
+    .om-drag-handle,
+    .om-block-handle {
+      display: none;
+    }
+    .om-block-editor {
+      max-height: 300px;
+      overflow: auto;
+      padding-left: 24px;
+      padding-right: 24px;
+      padding-top: 8px;
+      &:focus-visible {
+        outline: none;
+      }
+    }
+  }
+
+  &.block-editor-wrapper--bubble-menu {
+    .om-block-editor {
+      &:focus-visible {
+        outline: none;
+      }
+    }
+  }
+
+  // if contenteditable is false, remove padding-bottom from last p tag
+  .om-block-editor[contenteditable='false'] {
+    > p:last-child {
+      padding-bottom: 0;
+    }
   }
 }
 
@@ -238,6 +301,9 @@
       width: 32px;
       height: 32px;
       box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px;
+      &.svg-image {
+        padding: 4px;
+      }
     }
   }
 }
@@ -349,21 +415,6 @@
     fill: @primary-color;
   }
 }
-.image-placeholder {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  background-color: @grey-2;
-  border-width: 2px;
-  border-style: dashed;
-  border-radius: 4px;
-  user-select: none;
-  cursor: pointer;
-  padding: 1.5rem;
-  width: 100%;
-  font-size: 20px;
-}
 
 .om-image-node-wrapper {
   border-radius: 4px;
@@ -373,6 +424,10 @@
 
 .om-image-node-popover {
   min-width: 400px;
+
+  .ant-popover-inner-content {
+    width: auto;
+  }
 }
 .om-node-image-upload > .ant-upload-select {
   width: 100%;
@@ -388,7 +443,7 @@
     width: 100%;
   }
 }
-.om-image-node-embed-link-btn-col {
+body .om-image-node-embed-link-btn-col {
   display: flex;
   justify-content: flex-end;
 }

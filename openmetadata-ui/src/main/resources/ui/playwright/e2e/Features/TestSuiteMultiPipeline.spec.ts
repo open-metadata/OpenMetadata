@@ -26,14 +26,14 @@ test(
 
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
-    const table = new TableClass();
+    const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
     await table.create(apiContext);
-    await table.visitEntityPage(page);
+    await table.visitEntityPage(page, table.entity.name);
     const testCaseName = `multi-pipeline-test-${uuid()}`;
     const pipelineName = `test suite pipeline 2`;
 
     await test.step('Create a new pipeline', async () => {
-      await page.getByText('Profiler & Data Quality').click();
+      await page.getByText('Data Observability').click();
       await page
         .getByRole('menuitem', {
           name: 'Table Profile',
@@ -158,7 +158,10 @@ test(
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
-      await page.getByTestId('more-actions').click();
+      await page
+        .getByTestId('ingestion-list-table')
+        .getByTestId('more-actions')
+        .click();
 
       await page
         .locator(
@@ -190,7 +193,7 @@ test(
 
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
-    const table = new TableClass();
+    const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
     await table.create(apiContext);
     for (let index = 0; index < 4; index++) {
       await table.createTestCase(apiContext);
@@ -203,8 +206,8 @@ test(
       apiContext,
       testCaseNames
     );
-    await table.visitEntityPage(page);
-    await page.getByText('Profiler & Data Quality').click();
+    await table.visitEntityPage(page, table.entity.name);
+    await page.getByText('Data Observability').click();
     await page.getByRole('menuitem', { name: 'Data Quality' }).click();
 
     await page.getByRole('tab', { name: 'Pipeline' }).click();

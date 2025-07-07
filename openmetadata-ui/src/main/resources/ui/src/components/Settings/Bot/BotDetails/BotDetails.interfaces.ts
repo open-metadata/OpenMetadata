@@ -24,11 +24,3 @@ export interface BotsDetailProps extends HTMLAttributes<HTMLDivElement> {
   revokeTokenHandler: () => Promise<void>;
   updateUserDetails: (data: Partial<User>) => Promise<void>;
 }
-
-export interface DescriptionComponentProps {
-  botData: Bot;
-}
-
-export interface InheritedRolesComponentProps {
-  botUserData: User;
-}

@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.resources.topics;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.util.Collections.singletonList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,6 +33,8 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,8 +43,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -60,12 +60,12 @@ import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.topics.TopicResource.TopicList;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -100,19 +100,19 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     assertResponse(
         () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
 
     // Partitions is required field
     assertResponse(
         () -> createEntity(createRequest(test).withPartitions(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[partitions must not be null]");
+        "[query param partitions must not be null]");
 
     // Partitions must be >= 1
     assertResponse(
         () -> createEntity(createRequest(test).withPartitions(0), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[partitions must be greater than or equal to 1]");
+        "[query param partitions must be greater than or equal to 1]");
   }
 
   @Test

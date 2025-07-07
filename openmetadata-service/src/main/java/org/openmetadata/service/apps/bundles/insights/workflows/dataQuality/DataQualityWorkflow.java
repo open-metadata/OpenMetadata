@@ -15,9 +15,11 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
@@ -26,7 +28,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.util.ResultList;
@@ -42,6 +43,7 @@ public class DataQualityWorkflow {
   private final Long startTimestamp;
   private final Long endTimestamp;
   private final int batchSize;
+  private final DataQualityConfig dataQualityConfig;
 
   private final SearchRepository searchRepository;
   private final CollectionDAO collectionDAO;
@@ -56,6 +58,7 @@ public class DataQualityWorkflow {
   private static final WorkflowStats workflowStats = new WorkflowStats("DataQualityWorkflow");
 
   public DataQualityWorkflow(
+      DataQualityConfig dataQualityConfig,
       Long timestamp,
       int batchSize,
       Optional<DataInsightsApp.Backfill> backfill,
@@ -93,6 +96,7 @@ public class DataQualityWorkflow {
     this.searchRepository = searchRepository;
     this.collectionDAO = collectionDAO;
     this.entityType = entityType;
+    this.dataQualityConfig = dataQualityConfig;
   }
 
   public String getIndexNameByType(String entityType) {
@@ -116,14 +120,14 @@ public class DataQualityWorkflow {
           new OpenSearchIndexSink(
               searchRepository,
               totalRecords,
-              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
+              searchRepository.getSearchConfiguration().getPayLoadSize());
     } else {
       this.entityProcessor = new ElasticSearchEntityTimeSeriesProcessor(totalRecords);
       this.searchIndexSink =
           new ElasticSearchIndexSink(
               searchRepository,
               totalRecords,
-              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
+              searchRepository.getSearchConfiguration().getPayLoadSize());
     }
   }
 
@@ -141,6 +145,10 @@ public class DataQualityWorkflow {
   }
 
   public void process() throws SearchIndexException {
+    if (!dataQualityConfig.getEnabled()) {
+      return;
+    }
+    LOG.info("[Data Insights] Processing Data Quality Insights.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 

@@ -9,28 +9,28 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -45,6 +46,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/governance/workflowDefinitions")
@@ -59,6 +61,7 @@ public class WorkflowDefinitionResource
     extends EntityResource<WorkflowDefinition, WorkflowDefinitionRepository> {
   public static final String COLLECTION_PATH = "v1/governance/workflowDefinitions/";
   static final String FIELDS = "owners";
+  private final WorkflowDefinitionMapper mapper = new WorkflowDefinitionMapper();
 
   public WorkflowDefinitionResource(Authorizer authorizer, Limits limits) {
     super(Entity.WORKFLOW_DEFINITION, authorizer, limits);
@@ -70,7 +73,6 @@ public class WorkflowDefinitionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    WorkflowHandler.initialize(config);
     repository.initSeedDataFromResources();
   }
 
@@ -105,8 +107,8 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Limit the number of Workflow Definitions returned. Default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(description = "Returns the list of Workflow Definitions before this cursor")
           @QueryParam("before")
@@ -183,6 +185,39 @@ public class WorkflowDefinitionResource
           @DefaultValue("non-deleted")
           Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+  }
+
+  @POST
+  @Path("/{id}/redeploy")
+  @Operation(
+      operationId = "getWorkflowDefinitionByID",
+      summary = "Get a Workflow Definition by Id",
+      description = "Get a Workflow Definition by `Id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Workflow Definition",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = WorkflowDefinition.class)))
+      })
+  public Response redeploy(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Context SecurityContext securityContext) {
+    WorkflowDefinition wd =
+        repository.get(
+            uriInfo,
+            id,
+            new EntityUtil.Fields(repository.getAllowedFields()),
+            Include.NON_DELETED,
+            false);
+    WorkflowHandler.getInstance().deleteWorkflowDefinition(wd);
+    WorkflowHandler.getInstance().deploy(new Workflow(wd));
+    return Response.status(Response.Status.OK).entity("Workflow Redeployed").build();
   }
 
   @GET
@@ -278,7 +313,7 @@ public class WorkflowDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
-        getWorkflowDefinition(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, workflowDefinition);
   }
 
@@ -360,7 +395,7 @@ public class WorkflowDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
-        getWorkflowDefinition(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, workflowDefinition);
   }
 
@@ -392,6 +427,36 @@ public class WorkflowDefinitionResource
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteWorkflowDefinitionAsync",
+      summary = "Asynchronously delete a Workflow Definition by Id",
+      description = "Asynchronously delete a Workflow Definition by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Workflow Definition for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -475,16 +540,5 @@ public class WorkflowDefinitionResource
     } else {
       return Response.status(Response.Status.NOT_FOUND).entity(fqn).build();
     }
-  }
-
-  private WorkflowDefinition getWorkflowDefinition(CreateWorkflowDefinition create, String user) {
-    // TODO: Validate the NodeType and NodeSubType.
-    return repository
-        .copy(new WorkflowDefinition(), create, user)
-        .withFullyQualifiedName(create.getName())
-        .withType(WorkflowDefinition.Type.fromValue(create.getType().toString()))
-        .withTrigger(create.getTrigger())
-        .withNodes(create.getNodes())
-        .withEdges(create.getEdges());
   }
 }

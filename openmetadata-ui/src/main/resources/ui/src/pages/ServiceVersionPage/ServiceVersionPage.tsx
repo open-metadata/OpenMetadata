@@ -15,9 +15,9 @@ import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import { PagingWithoutTotal, ServiceTypes } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -25,11 +25,7 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  getServiceDetailsPath,
-  INITIAL_PAGING_VALUE,
-  pagingObject,
-} from '../../constants/constants';
+import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -42,7 +38,7 @@ import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
-import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getDashboards } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
@@ -63,19 +59,23 @@ import {
   getEntityVersionByField,
 } from '../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getServiceVersionPath } from '../../utils/RouterUtils';
+import {
+  getServiceDetailsPath,
+  getServiceVersionPath,
+} from '../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
 } from '../../utils/ServiceUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 
 function ServiceVersionPage() {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { serviceCategory, version } = useParams<{
+  const { serviceCategory, version } = useRequiredParams<{
     serviceCategory: ServiceTypes;
     version: string;
   }>();
@@ -325,7 +325,7 @@ function ServiceVersionPage() {
           default:
             break;
         }
-      } catch (error) {
+      } catch {
         setData([]);
         setPaging(pagingObject);
       } finally {
@@ -372,7 +372,7 @@ function ServiceVersionPage() {
 
   const versionHandler = useCallback(
     (newVersion = version) => {
-      history.push(
+      navigate(
         getServiceVersionPath(
           serviceCategory,
           decodedServiceFQN,
@@ -384,7 +384,7 @@ function ServiceVersionPage() {
   );
 
   const backHandler = useCallback(() => {
-    history.push(getServiceDetailsPath(decodedServiceFQN, serviceCategory));
+    navigate(getServiceDetailsPath(decodedServiceFQN, serviceCategory));
   }, [decodedServiceFQN, serviceCategory]);
 
   const pagingHandler = useCallback(
@@ -452,7 +452,17 @@ function ServiceVersionPage() {
     }
 
     if (!viewVersionPermission) {
-      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: `${getEntityName(currentVersionData)} ${t(
+              'label.service'
+            )}`,
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
     }
 
     return (
@@ -477,12 +487,8 @@ function ServiceVersionPage() {
                   onVersionClick={backHandler}
                 />
               </Col>
-              <Col span={24}>
-                <Tabs
-                  className="entity-details-page-tabs"
-                  data-testid="tabs"
-                  items={tabs}
-                />
+              <Col className="entity-version-page-tabs" span={24}>
+                <Tabs className="tabs-new" data-testid="tabs" items={tabs} />
               </Col>
             </Row>
           </div>

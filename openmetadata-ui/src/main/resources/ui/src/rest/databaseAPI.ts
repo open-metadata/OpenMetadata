@@ -15,11 +15,13 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import {
   Database,
   DatabaseProfilerConfig as ProfilerConfig,
 } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
@@ -46,10 +48,6 @@ export const getDatabases = async (
   });
 
   return response.data;
-};
-
-export const getTables = (id: number): Promise<AxiosResponse> => {
-  return APIClient.get('/databases/' + id + '/tables');
 };
 
 export const getDatabaseDetailsByFQN = async (
@@ -90,6 +88,35 @@ export const patchDatabaseSchemaDetails = async (
   return response.data;
 };
 
+export const addFollowers = async (
+  id: string,
+  userId: string,
+  path: string
+) => {
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(`${path}/${id}/followers`, userId, APPLICATION_JSON_CONTENT_TYPE_HEADER);
+
+  return response.data;
+};
+
+export const removeFollowers = async (
+  id: string,
+  userId: string,
+  path: string
+) => {
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+    }>
+  >(`${path}/${id}/followers/${userId}`, APPLICATION_JSON_CONTENT_TYPE_HEADER);
+
+  return response.data;
+};
 export const getDatabaseSchemas = async ({
   include = Include.NonDeleted,
   databaseName,
@@ -252,4 +279,70 @@ export const putDatabaseSchemaProfileConfig = async (
   >(`/databaseSchemas/${databaseSchemaId}/databaseSchemaProfilerConfig`, data);
 
   return response.data['databaseSchemaProfilerConfig'];
+};
+
+export const exportDatabaseDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
+  const res = await APIClient.get(
+    `databases/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
+
+  return res.data;
+};
+
+export const importDatabaseInCSVFormat = async (
+  name: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const res = await APIClient.put(
+    `/databases/name/${getEncodedFqn(name)}/import?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return res.data;
+};
+
+export const exportDatabaseSchemaDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
+  const res = await APIClient.get(
+    `databaseSchemas/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
+
+  return res.data;
+};
+
+export const importDatabaseSchemaInCSVFormat = async (
+  name: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const res = await APIClient.put(
+    `/databaseSchemas/name/${getEncodedFqn(name)}/import?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return res.data;
 };

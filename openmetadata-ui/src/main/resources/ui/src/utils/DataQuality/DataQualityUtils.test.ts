@@ -20,6 +20,7 @@ import {
 } from '../../generated/tests/testDefinition';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import {
+  buildDataQualityDashboardFilters,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
   buildTestCaseParams,
@@ -335,7 +336,7 @@ describe('DataQualityUtils', () => {
           path: 'tags',
           query: {
             bool: {
-              must: [
+              should: [
                 { match: { 'tags.tagFQN': 'tag1' } },
                 { match: { 'tags.tagFQN': 'tag2' } },
               ],
@@ -354,7 +355,7 @@ describe('DataQualityUtils', () => {
           path: 'testCase.tags',
           query: {
             bool: {
-              must: [
+              should: [
                 { match: { 'testCase.tags.tagFQN': 'tag1' } },
                 { match: { 'testCase.tags.tagFQN': 'tag2' } },
               ],
@@ -373,7 +374,7 @@ describe('DataQualityUtils', () => {
           path: 'tags',
           query: {
             bool: {
-              must: [],
+              should: [],
             },
           },
         },
@@ -389,7 +390,7 @@ describe('DataQualityUtils', () => {
           path: 'testCase.tags',
           query: {
             bool: {
-              must: [],
+              should: [],
             },
           },
         },
@@ -736,6 +737,47 @@ describe('DataQualityUtils', () => {
       expect(transformToTestCaseStatusByDimension(inputData)).toEqual(
         expectedOutput
       );
+    });
+  });
+
+  describe('buildDataQualityDashboardFilters', () => {
+    it('should include deleted:false filter by default', () => {
+      const result = buildDataQualityDashboardFilters({});
+
+      expect(result).toEqual([
+        {
+          term: {
+            deleted: false,
+          },
+        },
+      ]);
+    });
+
+    it('should include deleted:false filter along with other filters', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          serviceName: 'test-service',
+          testPlatforms: ['DBT'],
+        },
+      });
+
+      expect(result).toEqual([
+        {
+          term: {
+            'service.name.keyword': 'test-service',
+          },
+        },
+        {
+          terms: {
+            testPlatforms: ['DBT'],
+          },
+        },
+        {
+          term: {
+            deleted: false,
+          },
+        },
+      ]);
     });
   });
 });

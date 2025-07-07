@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.resources.teams;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -24,17 +24,16 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.validation.constraints.Positive;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -43,12 +42,12 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.teams.RoleResource.RoleList;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -136,10 +135,9 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(role);
     role.setPolicies(DATA_STEWARD_ROLE.getPolicies());
-    change = getChangeDescription(role, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(role, MINOR_UPDATE);
     fieldDeleted(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
-    fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
-    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove all the policies. It should be disallowed
     final String originalJson1 = JsonUtils.pojoToJson(role);

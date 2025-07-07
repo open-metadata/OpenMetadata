@@ -12,18 +12,11 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { t } from 'i18next';
+
 import { isEmpty } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useHistory, useParams } from 'react-router-dom';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { getGlossaryTermDetailsPath } from '../../../constants/constants';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -36,67 +29,77 @@ import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
-import { Page, PageType } from '../../../generated/system/ui/page';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { PageType } from '../../../generated/system/ui/page';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
-import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
-import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
+import {
+  getGlossaryTermDetailsPath,
+  getGlossaryTermsVersionsPath,
+} from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import {
+  GenericProvider,
+  useGenericContext,
+} from '../../Customization/GenericProvider/GenericProvider';
+import { GenericTab } from '../../Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
-import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
 import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
-import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
 
 const GlossaryTermsV1 = ({
   glossaryTerm,
   handleGlossaryTermUpdate,
   handleGlossaryTermDelete,
-  permissions,
-  refreshGlossaryTerms,
   onAssetClick,
   isSummaryPanelOpen,
-  termsLoading,
-  onAddGlossaryTerm,
-  onEditGlossaryTerm,
   updateVote,
   refreshActiveGlossaryTerm,
   isVersionView,
-  onThreadLinkSelect,
+  isTabExpanded,
+  toggleTabExpanded,
 }: GlossaryTermsV1Props) => {
-  const { tab, version } = useParams<{ tab: string; version: string }>();
+  const { tab, version } = useRequiredParams<{
+    tab: EntityTabs;
+    version: string;
+  }>();
   const { fqn: glossaryFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModalVisible] = useState(false);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const { selectedPersona } = useApplicationStore();
   const [assetCount, setAssetCount] = useState<number>(0);
-  const { glossaryChildTerms } = useGlossaryStore();
+  const { glossaryChildTerms, onAddGlossaryTerm } = useGlossaryStore();
+  const { permissions } = useGenericContext<GlossaryTerm>();
   const childGlossaryTerms = glossaryChildTerms ?? [];
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const { customizedPage, isLoading } = useCustomPages(PageType.GlossaryTerm);
+  const { t } = useTranslation();
 
   const assetPermissions = useMemo(() => {
     const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
@@ -111,11 +114,14 @@ const GlossaryTermsV1 = ({
   }, [tab]);
 
   const activeTabHandler = (tab: string) => {
-    history.push({
-      pathname: version
-        ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
-        : getGlossaryTermDetailsPath(glossaryFqn, tab),
-    });
+    navigate(
+      {
+        pathname: version
+          ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
+          : getGlossaryTermDetailsPath(glossaryFqn, tab),
+      },
+      { replace: true }
+    );
   };
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -147,7 +153,7 @@ const GlossaryTermsV1 = ({
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);
-      } catch (error) {
+      } catch {
         setAssetCount(0);
       }
     }
@@ -179,7 +185,7 @@ const GlossaryTermsV1 = ({
   };
 
   const tabItems = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const items = [
       {
@@ -189,16 +195,7 @@ const GlossaryTermsV1 = ({
           </div>
         ),
         key: EntityTabs.OVERVIEW,
-        children: (
-          <GlossaryOverviewTab
-            editCustomAttributePermission={
-              !isVersionView &&
-              (permissions.EditAll || permissions.EditCustomFields)
-            }
-            onExtensionUpdate={onExtensionUpdate}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
-        ),
+        children: <GenericTab type={PageType.GlossaryTerm} />,
       },
       ...(!isVersionView
         ? [
@@ -211,21 +208,16 @@ const GlossaryTermsV1 = ({
                     {getCountBadge(
                       childGlossaryTerms.length,
                       '',
-                      activeTab === 'terms'
+                      activeTab === EntityTabs.TERMS
                     )}
                   </span>
                 </div>
               ),
-              key: EntityTabs.GLOSSARY_TERMS,
+              key: EntityTabs.TERMS,
               children: (
                 <GlossaryTermTab
                   className="p-md glossary-term-table-container"
                   isGlossary={false}
-                  permissions={permissions}
-                  refreshGlossaryTerms={refreshGlossaryTerms}
-                  termsLoading={termsLoading}
-                  onAddGlossaryTerm={onAddGlossaryTerm}
-                  onEditGlossaryTerm={onEditGlossaryTerm}
                 />
               ),
             },
@@ -233,7 +225,7 @@ const GlossaryTermsV1 = ({
               label: (
                 <div data-testid="assets">
                   {tabLabelMap[EntityTabs.ASSETS] ?? t('label.asset-plural')}
-                  <span className="p-l-xs ">
+                  <span className="p-l-xs">
                     {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
                   </span>
                 </div>
@@ -268,8 +260,9 @@ const GlossaryTermsV1 = ({
               children: (
                 <ActivityFeedTab
                   entityType={EntityType.GLOSSARY_TERM}
-                  fqn={glossaryTerm.fullyQualifiedName ?? ''}
+                  feedCount={feedCount}
                   hasGlossaryReviewer={!isEmpty(glossaryTerm.reviewers)}
+                  layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossaryTerm.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={refreshActiveGlossaryTerm}
@@ -288,31 +281,30 @@ const GlossaryTermsV1 = ({
               ),
               key: EntityTabs.CUSTOM_PROPERTIES,
               children: glossaryTerm && (
-                <div className="m-sm">
-                  <CustomPropertyTable<EntityType.GLOSSARY_TERM>
-                    entityDetails={glossaryTerm}
-                    entityType={EntityType.GLOSSARY_TERM}
-                    handleExtensionUpdate={onExtensionUpdate}
-                    hasEditAccess={
-                      !isVersionView &&
-                      (permissions.EditAll || permissions.EditCustomFields)
-                    }
-                    hasPermission={permissions.ViewAll}
-                    isVersionView={isVersionView}
-                  />
-                </div>
+                <CustomPropertyTable<EntityType.GLOSSARY_TERM>
+                  entityType={EntityType.GLOSSARY_TERM}
+                  hasEditAccess={
+                    !isVersionView &&
+                    (permissions.EditAll || permissions.EditCustomFields)
+                  }
+                  hasPermission={permissions.ViewAll}
+                  isVersionView={isVersionView}
+                />
               ),
             },
           ]
         : []),
     ];
 
-    return getGlossaryTermDetailTabs(items, customizedPage?.tabs);
+    return getDetailsTabWithNewLabel(
+      items,
+      customizedPage?.tabs,
+      EntityTabs.OVERVIEW
+    );
   }, [
     customizedPage?.tabs,
     glossaryTerm,
     permissions,
-    termsLoading,
     activeTab,
     assetCount,
     feedCount.conversationCount,
@@ -329,26 +321,10 @@ const GlossaryTermsV1 = ({
     setTimeout(() => {
       fetchGlossaryTermAssets();
     }, 500);
-    getEntityFeedCount();
-  }, [glossaryFqn]);
-
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find((p: Page) => p.pageType === PageType.GlossaryTerm)
-      );
-    } catch (error) {
-      // fail silent
+    if (!isVersionView) {
+      getEntityFeedCount();
     }
-  }, [selectedPersona.fullyQualifiedName]);
-
-  useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    }
-  }, [selectedPersona]);
+  }, [glossaryFqn, isVersionView]);
 
   const updatedGlossaryTerm = useMemo(() => {
     const name = isVersionView
@@ -374,15 +350,27 @@ const GlossaryTermsV1 = ({
     };
   }, [glossaryTerm, isVersionView]);
 
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(tabItems[0], activeTab, PageType.GlossaryTerm),
+    [tabItems[0], activeTab]
+  );
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <GenericProvider
+      customizedPage={customizedPage}
       data={updatedGlossaryTerm}
+      isTabExpanded={isTabExpanded}
       isVersionView={isVersionView}
       permissions={permissions}
       type={EntityType.GLOSSARY_TERM}
       onUpdate={onTermUpdate}>
-      <Row data-testid="glossary-term" gutter={[0, 8]}>
-        <Col className="p-x-md" span={24}>
+      <Row data-testid="glossary-term" gutter={[0, 12]}>
+        <Col span={24}>
           <GlossaryHeader
             updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
@@ -391,12 +379,23 @@ const GlossaryTermsV1 = ({
           />
         </Col>
 
-        <Col span={24}>
+        <Col className="glossary-term-page-tabs" span={24}>
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="glossary-tabs custom-tab-spacing"
+            className="tabs-new"
             items={tabItems}
+            tabBarExtraContent={
+              isExpandViewSupported && (
+                <AlignRightIconButton
+                  className={isTabExpanded ? 'rotate-180' : ''}
+                  title={
+                    isTabExpanded ? t('label.collapse') : t('label.expand')
+                  }
+                  onClick={toggleTabExpanded}
+                />
+              )
+            }
             onChange={activeTabHandler}
           />
         </Col>

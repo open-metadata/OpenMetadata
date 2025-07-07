@@ -19,14 +19,15 @@ import static org.openmetadata.service.Entity.CHART;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 
+import jakarta.ws.rs.core.Response;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.MlModel;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -116,6 +118,8 @@ public class UsageRepository {
     switch (type) {
       case TABLE:
         return tableEntityUsage(method, fields, entityId, entityType, usage);
+      case PIPELINE:
+        return pipelineEntityUsage(method, fields, entityId, entityType, usage);
       case DASHBOARD:
         return dashboardEntityUsage(method, fields, entityId, entityType, usage);
       case CHART:
@@ -164,6 +168,20 @@ public class UsageRepository {
         getChangeDescription(
             dashboard.getVersion(), updated.getUsageSummary(), dashboard.getUsageSummary());
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, dashboard.getVersion());
+
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
+  }
+
+  private RestUtil.PutResponse<?> pipelineEntityUsage(
+      String method, String fields, UUID entityId, String entityType, DailyCount usage) {
+    Pipeline pipeline = Entity.getEntity(Entity.PIPELINE, entityId, fields, Include.ALL);
+    insertToUsageRepository(method, entityId, entityType, usage);
+    Pipeline updated = Entity.getEntity(Entity.PIPELINE, entityId, fields, Include.ALL);
+
+    ChangeDescription change =
+        getChangeDescription(
+            pipeline.getVersion(), updated.getUsageSummary(), pipeline.getUsageSummary());
+    ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, pipeline.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }

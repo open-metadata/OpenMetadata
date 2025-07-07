@@ -13,17 +13,16 @@
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Card, Space, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as FollowingEmptyIcon } from '../../../assets/svg/following-no-data-placeholder.svg';
-import { getUserPath } from '../../../constants/constants';
 import { FOLLOW_DATA_ASSET } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { getUserPath } from '../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
 import './following-widget.less';
@@ -91,6 +90,7 @@ function FollowingWidget({
         noDataPlaceholder={
           <div className="flex-center h-full">
             <ErrorPlaceHolder
+              className="border-none"
               icon={
                 <FollowingEmptyIcon
                   height={SIZE.X_SMALL}

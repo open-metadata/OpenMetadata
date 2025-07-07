@@ -10,12 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined } from '@ant-design/icons';
+import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  FieldOrGroup,
+  Fields,
+  OldJsonItem,
+  OldJsonTree,
+  RenderSettings,
+} from '@react-awesome-query-builder/antd';
 import { Button } from 'antd';
-import { t } from 'i18next';
-import { isUndefined } from 'lodash';
-import React from 'react';
-import { Fields, RenderSettings } from 'react-awesome-query-builder';
+import { isBoolean, isUndefined } from 'lodash';
+import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import {
   EsBoolQuery,
   EsExistsQuery,
@@ -24,7 +30,60 @@ import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
+import { t } from './i18next/LocalUtil';
 import { generateUUID } from './StringsUtils';
+
+export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
+  EntityReferenceFields.EXTENSION,
+  EntityReferenceFields.SERVICE,
+  EntityReferenceFields.DATABASE,
+  EntityReferenceFields.DATABASE_SCHEMA,
+];
+
+export enum JSONLOGIC_OPERATORS {
+  OR = 'or',
+  NOT = 'not',
+}
+
+export const resolveFieldType = (
+  fields: Fields | undefined,
+  field: string
+): string | undefined => {
+  if (!fields) {
+    return '';
+  }
+
+  // Split the field into parts (e.g., "extension.expert")
+  const fieldParts = field.split('.');
+  let currentField = fields?.[fieldParts[0]];
+
+  // If the top-level field doesn't exist, return undefined
+  if (!currentField) {
+    return undefined;
+  }
+
+  // Traverse nested subfields if there are more parts
+  for (let i = 1; i < fieldParts.length; i++) {
+    if (i === 1 && (currentField as any)?.subfields) {
+      // Join the remaining parts and check if it exists as a single subfield
+      const remainingPath = fieldParts.slice(1).join('.');
+      const remainingField = (currentField as any).subfields[remainingPath];
+      if (remainingField?.type) {
+        return remainingField.type;
+      }
+    }
+
+    // If no specific path found, continue with normal traversal
+    if (!(currentField as any)?.subfields?.[fieldParts[i]]) {
+      return undefined; // Subfield not found
+    }
+    currentField = (currentField as any).subfields[
+      fieldParts[i]
+    ] as FieldOrGroup;
+  }
+
+  return currentField?.type;
+};
 
 export const getSelectEqualsNotEqualsProperties = (
   parentPath: Array<string>,
@@ -33,6 +92,14 @@ export const getSelectEqualsNotEqualsProperties = (
   operator: string
 ) => {
   const id = generateUUID();
+  const isEqualNotEqualOp = ['equal', 'not_equal'].includes(operator);
+  const valueType = isEqualNotEqualOp
+    ? isBoolean(value)
+      ? ['boolean']
+      : ['text']
+    : Array.isArray(value)
+    ? ['multiselect']
+    : ['select'];
 
   return {
     [id]: {
@@ -43,27 +110,26 @@ export const getSelectEqualsNotEqualsProperties = (
         value: [value],
         valueSrc: ['value'],
         operatorOptions: null,
-        valueType: Array.isArray(value) ? ['multiselect'] : ['select'],
-        asyncListValues: Array.isArray(value)
-          ? value.map((valueItem) => ({
-              key: valueItem,
-              value: valueItem,
-              children: valueItem,
-            }))
-          : [
-              {
-                key: value,
-                value,
-                children: value,
-              },
-            ],
+        valueType: valueType,
+        asyncListValues: isEqualNotEqualOp
+          ? undefined
+          : Array.isArray(value)
+          ? value.map((item) => ({ key: item, value: item, children: item }))
+          : [{ key: value, value, children: value }],
       },
       id,
       path: [...parentPath, id],
     },
   };
 };
-
+export const READONLY_SETTINGS = {
+  immutableGroupsMode: true,
+  immutableFieldsMode: true,
+  immutableOpsMode: true,
+  immutableValuesMode: true,
+  canRegroup: false,
+  canRemove: false,
+};
 export const getSelectAnyInProperties = (
   parentPath: Array<string>,
   termObjects: Array<EsTerm>
@@ -175,9 +241,23 @@ export const getEqualFieldProperties = (
   };
 };
 
+export const getOperator = (
+  fieldType: string | undefined,
+  isNot: boolean
+): string => {
+  switch (fieldType) {
+    case 'text':
+    case 'boolean':
+      return isNot ? 'not_equal' : 'equal';
+    default:
+      return isNot ? 'select_not_equals' : 'select_equals';
+  }
+};
+
 export const getJsonTreePropertyFromQueryFilter = (
   parentPath: Array<string>,
-  queryFilter: QueryFieldInterface[]
+  queryFilter: QueryFieldInterface[],
+  fields?: Fields
 ) => {
   const convertedObj = queryFilter.reduce(
     (acc, curr: QueryFieldInterface): Record<string, any> => {
@@ -187,27 +267,34 @@ export const getJsonTreePropertyFromQueryFilter = (
           ...getEqualFieldProperties(parentPath, curr.term?.deleted as boolean),
         };
       } else if (!isUndefined(curr.term)) {
+        const [field, value] = Object.entries(curr.term)[0];
+        const fieldType = resolveFieldType(fields, field);
+        const op = getOperator(fieldType, false);
+
         return {
           ...acc,
           ...getSelectEqualsNotEqualsProperties(
             parentPath,
-            Object.keys(curr.term)[0],
-            Object.values(curr.term)[0] as string,
-            'select_equals'
+            field,
+            value as string,
+            op
           ),
         };
       } else if (
         !isUndefined((curr.bool?.must_not as QueryFieldInterface)?.term)
       ) {
         const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
+        const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
+        const fieldType = resolveFieldType(fields, key);
+        const op = getOperator(fieldType, true);
 
         return {
           ...acc,
           ...getSelectEqualsNotEqualsProperties(
             parentPath,
-            Object.keys((curr.bool?.must_not as EsTerm)?.term)[0],
+            key,
             value as string,
-            Array.isArray(value) ? 'select_not_any_in' : 'select_not_equals'
+            Array.isArray(value) ? 'select_not_any_in' : op
           ),
         };
       } else if (
@@ -281,6 +368,15 @@ export const getJsonTreePropertyFromQueryFilter = (
               ?.value
           ),
         };
+      } else if (!isUndefined((curr.bool as EsBoolQuery)?.must)) {
+        return {
+          ...acc,
+          ...getJsonTreePropertyFromQueryFilter(
+            parentPath,
+            (curr.bool as EsBoolQuery).must as QueryFieldInterface[],
+            fields
+          ),
+        };
       }
 
       return acc;
@@ -292,8 +388,9 @@ export const getJsonTreePropertyFromQueryFilter = (
 };
 
 export const getJsonTreeFromQueryFilter = (
-  queryFilter: QueryFilterInterface
-) => {
+  queryFilter: QueryFilterInterface,
+  fields?: Fields
+): OldJsonTree => {
   try {
     const id1 = generateUUID();
     const id2 = generateUUID();
@@ -309,17 +406,17 @@ export const getJsonTreeFromQueryFilter = (
           children1: getJsonTreePropertyFromQueryFilter(
             [id1, id2],
             (mustFilters?.[0]?.bool as EsBoolQuery)
-              .must as QueryFieldInterface[]
+              .must as QueryFieldInterface[],
+            fields
           ),
           id: id2,
           path: [id1, id2],
-        },
+        } as OldJsonItem,
       },
       id: id1,
-      path: [id1],
     };
   } catch {
-    return {};
+    return {} as OldJsonTree;
   }
 };
 
@@ -362,6 +459,43 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
 
   return <></>;
 };
+
+export const renderJSONLogicQueryBuilderButtons: RenderSettings['renderButton'] =
+  (props) => {
+    const type = props?.type;
+
+    if (type === 'delRule') {
+      return (
+        <Button
+          className="action action--DELETE ant-btn-sm"
+          data-testid="delete-condition-button"
+          icon={<CloseOutlined width={14} />}
+          onClick={props?.onClick}
+        />
+      );
+    } else if (type === 'delRuleGroup') {
+      return (
+        <Button
+          className="action action--DELETE-GROUP ant-btn-sm"
+          data-testid="delete-group-condition-button"
+          icon={<CloseOutlined width={14} />}
+          onClick={props?.onClick}
+        />
+      );
+    } else if (type === 'addRule') {
+      return (
+        <Button
+          className="action action--ADD-RULE ant-btn-sm"
+          data-testid="add-condition-button"
+          icon={<PlusOutlined width={14} />}
+          type="primary"
+          onClick={props?.onClick}
+        />
+      );
+    }
+
+    return <></>;
+  };
 
 interface ElasticsearchQuery {
   bool?: {
@@ -437,36 +571,47 @@ export const elasticsearchToJsonLogic = (
 
   if (query.term) {
     const termQuery = query.term;
-    const field = Object.keys(termQuery)[0];
-    const value = termQuery[field];
+    const [field, value] = Object.entries(termQuery)[0];
     const op = Array.isArray(value) ? 'in' : '==';
+
     if (field.includes('.')) {
       const [parentField, childField] = field.split('.');
 
-      return {
-        some: [
-          { var: parentField },
-          {
-            [op]: [{ var: childField }, value],
-          },
-        ],
-      };
+      const shouldIgnoreSplit =
+        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          parentField as EntityReferenceFields
+        ) ||
+        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          field as EntityReferenceFields
+        );
+
+      return shouldIgnoreSplit
+        ? { '==': [{ var: field }, value] }
+        : {
+            some: [
+              { var: parentField },
+              { [op]: [{ var: childField }, value] },
+            ],
+          };
     }
 
-    return {
-      '==': [{ var: field }, value],
-    };
+    return { '==': [{ var: field }, value] };
   }
 
   if (query.exists) {
-    const existsQuery = query.exists;
-    const field = existsQuery.field;
+    const { field } = query.exists;
 
     if (field.includes('.')) {
       const [parentField] = field.split('.');
 
       return {
-        '!!': { var: parentField },
+        '!!': {
+          var: JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+            parentField as EntityReferenceFields
+          )
+            ? field
+            : parentField,
+        },
       };
     }
 
@@ -478,12 +623,21 @@ export const elasticsearchToJsonLogic = (
   if (query.wildcard) {
     const wildcardQuery = query.wildcard;
     const field = Object.keys(wildcardQuery)[0];
-    // const value = field.value;
     const value = wildcardQuery[field].value;
 
     if (field.includes('.')) {
       // use in operator for wildcards
       const [parentField, childField] = field.split('.');
+
+      if (
+        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          parentField as EntityReferenceFields
+        )
+      ) {
+        return {
+          in: [{ var: field }, value],
+        };
+      }
 
       return {
         some: [
@@ -517,7 +671,8 @@ const getNestedFieldKey = (configFields: Fields, searchKey: string) => {
 export const jsonLogicToElasticsearch = (
   logic: JsonLogic,
   configFields: Fields,
-  parentField?: string
+  parentField?: string,
+  parentOp?: JSONLOGIC_OPERATORS
 ): ElasticsearchQuery => {
   if (logic.and) {
     return {
@@ -539,7 +694,12 @@ export const jsonLogicToElasticsearch = (
     return {
       bool: {
         should: logic.or.map((item: JsonLogic) =>
-          jsonLogicToElasticsearch(item, configFields)
+          jsonLogicToElasticsearch(
+            item,
+            configFields,
+            undefined,
+            JSONLOGIC_OPERATORS.OR
+          )
         ),
       },
     };
@@ -548,7 +708,12 @@ export const jsonLogicToElasticsearch = (
   if (logic['!']) {
     return {
       bool: {
-        must_not: jsonLogicToElasticsearch(logic['!'], configFields),
+        must_not: jsonLogicToElasticsearch(
+          logic['!'],
+          configFields,
+          undefined,
+          JSONLOGIC_OPERATORS.NOT
+        ),
       },
     };
   }
@@ -556,7 +721,22 @@ export const jsonLogicToElasticsearch = (
   if (logic['==']) {
     const [field, value] = logic['=='];
     const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-    if (typeof field === 'object' && field.var && field.var.includes('.')) {
+
+    const isOrNotOperator = [
+      JSONLOGIC_OPERATORS.OR,
+      JSONLOGIC_OPERATORS.NOT,
+    ].includes(parentOp as JSONLOGIC_OPERATORS);
+
+    const [parentKey] = field.var.split('.');
+    if (
+      typeof field === 'object' &&
+      field.var &&
+      field.var.includes('.') &&
+      !JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+        parentKey as EntityReferenceFields
+      ) &&
+      !isOrNotOperator
+    ) {
       return {
         bool: {
           must: [
@@ -580,19 +760,6 @@ export const jsonLogicToElasticsearch = (
   if (logic['!=']) {
     const [field, value] = logic['!='];
     const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-    if (typeof field === 'object' && field.var && field.var.includes('.')) {
-      return {
-        bool: {
-          must_not: [
-            {
-              term: {
-                [fieldVar]: value,
-              },
-            },
-          ],
-        },
-      };
-    }
 
     return {
       bool: {
@@ -645,4 +812,55 @@ export const jsonLogicToElasticsearch = (
   }
 
   throw new Error('Unsupported JSON Logic format');
+};
+
+/**
+ * Adds entity type filter to the query filter if entity type is specified
+ * @param qFilter Query filter to add entity type to
+ * @param entityType Entity type to filter by
+ * @returns Updated query filter with entity type
+ */
+export const addEntityTypeFilter = (
+  qFilter: QueryFilterInterface,
+  entityType: string
+): QueryFilterInterface => {
+  if (entityType === EntityType.ALL) {
+    return qFilter;
+  }
+
+  if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
+    (qFilter.query?.bool?.must as QueryFieldInterface[])?.push({
+      bool: {
+        must: [
+          {
+            term: {
+              entityType: entityType,
+            },
+          },
+        ],
+      },
+    });
+  }
+
+  return qFilter;
+};
+
+export const getEntityTypeAggregationFilter = (
+  qFilter: QueryFilterInterface,
+  entityType: string
+): QueryFilterInterface => {
+  if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
+    const firstMustBlock = (
+      qFilter.query?.bool?.must as QueryFieldInterface[]
+    )[0];
+    if (firstMustBlock?.bool?.must) {
+      (firstMustBlock.bool.must as QueryFieldInterface[]).push({
+        term: {
+          entityType: entityType,
+        },
+      });
+    }
+  }
+
+  return qFilter;
 };

@@ -27,6 +27,7 @@ export interface FetchOptionsResponse {
 
 export interface DataAssetAsyncSelectListProps {
   mode?: 'multiple';
+  autoFocus?: boolean;
   id?: string;
   className?: string;
   placeholder?: string;

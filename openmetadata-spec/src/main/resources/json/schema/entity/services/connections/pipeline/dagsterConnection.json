@@ -38,6 +38,11 @@
       "type": "integer",
       "default": "1000"
     },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

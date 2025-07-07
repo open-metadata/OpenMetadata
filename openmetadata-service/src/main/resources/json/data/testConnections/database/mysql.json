@@ -27,7 +27,12 @@
       "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
       "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
       "mandatory": false
+    },
+    {
+      "name": "GetQueries",
+      "description": "Check if we can access the mysql.general_log table to get query logs, These queries are analyzed in the usage & lineage workflow.",
+      "errorMessage": "Failed to fetch queries, please validate if user can access the mysql.general_log table to get query logs.",
+      "mandatory": false
     }
   ]
 }
-

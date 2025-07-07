@@ -11,13 +11,21 @@
  *  limitations under the License.
  */
 import { Space, Tooltip, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import classNames from 'classnames';
+import { isUndefined } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
+import '../chart-widgets.less';
 import './status-card-widget.less';
 import { StatusCardWidgetProps } from './StatusCardWidget.interface';
 
-const StatusDataWidget = ({ statusData, icon }: StatusCardWidgetProps) => {
+const StatusDataWidget = ({
+  statusData,
+  icon,
+  redirectPath,
+}: StatusCardWidgetProps) => {
   const IconSvg = icon;
   const { t } = useTranslation();
 
@@ -30,7 +38,7 @@ const StatusDataWidget = ({ statusData, icon }: StatusCardWidgetProps) => {
     [statusData]
   );
 
-  return (
+  const body = (
     <Space
       align="center"
       className="w-full"
@@ -40,13 +48,13 @@ const StatusDataWidget = ({ statusData, icon }: StatusCardWidgetProps) => {
       <div className="d-flex items-center gap-2">
         <IconSvg color={PRIMARY_COLOR} height={20} width={20} />
         <Typography.Text
-          className="font-medium text-md text-grey-muted"
+          className="font-medium text-md"
           data-testid="status-title">
           {statusData.title}
         </Typography.Text>
       </div>
       <Typography.Text
-        className="font-medium text-md"
+        className="font-medium text-xl chart-widget-link-underline"
         data-testid="total-value">
         {statusData.total}
       </Typography.Text>
@@ -62,6 +70,15 @@ const StatusDataWidget = ({ statusData, icon }: StatusCardWidgetProps) => {
         ))}
       </div>
     </Space>
+  );
+
+  return (
+    <div
+      className={classNames({
+        'chart-widget-link-no-underline': !isUndefined(redirectPath),
+      })}>
+      {redirectPath ? <Link to={redirectPath}>{body}</Link> : body}
+    </div>
   );
 };
 

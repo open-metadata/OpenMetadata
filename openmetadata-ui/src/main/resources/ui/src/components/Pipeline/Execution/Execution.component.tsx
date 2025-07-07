@@ -12,21 +12,12 @@
  */
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  DatePicker,
-  Dropdown,
-  MenuProps,
-  Radio,
-  Row,
-  Space,
-} from 'antd';
-import { RangePickerProps } from 'antd/lib/date-picker';
+import { Button, Col, Dropdown, MenuProps, Row, Segmented, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { MenuInfo } from 'rc-menu/lib/interface';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';
@@ -42,7 +33,9 @@ import {
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import DatePicker, {
+  RangePickerProps,
+} from '../../common/DatePicker/DatePicker';
 import './execution.less';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
@@ -86,7 +79,8 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   };
 
   const handleMenuClick: MenuProps['onClick'] = useCallback(
-    (event) => setStatus(MenuOptions[event.key as keyof typeof MenuOptions]),
+    (event: MenuInfo) =>
+      setStatus(MenuOptions[event.key as keyof typeof MenuOptions]),
     []
   );
 
@@ -139,104 +133,89 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   };
 
   return (
-    <Row className="h-full p-md" data-testid="execution-tab" gutter={16}>
-      <Col flex="auto">
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <Space className="justify-between w-full">
-              <Radio.Group
-                buttonStyle="solid"
-                className="radio-switch"
-                data-testid="radio-switch"
-                optionType="button"
-                options={Object.values(PIPELINE_EXECUTION_TABS)}
-                value={view}
-                onChange={(e) => setView(e.target.value)}
-              />
-              <Space>
-                <Dropdown menu={statusMenuItems} placement="bottom">
+    <div
+      className="h-full p-md border-default border-radius-sm"
+      data-testid="execution-tab">
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Space className="justify-between w-full">
+            <Segmented
+              className="segment-toggle"
+              data-testid="radio-switch"
+              options={Object.values(PIPELINE_EXECUTION_TABS)}
+              value={view}
+              onChange={(value) => setView(value as PIPELINE_EXECUTION_TABS)}
+            />
+
+            <Space>
+              <Dropdown menu={statusMenuItems} placement="bottom">
+                <Button
+                  ghost
+                  data-testid="status-button"
+                  icon={<Icon component={FilterIcon} size={12} />}
+                  type="primary">
+                  {status === MenuOptions.all ? t('label.status') : status}
+                </Button>
+              </Dropdown>
+              {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
+                <>
                   <Button
                     ghost
-                    data-testid="status-button"
-                    icon={<Icon component={FilterIcon} size={12} />}
-                    type="primary">
-                    {status === MenuOptions.all ? t('label.status') : status}
+                    className={classNames('range-picker-button delay-100', {
+                      'range-picker-button-width delay-100':
+                        !datesSelected && !isClickedCalendar,
+                    })}
+                    data-testid="data-range-picker-button"
+                    icon={<Icon component={Calendar} size={12} />}
+                    type="primary"
+                    onClick={() => {
+                      setIsClickedCalendar(true);
+                    }}>
+                    <span className="date-container">
+                      {!datesSelected && (
+                        <label>{t('label.date-filter')}</label>
+                      )}
+                      <DatePicker.RangePicker
+                        allowClear
+                        showNow
+                        bordered={false}
+                        className="executions-date-picker"
+                        clearIcon={<CloseCircleOutlined />}
+                        data-testid="data-range-picker"
+                        open={isClickedCalendar}
+                        placeholder={['', '']}
+                        suffixIcon={null}
+                        onChange={onDateChange}
+                        onOpenChange={setIsClickedCalendar}
+                      />
+                    </span>
                   </Button>
-                </Dropdown>
-                {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
-                  <>
-                    <Button
-                      ghost
-                      className={classNames('range-picker-button delay-100', {
-                        'range-picker-button-width delay-100':
-                          !datesSelected && !isClickedCalendar,
-                      })}
-                      data-testid="data-range-picker-button"
-                      icon={<Icon component={Calendar} size={12} />}
-                      type="primary"
-                      onClick={() => {
-                        setIsClickedCalendar(true);
-                      }}>
-                      <span className="date-container">
-                        {!datesSelected && (
-                          <label>{t('label.date-filter')}</label>
-                        )}
-                        <DatePicker.RangePicker
-                          allowClear
-                          showNow
-                          bordered={false}
-                          className="executions-date-picker"
-                          clearIcon={<CloseCircleOutlined />}
-                          data-testid="data-range-picker"
-                          open={isClickedCalendar}
-                          placeholder={['', '']}
-                          suffixIcon={null}
-                          onChange={onDateChange}
-                          onOpenChange={(isOpen) => {
-                            setIsClickedCalendar(isOpen);
-                          }}
-                        />
-                      </span>
-                    </Button>
-                  </>
-                ) : null}
-              </Space>
+                </>
+              ) : null}
             </Space>
-          </Col>
-          <Col span={24}>
-            {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
-              <div>
-                <Row>
-                  <Col className="mb-4" span={6}>
-                    <Searchbar
-                      removeMargin
-                      placeholder="Filter by task name"
-                      searchValue={searchValue}
-                      typingInterval={500}
-                      onSearch={handleSearch}
-                    />
-                  </Col>
-                </Row>
-                <ListView
-                  executions={executions}
-                  loading={isLoading}
-                  searchString={searchValue}
-                  status={status}
-                />
-              </div>
-            ) : (
-              <TreeViewTab
-                endTime={endTime}
-                executions={executions}
-                startTime={startTime}
-                status={status}
-                tasks={tasks}
-              />
-            )}
-          </Col>
-        </Row>
-      </Col>
-    </Row>
+          </Space>
+        </Col>
+        <Col span={24}>
+          {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
+            <ListView
+              executions={executions}
+              handleSearch={handleSearch}
+              loading={isLoading}
+              searchString={searchValue}
+              status={status}
+            />
+          ) : (
+            <TreeViewTab
+              endTime={endTime}
+              executions={executions}
+              startTime={startTime}
+              status={status}
+              tasks={tasks}
+            />
+          )}
+        </Col>
+      </Row>
+    </div>
   );
 };
 

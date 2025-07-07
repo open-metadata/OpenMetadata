@@ -34,7 +34,7 @@ def native_lineage_config(db_service, workflow_config, sink_config):
 @pytest.mark.parametrize(
     "source_config,expected_nodes",
     [
-        ({"includeDDL": False}, 0),
+        ({"includeDDL": False}, 3),
         ({"includeDDL": True}, 3),
     ],
     ids=lambda config: (

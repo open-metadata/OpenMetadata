@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,6 +12,7 @@
 REST Auth & Client for QlikCloud
 """
 import json
+import re
 import traceback
 from typing import Dict, Iterable, List, Optional
 
@@ -23,12 +24,16 @@ from metadata.ingestion.source.dashboard.qlikcloud.constants import (
     APP_LOADMODEL_REQ,
     CREATE_SHEET_SESSION,
     GET_LOADMODEL_LAYOUT,
+    GET_SCRIPT,
     GET_SHEET_LAYOUT,
     OPEN_DOC_REQ,
 )
 from metadata.ingestion.source.dashboard.qlikcloud.models import (
     QlikApp,
     QlikAppResponse,
+    QlikScriptResult,
+    QlikSpace,
+    QlikSpaceResponse,
 )
 from metadata.ingestion.source.dashboard.qliksense.models import (
     QlikDataModelResult,
@@ -59,7 +64,7 @@ class QlikCloudClient:
         self.socket_connection = None
 
         client_config: ClientConfig = ClientConfig(
-            base_url=str(self.config.hostPort),
+            base_url=clean_uri(self.config.hostPort),
             api_version=API_VERSION,
             auth_header=AUTHORIZATION_HEADER,
             auth_token=lambda: (self.config.token.get_secret_value(), 0),
@@ -105,7 +110,7 @@ class QlikCloudClient:
 
     def get_dashboard_charts(self, dashboard_id: str) -> List[QlikSheet]:
         """
-        Get dahsboard chart list
+        Get dashboard chart list
         """
         try:
             self.connect_websocket(dashboard_id)
@@ -164,20 +169,70 @@ class QlikCloudClient:
 
     def get_dashboard_models(self) -> List[QlikTable]:
         """
-        Get dahsboard data models
+        Get dashboard data models
         """
         try:
             self._websocket_send_request(APP_LOADMODEL_REQ)
             models = self._websocket_send_request(GET_LOADMODEL_LAYOUT, response=True)
             data_models = QlikDataModelResult(**models)
             layout = data_models.result.qLayout
+            parsed_datamodels = []
             if isinstance(layout, list):
                 tables = []
                 for layout in data_models.result.qLayout:
                     tables.extend(layout.value.tables)
-                return tables
-            return layout.tables
+                parsed_datamodels.extend(tables)
+            else:
+                parsed_datamodels.extend(layout.tables)
+            script_tables = self.get_script_tables()
+            if script_tables:
+                parsed_datamodels.extend(script_tables)
+            return parsed_datamodels
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard datamodels")
         return []
+
+    def get_projects_list(self) -> Iterable[QlikSpace]:
+        """
+        Get list of all spaces
+        """
+        try:
+            link = f"/v1/spaces?limit={API_LIMIT}"
+            while True:
+                resp_spaces = self.client.get(link)
+                if resp_spaces:
+                    resp = QlikSpaceResponse(**resp_spaces)
+                    yield from resp.spaces
+                    if resp.links and resp.links.next and resp.links.next.href:
+                        link = resp.links.next.href.replace(
+                            f"{self.config.hostPort}{API_VERSION}", ""
+                        )
+                    else:
+                        break
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the space list")
+
+    def get_script_tables(self) -> Optional[List[QlikTable]]:
+        """Get script tables from the dashboard script"""
+        script_tables = []
+        try:
+            script_response = self._websocket_send_request(GET_SCRIPT, response=True)
+            script_result = QlikScriptResult(**script_response)
+            if script_result.result.qScript:
+                script_value = script_result.result.qScript
+                matches = re.findall(
+                    r'FROM\s+["\']?([a-zA-Z0-9_.]+)["\']?', script_value, re.IGNORECASE
+                )
+                if isinstance(matches, list):
+                    for table in matches:
+                        table_name = table.split(".")[-1]
+                        script_tables.append(QlikTable(tableName=table_name))
+            if not script_tables:
+                logger.warning("No script tables found")
+            return script_tables
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the script tables")
+        return script_tables

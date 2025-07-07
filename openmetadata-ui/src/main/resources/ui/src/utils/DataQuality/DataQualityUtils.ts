@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { cloneDeep, isArray, isUndefined, omit, omitBy } from 'lodash';
-import { ReactComponent as TestCaseIcon } from '../../assets/svg/all-activity-v2.svg';
+import { cloneDeep, isArray, isNil, isUndefined, omit, omitBy } from 'lodash';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
 import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
 import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
@@ -19,6 +18,7 @@ import { ReactComponent as IntegrityIcon } from '../../assets/svg/ic-integrity.s
 import { ReactComponent as SqlIcon } from '../../assets/svg/ic-sql.svg';
 import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
 import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
+import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
 import { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import {
@@ -32,7 +32,8 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
-import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
+import { ListTestCaseParamsBySearch, TestCaseType } from '../../rest/testAPI';
 import { generateEntityLink } from '../TableUtils';
 
 /**
@@ -64,6 +65,7 @@ export const buildTestCaseParams = (
     ...filterParams('tags', TEST_CASE_FILTERS.tags),
     ...filterParams('tier', TEST_CASE_FILTERS.tier),
     ...filterParams('serviceName', TEST_CASE_FILTERS.service),
+    ...filterParams('dataQualityDimension', TEST_CASE_FILTERS.dimension),
   };
 };
 
@@ -82,7 +84,7 @@ export const createTestCaseParameters = (
           if (arrayValues.length) {
             acc.push({ name: key, value: JSON.stringify(arrayValues) });
           }
-        } else {
+        } else if (!isNil(value)) {
           acc.push({ name: key, value: value as string });
         }
 
@@ -126,7 +128,7 @@ export const transformToTestCaseStatusByDimension = (
     const {
       document_count,
       'testCaseResult.testCaseStatus': status,
-      dataQualityDimension,
+      dataQualityDimension = 'No Dimension',
     } = item;
     const count = parseInt(document_count, 10);
 
@@ -195,7 +197,7 @@ export const buildMustEsFilterForTags = (
       path: isTestCaseResult ? 'testCase.tags' : 'tags',
       query: {
         bool: {
-          must: tags.map((tag) => ({
+          should: tags.map((tag) => ({
             match: {
               [isTestCaseResult ? 'testCase.tags.tagFQN' : 'tags.tagFQN']: tag,
             },
@@ -217,6 +219,122 @@ export const buildMustEsFilterForOwner = (
   };
 };
 
+export const buildDataQualityDashboardFilters = (data: {
+  filters?: DataQualityDashboardChartFilters;
+  unhealthy?: boolean;
+  isTableApi?: boolean;
+}) => {
+  const { filters, unhealthy = false, isTableApi = false } = data;
+  const mustFilter = [];
+
+  if (unhealthy) {
+    mustFilter.push({
+      terms: {
+        'testCaseStatus.keyword': ['Failed', 'Aborted'],
+      },
+    });
+  }
+
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+
+  if (filters?.tags && isTableApi) {
+    mustFilter.push({
+      bool: {
+        should: filters.tags.map((tag) => ({
+          term: {
+            'tags.tagFQN': tag,
+          },
+        })),
+      },
+    });
+  }
+
+  if (filters?.tier && isTableApi) {
+    mustFilter.push({
+      bool: {
+        should: filters.tier.map((tag) => ({
+          term: {
+            'tier.tagFQN': tag,
+          },
+        })),
+      },
+    });
+  }
+
+  if ((filters?.tags || filters?.tier) && !isTableApi) {
+    mustFilter.push(
+      buildMustEsFilterForTags([
+        ...(filters?.tags ?? []),
+        ...(filters?.tier ?? []),
+      ])
+    );
+  }
+
+  if (filters?.entityFQN) {
+    mustFilter.push({
+      term: {
+        [isTableApi ? 'fullyQualifiedName.keyword' : 'entityFQN']:
+          filters.entityFQN,
+      },
+    });
+  }
+
+  if (filters?.serviceName) {
+    mustFilter.push({
+      term: {
+        'service.name.keyword': filters.serviceName,
+      },
+    });
+  }
+
+  if (filters?.testPlatforms) {
+    mustFilter.push({
+      terms: {
+        testPlatforms: filters.testPlatforms,
+      },
+    });
+  }
+
+  if (filters?.dataQualityDimension) {
+    mustFilter.push({
+      term: {
+        dataQualityDimension: filters.dataQualityDimension,
+      },
+    });
+  }
+
+  if (filters?.testCaseStatus) {
+    mustFilter.push({
+      term: {
+        'testCaseResult.testCaseStatus': filters.testCaseStatus,
+      },
+    });
+  }
+
+  if (filters?.testCaseType) {
+    if (filters.testCaseType === TestCaseType.table) {
+      mustFilter.push({
+        bool: { must_not: [{ regexp: { entityLink: '.*::columns::.*' } }] },
+      });
+    }
+
+    if (filters.testCaseType === TestCaseType.column) {
+      mustFilter.push({ regexp: { entityLink: '.*::columns::.*' } });
+    }
+  }
+
+  // Add the deleted filter to the mustFilter array
+  mustFilter.push({
+    term: {
+      deleted: false,
+    },
+  });
+
+  return mustFilter;
+};
+
 export const getDimensionIcon = (dimension: DataQualityDimensions) => {
   switch (dimension) {
     case DataQualityDimensions.Accuracy:
@@ -234,6 +352,6 @@ export const getDimensionIcon = (dimension: DataQualityDimensions) => {
     case DataQualityDimensions.Validity:
       return ValidityIcon;
     default:
-      return TestCaseIcon;
+      return NoDimensionIcon;
   }
 };

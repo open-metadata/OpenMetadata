@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import DomainLeftPanel from './DomainLeftPanel.component';
 
-const mockHistory = {
-  push: jest.fn(),
-};
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     fqn: 'DomainFqn',
   }),
@@ -82,7 +79,6 @@ describe('Test DomainLeftPanel component', () => {
     ).toBeInTheDocument();
     expect(await screen.findByTestId('add-domain')).toBeInTheDocument();
     expect(await screen.findByTestId('domain-left-panel')).toBeInTheDocument();
-    expect(await screen.findByText('label.domain-plural')).toBeInTheDocument();
     expect(
       await screen.findByText(DOMAINS_LIST[0].displayName ?? '')
     ).toBeInTheDocument();
@@ -101,7 +97,7 @@ describe('Test DomainLeftPanel component', () => {
       fireEvent.click(addButton);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 
   it('Menu click should work properly', async () => {
@@ -117,6 +113,6 @@ describe('Test DomainLeftPanel component', () => {
       fireEvent.click(menuItem);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 });

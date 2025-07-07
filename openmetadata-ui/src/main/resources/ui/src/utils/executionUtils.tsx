@@ -15,7 +15,6 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Space, Tooltip } from 'antd';
 import { DataNode } from 'antd/lib/tree';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
-import React, { ReactNode } from 'react';
 import { MenuOptions } from '../constants/execution.constants';
 import {
   PipelineStatus,
@@ -114,14 +113,6 @@ export const getTreeViewData = (
 
   return groupBy(taskStatusArr, 'name');
 };
-
-export const getExecutionElementByKey = (
-  key: string,
-  viewElements: {
-    key: string;
-    value: ReactNode;
-  }[]
-) => viewElements.find((v) => v.key === key);
 
 // check if current task is downstream task of other tasks
 const checkIsDownStreamTask = (currentTask: Task, tasks: Task[]) =>

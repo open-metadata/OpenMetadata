@@ -18,12 +18,25 @@ import { Services } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
 class SupersetIngestionClass extends ServiceBaseClass {
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Dashboard,
       `pw-Superset-with-%-${uuid()}`,
       'Superset',
-      "World Bank's Data"
+      "World Bank's Data",
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
   }
 

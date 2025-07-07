@@ -119,6 +119,25 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
+    "schemaFilterPattern":{
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^sys$", "^ctxsys$", "^dbsnmp$", "^outln$"]
+      }
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

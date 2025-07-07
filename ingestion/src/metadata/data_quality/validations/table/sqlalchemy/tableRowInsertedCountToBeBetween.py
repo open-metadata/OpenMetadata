@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,7 @@
 Validator for table row inserted count to be between test case
 """
 
-from sqlalchemy import Column, text
+from sqlalchemy import Column, inspect, text
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -52,7 +52,7 @@ class TableRowInsertedCountToBeBetweenValidator(
         date_or_datetime_fn = dispatch_to_date_or_datetime(
             range_interval,
             text(range_type),
-            get_partition_col_type(column_name.name, self.runner.table.__table__.c),  # type: ignore
+            get_partition_col_type(column_name.name, inspect(self.runner.dataset).c),  # type: ignore
         )
 
         return dict(

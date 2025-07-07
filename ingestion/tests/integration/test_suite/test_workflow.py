@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -134,7 +134,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         cls.test_suite = cls.metadata.create_or_update_executable_test_suite(
             data=CreateTestSuiteRequest(
                 name="test-suite",
-                executableEntityReference=cls.table_with_suite.fullyQualifiedName.root,
+                basicEntityReference=cls.table_with_suite.fullyQualifiedName.root,
             )
         )
 
@@ -142,7 +142,6 @@ class TestSuiteWorkflowTests(unittest.TestCase):
             CreateTestCaseRequest(
                 name="testCaseForIntegration",
                 entityLink=f"<#E::table::{cls.table_with_suite.fullyQualifiedName.root}>",
-                testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition="tableRowCountToEqual",
                 parameterValues=[TestCaseParameterValue(name="value", value="10")],
             )
@@ -266,7 +265,6 @@ class TestSuiteWorkflowTests(unittest.TestCase):
 
         test_cases: List[TestCase] = workflow.steps[0].get_test_cases(
             test_cases=table_and_tests.right.test_cases,
-            test_suite_fqn=self.table_with_suite.fullyQualifiedName.root + ".testSuite",
             table_fqn=self.table_with_suite.fullyQualifiedName.root,
         )
 
@@ -385,7 +383,6 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         created_test_case = workflow.steps[0].compare_and_create_test_cases(
             cli_test_cases_definitions=config_test_cases_def,
             test_cases=table_and_tests.right.test_cases,
-            test_suite_fqn=f"{self.table_with_suite.fullyQualifiedName.root}.testSuite",
             table_fqn=self.table_with_suite.fullyQualifiedName.root,
         )
 

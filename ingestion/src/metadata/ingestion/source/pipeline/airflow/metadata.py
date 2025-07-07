@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,6 +29,7 @@ from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequ
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
+    PipelineState,
     PipelineStatus,
     StatusType,
     Task,
@@ -122,6 +123,7 @@ class AirflowSource(PipelineServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
+        self.today = datetime.now().strftime("%Y-%m-%d")
         self._session = None
 
     @classmethod
@@ -367,6 +369,16 @@ class AirflowSource(PipelineServiceSource):
                 break
             for serialized_dag in results:
                 try:
+                    dag_model = (
+                        self.session.query(DagModel)
+                        .filter(DagModel.dag_id == serialized_dag[0])
+                        .one_or_none()
+                    )
+                    pipeline_state = (
+                        PipelineState.Active.value
+                        if dag_model and not dag_model.is_paused
+                        else PipelineState.Inactive.value
+                    )
                     data = serialized_dag[1]["dag"]
                     dag = AirflowDagDetails(
                         dag_id=serialized_dag[0],
@@ -375,6 +387,7 @@ class AirflowSource(PipelineServiceSource):
                         max_active_runs=data.get("max_active_runs", None),
                         description=data.get("_description", None),
                         start_date=data.get("start_date", None),
+                        state=pipeline_state,
                         tasks=list(
                             map(self._extract_serialized_task, data.get("tasks", []))
                         ),
@@ -401,18 +414,41 @@ class AirflowSource(PipelineServiceSource):
         - `owners`: Applied at the tasks. In Airflow's source code, DAG ownership is then a
           list joined with the owners of all the tasks.
 
-        We will pick the owner from the tasks that appears in most tasks.
+        We will pick the owner from the tasks that appears in most tasks,
+        or fall back to the default_args owner if available.
         """
         try:
-            if self.source_config.includeOwners:
-                task_owners = [
-                    task.get("owner")
-                    for task in data.get("tasks", [])
-                    if task.get("owner") is not None
-                ]
-                if task_owners:
-                    most_common_owner, _ = Counter(task_owners).most_common(1)[0]
-                    return most_common_owner
+            if not self.source_config.includeOwners:
+                return None
+
+            tasks = data.get("tasks", [])
+            task_owners = []
+
+            # Handle default_args.owner (wrapped or not)
+            default_args = data.get("default_args", {})
+            if isinstance(default_args, dict) and "__var" in default_args:
+                default_args = default_args["__var"]
+            default_owner = default_args.get("owner")
+
+            for task in tasks:
+                # Flatten serialized task
+                task_data = (
+                    task.get("__var")
+                    if isinstance(task, dict) and "__var" in task
+                    else task
+                )
+
+                owner = task_data.get("owner") or default_owner
+
+                if owner:
+                    task_owners.append(owner)
+
+            if task_owners:
+                most_common_owner, _ = Counter(task_owners).most_common(1)[0]
+                return most_common_owner
+
+            return default_owner
+
         except Exception as exc:
             self.status.warning(
                 data.get("dag_id"), f"Could not extract owner information due to {exc}"
@@ -424,6 +460,14 @@ class AirflowSource(PipelineServiceSource):
         Get Pipeline Name
         """
         return pipeline_details.dag_id
+
+    def get_pipeline_state(
+        self, pipeline_details: AirflowDagDetails
+    ) -> Optional[PipelineState]:
+        """
+        Return the state of the DAG
+        """
+        return PipelineState[pipeline_details.state]
 
     def get_tasks_from_dag(self, dag: AirflowDagDetails, host_port: str) -> List[Task]:
         """
@@ -480,12 +524,15 @@ class AirflowSource(PipelineServiceSource):
         try:
             # Airflow uses /dags/dag_id/grid to show pipeline / dag
             source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}/grid"
+            pipeline_state = self.get_pipeline_state(pipeline_details)
+
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.dag_id),
                 description=Markdown(pipeline_details.description)
                 if pipeline_details.description
                 else None,
                 sourceUrl=SourceUrl(source_url),
+                state=pipeline_state,
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
                 startDate=pipeline_details.start_date.isoformat()
@@ -614,4 +661,5 @@ class AirflowSource(PipelineServiceSource):
                     )
 
     def close(self):
+        self.metadata.compute_percentile(Pipeline, self.today)
         self.session.close()

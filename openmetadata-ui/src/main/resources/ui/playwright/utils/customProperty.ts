@@ -16,12 +16,20 @@ import {
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
+import { SidebarItem } from '../constant/sidebar';
 import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
-import { clickOutside, descriptionBox, uuid } from './common';
+import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
+import {
+  clickOutside,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  uuid,
+} from './common';
+import { sidebarClick } from './sidebar';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -107,16 +115,9 @@ export const setValueForProperty = async (data: {
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
-      await page
-        .locator(
-          '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-        )
-        .isVisible();
-      await page
-        .locator(
-          '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-        )
-        .fill(value);
+      await page.locator(descriptionBox).isVisible();
+      await page.click(descriptionBox);
+      await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();
 
       break;
@@ -282,6 +283,10 @@ export const validateValueForProperty = async (data: {
     await expect(
       page.getByRole('row', { name: `${values[0]} ${values[1]}` })
     ).toBeVisible();
+  } else if (propertyType === 'markdown') {
+    await expect(
+      container.locator(descriptionBoxReadOnly).last()
+    ).toContainText(value.replace(/\*|_/gi, ''));
   } else if (
     ![
       'entityReference',
@@ -447,79 +452,87 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
+    const customPropertyName = `pwCustomProperty${uuid()}`;
+    const payload = {
+      name: customPropertyName,
+      description: customPropertyName,
+      propertyType: {
+        id: item.id ?? '',
+        type: 'type',
+      },
+      ...(item.name === 'enum'
+        ? {
+            customPropertyConfig: {
+              config: {
+                multiSelect: true,
+                values: ['small', 'medium', 'large'],
+              },
+            },
+          }
+        : {}),
+      ...(['entityReference', 'entityReferenceList'].includes(item.name)
+        ? {
+            customPropertyConfig: {
+              config: ['user', 'team'],
+            },
+          }
+        : {}),
+
+      ...(item.name === 'time-cp'
+        ? {
+            customPropertyConfig: {
+              config: 'HH:mm:ss',
+            },
+          }
+        : {}),
+
+      ...(item.name === 'date-cp'
+        ? {
+            customPropertyConfig: {
+              config: 'yyyy-MM-dd',
+            },
+          }
+        : {}),
+
+      ...(item.name === 'dateTime-cp'
+        ? {
+            customPropertyConfig: {
+              config: 'yyyy-MM-dd HH:mm:ss',
+            },
+          }
+        : {}),
+      ...(item.name === 'table-cp'
+        ? {
+            customPropertyConfig: {
+              config: {
+                columns: ['pw-column1', 'pw-column2'],
+              },
+            },
+          }
+        : {}),
+    };
     const customPropertyResponse = await apiContext.put(
       `/api/v1/metadata/types/${entitySchema.id}`,
       {
-        data: {
-          name: `pwCustomProperty${uuid()}`,
-          description: `pwCustomProperty${uuid()}`,
-          propertyType: {
-            id: item.id ?? '',
-            type: 'type',
-          },
-          ...(item.name === 'enum'
-            ? {
-                customPropertyConfig: {
-                  config: {
-                    multiSelect: true,
-                    values: ['small', 'medium', 'large'],
-                  },
-                },
-              }
-            : {}),
-          ...(['entityReference', 'entityReferenceList'].includes(item.name)
-            ? {
-                customPropertyConfig: {
-                  config: ['user', 'team'],
-                },
-              }
-            : {}),
-
-          ...(item.name === 'time-cp'
-            ? {
-                customPropertyConfig: {
-                  config: 'HH:mm:ss',
-                },
-              }
-            : {}),
-
-          ...(item.name === 'date-cp'
-            ? {
-                customPropertyConfig: {
-                  config: 'yyyy-MM-dd',
-                },
-              }
-            : {}),
-
-          ...(item.name === 'dateTime-cp'
-            ? {
-                customPropertyConfig: {
-                  config: 'yyyy-MM-dd HH:mm:ss',
-                },
-              }
-            : {}),
-          ...(item.name === 'table-cp'
-            ? {
-                customPropertyConfig: {
-                  config: {
-                    columns: ['pw-column1', 'pw-column2'],
-                  },
-                },
-              }
-            : {}),
-        },
+        data: payload,
       }
     );
 
     const customProperty = await customPropertyResponse.json();
 
     // Process the custom properties
-    customProperties = customProperty.customProperties.reduce(
+    const newProperties = customProperty.customProperties.reduce(
       (
         prev: Record<string, string>,
-        curr: Record<string, Record<string, string>>
+        curr: Record<string, Record<string, string> | string>
       ) => {
-        const propertyTypeName = curr.propertyType.name;
+        // only process the custom properties which are created via payload
+        if (curr.name !== customPropertyName) {
+          return prev;
+        }
+
+        const propertyTypeName = (curr.propertyType as Record<string, string>)
+          .name;
 
         return {
           ...prev,
@@ -531,6 +544,8 @@ export const createCustomPropertyForEntity = async (
       },
       {}
     );
+
+    customProperties = { ...customProperties, ...newProperties };
   }
 
   return { customProperties, cleanupUser };
@@ -671,18 +686,20 @@ export const addCustomPropertiesForEntity = async ({
 
   // Description
 
-  await page.fill(descriptionBox, customPropertyData.description);
+  await page.locator(descriptionBox).fill(customPropertyData.description);
 
   const createPropertyPromise = page.waitForResponse(
     '/api/v1/metadata/types/name/*?fields=customProperties'
   );
 
   await page.click('[data-testid="create-button"]');
-
+  await page.waitForSelector('[data-testid="custom-property-form"]', {
+    state: 'detached',
+  });
+  await page.waitForLoadState('networkidle');
   const response = await createPropertyPromise;
 
   expect(response.status()).toBe(200);
-
   await expect(
     page.getByRole('row', { name: new RegExp(propertyName, 'i') })
   ).toBeVisible();
@@ -718,7 +735,7 @@ export const editCreatedProperty = async (
 
   // displayName
   await page.fill('[data-testid="display-name"]', '');
-  await page.fill('[data-testid="display-name"]', propertyName);
+  await page.fill('[data-testid="display-name"]', propertyName.toUpperCase());
 
   await page.locator(descriptionBox).fill('');
   await page.locator(descriptionBox).fill('This is new description');
@@ -792,4 +809,39 @@ export const deleteCreatedProperty = async (
   await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
 
   await page.locator('[data-testid="save-button"]').click();
+};
+
+export const verifyCustomPropertyInAdvancedSearch = async (
+  page: Page,
+  propertyName: string,
+  entityType: string
+) => {
+  await sidebarClick(page, SidebarItem.EXPLORE);
+  await page.waitForLoadState('networkidle');
+
+  // Open advanced search dialog
+  await showAdvancedSearchDialog(page);
+
+  const ruleLocator = page.locator('.rule').nth(0);
+
+  // Select "Custom Properties" from the field dropdown
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    'Custom Properties'
+  );
+
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    entityType
+  );
+
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    propertyName
+  );
+
+  await page.getByTestId('cancel-btn').click();
 };

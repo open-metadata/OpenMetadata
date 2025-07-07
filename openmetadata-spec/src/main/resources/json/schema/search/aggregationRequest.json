@@ -1,0 +1,76 @@
+{
+  "$id": "https://open-metadata.org/schema/search/aggregationRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AggregationRequest",
+  "description": "Request body for performing field aggregations with optional top_hits sub-aggregation.",
+  "javaType": "org.openmetadata.schema.search.AggregationRequest",
+  "type": "object",
+  "properties": {
+    "query": {
+      "description": "Query string to be sent to the search engine.",
+      "type": "string",
+      "default": ""
+    },
+    "index": {
+      "description": "Name of the index to aggregate on.",
+      "type": "string",
+      "default": "table_search_index"
+    },
+    "fieldName": {
+      "description": "Field name to aggregate on (typically a keyword field like service.displayName.keyword).",
+      "type": "string",
+      "default": ""
+    },
+    "fieldValue": {
+      "description": "Filter value for the aggregation include clause.",
+      "type": "string",
+      "default": ""
+    },
+    "deleted": {
+      "description": "Whether to include deleted documents.",
+      "type": "boolean",
+      "default": false
+    },
+    "size": {
+      "description": "Size to limit the number of aggregation buckets returned.",
+      "type": "integer",
+      "default": 10
+    },
+    "sourceFields": {
+      "description": "List of fields to include from _source in the response (outside of top_hits).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "topHits": {
+      "description": "Optional top_hits sub-aggregation to fetch selected source fields per bucket.",
+      "type": "object",
+      "properties": {
+        "size": {
+          "description": "Number of top documents to return per bucket.",
+          "type": "integer",
+          "default": 1
+        },
+        "sortField": {
+          "description": "Field to sort the top hits on.",
+          "type": "string",
+          "default": "_doc"
+        },
+        "sortOrder": {
+          "description": "Sort order for top hits - asc or desc.",
+          "type": "string",
+          "enum": ["asc", "desc"],
+          "default": "asc"
+        }
+      },
+      "default": {
+        "size": 1,
+        "sortField": "_doc",
+        "sortOrder": "asc"
+      }
+    }
+  },
+  "required": ["fieldName"],
+  "additionalProperties": false
+}

@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../styles/variables.less');
+
 .custom-property-right-panel-container {
   background: #f8f8f8;
   padding: 14px;
@@ -27,4 +30,11 @@
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
   }
+}
+
+.custom-properties-card {
+  padding: @padding-mlg;
+  border-radius: @border-radius-sm;
+  border: 1px solid @grey-15;
+  background-color: @white;
 }

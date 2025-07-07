@@ -23,7 +23,7 @@ import {
   reduce,
   sortBy,
 } from 'lodash';
-import { default as React, useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,
@@ -36,14 +36,14 @@ import {
 } from 'recharts';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/data-insight-no-data-placeholder.svg';
 import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
-import { TOTAL_ENTITY_CHART_COLOR } from '../../../../constants/DataInsight.constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
+import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
-  SystemChartType,
 } from '../../../../rest/DataInsightAPI';
+import { entityChartColor } from '../../../../utils/CommonUtils';
 import {
   CustomTooltip,
   getRandomHexColor,
@@ -67,9 +67,8 @@ const TotalDataAssetsWidget = ({
   selectedGridSize,
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const [chartData, setChartData] =
-    React.useState<DataInsightCustomChartResult>();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [chartData, setChartData] = useState<DataInsightCustomChartResult>();
 
   const { rightSideEntityList, latestData, graphData, changeInValue, total } =
     useMemo(() => {
@@ -156,7 +155,7 @@ const TotalDataAssetsWidget = ({
 
   return (
     <Card
-      className="total-data-insight-card"
+      className="total-data-insight-card data-insight-card-chart"
       data-testid="total-assets-widget"
       id={SystemChartType.TotalDataAssets}
       loading={isLoading}>
@@ -229,12 +228,11 @@ const TotalDataAssetsWidget = ({
                   {rightSideEntityList.map((label, i) => (
                     <Area
                       dataKey={label}
-                      fill={TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor()}
+                      fill={entityChartColor(i) ?? getRandomHexColor()}
                       key={label}
                       name={label}
-                      stroke={
-                        TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor()
-                      }
+                      stackId="data"
+                      stroke={entityChartColor(i) ?? getRandomHexColor()}
                     />
                   ))}
                 </AreaChart>
@@ -242,9 +240,7 @@ const TotalDataAssetsWidget = ({
             </div>
           </Col>
           {isWidgetSizeLarge && (
-            <Col
-              className="overflow-y-scroll overflow-x-hidden h-max-full"
-              span={10}>
+            <Col className="total-entity-insight-summary-container" span={10}>
               <TotalEntityInsightSummary
                 entities={rightSideEntityList}
                 latestData={latestData}

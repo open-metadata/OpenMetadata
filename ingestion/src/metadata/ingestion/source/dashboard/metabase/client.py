@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,7 @@ REST Auth & Client for Metabase
 """
 import json
 import traceback
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import requests
 
@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.metabaseCon
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.metabase.models import (
+    MetabaseChart,
     MetabaseCollection,
     MetabaseCollectionList,
     MetabaseDashboard,
@@ -32,7 +33,11 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseTable,
     MetabaseUser,
 )
-from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
+from metadata.utils.constants import (
+    AUTHORIZATION_HEADER,
+    DEFAULT_DASHBAORD,
+    NO_ACCESS_TOKEN,
+)
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -146,22 +151,76 @@ class MetabaseClient:
             logger.warning("Failed to fetch the collections list")
         return []
 
+    def get_charts_dict(self) -> Dict:
+        charts_dict = {}
+        try:
+            resp_charts = self.client.get("/card")
+            if resp_charts:
+                for chart_data in resp_charts:
+                    chart = MetabaseChart.model_validate(chart_data)
+                    charts_dict[chart.id] = chart
+            return charts_dict
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the cards")
+        return {}
+
+    def _create_default_dashboard_details(
+        self, orphan_charts_id: List
+    ) -> MetabaseDashboardDetails:
+        """
+        Returns:
+            MetabaseDashboardDetails object representing the default dashboard containing orphaned charts
+        """
+        return MetabaseDashboardDetails(
+            id=DEFAULT_DASHBAORD,
+            card_ids=orphan_charts_id,
+        )
+
+    def _process_dashboard_response(
+        self, resp_dashboard: Dict, charts_dict: Dict, dashboard_id: str
+    ) -> MetabaseDashboardDetails:
+        """
+        Process dashboard response and create MetabaseDashboardDetails object
+        """
+        if "ordered_cards" in resp_dashboard:
+            resp_dashboard["dashcards"] = resp_dashboard["ordered_cards"]
+
+        card_ids = []
+        for card in resp_dashboard.get("dashcards", []):
+            if card.get("card") and card["card"].get("id"):
+                card_id = str(card["card"]["id"])
+                card_ids.append(card_id)
+                if card_id in charts_dict:
+                    charts_dict[card_id].dashboard_ids.append(dashboard_id)
+
+        return MetabaseDashboardDetails(
+            description=resp_dashboard.get("description"),
+            name=resp_dashboard.get("name"),
+            id=resp_dashboard.get("id"),
+            creator_id=resp_dashboard.get("creator_id"),
+            collection_id=resp_dashboard.get("collection_id"),
+            card_ids=card_ids,
+        )
+
     def get_dashboard_details(
-        self, dashboard_id: str
+        self, dashboard_id: str, charts_dict: Dict, orphan_charts_id: List
     ) -> Optional[MetabaseDashboardDetails]:
         """
         Get Dashboard Details
         """
         if not dashboard_id:
             return None  # don't call api if dashboard_id is None
+        if dashboard_id == DEFAULT_DASHBAORD:
+            return self._create_default_dashboard_details(orphan_charts_id)
         try:
             resp_dashboard = self.client.get(f"/dashboard/{dashboard_id}")
             if resp_dashboard:
                 # Small hack needed to support Metabase versions older than 0.48
                 # https://www.metabase.com/releases/metabase-48#fyi--breaking-changes
-                if "ordered_cards" in resp_dashboard:
-                    resp_dashboard["dashcards"] = resp_dashboard["ordered_cards"]
-                return MetabaseDashboardDetails(**resp_dashboard)
+                return self._process_dashboard_response(
+                    resp_dashboard, charts_dict, dashboard_id
+                )
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")

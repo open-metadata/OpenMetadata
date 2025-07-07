@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import AirflowMessageBanner from './AirflowMessageBanner';
 
-jest.mock('../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn().mockImplementation(() => ({
-    reason: 'reason message',
-    isAirflowAvailable: false,
-  })),
-}));
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockImplementation(() => ({
+      reason: 'reason message',
+      isAirflowAvailable: false,
+    })),
+  })
+);
 
 describe('Test Airflow Message Banner', () => {
   it('Should render the banner if airflow is not available', () => {

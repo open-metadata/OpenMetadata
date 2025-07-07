@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { SummaryPanel } from './SummaryPanel.component';
 
@@ -53,6 +52,14 @@ describe('SummaryPanel component', () => {
     const summaryCards = await screen.findAllByText('SummaryCard.component');
 
     expect(summaryCards).toHaveLength(4);
+  });
+
+  it('Show additional summary card if showAdditionalSummary is true', async () => {
+    render(<SummaryPanel showAdditionalSummary testSummary={mockSummary} />);
+
+    const summaryCards = await screen.findAllByText('SummaryCard.component');
+
+    expect(summaryCards).toHaveLength(6);
   });
 
   it('should not call getTestCaseExecutionSummary API, if testSummary data is provided', async () => {

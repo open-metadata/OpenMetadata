@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -40,9 +40,6 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
@@ -52,7 +49,7 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.ingestion.source.database.glue.models import Column
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
@@ -62,6 +59,7 @@ from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
     fetch_dataframe,
 )
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.storage_metadata_config import (
     StorageMetadataConfigException,
@@ -140,6 +138,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     global_manifest: Optional[ManifestMetadataConfig]
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -238,11 +237,9 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.container_source_state.add(container_fqn)
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(
+        test_connection_common(
             self.metadata, self.connection_obj, self.service_connection
         )
-        raise_test_connection_exception(result)
 
     def mark_containers_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the containers as deleted"""

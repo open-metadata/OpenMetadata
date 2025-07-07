@@ -91,6 +91,21 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
+    "schemaFilterPattern":{
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
@@ -125,6 +140,12 @@
     "supportsDataDiff": {
         "title": "Supports Data Diff Extraction.",
         "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    },
+    "queryHistoryTable": {
+      "title": "Query History Table",
+      "description": "Table name to fetch the query history.",
+      "type": "string",
+      "default": "\"system\".\"runtime\".\"queries\""
     }
   },
   "additionalProperties": false,

@@ -12,7 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { DescriptionTabs } from './DescriptionTabs';
 
 jest.mock('../../../utils/TasksUtils', () => ({
@@ -36,7 +36,7 @@ jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () => {
 });
 
 jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () =>
     jest
       .fn()
@@ -45,11 +45,9 @@ jest.mock(
       )
 );
 
-jest.mock('./DiffView', () => ({
-  DiffView: jest
-    .fn()
-    .mockReturnValue(<div data-testid="DiffView">DiffView</div>),
-}));
+jest.mock('./DiffView/DiffView', () =>
+  jest.fn().mockReturnValue(<div data-testid="DiffView">DiffView</div>)
+);
 
 const mockProps = {
   value: 'description',

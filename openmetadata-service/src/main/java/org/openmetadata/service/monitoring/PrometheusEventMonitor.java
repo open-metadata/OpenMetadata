@@ -13,7 +13,7 @@
 package org.openmetadata.service.monitoring;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;

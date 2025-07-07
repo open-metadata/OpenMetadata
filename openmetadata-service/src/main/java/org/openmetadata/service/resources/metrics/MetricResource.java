@@ -22,29 +22,29 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -73,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "metrics")
 public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public static final String COLLECTION_PATH = "v1/metrics/";
+  private final MetricMapper mapper = new MetricMapper();
   static final String FIELDS = "owners,relatedMetrics,followers,tags,extension,domain,dataProducts";
 
   public MetricResource(Authorizer authorizer, Limits limits) {
@@ -111,7 +112,11 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
+      @DefaultValue("10")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          int limitParam,
       @Parameter(
               description = "Returns list of metrics before this cursor",
               schema = @Schema(type = "string"))
@@ -279,7 +284,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
-    Metric metric = getMetric(create, securityContext.getUserPrincipal().getName());
+    Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, metric);
   }
 
@@ -302,7 +307,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
-    Metric metric = getMetric(create, securityContext.getUserPrincipal().getName());
+    Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, metric);
   }
 
@@ -474,6 +479,28 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteMetricAsync",
+      summary = "Asynchronously delete a Metric by id",
+      description = "Asynchronously delete a Metric by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Metric for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the Metric", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteAPIEndpointByFQN",
@@ -518,15 +545,5 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Metric getMetric(CreateMetric create, String user) {
-    return repository
-        .copy(new Metric(), create, user)
-        .withMetricExpression(create.getMetricExpression())
-        .withGranularity(create.getGranularity())
-        .withRelatedMetrics(getEntityReferences(Entity.METRIC, create.getRelatedMetrics()))
-        .withMetricType(create.getMetricType())
-        .withUnitOfMeasurement(create.getUnitOfMeasurement());
   }
 }

@@ -12,6 +12,7 @@
  */
 import { TableProps } from 'antd';
 import { ReactNode } from 'react';
+import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
 
 interface SearchProps {
   onSearch: ((search: string) => void) | ((search: string) => Promise<void>);
@@ -24,6 +25,9 @@ export interface ListViewProps<T> {
   searchProps: SearchProps;
   deleted?: boolean;
   handleDeletedSwitchChange?: () => void;
+  customPaginationProps: NextPreviousProps & {
+    showPagination: boolean;
+  };
 }
 
 export enum ListViewOptions {

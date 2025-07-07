@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
+import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import { useTableProfiler } from '../TableProfilerProvider';
 import { QualityTab } from './QualityTab.component';
 
@@ -32,9 +32,9 @@ const mockTable = {
   name: 'test-table',
 };
 
-const mockPush = jest.fn();
 const mockUseTableProfiler = {
   tableProfiler: MOCK_TABLE,
+  onSettingButtonClick: jest.fn(),
   permissions: {
     EditAll: true,
     EditDataProfile: true,
@@ -75,10 +75,8 @@ jest.mock('../../../../../hooks/useFqn', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../../../rest/tableAPI', () => ({
@@ -120,6 +118,29 @@ jest.mock('../../../../../hoc/LimitWrapper', () => {
   ));
 });
 
+jest.mock('../../../../../hooks/useCustomLocation/useCustomLocation', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    pathname: '/test-path',
+    search: '?test=value',
+  })),
+}));
+
+jest.mock('../../../../common/TabsLabel/TabsLabel.component', () => {
+  return jest.fn().mockImplementation(({ id, name, count = 0 }) => (
+    <div data-testid={id}>
+      <div>{name}</div>
+      <span data-testid={`${id}-count`}>{count}</span>
+    </div>
+  ));
+});
+
+jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
+  getIngestionPipelines: jest.fn().mockResolvedValue({
+    paging: { total: 0 },
+  }),
+}));
+
 describe('QualityTab', () => {
   it('should render QualityTab', async () => {
     await act(async () => {
@@ -137,6 +158,9 @@ describe('QualityTab', () => {
     );
     expect(await screen.findByTestId('mock-searchbar')).toBeInTheDocument();
     expect(
+      await screen.findByTestId('profiler-setting-btn')
+    ).toBeInTheDocument();
+    expect(
       await screen.findByText('label.test-case-plural')
     ).toBeInTheDocument();
     expect(
@@ -145,7 +169,10 @@ describe('QualityTab', () => {
     expect(
       await screen.findByText('DataQualityTab.component')
     ).toBeInTheDocument();
-    expect(await screen.findByText('label.pipeline')).toBeInTheDocument();
+    expect(
+      await screen.findByText('label.pipeline-plural')
+    ).toBeInTheDocument();
+    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
   });
 
   it("Pagination should be called with 'handlePageChange'", async () => {
@@ -181,10 +208,8 @@ describe('QualityTab', () => {
   });
 
   it('should call limitWrapper', async () => {
-    await act(async () => {
-      render(<QualityTab />);
-      fireEvent.click(await screen.findByTestId('profiler-add-table-test-btn'));
-    });
+    render(<QualityTab />);
+    fireEvent.click(await screen.findByTestId('profiler-add-table-test-btn'));
 
     expect(LimitWrapper).toHaveBeenCalledWith(
       expect.objectContaining({ resource: 'dataQuality' }),
@@ -236,12 +261,10 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    expect(
-      await screen.findByRole('tab', { name: 'label.test-case-plural' })
-    ).toHaveAttribute('aria-selected', 'true');
-    expect(
-      await screen.findByRole('tab', { name: 'label.pipeline' })
-    ).toHaveAttribute('aria-selected', 'false');
+    const tabs = await screen.findAllByRole('tab');
+
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
   });
 
   it('should display the initial summary data', async () => {
@@ -261,5 +284,112 @@ describe('QualityTab', () => {
     expect(await screen.findByText('label.total-entity')).toBeInTheDocument();
     expect(await screen.findByText('label.success')).toBeInTheDocument();
     expect(await screen.findByText('label.aborted')).toBeInTheDocument();
+  });
+
+  it('should call onSettingButtonClick', async () => {
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    const profilerSettingBtn = await screen.findByTestId(
+      'profiler-setting-btn'
+    );
+
+    await act(async () => {
+      fireEvent.click(profilerSettingBtn);
+    });
+
+    expect(mockUseTableProfiler.onSettingButtonClick).toHaveBeenCalled();
+  });
+
+  it('should display correct test case count in tab', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      testCasePaging: {
+        ...mockUseTableProfiler.testCasePaging,
+        paging: { total: 25, after: 'after' },
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByTestId('test-cases-count')).toHaveTextContent(
+      '25'
+    );
+  });
+
+  it('should display correct pipeline count in tab', async () => {
+    (getIngestionPipelines as jest.Mock).mockResolvedValueOnce({
+      paging: { total: 5 },
+    });
+
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        testSuite: {
+          fullyQualifiedName: 'test.suite.name',
+        },
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('5');
+  });
+
+  it('should show zero count when no test cases or pipelines exist', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      testCasePaging: {
+        ...mockUseTableProfiler.testCasePaging,
+        paging: { total: 0, after: null },
+      },
+      table: {
+        ...MOCK_TABLE,
+        testSuite: {
+          fullyQualifiedName: 'test.suite.name',
+        },
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByTestId('test-cases-count')).toHaveTextContent(
+      '0'
+    );
+    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
+  });
+
+  it('should handle error in fetching pipeline count gracefully', async () => {
+    const mockGetIngestionPipelines = jest
+      .fn()
+      .mockRejectedValue(new Error('API Error'));
+
+    jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
+      getIngestionPipelines: mockGetIngestionPipelines,
+    }));
+
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        testSuite: {
+          fullyQualifiedName: 'test.suite.name',
+        },
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
   });
 });

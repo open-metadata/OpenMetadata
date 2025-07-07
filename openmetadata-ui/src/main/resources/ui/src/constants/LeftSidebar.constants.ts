@@ -19,17 +19,18 @@ import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
+import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
 import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
-
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
-import { getDataInsightPathWithFqn } from '../utils/DataInsightUtils';
-import { ROUTES } from './constants';
+import { DataInsightTabs } from '../interface/data-insight.interface';
+import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
@@ -37,11 +38,25 @@ export const SIDEBAR_NESTED_KEYS = {
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
   {
+    key: ROUTES.MY_DATA,
+    title: i18next.t('label.home'),
+    redirect_url: ROUTES.MY_DATA,
+    icon: HomeIcon,
+    dataTestId: `app-bar-item-${SidebarItem.HOME}`,
+  },
+  {
     key: ROUTES.EXPLORE,
     title: i18next.t('label.explore'),
     redirect_url: ROUTES.EXPLORE,
     icon: ExploreIcon,
     dataTestId: `app-bar-item-${SidebarItem.EXPLORE}`,
+  },
+  {
+    key: ROUTES.PLATFORM_LINEAGE,
+    title: i18next.t('label.lineage'),
+    redirect_url: ROUTES.PLATFORM_LINEAGE,
+    icon: PlatformLineageIcon,
+    dataTestId: `app-bar-item-${SidebarItem.LINEAGE}`,
   },
   {
     key: ROUTES.OBSERVABILITY,
@@ -75,7 +90,10 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
   {
     key: ROUTES.DATA_INSIGHT,
     title: i18next.t('label.insight-plural'),
-    redirect_url: getDataInsightPathWithFqn(),
+    redirect_url: ROUTES.DATA_INSIGHT_WITH_TAB.replace(
+      PLACEHOLDER_ROUTE_TAB,
+      DataInsightTabs.DATA_ASSETS
+    ),
     icon: InsightsIcon,
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },

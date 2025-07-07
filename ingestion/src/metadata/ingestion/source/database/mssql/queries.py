@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,8 +20,8 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
         db.NAME database_name,
         t.text query_text,
         s.last_execution_time start_time,
-        DATEADD(s, s.total_elapsed_time/1000, s.last_execution_time) end_time,
-        s.total_elapsed_time/1000 duration,
+        DATEADD(s, s.last_elapsed_time/1000000, s.last_execution_time) end_time,
+        s.last_elapsed_time/1000000 duration,
         NULL schema_name,
         NULL query_type,
         NULL user_name,
@@ -53,6 +53,49 @@ JOIN sys.schemas AS s
     ON obj.schema_id = s.schema_id
 WHERE
     obj.type IN ('U', 'V') /* User tables and views */
+"""
+)
+
+MSSQL_GET_DATABASE_COMMENTS = textwrap.dedent(
+    """
+    SELECT 
+    DB_NAME() AS DATABASE_NAME,
+    CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT
+FROM sys.extended_properties ep
+WHERE ep.class = 0  
+AND ep.name = 'MS_Description'
+"""
+)
+
+MSSQL_GET_SCHEMA_COMMENTS = textwrap.dedent(
+    """
+     SELECT 
+    DB_NAME() AS DATABASE_NAME, 
+    s.name AS SCHEMA_NAME, 
+    CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT 
+FROM sys.schemas s
+LEFT JOIN sys.extended_properties ep 
+    ON ep.major_id = s.schema_id
+    AND ep.minor_id = 0 
+    AND ep.class = 3
+    AND ep.name = 'MS_Description'
+    """
+)
+
+MSSQL_GET_STORED_PROCEDURE_COMMENTS = textwrap.dedent(
+    """
+SELECT 
+    DB_NAME() AS DATABASE_NAME,
+    s.name AS SCHEMA_NAME,
+    p.name AS STORED_PROCEDURE,
+    CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT
+FROM sys.procedures p
+JOIN sys.schemas s ON p.schema_id = s.schema_id
+LEFT JOIN sys.extended_properties ep 
+    ON ep.major_id = p.object_id 
+    AND ep.minor_id = 0 
+    AND ep.class = 1
+    AND ep.name = 'MS_Description';
 """
 )
 
@@ -209,7 +252,7 @@ MSSQL_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
 WITH SP_HISTORY (start_time, end_time, procedure_name, query_text) AS (
   select 
     s.last_execution_time start_time,
-    DATEADD(s, s.total_elapsed_time/1000, s.last_execution_time) end_time,
+    DATEADD(s, s.last_elapsed_time/1000000, s.last_execution_time) end_time,
     OBJECT_NAME(object_id, database_id) as procedure_name,
     text as query_text
   from sys.dm_exec_procedure_stats s
@@ -222,8 +265,8 @@ Q_HISTORY (database_name, query_text, start_time, end_time, duration,query_type,
     db.NAME database_name,
     t.text query_text,
     s.last_execution_time start_time,
-    DATEADD(s, s.total_elapsed_time/1000, s.last_execution_time) end_time,
-    s.total_elapsed_time/1000 duration,
+    DATEADD(s, s.last_elapsed_time/1000000, s.last_execution_time) end_time,
+    s.last_elapsed_time/1000000 duration,
     case
         when t.text LIKE '%%MERGE%%' then 'MERGE'
         when t.text LIKE '%%UPDATE%%' then 'UPDATE'

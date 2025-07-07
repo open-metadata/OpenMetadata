@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,13 @@ Test Airflow processing
 """
 from unittest import TestCase
 from unittest.mock import patch
+
+import pytest
+
+try:
+    import airflow  # noqa: F401
+except ImportError:
+    pytest.skip("Airflow dependencies not installed", allow_module_level=True)
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -265,3 +272,51 @@ class TestAirflow(TestCase):
             }
         }
         self.assertEqual(get_schedule_interval(pipeline_data), "*/2 * * * *")
+
+    def test_get_dag_owners_with_serialized_tasks(self):
+        # Case 1: All tasks have no explicit owner → fallback to default_args
+        data = {
+            "default_args": {"__var": {"owner": "default_owner"}},
+            "tasks": [
+                {"__var": {"task_id": "t1"}, "__type": "EmptyOperator"},
+                {"__var": {"task_id": "t2"}, "__type": "EmptyOperator"},
+            ],
+        }
+        self.assertEqual("default_owner", self.airflow.fetch_dag_owners(data))
+
+        # Case 2: One task explicitly overrides the owner → tie between two owners
+        data = {
+            "default_args": {"__var": {"owner": "default_owner"}},
+            "tasks": [
+                {
+                    "__var": {"task_id": "t1"},
+                    "__type": "EmptyOperator",
+                },  # uses default_owner
+                {
+                    "__var": {"task_id": "t2", "owner": "overridden_owner"},
+                    "__type": "EmptyOperator",
+                },
+            ],
+        }
+        result = self.airflow.fetch_dag_owners(data)
+        self.assertIn(result, {"default_owner", "overridden_owner"})
+
+        # Case 3: One owner is majority -> must return that owner
+        data = {
+            "default_args": {"__var": {"owner": "default_owner"}},
+            "tasks": [
+                {
+                    "__var": {"task_id": "t1", "owner": "overridden_owner"},
+                    "__type": "EmptyOperator",
+                },
+                {
+                    "__var": {"task_id": "t2", "owner": "overridden_owner"},
+                    "__type": "EmptyOperator",
+                },
+                {
+                    "__var": {"task_id": "t3", "owner": "another_owner"},
+                    "__type": "EmptyOperator",
+                },
+            ],
+        }
+        self.assertEqual("overridden_owner", self.airflow.fetch_dag_owners(data))

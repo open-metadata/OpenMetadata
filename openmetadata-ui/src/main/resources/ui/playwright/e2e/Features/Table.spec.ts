@@ -14,6 +14,7 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { getFirstRowColumnLink } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -61,7 +62,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await page.getByTestId('next').click();
 
-    expect(await page.locator('.ant-table-row').count()).toBe(10);
+    expect(await page.locator('.ant-table-row').count()).toBe(15);
   });
 
   test('Table search with sorting should works', async ({ page }) => {
@@ -85,5 +86,254 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.getByTitle('Queued').locator('div').click();
 
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+  });
+
+  test('Table page should show schema tab with count', async ({ page }) => {
+    await table1.visitEntityPage(page);
+
+    await expect(page.getByRole('tab', { name: 'Schema' })).toContainText('4');
+  });
+
+  test('should persist current page', async ({ page }) => {
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
+
+    await page.getByTestId('next').click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const initialPageIndicator = await page
+      .locator('[data-testid="page-indicator"]')
+      .textContent();
+
+    // First navigation - click on first table link
+    const firstLinkInColumn = getFirstRowColumnLink(page);
+    await firstLinkInColumn.click();
+
+    await page.waitForURL('**/table/**');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await page.goBack({
+      waitUntil: 'networkidle',
+    });
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Verify page indicator is still the same after first navigation
+    const pageIndicatorAfterFirstBack = await page
+      .locator('[data-testid="page-indicator"]')
+      .textContent();
+
+    expect(pageIndicatorAfterFirstBack).toBe(initialPageIndicator);
+
+    // Second navigation - click on second table link
+    const secondLinkInColumn = getFirstRowColumnLink(page);
+    await secondLinkInColumn.click();
+
+    await page.waitForURL('**/table/**');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await page.goBack({
+      waitUntil: 'networkidle',
+    });
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Verify page indicator is still the same after second navigation
+    const pageIndicatorAfterSecondBack = await page
+      .locator('[data-testid="page-indicator"]')
+      .textContent();
+
+    expect(pageIndicatorAfterSecondBack).toBe(initialPageIndicator);
+  });
+
+  test('should persist page size', async ({ page }) => {
+    page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
+
+    await page
+      .getByTestId('page-size-selection-dropdown')
+      .scrollIntoViewIfNeeded();
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+
+    await expect(
+      page.getByRole('menuitem', { name: '15 / Page' })
+    ).toBeVisible();
+
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const linkInColumn = getFirstRowColumnLink(page);
+    const entityApiResponse = page.waitForResponse(
+      '/api/v1/permissions/table/name/*'
+    );
+    await linkInColumn.click();
+
+    await entityApiResponse;
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await page.goBack();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+    await page
+      .getByTestId('page-size-selection-dropdown')
+      .scrollIntoViewIfNeeded();
+
+    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+      '15 / Page'
+    );
+  });
+});
+
+test.describe('Table & Data Model columns table pagination', () => {
+  test('paginatino for table column should work', async ({ page }) => {
+    await page.goto(
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+    );
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Check for column count
+    expect(page.getByTestId('schema').getByTestId('filter-count')).toHaveText(
+      '2000'
+    );
+
+    // 50 Row + 1 Header row
+    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
+
+    await page.getByTestId('next').click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 40`);
+
+    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
+
+    await page.getByTestId('previous').click();
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
+
+    // Change page size to 15
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // 15 Row + 1 Header row
+    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(16);
+
+    // Change page size to 25
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '25 / Page' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // 25 Row + 1 Header row
+    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(26);
+  });
+
+  test('pagination for dashboard data model columns should work', async ({
+    page,
+  }) => {
+    await page.goto(
+      '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'
+    );
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // 50 Row + 1 Header row
+    expect(
+      page.getByTestId('data-model-column-table').getByRole('row')
+    ).toHaveCount(51);
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
+
+    await page.getByTestId('next').click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 36`);
+
+    expect(
+      page.getByTestId('data-model-column-table').getByRole('row')
+    ).toHaveCount(51);
+
+    await page.getByTestId('previous').click();
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
+
+    // Change page size to 15
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+
+    // Change page size to 15
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // 15 Row + 1 Header row
+    expect(
+      page.getByTestId('data-model-column-table').getByRole('row')
+    ).toHaveCount(16);
+
+    // Change page size to 25
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '25 / Page' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // 25 Row + 1 Header row
+    expect(
+      page.getByTestId('data-model-column-table').getByRole('row')
+    ).toHaveCount(26);
   });
 });

@@ -15,7 +15,9 @@ name: Python Checkstyle
 # access to secrets
 on:
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - 'openmetadata-docs/**'
 
 permissions:
   contents: read
@@ -27,13 +29,14 @@ concurrency:
 jobs:
   py-checkstyle:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     permissions:
       pull-requests: write
 
     steps:
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.3
+        uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -51,14 +54,14 @@ jobs:
           disable-reviews: true  # To not auto approve changes
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: '3.10'
 
       - name: Install Ubuntu related dependencies
         run: |

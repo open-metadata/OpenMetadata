@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.WORKFLOW;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.automations.WorkflowResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -73,7 +74,8 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Workflow original, Workflow updated, Operation operation) {
+  public EntityRepository<Workflow>.EntityUpdater getUpdater(
+      Workflow original, Workflow updated, Operation operation, ChangeSource changeSource) {
     return new WorkflowUpdater(original, updated, operation);
   }
 
@@ -84,7 +86,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("status", original.getStatus(), updated.getStatus());
       recordChange("response", original.getResponse(), updated.getResponse(), true);
     }

@@ -12,23 +12,23 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Col, Drawer, Row, Space, Tooltip, Typography } from 'antd';
-import React, { useState } from 'react';
+import { Col, Drawer, Row, Space, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
-import { DE_ACTIVE_COLOR, getUserPath } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
-import { TagLabel } from '../../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getUserPath } from '../../../../utils/RouterUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
+import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import TagsInput from '../../../TagsInput/TagsInput.component';
+import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { TableQueryRightPanelProps } from './TableQueryRightPanel.interface';
 
 const TableQueryRightPanel = ({
@@ -39,8 +39,6 @@ const TableQueryRightPanel = ({
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
   const { EditAll, EditDescription, EditOwners, EditTags } = permission;
-
-  const [isEditDescription, setIsEditDescription] = useState(false);
 
   const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
@@ -56,7 +54,6 @@ const TableQueryRightPanel = ({
       description,
     };
     await onQueryUpdate(updatedData, 'description');
-    setIsEditDescription(false);
   };
   const handleTagSelection = async (tags?: TagLabel[]) => {
     if (tags) {
@@ -81,68 +78,72 @@ const TableQueryRightPanel = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <Row className="m-y-md p-x-md w-full" gutter={[16, 40]}>
+        <Row className="m-y-md p-x-md w-full" gutter={[16, 20]}>
           <Col span={24}>
-            <Space className="relative" direction="vertical" size={4}>
-              <Space align="center" className="w-full" size={0}>
-                <Typography.Text className="right-panel-label">
-                  {t('label.owner-plural')}
-                </Typography.Text>
+            <ExpandableCard
+              cardProps={{
+                title: (
+                  <Space align="center" className="w-full" size={0}>
+                    <Typography.Text className="right-panel-label">
+                      {t('label.owner-plural')}
+                    </Typography.Text>
 
-                {(EditAll || EditOwners) && (
-                  <UserTeamSelectableList
-                    hasPermission={EditAll || EditOwners}
-                    multiple={{ user: true, team: false }}
-                    owner={query.owners}
-                    onUpdate={(updatedUsers) =>
-                      handleUpdateOwner(updatedUsers)
-                    }>
-                    <Tooltip
-                      title={t('label.edit-entity', {
-                        entity: t('label.owner-lowercase-plural'),
-                      })}>
-                      <Button
-                        className="cursor-pointer flex-center"
-                        data-testid="edit-owner"
-                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                        size="small"
-                        type="text"
-                      />
-                    </Tooltip>
-                  </UserTeamSelectableList>
-                )}
-              </Space>
+                    {(EditAll || EditOwners) && (
+                      <UserTeamSelectableList
+                        hasPermission={EditAll || EditOwners}
+                        multiple={{ user: true, team: false }}
+                        owner={query.owners}
+                        onUpdate={(updatedUsers) =>
+                          handleUpdateOwner(updatedUsers)
+                        }>
+                        <EditIconButton
+                          data-testid="edit-owner"
+                          size="small"
+                          title={t('label.edit-entity', {
+                            entity: t('label.owner-lowercase-plural'),
+                          })}
+                        />
+                      </UserTeamSelectableList>
+                    )}
+                  </Space>
+                ),
+              }}>
               <OwnerLabel hasPermission={false} owners={query.owners} />
-            </Space>
+            </ExpandableCard>
           </Col>
           <Col span={24}>
-            <Space direction="vertical" size={4}>
-              <DescriptionV1
-                description={query?.description || ''}
-                entityType={EntityType.QUERY}
-                hasEditAccess={EditDescription || EditAll}
-                isEdit={isEditDescription}
-                showCommentsIcon={false}
-                onCancel={() => setIsEditDescription(false)}
-                onDescriptionEdit={() => setIsEditDescription(true)}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-            </Space>
-          </Col>
-          <Col span={24}>
-            <TagsInput
-              editable={EditAll || EditTags}
-              tags={query?.tags || []}
-              onTagsUpdate={handleTagSelection}
+            <DescriptionV1
+              wrapInCard
+              className="w-full"
+              description={query?.description || ''}
+              entityFullyQualifiedName={query?.fullyQualifiedName}
+              entityType={EntityType.QUERY}
+              hasEditAccess={EditDescription || EditAll}
+              showCommentsIcon={false}
+              onDescriptionUpdate={onDescriptionUpdate}
             />
           </Col>
           <Col span={24}>
-            <Space className="m-b-md" direction="vertical" size={4}>
-              <Typography.Text
-                className="right-panel-label"
-                data-testid="users">
-                {t('label.user-plural')}
-              </Typography.Text>
+            <TagsContainerV2
+              newLook
+              permission={EditAll || EditTags}
+              selectedTags={query?.tags || []}
+              showTaskHandler={false}
+              tagType={TagSource.Classification}
+              onSelectionChange={handleTagSelection}
+            />
+          </Col>
+          <Col span={24}>
+            <ExpandableCard
+              cardProps={{
+                title: (
+                  <Typography.Text
+                    className="right-panel-label"
+                    data-testid="users">
+                    {t('label.user-plural')}
+                  </Typography.Text>
+                ),
+              }}>
               {query.users && query.users.length ? (
                 <Space wrap size={6}>
                   {query.users.map((user) => (
@@ -165,15 +166,19 @@ const TableQueryRightPanel = ({
                   })}
                 </Typography.Paragraph>
               )}
-            </Space>
+            </ExpandableCard>
           </Col>
           <Col span={24}>
-            <Space className="m-b-md" direction="vertical" size={4}>
-              <Typography.Text
-                className="right-panel-label"
-                data-testid="used-by">
-                {t('label.used-by')}
-              </Typography.Text>
+            <ExpandableCard
+              cardProps={{
+                title: (
+                  <Typography.Text
+                    className="right-panel-label"
+                    data-testid="used-by">
+                    {t('label.used-by')}
+                  </Typography.Text>
+                ),
+              }}>
               {query.usedBy && query.usedBy.length ? (
                 <Space wrap size={6}>
                   {query.usedBy.map((user) => (
@@ -190,7 +195,7 @@ const TableQueryRightPanel = ({
                   })}
                 </Typography.Paragraph>
               )}
-            </Space>
+            </ExpandableCard>
           </Col>
         </Row>
       )}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as TestCaseIcon } from '../../../../assets/svg/all-activity-v2.svg';
 import {
@@ -29,6 +29,7 @@ import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.compone
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 
 const TestCaseStatusPieChartWidget = ({
+  className = '',
   chartFilter,
 }: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
@@ -43,7 +44,7 @@ const TestCaseStatusPieChartWidget = ({
       const { data } = await fetchTestCaseSummary(chartFilter);
       const updatedData = transformToTestCaseStatusObject(data);
       setTestCaseSummary(updatedData);
-    } catch (error) {
+    } catch {
       setTestCaseSummary(INITIAL_TEST_SUMMARY);
     } finally {
       setIsTestCaseSummaryLoading(false);
@@ -100,12 +101,13 @@ const TestCaseStatusPieChartWidget = ({
 
   return (
     <Card
+      className={className}
       data-testid="test-case-status-pie-chart-widget"
       loading={isTestCaseSummaryLoading}>
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <TestCaseIcon color={PRIMARY_COLOR} height={20} width={20} />
-          <Typography.Text className="font-medium text-md text-grey-muted">
+          <Typography.Text className="font-medium text-md">
             {t('label.test-case-result')}
           </Typography.Text>
         </div>

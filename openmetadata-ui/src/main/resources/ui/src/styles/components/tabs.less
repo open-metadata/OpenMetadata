@@ -18,6 +18,7 @@
 .ant-tabs.ant-tabs-top.h-full {
   .ant-tabs-content.ant-tabs-content-top {
     height: 100%;
+
     .ant-tabs-tabpane {
       height: 100%;
     }
@@ -32,5 +33,78 @@
   .ant-tabs-nav {
     margin: 0 !important;
     padding: 0 24px;
+  }
+}
+
+.ant-tabs-tab {
+  color: @text-color-tertiary;
+}
+
+.ant-tabs.tabs-new {
+  width: 100%;
+
+  .ant-btn.ant-btn-icon-only.tab-expand-icon {
+    padding: 0;
+    height: 20px;
+    width: 20px;
+    vertical-align: middle;
+    * {
+      font-size: 20px !important;
+    }
+  }
+
+  .ant-tabs-nav {
+    margin: 0;
+    padding: 0 20px;
+    height: 48px;
+    background: @white;
+    border-radius: 12px;
+    border: 1px solid @grey-15;
+
+    &::before {
+      border-bottom: none;
+    }
+
+    .ant-tabs-nav-list {
+      border-bottom: none;
+
+      .ant-tabs-tab {
+        padding: 8px 0;
+        position: relative;
+
+        &.ant-tabs-tab-active {
+          color: @primary-color;
+          font-weight: 600;
+
+          [data-testid='count'] > span {
+            background-color: @primary-color;
+            border-color: @primary-color;
+            color: @white;
+          }
+        }
+      }
+    }
+  }
+
+  .ant-tabs-tabpane {
+    margin-top: @padding-sm;
+    border-radius: @border-radius-sm;
+    background-color: @white;
+  }
+
+  .ant-tabs-ink-bar {
+    bottom: 6px;
+    height: 2px;
+    background-color: @primary-color;
+  }
+}
+
+.glossary-details,
+.entity-details-page-tabs {
+  .ant-tabs.tabs-new {
+    .ant-tabs-tabpane {
+      background-color: @grey-9;
+      margin-bottom: @margin-md;
+    }
   }
 }

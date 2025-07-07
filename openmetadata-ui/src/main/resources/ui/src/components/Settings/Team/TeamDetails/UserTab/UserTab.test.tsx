@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Team } from '../../../../../generated/entity/teams/team';
@@ -116,7 +115,6 @@ describe('UserTab', () => {
       </BrowserRouter>
     );
 
-    expect(screen.queryByRole('table')).toBeInTheDocument();
     expect(screen.getByText('label.users')).toBeInTheDocument();
     expect(screen.queryByText('label.team-plural')).not.toBeInTheDocument();
     expect(

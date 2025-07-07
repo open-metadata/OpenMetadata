@@ -15,6 +15,11 @@ module.exports = {
   // Project name
   displayName: '@openmetadata',
 
+  // Performance optimizations
+  maxWorkers: '50%', // Use half of available CPU cores
+  cache: true,
+  cacheDirectory: './node_modules/.cache/jest',
+
   globals: {
     // TypeScript
     'ts-jest': {
@@ -62,10 +67,14 @@ module.exports = {
     '@azure/msal-react':
       '<rootDir>/node_modules/@azure/msal-react/dist/index.js',
     axios: 'axios/dist/node/axios.cjs',
+    '@melloware/react-logviewer':
+      '<rootDir>/node_modules/@melloware/react-logviewer/dist/cjs/index.js',
     'react-antd-column-resize':
       '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.js',
   },
-  transformIgnorePatterns: ['node_modules/(?!@azure/msal-react)'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer))',
+  ],
 
   // TypeScript
   preset: 'ts-jest',
@@ -80,4 +89,19 @@ module.exports = {
   timers: 'fake',
 
   moduleDirectories: ['node_modules', 'src'],
+
+  reporters: [
+    'default',
+    [
+      'jest-junit',
+      {
+        outputDirectory: '../../../../target/test-reports',
+        outputName: 'jest-junit.xml',
+        classNameTemplate: '{classname}',
+        titleTemplate: '{title}',
+        ancestorSeparator: ' › ',
+        usePathForSuiteName: 'true',
+      },
+    ],
+  ],
 };

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,10 +19,9 @@ import reprlib
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable, List, Optional, Type, TypeVar, Union
 
+from pydantic import BaseModel
+
 from metadata.data_quality.validations import utils
-from metadata.data_quality.validations.runtime_param_setter.param_setter import (
-    RuntimeParameterSetter,
-)
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -37,6 +36,7 @@ if TYPE_CHECKING:
 
 T = TypeVar("T", bound=Callable)
 R = TypeVar("R")
+S = TypeVar("S", bound=BaseModel)
 
 
 class BaseTestValidator(ABC):
@@ -44,8 +44,6 @@ class BaseTestValidator(ABC):
     The runtime_parameter_setter is run after the test case is created to set the runtime parameters.
     This can be useful to resolve complex test parameters based on the parameters gibven by the user.
     """
-
-    runtime_parameter_setter: Optional[Type[RuntimeParameterSetter]] = None
 
     def __init__(
         self,
@@ -120,10 +118,10 @@ class BaseTestValidator(ABC):
             failed_rows = (
                 failed_rows if failed_rows is not None else (row_count - passed_rows)
             )
-            test_case_result.passedRows = passed_rows
-            test_case_result.failedRows = failed_rows
-            test_case_result.passedRowsPercentage = (passed_rows / row_count) * 100
-            test_case_result.failedRowsPercentage = (failed_rows / row_count) * 100  # type: ignore
+            test_case_result.passedRows = int(passed_rows)
+            test_case_result.failedRows = int(failed_rows)
+            test_case_result.passedRowsPercentage = float(passed_rows / row_count) * 100
+            test_case_result.failedRowsPercentage = float(failed_rows / row_count) * 100  # type: ignore
 
         return test_case_result
 
@@ -168,3 +166,10 @@ class BaseTestValidator(ABC):
     def get_predicted_value(self) -> Optional[str]:
         """Get predicted value"""
         return None
+
+    def get_runtime_parameters(self, setter_class: Type[S]) -> S:
+        """Get runtime parameters"""
+        for param in self.test_case.parameterValues or []:
+            if param.name == setter_class.__name__:
+                return setter_class.model_validate_json(param.value)
+        raise ValueError(f"Runtime parameter {setter_class.__name__} not found")

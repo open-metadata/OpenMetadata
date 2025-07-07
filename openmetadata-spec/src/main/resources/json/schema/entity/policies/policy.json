@@ -66,6 +66,10 @@
       "description": "Change that led to this version of the Policy.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "rules": {
       "description": "Set of rules that the policy contains.",
       "$ref": "#/definitions/rules"

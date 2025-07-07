@@ -6,14 +6,18 @@
   "description": "A `SearchIndex` is a index mapping definition in ElasticSearch or OpenSearch",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.SearchIndex",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "searchIndexSettings": {
       "javaType": "org.openmetadata.schema.type.searchindex.SearchIndexSettings",
       "description": "Contains key/value pair of SearchIndex Settings.",
       "type": "object",
       "additionalProperties": {
-        ".{1,}": { "type": "string" }
+        ".{1,}": {
+          "type": "string"
+        }
       }
     },
     "searchIndexSampleData": {
@@ -30,6 +34,12 @@
         }
       },
       "additionalProperties": false
+    },
+    "indexType": {
+      "description": "Whether the entity is index or index template.",
+      "type": "string",
+      "enum": ["Index", "IndexTemplate"],
+      "default": "Index"
     },
     "dataType": {
       "javaType": "org.openmetadata.schema.type.SearchIndexDataType",
@@ -92,7 +102,9 @@
     "searchIndexField": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.SearchIndexField",
-      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.FieldInterface"
+      ],
       "description": "This schema defines the type for a field in a searchIndex.",
       "properties": {
         "name": {
@@ -194,11 +206,17 @@
       "description": "Contains key/value pair of searchIndex settings.",
       "$ref": "#/definitions/searchIndexSettings"
     },
+    "indexType": {
+      "description": "Whether the entity is index or index template.",
+      "$ref": "#/definitions/indexType",
+      "default": "Index"
+    },
     "sampleData": {
       "description": "Sample data for a searchIndex.",
       "$ref": "#/definitions/searchIndexSampleData",
       "default": null
     },
+
     "owners": {
       "description": "Owners of this searchIndex.",
       "$ref": "../../type/entityReferenceList.json"
@@ -223,6 +241,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -232,15 +254,15 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the SearchIndex belongs to. When not set, the SearchIndex inherits the domain from the messaging service it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
-    "votes" : {
+    "votes": {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
@@ -258,6 +280,11 @@
       "maxLength": 32
     }
   },
-  "required": ["id", "name", "service", "fields"],
+  "required": [
+    "id",
+    "name",
+    "service",
+    "fields"
+  ],
   "additionalProperties": false
 }

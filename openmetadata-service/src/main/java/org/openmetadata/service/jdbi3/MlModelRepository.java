@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.getEntityReference;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
@@ -38,6 +39,8 @@ import org.openmetadata.schema.type.MlHyperParameter;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -47,7 +50,6 @@ import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
@@ -149,8 +151,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   private void validateMlDataSource(MlFeatureSource source) {
     if (source.getDataSource() != null) {
-      Entity.getEntityReferenceById(
-          source.getDataSource().getType(), source.getDataSource().getId(), Include.NON_DELETED);
+      Entity.getEntityReference(source.getDataSource(), Include.NON_DELETED);
     }
   }
 
@@ -211,7 +212,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
                       .getFeatureSources()
                       .forEach(
                           mlFeatureSource -> {
-                            EntityReference targetEntity = mlFeatureSource.getDataSource();
+                            EntityReference targetEntity =
+                                getEntityReference(mlFeatureSource.getDataSource(), Include.ALL);
                             if (targetEntity != null) {
                               addRelationship(
                                   targetEntity.getId(),
@@ -227,7 +229,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public EntityUpdater getUpdater(MlModel original, MlModel updated, Operation operation) {
+  public EntityRepository<MlModel>.EntityUpdater getUpdater(
+      MlModel original, MlModel updated, Operation operation, ChangeSource changeSource) {
     return new MlModelUpdater(original, updated, operation);
   }
 
@@ -322,7 +325,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateAlgorithm(original, updated);
       updateDashboard(original, updated);
       updateMlFeatures(original, updated);

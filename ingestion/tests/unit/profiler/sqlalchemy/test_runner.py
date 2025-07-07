@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -78,21 +78,25 @@ class RunnerTest(TestCase):
 
         with (
             patch.object(SQASampler, "get_client", return_value=cls.session),
+            patch.object(SQASampler, "build_table_orm", return_value=User),
             mock.patch(
                 "metadata.sampler.sampler_interface.get_ssl_connection",
                 return_value=Mock(),
             ),
         ):
-            sampler = SQASampler(
+            sampler = SQASampler.__new__(SQASampler)
+            sampler.build_table_orm = lambda *args, **kwargs: User
+            sampler.__init__(
                 service_connection_config=Mock(),
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(profile_sample=50.0),
-                orm_table=User,
+                sample_config=SampleConfig(profileSample=50.0),
             )
-            cls.sample = sampler.random_sample()
+            cls.dataset = sampler.get_dataset()
 
-        cls.raw_runner = QueryRunner(session=cls.session, table=User, sample=cls.sample)
+        cls.raw_runner = QueryRunner(
+            session=cls.session, dataset=cls.dataset, raw_dataset=sampler.raw_dataset
+        )
         cls.timeout_runner: Timer = cls_timeout(1)(Timer())
 
         # Insert 30 rows
@@ -153,7 +157,7 @@ class RunnerTest(TestCase):
         res = self.raw_runner.select_first_from_query(query)
         assert res[0] == 30
 
-        query = self.session.query(func.count()).select_from(self.sample)
+        query = self.session.query(func.count()).select_from(self.dataset)
         res = self.raw_runner.select_first_from_query(query)
         assert res[0] < 30
 
@@ -161,7 +165,7 @@ class RunnerTest(TestCase):
         res = self.raw_runner.select_all_from_query(query)
         assert len(res) == 30
 
-        query = self.session.query(func.count()).select_from(self.sample)
+        query = self.session.query(func.count()).select_from(self.dataset)
         res = self.raw_runner.select_all_from_query(query)
         assert len(res) < 30
 

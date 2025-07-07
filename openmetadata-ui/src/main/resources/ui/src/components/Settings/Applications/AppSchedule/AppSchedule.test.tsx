@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import {
+  fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
 import {
   AppType,
   ScheduleType,
@@ -76,6 +75,7 @@ const mockProps1 = {
     isRunLoading: false,
     isDeployLoading: false,
   },
+  jsonSchema: {},
   onSave: mockOnSave,
   onDemandTrigger: mockOnDemandTrigger,
   onDeployTrigger: mockOnDeployTrigger,
@@ -129,11 +129,11 @@ describe('AppSchedule component', () => {
     expect(screen.getByTestId('cron-string')).toBeInTheDocument();
     expect(screen.getByText('Modal is close')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
 
     expect(screen.getByText('Modal is open')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.run-now' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.run-now' }));
 
     expect(mockOnDemandTrigger).toHaveBeenCalled();
   });
@@ -155,7 +155,7 @@ describe('AppSchedule component', () => {
       screen.getByText('message.no-ingestion-pipeline-found')
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.deploy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.deploy' }));
 
     expect(mockOnDeployTrigger).toHaveBeenCalled();
   });
@@ -165,17 +165,17 @@ describe('AppSchedule component', () => {
 
     expect(screen.getByText('Modal is close')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
 
     expect(screen.getByText('Modal is open')).toBeInTheDocument();
 
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', { name: 'Submit ScheduleInterval' })
     );
 
     expect(mockOnSave).toHaveBeenCalled();
 
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
     );
 

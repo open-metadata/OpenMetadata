@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
+import { Popover, Space, Tabs, Typography } from 'antd';
 import { isArray, isEmpty, noop, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -26,7 +26,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { searchData } from '../../../rest/miscAPI';
-import { getUsers } from '../../../rest/userAPI';
 import {
   formatTeamsResponse,
   formatUsersResponse,
@@ -36,6 +35,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
@@ -54,6 +54,7 @@ export const TeamListItemRenderer = (props: EntityReference) => {
 export const UserTeamSelectableList = ({
   hasPermission,
   owner,
+  onClose,
   onUpdate = noop,
   children,
   popoverProps,
@@ -91,46 +92,33 @@ export const UserTeamSelectableList = ({
   }, [selectedUsers]);
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
-    if (searchText) {
-      try {
-        const res = await searchData(
-          searchText,
-          1,
-          PAGE_SIZE_MEDIUM,
-          'isBot:false',
-          '',
-          '',
-          SearchIndex.USER
-        );
+    const afterPage = isNaN(Number(after)) ? 1 : Number(after);
+    try {
+      const res = await searchData(
+        searchText,
+        afterPage,
+        PAGE_SIZE_MEDIUM,
+        'isBot:false',
+        'displayName.keyword',
+        'asc',
+        SearchIndex.USER
+      );
 
-        const data = getEntityReferenceListFromEntities(
-          formatUsersResponse(res.data.hits.hits),
-          EntityType.USER
-        );
-        setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
+      const data = getEntityReferenceListFromEntities(
+        formatUsersResponse(res.data.hits.hits),
+        EntityType.USER
+      );
+      setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
 
-        return { data, paging: { total: res.data.hits.total.value } };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
-    } else {
-      try {
-        const { data, paging } = await getUsers({
-          limit: PAGE_SIZE_MEDIUM,
-          after: after ?? undefined,
-          isBot: false,
-        });
-        const filterData = getEntityReferenceListFromEntities(
-          data,
-          EntityType.USER
-        );
-
-        setCount((pre) => ({ ...pre, user: paging.total }));
-
-        return { data: filterData, paging };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
+      return {
+        data,
+        paging: {
+          total: res.data.hits.total.value,
+          after: toString(afterPage + 1),
+        },
+      };
+    } catch (error) {
+      return { data: [], paging: { total: 0 } };
     }
   };
 
@@ -173,8 +161,11 @@ export const UserTeamSelectableList = ({
       updateData = updateItems;
     }
 
-    await onUpdate(updateData);
-    setPopupVisible(false);
+    try {
+      await onUpdate(updateData);
+    } finally {
+      setPopupVisible(false);
+    }
   };
 
   // Fetch and store count for Users tab
@@ -224,6 +215,11 @@ export const UserTeamSelectableList = ({
     },
     []
   );
+
+  const handleCancelSelectableList = () => {
+    setPopupVisible(false);
+    onClose?.();
+  };
 
   const onRemove = (id: string) => {
     setSelectedUsers((prevUsers) => {
@@ -316,7 +312,7 @@ export const UserTeamSelectableList = ({
                       type: t('label.team'),
                     })}
                     selectedItems={defaultTeams}
-                    onCancel={() => setPopupVisible(false)}
+                    onCancel={handleCancelSelectableList}
                     onChange={handleChange}
                     onUpdate={handleUpdate}
                   />
@@ -340,7 +336,7 @@ export const UserTeamSelectableList = ({
                       type: t('label.user'),
                     })}
                     selectedItems={defaultUsers}
-                    onCancel={() => setPopupVisible(false)}
+                    onCancel={handleCancelSelectableList}
                     onChange={handleChange}
                     onUpdate={handleUpdate}
                   />
@@ -364,23 +360,21 @@ export const UserTeamSelectableList = ({
       {...popoverProps}>
       {children ??
         (hasPermission && (
-          <Tooltip
+          <EditIconButton
+            newLook
+            data-testid="edit-owner"
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+            size="small"
             title={
-              !popupVisible &&
-              (tooltipText ??
-                t('label.edit-entity', {
-                  entity: t('label.owner-plural'),
-                }))
-            }>
-            <Button
-              className="flex-center p-0"
-              data-testid="edit-owner"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-              onClick={openPopover}
-            />
-          </Tooltip>
+              !popupVisible
+                ? tooltipText ??
+                  t('label.edit-entity', {
+                    entity: t('label.owner-plural'),
+                  })
+                : undefined
+            }
+            onClick={openPopover}
+          />
         ))}
     </Popover>
   );

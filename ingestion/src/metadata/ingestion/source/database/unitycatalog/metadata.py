@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -65,19 +65,32 @@ from metadata.ingestion.source.database.external_table_lineage_mixin import (
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
-from metadata.ingestion.source.database.unitycatalog.connection import get_connection
+from metadata.ingestion.source.database.unitycatalog.connection import (
+    get_connection,
+    get_sqlalchemy_connection,
+)
 from metadata.ingestion.source.database.unitycatalog.models import (
     ColumnJson,
     ElementType,
     ForeignConstrains,
     Type,
 )
-from metadata.ingestion.source.models import TableView
+from metadata.ingestion.source.database.unitycatalog.queries import (
+    UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
+    UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS,
+    UNITY_CATALOG_GET_ALL_TABLE_TAGS,
+    UNITY_CATALOG_GET_CATALOGS_TAGS,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 logger = ingestion_logger()
+
+UNITY_CATALOG_TAG = "UNITY CATALOG TAG"
+UNITY_CATALOG_TAG_CLASSIFICATION = "UNITY CATALOG TAG CLASSIFICATION"
 
 
 class UnitycatalogSource(
@@ -89,13 +102,13 @@ class UnitycatalogSource(
     the unity catalog source
     """
 
+    @retry_with_docker_host()
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.context.get_global().table_views = []
         self.metadata = metadata
         self.service_connection: UnityCatalogConnection = (
             self.config.serviceConnection.root.config
@@ -179,10 +192,14 @@ class UnitycatalogSource(
         From topology.
         Prepare a database request and pass it to the sink
         """
+        catalog = self.client.catalogs.get(database_name)
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
                 service=self.context.get().database_service,
+                owners=self.get_owner_ref(catalog.owner),
+                description=catalog.comment,
+                tags=self.get_database_tag_labels(database_name),
             )
         )
 
@@ -227,6 +244,9 @@ class UnitycatalogSource(
         From topology.
         Prepare a database schema request and pass it to the sink
         """
+        schema = self.client.schemas.get(
+            full_name=f"{self.context.get().database}.{schema_name}"
+        )
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=EntityName(schema_name),
@@ -238,6 +258,9 @@ class UnitycatalogSource(
                         database_name=self.context.get().database,
                     )
                 ),
+                description=schema.comment,
+                owners=self.get_owner_ref(schema.owner),
+                tags=self.get_schema_tag_labels(schema_name),
             )
         )
 
@@ -315,7 +338,7 @@ class UnitycatalogSource(
                 (db_name, schema_name, table_name)
             ] = table.storage_location
         try:
-            columns = list(self.get_columns(table.columns))
+            columns = list(self.get_columns(table_name, table.columns))
             (
                 primary_constraints,
                 foreign_constraints,
@@ -340,22 +363,10 @@ class UnitycatalogSource(
                         schema_name=schema_name,
                     )
                 ),
-                owners=self.get_owner_ref(table_name),
+                owners=self.get_owner_ref(table.owner),
+                tags=self.get_tag_labels(table_name),
             )
             yield Either(right=table_request)
-
-            if table_type == TableType.View or table.view_definition:
-                self.context.get_global().table_views.append(
-                    TableView(
-                        table_name=table_name,
-                        schema_name=schema_name,
-                        db_name=db_name,
-                        view_definition=(
-                            f'CREATE VIEW "{db_name}"."{schema_name}"'
-                            f'."{table_name}" AS {table.view_definition}'
-                        ),
-                    )
-                )
 
             self.register_record(table_request=table_request)
         except Exception as exc:
@@ -416,6 +427,7 @@ class UnitycatalogSource(
             )
             if referred_table_fqn:
                 for parent_column in column.parent_columns:
+                    # pylint: disable=protected-access
                     col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
                     if col_fqn:
                         referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
@@ -432,6 +444,7 @@ class UnitycatalogSource(
 
         return table_constraints
 
+    # pylint: disable=arguments-differ
     def update_table_constraints(
         self, table_constraints, foreign_columns, columns
     ) -> List[TableConstraint]:
@@ -488,11 +501,12 @@ class UnitycatalogSource(
                 f"Unable to add description to complex datatypes for column [{column.name}]: {exc}"
             )
 
-    def get_columns(self, column_data: List[ColumnInfo]) -> Iterable[Column]:
+    def get_columns(
+        self, table_name: str, column_data: List[ColumnInfo]
+    ) -> Iterable[Column]:
         """
         process table regular columns info
         """
-
         for column in column_data:
             parsed_string = {}
             if column.type_text:
@@ -511,6 +525,9 @@ class UnitycatalogSource(
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             if column.comment:
                 parsed_string["description"] = Markdown(column.comment)
+            parsed_string["tags"] = self.get_column_tag_labels(
+                table_name=table_name, column={"name": column.name}
+            )
             parsed_column = Column(**parsed_string)
             self.add_complex_datatype_descriptions(
                 column=parsed_column,
@@ -518,10 +535,97 @@ class UnitycatalogSource(
             )
             yield parsed_column
 
+    def yield_database_tag(
+        self, database_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Get Unity Catalog database/catalog tags using SQL query"""
+        query_tag_fqn_builder_mapping = (
+            (
+                UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=database_name),
+                lambda tag: [self.context.get().database_service, database_name],
+            ),
+            (
+                UNITY_CATALOG_GET_ALL_SCHEMA_TAGS.format(database=database_name),
+                lambda tag: [
+                    self.context.get().database_service,
+                    database_name,
+                    tag.schema_name,
+                ],
+            ),
+        )
+        try:
+            with get_sqlalchemy_connection(
+                self.service_connection
+            ).connect() as connection:
+                for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
+                    for tag in connection.execute(query):
+                        yield from get_ometa_tag_and_classification(
+                            tag_fqn=FullyQualifiedEntityName(
+                                fqn._build(*tag_fqn_builder(tag))
+                            ),  # pylint: disable=protected-access
+                            tags=[tag.tag_value],
+                            classification_name=tag.tag_name,
+                            tag_description=UNITY_CATALOG_TAG,
+                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                            metadata=self.metadata,
+                            system_tags=True,
+                        )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error getting tags for catalog/schema {database_name}: {exc}"
+            )
+
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """No tags being processed"""
+        """Get Unity Catalog schema tags using SQL query"""
+        database = self.context.get().database
+        query_tag_fqn_builder_mapping = (
+            (
+                UNITY_CATALOG_GET_ALL_TABLE_TAGS.format(
+                    database=database, schema=schema_name
+                ),
+                lambda tag: [
+                    self.context.get().database_service,
+                    database,
+                    schema_name,
+                    tag.table_name,
+                ],
+            ),
+            (
+                UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS.format(
+                    database=database, schema=schema_name
+                ),
+                lambda tag: [
+                    self.context.get().database_service,
+                    database,
+                    schema_name,
+                    tag.table_name,
+                    tag.column_name,
+                ],
+            ),
+        )
+        try:
+            with get_sqlalchemy_connection(
+                self.service_connection
+            ).connect() as connection:
+                for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
+                    for tag in connection.execute(query):
+                        yield from get_ometa_tag_and_classification(
+                            tag_fqn=FullyQualifiedEntityName(
+                                fqn._build(*tag_fqn_builder(tag))
+                            ),  # pylint: disable=protected-access
+                            tags=[tag.tag_value],
+                            classification_name=tag.tag_name,
+                            tag_description=UNITY_CATALOG_TAG,
+                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                            metadata=self.metadata,
+                            system_tags=True,
+                        )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error getting tags for schema {schema_name}: {exc}")
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
@@ -537,18 +641,23 @@ class UnitycatalogSource(
     def close(self):
         """Nothing to close"""
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+    # pylint: disable=arguments-renamed
+    def get_owner_ref(self, owner: Optional[str]) -> Optional[EntityReferenceList]:
         """
         Method to process the table owners
         """
+        if self.source_config.includeOwners is False:
+            return None
         try:
-            full_table_name = f"{self.context.get().database}.{self.context.get().database_schema}.{table_name}"
-            owner = self.api_client.get_owner_info(full_table_name)
-            if not owner:
-                return
+            if not owner or not isinstance(owner, str):
+                return None
             owner_ref = self.metadata.get_reference_by_email(email=owner)
+            if owner_ref:
+                return owner_ref
+            owner_name = owner.split("@")[0]
+            owner_ref = self.metadata.get_reference_by_name(name=owner_name)
             return owner_ref
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for table {table_name}: {exc}")
-        return
+            logger.warning(f"Error processing owner {owner}: {exc}")
+        return None

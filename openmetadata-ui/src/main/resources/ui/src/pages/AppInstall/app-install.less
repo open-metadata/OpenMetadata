@@ -10,10 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../styles/variables.less');
+
 .app-install-page {
   .stepper-container {
     padding: 0;
     max-width: 600px;
     margin: auto;
+  }
+
+  .app-intall-page-tabs {
+    height: @app-install-page-tabs-height;
+    overflow-y: auto;
   }
 }

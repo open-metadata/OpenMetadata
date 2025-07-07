@@ -10,24 +10,26 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -35,7 +37,6 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResource.DataProductList;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
@@ -86,9 +87,10 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     // Version 0.2 - Changes from this PATCH is consolidated with the previous changes resulting in
     // no change
     String json = JsonUtils.pojoToJson(product);
-    change = getChangeDescription(product, REVERT);
+    change = getChangeDescription(product, MINOR_UPDATE);
+    fieldAdded(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
     product.withAssets(List.of(TEST_TABLE1.getEntityReference(), topic.getEntityReference()));
-    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, REVERT, change);
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInDataProduct(topic, product, true); // topic is part of data product
 
     // Remove asset topic with PATCH
@@ -96,9 +98,9 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     // topic
     json = JsonUtils.pojoToJson(product);
     product.withAssets(List.of(TEST_TABLE1.getEntityReference()));
-    change = getChangeDescription(product, REVERT);
+    change = getChangeDescription(product, MINOR_UPDATE);
     fieldDeleted(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
-    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, REVERT, change);
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInDataProduct(topic, product, false); // topic is not part of data product
   }
 
@@ -123,17 +125,19 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     // Add User2 as expert using PATCH
     // Changes from this PATCH is consolidated resulting in revert of previous PUT
     String json = JsonUtils.pojoToJson(product);
-    change = getChangeDescription(product, REVERT);
+    change = getChangeDescription(product, MINOR_UPDATE);
+    fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
     product.withExperts(List.of(USER1.getEntityReference(), USER2.getEntityReference()));
-    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, REVERT, change);
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove User2 as expert using PATCH
     // Changes from this PATCH is consolidated with the previous changes resulting in deletion of
     // USER2
     json = JsonUtils.pojoToJson(product);
     product.withExperts(List.of(USER1.getEntityReference()));
-    change = getChangeDescription(product, REVERT);
-    patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, REVERT, change);
+    change = getChangeDescription(product, MINOR_UPDATE);
+    fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
+    patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -177,6 +181,74 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         .hasMessage(String.format("dataProduct instance for %s not found", rdnUUID));
   }
 
+  @Test
+  void test_inheritOwnerExpertsFromDomain(TestInfo test) throws IOException {
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+
+    // Create parent domain
+    CreateDomain parentDomainReq =
+        domainResourceTest
+            .createRequest(test, 1)
+            .withOwners(List.of(USER1_REF))
+            .withExperts(List.of(USER2.getFullyQualifiedName()));
+    Domain parentDomain = domainResourceTest.createEntity(parentDomainReq, ADMIN_AUTH_HEADERS);
+    parentDomain = domainResourceTest.getEntity(parentDomain.getId(), "*", ADMIN_AUTH_HEADERS);
+
+    // Create data product corresponding to parent domain
+    CreateDataProduct create =
+        createRequestWithoutExpertsOwners(getEntityName(test, 1))
+            .withDomain(parentDomain.getFullyQualifiedName());
+    DataProduct dataProduct = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertOwners(dataProduct.getOwners(), parentDomain.getOwners());
+    assertEntityReferences(dataProduct.getExperts(), parentDomain.getExperts());
+
+    // Create subdomain with no owners and experts
+    CreateDomain subDomainReq =
+        domainResourceTest
+            .createRequestWithoutOwnersExperts(getEntityName(test, 2))
+            .withDomain(parentDomain.getFullyQualifiedName());
+    Domain subDomain = domainResourceTest.createEntity(subDomainReq, ADMIN_AUTH_HEADERS);
+    subDomain = domainResourceTest.getEntity(subDomain.getId(), "*", ADMIN_AUTH_HEADERS);
+
+    // Create data product corresponding to subdomain
+    CreateDataProduct subDomainDataProductCreate =
+        createRequestWithoutExpertsOwners(getEntityName(test, 2))
+            .withDomain(subDomain.getFullyQualifiedName());
+    DataProduct subDomainDataProduct =
+        createAndCheckEntity(subDomainDataProductCreate, ADMIN_AUTH_HEADERS);
+
+    // Subdomain and its data product should inherit owners and experts from parent domain
+    assertOwners(subDomain.getOwners(), parentDomain.getOwners());
+    assertEntityReferences(subDomain.getExperts(), parentDomain.getExperts());
+    assertOwners(subDomainDataProduct.getOwners(), parentDomain.getOwners());
+    assertEntityReferences(subDomainDataProduct.getExperts(), parentDomain.getExperts());
+
+    // Add owner and expert to subdomain
+    Domain updateSubDomainOwner =
+        JsonUtils.readValue(JsonUtils.pojoToJson(subDomain), Domain.class);
+    updateSubDomainOwner.setOwners(List.of(TEAM11_REF));
+    domainResourceTest.patchEntity(
+        subDomain.getId(),
+        JsonUtils.pojoToJson(subDomain),
+        updateSubDomainOwner,
+        ADMIN_AUTH_HEADERS);
+    subDomain = domainResourceTest.getEntity(subDomain.getId(), "*", ADMIN_AUTH_HEADERS);
+
+    Domain updateSubDomainExpert =
+        JsonUtils.readValue(JsonUtils.pojoToJson(subDomain), Domain.class);
+    updateSubDomainExpert.setExperts(List.of(USER1_REF));
+    domainResourceTest.patchEntity(
+        subDomain.getId(),
+        JsonUtils.pojoToJson(subDomain),
+        updateSubDomainExpert,
+        ADMIN_AUTH_HEADERS);
+    subDomain = domainResourceTest.getEntity(subDomain.getId(), "*", ADMIN_AUTH_HEADERS);
+
+    // Data product of subdomain should also have the same changes as its corresponding domain
+    assertOwners(subDomainDataProduct.getOwners(), subDomain.getOwners());
+    assertEntityReferences(subDomainDataProduct.getExperts(), subDomain.getExperts());
+  }
+
   private void entityInDataProduct(
       EntityInterface entity, EntityInterface product, boolean inDataProduct)
       throws HttpResponseException {
@@ -197,6 +269,15 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         .withDomain(DOMAIN.getFullyQualifiedName())
         .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
         .withExperts(listOf(USER1.getFullyQualifiedName()))
+        .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
+  }
+
+  public CreateDataProduct createRequestWithoutExpertsOwners(String name) {
+    return new CreateDataProduct()
+        .withName(name)
+        .withDescription(name)
+        .withDomain(DOMAIN.getFullyQualifiedName())
+        .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
         .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
   }
 
@@ -227,7 +308,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
             ? getEntityByName(dataProduct.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
             : getEntity(dataProduct.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(getDataProduct.getOwners(), getDataProduct.getExperts());
-    String fields = "owners,domain,experts,assets";
+    String fields = "owners,domain,experts,assets,tags,followers";
     getDataProduct =
         byName
             ? getEntityByName(getDataProduct.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

@@ -56,6 +56,10 @@ import com.nimbusds.openid.connect.sdk.OIDCTokenResponseParser;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens;
 import com.nimbusds.openid.connect.sdk.validators.BadJWTExceptions;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import jakarta.ws.rs.BadRequestException;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -78,10 +82,6 @@ import java.util.Optional;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-import javax.ws.rs.BadRequestException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONObject;
@@ -92,10 +92,10 @@ import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.JsonUtils;
 import org.pac4j.core.context.HttpConstants;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.core.util.CommonHelper;
@@ -128,6 +128,8 @@ public class AuthenticationCodeFlowHandler {
   private final ClientAuthentication clientAuthentication;
   private final String principalDomain;
   private final int tokenValidity;
+  private final String maxAge;
+  private final String promptType;
 
   public AuthenticationCodeFlowHandler(
       AuthenticationConfiguration authenticationConfiguration,
@@ -153,6 +155,8 @@ public class AuthenticationCodeFlowHandler {
     validatePrincipalClaimsMapping(claimsMapping);
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
+    this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
+    this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
   }
 
   private OidcClient buildOidcClient(OidcClientConfig clientConfig) {
@@ -264,12 +268,13 @@ public class AuthenticationCodeFlowHandler {
         addStateAndNonceParameters(client, req, params);
 
         // This is always used to prompt the user to login
-        if (client instanceof GoogleOidcClient) {
-          params.put(OidcConfiguration.PROMPT, "consent");
-        } else {
-          params.put(OidcConfiguration.PROMPT, "login");
+        if (!nullOrEmpty(promptType)) {
+          params.put(OidcConfiguration.PROMPT, promptType);
         }
-        params.put(OidcConfiguration.MAX_AGE, "0");
+
+        if (!nullOrEmpty(maxAge)) {
+          params.put(OidcConfiguration.MAX_AGE, maxAge);
+        }
 
         String location = buildLoginAuthenticationRequestUrl(params);
         LOG.debug("Authentication request url: {}", location);
@@ -349,7 +354,7 @@ public class AuthenticationCodeFlowHandler {
       if (session != null) {
         LOG.debug("Invalidating the session for logout");
         session.invalidate();
-        httpServletResponse.sendRedirect(serverUrl);
+        httpServletResponse.sendRedirect(serverUrl + "/logout");
       } else {
         LOG.error("No session store available for this web context");
       }
@@ -642,6 +647,7 @@ public class AuthenticationCodeFlowHandler {
 
   @SneakyThrows
   public static void getErrorMessage(HttpServletResponse resp, Exception e) {
+    resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     resp.setContentType("text/html; charset=UTF-8");
     LOG.error("[Auth Callback Servlet] Failed in Auth Login : {}", e.getMessage());
     resp.getOutputStream()
@@ -662,6 +668,12 @@ public class AuthenticationCodeFlowHandler {
 
     String redirectUri = (String) request.getSession().getAttribute(SESSION_REDIRECT_URI);
 
+    String storedUserStr =
+        Entity.getCollectionDAO().userDAO().findUserByNameAndEmail(userName, email);
+    if (storedUserStr != null) {
+      User user = JsonUtils.readValue(storedUserStr, User.class);
+      Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
+    }
     String url =
         String.format(
             "%s?id_token=%s&email=%s&name=%s",
@@ -764,36 +776,51 @@ public class AuthenticationCodeFlowHandler {
 
   private void refreshAccessTokenAzureAd2Token(
       AzureAd2OidcConfiguration azureConfig, OidcCredentials azureAdProfile) {
+
     HttpURLConnection connection = null;
     try {
+      RefreshToken refreshToken = azureAdProfile.getRefreshToken();
+      if (refreshToken == null || refreshToken.getValue() == null) {
+        throw new TechnicalException("No refresh token available to request new access token.");
+      }
+
       Map<String, String> headers = new HashMap<>();
       headers.put(
           HttpConstants.CONTENT_TYPE_HEADER, HttpConstants.APPLICATION_FORM_ENCODED_HEADER_VALUE);
       headers.put(HttpConstants.ACCEPT_HEADER, HttpConstants.APPLICATION_JSON);
-      // get the token endpoint from discovery URI
+
       URL tokenEndpointURL = azureConfig.findProviderMetadata().getTokenEndpointURI().toURL();
       connection = HttpUtils.openPostConnection(tokenEndpointURL, headers);
 
-      BufferedWriter out =
+      String requestBody = azureConfig.makeOauth2TokenRequest(refreshToken.getValue());
+      byte[] bodyBytes = requestBody.getBytes(StandardCharsets.UTF_8);
+      connection.setFixedLengthStreamingMode(bodyBytes.length);
+
+      try (BufferedWriter out =
           new BufferedWriter(
-              new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.UTF_8));
-      out.write(azureConfig.makeOauth2TokenRequest(azureAdProfile.getRefreshToken().getValue()));
-      out.close();
+              new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.UTF_8))) {
+        out.write(requestBody);
+      }
 
       int responseCode = connection.getResponseCode();
       if (responseCode != 200) {
-        throw new TechnicalException(
-            "request for access token failed: " + HttpUtils.buildHttpErrorMessage(connection));
+        String error = HttpUtils.buildHttpErrorMessage(connection);
+        LOG.warn("Token refresh failed ({}): {}", responseCode, error);
+        throw new TechnicalException("Token refresh failed with status: " + responseCode);
       }
-      var body = HttpUtils.readBody(connection);
+
+      String body = HttpUtils.readBody(connection);
       Map<String, Object> res = JsonUtils.readValue(body, new TypeReference<>() {});
 
-      // Populate Tokens
       azureAdProfile.setAccessToken(new BearerAccessToken((String) res.get("access_token")));
       azureAdProfile.setRefreshToken(new RefreshToken((String) res.get("refresh_token")));
-      azureAdProfile.setIdToken(SignedJWT.parse((String) res.get("id_token")));
-    } catch (final IOException | ParseException e) {
-      throw new TechnicalException(e);
+
+      if (res.containsKey("id_token")) {
+        azureAdProfile.setIdToken(SignedJWT.parse((String) res.get("id_token")));
+      }
+
+    } catch (IOException | ParseException e) {
+      throw new TechnicalException("Exception while refreshing Azure AD token", e);
     } finally {
       HttpUtils.closeConnection(connection);
     }
@@ -916,7 +943,9 @@ public class AuthenticationCodeFlowHandler {
       OIDCTokenResponse tokenSuccessResponse, OidcCredentials credentials) {
     OIDCTokens oidcTokens = tokenSuccessResponse.getOIDCTokens();
     credentials.setAccessToken(oidcTokens.getAccessToken());
-    credentials.setRefreshToken(oidcTokens.getRefreshToken());
+    if (oidcTokens.getRefreshToken() != null) {
+      credentials.setRefreshToken(oidcTokens.getRefreshToken());
+    }
     if (oidcTokens.getIDToken() != null) {
       credentials.setIdToken(oidcTokens.getIDToken());
     }

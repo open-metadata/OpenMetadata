@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 from typing import Iterable, Iterator, Optional, cast
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -115,13 +116,13 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         super().__init__(config, metadata, global_profiler_config, status)
         self.source_config = cast(
             EntityFilterConfigInterface, self.source_config
-        )  # Satisfy typchecker
+        )  # Satisfy typechecker
 
     def _filter_databases(self, databases: Iterable[Database]) -> Iterable[Database]:
         """Filter databases based on the filter pattern
 
         Args:
-            database (Database): Database to filter
+            databases (Database): Database to filter
 
         Returns:
             bool
@@ -192,6 +193,21 @@ class DatabaseFetcherStrategy(FetcherStrategy):
 
         return False
 
+    def _filter_views(self, table: Table) -> bool:
+        """Filter the tables based on include views configuration"""
+        # If we include views, nothing to filter
+        if self.source_config.includeViews:
+            return False
+
+        # Otherwise, filter out views
+        if table.tableType == TableType.View:
+            self.status.filter(
+                table.name.root, f"We are not including views {table.name.root}"
+            )
+            return True
+
+        return False
+
     def _filter_column_metrics_computation(self):
         """Filter"""
 
@@ -204,6 +220,10 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             entity=Database,
             params={"service": self.config.source.serviceName},
         )
+        if not databases:
+            raise ValueError(
+                f"No databases found for service {self.config.source.serviceName}"
+            )
         databases = cast(Iterable[Database], databases)
 
         if self.source_config.databaseFilterPattern:
@@ -242,6 +262,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 not self.source_config.classificationFilterPattern
                 or not self.filter_classifications(table)
             )
+            and not self._filter_views(table)
         ]
 
         return tables

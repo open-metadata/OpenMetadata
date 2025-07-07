@@ -41,6 +41,15 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
+    "containerFilterPattern": {
+      "description": "Regex to only fetch containers that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Storage container Filter Pattern",
+      "default": {
+        "includes": [],
+        "excludes": ["_SUCCESS"]
+      }
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

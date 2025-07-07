@@ -58,6 +58,10 @@
         "duration": {
           "description": "How long did the query took to run in milliseconds.",
           "type": "number"
+        },
+        "cost": {
+          "description": "Cost of the query execution",
+          "type": "number"
         }
       },
       "required": ["query", "serviceName"]

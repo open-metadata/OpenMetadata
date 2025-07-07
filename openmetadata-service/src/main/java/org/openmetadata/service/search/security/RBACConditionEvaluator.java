@@ -200,6 +200,10 @@ public class RBACConditionEvaluator {
     String methodName = methodRef.getName();
 
     switch (methodName) {
+      case "matchAnyCertification" -> {
+        List<String> certificationLabels = extractMethodArguments(methodRef);
+        matchAnyCertification(certificationLabels, collector);
+      }
       case "matchAnyTag" -> {
         List<String> tags = extractMethodArguments(methodRef);
         matchAnyTag(tags, collector);
@@ -235,7 +239,12 @@ public class RBACConditionEvaluator {
   public void matchAnyTag(List<String> tags, ConditionCollector collector) {
     List<OMQueryBuilder> tagQueries = new ArrayList<>();
     for (String tag : tags) {
-      OMQueryBuilder tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
+      OMQueryBuilder tagQuery;
+      if (tag.startsWith("Tier")) {
+        tagQuery = queryBuilderFactory.termQuery("tier.tagFQN", tag);
+      } else {
+        tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
+      }
       tagQueries.add(tagQuery);
     }
     OMQueryBuilder tagQueryCombined;
@@ -252,6 +261,22 @@ public class RBACConditionEvaluator {
       OMQueryBuilder tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
       collector.addMust(tagQuery);
     }
+  }
+
+  public void matchAnyCertification(
+      List<String> certificationLabels, ConditionCollector collector) {
+    List<OMQueryBuilder> certificationQueries = new ArrayList<>();
+    for (String certificationLabel : certificationLabels) {
+      certificationQueries.add(
+          queryBuilderFactory.termQuery("certification.tagLabel.tagFQN", certificationLabel));
+    }
+    OMQueryBuilder certificationQueriesCombined;
+    if (certificationQueries.size() == 1) {
+      certificationQueriesCombined = certificationQueries.get(0);
+    } else {
+      certificationQueriesCombined = queryBuilderFactory.boolQuery().should(certificationQueries);
+    }
+    collector.addMust(certificationQueriesCombined);
   }
 
   public void isOwner(User user, ConditionCollector collector) {

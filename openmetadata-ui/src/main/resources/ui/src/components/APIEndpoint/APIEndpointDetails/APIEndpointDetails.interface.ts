@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
@@ -19,12 +18,11 @@ import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 export interface APIEndpointDetailsProps {
   apiEndpointDetails: APIEndpoint;
   apiEndpointPermissions: OperationPermission;
-  onCreateThread: (data: CreateThread) => Promise<void>;
   fetchAPIEndpointDetails: () => void;
   onFollowApiEndPoint: () => Promise<void>;
   onApiEndpointUpdate: (
     updatedData: APIEndpoint,
-    key: keyof APIEndpoint
+    key?: keyof APIEndpoint
   ) => Promise<void>;
   onToggleDelete: (version?: number) => void;
   onUnFollowApiEndPoint: () => Promise<void>;

@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import EditConnectionFormPage from './EditConnectionFormPage.component';
 
@@ -37,14 +42,17 @@ const mockServiceData = {
   },
 };
 
-const SERVICE_CONFIG_UPDATE = 'Update ServiceConfig';
-const SERVICE_CONFIG_FOCUS = 'Focus ServiceConfig';
 const ERROR = 'Error';
-const ACTIVE_FIELD = 'Active Field';
+
+const mockNavigate = jest.fn();
 
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div>ErrorPlaceHolder</div>)
 );
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
@@ -57,10 +65,10 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
 
 jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
   jest.fn().mockImplementation(({ activeField }) => (
-    <>
+    <div data-testid="service-doc-panel">
       <div>ServiceDocPanel</div>
-      <p>{activeField}</p>
-    </>
+      <div data-testid="active-field">{activeField}</div>
+    </div>
   ))
 );
 
@@ -73,33 +81,46 @@ jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-let withActiveField = true;
-let updateServiceData = true;
+jest.mock(
+  '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm',
+  () =>
+    jest.fn().mockImplementation(({ onSave, onCancel, onFocus }) => (
+      <div>
+        <div>ConnectionConfigForm</div>
+        <button
+          data-testid="next-button"
+          onClick={() => onSave({ formData: { testData: 'test' } })}>
+          label.next
+        </button>
+        <button data-testid="cancel-button" onClick={onCancel}>
+          label.back
+        </button>
+        <input
+          data-testid="connection-field"
+          type="text"
+          onFocus={() => onFocus('testField')}
+        />
+      </div>
+    ))
+);
 
 jest.mock(
-  '../../components/Settings/Services/ServiceConfig/ServiceConfig',
+  '../../components/Settings/Services/ServiceConfig/FiltersConfigForm',
   () =>
-    jest.fn().mockImplementation(({ onFocus, handleUpdate }) => (
-      <>
-        <p>ServiceConfig</p>
-        <button
-          onClick={() =>
-            handleUpdate(
-              updateServiceData
-                ? {
-                    ...mockServiceData.connection.config,
-                    databaseSchema: 'openmetadata_db',
-                  }
-                : mockServiceData.connection.config
-            )
-          }>
-          {SERVICE_CONFIG_UPDATE}
+    jest.fn().mockImplementation(({ onSave, onCancel }) => (
+      <div>
+        <div>FiltersConfigForm</div>
+        <button onClick={() => onSave({ formData: { testData: 'test' } })}>
+          label.save
         </button>
-        <button onClick={() => onFocus(withActiveField ? ACTIVE_FIELD : '')}>
-          {SERVICE_CONFIG_FOCUS}
-        </button>
-      </>
+        <button onClick={onCancel}>label.back</button>
+      </div>
     ))
+);
+
+jest.mock(
+  '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component',
+  () => jest.fn().mockImplementation(() => <div>IngestionStepper</div>)
 );
 
 jest.mock('../../hooks/useFqn', () => ({
@@ -110,11 +131,14 @@ jest.mock('../../rest/serviceAPI', () => ({
   getServiceByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockServiceData)),
-  patchService: jest.fn(),
+  patchService: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockServiceData)),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
   getEntityMissingError: jest.fn(),
+  getServiceLogo: jest.fn().mockReturnValue(''),
 }));
 
 jest.mock('../../utils/EntityUtils', () => ({
@@ -127,12 +151,15 @@ jest.mock('../../utils/RouterUtils', () => ({
 }));
 
 jest.mock('../../utils/ServiceUtilClassBase', () => ({
-  getServiceTypeLogo: jest.fn().mockReturnValue(''),
+  getEditConfigData: jest.fn().mockReturnValue({}),
+  setEditServiceDetails: jest.fn(),
 }));
+
+const mockGetServiceType = jest.fn().mockReturnValue('database');
 
 jest.mock('../../utils/ServiceUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
-  getServiceType: jest.fn(),
+  getServiceType: jest.fn((category) => mockGetServiceType(category)),
 }));
 
 const mockShowErrorToast = jest.fn();
@@ -143,13 +170,22 @@ jest.mock('../../utils/ToastUtils', () => ({
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ serviceCategory: 'databaseServices' }),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
+const mockProps = {
+  pageTitle: 'edit-connection',
+};
+
 describe('EditConnectionFormPage component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should render all necessary elements', async () => {
     const mockGetServiceByFQN = getServiceByFQN as jest.Mock;
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
     expect(mockGetServiceByFQN).toHaveBeenCalled();
@@ -157,7 +193,6 @@ describe('EditConnectionFormPage component', () => {
     expect(
       screen.getByText('message.edit-service-entity-connection')
     ).toBeInTheDocument();
-    expect(screen.getByText('ServiceConfig')).toBeInTheDocument();
     expect(screen.getByText('ServiceDocPanel')).toBeInTheDocument();
   });
 
@@ -169,104 +204,141 @@ describe('EditConnectionFormPage component', () => {
     });
 
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
-  });
-
-  it('actions check', async () => {
-    const mockUpdateService = patchService as jest.Mock;
-    await act(async () => {
-      render(<EditConnectionFormPage />);
-    });
-
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: SERVICE_CONFIG_UPDATE })
-      );
-    });
-
-    expect(mockUpdateService).toHaveBeenCalledWith(
-      'databaseServices',
-      mockServiceData.id,
-      [
-        {
-          op: 'add',
-          path: '/connection/config/databaseSchema',
-          value: 'openmetadata_db',
-        },
-      ]
-    );
-
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: SERVICE_CONFIG_FOCUS })
-      );
-    });
-
-    await act(async () => {
-      jest.runAllTimers();
-    });
-
-    expect(screen.getByText(ACTIVE_FIELD)).toBeInTheDocument();
-  });
-
-  it('call focus without active field', async () => {
-    withActiveField = false;
-
-    await act(async () => {
-      render(<EditConnectionFormPage />);
-    });
-
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: SERVICE_CONFIG_FOCUS })
-      );
-    });
-
-    expect(screen.queryByText(ACTIVE_FIELD)).not.toBeInTheDocument();
   });
 
   it('showErrorTost should be call when GetServiceByFQN fails', async () => {
     (getServiceByFQN as jest.Mock).mockRejectedValueOnce(ERROR);
 
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
     expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
   });
 
-  it('showErrorTost should be call when updateService fails', async () => {
-    (patchService as jest.Mock).mockRejectedValueOnce(ERROR);
-
+  it('should handle form submission in step 1', async () => {
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
+    const nextButton = screen.getByText('label.next');
     await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: SERVICE_CONFIG_UPDATE })
-      );
+      fireEvent.click(nextButton);
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('FiltersConfigForm')).toBeInTheDocument();
   });
 
-  it('patchService should not call if there is no change', async () => {
-    updateServiceData = false;
-    const mockUpdateService = patchService as jest.Mock;
+  it('should handle back navigation from step 2 to step 1', async () => {
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
+    // Move to step 2
+    const nextButton = screen.getByText('label.next');
     await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: SERVICE_CONFIG_UPDATE })
-      );
+      fireEvent.click(nextButton);
     });
 
-    expect(mockUpdateService).not.toHaveBeenCalled();
+    // Click back button
+    const backButton = screen.getByText('label.back');
+    await act(async () => {
+      fireEvent.click(backButton);
+    });
+
+    expect(screen.getByText('ConnectionConfigForm')).toBeInTheDocument();
+  });
+
+  it('should handle service update in step 2', async () => {
+    const mockPatchService = patchService as jest.Mock;
+
+    await act(async () => {
+      render(<EditConnectionFormPage {...mockProps} />);
+    });
+
+    // Move to step 2
+    const nextButton = screen.getByText('label.next');
+    await act(async () => {
+      fireEvent.click(nextButton);
+    });
+
+    // Submit form in step 2
+    const saveButton = screen.getByText('label.save');
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    expect(mockPatchService).toHaveBeenCalled();
+  });
+
+  it('should handle service update error in step 2', async () => {
+    const mockPatchService = patchService as jest.Mock;
+    mockPatchService.mockRejectedValueOnce(new Error('Update failed'));
+
+    await act(async () => {
+      render(<EditConnectionFormPage {...mockProps} />);
+    });
+
+    // Move to step 2
+    const nextButton = screen.getByText('label.next');
+    await act(async () => {
+      fireEvent.click(nextButton);
+    });
+
+    // Submit form in step 2
+    const saveButton = screen.getByText('label.save');
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    expect(mockShowErrorToast).toHaveBeenCalled();
+  });
+
+  it('should handle field focus', async () => {
+    render(<EditConnectionFormPage {...mockProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connection-field')).toBeInTheDocument();
+    });
+
+    const inputField = screen.getByTestId('connection-field');
+    fireEvent.focus(inputField);
+
+    await waitFor(() => {
+      const activeFieldElement = screen.getByTestId('active-field');
+
+      expect(activeFieldElement).toHaveTextContent('testField');
+    });
+  });
+
+  it('should handle cancel button click', async () => {
+    render(<EditConnectionFormPage {...mockProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
+    });
+
+    const cancelButton = screen.getByTestId('cancel-button');
+    fireEvent.click(cancelButton);
+
+    expect(mockNavigate).toHaveBeenCalled();
+  });
+
+  it('should show loader while fetching service details', async () => {
+    const mockGetServiceByFQN = getServiceByFQN as jest.Mock;
+    mockGetServiceByFQN.mockImplementationOnce(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve(mockServiceData), 100)
+        )
+    );
+
+    render(<EditConnectionFormPage {...mockProps} />);
+
+    expect(screen.getByText('Loader')).toBeInTheDocument();
   });
 });

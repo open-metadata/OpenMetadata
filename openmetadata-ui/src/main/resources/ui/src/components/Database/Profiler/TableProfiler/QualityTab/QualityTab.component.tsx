@@ -11,15 +11,23 @@
  *  limitations under the License.
  */
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Form, Row, Select, Space, Tabs } from 'antd';
-import { isEmpty } from 'lodash';
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
 import {
-  getEntityDetailsPath,
-  INITIAL_PAGING_VALUE,
-} from '../../../../../constants/constants';
+  Button,
+  Col,
+  Dropdown,
+  Form,
+  Row,
+  Select,
+  Space,
+  Tabs,
+  Tooltip,
+} from 'antd';
+import { isEmpty } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
+import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
   DEFAULT_SORT_ORDER,
@@ -30,9 +38,12 @@ import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constan
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
+import { PipelineType } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
+import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
+import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import {
   ListTestCaseParamsBySearch,
   TestCaseType,
@@ -41,7 +52,10 @@ import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
-import { getAddDataQualityTableTestPath } from '../../../../../utils/RouterUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getEntityDetailsPath,
+} from '../../../../../utils/RouterUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
@@ -64,6 +78,7 @@ export const QualityTab = () => {
     testCasePaging,
     table,
     testCaseSummary,
+    onSettingButtonClick,
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
 
@@ -76,9 +91,15 @@ export const QualityTab = () => {
     showPagination,
   } = testCasePaging;
 
-  const editTest = permissions.EditAll || permissions.EditTests;
+  const { editTest, editDataProfile } = useMemo(() => {
+    return {
+      editTest: permissions?.EditAll || permissions?.EditTests,
+      editDataProfile: permissions?.EditAll || permissions?.EditDataProfile,
+    };
+  }, [permissions]);
   const { fqn: datasetFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
+  const location = useCustomLocation();
   const { t } = useTranslation();
 
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
@@ -88,6 +109,28 @@ export const QualityTab = () => {
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
   const testSuite = useMemo(() => table?.testSuite, [table]);
+  const [ingestionPipelineCount, setIngestionPipelineCount] =
+    useState<number>(0);
+
+  const fetchIngestionPipelineCount = async () => {
+    try {
+      const { paging: ingestionPipelinePaging } = await getIngestionPipelines({
+        arrQueryFields: [],
+        testSuite: testSuite?.fullyQualifiedName ?? '',
+        pipelineType: [PipelineType.TestSuite],
+        limit: 0,
+      });
+      setIngestionPipelineCount(ingestionPipelinePaging.total);
+    } catch (error) {
+      // do nothing for count error
+    }
+  };
+
+  useEffect(() => {
+    if (testSuite?.fullyQualifiedName) {
+      fetchIngestionPipelineCount();
+    }
+  }, [testSuite?.fullyQualifiedName]);
 
   const handleTestCasePageChange: NextPreviousProps['pagingHandler'] = ({
     currentPage,
@@ -142,7 +185,13 @@ export const QualityTab = () => {
   const tabs = useMemo(
     () => [
       {
-        label: t('label.test-case-plural'),
+        label: (
+          <TabsLabel
+            count={paging.total}
+            id={EntityTabs.TEST_CASES}
+            name={t('label.test-case-plural')}
+          />
+        ),
         key: EntityTabs.TEST_CASES,
         children: (
           <Row className="p-t-md">
@@ -164,6 +213,7 @@ export const QualityTab = () => {
                 }}
                 breadcrumbData={tableBreadcrumb}
                 fetchTestCases={handleSortTestCase}
+                isEditAllowed={editTest}
                 isLoading={isTestsLoading}
                 showTableColumn={false}
                 testCases={allTestCases}
@@ -188,7 +238,13 @@ export const QualityTab = () => {
         ),
       },
       {
-        label: t('label.pipeline'),
+        label: (
+          <TabsLabel
+            count={ingestionPipelineCount}
+            id={EntityTabs.PIPELINE}
+            name={t('label.pipeline-plural')}
+          />
+        ),
         key: EntityTabs.PIPELINE,
         children: <TestSuitePipelineTab testSuite={testSuite} />,
       },
@@ -202,6 +258,7 @@ export const QualityTab = () => {
       getResourceLimit,
       tableBreadcrumb,
       testCasePaging,
+      ingestionPipelineCount,
     ]
   );
 
@@ -228,7 +285,17 @@ export const QualityTab = () => {
   };
 
   const handleAddTestClick = (type: ProfilerDashboardType) => {
-    history.push(getAddDataQualityTableTestPath(type, datasetFQN));
+    navigate(getAddDataQualityTableTestPath(type, datasetFQN));
+  };
+
+  const handleTabChange = () => {
+    navigate(
+      {
+        pathname: location.pathname,
+        search: location.search,
+      },
+      { state: undefined, replace: true }
+    );
   };
 
   const addButtonContent = useMemo(
@@ -293,6 +360,19 @@ export const QualityTab = () => {
                     </LimitWrapper>
                   </Form.Item>
                 )}
+
+                {editDataProfile && (
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.setting-plural')}>
+                    <Button
+                      className="flex-center"
+                      data-testid="profiler-setting-btn"
+                      onClick={onSettingButtonClick}>
+                      <SettingIcon />
+                    </Button>
+                  </Tooltip>
+                )}
               </Space>
             </Form>
           </Col>
@@ -302,7 +382,7 @@ export const QualityTab = () => {
         <SummaryPanel testSummary={testCaseSummary ?? INITIAL_TEST_SUMMARY} />
       </Col>
       <Col span={24}>
-        <Tabs items={tabs} />
+        <Tabs className="tabs-new" items={tabs} onChange={handleTabChange} />
       </Col>
     </Row>
   );

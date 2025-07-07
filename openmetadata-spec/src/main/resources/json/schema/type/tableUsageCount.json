@@ -35,6 +35,41 @@
         }
       },
       "additionalProperties": false
+    },
+    "queryCostWrapper": {
+      "type": "object",
+      "properties": {
+        "cost": {
+          "description": "Avg query cost per execution",
+          "type": "number"
+        },
+        "count": {
+          "description": "Number of times the query was executed",
+          "type": "number"
+        },
+        "date": {
+          "description": "Date of execution of SQL query",
+          "type": "string"
+        },
+        "queryHash": {
+          "description": "Hash of the query",
+          "type": "string"
+        },
+        "query": {
+          "description": "SQL query",
+          "type": "string"
+        },
+        "dialect": {
+          "description": "SQL dialect",
+          "type": "string"
+        },
+        "totalDuration": {
+          "description": "Total duration of the query",
+          "type": "number"
+        }
+      },
+      "required": ["cost", "count"],
+      "additionalProperties": false
     }
   },
   "properties": {

@@ -25,17 +25,11 @@ import {
 import { AxiosError } from 'axios';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { LabelType } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -83,7 +77,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
     const filteredData = data.filter((item) => {
       const isFiltered = filterOptions.includes(
-        item.data?.fullyQualifiedName ?? ''
+        (item.data as Tag)?.fullyQualifiedName ?? ''
       );
       if (isFiltered) {
         count = optionFilteredCount + 1;
@@ -122,36 +116,30 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   );
 
   const tagOptions = useMemo(() => {
-    const newTags = options
-      .filter((tag) => !tag.label?.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)) // To filter out Tier tags
-      .map((tag) => {
-        const displayName = tag.data?.displayName;
-        const parts = Fqn.split(tag.label);
-        const lastPartOfTag = isEmpty(displayName)
-          ? parts.slice(-1).join(FQN_SEPARATOR_CHAR)
-          : displayName;
-        parts.pop();
+    const newTags = options.map((tag) => {
+      const displayName = tag.data?.displayName;
+      const parts = Fqn.split(tag.label);
+      const lastPartOfTag = isEmpty(displayName)
+        ? parts.slice(-1).join(FQN_SEPARATOR_CHAR)
+        : displayName;
+      parts.pop();
 
-        return {
-          label: tag.label,
-          displayName: (
-            <Space className="w-full" direction="vertical" size={0}>
-              <Typography.Paragraph
-                ellipsis
-                className="text-grey-muted m-0 p-0">
-                {parts.join(FQN_SEPARATOR_CHAR)}
-              </Typography.Paragraph>
-              <Typography.Text
-                ellipsis
-                style={{ color: tag.data?.style?.color }}>
-                {lastPartOfTag}
-              </Typography.Text>
-            </Space>
-          ),
-          value: tag.value,
-          data: tag.data,
-        };
-      });
+      return {
+        label: tag.label,
+        displayName: (
+          <Space className="w-full" direction="vertical" size={0}>
+            <Typography.Paragraph ellipsis className="text-grey-muted m-0 p-0">
+              {parts.join(FQN_SEPARATOR_CHAR)}
+            </Typography.Paragraph>
+            <Typography.Text ellipsis style={{ color: tag.data?.style?.color }}>
+              {lastPartOfTag}
+            </Typography.Text>
+          </Space>
+        ),
+        value: tag.value,
+        data: tag.data,
+      };
+    });
 
     return newTags;
   }, [options]);
@@ -218,7 +206,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     const { label, onClose } = data;
     const tagLabel = getTagDisplay(label as string);
     const tag = {
-      tagFQN: selectedTag?.data.fullyQualifiedName,
+      tagFQN: (selectedTag?.data as Tag)?.fullyQualifiedName,
       ...pick(
         selectedTag?.data,
         'description',
@@ -254,6 +242,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
     return (
       <TagsV1
+        isEditTags
         size={props.size}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
@@ -317,6 +306,8 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
         )
       }
       optionLabelProp="label"
+      // this popupClassName class is used to identify the dropdown in the playwright tests
+      popupClassName="async-select-list-dropdown"
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
@@ -25,7 +25,7 @@ import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import Table from '../common/Table/Table';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
@@ -96,10 +96,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         key: 'owner',
         render: (owner: string) =>
           owner ? (
-            <Space>
-              <ProfilePicture name={owner} width="24" />
-              <Typography.Text>{owner}</Typography.Text>
-            </Space>
+            <UserPopOverCard showUserName profileWidth={24} userName={owner} />
           ) : (
             <Typography.Text>--</Typography.Text>
           ),

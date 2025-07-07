@@ -73,9 +73,16 @@ Credentials Type is the type of the account, for a service account the value of 
 $$
 
 $$section
+### Billing Project ID $(id="billingProjectId")
+
+A billing project ID is a unique string used to identify and authorize your project for billing in Google Cloud.
+$$
+
+$$section
 ### Project ID $(id="projectId")
 
-A project ID is a unique string used to differentiate your project from all others in Google Cloud. To fetch this key, look for the value associated with the `project_id` key in the service account key file.
+A project ID is a unique string used to differentiate your project from all others in Google Cloud. To fetch this key, look for the value associated with the `project_id` key in the service account key file. 
+You can select a single project ID or multiple project IDs from the dropdown menu to specify which projects you want to connect to.
 $$
 
 $$section
@@ -173,6 +180,17 @@ $$section
 Location used to query `INFORMATION_SCHEMA.JOBS_BY_PROJECT` to fetch usage data. You can pass multi-regions, such as `us` or `eu`, or your specific region such as `us-east1`.
 
 Australia and Asia multi-regions are not yet supported.
+$$
+
+$$section
+### Cost Per TiB $(id="costPerTB")
+
+The cost (in USD) per tebibyte (TiB) of data processed during BigQuery usage analysis. This value is used to estimate query costs when analyzing usage metrics from `INFORMATION_SCHEMA.JOBS_BY_PROJECT`.
+
+This setting does **not** affect actual billing—it is only used for internal reporting and visualization of estimated costs.
+
+The default value, if not set, may assume the standard on-demand BigQuery pricing (e.g., $5.00 per TiB), but you should adjust it according to your organization's negotiated rates or flat-rate pricing model.
+
 $$
 
 $$section

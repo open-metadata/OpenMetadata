@@ -10,16 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Divider, Row } from 'antd';
+import { Card, Col, Row } from 'antd';
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+
+import QueryString from 'qs';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  DIMENSIONS_DATA,
+  NO_DIMENSION,
+} from '../../../../constants/profiler.constant';
 import { DataQualityReport } from '../../../../generated/tests/dataQualityReport';
 import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
-import { fetchTestCaseSummaryByDimension } from '../../../../rest/dataQualityDashboardAPI';
+import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import {
+  fetchTestCaseSummaryByDimension,
+  fetchTestCaseSummaryByNoDimension,
+} from '../../../../rest/dataQualityDashboardAPI';
 import {
   getDimensionIcon,
   transformToTestCaseStatusByDimension,
 } from '../../../../utils/DataQuality/DataQualityUtils';
+import { getDataQualityPagePath } from '../../../../utils/RouterUtils';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 import StatusByDimensionWidget from '../StatusCardWidget/StatusCardWidget.component';
 import './status-by-dimension-card-widget.less';
@@ -34,7 +46,7 @@ const StatusByDimensionCardWidget = ({
   const dqDimensions = useMemo(
     () =>
       isUndefined(dqByDimensionData)
-        ? Object.values(DataQualityDimensions).map((item) => ({
+        ? DIMENSIONS_DATA.map((item) => ({
             title: item,
             success: 0,
             failed: 0,
@@ -49,8 +61,11 @@ const StatusByDimensionCardWidget = ({
     setIsDqByDimensionLoading(true);
     try {
       const { data } = await fetchTestCaseSummaryByDimension(chartFilter);
+      const { data: noDimensionData } = await fetchTestCaseSummaryByNoDimension(
+        chartFilter
+      );
 
-      setDqByDimensionData(data);
+      setDqByDimensionData([...data, ...noDimensionData]);
     } catch (error) {
       setDqByDimensionData(undefined);
     } finally {
@@ -64,26 +79,35 @@ const StatusByDimensionCardWidget = ({
 
   return (
     <Card
+      bodyStyle={{ padding: '40px 14px' }}
       className="status-by-dimension-card-widget-container"
       loading={isDqByDimensionLoading}>
-      <Row justify="space-between">
+      <Row gutter={[24, 40]}>
         {dqDimensions.map((dimension, index) => (
-          <Fragment key={dimension.title}>
-            <Col>
-              <StatusByDimensionWidget
-                icon={getDimensionIcon(
-                  dimension.title as DataQualityDimensions
-                )}
-                key={dimension.title}
-                statusData={dimension}
-              />
-            </Col>
-            {dqDimensions.length - 1 > index && (
-              <Col>
-                <Divider className="dimension-widget-divider" type="vertical" />
-              </Col>
-            )}
-          </Fragment>
+          <Col
+            className={classNames({
+              'dimension-widget-divider': (index + 1) % 4 !== 0,
+            })}
+            key={dimension.title}
+            span={6}>
+            <StatusByDimensionWidget
+              icon={getDimensionIcon(dimension.title as DataQualityDimensions)}
+              key={dimension.title}
+              redirectPath={
+                dimension.title === NO_DIMENSION
+                  ? undefined
+                  : {
+                      pathname: getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
+                      search: QueryString.stringify({
+                        dataQualityDimension: dimension.title,
+                      }),
+                    }
+              }
+              statusData={dimension}
+            />
+          </Col>
         ))}
       </Row>
     </Card>

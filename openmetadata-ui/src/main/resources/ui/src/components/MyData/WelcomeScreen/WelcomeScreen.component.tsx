@@ -12,14 +12,14 @@
  */
 import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { split } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import WelcomeScreenImg from '../../../assets/img/welcome-screen.png';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as LineArrowRight } from '../../../assets/svg/line-arrow-right.svg';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import './welcome-screen.style.less';
 
@@ -37,6 +37,13 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
     return split(getEntityName(currentUser), ' ')[0];
   }, [currentUser]);
 
+  const { title, welcomeScreenImg } = useMemo(() => {
+    return {
+      title: brandClassBase.getPageTitle(),
+      welcomeScreenImg: brandClassBase.getWelcomeScreenImg(),
+    };
+  }, []);
+
   return (
     <Card
       className="welcome-screen-container card-body-border-none card-padding-0"
@@ -49,13 +56,14 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
           onClick={onClose}
         />
       }>
-      <Row className="p-md welcome-screen-full-height" gutter={16}>
-        <Col span={12}>
+      <Row className="p-md welcome-screen-full-height">
+        <Col className="flex-center" span={12}>
           <img
             alt="welcome screen image"
+            className="welcome-screen-img"
             data-testid="welcome-screen-img"
             loading="lazy"
-            src={WelcomeScreenImg}
+            src={welcomeScreenImg}
           />
         </Col>
         <Col span={12}>
@@ -67,7 +75,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
                 })}
               </Paragraph>
               <Paragraph className="welcome-screen-header-second-line m-b-0">
-                {`${t('label.open-metadata')}! 🎉`}
+                {`${title}! 🎉`}
               </Paragraph>
             </div>
             <Divider className="welcome-screen-header-divider" />

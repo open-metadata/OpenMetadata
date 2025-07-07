@@ -13,46 +13,31 @@
 
 import { Button, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { trim } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { ADD_ROLE_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
+import { withPageLayout } from '../../../hoc/withPageLayout';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
-import {
-  getPath,
-  getRoleWithFqnPath,
-  getSettingPath,
-} from '../../../utils/RouterUtils';
+import { getField } from '../../../utils/formUtils';
+import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 const { Option } = Select;
 const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
-const breadcrumb = [
-  {
-    name: t('label.setting-plural'),
-    url: getSettingPath(),
-  },
-  {
-    name: t('label.role-plural'),
-    url: rolesPath,
-  },
-  {
-    name: t('label.add-new-entity', { entity: t('label.role') }),
-    url: '',
-  },
-];
-
 const AddRolePage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -75,7 +60,7 @@ const AddRolePage = () => {
   };
 
   const handleCancel = () => {
-    history.push(rolesPath);
+    navigate(rolesPath);
   };
 
   const handleSubmit = async () => {
@@ -90,7 +75,7 @@ const AddRolePage = () => {
     try {
       const dataResponse = await addRole(data);
       if (dataResponse) {
-        history.push(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
+        navigate(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
       }
     } catch (error) {
       showErrorToast(
@@ -107,6 +92,26 @@ const AddRolePage = () => {
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: `${t('label.description')}:`,
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        style: {
+          margin: 0,
+        },
+        placeHolder: t('message.write-your-description'),
+        onTextChange: (value: string) => setDescription(value),
+      },
+    }),
+    []
+  );
+
   useEffect(() => {
     fetchPolicies();
   }, []);
@@ -116,16 +121,18 @@ const AddRolePage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-role-container">
-            <TitleBreadcrumb titleLinks={breadcrumb} />
+          <div data-testid="add-role-container">
+            <TitleBreadcrumb titleLinks={ADD_ROLE_PAGE_BREADCRUMB} />
             <div className="m-t-md">
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.add-new-entity', { entity: t('label.role') })}
+                {t('label.add-new-entity', {
+                  entity: t('label.role'),
+                })}
               </Typography.Paragraph>
               <Form
                 data-testid="role-form"
@@ -144,17 +151,8 @@ const AddRolePage = () => {
                     onChange={(e) => setName(e.target.value)}
                   />
                 </Form.Item>
-                <Form.Item
-                  label={`${t('label.description')}:`}
-                  name="description">
-                  <RichTextEditor
-                    height="200px"
-                    initialValue={description}
-                    placeHolder={t('message.write-your-description')}
-                    style={{ margin: 0 }}
-                    onTextChange={(value) => setDescription(value)}
-                  />
-                </Form.Item>
+                {getField(descriptionField)}
+
                 <Form.Item
                   label={`${t('label.select-a-policy')}:`}
                   name="policies"
@@ -215,7 +213,7 @@ const AddRolePage = () => {
             <Typography.Text>{t('message.add-role-message')}</Typography.Text>
           </>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
@@ -223,4 +221,4 @@ const AddRolePage = () => {
   );
 };
 
-export default AddRolePage;
+export default withPageLayout(AddRolePage);

@@ -14,11 +14,11 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, toString } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { getVersionPath } from '../../../constants/constants';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
@@ -34,10 +34,13 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getVersionPath } from '../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -61,8 +64,8 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   entityPermissions,
 }: ContainerVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -95,7 +98,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.CONTAINER,
         entityFqn,
@@ -145,7 +148,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         key: EntityTabs.SCHEMA,
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -176,6 +179,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
@@ -183,6 +187,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
 
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.CONTAINER}
                     key={tagType}
                     permission={false}
@@ -206,7 +211,6 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.CONTAINER}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
@@ -248,13 +252,22 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
                 onVersionClick={backHandler}
               />
             </Col>
-            <Col span={24}>
-              <Tabs
-                defaultActiveKey={tab ?? EntityTabs.SCHEMA}
-                items={tabItems}
-                onChange={handleTabChange}
-              />
-            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.CONTAINER as CustomizeEntityType}
+              onUpdate={() => Promise.resolve()}>
+              <Col className="entity-version-page-tabs" span={24}>
+                <Tabs
+                  className="tabs-new"
+                  defaultActiveKey={tab}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
+              </Col>
+            </GenericProvider>
           </Row>
         </div>
       )}

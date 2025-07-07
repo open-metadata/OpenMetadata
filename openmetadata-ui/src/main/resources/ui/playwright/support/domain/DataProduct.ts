@@ -15,6 +15,7 @@ import { uuid } from '../../utils/common';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Domain } from './Domain';
+import { SubDomain } from './SubDomain';
 
 type UserTeamRef = {
   name: string;
@@ -43,11 +44,14 @@ export class DataProduct extends EntityClass {
     fullyQualifiedName: `\"PW%dataProduct.${this.id}\"`,
   };
 
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(domain: Domain, name?: string) {
+  constructor(domain: Domain, name?: string, subDomain?: SubDomain) {
     super(EntityTypeEndpoint.DATA_PRODUCT);
-    this.data.domain = domain.data.name;
+    this.data.domain =
+      subDomain?.data.fullyQualifiedName ||
+      domain.data.fullyQualifiedName ||
+      ''; // fqn
     this.data.name = name ?? this.data.name;
     // eslint-disable-next-line no-useless-escape
     this.data.fullyQualifiedName = `\"${this.data.name}\"`;

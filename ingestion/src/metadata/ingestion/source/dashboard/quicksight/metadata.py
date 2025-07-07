@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -49,9 +49,8 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import (
     LINEAGE_MAP,
@@ -69,6 +68,7 @@ from metadata.ingestion.source.dashboard.quicksight.models import (
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -254,12 +254,14 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_entity,
+        db_service_name: Optional[str],
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table(parsed form query source) <-> dashboard"""
-        if not db_service_entity:
-            logger.debug(f"db service is not ingested")
-            return None
+        db_service_entity = None
+        if db_service_name:
+            db_service_entity = self.metadata.get_by_name(
+                entity=DatabaseService, fqn=db_service_name
+            )
         sql_query = data_source_resp.data_source_resp.query
         source_database_names = []
         try:
@@ -278,7 +280,7 @@ class QuicksightSource(DashboardServiceSource):
                     db_service_entity.serviceType.value
                 )
                 if db_service_entity
-                else None,
+                else Dialect.ANSI,
             )
             lineage_details = LineageDetails(
                 source=LineageSource.DashboardLineage, sqlQuery=sql_query
@@ -289,14 +291,18 @@ class QuicksightSource(DashboardServiceSource):
                     database_schema_name = self.check_database_schema_name(
                         database_schema_name
                     )
-                    from_entities = search_table_entities(
-                        metadata=self.metadata,
-                        database=db_name,
-                        service_name=db_service_entity.name.root,
-                        database_schema=database_schema_name,
-                        table=table,
+                    fqn_search_string = build_es_fqn_search_string(
+                        database_name=db_name,
+                        schema_name=database_schema_name,
+                        service_name=db_service_name or "*",
+                        table_name=table,
                     )
-                    for from_entity in from_entities:
+                    from_entities = self.metadata.search_in_any_service(
+                        entity_type=Table,
+                        fqn_search_string=fqn_search_string,
+                        fetch_multiple_entities=True,
+                    )
+                    for from_entity in from_entities or []:
                         if from_entity is not None and data_model_entity is not None:
                             columns = [
                                 col.name.root for col in data_model_entity.columns
@@ -354,7 +360,7 @@ class QuicksightSource(DashboardServiceSource):
                     containers = self.metadata.es_search_container_by_path(
                         full_path=f"s3://{bucket_name}/{key_name}"
                     )
-                    for container in containers:
+                    for container in containers or []:
                         if container is not None and data_model_entity is not None:
                             storage_entity = EntityReference(
                                 id=Uuid(container.id.root),
@@ -385,7 +391,7 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_entity,
+        db_service_name: Optional[str],
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table <-> dashboard"""
         try:
@@ -394,17 +400,15 @@ class QuicksightSource(DashboardServiceSource):
             if data_source_resp and data_source_resp.DataSourceParameters:
                 data_source_dict = data_source_resp.DataSourceParameters
                 for db in data_source_dict.keys() or []:
-                    from_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=db_service_entity.name.root,
+                    fqn_search_string = build_es_fqn_search_string(
                         database_name=data_source_dict[db].get("Database"),
                         schema_name=schema_name,
+                        service_name=db_service_name or "*",
                         table_name=table_name,
                     )
-                    from_entity = self.metadata.get_by_name(
-                        entity=Table,
-                        fqn=from_fqn,
+                    from_entity = self.metadata.search_in_any_service(
+                        entity_type=Table,
+                        fqn_search_string=fqn_search_string,
                     )
                     if from_entity is not None and data_model_entity is not None:
                         columns = [col.name.root for col in data_model_entity.columns]
@@ -440,14 +444,13 @@ class QuicksightSource(DashboardServiceSource):
         return None
 
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
-        self, dashboard_details: DashboardDetail, db_service_name: str
+        self,
+        dashboard_details: DashboardDetail,
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
-        db_service_entity = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=db_service_name
-        )
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(
@@ -460,7 +463,7 @@ class QuicksightSource(DashboardServiceSource):
                         data_model_entity,
                         datamodel.DataSource,
                         dashboard_details,
-                        db_service_entity,
+                        db_service_name,
                     )
                 elif isinstance(
                     datamodel.DataSource.data_source_resp, DataSourceRespS3
@@ -473,7 +476,7 @@ class QuicksightSource(DashboardServiceSource):
                         data_model_entity,
                         datamodel.DataSource,
                         dashboard_details,
-                        db_service_entity,
+                        db_service_name,
                     )
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(

@@ -1,17 +1,26 @@
 package org.openmetadata.service.apps.bundles.insights.search.opensearch;
 
 import java.io.IOException;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.Response;
-import os.org.opensearch.client.ResponseException;
 import os.org.opensearch.client.RestClient;
 
 public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface {
   private final RestClient client;
+  private final String resourcePath = "/dataInsights/opensearch";
+  private final String clusterAlias;
 
-  public OpenSearchDataInsightsClient(RestClient client) {
+  public OpenSearchDataInsightsClient(RestClient client, String clusterAlias) {
     this.client = client;
+    this.clusterAlias = clusterAlias;
+  }
+
+  @Override
+  public String getClusterAlias() {
+    return clusterAlias;
   }
 
   private Response performRequest(String method, String path) throws IOException {
@@ -24,21 +33,6 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
     request.setJsonEntity(payload);
 
     return client.performRequest(request);
-  }
-
-  @Override
-  public void createLifecyclePolicy(String name, String policy) throws IOException {
-    try {
-      performRequest("PUT", String.format("/_plugins/_ism/policies/%s", name), policy);
-    } catch (ResponseException ex) {
-      // Conflict since the Policy already exists
-      if (ex.getResponse().getStatusLine().getStatusCode() == 409) {
-        performRequest("DELETE", String.format("/_plugins/_ism/policies/%s", name));
-        performRequest("PUT", String.format("/_plugins/_ism/policies/%s", name), policy);
-      } else {
-        throw ex;
-      }
-    }
   }
 
   @Override
@@ -63,21 +57,29 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   }
 
   @Override
-  public void createDataAssetsDataStream(String name) throws IOException {
-    String resourcePath = "/dataInsights/opensearch";
-    createLifecyclePolicy(
-        "di-data-assets-lifecycle",
-        readResource(String.format("%s/indexLifecyclePolicy.json", resourcePath)));
+  public void createDataAssetsDataStream(
+      String name,
+      String entityType,
+      IndexMapping entityIndexMapping,
+      String language,
+      int retentionDays)
+      throws IOException {
     createComponentTemplate(
-        "di-data-assets-mapping",
-        readResource(String.format("%s/indexMappingsTemplate.json", resourcePath)));
+        getStringWithClusterAlias("di-data-assets-mapping"),
+        buildMapping(
+            entityType,
+            entityIndexMapping,
+            language,
+            readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
     createIndexTemplate(
-        "di-data-assets", readResource(String.format("%s/indexTemplate.json", resourcePath)));
+        getStringWithClusterAlias("di-data-assets"),
+        IndexTemplate.getIndexTemplateWithClusterAlias(
+            getClusterAlias(), readResource(String.format("%s/indexTemplate.json", resourcePath))));
     createDataStream(name);
   }
 
   @Override
   public void deleteDataAssetDataStream(String name) throws IOException {
-    performRequest("DELETE", String.format("_data_stream/%s", name));
+    performRequest("DELETE", String.format("/_data_stream/%s", name));
   }
 }

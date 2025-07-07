@@ -14,14 +14,12 @@
 import { DateRangeObject } from 'Models';
 import { ReactNode } from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { SystemProfile } from '../../../../generated/api/data/createTableProfile';
 import {
   Column,
   ColumnProfilerConfig,
   PartitionProfilerConfig,
   ProfileSampleType,
   Table,
-  TableProfile,
   TableProfilerConfig,
 } from '../../../../generated/entity/data/table';
 import { TestCase, TestSummary } from '../../../../generated/tests/testCase';
@@ -72,10 +70,6 @@ export type ModifiedColumn = Column & {
   testCount?: number;
 };
 
-export type columnTestResultType = {
-  [key: string]: { results: TableTestsType['results']; count: number };
-};
-
 export interface ProfilerProgressWidgetProps {
   value: number;
   strokeColor?: string;
@@ -97,11 +91,7 @@ export type OverallTableSummaryType = {
   title: string;
   value: number | string;
   className?: string;
-};
-
-export type TableProfilerData = {
-  tableProfilerData: TableProfile[];
-  systemProfilerData: SystemProfile[];
+  key: string;
 };
 
 export type TableProfilerChartProps = {

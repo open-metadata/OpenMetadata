@@ -66,7 +66,7 @@ test('Query Entity', async ({ page }) => {
     );
     await page.click(`[data-testid="table_queries"]`);
     const tableResponse = page.waitForResponse(
-      '/api/v1/search/query?q=**&from=0&size=*&index=table_search_index'
+      '/api/v1/search/query?q=**&from=0&size=*&index=table_search_index*'
     );
     await queryResponse;
     await page.click(`[data-testid="add-query-btn"]`);
@@ -89,7 +89,12 @@ test('Query Entity', async ({ page }) => {
     await page.keyboard.type(queryData.queryUsedIn.table1);
     await tableSearchResponse;
 
-    await page.click(`[title="${queryData.queryUsedIn.table1}"]`);
+    await page
+      .locator('div')
+      .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table1}$`) })
+      .first()
+      .click();
+
     await clickOutside(page);
 
     const createQueryResponse = page.waitForResponse('/api/v1/queries');
@@ -101,7 +106,9 @@ test('Query Entity', async ({ page }) => {
   });
 
   await test.step('Update owner, description and tag', async () => {
-    const ownerListResponse = page.waitForResponse('/api/v1/users?*');
+    const ownerListResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+    );
     await page
       .getByTestId(
         'entity-summary-resizable-right-panel-container entity-resizable-panel-container'
@@ -136,7 +143,7 @@ test('Query Entity', async ({ page }) => {
 
     // Update Description
     await page.click(`[data-testid="edit-description"]`);
-    await page.fill(descriptionBox, 'updated description');
+    await page.locator(descriptionBox).fill('updated description');
     const updateDescriptionResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
@@ -170,11 +177,15 @@ test('Query Entity', async ({ page }) => {
     await page.keyboard.type(`${queryData.queryUsedIn.table1}`);
     await page.click('[data-testid="edit-query-used-in"]');
     const tableSearchResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=table_search_index'
+      '/api/v1/search/query?q=*&index=table_search_index*'
     );
     await page.keyboard.type(queryData.queryUsedIn.table2);
     await tableSearchResponse;
-    await page.click(`[title="${queryData.queryUsedIn.table2}"]`);
+    await page
+      .locator('div')
+      .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table2}$`) })
+      .first()
+      .click();
     await clickOutside(page);
     const updateQueryResponse = page.waitForResponse(
       (response) =>

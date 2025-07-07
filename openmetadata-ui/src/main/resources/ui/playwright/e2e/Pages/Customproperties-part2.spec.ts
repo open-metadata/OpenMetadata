@@ -17,8 +17,9 @@ import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
   editCreatedProperty,
+  verifyCustomPropertyInAdvancedSearch,
 } from '../../utils/customProperty';
-import { settingClick } from '../../utils/sidebar';
+import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -35,7 +36,11 @@ test.describe('Custom properties with custom property config', () => {
       test(`Add Enum custom property for ${entity.name}`, async ({ page }) => {
         test.slow(true);
 
-        await settingClick(page, entity.entityApiType, true);
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
 
         await addCustomPropertiesForEntity({
           page,
@@ -46,6 +51,18 @@ test.describe('Custom properties with custom property config', () => {
         });
 
         await editCreatedProperty(page, propertyName, 'Enum');
+
+        await verifyCustomPropertyInAdvancedSearch(
+          page,
+          propertyName.toUpperCase(), // displayName is in uppercase
+          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
+        );
+
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
 
         await deleteCreatedProperty(page, propertyName);
       });
@@ -59,7 +76,11 @@ test.describe('Custom properties with custom property config', () => {
       test(`Add Table custom property for ${entity.name}`, async ({ page }) => {
         test.slow(true);
 
-        await settingClick(page, entity.entityApiType, true);
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
 
         await addCustomPropertiesForEntity({
           page,
@@ -70,6 +91,18 @@ test.describe('Custom properties with custom property config', () => {
         });
 
         await editCreatedProperty(page, propertyName, 'Table');
+
+        await verifyCustomPropertyInAdvancedSearch(
+          page,
+          propertyName.toUpperCase(), // displayName is in uppercase
+          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
+        );
+
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
 
         await deleteCreatedProperty(page, propertyName);
       });
@@ -87,7 +120,11 @@ test.describe('Custom properties with custom property config', () => {
         }) => {
           test.slow(true);
 
-          await settingClick(page, entity.entityApiType, true);
+          await settingClick(
+            page,
+            entity.entityApiType as SettingOptionsType,
+            true
+          );
 
           await addCustomPropertiesForEntity({
             page,
@@ -98,6 +135,18 @@ test.describe('Custom properties with custom property config', () => {
           });
 
           await editCreatedProperty(page, propertyName, 'Entity Reference');
+
+          await verifyCustomPropertyInAdvancedSearch(
+            page,
+            propertyName.toUpperCase(), // displayName is in uppercase
+            entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
+          );
+
+          await settingClick(
+            page,
+            entity.entityApiType as SettingOptionsType,
+            true
+          );
 
           await deleteCreatedProperty(page, propertyName);
         });
@@ -116,7 +165,11 @@ test.describe('Custom properties with custom property config', () => {
         }) => {
           test.slow(true);
 
-          await settingClick(page, entity.entityApiType, true);
+          await settingClick(
+            page,
+            entity.entityApiType as SettingOptionsType,
+            true
+          );
 
           await addCustomPropertiesForEntity({
             page,
@@ -132,6 +185,18 @@ test.describe('Custom properties with custom property config', () => {
             'Entity Reference List'
           );
 
+          await verifyCustomPropertyInAdvancedSearch(
+            page,
+            propertyName.toUpperCase(), // displayName is in uppercase
+            entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
+          );
+
+          await settingClick(
+            page,
+            entity.entityApiType as SettingOptionsType,
+            true
+          );
+
           await deleteCreatedProperty(page, propertyName);
         });
       });
@@ -145,7 +210,11 @@ test.describe('Custom properties with custom property config', () => {
       test(`Add Date custom property for ${entity.name}`, async ({ page }) => {
         test.slow(true);
 
-        await settingClick(page, entity.entityApiType, true);
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
 
         await addCustomPropertiesForEntity({
           page,
@@ -169,7 +238,11 @@ test.describe('Custom properties with custom property config', () => {
       test(`Add Time custom property for ${entity.name}`, async ({ page }) => {
         test.slow(true);
 
-        await settingClick(page, entity.entityApiType, true);
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
 
         await addCustomPropertiesForEntity({
           page,
@@ -180,6 +253,18 @@ test.describe('Custom properties with custom property config', () => {
         });
 
         await editCreatedProperty(page, propertyName);
+
+        await verifyCustomPropertyInAdvancedSearch(
+          page,
+          propertyName.toUpperCase(), // displayName is in uppercase
+          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
+        );
+
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
 
         await deleteCreatedProperty(page, propertyName);
       });
@@ -195,7 +280,11 @@ test.describe('Custom properties with custom property config', () => {
       }) => {
         test.slow(true);
 
-        await settingClick(page, entity.entityApiType, true);
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
 
         await addCustomPropertiesForEntity({
           page,
@@ -206,6 +295,18 @@ test.describe('Custom properties with custom property config', () => {
         });
 
         await editCreatedProperty(page, propertyName);
+
+        await verifyCustomPropertyInAdvancedSearch(
+          page,
+          propertyName.toUpperCase(), // displayName is in uppercase
+          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
+        );
+
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
 
         await deleteCreatedProperty(page, propertyName);
       });

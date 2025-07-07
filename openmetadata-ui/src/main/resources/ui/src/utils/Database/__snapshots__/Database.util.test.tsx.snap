@@ -15,13 +15,15 @@ exports[`Database Util Database Util - schemaTableColumns should render the corr
 `;
 
 exports[`Database Util Database Util - schemaTableColumns should render the correct columns 2`] = `
-<RichTextEditorPreviewer
+<RichTextEditorPreviewerNew
   markdown="Schema 1 description"
 />
 `;
 
 exports[`Database Util Database Util - schemaTableColumns should render the correct columns 3`] = `
 <OwnerLabel
+  isCompactView={false}
+  maxVisibleOwners={4}
   owners={
     Array [
       Object {
@@ -31,6 +33,7 @@ exports[`Database Util Database Util - schemaTableColumns should render the corr
       },
     ]
   }
+  showLabel={false}
 />
 `;
 

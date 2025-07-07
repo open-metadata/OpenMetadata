@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.migration;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class MigrationValidationClientException extends WebServiceException {

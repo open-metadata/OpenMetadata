@@ -28,7 +28,7 @@
         "QuickSight",
         "QlikSense",
         "Lightdash",
-        "Mstr",
+        "MicroStrategy",
         "QlikCloud",
         "Sigma"
       ],
@@ -73,7 +73,7 @@
           "name": "Lightdash"
         },
         {
-          "name": "Mstr"
+          "name": "MicroStrategy"
         },
         {
           "name": "QlikCloud"
@@ -134,7 +134,7 @@
               "$ref": "./connections/dashboard/lightdashConnection.json"
             },
             {
-              "$ref": "./connections/dashboard/mstrConnection.json"
+              "$ref": "./connections/dashboard/microStrategyConnection.json"
             },
             {
               "$ref": "./connections/dashboard/qlikCloudConnection.json"
@@ -216,6 +216,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -227,6 +231,14 @@
     },
     "domain" : {
       "description": "Domain the Dashboard service belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }
   },

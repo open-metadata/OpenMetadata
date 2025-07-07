@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.mlmodels;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -29,6 +29,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -38,7 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
-import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.MlFeatureSource;
 import org.openmetadata.schema.type.MlHyperParameter;
 import org.openmetadata.schema.type.MlStore;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -68,7 +69,6 @@ import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.mlmodels.MlModelResource.MlModelList;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j

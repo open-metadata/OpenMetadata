@@ -13,7 +13,7 @@
 
 import { Popover, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, {
+import {
   FC,
   HTMLAttributes,
   useCallback,
@@ -245,6 +245,7 @@ export const PopoverContent: React.FC<{
   return (
     <ExploreSearchCard
       actionPopoverContent={extraInfo}
+      className="entity-popover-card"
       id="tabledatacard"
       showTags={false}
       source={entityData}
@@ -261,7 +262,7 @@ const EntityPopOverCard: FC<Props> = ({
 }) => {
   return (
     <Popover
-      align={{ targetOffset: [0, -10] }}
+      align={{ targetOffset: [0, 10] }}
       content={
         <PopoverContent
           entityFQN={entityFQN}

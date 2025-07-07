@@ -13,15 +13,13 @@
 
 import { Button, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FunctionComponent, useRef, useState } from 'react';
+import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './modal-with-markdown-editor.less';
-import {
-  EditorContentRef,
-  ModalWithMarkdownEditorProps,
-} from './ModalWithMarkdownEditor.interface';
+import { ModalWithMarkdownEditorProps } from './ModalWithMarkdownEditor.interface';
 
 export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorProps> =
   ({
@@ -35,13 +33,15 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
     const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
-    const markdownRef = useRef<EditorContentRef>();
+    const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
     const handleSaveData = async () => {
       if (markdownRef.current) {
         setIsLoading(true);
         try {
-          await onSave?.(markdownRef.current?.getEditorContent().trim() ?? '');
+          const content =
+            markdownRef.current?.getEditorContent?.()?.trim() ?? '';
+          await onSave?.(content);
         } catch (error) {
           showErrorToast(error as AxiosError);
         } finally {

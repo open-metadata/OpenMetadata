@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
@@ -31,7 +32,6 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -82,10 +83,11 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public void setInheritedFields(Tag tag, Fields fields) {
     Classification parent =
-        Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "", ALL);
+        Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "owners", ALL);
     if (parent.getDisabled() != null && parent.getDisabled()) {
       tag.setDisabled(true);
     }
+    inheritOwners(tag, fields, parent);
   }
 
   @Override
@@ -135,7 +137,7 @@ public class TagRepository extends EntityRepository<Tag> {
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
-    if (dryRun || CommonUtil.nullOrEmpty(request.getAssets())) {
+    if (dryRun || nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
       return result
           .withStatus(ApiStatus.SUCCESS)
@@ -176,7 +178,7 @@ public class TagRepository extends EntityRepository<Tag> {
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
       }
       // Validate and Store Tags
-      if (CommonUtil.nullOrEmpty(result.getFailedRequest())) {
+      if (nullOrEmpty(result.getFailedRequest())) {
         List<TagLabel> tempList = new ArrayList<>(asset.getTags());
         tempList.add(tagLabel);
         // Apply Tags to Entities
@@ -237,7 +239,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public EntityRepository<Tag>.EntityUpdater getUpdater(
-      Tag original, Tag updated, Operation operation) {
+      Tag original, Tag updated, Operation operation, ChangeSource changeSource) {
     return new TagUpdater(original, updated, operation);
   }
 
@@ -307,7 +309,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(
           "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       recordChange("disabled", original.getDisabled(), updated.getDisabled());

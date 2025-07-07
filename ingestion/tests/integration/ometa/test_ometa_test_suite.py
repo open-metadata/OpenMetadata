@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -100,7 +100,7 @@ class OMetaTestSuiteTest(TestCase):
                 description=Markdown(
                     root="This is a test suite for the integration tests"
                 ),
-                executableEntityReference=FullyQualifiedEntityName(
+                basicEntityReference=FullyQualifiedEntityName(
                     "sample_data.ecommerce_db.shopify.dim_address"
                 ),
             )
@@ -112,7 +112,6 @@ class OMetaTestSuiteTest(TestCase):
                 entityLink=EntityLink(
                     "<#E::table::sample_data.ecommerce_db.shopify.dim_address>"
                 ),
-                testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition=cls.test_definition.fullyQualifiedName,
                 parameterValues=[TestCaseParameterValue(name="foo", value="10")],
             )
@@ -169,7 +168,6 @@ class OMetaTestSuiteTest(TestCase):
 
         test_case = self.metadata.get_or_create_test_case(
             test_case_fqn,
-            test_suite_fqn=self.test_suite.fullyQualifiedName.root,
             test_definition_fqn="columnValuesToMatchRegex",
             entity_link="<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
             test_case_parameter_values=[

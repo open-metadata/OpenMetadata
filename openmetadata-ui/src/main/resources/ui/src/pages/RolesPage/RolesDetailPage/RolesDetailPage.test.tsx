@@ -11,18 +11,24 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import React from 'react';
+import { act, render, screen } from '@testing-library/react';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { getRoleByName } from '../../../rest/rolesAPIV1';
 import { ROLE_DATA } from '../Roles.mock';
 import RolesDetailPage from './RolesDetailPage';
 
+const mockEntityPermissionByFqn = jest.fn().mockImplementation(() => null);
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
-    push: jest.fn(),
-  }),
   useParams: jest.fn().mockReturnValue({ fqn: 'data-consumer' }),
   Link: jest.fn().mockImplementation(({ to }) => <a href={to}>link</a>),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: mockEntityPermissionByFqn,
+  })),
 }));
 
 jest.mock('../../../rest/rolesAPIV1', () => ({
@@ -35,7 +41,7 @@ jest.mock('../../../components/common/EntityDescription/DescriptionV1', () =>
 );
 
 jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
@@ -47,6 +53,16 @@ jest.mock(
 
 jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
+);
+
+jest.mock(
+  '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  () => jest.fn().mockReturnValue(<div>EntityHeaderTitle</div>)
+);
+
+jest.mock(
+  '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
+  () => jest.fn().mockReturnValue(<div>ManageButton</div>)
 );
 
 jest.mock('../../../constants/constants', () => ({
@@ -67,9 +83,33 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
+jest.mock('../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../AddAttributeModal/AddAttributeModal', () =>
+  jest.fn().mockReturnValue(<div>AddAttributeModal</div>)
+);
+
+jest.mock('./RolesDetailPageList.component', () =>
+  jest.fn().mockReturnValue(<div>RolesDetailPageList</div>)
+);
+
 describe('Test Roles Details Page', () => {
-  it('Should render the detail component', async () => {
-    render(<RolesDetailPage />);
+  it('Should render the role details component', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<RolesDetailPage />);
+    });
 
     const container = await screen.findByTestId('role-details-container');
 

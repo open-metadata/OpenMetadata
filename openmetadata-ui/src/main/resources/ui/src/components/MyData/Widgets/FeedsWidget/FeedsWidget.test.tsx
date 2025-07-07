@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
@@ -76,17 +75,29 @@ const widgetProps = {
 const tabs = ['All', 'Mentions', 'Tasks'];
 
 jest.mock(
-  '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component',
+  '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component',
   () => jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
 );
 
 jest.mock(
   '../../../common/FeedsFilterPopover/FeedsFilterPopover.component',
-  () => jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
+  () =>
+    jest.fn().mockImplementation(({ onUpdate }) => (
+      <div>
+        <button onClick={() => onUpdate('ALL')}>all_button</button>
+        <button onClick={() => onUpdate('ASSIGNED_TO')}>assigned_button</button>
+        <button onClick={() => onUpdate('ASSIGNED_BY')}>
+          created_by_button
+        </button>
+      </div>
+    ))
 );
 
 jest.mock('../../../../rest/feedsAPI', () => ({
   getFeedsWithFilter: jest.fn().mockReturnValue(Promise.resolve(mockThread)),
+  getFeedCount: jest
+    .fn()
+    .mockResolvedValue([{ openTaskCount: 0, mentionCount: 0 }]),
 }));
 
 jest.mock('../../../../utils/CommonUtils', () => ({
@@ -121,6 +132,10 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     currentUser: mockUserData,
   })),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 describe('FeedsWidget', () => {
@@ -192,5 +207,57 @@ describe('FeedsWidget', () => {
     fireEvent.click(closeButton);
 
     expect(mockHandleRemoveWidget).toHaveBeenCalledWith(widgetProps.widgetKey);
+  });
+
+  it('should call api with correct parameters based on the tab selected', () => {
+    render(<FeedsWidget {...widgetProps} />);
+    const tabs = screen.getAllByRole('tab');
+    const conversationTab = tabs[0];
+    fireEvent.click(conversationTab);
+
+    // initial API call for the Feed
+    expect(conversationTab.getAttribute('aria-selected')).toBe('true');
+    expect(mockUseActivityFeedProviderValue.getFeedData).toHaveBeenCalledWith(
+      'OWNER_OR_FOLLOWS',
+      undefined,
+      'Conversation',
+      undefined,
+      undefined,
+      undefined,
+      25
+    );
+
+    // Reset mock between checks
+    mockUseActivityFeedProviderValue.getFeedData.mockReset();
+
+    // Testing for "Task Tab", to call API with OWNER filter parameters
+    const taskTab = tabs[2];
+    fireEvent.click(taskTab);
+
+    expect(taskTab.getAttribute('aria-selected')).toBe('true');
+    expect(mockUseActivityFeedProviderValue.getFeedData).toHaveBeenCalledWith(
+      'OWNER',
+      undefined,
+      'Task',
+      undefined,
+      undefined,
+      'Open'
+    );
+
+    // Reset mock for the next check
+    mockUseActivityFeedProviderValue.getFeedData.mockReset();
+
+    // Applying the filter for the assigned button
+    const assignedFilterButton = screen.getByText('assigned_button');
+    fireEvent.click(assignedFilterButton);
+
+    expect(mockUseActivityFeedProviderValue.getFeedData).toHaveBeenCalledWith(
+      'ASSIGNED_TO',
+      undefined,
+      'Task',
+      undefined,
+      undefined,
+      'Open'
+    );
   });
 });

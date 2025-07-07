@@ -77,6 +77,11 @@ test.describe.serial('My Data page', () => {
   });
 
   test('Verify my data widget', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     // Verify total count
     await expect(
       page.locator('[data-testid="my-data-total-count"]')
@@ -86,10 +91,15 @@ test.describe.serial('My Data page', () => {
       .locator('[data-testid="my-data-widget"] [data-testid="view-all-link"]')
       .click();
 
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     // Verify entities
     await verifyEntities(
       page,
-      '/api/v1/search/query?q=*&index=all&from=0&size=25',
+      '/api/v1/search/query?q=*&index=all&from=0&size=25*',
       TableEntities
     );
   });
@@ -105,7 +115,7 @@ test.describe.serial('My Data page', () => {
     // Verify entities
     await verifyEntities(
       page,
-      '/api/v1/search/query?q=*followers:*&index=all&from=0&size=25',
+      '/api/v1/search/query?q=*followers:*&index=all&from=0&size=25*',
       TableEntities
     );
   });

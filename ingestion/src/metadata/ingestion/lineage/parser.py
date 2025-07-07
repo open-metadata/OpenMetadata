@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,12 +15,12 @@ import traceback
 from collections import defaultdict
 from copy import deepcopy
 from logging.config import DictConfigurator
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import sqlparse
 from cached_property import cached_property
 from collate_sqllineage import SQLPARSE_DIALECT
-from collate_sqllineage.core.models import Column, Table
+from collate_sqllineage.core.models import Column, DataFunction, Table
 from collate_sqllineage.exceptions import SQLLineageException
 from collate_sqllineage.runner import LineageRunner
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
@@ -71,12 +71,13 @@ class LineageParser:
         self.query_parsing_success = True
         self.query_parsing_failure_reason = None
         self.dialect = dialect
-        self._masked_query = mask_query(self.query, dialect.value)
+        self.masked_query = None
         self._clean_query = self.clean_raw_query(query)
-        self._masked_clean_query = mask_query(self._clean_query, dialect.value)
         self.parser = self._evaluate_best_parser(
             self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
         )
+        if self.masked_query is None:
+            self.masked_query = mask_query(self._clean_query, parser=self.parser)
 
     @cached_property
     def involved_tables(self) -> Optional[List[Table]]:
@@ -95,7 +96,7 @@ class LineageParser:
         except SQLLineageException as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Cannot extract source table information from query [{self._masked_query}]: {exc}"
+                f"Cannot extract source table information from query [{self.masked_query or self.query}]: {exc}"
             )
             return None
 
@@ -110,7 +111,7 @@ class LineageParser:
         return []
 
     @cached_property
-    def source_tables(self) -> List[Table]:
+    def source_tables(self) -> List[Union[Table, DataFunction]]:
         """
         Get a list of source tables
         """
@@ -334,12 +335,10 @@ class LineageParser:
                 )
 
                 if not table_left or not table_right:
-                    logger.warning(
+                    logger.debug(
                         f"Can't extract table names when parsing JOIN information from {comparison}"
                     )
-                    logger.debug(
-                        f"Query: {mask_query(sql_statement, self.dialect.value)}"
-                    )
+                    logger.debug(f"Query: {self.masked_query or self.query}")
                     continue
 
                 left_table_column = TableColumn(table=table_left, column=column_left)
@@ -374,7 +373,9 @@ class LineageParser:
         if not self._clean_query:
             return []
         return [
-            self.clean_table_name(table) for table in tables if isinstance(table, Table)
+            self.clean_table_name(table)
+            for table in tables
+            if isinstance(table, (Table, DataFunction))
         ]
 
     @classmethod
@@ -420,10 +421,9 @@ class LineageParser:
             lr_dialect.get_column_lineage()
             return lr_dialect
 
-        sqlfluff_count = 0
         try:
             lr_sqlfluff = get_sqlfluff_lineage_runner(query, dialect.value)
-            sqlfluff_count = len(lr_sqlfluff.get_column_lineage()) + len(
+            _ = len(lr_sqlfluff.get_column_lineage()) + len(
                 set(lr_sqlfluff.source_tables).union(
                     set(lr_sqlfluff.target_tables).union(
                         set(lr_sqlfluff.intermediate_tables)
@@ -436,46 +436,49 @@ class LineageParser:
                 f"Lineage with SqlFluff failed for the [{dialect.value}]. "
                 f"Parser has been running for more than {timeout_seconds} seconds."
             )
-            logger.debug(
-                f"{self.query_parsing_failure_reason}] query: [{self._masked_clean_query}]"
-            )
             lr_sqlfluff = None
         except Exception:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
                 f"Lineage with SqlFluff failed for the [{dialect.value}]"
             )
-            logger.debug(
-                f"{self.query_parsing_failure_reason} query: [{self._masked_clean_query}]"
-            )
             lr_sqlfluff = None
 
-        lr_sqlparser = LineageRunner(query)
+        if lr_sqlfluff:
+            return lr_sqlfluff
+
+        @timeout(seconds=timeout_seconds)
+        def get_sqlparser_lineage_runner(qry: str) -> LineageRunner:
+            lr_sqlparser = LineageRunner(qry)
+            lr_sqlparser.get_column_lineage()
+            return lr_sqlparser
+
+        lr_sqlparser = None
         try:
-            sqlparser_count = len(lr_sqlparser.get_column_lineage()) + len(
+            lr_sqlparser = get_sqlparser_lineage_runner(query)
+            _ = len(lr_sqlparser.get_column_lineage()) + len(
                 set(lr_sqlparser.source_tables).union(
                     set(lr_sqlparser.target_tables).union(
                         set(lr_sqlparser.intermediate_tables)
                     )
                 )
             )
+        except TimeoutError:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"Lineage with SqlParser failed for the [{dialect.value}]. "
+                f"Parser has been running for more than {timeout_seconds} seconds."
+            )
+            return None
         except Exception:
             # if both runner have failed we return the usual one
-            return lr_sqlfluff if lr_sqlfluff else lr_sqlparser
+            logger.debug(f"Failed to parse query with sqlparse & sqlfluff: {query}")
+            return lr_sqlfluff if lr_sqlfluff else None
 
-        if lr_sqlfluff:
-            # if sqlparser retrieve more lineage info that sqlfluff
-            if sqlparser_count > sqlfluff_count:
-                self.query_parsing_success = False
-                self.query_parsing_failure_reason = (
-                    "Lineage computed with SqlFluff did not perform as expected "
-                    f"for the [{dialect.value}]"
-                )
-                logger.debug(
-                    f"{self.query_parsing_failure_reason} query: [{self._masked_clean_query}]"
-                )
-                return lr_sqlparser
-            return lr_sqlfluff
+        self.masked_query = mask_query(self._clean_query, parser=lr_sqlparser)
+        logger.debug(
+            f"Using sqlparse for lineage parsing for query: {self.masked_query or self.query}"
+        )
         return lr_sqlparser
 
     @staticmethod

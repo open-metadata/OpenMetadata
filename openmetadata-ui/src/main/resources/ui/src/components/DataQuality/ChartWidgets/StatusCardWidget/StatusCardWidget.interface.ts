@@ -1,3 +1,5 @@
+import { LinkProps } from 'react-router-dom';
+
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,4 +23,5 @@ export type StatusData = {
 export interface StatusCardWidgetProps {
   statusData: StatusData;
   icon: SvgComponent;
+  redirectPath?: LinkProps['to'];
 }

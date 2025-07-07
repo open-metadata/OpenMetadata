@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as TestCaseIcon } from '../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table.svg';
 import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
@@ -38,10 +39,8 @@ class DataQualityClassBase {
           entity: i18n.t('label.table-plural'),
         }),
         icon: TableIcon,
-        description: i18n.t('label.review-data-entity', {
-          entity: i18n.t('label.by-entity', {
-            entity: i18n.t('label.table-plural'),
-          }),
+        description: i18n.t('label.data-health-by-entity', {
+          entity: i18n.t('label.table-plural'),
         }),
         iconProps: {
           className: 'side-panel-icons',
@@ -53,10 +52,8 @@ class DataQualityClassBase {
           entity: i18n.t('label.test-case-plural'),
         }),
         id: 'by-test-cases',
-        description: i18n.t('label.review-data-entity', {
-          entity: i18n.t('label.by-entity', {
-            entity: i18n.t('label.test-case-plural'),
-          }),
+        description: i18n.t('label.data-health-by-entity', {
+          entity: i18n.t('label.test-case-plural'),
         }),
         icon: TestCaseIcon,
         iconProps: {
@@ -68,10 +65,8 @@ class DataQualityClassBase {
         label: i18n.t('label.by-entity', {
           entity: i18n.t('label.test-suite-plural'),
         }),
-        description: i18n.t('label.review-data-entity', {
-          entity: i18n.t('label.by-entity', {
-            entity: i18n.t('label.test-suite-plural'),
-          }),
+        description: i18n.t('label.data-health-by-entity', {
+          entity: i18n.t('label.test-suite-plural'),
         }),
         id: 'by-test-suites',
         icon: TestSuiteIcon,
@@ -104,6 +99,10 @@ class DataQualityClassBase {
 
   public getDefaultActiveTab(): DataQualityPageTabs {
     return DataQualityPageTabs.TABLES;
+  }
+
+  public getManageExtraOptions(_activeTab: DataQualityPageTabs): ItemType[] {
+    return [];
   }
 }
 

@@ -1,0 +1,64 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/workflowSettings.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WorkflowSettings",
+  "description": "This schema defines the Workflow Settings.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.WorkflowSettings",
+  "definitions": {
+    "executorConfiguration": {
+      "type": "object",
+      "properties": {
+        "corePoolSize": {
+          "type": "integer",
+          "default": 10,
+          "description": "Default worker Pool Size. The Workflow Executor by default has this amount of workers."
+        },
+        "maxPoolSize": {
+          "type": "integer",
+          "default": 20,
+          "description": "Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers."
+        },
+        "queueSize": {
+          "type": "integer",
+          "default": 1000,
+          "description": "Amount of Tasks that can be queued to be picked up by the Workflow Executor."
+        },
+        "tasksDuePerAcquisition": {
+          "type": "integer",
+          "default": 20,
+          "description": "The amount of Tasks that the Workflow Executor is able to pick up each time it looks for more."
+        },
+        "jobLockTimeInMillis": {
+          "type": "integer",
+          "default": 1296000000,
+          "description": "The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids jobs that takes too long to run being retried while running."
+        }
+      },
+      "additionalProperties": false
+    },
+    "historyCleanUpConfiguration": {
+      "type": "object",
+      "properties": {
+        "cleanAfterNumberOfDays": {
+          "type": "integer",
+          "default": 7,
+          "description": "Cleans the Workflow Task that were finished, after given number of days."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "executorConfiguration": {
+      "$ref": "#/definitions/executorConfiguration",
+      "description": "Used to set up the Workflow Executor Settings."
+    },
+    "historyCleanUpConfiguration": {
+      "$ref": "#/definitions/historyCleanUpConfiguration",
+      "description": "Used to set up the History CleanUp Settings."
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

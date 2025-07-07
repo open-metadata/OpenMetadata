@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { PageType } from '../../../../generated/system/ui/page';
 import {
   mockActiveAnnouncementData,
@@ -24,8 +22,6 @@ import {
 } from '../../../../mocks/MyDataPage.mock';
 import CustomizeMyData from './CustomizeMyData';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-
-const mockPush = jest.fn();
 
 const mockProps: CustomizeMyDataProps = {
   initialPageData: mockDocumentData.data.pages[0],
@@ -46,8 +42,10 @@ jest.mock(
 jest.mock('../AddWidgetModal/AddWidgetModal', () => {
   return jest.fn().mockImplementation(({ handleCloseAddWidgetModal }) => (
     <div>
-      AddWidgetModal
-      <div onClick={handleCloseAddWidgetModal}>handleCloseAddWidgetModal</div>
+      AddWidgetModal{' '}
+      <button onClick={handleCloseAddWidgetModal}>
+        handleCloseAddWidgetModal
+      </button>
     </div>
   ));
 });
@@ -57,8 +55,10 @@ jest.mock(
   () => {
     return jest.fn().mockImplementation(({ handleOpenAddWidgetModal }) => (
       <div>
-        EmptyWidgetPlaceholder
-        <div onClick={handleOpenAddWidgetModal}>handleOpenAddWidgetModal</div>
+        EmptyWidgetPlaceholder{' '}
+        <button onClick={handleOpenAddWidgetModal}>
+          handleOpenAddWidgetModal
+        </button>
       </div>
     ));
   }
@@ -107,9 +107,6 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   useParams: jest.fn().mockImplementation(() => ({
     fqn: mockPersonaName,
     pageFqn: PageType.LandingPage,
@@ -135,6 +132,27 @@ jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({ isAuthDisabled: false })),
 }));
 
+jest.mock(
+  '../../../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader',
+  () => ({
+    CustomizablePageHeader: jest
+      .fn()
+      .mockImplementation(({ onReset, onSave }) => (
+        <div data-testid="customizable-page-header">
+          <button data-testid="cancel-button" onClick={onReset}>
+            Cancel
+          </button>
+          <button data-testid="reset-button" onClick={onReset}>
+            Reset
+          </button>
+          <button data-testid="save-button" onClick={onSave}>
+            Save
+          </button>
+        </div>
+      )),
+  })
+);
+
 describe('CustomizeMyData component', () => {
   it('CustomizeMyData should render the widgets in the page config', async () => {
     await act(async () => {
@@ -152,64 +170,16 @@ describe('CustomizeMyData component', () => {
     expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
   });
 
-  it('CustomizeMyData should reroute to the customizable page settings page on click of cancel button', async () => {
-    await act(async () => {
-      render(<CustomizeMyData {...mockProps} />);
-    });
-
-    const cancelButton = screen.getByTestId('cancel-button');
-
-    await act(async () => userEvent.click(cancelButton));
-
-    expect(mockPush).toHaveBeenCalledWith('/settings/persona/testPersona');
-  });
-
-  it('CustomizeMyData should display reset layout confirmation modal on click of reset button', async () => {
+  it('should call onSaveLayout on reset', async () => {
     await act(async () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
     const resetButton = screen.getByTestId('reset-button');
 
-    await act(async () => userEvent.click(resetButton));
+    fireEvent.click(resetButton);
 
-    expect(screen.getByTestId('reset-layout-modal')).toBeInTheDocument();
-  });
-
-  it('CustomizeMyData should call handlePageDataChange with default layout and close the reset confirmation modal', async () => {
-    await act(async () => {
-      render(<CustomizeMyData {...mockProps} />);
-    });
-
-    const resetButton = screen.getByTestId('reset-button');
-
-    await act(async () => userEvent.click(resetButton));
-
-    expect(screen.getByTestId('reset-layout-modal')).toBeInTheDocument();
-
-    const yesButton = screen.getByText('label.yes');
-
-    await act(async () => userEvent.click(yesButton));
-
-    expect(screen.queryByTestId('reset-layout-modal')).toBeNull();
-  });
-
-  it('CustomizeMyData should close the reset confirmation modal without calling handlePageDataChange', async () => {
-    await act(async () => {
-      render(<CustomizeMyData {...mockProps} />);
-    });
-
-    const resetButton = screen.getByTestId('reset-button');
-
-    await act(async () => userEvent.click(resetButton));
-
-    expect(screen.getByTestId('reset-layout-modal')).toBeInTheDocument();
-
-    const noButton = screen.getByText('label.no');
-
-    await act(async () => userEvent.click(noButton));
-
-    expect(screen.queryByTestId('reset-layout-modal')).toBeNull();
+    expect(mockProps.onSaveLayout).toHaveBeenCalled();
   });
 
   it('CustomizeMyData should call onSaveLayout after clicking on save layout button', async () => {
@@ -221,7 +191,7 @@ describe('CustomizeMyData component', () => {
 
     const saveButton = screen.getByTestId('save-button');
 
-    await act(async () => userEvent.click(saveButton));
+    fireEvent.click(saveButton);
 
     expect(mockProps.onSaveLayout).toHaveBeenCalledTimes(1);
 
@@ -243,7 +213,7 @@ describe('CustomizeMyData component', () => {
 
     const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
 
-    await act(async () => userEvent.click(addWidgetButton));
+    fireEvent.click(addWidgetButton);
 
     expect(screen.getByText('AddWidgetModal')).toBeInTheDocument();
   });
@@ -255,13 +225,13 @@ describe('CustomizeMyData component', () => {
 
     const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
 
-    await act(async () => userEvent.click(addWidgetButton));
+    fireEvent.click(addWidgetButton);
 
     expect(screen.getByText('AddWidgetModal')).toBeInTheDocument();
 
     const closeWidgetButton = screen.getByText('handleCloseAddWidgetModal');
 
-    await act(async () => userEvent.click(closeWidgetButton));
+    fireEvent.click(closeWidgetButton);
 
     expect(screen.queryByText('AddWidgetModal')).toBeNull();
   });

@@ -16,10 +16,11 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { CreateTeam } from '../generated/api/teams/createTeam';
+import { EntityReference } from '../generated/entity/data/table';
 import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
-import { CSVImportResult } from '../generated/type/csvImportResult';
 import { ListParams } from '../interface/API.interface';
+import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -75,8 +76,22 @@ export const patchTeamDetail = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const deleteTeam = async (id: string) => {
-  const response = await APIClient.delete<Team>(`/teams/${id}`);
+export const deleteUserFromTeam = async (teamId: string, userId: string) => {
+  const response = await APIClient.delete<Operation[], AxiosResponse<Team>>(
+    `/teams/${teamId}/users/${userId}`
+  );
+
+  return response.data;
+};
+
+export const updateUsersFromTeam = async (
+  id: string,
+  data: EntityReference[]
+) => {
+  const response = await APIClient.put<Operation[], AxiosResponse<Team>>(
+    `/teams/${id}/users`,
+    data
+  );
 
   return response.data;
 };
@@ -120,11 +135,10 @@ export const importTeam = async (
       dryRun,
     },
   };
-  const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
-    `/teams/name/${getEncodedFqn(teamName)}/import`,
-    data,
-    configOptions
-  );
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<CSVImportAsyncResponse>
+  >(`/teams/name/${getEncodedFqn(teamName)}/importAsync`, data, configOptions);
 
   return response.data;
 };
@@ -141,11 +155,10 @@ export const importUserInTeam = async (
       dryRun,
     },
   };
-  const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
-    `/users/import`,
-    data,
-    configOptions
-  );
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<CSVImportAsyncResponse>
+  >(`/users/importAsync`, data, configOptions);
 
   return response.data;
 };

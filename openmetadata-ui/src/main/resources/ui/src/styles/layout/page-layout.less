@@ -20,18 +20,16 @@
   overflow-x: hidden;
 }
 
+#page-alert {
+  position: sticky;
+  top: 0px;
+  z-index: 20;
+  background-color: @background-primary;
+}
+
 .page-layout-v1-left-panel {
   border: @global-border;
   border-radius: @border-radius-base;
-}
-
-.left-panel-card {
-  .ant-card-body {
-    padding: 0;
-    overflow-x: hidden;
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -49,4 +47,34 @@
   width: 700px;
   margin: 16px auto 0 auto;
   padding: 0;
+}
+
+.overflow-scroll {
+  overflow: scroll;
+}
+
+.overflow-scroll-y {
+  overflow-y: scroll;
+}
+
+.overflow-scroll-x {
+  overflow-x: scroll;
+}
+
+.overflow-auto {
+  overflow: auto;
+}
+
+.overflow-auto-y {
+  overflow-y: auto;
+}
+
+.overflow-auto-x {
+  overflow-x: auto;
+}
+
+.page-layout-rightpanel {
+  border-radius: 0;
+  padding-left: 0 !important;
+  border-top: 0;
 }

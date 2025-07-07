@@ -35,7 +35,7 @@ for (const searchItem of navbarSearchItems) {
     );
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=*&index=${searchIndex}`
+      `/api/v1/search/query?q=*&index=${searchIndex}**`
     );
     await page.getByTestId('searchBox').fill('dim');
     await searchRes;

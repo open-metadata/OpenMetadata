@@ -93,6 +93,10 @@
       },
       "default": []
     },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -117,6 +121,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -128,6 +136,10 @@
     },
     "domain" : {
       "description": "Domain the API service belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }
   },

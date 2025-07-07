@@ -63,6 +63,77 @@ export const FIELDS: EntityFields[] = [
     localSearch: false,
     skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for display name
   },
+  {
+    id: 'Service Type',
+    name: 'serviceType',
+    localSearch: false,
+  },
+  {
+    id: 'Schema Field',
+    name: 'messageSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Container Column',
+    name: 'dataModel.columns.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Data Model Type',
+    name: 'dataModelType',
+    localSearch: false,
+  },
+  {
+    id: 'Field',
+    name: 'fields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Task',
+    name: 'tasks.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Domain',
+    name: 'domain.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Name',
+    name: 'name.keyword',
+    localSearch: false,
+    skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for name
+  },
+  {
+    id: 'Project',
+    name: 'project.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Status',
+    name: 'status',
+    localSearch: false,
+  },
+  {
+    id: 'Table Type',
+    name: 'tableType',
+    localSearch: false,
+  },
+  {
+    id: 'Chart',
+    name: 'charts.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Response Schema Field',
+    name: 'responseSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Request Schema Field',
+    name: 'requestSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
 ];
 
 export const OPERATOR = {
@@ -129,6 +200,7 @@ export const selectOption = async (
   optionTitle: string
 ) => {
   await dropdownLocator.click();
+  await page.keyboard.type(optionTitle);
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',
   });
@@ -186,6 +258,9 @@ export const fillRule = async (
       }
 
       await dropdownInput.click();
+      if (aggregateRes) {
+        await aggregateRes;
+      }
       await dropdownInput.fill(searchData);
 
       if (aggregateRes) {
@@ -463,9 +538,10 @@ export const checkAddRuleOrGroupWithOperator = async (
   if (field.id !== 'Column' && operator === 'AND') {
     const res = await searchRes;
     const json = await res.json();
+    const hits = json.hits.hits;
 
-    expect(JSON.stringify(json)).toContain(searchCriteria1);
-    expect(JSON.stringify(json)).not.toContain(searchCriteria2);
+    expect(JSON.stringify(hits)).toContain(searchCriteria1);
+    expect(JSON.stringify(hits)).not.toContain(searchCriteria2);
   }
 };
 
@@ -509,4 +585,33 @@ export const runRuleGroupTests = async (
     );
     await page.getByTestId('clear-filters').click();
   }
+};
+
+export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
+  await showAdvancedSearchDialog(page);
+  const ruleLocator = page.locator('.rule').nth(0);
+
+  // Perform click on rule field
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    'Database'
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--operator .ant-select'),
+    '=='
+  );
+
+  const inputElement = ruleLocator.locator(
+    '.rule--widget--SELECT .ant-select-selection-search-input'
+  );
+  await inputElement.fill('non-existing-value');
+  const dropdownText = page.locator('.ant-select-item-empty');
+
+  await expect(dropdownText).toContainText('Loading...');
+
+  await page.waitForTimeout(1000);
+
+  await expect(dropdownText).not.toContainText('Loading...');
 };

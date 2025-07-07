@@ -12,7 +12,7 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { Container } from '../generated/entity/data/container';
@@ -20,8 +20,8 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
-import { ListParams } from '../interface/API.interface';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -57,6 +57,20 @@ export const getContainerByName = async (name: string, params?: ListParams) => {
         ...params,
         include: params?.include ?? Include.All,
       },
+    }
+  );
+
+  return response.data;
+};
+
+export const getContainerChildrenByName = async (
+  name: string,
+  params?: ListParamsWithOffset
+) => {
+  const response = await APIClient.get<PagingResponse<Container['children']>>(
+    `${BASE_URL}/name/${getEncodedFqn(name)}/children`,
+    {
+      params,
     }
   );
 
@@ -118,7 +132,7 @@ export const getContainerVersions = async (id: string) => {
   return response.data;
 };
 
-export const getContainerVersion = async (id: string, version: string) => {
+export const getContainerVersion = async (id: string, version?: string) => {
   const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Container>(url);

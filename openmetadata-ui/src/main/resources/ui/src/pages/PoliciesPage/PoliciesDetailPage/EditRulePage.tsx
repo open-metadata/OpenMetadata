@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Row, Space, Typography } from 'antd';
+import { Button, Card, Form, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
@@ -50,11 +50,13 @@ const InitialData: Rule = {
 
 const EditRulePage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn, ruleName } = useFqn();
-  const [isLoading, setLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [ruleData, setRuleData] = useState<Rule>(InitialData);
+
+  const selectedRuleRef = useRef<Rule | undefined>(InitialData);
 
   const breadcrumb = useMemo(
     () => [
@@ -80,7 +82,7 @@ const EditRulePage = () => {
   );
 
   const fetchPolicy = async () => {
-    setLoading(true);
+    setIsLoading(true);
     try {
       const data = await getPolicyByName(
         fqn,
@@ -89,6 +91,7 @@ const EditRulePage = () => {
       if (data) {
         setPolicy(data);
         const selectedRule = data.rules.find((rule) => rule.name === ruleName);
+        selectedRuleRef.current = selectedRule;
         setRuleData(selectedRule ?? InitialData);
       } else {
         setPolicy({} as Policy);
@@ -96,12 +99,12 @@ const EditRulePage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleBack = () => {
-    history.push(getPolicyWithFqnPath(fqn));
+    navigate(getPolicyWithFqnPath(fqn));
   };
 
   const handleSubmit = async () => {
@@ -161,48 +164,45 @@ const EditRulePage = () => {
   return (
     <PageLayoutV1
       pageTitle={t('label.edit-entity', { entity: t('label.rule') })}>
-      <Row className="h-auto p-y-xss" gutter={[16, 16]}>
-        <Col offset={5} span={14}>
-          <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
-          <Card>
-            <Typography.Paragraph
-              className="text-base"
-              data-testid="edit-rule-title">
-              {t('label.edit-entity', { entity: t('label.rule') })}{' '}
-              {`"${ruleName}"`}
-            </Typography.Paragraph>
-            <Form
-              data-testid="rule-form"
-              id="rule-form"
-              initialValues={{
-                ruleEffect: ruleData.effect,
-                ruleName: ruleData.name,
-                resources: ruleData.resources,
-                operations: ruleData.operations,
-                condition: ruleData.condition,
-              }}
-              layout="vertical"
-              onFinish={handleSubmit}>
-              <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
-              <Space align="center" className="w-full justify-end">
-                <Button
-                  data-testid="cancel-btn"
-                  type="link"
-                  onClick={handleBack}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  data-testid="submit-btn"
-                  form="rule-form"
-                  htmlType="submit"
-                  type="primary">
-                  {t('label.submit')}
-                </Button>
-              </Space>
-            </Form>
-          </Card>
-        </Col>
-      </Row>
+      <Card className="m-x-auto w-800">
+        <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
+        <Typography.Paragraph
+          className="text-base"
+          data-testid="edit-rule-title">
+          {t('label.edit-entity', { entity: t('label.rule') })}{' '}
+          {`"${ruleName}"`}
+        </Typography.Paragraph>
+        <Form
+          data-testid="rule-form"
+          id="rule-form"
+          initialValues={{
+            ruleEffect: ruleData.effect,
+            ruleName: ruleData.name,
+            resources: ruleData.resources,
+            operations: ruleData.operations,
+            condition: ruleData.condition,
+          }}
+          layout="vertical"
+          onFinish={handleSubmit}>
+          <RuleForm
+            description={selectedRuleRef.current?.description}
+            ruleData={ruleData}
+            setRuleData={setRuleData}
+          />
+          <Space align="center" className="w-full justify-end">
+            <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              data-testid="submit-btn"
+              form="rule-form"
+              htmlType="submit"
+              type="primary">
+              {t('label.submit')}
+            </Button>
+          </Space>
+        </Form>
+      </Card>
     </PageLayoutV1>
   );
 };

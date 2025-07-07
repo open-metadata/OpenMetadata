@@ -6,8 +6,36 @@
   "description": "A `StoredProcedure` entity that contains the set of code statements with an assigned name  and is defined in a `Database Schema`.\"",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.StoredProcedure",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
+    "storedProcedureType": {
+      "javaType": "org.openmetadata.schema.type.StoredProcedureType",
+      "description": "This schema defines the type of the type of Procedures",
+      "type": "string",
+      "default": "StoredProcedure",
+      "enum": [
+        "StoredProcedure",
+        "UDF",
+        "StoredPackage",
+        "Function"
+      ],
+      "javaEnums": [
+        {
+          "name": "StoredProcedure"
+        },
+        {
+          "name": "UDF"
+        },
+        {
+          "name": "StoredPackage"
+        },
+        {
+          "name": "Function"
+        }
+      ]
+    },
     "storedProcedureCode": {
       "properties": {
         "language": {
@@ -76,13 +104,18 @@
       "description": "Metadata version of the Stored Procedure.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "storedProcedureType": {
+      "description": "Type of the Stored Procedure.",
+      "$ref": "#/definitions/storedProcedureType",
+      "default": "StoredProcedure"
     },
     "updatedBy": {
       "description": "User who made the query.",
@@ -96,6 +129,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "databaseSchema": {
       "description": "Reference to Database Schema that contains this stored procedure.",
       "$ref": "../../type/entityReference.json"
@@ -104,14 +141,14 @@
       "description": "Reference to Database that contains this stored procedure.",
       "$ref": "../../type/entityReference.json"
     },
-  "service": {
-    "description": "Link to Database service this table is hosted in.",
-    "$ref": "../../type/entityReference.json"
-  },
-  "serviceType": {
-    "description": "Service type this table is hosted in.",
-    "$ref": "../services/databaseService.json#/definitions/databaseServiceType"
-  },
+    "service": {
+      "description": "Link to Database service this table is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type this table is hosted in.",
+      "$ref": "../services/databaseService.json#/definitions/databaseServiceType"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -126,7 +163,7 @@
       "description": "Followers of this Stored Procedure.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "votes" : {
+    "votes": {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
@@ -150,7 +187,7 @@
       "description": "Source URL of database schema.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Stored Procedure belongs to. When not set, the Stored Procedure inherits the domain from the database schemna it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
@@ -166,8 +203,17 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "processedLineage": {
+      "description": "Processed lineage for the stored procedure",
+      "type": "boolean",
+      "default": false
     }
   },
-  "required": ["id","name","storedProcedureCode"],
+  "required": [
+    "id",
+    "name",
+    "storedProcedureCode"
+  ],
   "additionalProperties": false
 }

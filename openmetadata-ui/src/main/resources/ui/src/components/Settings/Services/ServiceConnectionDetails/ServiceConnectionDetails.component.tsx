@@ -11,19 +11,10 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/ban-types */
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Card, Col, Row, Space, Tooltip } from 'antd';
-import Input from 'antd/lib/input/Input';
-import { get, isEmpty, isNull, isObject } from 'lodash';
-import React, { ReactNode, useEffect, useState } from 'react';
-import {
-  DEF_UI_SCHEMA,
-  JWT_CONFIG,
-} from '../../../../constants/Services.constant';
+import { Col, Input, Row, Space, Tooltip } from 'antd';
+import { isEmpty } from 'lodash';
+import { ReactNode, useEffect, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
@@ -34,177 +25,29 @@ import { MlModelServiceType } from '../../../../generated/entity/services/mlmode
 import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../../../../generated/entity/services/searchService';
 import { StorageServiceType } from '../../../../generated/entity/services/storageService';
-import { ConfigData } from '../../../../interface/service.interface';
+import {
+  ConfigData,
+  ExtraInfoType,
+} from '../../../../interface/service.interface';
+import { getKeyValues } from '../../../../utils/ServiceConnectionDetailsUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import './service-connection-details.less';
 
 type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;
   serviceCategory: string;
   serviceFQN: string;
+  extraInfo?: ExtraInfoType | null;
 };
 
 const ServiceConnectionDetails = ({
   connectionDetails,
   serviceCategory,
   serviceFQN,
-}: ServiceConnectionDetailsProps) => {
-  const [schema, setSchema] = useState({});
+  extraInfo,
+}: Readonly<ServiceConnectionDetailsProps>) => {
+  const [schema, setSchema] = useState<Record<string, any>>({});
   const [data, setData] = useState<ReactNode>();
-
-  const getKeyValues = (
-    obj: object,
-    schemaPropertyObject: object
-  ): ReactNode => {
-    const internalRef = '$ref';
-    const oneOf = 'oneOf';
-
-    return Object.keys(obj).map((key) => {
-      const value = obj[key];
-
-      if (isObject(value)) {
-        if (
-          serviceCategory.slice(0, -1) === EntityType.PIPELINE_SERVICE &&
-          key === 'connection' &&
-          value.type &&
-          value.type.toLowerCase() === 'airflow'
-        ) {
-          // Specific to Airflow
-          const newSchemaPropertyObject = schemaPropertyObject[
-            key
-          ].oneOf.filter((item) => item.title === `${value.type}Connection`)[0]
-            .properties;
-
-          return getKeyValues(value, newSchemaPropertyObject);
-        } else if (
-          serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
-          key === 'credentials'
-        ) {
-          // Condition for GCP Credentials path
-          const newSchemaPropertyObject =
-            schemaPropertyObject[key].definitions.gcpCredentialsPath;
-
-          return getKeyValues(value, newSchemaPropertyObject);
-        } else if (
-          serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
-          key === 'configSource'
-        ) {
-          if (isObject(value.securityConfig)) {
-            if (!value.securityConfig.gcpConfig) {
-              if (Object.keys(schemaPropertyObject[key]).includes(oneOf)) {
-                if (
-                  value.securityConfig?.awsAccessKeyId ||
-                  value.securityConfig?.awsSecretAccessKey
-                ) {
-                  return getKeyValues(
-                    value.securityConfig,
-                    get(
-                      schema,
-                      'definitions.S3Config.properties.securityConfig.properties',
-                      {}
-                    )
-                  );
-                }
-              } else if (
-                Object.keys(schemaPropertyObject[key]).includes(internalRef)
-              ) {
-                const definition = schemaPropertyObject[key][internalRef]
-                  .split('/')
-                  .splice(2);
-
-                const newSchemaPropertyObject = schema.definitions[definition];
-
-                return getKeyValues(value, newSchemaPropertyObject);
-              }
-            } else {
-              if (isObject(value.securityConfig.gcpConfig)) {
-                // Condition for GCP Credentials value
-                return getKeyValues(
-                  value.securityConfig.gcpConfig,
-                  get(
-                    schema,
-                    'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
-                    {}
-                  )
-                );
-              } else {
-                // Condition for GCP Credentials path
-
-                return getKeyValues(
-                  value,
-                  get(
-                    schema,
-                    'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath',
-                    {}
-                  )
-                );
-              }
-            }
-          }
-        } else if (
-          serviceCategory.slice(0, -1) === EntityType.METADATA_SERVICE &&
-          key === 'securityConfig'
-        ) {
-          const newSchemaPropertyObject = schemaPropertyObject[
-            key
-          ].oneOf.filter((item) => item.title === JWT_CONFIG)[0].properties;
-
-          return getKeyValues(value, newSchemaPropertyObject);
-        } else if (
-          serviceCategory.slice(0, -1) === EntityType.DASHBOARD_SERVICE &&
-          key === 'githubCredentials'
-        ) {
-          const newSchemaPropertyObject = schemaPropertyObject[key].oneOf.find(
-            (item) => item.title === 'GitHubCredentials'
-          )?.properties;
-
-          return getKeyValues(value, newSchemaPropertyObject);
-        } else {
-          return getKeyValues(
-            value,
-            schemaPropertyObject[key] && schemaPropertyObject[key].properties
-              ? schemaPropertyObject[key].properties
-              : {}
-          );
-        }
-      } else if (!(key in DEF_UI_SCHEMA) && !isNull(value)) {
-        const { description, format, title } = schemaPropertyObject[key]
-          ? schemaPropertyObject[key]
-          : {};
-
-        return (
-          <Col key={key} span={12}>
-            <Row>
-              <Col className="d-flex items-center" span={8}>
-                <Space size={0}>
-                  <p className="text-grey-muted m-0">{key || title}:</p>
-                  <Tooltip
-                    position="bottom"
-                    title={description}
-                    trigger="hover">
-                    <InfoCircleOutlined
-                      className="m-x-xss"
-                      style={{ color: '#C4C4C4' }}
-                    />
-                  </Tooltip>
-                </Space>
-              </Col>
-              <Col span={16}>
-                <Input
-                  readOnly
-                  className="w-full border-none"
-                  data-testid="input-field"
-                  type={format !== 'password' ? 'text' : 'password'}
-                  value={value}
-                />
-              </Col>
-            </Row>
-          </Col>
-        );
-      } else {
-        return null;
-      }
-    });
-  };
 
   useEffect(() => {
     switch (serviceCategory.slice(0, -1)) {
@@ -285,20 +128,63 @@ const ServiceConnectionDetails = ({
 
   useEffect(() => {
     if (!isEmpty(schema)) {
-      setData(getKeyValues(connectionDetails, schema.properties));
+      setData(
+        getKeyValues({
+          obj: connectionDetails,
+          schemaPropertyObject: schema.properties,
+          schema,
+          serviceCategory,
+        })
+      );
     }
   }, [schema]);
 
   return (
-    <Card>
+    <>
       <div
-        className="d-flex flex-wrap p-xss"
+        className="service-connection-details"
         data-testid="service-connection-details">
         <Row className="w-full" gutter={[8, 8]}>
           {data}
         </Row>
       </div>
-    </Card>
+
+      {extraInfo && (
+        <div className="service-connection-details m-t-md m-y-lg">
+          <Row className="w-full" gutter={[8, 8]}>
+            <Col span={12}>
+              <Row>
+                <Col className="d-flex items-center" span={8}>
+                  <Space size={0}>
+                    <p className="text-grey-muted m-0">{extraInfo.headerKey}</p>
+                    {extraInfo.description && (
+                      <Tooltip
+                        placement="bottom"
+                        title={extraInfo.description}
+                        trigger="hover">
+                        <InfoCircleOutlined
+                          className="m-x-xss"
+                          style={{ color: '#C4C4C4' }}
+                        />
+                      </Tooltip>
+                    )}
+                  </Space>
+                </Col>
+                <Col span={16}>
+                  <Input
+                    readOnly
+                    className="w-full border-none"
+                    data-testid="input-field"
+                    type="text"
+                    value={extraInfo.displayName ?? extraInfo.name}
+                  />
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        </div>
+      )}
+    </>
   );
 };
 

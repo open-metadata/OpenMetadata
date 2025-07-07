@@ -13,7 +13,7 @@
 import { Progress, Skeleton, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isNumber, round } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { progressBarFormatter } from '../../../utils/ProgressBar/ProgressBar.utils';
 import './summary-card.style.less';
@@ -27,6 +27,9 @@ export const SummaryCard = ({
   showProgressBar = true,
   className,
   isLoading = false,
+  inverseLabel,
+  titleIcon,
+  cardBackgroundClass,
 }: SummaryCardProps) => {
   const percent = useMemo(() => {
     if (isNumber(value)) {
@@ -47,15 +50,20 @@ export const SummaryCard = ({
   }
 
   return (
-    <Space
-      className={classNames('summary-card', className)}
+    <div
+      className={classNames('summary-card', cardBackgroundClass, className)}
       data-testid="summary-card-container">
-      <div>
-        <Typography.Paragraph
-          className="summary-card-title"
-          data-testid="summary-card-title">
-          {title}
-        </Typography.Paragraph>
+      <div
+        className={classNames({ 'inverse-label': inverseLabel })}
+        data-testid="summary-card-label">
+        <Space align="center" size={8}>
+          {titleIcon}
+          <Typography.Paragraph
+            className="summary-card-title"
+            data-testid="summary-card-title">
+            {title}
+          </Typography.Paragraph>
+        </Space>
         <Typography.Paragraph
           className="summary-card-description"
           data-testid="summary-card-description">
@@ -73,6 +81,6 @@ export const SummaryCard = ({
           width={65}
         />
       )}
-    </Space>
+    </div>
   );
 };

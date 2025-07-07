@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,7 +25,8 @@ from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
 from sqlalchemy import Column as SAColumn
-from sqlalchemy import create_engine, literal, select
+from sqlalchemy import literal, select
+from sqlalchemy.engine import make_url
 
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -48,6 +49,7 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.converter.base import build_orm_col
 from metadata.profiler.orm.functions.md5 import MD5
 from metadata.profiler.orm.functions.substr import Substr
@@ -82,9 +84,9 @@ def build_sample_where_clause(
     reduced_concat = reduce(
         lambda c1, c2: c1.concat(c2), sql_alchemy_columns + [literal(salt)]
     )
-    sqa_dialect = create_engine(
+    sqa_dialect = make_url(
         f"{PythonDialects[table.database_service_type.name].value}://"
-    ).dialect
+    ).get_dialect()
     return str(
         select()
         .filter(
@@ -96,7 +98,7 @@ def build_sample_where_clause(
             < hex_nounce
         )
         .whereclause.compile(
-            dialect=sqa_dialect,
+            dialect=sqa_dialect(),
             compile_kwargs={"literal_binds": True},
         )
     )
@@ -178,7 +180,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     runtime_params: TableDiffRuntimeParameters
 
     def run_validation(self) -> TestCaseResult:
-        self.runtime_params = self.get_runtime_params()
+        self.runtime_params = self.get_runtime_parameters(TableDiffRuntimeParameters)
         try:
             self._validate_dialects()
             return self._run()
@@ -263,6 +265,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.keyColumns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
+            key_content=self.runtime_params.table1.privateKey.get_secret_value()
+            if self.runtime_params.table1.privateKey
+            else None,
+            private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
+            if self.runtime_params.table1.passPhrase
+            else None,
         ).with_schema()
         table2 = data_diff.connect_to_table(
             self.runtime_params.table2.serviceUrl,
@@ -270,18 +278,25 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.keyColumns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
+            key_content=self.runtime_params.table2.privateKey.get_secret_value()
+            if self.runtime_params.table2.privateKey
+            else None,
+            private_key_passphrase=self.runtime_params.table2.passPhrase.get_secret_value()
+            if self.runtime_params.table2.passPhrase
+            else None,
         ).with_schema()
         result = []
         for column in table1.key_columns + table1.extra_columns:
-            col1_type = self._get_column_python_type(
-                table1._schema[column]  # pylint: disable=protected-access
-            )
-            # Skip columns that are not in the second table. We cover this case in get_changed_added_columns.
-            if table2._schema.get(column) is None:  # pylint: disable=protected-access
+            col1 = table1._schema.get(column)  # pylint: disable=protected-access
+            if col1 is None:
+                # Skip columns that are not in the first table. We cover this case in get_changed_added_columns.
                 continue
-            col2_type = self._get_column_python_type(
-                table2._schema[column]  # pylint: disable=protected-access
-            )
+            col2 = table2._schema.get(column)  # pylint: disable=protected-access
+            if col2 is None:
+                # Skip columns that are not in the second table. We cover this case in get_changed_added_columns.
+                continue
+            col1_type = self._get_column_python_type(col1)
+            col2_type = self._get_column_python_type(col2)
             if is_numeric(col1_type) and is_numeric(col2_type):
                 continue
             if col1_type != col2_type:
@@ -329,6 +344,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.keyColumns,  # type: ignore
             case_sensitive=self.get_case_sensitive(),
             where=left_where,
+            key_content=self.runtime_params.table1.privateKey.get_secret_value()
+            if self.runtime_params.table1.privateKey
+            else None,
+            private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
+            if self.runtime_params.table1.passPhrase
+            else None,
         )
         table2 = data_diff.connect_to_table(
             self.runtime_params.table2.serviceUrl,
@@ -336,6 +357,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.keyColumns,  # type: ignore
             case_sensitive=self.get_case_sensitive(),
             where=right_where,
+            key_content=self.runtime_params.table1.privateKey.get_secret_value()
+            if self.runtime_params.table1.privateKey
+            else None,
+            private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
+            if self.runtime_params.table1.passPhrase
+            else None,
         )
         data_diff_kwargs = {
             "key_columns": self.runtime_params.keyColumns,
@@ -429,7 +456,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table_profile_config.profileSampleType
             == ProfileSampleType.ROWS
         ):
-            row_count = self.get_row_count()
+            row_count = self.get_total_row_count()
             if row_count is None:
                 raise ValueError("Row count is required for ROWS profile sample type")
             return int(
@@ -437,13 +464,6 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 * (self.runtime_params.table_profile_config.profileSample / row_count)
             )
         raise ValueError("Invalid profile sample type")
-
-    def get_runtime_params(self) -> TableDiffRuntimeParameters:
-        raw = self.get_test_case_param_value(
-            self.test_case.parameterValues, "runtimeParams", str
-        )
-        runtime_params = TableDiffRuntimeParameters.model_validate_json(raw)
-        return runtime_params
 
     def get_row_diff_test_case_result(
         self,
@@ -488,7 +508,10 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             ("table1.serviceUrl", self.runtime_params.table1.serviceUrl),
             ("table2.serviceUrl", self.runtime_params.table2.serviceUrl),
         ]:
-            dialect = urlparse(param).scheme
+            if isinstance(param, dict):
+                dialect = param.get("driver")
+            else:
+                dialect = urlparse(param).scheme
             if dialect not in SUPPORTED_DIALECTS:
                 raise UnsupportedDialectError(name, dialect)
 
@@ -640,5 +663,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
 
     def get_row_count(self) -> Optional[int]:
-        self.runner._sample = None  # pylint: disable=protected-access
         return self._compute_row_count(self.runner, None)
+
+    def get_total_row_count(self) -> Optional[int]:
+        row_count = Metrics.ROW_COUNT()
+        try:
+            row = self.runner.select_first_from_table(row_count.fn())
+            return dict(row).get(Metrics.ROW_COUNT.name)
+        except Exception as e:
+            logger.error(f"Error getting row count: {e}")
+            return None

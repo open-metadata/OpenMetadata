@@ -3,6 +3,7 @@ package org.openmetadata.service.security.mask;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,7 +14,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
@@ -130,14 +130,14 @@ public class PIIMasker {
     return searchIndex;
   }
 
-  public static Table getTableProfile(Table table) {
-    for (Column column : table.getColumns()) {
+  public static List<Column> getTableProfile(List<Column> columns) {
+    for (Column column : columns) {
       if (hasPiiSensitiveTag(column)) {
         column.setProfile(null);
         column.setName(flagMaskedName(column.getName()));
       }
     }
-    return table;
+    return columns;
   }
 
   public static List<ColumnProfile> getColumnProfile(
@@ -185,7 +185,7 @@ public class PIIMasker {
                             Entity.TABLE,
                             testCaseLink.getEntityFQN(),
                             "owners,tags,columns",
-                            Include.NON_DELETED);
+                            Include.ALL);
                     entityFQNToTable.put(testCaseLink.getEntityFQN(), table);
                   }
 

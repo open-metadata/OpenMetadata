@@ -91,6 +91,32 @@
       "default": 1,
       "title": "Number of Threads",
       "minimum": 1
+    },
+    "processCrossDatabaseLineage": {
+      "title": "Process Cross Database Lineage",
+      "description": "Set the 'Process Cross Database Lineage' toggle to control whether to process table lineage across different databases.",
+      "type": "boolean",
+      "default": false
+    },
+    "crossDatabaseServiceNames": {
+      "title": "Cross Database Service Names",
+      "description": "Set 'Cross Database Service Names' to process lineage with the database.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "enableTempTableLineage": {
+      "title": "Enable Temp Table Lineage",
+      "description": "Handle Lineage for Snowflake Temporary and Transient Tables. ",
+      "type": "boolean",
+      "default": false
+    },
+    "incrementalLineageProcessing": {
+      "title": "Incremental Lineage Processing",
+      "description": "Set the 'Incremental Lineage Processing' toggle to control whether to process lineage incrementally.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

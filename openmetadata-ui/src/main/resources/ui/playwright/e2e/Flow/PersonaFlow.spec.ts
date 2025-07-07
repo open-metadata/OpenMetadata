@@ -57,6 +57,8 @@ test.describe.serial('Persona operations', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.PERSONA);
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   });
 
   test('Persona creation should work properly', async ({ page }) => {

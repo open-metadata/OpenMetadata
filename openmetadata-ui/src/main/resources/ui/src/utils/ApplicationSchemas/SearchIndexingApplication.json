@@ -8,55 +8,64 @@
       "title": "Batch Size",
       "description": "Maximum number of events entities in a batch (Default 100).",
       "type": "integer",
-      "default": 100
+      "default": 100,
+      "minimum": 1
     },
     "payLoadSize": {
       "title": "Payload Size",
       "description": "Maximum number of events entities in a batch (Default 100).",
       "type": "integer",
-      "default": 104857600
+      "default": 104857600,
+      "minimum": 1
     },
     "producerThreads": {
       "title": "Number of Producer Threads",
       "description": "Number of threads to use for reindexing",
       "type": "integer",
-      "default": 5
+      "default": 5,
+      "minimum": 1
     },
     "consumerThreads": {
       "title": "Number of Consumer Threads",
       "description": "Number of threads to use for reindexing",
       "type": "integer",
-      "default": 1
+      "default": 1,
+      "minimum": 1
     },
     "queueSize": {
       "title": "Queue Size to use.",
       "description": "Queue Size to use internally for reindexing.",
       "type": "integer",
-      "default": 100
+      "default": 100,
+      "minimum": 1
     },
     "maxConcurrentRequests": {
       "title": "Max Concurrent Requests",
       "description": "Maximum number of concurrent requests to the search index",
       "type": "integer",
-      "default": 100
+      "default": 100,
+      "minimum": 1
     },
     "maxRetries": {
       "title": "Max Retries",
       "description": "Maximum number of retries for a failed request",
       "type": "integer",
-      "default": 5
+      "default": 5,
+      "minimum": 0
     },
     "initialBackoff": {
       "title": "Initial Backoff Millis",
       "description": "Initial backoff time in milliseconds",
       "type": "integer",
-      "default": 1000
+      "default": 1000,
+      "minimum": 0
     },
     "maxBackoff": {
       "title": "Max Backoff Millis",
       "description": "Maximum backoff time in milliseconds",
       "type": "integer",
-      "default": 10000
+      "default": 10000,
+      "minimum": 0
     },
     "entities": {
       "title": "Entities",
@@ -66,46 +75,49 @@
         "type": "string",
         "enum": [
           "table",
-          "dashboard",
-          "topic",
-          "pipeline",
-          "ingestionPipeline",
-          "searchIndex",
-          "user",
-          "team",
-          "glossary",
-          "glossaryTerm",
-          "mlmodel",
-          "tag",
-          "classification",
-          "query",
-          "container",
-          "database",
           "databaseSchema",
-          "testCase",
+          "container",
           "testSuite",
-          "chart",
-          "dashboardDataModel",
-          "databaseService",
-          "messagingService",
-          "dashboardService",
-          "pipelineService",
           "mlmodelService",
-          "storageService",
+          "pipelineService",
+          "messagingService",
+          "entityReportData",
+          "ingestionPipeline",
+          "database",
           "metadataService",
           "searchService",
-          "entityReportData",
+          "aggregatedCostAnalysisReportData",
+          "tag",
+          "dashboard",
+          "rawCostAnalysisReportData",
           "webAnalyticEntityViewReportData",
-          "webAnalyticUserActivityReportData",
-          "domain",
           "storedProcedure",
           "dataProduct",
-          "testCaseResolutionStatus",
-          "testCaseResult",
+          "databaseService",
+          "dashboardService",
+          "query",
+          "queryCostRecord",
           "apiService",
-          "apiEndpoint",
+          "searchIndex",
+          "testCaseResult",
           "apiCollection",
-          "metric"
+          "team",
+          "mlmodel",
+          "classification",
+          "glossaryTerm",
+          "testCaseResolutionStatus",
+          "dashboardDataModel",
+          "pipeline",
+          "glossary",
+          "apiEndpoint",
+          "storageService",
+          "metric",
+          "webAnalyticUserActivityReportData",
+          "domain",
+          "topic",
+          "chart",
+          "user",
+          "testCase"
         ]
       },
       "default": ["all"],
@@ -124,6 +136,12 @@
       "type": "string",
       "enum": ["EN", "JP", "ZH"],
       "default": "EN"
+    },
+    "autoTune": {
+      "title": "Auto Tune",
+      "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

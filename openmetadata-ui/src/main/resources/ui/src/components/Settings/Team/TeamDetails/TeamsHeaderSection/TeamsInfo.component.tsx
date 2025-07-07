@@ -17,7 +17,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
 import { isEmpty, last } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
@@ -36,8 +36,8 @@ import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.componen
 import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
 import { SubscriptionWebhook, TeamsInfoProps } from '../team.interface';
+import './teams-info.less';
 import TeamsSubscription from './TeamsSubscription.component';
-
 const TeamsInfo = ({
   parentTeams,
   isGroupType,
@@ -142,10 +142,37 @@ const TeamsInfo = ({
 
   const emailRender = useMemo(
     () => (
-      <Space align="center" size={4}>
-        <Typography.Text className="text-grey-muted">{`${t(
-          'label.email'
-        )} :`}</Typography.Text>
+      <Space align="start" className="d-flex flex-col gap-2">
+        <div className="d-flex gap-1">
+          <Typography.Text className="text-sm font-medium teams-info-heading">{`${t(
+            'label.email'
+          )}`}</Typography.Text>
+          {hasEditPermission && (
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.email'),
+              })}>
+              <Button
+                className="flex-center teams-info-email-edit-button p-0"
+                data-testid="edit-email"
+                icon={
+                  <EditIcon
+                    color={DE_ACTIVE_COLOR}
+                    {...ICON_DIMENSION}
+                    width="12px"
+                  />
+                }
+                size="small"
+                type="text"
+                onClick={(e) => {
+                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                  e.stopPropagation();
+                  setIsEmailEdit(true);
+                }}
+              />
+            </Tooltip>
+          )}
+        </div>
         {isEmailEdit ? (
           <Form
             initialValues={{ email }}
@@ -198,30 +225,11 @@ const TeamsInfo = ({
           </Form>
         ) : (
           <Space align="center">
-            <Typography.Text className="font-medium" data-testid="email-value">
+            <Typography.Text
+              className="font-medium text-sm teams-info-value"
+              data-testid="email-value">
               {email ?? NO_DATA_PLACEHOLDER}
             </Typography.Text>
-            {hasEditPermission && (
-              <Tooltip
-                title={t('label.edit-entity', {
-                  entity: t('label.email'),
-                })}>
-                <Button
-                  className="flex-center p-0"
-                  data-testid="edit-email"
-                  icon={
-                    <EditIcon color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />
-                  }
-                  size="small"
-                  type="text"
-                  onClick={(e) => {
-                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                    e.stopPropagation();
-                    setIsEmailEdit(true);
-                  }}
-                />
-              </Tooltip>
-            )}
           </Space>
         )}
       </Space>
@@ -235,37 +243,27 @@ const TeamsInfo = ({
     }
 
     return (
-      <Space size={4}>
-        <Divider type="vertical" />
-        <Typography.Text className="text-grey-muted">
-          {`${t('label.type')} :`}
-        </Typography.Text>
-        {showTypeSelector ? (
-          <TeamTypeSelect
-            handleShowTypeSelector={setShowTypeSelector}
-            parentTeamType={
-              last(parentTeams)?.teamType ?? TeamType.Organization
-            }
-            showGroupOption={!childTeamsCount}
-            teamType={teamType ?? TeamType.Department}
-            updateTeamType={hasEditPermission ? updateTeamType : undefined}
-          />
-        ) : (
-          <>
-            <Typography.Text className="font-medium" data-testid="team-type">
-              {teamType}
+      <>
+        <Divider className="vertical-divider" type="vertical" />
+        <Space align="start" className="d-flex flex-col gap-2">
+          <div className="d-flex  gap-2">
+            <Typography.Text className="text-sm font-medium teams-info-heading ">
+              {`${t('label.type')}`}
             </Typography.Text>
-
-            {hasEditPermission && !isGroupType && (
+            {hasEditPermission && !showTypeSelector && !isGroupType && (
               <Tooltip
                 title={t('label.edit-entity', {
                   entity: t('label.team-type'),
                 })}>
                 <Button
-                  className="flex-center p-0"
+                  className="flex-center edit-team-type-icon p-0"
                   data-testid="edit-team-type-icon"
                   icon={
-                    <EditIcon color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />
+                    <EditIcon
+                      color={DE_ACTIVE_COLOR}
+                      {...ICON_DIMENSION}
+                      width={12}
+                    />
                   }
                   size="small"
                   type="text"
@@ -277,9 +275,25 @@ const TeamsInfo = ({
                 />
               </Tooltip>
             )}
-          </>
-        )}
-      </Space>
+          </div>
+
+          {showTypeSelector ? (
+            <TeamTypeSelect
+              handleShowTypeSelector={setShowTypeSelector}
+              parentTeamType={
+                last(parentTeams)?.teamType ?? TeamType.Organization
+              }
+              showGroupOption={!childTeamsCount}
+              teamType={teamType ?? TeamType.Department}
+              updateTeamType={hasEditPermission ? updateTeamType : undefined}
+            />
+          ) : (
+            <Typography.Text className="font-medium" data-testid="team-type">
+              {teamType}
+            </Typography.Text>
+          )}
+        </Space>
+      </>
     );
   }, [
     teamType,
@@ -293,8 +307,9 @@ const TeamsInfo = ({
   ]);
 
   return (
-    <Space size={0}>
+    <Space className="teams-info-header-container" size={0}>
       <DomainLabel
+        headerLayout
         multiple
         domain={currentTeam.domains}
         entityFqn={fullyQualifiedName ?? ''}
@@ -302,17 +317,18 @@ const TeamsInfo = ({
         entityType={EntityType.TEAM}
         hasPermission={hasEditPermission}
       />
-      <Divider type="vertical" />
+      <Divider className="vertical-divider" type="vertical" />
       <OwnerLabel
         className="text-sm"
         hasPermission={hasAccess}
+        isCompactView={false}
         owners={owners}
         onUpdate={updateOwner}
       />
-      <Divider type="vertical" />
+      <Divider className="vertical-divider" type="vertical" />
       {emailRender}
 
-      <Divider type="vertical" />
+      <Divider className="vertical-divider" type="vertical" />
       <TeamsSubscription
         hasEditPermission={hasEditSubscriptionPermission}
         subscription={currentTeam.profile?.subscription}
@@ -320,11 +336,10 @@ const TeamsInfo = ({
       />
       {teamTypeElement}
 
-      <Divider type="vertical" />
+      <Divider className="vertical-divider" type="vertical" />
 
-      <Space size={4}>
-        <Divider type="vertical" />
-        <Typography.Text className="text-grey-muted d-flex items-center">
+      <Space align="start" className="d-flex flex-col gap-2">
+        <Typography.Text className="teams-info-heading text-sm font-medium d-flex items-center">
           {t('label.total-user-plural')}
           <Tooltip
             destroyTooltipOnHide
@@ -335,10 +350,11 @@ const TeamsInfo = ({
               style={{ color: GRAYED_OUT_COLOR }}
             />
           </Tooltip>
-          {' : '}
         </Typography.Text>
 
-        <Typography.Text className="font-medium" data-testid="team-user-count">
+        <Typography.Text
+          className="teams-info-value text-sm font-medium text-secondary-new"
+          data-testid="team-user-count">
           {currentTeam.userCount}
         </Typography.Text>
       </Space>

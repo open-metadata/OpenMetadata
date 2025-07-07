@@ -22,5 +22,10 @@
     display: flex;
     flex-direction: column;
     overflow-y: scroll;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }

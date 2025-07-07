@@ -2,29 +2,29 @@ package org.openmetadata.service.resources.events;
 
 import static org.junit.Assert.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 @Path("v1/test/slack")
@@ -128,7 +128,7 @@ public class SlackCallbackResource {
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "<%s/%s/%s%s|%s>",
-        getSmtpSettings().getOpenMetadataUrl(),
+        EmailUtil.getOMBaseURL(),
         prefix,
         fqn.trim().replaceAll(" ", "%20"),
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),

@@ -12,7 +12,7 @@
  */
 import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
 import { CookieStorage } from 'cookie-storage';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as RightArrowIcon } from '../../../../assets/svg/ic-arrow-right-full.svg';
@@ -20,6 +20,7 @@ import { ReactComponent as PlayIcon } from '../../../../assets/svg/ic-play-butto
 import { BLACK_COLOR, ROUTES } from '../../../../constants/constants';
 import { useAuth } from '../../../../hooks/authHooks';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
 import { COOKIE_VERSION, WHATS_NEW } from '../whatsNewData';
 import WhatsNewModal from '../WhatsNewModal';
@@ -76,6 +77,10 @@ const WhatsNewAlert = () => {
     });
   }, [isFirstTimeUser]);
 
+  const title = useMemo(() => {
+    return brandClassBase.getPageTitle();
+  }, []);
+
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
@@ -85,7 +90,9 @@ const WhatsNewAlert = () => {
               <Typography.Text
                 className="whats-new-alert-header"
                 data-testid="whats-new-alert-header">
-                {t('label.open-metadata-updated')}
+                {t('label.brand-updated', {
+                  brandName: title,
+                })}
               </Typography.Text>
               <Button
                 className="flex-center m--t-xss"

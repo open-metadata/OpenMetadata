@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import {
   LOGOUT_ITEM,
@@ -19,7 +18,11 @@ import {
 } from '../../../constants/LeftSidebar.constants';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
-const mockOnClick = jest.fn();
+jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn().mockImplementation(() => ({
+    onLogoutHandler: jest.fn(),
+  })),
+}));
 
 describe('LeftSidebar Items', () => {
   it('should renders sidebar items data', () => {
@@ -32,8 +35,6 @@ describe('LeftSidebar Items', () => {
     expect(screen.getByTestId('app-bar-item-settings')).toBeInTheDocument();
 
     expect(screen.getByText('label.setting-plural')).toBeInTheDocument();
-
-    expect(screen.getByRole('img')).toBeInTheDocument();
   });
 
   it('should renders sidebar items with redirect url', () => {
@@ -48,8 +49,6 @@ describe('LeftSidebar Items', () => {
     expect(screen.getByText('label.setting-plural')).toBeInTheDocument();
 
     expect(screen.getByRole('link')).toBeInTheDocument();
-
-    expect(screen.getByRole('img')).toBeInTheDocument();
   });
 
   it('should renders sidebar items without redirect url', () => {
@@ -64,23 +63,5 @@ describe('LeftSidebar Items', () => {
     expect(screen.getByText('label.logout')).toBeInTheDocument();
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-
-    expect(screen.getByRole('img')).toBeInTheDocument();
-  });
-
-  it('should fire onClick event if provided', () => {
-    render(
-      <BrowserRouter>
-        <LeftSidebarItem data={{ ...LOGOUT_ITEM, onClick: mockOnClick }} />
-      </BrowserRouter>
-    );
-
-    const logoutItem = screen.getByTestId('app-bar-item-logout');
-
-    expect(logoutItem).toBeInTheDocument();
-
-    fireEvent.click(logoutItem);
-
-    expect(mockOnClick).toHaveBeenCalled();
   });
 });

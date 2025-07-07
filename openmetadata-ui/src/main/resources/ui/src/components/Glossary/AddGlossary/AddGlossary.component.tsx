@@ -14,7 +14,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CreateGlossary,
@@ -275,8 +274,10 @@ const AddGlossary = ({
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'm-x-auto max-w-md',
+        allowScroll: true,
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <>
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
             <Typography.Title
               className="m-t-md"
@@ -337,7 +338,7 @@ const AddGlossary = ({
                 </Space>
               </Form>
             </div>
-          </div>
+          </>
         ),
         minWidth: 700,
         flex: 0.7,
@@ -347,7 +348,7 @@ const AddGlossary = ({
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

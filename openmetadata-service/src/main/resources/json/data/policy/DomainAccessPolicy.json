@@ -4,8 +4,8 @@
   "fullyQualifiedName": "DomainOnlyAccessPolicy",
   "description": "This Policy adds restrictions so that users will have access to domain related data. If the user has some domain, then he will be able to access data only for that domain. If the user does not have any domain assigned , he will be able to access only assets which also does not have any domain.",
   "enabled": true,
-  "allowDelete": false,
-  "provider": "system",
+  "allowDelete": true,
+  "provider": "user",
   "rules": [
     {
       "name": "DomainOnlyAccessRule",

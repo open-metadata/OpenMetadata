@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TestCase } from '../../../generated/tests/testCase';
+import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
-import { checkPermission } from '../../../utils/PermissionsUtils';
-import { IncidentManagerTabs } from '../IncidentManager.interface';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { TestCasePageTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
 
@@ -45,7 +45,7 @@ const mockTestCaseData = {
     name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
     fullyQualifiedName:
       'sample_data.ecommerce_db.shopify.dim_address.testSuite',
-    description: 'This is an executable test suite linked to an entity',
+    description: 'This is an basic test suite linked to an entity',
     deleted: false,
     href: 'http://localhost:8585/api/v1/dataQuality/testSuites/fe44ef1a-1b83-4872-bef6-fbd1885986b8',
   },
@@ -78,6 +78,14 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   reset: jest.fn(),
   showAILearningBanner: false,
   setShowAILearningBanner: jest.fn(),
+  dqLineageData: undefined,
+  setDqLineageData: jest.fn(),
+  isPermissionLoading: false,
+  testCasePermission: MOCK_PERMISSIONS,
+  setTestCasePermission: jest.fn(),
+  setIsPermissionLoading: jest.fn(),
+  isTabExpanded: false,
+  setIsTabExpanded: jest.fn(),
 };
 jest.mock('./useTestCase.store', () => ({
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
@@ -89,22 +97,22 @@ jest.mock('../../../rest/testAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockTestCaseData })),
   updateTestCaseById: jest.fn(),
 }));
-const mockHistory = {
-  push: jest.fn(),
-};
+
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest
     .fn()
     .mockImplementation(() => ({ state: { breadcrumbData: [] } }));
 });
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: () => mockHistory,
   useParams: () => ({
     fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
-    tab: IncidentManagerTabs.TEST_CASE_RESULTS,
+    tab: TestCasePageTabs.TEST_CASE_RESULTS,
   }),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
   jest
@@ -150,9 +158,6 @@ jest.mock(
 jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
-jest.mock('../../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
-}));
 
 describe('IncidentManagerDetailPage', () => {
   it('should render component', async () => {
@@ -171,7 +176,7 @@ describe('IncidentManagerDetailPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('onClick of same tab, should not call history.push', async () => {
+  it('onClick of same tab, should not call navigate', async () => {
     await act(async () => {
       render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
     });
@@ -181,13 +186,11 @@ describe('IncidentManagerDetailPage', () => {
       fireEvent.click(testCaseResult);
     });
 
-    expect(mockHistory.push).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("should render no permission message if user doesn't have permission", async () => {
-    (checkPermission as jest.Mock).mockImplementationOnce(
-      (data) => data !== 'ViewAll'
-    );
+    mockUseTestCase.testCasePermission = DEFAULT_ENTITY_PERMISSION;
     await act(async () => {
       render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
     });
@@ -195,6 +198,8 @@ describe('IncidentManagerDetailPage', () => {
     expect(
       await screen.findByText('ErrorPlaceHolder PERMISSION')
     ).toBeInTheDocument();
+
+    mockUseTestCase.testCasePermission = MOCK_PERMISSIONS;
   });
 
   it('should render no data placeholder message if there is no data', async () => {

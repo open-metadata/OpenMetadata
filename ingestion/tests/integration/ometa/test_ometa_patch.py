@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -168,7 +168,6 @@ class OMetaTableTest(TestCase):
         cls.test_case = cls.metadata.create_or_update(
             get_create_test_case(
                 entity_link=f"<#E::table::{cls.table.fullyQualifiedName.root}>",
-                test_suite=cls.test_suite.fullyQualifiedName,
                 test_definition=cls.test_definition.fullyQualifiedName,
                 parameter_values=[TestCaseParameterValue(name="foo", value="10")],
             )
@@ -640,3 +639,44 @@ class OMetaTableTest(TestCase):
             with_description.columns[2].children[1].description.root,
             "I am so nested",
         )
+
+    def test_patch_when_inherited_owner(self):
+        """PATCHing anything when owner is inherited, does not add the owner to the entity"""
+
+        # Prepare a schema with owners
+        create_schema = get_create_entity(
+            entity=DatabaseSchema, reference=self.db_entity.fullyQualifiedName
+        )
+        create_schema.owners = self.owner_team_1
+        db_schema_entity = self.metadata.create_or_update(data=create_schema)
+
+        # Add a table and check it has inherited owners
+        create_table = get_create_entity(
+            entity=Table, reference=db_schema_entity.fullyQualifiedName
+        )
+        _table = self.metadata.create_or_update(data=create_table)
+
+        table: Table = self.metadata.get_by_name(
+            entity=Table, fqn=_table.fullyQualifiedName, fields=["owners"]
+        )
+        assert table.owners.root
+        assert table.owners.root[0].inherited
+
+        # Add a description to the table and PATCH it
+        dest = table.model_copy(deep=True)
+        dest.description = Markdown(root="potato")
+
+        self.metadata.patch(
+            entity=Table,
+            source=table,
+            destination=dest,
+        )
+
+        patched_table = self.metadata.get_by_name(
+            entity=Table, fqn=table.fullyQualifiedName, fields=["owners"]
+        )
+
+        # Check the table still has inherited owners
+        assert patched_table.description.root == "potato"
+        assert patched_table.owners.root
+        assert patched_table.owners.root[0].inherited

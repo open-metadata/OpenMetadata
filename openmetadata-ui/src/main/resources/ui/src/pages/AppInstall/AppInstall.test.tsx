@@ -10,17 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { ScheduleType } from '../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import AppInstall from './AppInstall.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockShowSuccessToast = jest.fn();
 const mockFormatFormDataForSubmit = jest.fn();
-const mockInstallApplication = jest.fn();
+const mockInstallApplication = jest.fn().mockResolvedValue({});
 const mockGetMarketPlaceApplicationByFqn = jest
   .fn()
   .mockResolvedValue({} as AppMarketPlaceDefinition);
@@ -29,10 +35,13 @@ const MARKETPLACE_DATA = {
   allowConfiguration: true,
 };
 
+const NO_SCHEDULE_DATA = {
+  scheduleType: ScheduleType.NoSchedule,
+  allowConfiguration: true,
+};
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock(
@@ -153,85 +162,90 @@ describe('AppInstall component', () => {
     });
 
     // change ActiveServiceStep to 3
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'Save AppInstallVerifyCard' })
-      );
-    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Save AppInstallVerifyCard' })
+    );
 
     expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
     expect(screen.queryByText('AppInstallVerifyCard')).not.toBeInTheDocument();
 
     // ScheduleInterval
-    await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'Submit ScheduleInterval' })
-      );
-    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Submit ScheduleInterval' })
+    );
 
     expect(mockInstallApplication).toHaveBeenCalled();
-    expect(mockShowSuccessToast).toHaveBeenCalledWith(
-      'message.app-installed-successfully'
+
+    await waitFor(() =>
+      expect(mockShowSuccessToast).toHaveBeenCalledWith(
+        'message.app-installed-successfully'
+      )
     );
 
     // change ActiveServiceStep to 1
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
-      );
-    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
+    );
 
     expect(screen.getByText('AppInstallVerifyCard')).toBeInTheDocument();
 
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', { name: 'Cancel AppInstallVerifyCard' })
     );
 
     // will call for Submit ScheduleInterval and Cancel AppInstallVerifyCard
-    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 
   it('actions check with allowConfiguration', async () => {
     mockGetMarketPlaceApplicationByFqn.mockResolvedValueOnce(MARKETPLACE_DATA);
+
+    render(<AppInstall />);
+
+    // change ActiveServiceStep to 2
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Save AppInstallVerifyCard' })
+    );
+
+    expect(screen.getByText('FormBuilder')).toBeInTheDocument();
+    expect(screen.queryByText('AppInstallVerifyCard')).not.toBeInTheDocument();
+
+    // change ActiveServiceStep to 3
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit FormBuilder' }));
+
+    expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
+
+    // change ActiveServiceStep to 2
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel FormBuilder' }));
+
+    expect(screen.getByText('AppInstallVerifyCard')).toBeInTheDocument();
+  });
+
+  it('actions check with schedule type noSchedule', async () => {
+    mockGetMarketPlaceApplicationByFqn.mockResolvedValueOnce(NO_SCHEDULE_DATA);
 
     await act(async () => {
       render(<AppInstall />);
     });
 
     // change ActiveServiceStep to 2
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'Save AppInstallVerifyCard' })
-      );
-    });
 
-    expect(screen.getByText('FormBuilder')).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Save AppInstallVerifyCard' })
+    );
+
+    expect(await screen.findByText('FormBuilder')).toBeInTheDocument();
     expect(screen.queryByText('AppInstallVerifyCard')).not.toBeInTheDocument();
 
-    // change ActiveServiceStep to 3
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'Submit FormBuilder' })
-      );
-    });
+    // submit the form here
+    fireEvent.click(screen.getByRole('button', { name: 'Submit FormBuilder' }));
 
-    expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
-
-    // change ActiveServiceStep to 2
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
-      );
-    });
-
-    // change ActiveServiceStep to 1
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'Cancel FormBuilder' })
-      );
-    });
-
-    expect(screen.getByText('AppInstallVerifyCard')).toBeInTheDocument();
+    expect(mockInstallApplication).toHaveBeenCalled();
   });
 
   it('errors check in fetching application data', async () => {
@@ -241,7 +255,9 @@ describe('AppInstall component', () => {
       render(<AppInstall />);
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR);
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      'message.no-application-schema-found'
+    );
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
@@ -259,7 +275,7 @@ describe('AppInstall component', () => {
       );
     });
 
-    expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
+    expect(await screen.findByText('ScheduleInterval')).toBeInTheDocument();
 
     await act(async () => {
       userEvent.click(
@@ -267,6 +283,6 @@ describe('AppInstall component', () => {
       );
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR);
+    await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR));
   });
 });

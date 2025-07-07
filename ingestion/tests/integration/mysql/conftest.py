@@ -51,7 +51,27 @@ def mysql_container(tmp_path_factory):
         engine.execute(
             "UPDATE employees SET last_update = hire_date + INTERVAL FLOOR(1 + RAND() * 500000) SECOND"
         )
+        engine.dispose()
+        assert_dangling_connections(container, 1)
         yield container
+        # Needs to be handled for Test Cases https://github.com/open-metadata/OpenMetadata/issues/21187
+        assert_dangling_connections(container, 9)
+
+
+def assert_dangling_connections(container, max_connections):
+    engine = create_engine(container.get_connection_url())
+    with engine.connect() as conn:
+        result = conn.execute("SHOW PROCESSLIST")
+    processes = result.fetchall()
+    # Count all connections except system processes (Daemon, Binlog Dump)
+    # Note: We include Sleep connections as they are still open connections
+    active_connections = len(
+        [p for p in processes if p[1] not in ["Daemon", "Binlog Dump"]]
+    )
+
+    assert (
+        active_connections <= max_connections
+    ), f"Found {active_connections} open connections to MySQL"
 
 
 @pytest.fixture(scope="module")

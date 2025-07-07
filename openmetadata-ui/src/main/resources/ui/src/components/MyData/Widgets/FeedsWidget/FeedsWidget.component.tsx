@@ -14,12 +14,13 @@ import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Button, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { mockFeedData } from '../../../../constants/mockTourData.constants';
+import { TAB_SUPPORTED_FILTER } from '../../../../constants/Widgets.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { FeedFilter } from '../../../../enums/mydata.enum';
@@ -35,11 +36,11 @@ import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityUserLink } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ActivityFeedListV1 from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
+import ActivityFeedListV1New from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import '../../../ActivityFeed/ActivityFeedTab/activity-feed-tab.less';
 import { ActivityFeedTabs } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import FeedsFilterPopover from '../../../common/FeedsFilterPopover/FeedsFilterPopover.component';
-import './feeds-widget.less';
 
 const FeedsWidget = ({
   isEditView = false,
@@ -47,7 +48,7 @@ const FeedsWidget = ({
   widgetKey,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { isTourOpen } = useTourProvider();
   const { currentUser } = useApplicationStore();
   const [activeTab, setActiveTab] = useState<ActivityFeedTabs>(
@@ -76,7 +77,7 @@ const FeedsWidget = ({
       getFeedData(FeedFilter.MENTIONS);
     } else if (activeTab === ActivityFeedTabs.TASKS) {
       getFeedData(
-        FeedFilter.OWNER,
+        defaultFilter,
         undefined,
         ThreadType.Task,
         undefined,
@@ -106,10 +107,19 @@ const FeedsWidget = ({
     [count.openTaskCount, activeTab]
   );
 
-  const onTabChange = (key: string) => setActiveTab(key as ActivityFeedTabs);
+  const onTabChange = (key: string) => {
+    if (key === ActivityFeedTabs.TASKS) {
+      setDefaultFilter(FeedFilter.OWNER);
+    } else if (key === ActivityFeedTabs.ALL) {
+      setDefaultFilter(
+        currentUser?.isAdmin ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS
+      );
+    }
+    setActiveTab(key as ActivityFeedTabs);
+  };
 
   const redirectToUserPage = useCallback(() => {
-    history.push(
+    navigate(
       entityUtilClassBase.getEntityLink(
         EntityType.USER,
         currentUser?.name as string,
@@ -179,9 +189,7 @@ const FeedsWidget = ({
     () => (
       <Transi18next
         i18nKey="message.no-activity-feed"
-        renderElement={
-          <Link rel="noreferrer" to={{ pathname: ROUTES.EXPLORE }} />
-        }
+        renderElement={<Link rel="noreferrer" to={ROUTES.EXPLORE} />}
         values={{
           explored: t('message.have-not-explored-yet'),
         }}
@@ -189,6 +197,20 @@ const FeedsWidget = ({
     ),
     []
   );
+  const handleFeedFetchFromFeedList = useCallback(() => {
+    getFeedData(
+      defaultFilter,
+      undefined,
+      ThreadType.Task,
+      undefined,
+      undefined,
+      ThreadTaskStatus.Open
+    );
+  }, [defaultFilter, getFeedData]);
+  const handleAfterTaskClose = () => {
+    handleFeedFetchFromFeedList();
+    fetchFeedsCount();
+  };
 
   return (
     <div
@@ -196,14 +218,15 @@ const FeedsWidget = ({
       data-testid="activity-feed-widget">
       <Tabs
         destroyInactiveTabPane
-        className="h-full"
+        className="h-full d-flex"
         items={[
           {
             label: t('label.all'),
             key: ActivityFeedTabs.ALL,
             children: (
               <>
-                <ActivityFeedListV1
+                <ActivityFeedListV1New
+                  isForFeedTab
                   emptyPlaceholderText={emptyPlaceholderText}
                   feedList={isTourOpen ? mockFeedData : threads}
                   hidePopover={isEditView}
@@ -224,8 +247,13 @@ const FeedsWidget = ({
             key: ActivityFeedTabs.MENTIONS,
             children: (
               <>
-                <ActivityFeedListV1
-                  emptyPlaceholderText={t('message.no-mentions')}
+                <ActivityFeedListV1New
+                  isForFeedTab
+                  emptyPlaceholderText={
+                    <Typography.Text className="placeholder-text">
+                      {t('message.no-mentions')}
+                    </Typography.Text>
+                  }
                   feedList={threads}
                   hidePopover={isEditView}
                   isLoading={loading}
@@ -245,12 +273,23 @@ const FeedsWidget = ({
             key: ActivityFeedTabs.TASKS,
             children: (
               <>
-                <ActivityFeedListV1
-                  emptyPlaceholderText={t('message.no-open-tasks')}
+                <ActivityFeedListV1New
+                  isForFeedTab
+                  emptyPlaceholderText={
+                    <div className="d-flex flex-col gap-4">
+                      <Typography.Text className="placeholder-title">
+                        {t('message.no-open-tasks-title')}
+                      </Typography.Text>
+                      <Typography.Text className="placeholder-text">
+                        {t('message.no-open-tasks-description')}
+                      </Typography.Text>
+                    </div>
+                  }
                   feedList={threads}
                   hidePopover={isEditView}
                   isLoading={loading}
                   showThread={false}
+                  onAfterClose={handleAfterTaskClose}
                 />
                 {moreButton}
               </>
@@ -259,13 +298,10 @@ const FeedsWidget = ({
         ]}
         tabBarExtraContent={
           <Space>
-            {activeTab === ActivityFeedTabs.ALL && (
+            {TAB_SUPPORTED_FILTER.includes(activeTab) && (
               <FeedsFilterPopover
-                defaultFilter={
-                  currentUser?.isAdmin
-                    ? FeedFilter.ALL
-                    : FeedFilter.OWNER_OR_FOLLOWS
-                }
+                defaultFilter={defaultFilter}
+                feedTab={activeTab}
                 onUpdate={onFilterUpdate}
               />
             )}

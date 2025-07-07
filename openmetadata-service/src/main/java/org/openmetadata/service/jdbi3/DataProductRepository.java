@@ -14,7 +14,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
@@ -22,19 +24,29 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.LineageUtil;
 
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
@@ -93,19 +105,146 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
   }
 
+  public final EntityReference getDomain(Domain domain) {
+    return getFromEntityRef(domain.getId(), Relationship.CONTAINS, DOMAIN, false);
+  }
+
   @Override
-  public EntityUpdater getUpdater(DataProduct original, DataProduct updated, Operation operation) {
+  public void setInheritedFields(DataProduct dataProduct, Fields fields) {
+    // If dataProduct does not have owners and experts, inherit them from its domain
+    EntityReference parentRef =
+        dataProduct.getDomain() != null ? dataProduct.getDomain() : getDomain(dataProduct);
+    if (parentRef != null) {
+      Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owners,experts", ALL);
+      inheritOwners(dataProduct, fields, parent);
+      inheritExperts(dataProduct, fields, parent);
+    }
+  }
+
+  @Override
+  public EntityRepository<DataProduct>.EntityUpdater getUpdater(
+      DataProduct original, DataProduct updated, Operation operation, ChangeSource changeSource) {
     return new DataProductUpdater(original, updated, operation);
   }
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true);
+    BulkOperationResult result =
+        bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true);
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      for (EntityReference ref : listOrEmpty(request.getAssets())) {
+        LineageUtil.addDataProductsLineage(
+            ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
+      }
+    }
+    return result;
   }
 
   public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false);
+    BulkOperationResult result =
+        bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false);
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      for (EntityReference ref : listOrEmpty(request.getAssets())) {
+        LineageUtil.removeDataProductsLineage(
+            ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
+      }
+    }
+    return result;
+  }
+
+  @Transaction
+  @Override
+  protected BulkOperationResult bulkAssetsOperation(
+      UUID entityId,
+      String fromEntity,
+      Relationship relationship,
+      BulkAssets request,
+      boolean isAdd) {
+    BulkOperationResult result =
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+    List<BulkResponse> success = new ArrayList<>();
+
+    EntityUtil.populateEntityReferences(request.getAssets());
+
+    for (EntityReference ref : request.getAssets()) {
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      removeCrossDomainDataProducts(ref, relationship);
+
+      if (isAdd) {
+        addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+      } else {
+        deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
+      }
+
+      success.add(new BulkResponse().withRequest(ref));
+      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+
+      searchRepository.updateEntity(ref);
+    }
+
+    result.withSuccessRequest(success);
+
+    // Create a Change Event on successful addition/removal of assets
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      ChangeDescription change =
+          addBulkAddRemoveChangeDescription(
+              entityInterface.getVersion(), isAdd, request.getAssets(), null);
+      ChangeEvent changeEvent =
+          getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    }
+
+    return result;
+  }
+
+  private void removeCrossDomainDataProducts(EntityReference ref, Relationship relationship) {
+    EntityReference domain =
+        getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
+    List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
+
+    if (!dataProducts.isEmpty() && domain != null) {
+      // Map dataProduct -> domain
+      Map<UUID, UUID> associatedDomains =
+          daoCollection
+              .relationshipDAO()
+              .findFromBatch(
+                  dataProducts.stream()
+                      .map(dp -> dp.getId().toString())
+                      .collect(Collectors.toList()),
+                  relationship.ordinal(),
+                  DOMAIN)
+              .stream()
+              .collect(
+                  Collectors.toMap(
+                      rec -> UUID.fromString(rec.getToId()),
+                      rec -> UUID.fromString(rec.getFromId())));
+
+      List<EntityReference> dataProductsToDelete =
+          dataProducts.stream()
+              .filter(
+                  dataProduct -> {
+                    UUID associatedDomainId = associatedDomains.get(dataProduct.getId());
+                    return associatedDomainId != null && !associatedDomainId.equals(domain.getId());
+                  })
+              .collect(Collectors.toList());
+
+      if (!dataProductsToDelete.isEmpty()) {
+        daoCollection
+            .relationshipDAO()
+            .bulkRemoveFromRelationship(
+                dataProductsToDelete.stream()
+                    .map(EntityReference::getId)
+                    .collect(Collectors.toList()),
+                ref.getId(),
+                DATA_PRODUCT,
+                ref.getType(),
+                relationship.ordinal());
+        LineageUtil.removeDataProductsLineage(ref.getId(), ref.getType(), dataProductsToDelete);
+      }
+    }
   }
 
   @Override
@@ -124,7 +263,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         .forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
     for (EntityReference assetRef : assetsMap.values()) {
       EntityInterface asset = Entity.getEntity(assetRef, "*", Include.ALL);
-      searchRepository.updateEntity(asset);
+      searchRepository.updateEntityIndex(asset);
     }
   }
 
@@ -135,7 +274,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateAssets();
     }
 

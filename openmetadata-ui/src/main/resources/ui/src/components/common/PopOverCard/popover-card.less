@@ -10,17 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../styles/variables.less';
+
 .entity-popover-card {
   max-width: 500px;
   min-width: 300px;
+  background-color: @white !important;
+  border: none;
   .explore-search-card {
     padding: 0;
   }
-  .explore-search-card:hover {
-    background-color: inherit;
-  }
+
   .explore-card-actions {
     top: 0;
     right: 0;
+  }
+  &.ant-popover-placement-top {
+    padding-top: 0px;
+    padding-bottom: 0px;
   }
 }

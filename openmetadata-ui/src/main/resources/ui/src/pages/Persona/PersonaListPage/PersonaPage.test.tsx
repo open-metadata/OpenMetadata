@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { PersonaPage } from './PersonaPage';
-jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
+
 jest.mock('../../../components/PageHeader/PageHeader.component', () => {
   return jest.fn().mockImplementation(() => <div>PageHeader.component</div>);
 });
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
 jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
@@ -87,11 +87,13 @@ jest.mock('../../../rest/PersonaAPI', () => {
   };
 });
 
+const mockProps = {
+  pageTitle: 'personas',
+};
+
 describe('PersonaPage', () => {
   it('Component should render', async () => {
-    await act(async () => {
-      render(<PersonaPage />);
-    });
+    render(<PersonaPage {...mockProps} />);
 
     expect(
       await screen.findByText('ErrorPlaceHolder.component')
@@ -118,7 +120,7 @@ describe('PersonaPage', () => {
       })
     );
     act(() => {
-      render(<PersonaPage />);
+      render(<PersonaPage {...mockProps} />);
     });
     const addPersonaButton = await screen.findByTestId('add-persona-button');
 
@@ -152,7 +154,7 @@ describe('PersonaPage', () => {
       })
     );
     act(() => {
-      render(<PersonaPage />);
+      render(<PersonaPage {...mockProps} />);
     });
     const addPersonaButton = await screen.findByTestId('add-persona-button');
     fireEvent.click(addPersonaButton);
@@ -194,7 +196,7 @@ describe('PersonaPage', () => {
       })
     );
     act(() => {
-      render(<PersonaPage />);
+      render(<PersonaPage {...mockProps} />);
     });
 
     expect(

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -47,6 +47,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_TEST_FETCH_TAG,
     SNOWFLAKE_TEST_GET_QUERIES,
+    SNOWFLAKE_TEST_GET_STREAMS,
     SNOWFLAKE_TEST_GET_TABLES,
     SNOWFLAKE_TEST_GET_VIEWS,
 )
@@ -121,7 +122,7 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
             )
         p_key = serialization.load_pem_private_key(
             bytes(connection.privateKey.get_secret_value(), "utf-8"),
-            password=snowflake_private_key_passphrase.encode(),
+            password=snowflake_private_key_passphrase.encode() or None,
             backend=default_backend(),
         )
         pkb = p_key.private_bytes(
@@ -137,11 +138,16 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
             "client_session_keep_alive"
         ] = connection.clientSessionKeepAlive
 
-    return create_generic_db_connection(
+    engine = create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
+    if connection.connectionArguments.root and connection.connectionArguments.root.get(
+        "private_key"
+    ):
+        del connection.connectionArguments.root["private_key"]
+    return engine
 
 
 def test_connection(
@@ -187,11 +193,24 @@ def test_connection(
             statement=SNOWFLAKE_TEST_GET_VIEWS,
             engine_wrapper=engine_wrapper,
         ),
+        "GetStreams": partial(
+            test_table_query,
+            statement=SNOWFLAKE_TEST_GET_STREAMS,
+            engine_wrapper=engine_wrapper,
+        ),
         "GetQueries": partial(
-            test_query, statement=SNOWFLAKE_TEST_GET_QUERIES, engine=engine
+            test_query,
+            statement=SNOWFLAKE_TEST_GET_QUERIES.format(
+                account_usage=service_connection.accountUsageSchema
+            ),
+            engine=engine,
         ),
         "GetTags": partial(
-            test_query, statement=SNOWFLAKE_TEST_FETCH_TAG, engine=engine
+            test_query,
+            statement=SNOWFLAKE_TEST_FETCH_TAG.format(
+                account_usage=service_connection.accountUsageSchema
+            ),
+            engine=engine,
         ),
     }
 
@@ -225,7 +244,7 @@ def execute_inspector_func(engine_wrapper: SnowflakeEngineWrapper, func_name: st
     the function with name `func_name` and executes it
     """
     _init_database(engine_wrapper)
-    engine_wrapper.engine.execute(f"USE DATABASE {engine_wrapper.database_name}")
+    engine_wrapper.engine.execute(f'USE DATABASE "{engine_wrapper.database_name}"')
     inspector = inspect(engine_wrapper.engine)
     inspector_fn = getattr(inspector, func_name)
     inspector_fn()

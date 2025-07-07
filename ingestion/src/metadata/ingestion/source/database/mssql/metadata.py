@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName
+from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -41,6 +41,9 @@ from metadata.ingestion.source.database.mssql.models import (
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
+    MSSQL_GET_DATABASE_COMMENTS,
+    MSSQL_GET_SCHEMA_COMMENTS,
+    MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
 )
 from metadata.ingestion.source.database.mssql.utils import (
@@ -94,6 +97,16 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     Database metadata from MSSQL Source
     """
 
+    def __init__(
+        self,
+        config,
+        metadata,
+    ):
+        super().__init__(config, metadata)
+        self.schema_desc_map = {}
+        self.database_desc_map = {}
+        self.stored_procedure_desc_map = {}
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -112,12 +125,60 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             return self.service_connection.database
         return None
 
+    def set_schema_description_map(self) -> None:
+        self.schema_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_SCHEMA_COMMENTS).all()
+        self.schema_desc_map = {
+            (row.DATABASE_NAME, row.SCHEMA_NAME): row.COMMENT for row in results
+        }
+
+    def set_database_description_map(self) -> None:
+        self.database_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_DATABASE_COMMENTS).all()
+        self.database_desc_map = {row.DATABASE_NAME: row.COMMENT for row in results}
+
+    def set_stored_procedure_description_map(self) -> None:
+        self.stored_procedure_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_STORED_PROCEDURE_COMMENTS).all()
+        self.stored_procedure_desc_map = {
+            (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT
+            for row in results
+        }
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        """
+        return self.schema_desc_map.get((self.context.get().database, schema_name))
+
+    def get_database_description(self, database_name: str) -> Optional[str]:
+        """
+        Method to fetch the database description
+        """
+        return self.database_desc_map.get(database_name)
+
+    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
+        """
+        Method to fetch the stored procedure description
+        """
+        description = self.stored_procedure_desc_map.get(
+            (
+                self.context.get().database,
+                self.context.get().database_schema,
+                stored_procedure,
+            )
+        )
+        return Markdown(description) if description else None
+
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:
             configured_db = self.config.serviceConnection.root.config.database
+            self.set_schema_description_map()
+            self.set_database_description_map()
+            self.set_stored_procedure_description_map()
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -139,6 +200,9 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     continue
 
                 try:
+                    self.set_schema_description_map()
+                    self.set_database_description_map()
+                    self.set_stored_procedure_description_map()
                     self.set_inspector(database_name=new_database)
                     yield new_database
                 except Exception as exc:
@@ -178,7 +242,9 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=None,
+                description=self.get_stored_procedure_description(
+                    stored_procedure.name
+                ),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
                     code=stored_procedure.definition,

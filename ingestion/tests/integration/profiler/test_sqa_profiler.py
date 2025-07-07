@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -103,6 +103,7 @@ class TestSQAProfiler(TestCase):
                     json.loads(config),
                 )
                 profiler_workflow.execute()
+                profiler_workflow.print_status()
                 profiler_workflow.raise_from_status()
                 profiler_workflow.stop()
             except Exception as e:
@@ -142,27 +143,30 @@ class TestSQAProfiler(TestCase):
         )
         self.metadata.create_or_update_settings(settings)
 
+        service_names = []
+
         for container in self.container_builder.containers:
             try:
+                service_name = type(container).__name__
+                service_names.append(service_name)
                 config = PROFILER_INGESTION_CONFIG_TEMPLATE.format(
                     type=container.connector_type,
                     service_config=container.get_config(),
-                    service_name=type(container).__name__,
+                    service_name=service_name,
                 )
                 profiler_workflow = ProfilerWorkflow.create(
                     json.loads(config),
                 )
                 profiler_workflow.execute()
+                profiler_workflow.print_status()
                 profiler_workflow.raise_from_status()
                 profiler_workflow.stop()
             except Exception as e:
-                self.fail(
-                    f"Profiler workflow failed for {type(container).__name__} with error {e}"
-                )
+                self.fail(f"Profiler workflow failed for {service_name} with error {e}")
 
         tables: List[Table] = self.metadata.list_all_entities(Table)
         for table in tables:
-            if table.name.root != "users":
+            if table.service.name not in service_names or table.name.root != "users":
                 continue
             table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)
             columns = table.columns

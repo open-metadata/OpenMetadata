@@ -25,7 +25,7 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -47,7 +47,7 @@ export const getDashboardVersions = async (id: string) => {
 
   return response.data;
 };
-export const getDashboardVersion = async (id: string, version: string) => {
+export const getDashboardVersion = async (id: string, version?: string) => {
   const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Dashboard>(url);
@@ -69,9 +69,9 @@ export const getDashboards = async (
     params: {
       service,
       fields,
+      limit,
       ...paging,
       include,
-      limit,
     },
   });
 

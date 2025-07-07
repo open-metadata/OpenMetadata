@@ -12,7 +12,7 @@
  */
 
 import { isEmpty } from 'lodash';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -20,7 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import APIEndpointVersion from '../../components/APIEndpoint/APIEndpointVersion/APIEndpointVersion';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -36,10 +36,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import PipelineVersion from '../../components/Pipeline/PipelineVersion/PipelineVersion.component';
 import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexVersion';
 import TopicVersion from '../../components/Topic/TopicVersion/TopicVersion.component';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -120,7 +116,9 @@ import {
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import APICollectionVersionPage from '../APICollectionPage/APICollectionVersionPage';
 import DatabaseSchemaVersionPage from '../DatabaseSchemaVersionPage/DatabaseSchemaVersionPage';
 import DatabaseVersionPage from '../DatabaseVersionPage/DatabaseVersionPage';
@@ -141,13 +139,13 @@ export type VersionData =
 
 const EntityVersionPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [entityId, setEntityId] = useState<string>('');
   const [currentVersionData, setCurrentVersionData] = useState<VersionData>(
     {} as VersionData
   );
 
-  const { entityType, version, tab } = useParams<{
+  const { entityType, version, tab } = useRequiredParams<{
     entityType: EntityType;
     version: string;
     tab: EntityTabs;
@@ -165,18 +163,16 @@ const EntityVersionPage: FunctionComponent = () => {
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
 
   const backHandler = useCallback(
-    () => history.push(getEntityDetailsPath(entityType, decodedEntityFQN, tab)),
+    () => navigate(getEntityDetailsPath(entityType, decodedEntityFQN, tab)),
     [entityType, decodedEntityFQN, tab]
   );
 
   const versionHandler = useCallback(
     (newVersion = version) => {
       if (tab) {
-        history.push(
-          getVersionPath(entityType, decodedEntityFQN, newVersion, tab)
-        );
+        navigate(getVersionPath(entityType, decodedEntityFQN, newVersion, tab));
       } else {
-        history.push(getVersionPath(entityType, decodedEntityFQN, newVersion));
+        navigate(getVersionPath(entityType, decodedEntityFQN, newVersion));
       }
     },
     [entityType, decodedEntityFQN, tab]
@@ -192,7 +188,7 @@ const EntityVersionPage: FunctionComponent = () => {
           );
 
           setEntityPermissions(permission);
-        } catch (error) {
+        } catch {
           //
         }
       }
@@ -499,7 +495,17 @@ const EntityVersionPage: FunctionComponent = () => {
     }
 
     if (!viewVersionPermission) {
-      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: `${getEntityName(currentVersionData)} ${t(
+              'label.version'
+            )}`,
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
     }
 
     let VersionPage = null;

@@ -7,9 +7,9 @@ import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.util.JsonUtils;
 
 public class DomainFormatter extends DefaultFieldFormatter {
   private static final String HEADER_MESSAGE = "%s %s asset %s in Domain %s";
@@ -47,15 +47,18 @@ public class DomainFormatter extends DefaultFieldFormatter {
                 JsonUtils.readOrConvertValue(fieldChange.getOldValue(), EntityReference.class))
             .withUpdatedDomain(
                 JsonUtils.readOrConvertValue(fieldChange.getNewValue(), EntityReference.class));
+
+    String domainUrl = null;
+    // in case of deletion updated domain will be null
+    if (domainFeedInfo.getUpdatedDomain() != null) {
+      domainUrl =
+          messageDecorator.getEntityUrl(
+              Entity.DOMAIN, domainFeedInfo.getUpdatedDomain().getFullyQualifiedName(), "");
+    }
+
     FeedInfo feedInfo =
         new FeedInfo()
-            .withHeaderMessage(
-                getHeaderForOwnerUpdate(
-                    operation.value(),
-                    messageDecorator.getEntityUrl(
-                        Entity.DOMAIN,
-                        domainFeedInfo.getUpdatedDomain().getFullyQualifiedName(),
-                        "")))
+            .withHeaderMessage(getHeaderForOwnerUpdate(operation.value(), domainUrl))
             .withFieldName(FIELD_DOMAIN)
             .withEntitySpecificInfo(domainFeedInfo);
     populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.DOMAIN, operation, feedInfo);

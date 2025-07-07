@@ -25,9 +25,12 @@
       ]
     },
     "certificationConfiguration": {
+      "title": "Node Configuration",
       "type": "object",
       "properties": {
         "certification": {
+          "title": "Certification",
+          "description": "Choose which Certification to apply to the Data Asset",
           "$ref": "#/definitions/certificationEnum"
         }
       },
@@ -45,14 +48,17 @@
       "default": "setEntityCertificationTask"
     },
     "name": {
+      "title": "Name",
       "description": "Name that identifies this Node.",
       "$ref": "../../../../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
+      "title": "Display Name",
       "description": "Display Name that identifies this Node.",
       "type": "string"
     },
     "description": {
+      "title": "Description",
       "description": "Description of the Node.",
       "$ref": "../../../../../type/basic.json#/definitions/markdown"
     },
@@ -62,10 +68,25 @@
     "input": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["relatedEntity"],
+      "default": ["relatedEntity", "updatedBy"],
       "additionalItems": false,
-      "minItems": 1,
-      "maxItems": 1
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        },
+        "updatedBy": {
+          "type": "string",
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
     }
   }
 }

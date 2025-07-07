@@ -12,33 +12,52 @@
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { WidgetProps } from '@rjsf/utils';
-import { Alert, Button, Card, Col, Row, Skeleton, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Divider,
+  Row,
+  Skeleton,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import { debounce, isEmpty, isUndefined } from 'lodash';
-import Qs from 'qs';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+
 import {
   Builder,
   Config,
   ImmutableTree,
-  JsonTree,
   Query,
   Utils as QbUtils,
-} from 'react-awesome-query-builder';
-import { getExplorePath } from '../../../../../../constants/constants';
+} from '@react-awesome-query-builder/antd';
+import 'antd/dist/antd.css';
+import { debounce, isEmpty, isUndefined } from 'lodash';
+import Qs from 'qs';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  EntityFields,
+  EntityReferenceFields,
+} from '../../../../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
+import { QueryFilterInterface } from '../../../../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../../../../rest/searchAPI';
+import { getEmptyJsonTree } from '../../../../../../utils/AdvancedSearchUtils';
 import {
   elasticSearchFormat,
   elasticSearchFormatForJSONLogic,
 } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
+  addEntityTypeFilter,
   elasticsearchToJsonLogic,
+  getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
   jsonLogicToElasticsearch,
+  READONLY_SETTINGS,
 } from '../../../../../../utils/QueryBuilderUtils';
+import { getExplorePath } from '../../../../../../utils/RouterUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -68,43 +87,53 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   const outputType = schema?.outputType ?? SearchOutputType.ElasticSearch;
   const isSearchIndexUpdatedInContext = searchIndexFromContext === searchIndex;
   const [initDone, setInitDone] = useState<boolean>(false);
+  const { t } = useTranslation();
+  const [queryURL, setQueryURL] = useState<string>('');
 
   const fetchEntityCount = useCallback(
     async (queryFilter: Record<string, unknown>) => {
+      const qFilter = getEntityTypeAggregationFilter(
+        queryFilter as unknown as QueryFilterInterface,
+        entityType
+      );
+
+      const tree = QbUtils.sanitizeTree(
+        QbUtils.loadTree(getJsonTreeFromQueryFilter(qFilter)),
+        config
+      ).fixedTree;
+
+      const queryFilterString = !isEmpty(tree)
+        ? Qs.stringify({ queryFilter: JSON.stringify(tree) })
+        : '';
+
+      setQueryURL(`${getExplorePath({})}${queryFilterString}`);
+
       try {
         setIsCountLoading(true);
         const res = await searchQuery({
           query: '',
           pageNumber: 0,
           pageSize: 0,
-          queryFilter,
+          queryFilter: qFilter as unknown as Record<string, unknown>,
           searchIndex: SearchIndex.ALL,
           includeDeleted: false,
           trackTotalHits: true,
           fetchSource: false,
         });
         setSearchResults(res.hits.total.value ?? 0);
-      } catch (_) {
+      } catch {
         // silent fail
       } finally {
         setIsCountLoading(false);
       }
     },
-    []
+    [entityType]
   );
 
   const debouncedFetchEntityCount = useMemo(
     () => debounce(fetchEntityCount, 300),
     [fetchEntityCount]
   );
-
-  const queryURL = useMemo(() => {
-    const queryFilterString = !isEmpty(treeInternal)
-      ? Qs.stringify({ queryFilter: JSON.stringify(treeInternal) })
-      : '';
-
-    return `${getExplorePath({})}${queryFilterString}`;
-  }, [treeInternal]);
 
   const showFilteredResourceCount = useMemo(
     () =>
@@ -124,7 +153,14 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         query: data,
       };
       if (data) {
-        debouncedFetchEntityCount(qFilter);
+        const qFilterWithEntityType = addEntityTypeFilter(
+          qFilter as unknown as QueryFilterInterface,
+          entityType
+        );
+
+        debouncedFetchEntityCount(
+          qFilterWithEntityType as unknown as Record<string, unknown>
+        );
       }
 
       onChange(!isEmpty(data) ? JSON.stringify(qFilter) : '');
@@ -141,37 +177,46 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           // eslint-disable-next-line no-console
           console.log(e);
         }
+      } else {
+        onChange(''); // Set empty string if outputEs is null, this happens when removing all the filters
       }
     }
   };
 
   const loadDefaultValueInTree = useCallback(() => {
     if (!isEmpty(value)) {
+      const parsedValue = JSON.parse(value ?? '{}');
       if (outputType === SearchOutputType.ElasticSearch) {
         const parsedTree = getJsonTreeFromQueryFilter(
-          JSON.parse(value || '')
-        ) as JsonTree;
+          parsedValue,
+          config.fields
+        );
 
         if (Object.keys(parsedTree).length > 0) {
-          const tree = QbUtils.checkTree(QbUtils.loadTree(parsedTree), config);
+          const tree = QbUtils.Validation.sanitizeTree(
+            QbUtils.loadTree(parsedTree),
+            config
+          ).fixedTree;
           onTreeUpdate(tree, config);
+          // Fetch count for default value
+          debouncedFetchEntityCount(parsedValue);
         }
       } else {
         try {
-          const query = jsonLogicToElasticsearch(
-            JSON.parse(value || ''),
-            config.fields
-          );
+          const query = jsonLogicToElasticsearch(parsedValue, config.fields);
           const updatedQ = {
             query: query,
           };
-          const parsedTree = getJsonTreeFromQueryFilter(updatedQ) as JsonTree;
+          const parsedTree = getJsonTreeFromQueryFilter(
+            updatedQ,
+            config.fields
+          );
 
           if (Object.keys(parsedTree).length > 0) {
-            const tree1 = QbUtils.checkTree(
+            const tree1 = QbUtils.Validation.sanitizeTree(
               QbUtils.loadTree(parsedTree),
               config
-            );
+            ).fixedTree;
             if (tree1) {
               onTreeUpdate(tree1, config);
             }
@@ -181,6 +226,16 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           console.log(e);
         }
       }
+    } else {
+      const emptyJsonTree = getEmptyJsonTree(
+        outputType === SearchOutputType.JSONLogic
+          ? EntityReferenceFields.OWNERS
+          : EntityFields.OWNERS
+      );
+      onTreeUpdate(
+        QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
+        config
+      );
     }
     setInitDone(true);
   }, [config, value, outputType]);
@@ -205,7 +260,19 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
       data-testid="query-builder-form-field">
       <Card className={classNames('query-builder-card', outputType)}>
         <Row gutter={[8, 8]}>
-          <Col className="p-t-sm" span={24}>
+          <Col
+            className={classNames({
+              'p-t-sm': outputType === SearchOutputType.ElasticSearch,
+            })}
+            span={24}>
+            {outputType === SearchOutputType.JSONLogic && (
+              <>
+                <Typography.Text className="query-filter-label text-grey-muted">
+                  {props.label}
+                </Typography.Text>
+                <Divider className="m-y-sm" />
+              </>
+            )}
             <Query
               {...config}
               renderBuilder={(props) => (
@@ -213,6 +280,10 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
                   <Builder {...props} />
                 </div>
               )}
+              settings={{
+                ...config.settings,
+                ...(props.readonly ? READONLY_SETTINGS : {}),
+              }}
               value={treeInternal}
               onChange={handleChange}
             />

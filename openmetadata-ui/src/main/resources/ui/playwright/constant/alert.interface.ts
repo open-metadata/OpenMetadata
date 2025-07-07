@@ -34,6 +34,7 @@ export interface AlertDetails {
     category: string;
     type: string;
     timeout: string;
+    readTimeout: string;
     config: {
       secretKey: string;
       receivers: Array<string>;
@@ -68,4 +69,14 @@ export interface ObservabilityCreationDetails {
     inputSelector?: string;
     secretKey?: string;
   }>;
+}
+
+export interface EventDetails {
+  status: 'successful' | 'failed';
+  data: {
+    id: string;
+    entityType: string;
+    eventType: string;
+    entityId: string;
+  }[];
 }

@@ -13,7 +13,7 @@
 import { Select, SelectProps, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isArray, isString } from 'lodash';
-import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
+import { FC, useCallback, useMemo, useRef, useState } from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -36,6 +36,7 @@ import {
 
 const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   mode,
+  autoFocus = true,
   onChange,
   debounceTimeout = 800,
   initialOptions,
@@ -242,8 +243,8 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   return (
     <Select
       allowClear
-      autoFocus
       showSearch
+      autoFocus={autoFocus}
       data-testid="asset-select-list"
       dropdownRender={dropdownRender}
       filterOption={false}

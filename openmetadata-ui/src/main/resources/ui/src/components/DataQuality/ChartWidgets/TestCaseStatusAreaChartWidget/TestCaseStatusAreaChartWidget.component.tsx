@@ -12,12 +12,14 @@
  */
 import { Card, Typography } from 'antd';
 import classNames from 'classnames';
-import { toLower } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isUndefined, last, toLower } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchTestCaseStatusMetricsByDays } from '../../../../rest/dataQualityDashboardAPI';
 import { CustomAreaChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomAreaChart from '../../../Visualisations/Chart/CustomAreaChart.component';
 import { TestCaseStatusAreaChartWidgetProps } from '../../DataQuality.interface';
+import '../chart-widgets.less';
 import './test-case-status-area-chart-widget.less';
 
 const TestCaseStatusAreaChartWidget = ({
@@ -27,15 +29,33 @@ const TestCaseStatusAreaChartWidget = ({
   chartColorScheme,
   chartFilter,
   height,
+  redirectPath,
 }: TestCaseStatusAreaChartWidgetProps) => {
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(true);
 
-  const totalValue = useMemo(() => {
-    return chartData.reduce((acc, curr) => {
-      return acc + curr.count;
-    }, 0);
-  }, [chartData]);
+  const bodyElement = useMemo(() => {
+    const latestValue = last(chartData)?.count ?? 0;
+
+    return (
+      <>
+        <Typography.Paragraph className="text-xs font-semibold">
+          {title}
+        </Typography.Paragraph>
+        <Typography.Paragraph
+          className="font-medium text-xl m-b-0 chart-widget-link-underline"
+          data-testid="total-value">
+          {latestValue}
+        </Typography.Paragraph>
+        <CustomAreaChart
+          colorScheme={chartColorScheme}
+          data={chartData}
+          height={height}
+          name={name}
+        />
+      </>
+    );
+  }, [title, chartData, name, chartColorScheme, height]);
 
   const getTestCaseStatusMetrics = async () => {
     setIsChartLoading(true);
@@ -52,7 +72,7 @@ const TestCaseStatusAreaChartWidget = ({
       });
 
       setChartData(updatedData);
-    } catch (error) {
+    } catch {
       setChartData([]);
     } finally {
       setIsChartLoading(false);
@@ -67,25 +87,18 @@ const TestCaseStatusAreaChartWidget = ({
     <Card
       className={classNames(
         'test-case-area-chart-widget-container',
-        toLower(testCaseStatus)
+        toLower(testCaseStatus),
+        {
+          'chart-widget-link-no-underline': !isUndefined(redirectPath),
+        }
       )}
       data-testid={`test-case-${testCaseStatus}-area-chart-widget`}
       loading={isChartLoading}>
-      <Typography.Paragraph className="text-xs text-grey-muted">
-        {title}
-      </Typography.Paragraph>
-      <Typography.Paragraph
-        className="font-medium text-xl m-b-0"
-        data-testid="total-value">
-        {totalValue}
-      </Typography.Paragraph>
-
-      <CustomAreaChart
-        colorScheme={chartColorScheme}
-        data={chartData}
-        height={height}
-        name={name}
-      />
+      {redirectPath ? (
+        <Link to={redirectPath}>{bodyElement}</Link>
+      ) : (
+        bodyElement
+      )}
     </Card>
   );
 };
