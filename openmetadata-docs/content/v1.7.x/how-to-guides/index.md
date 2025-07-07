@@ -1,5 +1,6 @@
 ---
-title: How-to Guides | OpenMetadata User Guides
+title: How To Guides Guide | Collate Docs
+description: Step-by-step guidance for how to guides using Collate. Learn key actions, features, and best practices.
 slug: /how-to-guides
 ---
 

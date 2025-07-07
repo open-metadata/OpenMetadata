@@ -1,5 +1,6 @@
 ---
-title: VertexAI
+title: Vertexai | Collate Docs
+description: Get started with Collate's vertexai. Setup instructions, features, and configuration details inside.
 slug: /connectors/ml-model/vertexai
 collate: true
 ---

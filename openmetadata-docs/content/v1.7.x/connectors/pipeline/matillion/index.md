@@ -1,5 +1,6 @@
 ---
-title: Matillion
+title: Matillion | Collate Docs
+description: Get started with Collate's matillion. Setup instructions, features, and configuration details inside.
 slug: /connectors/pipeline/matillion
 collate: true
 ---
