@@ -545,7 +545,7 @@ export const getEntityChildDetails = (
             (
               (entityInfo as StoredProcedure)
                 .storedProcedureCode as StoredProcedureCodeObject
-            ).code ?? ''
+            )?.code ?? ''
           }
         />
       );
