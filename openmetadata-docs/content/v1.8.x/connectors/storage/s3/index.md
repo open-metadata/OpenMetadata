@@ -1,5 +1,6 @@
 ---
 title: S3 Storage | OpenMetadata Cloud Storage Integration
+description: Connect your S3 storage to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction for AWS S3.
 slug: /connectors/storage/s3
 ---
 
