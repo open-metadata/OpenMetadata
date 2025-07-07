@@ -2,17 +2,22 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
+import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -50,19 +55,167 @@ public class ContainerRepository extends EntityRepository<Container> {
         CONTAINER_PATCH_FIELDS,
         CONTAINER_UPDATE_FIELDS);
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetDataModelColumnTags);
+    fieldFetchers.put("children", this::fetchAndSetChildren);
   }
 
   @Override
   public void setFields(Container container, EntityUtil.Fields fields) {
     setDefaultFields(container);
     container.setParent(
-        fields.contains(FIELD_PARENT) ? getParent(container) : container.getParent());
+        fields.contains(FIELD_PARENT) ? getContainerParent(container) : container.getParent());
+    container.setChildren(
+        fields.contains("children") ? getChildren(container) : container.getChildren());
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
           fields.contains(FIELD_TAGS),
           container.getFullyQualifiedName(),
           container.getDataModel().getColumns());
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(EntityUtil.Fields fields, List<Container> entities) {
+    // Always set default service field for all containers
+    fetchAndSetDefaultService(entities);
+
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (Container entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetParents(List<Container> containers, EntityUtil.Fields fields) {
+    if (!fields.contains(FIELD_PARENT) || containers == null || containers.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, containers, batchFetchParents(containers), Container::setParent);
+  }
+
+  private void fetchAndSetDataModelColumnTags(
+      List<Container> containers, EntityUtil.Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || containers == null || containers.isEmpty()) {
+      return;
+    }
+    // Filter containers that have data models and use bulk tag fetching
+    List<Container> containersWithDataModels =
+        containers.stream()
+            .filter(c -> c.getDataModel() != null)
+            .collect(java.util.stream.Collectors.toList());
+
+    if (!containersWithDataModels.isEmpty()) {
+      bulkPopulateEntityFieldTags(
+          containersWithDataModels,
+          entityType,
+          c -> c.getDataModel().getColumns(),
+          Container::getFullyQualifiedName);
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchParents(List<Container> containers) {
+    Map<UUID, EntityReference> parentsMap = new HashMap<>();
+    if (containers == null || containers.isEmpty()) {
+      return parentsMap;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(containers), Relationship.CONTAINS.ordinal());
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID containerId = UUID.fromString(record.getToId());
+      // Only consider container parents, not service parents
+      if (CONTAINER.equals(record.getFromEntity())) {
+        EntityReference parentRef =
+            getEntityReferenceById(
+                record.getFromEntity(), UUID.fromString(record.getFromId()), NON_DELETED);
+        parentsMap.put(containerId, parentRef);
+      }
+    }
+
+    return parentsMap;
+  }
+
+  @Override
+  protected void fetchAndSetChildren(List<Container> containers, EntityUtil.Fields fields) {
+    if (!fields.contains("children") || containers == null || containers.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, containers, batchFetchChildren(containers), Container::setChildren);
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchChildren(List<Container> containers) {
+    Map<UUID, List<EntityReference>> childrenMap = new HashMap<>();
+    if (containers == null || containers.isEmpty()) {
+      return childrenMap;
+    }
+
+    // Initialize empty lists for all containers
+    for (Container container : containers) {
+      childrenMap.put(container.getId(), new ArrayList<>());
+    }
+
+    // Single batch query to get all children for all containers
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                entityListToStrings(containers), Relationship.CONTAINS.ordinal(), CONTAINER);
+
+    // Group children by parent container ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID parentId = UUID.fromString(record.getFromId());
+      EntityReference childRef =
+          getEntityReferenceById(CONTAINER, UUID.fromString(record.getToId()), NON_DELETED);
+      childrenMap.get(parentId).add(childRef);
+    }
+
+    return childrenMap;
+  }
+
+  private void fetchAndSetDefaultService(List<Container> containers) {
+    if (containers == null || containers.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch service references for all containers
+    Map<UUID, EntityReference> serviceMap = batchFetchServices(containers);
+
+    // Set service for all containers
+    for (Container container : containers) {
+      container.setService(serviceMap.get(container.getId()));
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchServices(List<Container> containers) {
+    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    if (containers == null || containers.isEmpty()) {
+      return serviceMap;
+    }
+
+    // Single batch query to get all services for all containers
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(containers), Relationship.CONTAINS.ordinal());
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID containerId = UUID.fromString(record.getToId());
+      if (STORAGE_SERVICE.equals(record.getFromEntity())) {
+        EntityReference serviceRef =
+            getEntityReferenceById(
+                STORAGE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+        serviceMap.put(containerId, serviceRef);
+      }
+    }
+
+    return serviceMap;
   }
 
   @Override
@@ -82,10 +235,18 @@ public class ContainerRepository extends EntityRepository<Container> {
     container.withService(parentServiceRef);
   }
 
+  private EntityReference getContainerParent(Container container) {
+    return getFromEntityRef(container.getId(), Relationship.CONTAINS, CONTAINER, false);
+  }
+
+  protected List<EntityReference> getChildren(Container container) {
+    return findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
+  }
+
   @Override
   public void setFullyQualifiedName(Container container) {
     container.setParent(
-        container.getParent() != null ? container.getParent() : getParent(container));
+        container.getParent() != null ? container.getParent() : getContainerParent(container));
     if (container.getParent() != null) {
       container.setFullyQualifiedName(
           FullyQualifiedName.add(
@@ -194,6 +355,9 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public EntityInterface getParentEntity(Container entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 

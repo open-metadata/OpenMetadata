@@ -231,10 +231,12 @@ public class SecretsManagerUpdateService {
 
   private List<IngestionPipeline> retrieveIngestionPipelines() {
     try {
+      // Need to fetch with service field to avoid NPE when accessing service.getId()
+      Fields fields = new Fields(Set.of("service"));
       return ingestionPipelineRepository
           .listAfter(
               null,
-              EntityUtil.Fields.EMPTY_FIELDS,
+              fields,
               new ListFilter(),
               ingestionPipelineRepository.getDao().listCount(new ListFilter()),
               null)
@@ -269,8 +271,8 @@ public class SecretsManagerUpdateService {
       IngestionPipeline ingestion =
           ingestionPipelineRepository.getDao().findEntityById(ingestionPipeline.getId());
       // we have to decrypt using the old secrets manager and encrypt again with the new one
-      oldSecretManager.decryptIngestionPipeline(ingestionPipeline);
-      secretManager.encryptIngestionPipeline(ingestionPipeline);
+      oldSecretManager.decryptIngestionPipeline(ingestion);
+      secretManager.encryptIngestionPipeline(ingestion);
       ingestionPipelineRepository.getDao().update(ingestion);
     } catch (EntityNotFoundException e) {
       LOG.warn(

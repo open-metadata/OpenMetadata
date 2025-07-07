@@ -1,10 +1,19 @@
 package org.openmetadata.service.cache;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipCount;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
@@ -13,7 +22,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 /**
  * Cached decorator for EntityRelationshipDAO that provides write-through caching
  * for entity relationships using Redis cache.
- *
  * This decorator intercepts read operations and checks the cache first, falling back
  * to database queries when needed. Write operations update both the database and cache.
  */
@@ -24,6 +32,9 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
   private static final String CACHE_KEY_PREFIX = "relationships:";
   private static final String FIND_TO_KEY = "findTo";
   private static final String FIND_FROM_KEY = "findFrom";
+  private static final String TIMESTAMP = "timestamp";
+  private static final String PREFETCHED = "prefetched";
+  private static final String RELATIONSHIPS = "relationships";
 
   private static final Executor PREFETCH_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -100,13 +111,12 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
 
     try {
       Map<String, Object> cached = RelationshipCache.get(cacheKey);
-      if (cached != null && cached.containsKey("relationships")) {
-        Object data = cached.get("relationships");
+      if (cached.containsKey(RELATIONSHIPS)) {
+        Object data = cached.get(RELATIONSHIPS);
         if (data instanceof List) {
           @SuppressWarnings("unchecked")
           List<EntityRelationshipRecord> cachedResults = (List<EntityRelationshipRecord>) data;
-          boolean isPrefetched =
-              cached.containsKey("prefetched") && (Boolean) cached.get("prefetched");
+          boolean isPrefetched = cached.containsKey(PREFETCHED) && (Boolean) cached.get(PREFETCHED);
           LOG.debug(
               "Cache hit{} for findTo: {} ({}), relations: {}",
               isPrefetched ? " (prefetched)" : "",
@@ -124,8 +134,8 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
 
     try {
       Map<String, Object> cacheData = new HashMap<>();
-      cacheData.put("relationships", results);
-      cacheData.put("timestamp", System.currentTimeMillis());
+      cacheData.put(RELATIONSHIPS, results);
+      cacheData.put(TIMESTAMP, System.currentTimeMillis());
       RelationshipCache.put(cacheKey, cacheData);
       LOG.debug(
           "Cache miss - stored findTo results: {} ({}), relations: {}, count: {}",
@@ -154,6 +164,18 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
   public List<EntityRelationshipObject> findToBatch(
       List<String> fromIds, int relation, String toEntityType) {
     return delegate.findToBatch(fromIds, relation, toEntityType);
+  }
+
+  @Override
+  public List<EntityRelationshipObject> findToBatchAllTypesWithCondition(
+      List<String> fromIds, int relation, String condition) {
+    return delegate.findToBatchAllTypesWithCondition(fromIds, relation, condition);
+  }
+
+  @Override
+  public List<EntityRelationshipObject> findToBatchWithCondition(
+      List<String> fromIds, int relation, String toEntityType, String condition) {
+    return delegate.findToBatchWithCondition(fromIds, relation, toEntityType, condition);
   }
 
   @Override
@@ -202,13 +224,12 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
 
     try {
       Map<String, Object> cached = RelationshipCache.get(cacheKey);
-      if (cached != null && cached.containsKey("relationships")) {
-        Object data = cached.get("relationships");
+      if (cached.containsKey(RELATIONSHIPS)) {
+        Object data = cached.get(RELATIONSHIPS);
         if (data instanceof List) {
           @SuppressWarnings("unchecked")
           List<EntityRelationshipRecord> cachedResults = (List<EntityRelationshipRecord>) data;
-          boolean isPrefetched =
-              cached.containsKey("prefetched") && (Boolean) cached.get("prefetched");
+          boolean isPrefetched = cached.containsKey(PREFETCHED) && (Boolean) cached.get(PREFETCHED);
           LOG.debug(
               "Cache hit{} for findFrom: {} ({}), relation: {}, fromEntity: {}",
               isPrefetched ? " (prefetched)" : "",
@@ -228,8 +249,8 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
 
     try {
       Map<String, Object> cacheData = new HashMap<>();
-      cacheData.put("relationships", results);
-      cacheData.put("timestamp", System.currentTimeMillis());
+      cacheData.put(RELATIONSHIPS, results);
+      cacheData.put(TIMESTAMP, System.currentTimeMillis());
       RelationshipCache.put(cacheKey, cacheData);
       LOG.debug(
           "Cache miss - stored findFrom results: {} ({}), relation: {}, fromEntity: {}, count: {}",
@@ -266,6 +287,12 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
   }
 
   @Override
+  public List<EntityRelationshipObject> findFromBatch(
+      List<String> toIds, int relation, Include include) {
+    return delegate.findFromBatch(toIds, relation, include);
+  }
+
+  @Override
   public List<EntityRelationshipRecord> findFrom(UUID toId, String toEntity, int relation) {
     return delegate.findFrom(toId, toEntity, relation);
   }
@@ -274,6 +301,145 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
   public List<EntityRelationshipObject> findFromBatch(
       List<String> toIds, int relation, String fromEntityType, String toEntityType) {
     return delegate.findFromBatch(toIds, relation, fromEntityType, toEntityType);
+  }
+
+  @Override
+  public List<EntityRelationshipObject> findFromBatchWithCondition(
+      List<String> toIds, int relation, String condition) {
+    // For the 3-parameter version, we can't cache as effectively without entity type
+    // So we'll delegate directly to avoid incorrect caching
+    return delegate.findFromBatchWithCondition(toIds, relation, condition);
+  }
+
+  @Override
+  public List<EntityRelationshipObject> findFromBatchWithEntityTypeAndCondition(
+      List<String> toIds, int relation, String fromEntityType, String condition) {
+    if (!RelationshipCache.isAvailable() || toIds == null || toIds.isEmpty()) {
+      return delegate.findFromBatchWithEntityTypeAndCondition(
+          toIds, relation, fromEntityType, condition);
+    }
+
+    CacheCheckResult cacheResult = checkCacheForBatch(toIds, relation, fromEntityType, condition);
+
+    if (cacheResult.uncachedIds.isEmpty()) {
+      LOG.debug("All {} entities found in cache", toIds.size());
+      return cacheResult.cachedResults;
+    }
+
+    List<EntityRelationshipObject> dbResults =
+        fetchAndCacheResults(cacheResult.uncachedIds, relation, fromEntityType, condition);
+
+    cacheResult.cachedResults.addAll(dbResults);
+    LOG.debug(
+        "findFromBatchWithEntityTypeAndCondition: {} cached, {} from DB, {} total results",
+        toIds.size() - cacheResult.uncachedIds.size(),
+        cacheResult.uncachedIds.size(),
+        cacheResult.cachedResults.size());
+
+    return cacheResult.cachedResults;
+  }
+
+  private CacheCheckResult checkCacheForBatch(
+      List<String> toIds, int relation, String fromEntityType, String condition) {
+    List<EntityRelationshipObject> cachedResults = new ArrayList<>();
+    List<String> uncachedIds = new ArrayList<>();
+
+    for (String toId : toIds) {
+      String cacheKey = buildBatchCacheKey(toId, relation, fromEntityType, condition);
+      List<EntityRelationshipObject> cached =
+          getCachedRelationships(cacheKey, toId, relation, fromEntityType);
+
+      if (cached != null) {
+        cachedResults.addAll(cached);
+      } else {
+        uncachedIds.add(toId);
+      }
+    }
+
+    return new CacheCheckResult(cachedResults, uncachedIds);
+  }
+
+  private String buildBatchCacheKey(
+      String toId, int relation, String fromEntityType, String condition) {
+    return createRelationshipCacheKey(
+        toId,
+        "*",
+        "findFromWithTypeCond",
+        relation
+            + ":"
+            + fromEntityType
+            + ":"
+            + (condition != null ? condition.hashCode() : "null"));
+  }
+
+  private List<EntityRelationshipObject> getCachedRelationships(
+      String cacheKey, String toId, int relation, String fromEntityType) {
+    try {
+      Map<String, Object> cached = RelationshipCache.get(cacheKey);
+      if (cached.containsKey(RELATIONSHIPS)) {
+        Object data = cached.get(RELATIONSHIPS);
+        if (data instanceof List) {
+          @SuppressWarnings("unchecked")
+          List<EntityRelationshipObject> relationships = (List<EntityRelationshipObject>) data;
+          LOG.debug(
+              "Cache hit for entity {} with relation {}, fromType {}",
+              toId,
+              relation,
+              fromEntityType);
+          return relationships;
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Error reading from cache for entity {}: {}", toId, e.getMessage());
+    }
+    return null;
+  }
+
+  private List<EntityRelationshipObject> fetchAndCacheResults(
+      List<String> uncachedIds, int relation, String fromEntityType, String condition) {
+    List<EntityRelationshipObject> dbResults =
+        delegate.findFromBatchWithEntityTypeAndCondition(
+            uncachedIds, relation, fromEntityType, condition);
+
+    Map<String, List<EntityRelationshipObject>> resultsByToId =
+        dbResults.stream().collect(Collectors.groupingBy(EntityRelationshipObject::getToId));
+
+    for (String toId : uncachedIds) {
+      List<EntityRelationshipObject> relationships =
+          resultsByToId.getOrDefault(toId, Collections.emptyList());
+      cacheRelationships(toId, relationships, relation, fromEntityType, condition);
+    }
+
+    return dbResults;
+  }
+
+  private void cacheRelationships(
+      String toId,
+      List<EntityRelationshipObject> relationships,
+      int relation,
+      String fromEntityType,
+      String condition) {
+    String cacheKey = buildBatchCacheKey(toId, relation, fromEntityType, condition);
+
+    try {
+      Map<String, Object> cacheData = new HashMap<>();
+      cacheData.put(RELATIONSHIPS, relationships);
+      cacheData.put(TIMESTAMP, System.currentTimeMillis());
+      RelationshipCache.put(cacheKey, cacheData);
+      LOG.debug("Cached {} relationships for entity {}", relationships.size(), toId);
+    } catch (Exception e) {
+      LOG.warn("Error caching relationships for entity {}: {}", toId, e.getMessage());
+    }
+  }
+
+  private static class CacheCheckResult {
+    final List<EntityRelationshipObject> cachedResults;
+    final List<String> uncachedIds;
+
+    CacheCheckResult(List<EntityRelationshipObject> cachedResults, List<String> uncachedIds) {
+      this.cachedResults = cachedResults;
+      this.uncachedIds = uncachedIds;
+    }
   }
 
   @Override
@@ -512,9 +678,9 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
             delegate.findTo(entityId, entityType, commonRelations);
         if (!toResults.isEmpty()) {
           Map<String, Object> cacheData = new HashMap<>();
-          cacheData.put("relationships", toResults);
-          cacheData.put("timestamp", System.currentTimeMillis());
-          cacheData.put("prefetched", true);
+          cacheData.put(RELATIONSHIPS, toResults);
+          cacheData.put(TIMESTAMP, System.currentTimeMillis());
+          cacheData.put(PREFETCHED, true);
           RelationshipCache.put(toKey, cacheData);
           LOG.debug(
               "Prefetched {} 'to' relationships for {} ({})",
@@ -534,9 +700,9 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
               delegate.findFrom(entityId, entityType, relation);
           if (!fromResults.isEmpty()) {
             Map<String, Object> cacheData = new HashMap<>();
-            cacheData.put("relationships", fromResults);
-            cacheData.put("timestamp", System.currentTimeMillis());
-            cacheData.put("prefetched", true);
+            cacheData.put(RELATIONSHIPS, fromResults);
+            cacheData.put(TIMESTAMP, System.currentTimeMillis());
+            cacheData.put(PREFETCHED, true);
             RelationshipCache.put(fromKey, cacheData);
             LOG.debug(
                 "Prefetched {} 'from' relationships (rel:{}) for {} ({})",

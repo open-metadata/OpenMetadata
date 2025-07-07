@@ -58,6 +58,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         "",
         "");
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
   }
 
   @Override
@@ -160,18 +163,49 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void setFields(DashboardDataModel dashboardDataModel, Fields fields) {
+    setDefaultFields(dashboardDataModel);
     populateEntityFieldTags(
         entityType,
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
-    if (dashboardDataModel.getService() == null) {
-      dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
+  }
+
+  private void setDefaultFields(DashboardDataModel dashboardDataModel) {
+    EntityReference service = getContainer(dashboardDataModel.getId());
+    dashboardDataModel.withService(service);
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetColumnTags(List<DashboardDataModel> dataModels, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || dataModels == null || dataModels.isEmpty()) {
+      return;
     }
+    // Use bulk tag fetching to avoid N+1 queries
+    bulkPopulateEntityFieldTags(
+        dataModels,
+        entityType,
+        DashboardDataModel::getColumns,
+        DashboardDataModel::getFullyQualifiedName);
   }
 
   @Override
   public void clearFields(DashboardDataModel dashboardDataModel, Fields fields) {}
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<DashboardDataModel> dataModels) {
+    if (dataModels.isEmpty()) {
+      return;
+    }
+
+    // Set default fields (service) for all data models
+    for (DashboardDataModel dataModel : dataModels) {
+      setDefaultFields(dataModel);
+    }
+
+    // Bulk fetch tags for columns if needed
+    fetchAndSetColumnTags(dataModels, fields);
+  }
 
   @Override
   public void restorePatchAttributes(DashboardDataModel original, DashboardDataModel updated) {
@@ -189,6 +223,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public EntityInterface getParentEntity(DashboardDataModel entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, ALL);
   }
 
