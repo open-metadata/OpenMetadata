@@ -12,10 +12,10 @@
  */
 
 import { isEmpty } from 'lodash';
-import React, { FC, useEffect } from 'react';
+import { FC, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
-import { Router } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
@@ -30,7 +30,8 @@ import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import { getCustomUiThemePreference } from './rest/settingConfigAPI';
-import { history } from './utils/HistoryUtils';
+import { getBasePath } from './utils/HistoryUtils';
+
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
 
@@ -40,7 +41,6 @@ const App: FC = () => {
   const fetchApplicationConfig = async () => {
     try {
       const data = await getCustomUiThemePreference();
-
       setApplicationConfig({
         ...data,
         customTheme: getThemeConfig(data.customTheme),
@@ -74,7 +74,7 @@ const App: FC = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <Router history={history}>
+        <BrowserRouter basename={getBasePath()}>
           <I18nextProvider i18n={i18n}>
             <HelmetProvider>
               <ErrorBoundary>
@@ -102,7 +102,7 @@ const App: FC = () => {
               </ErrorBoundary>
             </HelmetProvider>
           </I18nextProvider>
-        </Router>
+        </BrowserRouter>
       </div>
     </div>
   );

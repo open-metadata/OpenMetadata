@@ -13,7 +13,6 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { get, isEmpty, isNil, isString, isUndefined, lowerCase } from 'lodash';
 import Qs from 'qs';
 import React from 'react';
@@ -56,6 +55,7 @@ import {
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import { getCountBadge } from './CommonUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+import { t } from './i18next/LocalUtil';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -440,7 +440,9 @@ export const parseSearchParams = (search: string) => {
       ? Number.parseInt(parsedSearch.size)
       : PAGE_SIZE;
 
-  const showDeleted = parsedSearch.showDeleted === 'true';
+  // We are not setting showDeleted as 'false' since we don't want it to conflict with
+  // the `Deleted` field value in the advanced search quick filters when the value there is true.
+  const showDeleted = parsedSearch.showDeleted === 'true' ? true : undefined;
 
   return {
     parsedSearch,
@@ -526,7 +528,7 @@ export const fetchEntityData = async ({
   updatedQuickFilters: QueryFilterInterface | undefined;
   queryFilter: unknown;
   searchIndex: ExploreSearchIndex;
-  showDeleted: boolean;
+  showDeleted?: boolean;
   sortValue: string;
   sortOrder: string;
   page: number;

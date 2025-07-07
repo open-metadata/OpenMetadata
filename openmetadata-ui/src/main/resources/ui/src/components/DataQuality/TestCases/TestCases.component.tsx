@@ -35,13 +35,12 @@ import {
   uniq,
 } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   TIER_CATEGORY,
@@ -84,7 +83,7 @@ import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
 export const TestCases = () => {
   const [form] = useForm();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -128,13 +127,13 @@ export const TestCases = () => {
     paging,
     handlePagingChange,
     showPagination,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging();
 
   const handleSearchParam = <K extends keyof TestCaseSearchParams>(
     key: K,
     value?: TestCaseSearchParams[K]
   ) => {
-    history.push({
+    navigate({
       search: QueryString.stringify({ ...params, [key]: value || undefined }),
     });
   };

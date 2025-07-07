@@ -1,5 +1,5 @@
 ---
-title: Contribute
+title: How to Contribute Code | Open Source Contribution Guide
 slug: /developers/contribute
 ---
 

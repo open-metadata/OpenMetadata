@@ -66,7 +66,7 @@ export const mockEntitySearchConfig = {
     },
   ],
   scoreMode: 'sum',
-  boostMode: 'multiply',
+  boostMode: 'sum',
 };
 
 export async function setSliderValue(

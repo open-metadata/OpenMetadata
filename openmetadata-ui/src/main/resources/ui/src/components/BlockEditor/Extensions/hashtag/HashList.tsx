@@ -13,7 +13,7 @@
 import { SuggestionProps } from '@tiptap/suggestion';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import { isInViewport } from '../../../../utils/BlockEditorUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { ExtensionRef, SuggestionItem } from '../../BlockEditor.interface';

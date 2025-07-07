@@ -19,7 +19,7 @@ import {
   isUndefined,
   startCase,
 } from 'lodash';
-import React from 'react';
+import { parse } from 'papaparse';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
@@ -454,4 +454,35 @@ export const convertEntityExtensionToCustomPropertyString = (
   });
 
   return `${convertedString}`;
+};
+
+/**
+ * Splits a CSV string into an array of values, properly handling quoted values and commas.
+ * Uses Papa Parse for robust CSV parsing.
+ * @param input The CSV string to split
+ * @returns Array of string values
+ */
+export const splitCSV = (input: string): string[] => {
+  // First, normalize the input by replacing escaped quotes with a temporary marker
+  const normalizedInput = input.replace(/\\"/g, '__ESCAPED_QUOTE__');
+
+  const result = parse<string[]>(normalizedInput, {
+    delimiter: ',',
+    skipEmptyLines: true,
+    transformHeader: (header: string) => header.trim(),
+    transform: (value: string) => {
+      // Remove outer quotes if they exist and trim
+      const trimmed = value.trim();
+      if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+        return trimmed.slice(1, -1).trim();
+      }
+
+      return trimmed;
+    },
+  });
+
+  // Restore the escaped quotes in the result and ensure no trailing spaces
+  return (result.data[0] || []).map((value) =>
+    value.replace(/__ESCAPED_QUOTE__/g, '"').trim()
+  );
 };

@@ -1,5 +1,6 @@
 ---
-title: SingleStore
+title: SingleStore Connector | OpenMetadata Scalable DB Guide
+description: Integrate SingleStore with OpenMetadata using our comprehensive connector guide. Set up data cataloging, lineage tracking, and metadata management seamlessly.
 slug: /connectors/database/singlestore
 ---
 

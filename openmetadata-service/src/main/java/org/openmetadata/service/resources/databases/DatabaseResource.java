@@ -79,7 +79,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public static final String COLLECTION_PATH = "v1/databases/";
   private final DatabaseMapper mapper = new DatabaseMapper();
   static final String FIELDS =
-      "owners,databaseSchemas,usageSummary,location,tags,extension,domain,sourceHash,followers";
+      "owners,databaseSchemas,usageSummary,location,tags,certification,extension,domain,sourceHash,followers";
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {

@@ -28,8 +28,8 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestHighLevelClient;
@@ -254,7 +254,7 @@ public class OSLineageGraphBuilder {
             NodeInformation nodeInformation = result.getNodes().get(fqnFromHash);
             nodeInformation.setPaging(
                 new LayerPaging().withEntityDownstreamCount((int) bucket.getDocCount()));
-            result.getNodes().put(bucket.getKeyAsString(), nodeInformation);
+            result.getNodes().put(fqnFromHash, nodeInformation);
           }
         }
 

@@ -1,5 +1,6 @@
 ---
-title: API Services
+title: API Services | OpenMetadata Connector Integration Guide
+description: Discover OpenMetadata API connectors to seamlessly integrate your data sources. Complete documentation, setup guides, and examples for all supported APIs.
 slug: /connectors/api
 ---
 

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
@@ -196,7 +196,7 @@ export const addTeamAsReviewer = async (
   isSelectableInsideForm = false
 ) => {
   const teamsResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index&sort_field=displayName.keyword&sort_order=asc'
+    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index&deleted=false&sort_field=displayName.keyword&sort_order=asc'
   );
 
   const teamsSearchResponse = page.waitForResponse(
@@ -820,19 +820,38 @@ export const confirmationDragAndDropGlossary = async (
 
 export const changeTermHierarchyFromModal = async (
   page: Page,
-  dragElement: string,
-  dropElement: string
+  entityDisplayName: string,
+  entityFqn: string,
+  isGlossaryTerm = true
 ) => {
-  await selectActiveGlossaryTerm(page, dragElement);
   await page.getByTestId('manage-button').click();
   await page.getByTestId('change-parent-button').click();
+
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+
+  await page.getByLabel('Select Parent').click();
+  await page.waitForSelector('.async-tree-select-list-dropdown', {
+    state: 'visible',
+  });
+
+  if (isGlossaryTerm) {
+    const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
+    await page.getByLabel('Select Parent').fill(entityDisplayName);
+    await searchRes;
+  }
+
+  await page.getByTestId(`tag-${entityFqn}`).click();
+
+  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
   await page
-    .locator('[data-testid="change-parent-select"] > .ant-select-selector')
+    .locator('[data-testid="change-parent-hierarchy-modal"]')
+    .getByRole('button', { name: 'Submit' })
     .click();
-  await page.getByTitle(dropElement).click();
-  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-  await page.getByRole('button', { name: 'Submit' }).click();
   await saveRes;
+
+  await expect(
+    page.locator('[role="dialog"].change-parent-hierarchy-modal')
+  ).toBeHidden();
 };
 
 export const deleteGlossaryOrGlossaryTerm = async (
@@ -1003,7 +1022,7 @@ export const createDescriptionTaskForGlossary = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index*`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -1016,6 +1035,7 @@ export const createDescriptionTaskForGlossary = async (
   }
 
   if (addDescription) {
+    await page.locator(descriptionBox).clear();
     await page
       .locator(descriptionBox)
       .fill(value.description ?? 'Updated description');
@@ -1058,7 +1078,7 @@ export const createTagTaskForGlossary = async (
     );
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index*`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -1498,7 +1518,10 @@ export const checkGlossaryTermDetails = async (
   ).toContainText(reviewer.responseData.displayName);
 };
 
-export const setupGlossaryDenyPermissionTest = async (apiContext: any) => {
+export const setupGlossaryDenyPermissionTest = async (
+  apiContext: any,
+  isGlossary?: boolean
+) => {
   // Create all necessary resources
   const dataConsumerUser = new UserClass();
   const id = uuid();
@@ -1553,7 +1576,7 @@ export const setupGlossaryDenyPermissionTest = async (apiContext: any) => {
   await dataConsumerTeam.create(apiContext);
 
   // Set domain ownership
-  await glossary1.patch(apiContext, [
+  await (isGlossary ? glossary1 : glossaryTerm1).patch(apiContext, [
     {
       op: 'add',
       path: '/tags/0',
