@@ -354,12 +354,14 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         )}
 
         {/* Basic Information */}
-        <Card className="basic-info-card">
+        <Card className="basic-info-card" data-testid="basic-info-card">
           {generateFormFields(basicInfoFormFields)}
         </Card>
 
         {/* Test Case Selection */}
-        <Card className="test-case-selection-card">
+        <Card
+          className="test-case-selection-card"
+          data-testid="test-case-selection-card">
           <Form.Item
             label={t('label.test-case-plural')}
             name="testCases"
@@ -380,7 +382,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         </Card>
 
         {/* Scheduler - Always Visible */}
-        <Card className="scheduler-card">
+        <Card className="scheduler-card" data-testid="scheduler-card">
           <div className="card-title">
             {t('label.schedule-for-entity', {
               entity: t('label.test-suite'),

@@ -986,7 +986,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           <SelectionCardGroup options={TEST_LEVEL_OPTIONS} />
         </Form.Item>
 
-        <Card className="select-table-card">
+        <Card className="select-table-card" data-testid="select-table-card">
           <Form.Item
             label="Select Table"
             name="selectedTable"
@@ -1021,7 +1021,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           )}
         </Card>
 
-        <Card className="test-type-card">
+        <Card className="test-type-card" data-testid="test-type-card">
           <Form.Item
             label="Test Type"
             name="testTypeId"
@@ -1057,7 +1057,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           </Form.Item>
         </Card>
 
-        <Card className="test-details-card">
+        <Card className="test-details-card" data-testid="test-details-card">
           {generateFormFields(testDetailsFormFields)}
 
           {isComputeRowCountFieldVisible &&
@@ -1065,7 +1065,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         </Card>
 
         {shouldShowScheduler && (
-          <Card className="scheduler-card">
+          <Card className="scheduler-card" data-testid="scheduler-card">
             <div className="card-title">
               {t('label.schedule-for-entity', {
                 entity: t('label.test-case-plural'),

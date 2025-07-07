@@ -371,7 +371,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               <Col>
                 <DeleteIconButton
                   className="flex-center"
-                  data-testid={`delete-${record.name}`}
+                  data-testid={
+                    removeFromTestSuite
+                      ? `remove-${record.name}`
+                      : `delete-${record.name}`
+                  }
                   disabled={!testCaseDeletePermission}
                   size="middle"
                   title={

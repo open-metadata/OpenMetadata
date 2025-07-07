@@ -332,7 +332,7 @@ export const TestSuites = () => {
         <div className="test-suite-list-container">
           <div className="test-suite-list-header">
             <Row gutter={[16, 16]}>
-              <Col span={16}>
+              <Col data-testid="test-suite-sub-tab-container" span={16}>
                 <Radio.Group value={subTab} onChange={handleSubTabChange}>
                   <Radio.Button
                     data-testid="table-suite-radio-btn"
