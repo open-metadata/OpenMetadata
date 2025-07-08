@@ -20,6 +20,7 @@
       "tableType",
       "columns",
       "databaseSchema",
+      "tableConstraint",
       "database",
       "service",
       "serviceType"
