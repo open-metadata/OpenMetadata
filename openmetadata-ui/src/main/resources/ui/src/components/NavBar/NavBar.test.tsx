@@ -15,7 +15,6 @@ import {
   LAST_VERSION_FETCH_TIME_KEY,
   ONE_HOUR_MS,
 } from '../../constants/constants';
-import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import NavBarComponent from './NavBar';
@@ -42,6 +41,7 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
     updateSearchCriteria: jest.fn(),
+    subscribe: jest.fn(),
   })),
 }));
 
@@ -83,14 +83,6 @@ jest.mock('../../hooks/useDomainStore', () => ({
     updateActiveDomain: jest.fn(),
   })),
 }));
-
-jest.mock('../Modals/WhatsNewModal/WhatsNewModal', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => (
-      <p data-testid="whats-new-modal-close">WhatsNewModal</p>
-    ));
-});
 
 jest.mock('../NotificationBox/NotificationBox.component', () => {
   return jest.fn().mockImplementation(({ onTabChange }) => (
@@ -135,15 +127,6 @@ jest.mock('antd', () => ({
       </div>
     );
   }),
-}));
-
-jest.mock('../../utils/NavbarUtils', () => ({
-  getHelpDropdownItems: jest.fn().mockReturnValue([
-    {
-      label: <p data-testid="whats-new">Whats New</p>,
-      key: HELP_ITEMS_ENUM.WHATS_NEW,
-    },
-  ]),
 }));
 
 jest.mock('../../rest/miscAPI', () => ({

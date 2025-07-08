@@ -21,11 +21,11 @@ describe('NavbarUtils test', () => {
     const version = '1.3.1';
     const helpDropdownItems = getHelpDropdownItems(version);
 
-    expect(helpDropdownItems).toHaveLength(6);
+    expect(helpDropdownItems).toHaveLength(5);
 
     // Test the External item
-    expect(helpDropdownItems[5].label).toBeDefined();
-    expect(helpDropdownItems[5].key).toBe(HELP_ITEMS_ENUM.VERSION);
+    expect(helpDropdownItems[4].label).toBeDefined();
+    expect(helpDropdownItems[4].key).toBe(HELP_ITEMS_ENUM.VERSION);
 
     // Test external link
     const externalLink = helpDropdownItems[5].label.props.href;
@@ -33,10 +33,10 @@ describe('NavbarUtils test', () => {
     expect(externalLink).toBe(
       URL_OM_RELEASE_UPDATES.replace('{{currentVersion}}', version)
     );
-    expect(helpDropdownItems[5].label.props.target).toBe('_blank');
-    expect(helpDropdownItems[5].label.props.rel).toBe('noreferrer');
+    expect(helpDropdownItems[4].label.props.target).toBe('_blank');
+    expect(helpDropdownItems[4].label.props.rel).toBe('noreferrer');
 
-    expect(JSON.stringify(helpDropdownItems[5].label.props.children)).toContain(
+    expect(JSON.stringify(helpDropdownItems[4].label.props.children)).toContain(
       '1.3.1'
     );
 
@@ -51,7 +51,7 @@ describe('NavbarUtils test', () => {
 
     // Test for No link item
     expect(helpDropdownItems[4].label).toBeDefined();
-    expect(helpDropdownItems[4].key).toBe(HELP_ITEMS_ENUM.WHATS_NEW);
+    expect(helpDropdownItems[4].key).toBe(HELP_ITEMS_ENUM.VERSION);
 
     // Test element without link
     const noLinkElement1 = helpDropdownItems[4].label.props.href;

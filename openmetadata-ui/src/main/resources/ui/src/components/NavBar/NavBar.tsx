@@ -150,12 +150,6 @@ const NavBar = () => {
     });
   }, []);
 
-  const handleSupportClick = ({ key }: MenuInfo): void => {
-    if (key === HELP_ITEMS_ENUM.WHATS_NEW) {
-      setIsFeatureModalOpen(true);
-    }
-  };
-
   const { socket } = useWebSocketConnector();
 
   const handleTaskNotificationRead = () => {

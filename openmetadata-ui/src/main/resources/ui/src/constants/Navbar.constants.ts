@@ -16,7 +16,6 @@ import { ReactComponent as IconDoc } from '../assets/svg/doc.svg';
 import { ReactComponent as IconTour } from '../assets/svg/icon-tour.svg';
 import { ReactComponent as IconSlackGrey } from '../assets/svg/slack-grey.svg';
 import { ReactComponent as IconVersionBlack } from '../assets/svg/version-black.svg';
-import { ReactComponent as IconWhatsNew } from '../assets/svg/whats-new.svg';
 import documentationLinksClassBase from '../utils/DocumentationLinksClassBase';
 
 import i18n from '../utils/i18next/LocalUtil';
@@ -28,7 +27,6 @@ export enum HELP_ITEMS_ENUM {
   DOC = 'doc',
   API = 'api',
   SLACK = 'slack',
-  WHATS_NEW = 'whats-new',
   VERSION = 'version',
 }
 
@@ -68,13 +66,6 @@ export const HELP_ITEMS = [
     label: i18n.t('label.slack-support'),
     icon: IconSlackGrey,
     link: URL_JOIN_SLACK,
-    isExternal: true,
-  },
-  {
-    key: HELP_ITEMS_ENUM.WHATS_NEW,
-    label: i18n.t('label.whats-new'),
-    icon: IconWhatsNew,
-    link: URL_OM_RELEASE_UPDATES,
     isExternal: true,
   },
   {
