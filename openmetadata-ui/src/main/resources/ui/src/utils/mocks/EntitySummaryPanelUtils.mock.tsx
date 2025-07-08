@@ -18,6 +18,10 @@ import { BasicEntityInfo } from '../../components/Explore/EntitySummaryPanel/Sum
 import { ICON_DIMENSION } from '../../constants/constants';
 import { Task } from '../../generated/entity/data/pipeline';
 import {
+  StoredProcedure,
+  StoredProcedureCodeObject,
+} from '../../generated/entity/data/storedProcedure';
+import {
   Column,
   DataType,
   LabelType,
@@ -396,3 +400,87 @@ export const mockInvalidDataResponse = [
     type: undefined,
   },
 ];
+
+export const mockStoredProcedureWithCode: StoredProcedure = {
+  id: '123e4567-e89b-12d3-a456-426614174000',
+  name: 'test_stored_procedure',
+  fullyQualifiedName: 'sample_database.test_stored_procedure',
+  description: 'A test stored procedure',
+  storedProcedureCode: {
+    language: 'SQL',
+    code: 'CREATE PROCEDURE test_stored_procedure()\nBEGIN\n  SELECT * FROM users;\nEND',
+  } as StoredProcedureCodeObject,
+  databaseSchema: {
+    id: '456e7890-e12b-34c5-d678-901234567890',
+    name: 'test_schema',
+    fullyQualifiedName: 'sample_database.test_schema',
+    type: 'databaseSchema',
+  },
+  database: {
+    id: '789e0123-e45f-67g8-h901-234567890123',
+    name: 'sample_database',
+    fullyQualifiedName: 'sample_database',
+    type: 'database',
+  },
+  service: {
+    id: '012e3456-e78h-90i1-j234-567890123456',
+    name: 'mysql_service',
+    fullyQualifiedName: 'mysql_service',
+    type: 'databaseService',
+  },
+};
+
+export const mockStoredProcedureWithoutCode: StoredProcedure = {
+  id: '123e4567-e89b-12d3-a456-426614174001',
+  name: 'test_stored_procedure_no_code',
+  fullyQualifiedName: 'sample_database.test_stored_procedure_no_code',
+  description: 'A test stored procedure without code',
+  storedProcedureCode: null,
+  databaseSchema: {
+    id: '456e7890-e12b-34c5-d678-901234567890',
+    name: 'test_schema',
+    fullyQualifiedName: 'sample_database.test_schema',
+    type: 'databaseSchema',
+  },
+  database: {
+    id: '789e0123-e45f-67g8-h901-234567890123',
+    name: 'sample_database',
+    fullyQualifiedName: 'sample_database',
+    type: 'database',
+  },
+  service: {
+    id: '012e3456-e78h-90i1-j234-567890123456',
+    name: 'mysql_service',
+    fullyQualifiedName: 'mysql_service',
+    type: 'databaseService',
+  },
+};
+
+export const mockStoredProcedureWithEmptyCode: StoredProcedure = {
+  id: '123e4567-e89b-12d3-a456-426614174002',
+  name: 'test_stored_procedure_empty_code',
+  fullyQualifiedName: 'sample_database.test_stored_procedure_empty_code',
+  description: 'A test stored procedure with empty code',
+  storedProcedureCode: {
+    language: 'SQL',
+    code: '',
+  } as StoredProcedureCodeObject,
+  databaseSchema: {
+    id: '456e7890-e12b-34c5-d678-901234567890',
+    name: 'test_schema',
+    fullyQualifiedName: 'sample_database.test_schema',
+    type: 'databaseSchema',
+  },
+  database: {
+    id: '789e0123-e45f-67g8-h901-234567890123',
+    name: 'sample_database',
+    fullyQualifiedName: 'sample_database',
+    type: 'database',
+  },
+  service: {
+    id: '012e3456-e78h-90i1-j234-567890123456',
+    name: 'mysql_service',
+    fullyQualifiedName: 'mysql_service',
+    type: 'databaseService',
+  },
+};

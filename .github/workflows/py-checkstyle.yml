@@ -16,6 +16,8 @@ name: Python Checkstyle
 on:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - 'openmetadata-docs/**'
 
 permissions:
   contents: read
