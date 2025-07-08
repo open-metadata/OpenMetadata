@@ -106,7 +106,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=DatabaseService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_database_service_mssql(self):
         """
@@ -146,7 +151,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=DatabaseService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_database_service_bigquery(self):
         """
@@ -191,6 +201,14 @@ class OMetaServiceTest(TestCase):
             entity=DatabaseService, config=workflow_source
         )
 
+        # Clean
+        self.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
+
     def test_create_dashboard_service_looker(self):
         """
         Create a db service from WorkflowSource
@@ -225,7 +243,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=DashboardService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DashboardService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_dashboard_service_tableau(self):
         """
@@ -263,7 +286,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=DashboardService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DashboardService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_messaging_service_kafka(self):
         """
@@ -293,7 +321,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=MessagingService, entity_id=service.id)
+        self.metadata.delete(
+            entity=MessagingService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_db_service_without_connection(self):
         """We can create a service via API without storing the creds"""
@@ -332,7 +365,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        metadata_no_password.delete(entity=DatabaseService, entity_id=service.id)
+        metadata_no_password.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_dashboard_service_without_connection(self):
         """We can create a service via API without storing the creds"""
@@ -372,4 +410,9 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        metadata_no_password.delete(entity=DashboardService, entity_id=service.id)
+        metadata_no_password.delete(
+            entity=DashboardService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
