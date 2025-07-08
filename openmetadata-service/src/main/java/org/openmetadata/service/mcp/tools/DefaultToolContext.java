@@ -55,7 +55,7 @@ public class DefaultToolContext {
           result = new GlossaryTermTool().execute(authorizer, limits, securityContext, params);
           break;
         case "patch_entity":
-          result = new PatchEntityTool().execute(authorizer, limits, securityContext, params);
+          result = new PatchEntityTool().execute(authorizer, securityContext, params);
           break;
         case "get_entity_lineage":
           result = new GetLineageTool().execute(authorizer, securityContext, params);
