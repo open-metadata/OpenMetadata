@@ -1,0 +1,222 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+clusterName: openmetadata
+
+swagger:
+  resourcePackage: org.openmetadata.service.webservice.resources
+
+server:
+  rootPath: '/api/*'
+  applicationConnectors:
+    - type: http
+      port: 0
+  adminConnectors:
+    - type: http
+      port: 0
+
+
+# Above configuration for running http is fine for dev and testing.
+# For production setup, where UI app will hit apis through DPS it 
+# is strongly recommended running https instead. Note that only
+# keyStorePath and keyStorePassword are mandatory properties. Values
+# for other properties are defaults
+#server:
+  #applicationConnectors:
+  #  - type: https
+  #    port: 8585
+  #    keyStorePath: ./conf/keystore.jks 
+  #    keyStorePassword: changeit
+  #    keyStoreType: JKS
+  #    keyStoreProvider:
+  #    trustStorePath: /path/to/file
+  #    trustStorePassword: changeit
+  #    trustStoreType: JKS
+  #    trustStoreProvider:
+  #    keyManagerPassword: changeit
+  #    needClientAuth: false
+  #    wantClientAuth:
+  #    certAlias: <alias>
+  #    crlPath: /path/to/file
+  #    enableCRLDP: false
+  #    enableOCSP: false
+  #    maxCertPathLength: (unlimited)
+  #    ocspResponderUrl: (none)
+  #    jceProvider: (none)
+  #    validateCerts: true
+  #    validatePeers: true
+  #    supportedProtocols: SSLv3
+  #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+  #    allowRenegotiation: true
+  #    endpointIdentificationAlgorithm: (none)
+ 
+  #adminConnectors:
+  #  - type: https
+  #    port: 8586
+  #    keyStorePath: ./conf/keystore.jks 
+  #    keyStorePassword: changeit 
+  #    keyStoreType: JKS
+  #    keyStoreProvider:
+  #    trustStorePath: /path/to/file
+  #    trustStorePassword: changeit
+  #    trustStoreType: JKS
+  #    trustStoreProvider:
+  #    keyManagerPassword: changeit
+  #    needClientAuth: false
+  #    wantClientAuth:
+  #    certAlias: <alias>
+  #    crlPath: /path/to/file
+  #    enableCRLDP: false
+  #    enableOCSP: false
+  #    maxCertPathLength: (unlimited)
+  #    ocspResponderUrl: (none)
+  #    jceProvider: (none)
+  #    validateCerts: true
+  #    validatePeers: true
+  #    supportedProtocols: SSLv3
+  #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+  #    allowRenegotiation: true
+  #    endpointIdentificationAlgorithm: (none)
+
+# Logging settings.
+logging:
+  level: INFO
+  appenders:
+    - type: console
+      logFormat: "%level %logger{5} - %msg%n"
+
+database:
+  # the name of the JDBC driver, h2 is used for testing
+  driverClass: org.postgresql.Driver
+  # the username and password
+  user: test
+  password:
+  # the JDBC URL; the database is called openmetadata_test_db
+  url: jdbc:postgresql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
+
+migrationConfiguration:
+  flywayPath: "../bootstrap/sql/migrations/flyway"
+  nativePath: "../bootstrap/sql/migrations/native"
+  extensionPath: ""
+
+#elasticsearch:
+#  host: localhost
+#  port: 0
+
+secretsManagerConfiguration:
+  secretsManager: db
+
+
+health:
+  delayedShutdownHandlerEnabled: true
+  shutdownWaitPeriod: 5s
+  healthChecks:
+    - name: OpenMetadataServerHealthCheck
+      critical: true
+
+# Authorizer Configuration
+authorizerConfiguration:
+  className: "org.openmetadata.service.security.DefaultAuthorizer"
+  # JWT Filter
+  containerRequestFilter: "org.openmetadata.service.security.CatalogOpenIdAuthorizationRequestFilter"
+  adminPrincipals:
+    - "admin"
+    - "hello.world"
+  # Added only for test purposes and not for production setup
+  testPrincipals:
+    - "test"
+  principalDomain: "open-metadata.org"
+  enforcePrincipalDomain: false
+  enableSecureSocketConnection: false
+  allowedEmailRegistrationDomains:
+    - "all"
+
+authenticationConfiguration:
+  clientType: "public"
+  provider: "basic"
+  providerName: ""
+  publicKeyUrls:
+    - "https://www.googleapis.com/oauth2/v3/certs"
+  authority: "https://accounts.google.com"
+  clientId: "261867039324-neb92r2147i6upchb78tv29idk079bps.apps.googleusercontent.com"
+  callbackUrl: "http://localhost:8585/callback"
+  jwtPrincipalClaims:
+    - "email"
+    - "preferred_username"
+    - "sub"
+  enableSelfSignup : true
+  samlConfiguration:
+    debugMode: false
+    idp:
+      entityId: ""
+      ssoLoginUrl: ""
+      idpX509Certificate: ""
+      authorityUrl: ""
+      nameId: ""
+    sp:
+      entityId: ""
+      acs: ""
+      spX509Certificate: ""
+      callback: ""
+    security:
+      strictMode: false
+      validateXml: false
+      tokenValidity: 3600
+      sendEncryptedNameId: false
+      sendSignedAuthRequest: false
+      signSpMetadata: false
+      wantMessagesSigned: false
+      wantAssertionsSigned: false
+      wantAssertionEncrypted: false
+
+jwtTokenConfiguration:
+  rsapublicKeyFilePath: "src/test/resources/public_key.der"
+  rsaprivateKeyFilePath: "src/test/resources/private_key.der"
+  jwtissuer: "open-metadata.org"
+  keyId: "Gb389a-9f76-gdjs-a92j-0242bk94356"
+
+eventMonitoringConfiguration:
+  eventMonitor: "prometheus"
+  batchSize: 10
+  pathPattern: ["/*"]
+  latency: [0.90]
+
+eventHandlerConfiguration:
+  eventHandlerClassNames:
+    - "org.openmetadata.service.events.AuditEventHandler"
+    - "org.openmetadata.service.events.ChangeEventHandler"
+
+pipelineServiceClientConfiguration:
+  className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+  metadataApiEndpoint: http://localhost:8585/api
+  apiEndpoint: http://localhost:8080
+  hostIp: ""
+  healthCheckInterval: 300
+  verifySSL: "no-ssl"
+  authProvider: "openmetadata"
+
+  parameters:
+    username: admin
+    password: admin
+    timeout: 10
+    truststorePath: ""
+    truststorePassword: ""
+
+fernetConfiguration:
+  fernetKey: ${FERNET_KEY:-ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ}
+
+dataQualityConfiguration:
+  severityIncidentClassifier: "org.openmetadata.service.util.incidentSeverityClassifier.LogisticRegressionIncidentSeverityClassifier"
+
+objectStorage:
+  enabled: false
+  provider: NOOP
+  maxFileSize: 5242880

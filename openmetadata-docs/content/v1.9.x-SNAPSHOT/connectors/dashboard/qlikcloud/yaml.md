@@ -1,5 +1,6 @@
 ---
 title: Run the Qlik Cloud Connector Externally
+description: Configure QlikCloud dashboard connector for OpenMetadata using YAML. Step-by-step setup guide with examples to integrate Qlik Cloud analytics seamlessly.
 slug: /connectors/dashboard/qlikcloud/yaml
 ---
 
@@ -18,13 +19,13 @@ Configure and schedule PowerBI metadata and profiler workflows from the OpenMeta
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the QlikCloud ingestion, you will need to install:
 
@@ -86,11 +87,11 @@ Example: `Personal`, `Shared`, `Managed`, `Data`
 {% /codeInfo %}
 
 
-{% partial file="/v1.9connectors/yaml/dashboard/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/dashboard/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -114,14 +115,14 @@ source:
       spaceTypes: ["Personal", "Shared", "Managed", "Data"]
 ```
 
-{% partial file="/v1.9connectors/yaml/dashboard/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}

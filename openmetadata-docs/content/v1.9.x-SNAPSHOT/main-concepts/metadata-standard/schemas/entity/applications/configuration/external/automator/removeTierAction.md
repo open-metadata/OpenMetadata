@@ -1,5 +1,5 @@
 ---
-title: removeTierAction
+title: Remove Tier Action | OpenMetadata Tier Removal
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/removetieraction
 ---
 

@@ -246,8 +246,8 @@ entities.forEach((EntityClass) => {
         page,
         'PersonalData.Personal',
         EntityDataClass.tag1.responseData.displayName,
-        EntityDataClass.tag1.responseData.fullyQualifiedName,
-        entity
+        entity,
+        EntityDataClass.tag1.responseData.fullyQualifiedName
       );
     });
 

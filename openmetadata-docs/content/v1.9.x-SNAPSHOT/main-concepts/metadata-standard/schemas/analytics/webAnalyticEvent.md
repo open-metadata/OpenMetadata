@@ -1,5 +1,5 @@
 ---
-title: webAnalyticEvent
+title: Web Analytic Event | OpenMetadata Web Analytics Schema
 slug: /main-concepts/metadata-standard/schemas/analytics/webanalyticevent
 ---
 

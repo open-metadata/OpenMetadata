@@ -1,12 +1,102 @@
 name: TypeScript Type Generation
 
 on:
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
-      - 'openmetadata-spec/src/main/resources/json/schema/**'
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-ui/src/main/resources/ui/src/generated/**"
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run the workflow on"
+        required: true
+        default: "main"
+        type: string
+
+concurrency:
+  group: typescript-generation-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   generate-types:
     runs-on: ubuntu-latest
-    # Placeholder for future workflow steps
-    steps: []
+    if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check if repository is a fork
+        id: check-fork
+        run: |
+          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo "is_fork=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_fork=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.event.pull_request.head.ref || github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: |
+          yarn install --frozen-lockfile
+
+      - name: Generate TypeScript types
+        run: |
+          cd openmetadata-ui/src/main/resources/ui
+          # Create a symlink to the root node_modules
+          ln -sf ../../../../../node_modules .
+          ./json2ts-generate-all.sh -l true
+
+      - name: Check for changes
+        id: git-check
+        run: |
+          git diff --quiet || echo "changes=true" >> $GITHUB_OUTPUT
+
+      - name: Configure Git
+        if: steps.git-check.outputs.changes == 'true'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit and push changes
+        if: steps.git-check.outputs.changes == 'true' && steps.check-fork.outputs.is_fork == 'false'
+        id: commit-changes
+        run: |
+          git add openmetadata-ui/src/main/resources/ui/src/generated/
+          git commit -m "Update generated TypeScript types"
+          git push --force-with-lease
+          echo "committed=true" >> $GITHUB_OUTPUT
+
+      - name: Create PR comment about auto-update
+        if: steps.commit-changes.outputs.committed == 'true' && steps.check-fork.outputs.is_fork == 'false' && github.event_name == 'pull_request_target'
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **TypeScript types have been updated based on the JSON schema changes in the PR**
+
+      - name: Create PR comment about forked repository
+        if: steps.git-check.outputs.changes == 'true' && steps.check-fork.outputs.is_fork == 'true' && github.event_name == 'pull_request_target'
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ⚠️**Generated types need to be updated.**
+            The generated TypeScript types cannot be automatically committed from a forked repository.
+            Please run the type generation locally and commit the changes manually.
+
+            To generate the types locally, run:
+            ```bash
+            cd openmetadata-ui/src/main/resources/ui
+            ./json2ts-generate-all.sh -l true
+            ```

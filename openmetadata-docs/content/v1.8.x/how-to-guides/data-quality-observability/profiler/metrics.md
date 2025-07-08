@@ -1,5 +1,5 @@
 ---
-title: Metrics
+title: Metrics | OpenMetadata Profiler Metrics Guide
 slug: /how-to-guides/data-quality-observability/profiler/metrics
 ---
 

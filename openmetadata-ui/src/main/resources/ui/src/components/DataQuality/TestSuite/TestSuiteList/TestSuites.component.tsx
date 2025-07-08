@@ -15,9 +15,9 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE, ROUTES } from '../../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -61,7 +61,7 @@ import { SummaryPanel } from '../../SummaryPannel/SummaryPanel.component';
 
 export const TestSuites = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const {
     isTestCaseSummaryLoading,
@@ -133,7 +133,7 @@ export const TestSuites = () => {
         sortDirections: ['ascend', 'descend'],
         render: (name, record) => {
           return (
-            <Typography.Paragraph className="m-0" style={{ maxWidth: 580 }}>
+            <Typography.Paragraph className="m-0">
               {record.basic ? (
                 <Link
                   data-testid={name}
@@ -229,14 +229,14 @@ export const TestSuites = () => {
       fetchTestSuites(currentPage, { limit: pageSize });
       handlePageChange(currentPage);
     },
-    [pageSize, paging]
+    [pageSize, handlePageChange]
   );
 
   const handleSearchParam = (
     value: string,
     key: keyof TestSuiteSearchParams
   ) => {
-    history.push({
+    navigate({
       search: QueryString.stringify({
         ...params,
         [key]: isEmpty(value) ? undefined : value,
@@ -253,13 +253,13 @@ export const TestSuites = () => {
 
   useEffect(() => {
     if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
-      fetchTestSuites(INITIAL_PAGING_VALUE, {
+      fetchTestSuites(currentPage, {
         limit: pageSize,
       });
     } else {
       setIsLoading(false);
     }
-  }, [testSuitePermission, pageSize, searchValue, owner]);
+  }, [testSuitePermission, pageSize, searchValue, owner, tab, currentPage]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return (
@@ -354,7 +354,7 @@ export const TestSuites = () => {
           }}
           pagination={false}
           scroll={{
-            x: true,
+            x: '100%',
           }}
           size="small"
         />

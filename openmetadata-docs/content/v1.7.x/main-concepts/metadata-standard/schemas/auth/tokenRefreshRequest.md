@@ -1,5 +1,5 @@
 ---
-title: tokenRefreshRequest
+title: Token Refresh Request | OpenMetadata Token Refresh
 slug: /main-concepts/metadata-standard/schemas/auth/tokenrefreshrequest
 ---
 

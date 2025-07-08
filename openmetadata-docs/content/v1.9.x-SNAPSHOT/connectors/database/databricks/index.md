@@ -1,5 +1,6 @@
 ---
 title: Databricks Connector | OpenMetadata Integration Guide
+description: Connect Databricks to OpenMetadata effortlessly. Complete setup guide, configuration steps, and metadata extraction for your data lakehouse platform.
 slug: /connectors/database/databricks
 ---
 
@@ -33,15 +34,15 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 - [Reverse Metadata](#reverse-metadata)
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the Databricks ingestion, you will need to install:
 
@@ -89,12 +90,12 @@ If you are using unity catalog in Databricks, then checkout the [Unity Catalog](
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Databricks", 
-    selectServicePath: "/images/v1.9connectors/databricks/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/databricks/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/databricks/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/databricks/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/databricks/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/databricks/service-connection.png",
 } 
 /%}
 
@@ -110,20 +111,20 @@ If you are using unity catalog in Databricks, then checkout the [Unity Catalog](
 - **Catalog**: Catalog of the data source(Example: hive_metastore). This is optional parameter, if you would like to restrict the metadata reading to a single catalog. When left blank, OpenMetadata Ingestion attempts to scan all the catalog.
 - **DatabaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
 {% collateContent %}
-{% partial file="/v1.9connectors/database/databricks/reverse-metadata.md" /%}
+{% partial file="/v1.9/connectors/database/databricks/reverse-metadata.md" /%}
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

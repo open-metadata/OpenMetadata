@@ -26,6 +26,7 @@
   </properties>
 
   <artifactId>common</artifactId>
+  <name>OpenMetadata Common</name>
 
   <dependencies>
     <dependency>

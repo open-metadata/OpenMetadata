@@ -66,7 +66,7 @@ Openmetadata fetches the column-level tags information from the `manifest.json` 
 Table and Column level tags ingested from dbt can be viewed on the node in OpenMetadata
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/dbt/dbt-features/dbt-tags.png"
+  src="/images/v1.9/features/ingestion/workflows/dbt/dbt-features/dbt-tags.png"
   alt="dbt_tags"
   caption="dbt tags"
  /%}

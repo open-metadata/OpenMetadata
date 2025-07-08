@@ -1,5 +1,6 @@
 ---
 title: Amundsen Connector | OpenMetadata Metadata Services
+description: Connect Amundsen to OpenMetadata effortlessly with our comprehensive connector guide. Step-by-step setup, configuration tips, and metadata integration b...
 slug: /connectors/metadata/amundsen
 ---
 
@@ -11,17 +12,17 @@ availableFeatures=["Metadata"]
 unavailableFeatures=[]
 / %}
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/amundsen/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/amundsen/yaml"} /%}
 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Amundsen", 
-    selectServicePath: "/images/v1.9connectors/amundsen/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/amundsen/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/amundsen/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/amundsen/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/amundsen/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/amundsen/service-connection.png",
 } 
 /%}
 
@@ -39,10 +40,10 @@ unavailableFeatures=[]
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/metadata/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/metadata/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

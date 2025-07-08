@@ -1,5 +1,5 @@
 ---
-title: index
+title: Docstore Schema | OpenMetadata Document Store
 slug: /main-concepts/metadata-standard/schemas/entity/docstore
 ---
 

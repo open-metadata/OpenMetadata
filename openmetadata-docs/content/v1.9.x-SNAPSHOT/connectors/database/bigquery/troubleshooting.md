@@ -1,6 +1,7 @@
 ---
 title: BigQuery Troubleshooting Guide | OpenMetadata Support
+description: Solve BigQuery connector issues in OpenMetadata with expert troubleshooting guides. Fix connection errors, authentication problems, and data ingestion failures fast.
 slug: /connectors/database/bigquery/troubleshooting
 ---
 
-{% partial file="/v1.9connectors/troubleshooting.md" /%}
+{% partial file="/v1.9/connectors/troubleshooting.md" /%}

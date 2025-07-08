@@ -1,5 +1,6 @@
 ---
 title: Run the Athena Connector Externally
+description: Configure OpenMetadata's Athena database connector with YAML - step-by-step setup guide, connection parameters, and configuration examples for seamless integration.
 slug: /connectors/database/athena/yaml
 ---
 
@@ -26,7 +27,7 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
 - [Reverse Metadata](/connectors/ingestion/workflows/reverse-metadata)
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -144,7 +145,7 @@ You can find further information on the Athena connector in the [docs](/connecto
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the Athena ingestion, you will need to install:
 
@@ -175,7 +176,7 @@ This is a sample config for Athena:
 
 #### Source Configuration - Service Connection
 
-{% partial file="/v1.9connectors/yaml/common/aws-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/aws-config-def.md" /%}
 
 {% codeInfo srNumber=9 %}
 
@@ -189,11 +190,11 @@ This is a sample config for Athena:
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -223,7 +224,7 @@ source:
       awsConfig:
 ```
 
-{% partial file="/v1.9connectors/yaml/common/aws-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/aws-config.md" /%}
 
 ```yaml {% srNumber=9 %}
       s3StagingDir: s3 directory for datasource
@@ -240,27 +241,27 @@ source:
         # key: value
 ```
 
-{% partial file="/v1.9connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.9connectors/yaml/query-usage.md" variables={connector: "athena"} /%}
+{% partial file="/v1.9/connectors/yaml/query-usage.md" variables={connector: "athena"} /%}
 
-{% partial file="/v1.9connectors/yaml/lineage.md" variables={connector: "athena"} /%}
+{% partial file="/v1.9/connectors/yaml/lineage.md" variables={connector: "athena"} /%}
 
-{% partial file="/v1.9connectors/yaml/data-profiler.md" variables={connector: "athena"} /%}
+{% partial file="/v1.9/connectors/yaml/data-profiler.md" variables={connector: "athena"} /%}
 
-{% partial file="/v1.9connectors/yaml/auto-classification.md" variables={connector: "athena"} /%}
+{% partial file="/v1.9/connectors/yaml/auto-classification.md" variables={connector: "athena"} /%}
 
-{% partial file="/v1.9connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.9/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

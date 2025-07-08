@@ -16,7 +16,7 @@
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 import { CarousalData } from './FeaturesCarousel.interface';
 
-export const COOKIE_VERSION = 'VERSION_1_8_0'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_8_1'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1003,6 +1003,43 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - Query card styles for query page (#1518)
 - Port raiseOnError to Collate (#1509)
 - Handle logging and exception handling for hybrid (#1514)`,
+    },
+  },
+  {
+    id: 75,
+    version: 'v1.8.1',
+    description: 'Released on 30th June 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- REST service process nested objects inside array dtype in schema.
+- Throw an error on query filter parsing and an error on column test case.
+- Display object column type.
+- Add support for adding tags in test case form.
+- Add Postgres SP and UDF descriptions.
+- Enhance AutomatorTestCaseField with tag and glossary support. ${CollateIconWithLinkMD}`,
+      Fixes: `- Cache to have immutable entities.
+- Remove edit permission from version page.
+- Table pagination count issue in the Schema page.
+- Version link and fetch logic with 1 hour wait time.
+- Tableau Lineage in multiple schema model.
+- Soft deleted entities are not removed rom system, so relations are still valid if there is entry in DB.
+- Custom properties display issue in advanced search.
+- Image was not rendering correctly in description editor.
+- Handle sampler SQA sessions.
+- Typo on query cost record index.
+- Reply count being shown as 0 in task feed card.
+- Pagination state lost after multiple back navigations in table list view.
+- query_cost_record_search_index Search exception for elasticsearch instance.
+- Search functionality for domain edit in user profile.
+- Username issue in comments card.
+- Quickcloud get script tables.
+- Added Databricks pipeline Lineage.
+- Add parquet alternate filetypes in table fileformat. 
+- Snowflake reverse ingestion. ${CollateIconWithLinkMD}
+- Typo for Chart preview. ${CollateIconWithLinkMD}
+- Update version link for Collate. ${CollateIconWithLinkMD}
+- Sorting issue for charts. ${CollateIconWithLinkMD}
+`,
     },
   },
 ];

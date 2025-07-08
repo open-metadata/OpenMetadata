@@ -1,9 +1,10 @@
 ---
 title: AzureSQL Connector Troubleshooting
+description: Solve Azure SQL connector issues in OpenMetadata with expert troubleshooting guides. Fix common connection problems, authentication errors, and data ing...
 slug: /connectors/database/azuresql/troubleshooting
 ---
 
-{% partial file="/v1.9connectors/troubleshooting.md" /%}
+{% partial file="/v1.9/connectors/troubleshooting.md" /%}
 
 Learn how to resolve the most common problems people encounter in the AzureSQL connector.
 
@@ -17,7 +18,7 @@ To solve this issue, you can edit your Service Connection by adding the followin
 - Value: `true`
 
 {% image
-src="/images/v1.9connectors/azuresql/autocommit.png"
+src="/images/v1.9/connectors/azuresql/autocommit.png"
 alt="autocommit" /%}
 
 
@@ -30,7 +31,7 @@ This is an exception you can get when trying to connect to AzureSQL using SQLAlc
 To solve this issue, you need to add your IP address in firewall rules for your Azure SQL instance.
 
 {% image
-src="/images/v1.9connectors/azuresql/azure-firewall.png"
+src="/images/v1.9/connectors/azuresql/azure-firewall.png"
 alt="azure sql firewall rules"
 caption="azure sql firewall rules" /%}
 

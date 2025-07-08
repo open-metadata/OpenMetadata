@@ -1,5 +1,6 @@
 ---
 title: Hive Connector | OpenMetadata Big Data Integration Guide
+description: Connect Apache Hive to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration options, and metadata extraction steps.
 slug: /connectors/database/hive
 ---
 
@@ -24,7 +25,7 @@ Configure and schedule Hive metadata and profiler workflows from the OpenMetadat
 - [Enable Security](#securing-hive-connection-with-ssl-in-openmetadata)
 - [Troubleshooting](/connectors/database/hive/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/hive/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/hive/yaml"} /%}
 
 ## Requirements
 
@@ -38,12 +39,12 @@ Executing the profiler workflow or data quality tests, will require the user to 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Hive", 
-    selectServicePath: "/images/v1.9connectors/hive/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/hive/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/hive/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/hive/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/hive/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/hive/service-connection.png",
 } 
 /%}
 
@@ -70,7 +71,7 @@ You can also ingest the metadata using Mysql metastore. This step is optional if
 - **Host and Port**: Enter the fully qualified hostname and port number for your MySQL Metastore deployment in the Host and Port field in the format `hostname:port`.
 - **databaseSchema**: Enter the database schema which is associated with the metastore.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 #### For Postgres Metastore Connection
 
@@ -81,18 +82,18 @@ You can also ingest the metadata using Postgres metastore. This step is optional
 - **Host and Port**: Enter the fully qualified hostname and port number for your Postgres deployment in the Host and Port field in the format `hostname:port`.
 - **Database**: Initial Postgres database to connect to. Specify the name of database associated with metastore instance.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -101,9 +102,9 @@ You can also ingest the metadata using Postgres metastore. This step is optional
 To configure SSL for secure connections between OpenMetadata and a Hive database, you need to add `ssl_cert` as a key and the path to the CA certificate as its value under `connectionArguments`. Ensure that the certificate is accessible by the server. If you use a Docker or Kubernetes deployment, update the CA certificate in the Open Metadata server.
 
 {% image
-  src="/images/v1.9connectors/ssl_argument.png"
+  src="/images/v1.9/connectors/ssl_argument.png"
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

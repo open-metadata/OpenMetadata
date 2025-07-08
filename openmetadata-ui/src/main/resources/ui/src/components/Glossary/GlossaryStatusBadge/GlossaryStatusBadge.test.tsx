@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { Status } from '../../../generated/entity/data/glossaryTerm';
 import { GlossaryStatusBadge } from './GlossaryStatusBadge.component';
 

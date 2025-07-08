@@ -1,5 +1,6 @@
 ---
 title: Couchbase Connector | OpenMetadata NoSQL Integration Guide
+description: Connect Couchbase to OpenMetadata effortlessly. Complete setup guide, configuration steps, and metadata extraction for your NoSQL database connector.
 slug: /connectors/database/couchbase
 ---
 
@@ -19,17 +20,17 @@ Configure and schedule Couchbase metadata workflows from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/database/couchbase/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/couchbase/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/couchbase/yaml"} /%}
 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Couchbase", 
-    selectServicePath: "/images/v1.9connectors/couchbase/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/couchbase/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/couchbase/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/couchbase/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/couchbase/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/couchbase/service-connection.png",
 } 
 /%}
 
@@ -43,16 +44,16 @@ Configure and schedule Couchbase metadata workflows from the OpenMetadata UI:
 - **Hostport**: If couchbase is hosted on cloud then the hostport parameter specifies the connection string and if you are using couchbase server then the hostport parameter specifies hostname of the Couchbase. This should be specified as a string in the format `hostname` or `xyz.cloud.couchbase.com`. E.g., `localhost`.
 - **bucketName**: Optional name to give to the bucket in OpenMetadata. If left blank, If left blank, we will ingest all the bucket names.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

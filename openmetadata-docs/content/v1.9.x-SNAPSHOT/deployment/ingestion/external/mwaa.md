@@ -4,7 +4,7 @@ slug: /deployment/ingestion/external/mwaa
 collate: false
 ---
 
-{% partial file="/v1.9deployment/external-ingestion.md" /%}
+{% partial file="/v1.9/deployment/external-ingestion.md" /%}
 
 # Run the ingestion from AWS MWAA
 
@@ -98,7 +98,7 @@ with DAG(
 Where you can update the YAML configuration and workflow classes accordingly. accordingly. Further examples on how to 
 run the ingestion can be found on the documentation (e.g., [Snowflake](/connectors/database/snowflake)).
 
-{% partial file="/v1.9deployment/run-connectors-class.md" /%}
+{% partial file="/v1.9/deployment/run-connectors-class.md" /%}
 
 ## Ingestion Workflows as an ECS Operator
 
@@ -441,4 +441,4 @@ For Airflow providers, you will want to pull the provider versions from [the mat
 
 Also note that the ingestion workflow function must be entirely self-contained as it will run by itself in the virtualenv. Any imports it needs, including the configuration, must exist within the function itself.
 
-{% partial file="/v1.9deployment/run-connectors-class.md" /%}
+{% partial file="/v1.9/deployment/run-connectors-class.md" /%}

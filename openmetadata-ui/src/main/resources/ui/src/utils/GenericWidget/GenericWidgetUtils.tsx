@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import React from 'react';
 import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
 import { PropertyValue } from '../../components/common/CustomPropertyTable/PropertyValue';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';

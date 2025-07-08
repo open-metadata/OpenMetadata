@@ -34,9 +34,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -61,6 +63,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -243,6 +246,46 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
     }
     return details;
+  }
+
+  public static Map<UUID, UsageDetails> getLatestUsageForEntities(
+      UsageDAO usageDAO, List<UUID> entityIds) {
+    Map<UUID, UsageDetails> usageMap = new HashMap<>();
+    if (entityIds == null || entityIds.isEmpty()) {
+      return usageMap;
+    }
+
+    // Convert UUIDs to strings for the batch query
+    List<String> entityIdStrings =
+        entityIds.stream().map(UUID::toString).collect(java.util.stream.Collectors.toList());
+
+    // Use the new batch query method for efficient bulk fetching
+    List<org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId>
+        usageDetailsList = usageDAO.getLatestUsageBatch(entityIdStrings);
+
+    // Convert the list back to a map keyed by UUID
+    for (org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId usageWithId :
+        usageDetailsList) {
+      if (usageWithId != null && usageWithId.getEntityId() != null) {
+        usageMap.put(UUID.fromString(usageWithId.getEntityId()), usageWithId.getUsageDetails());
+      }
+    }
+
+    // For entities without usage data, provide default usage details
+    for (UUID entityId : entityIds) {
+      if (!usageMap.containsKey(entityId)) {
+        UsageStats defaultStats = new UsageStats().withCount(0).withPercentileRank(0.0);
+        UsageDetails defaultUsage =
+            new UsageDetails()
+                .withDailyStats(defaultStats)
+                .withWeeklyStats(defaultStats)
+                .withMonthlyStats(defaultStats)
+                .withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
+        usageMap.put(entityId, defaultUsage);
+      }
+    }
+
+    return usageMap;
   }
 
   /** Merge two sets of tags */

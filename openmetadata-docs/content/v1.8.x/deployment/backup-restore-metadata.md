@@ -11,7 +11,7 @@ collate: false
 Before upgrading your OpenMetadata version we strongly recommend backing up the metadata.
 
 The source of truth is stored in the underlying database (MySQL and Postgres supported). During each version upgrade there
-is a database migration process that needs to run. It will directly attack your database and update the shape of the
+is a database migration process that needs to run. It will make changes to the OpenMetadata Application schema in the database and update the shape of the
 data to the newest OpenMetadata release.
 
 It is important that we backup the data because if we face any unexpected issues during the upgrade process,
@@ -58,15 +58,7 @@ Start a local instance of OpenMetadata using the `docker-compose` file provided 
 
 ## MySQL
 
-### 1. Start a local docker deployment
-
-```shell
-docker/run_local_docker.sh
-```
-
-Ingest some data...
-
-### 2. Backup and Restore
+### 1. Backup and Restore
 
 ```shell
 BACKUP_FILE="backup_$(date +%Y%m%d%H%M).sql"
@@ -82,7 +74,7 @@ docker compose exec mysql  mysql -u root -ppassword -e "flush privileges;"
 docker compose exec -T ingestion mysql -u openmetadata_user -popenmetadata_password -h mysql -P 3306 restore < $BACKUP_FILE
 ```
 
-### 3. Restart the docker deployment with the restored database
+### 2. Restart the docker deployment with the restored database
 
 ```shell
 export OM_DATABASE=restore
@@ -91,15 +83,7 @@ docker compose -f $DOCKER_COMPOSE_FILE up -d
 
 ## PostgreSQL
 
-### 1. Start a local docker deployment
-
-```shell
-docker/run_local_docker.sh -d postgres
-```
-
-Ingest some data...
-
-### 2. Backup and Restore
+### 1. Backup and Restore
 
 ```shell
 BACKUP_FILE="backup_$(date +%Y%m%d%H%M).sql"
@@ -113,7 +97,7 @@ docker compose exec -e PGPASSWORD=openmetadata_password postgresql psql -U postg
 docker compose exec -e PGPASSWORD=openmetadata_password -T ingestion psql -U openmetadata_user -h postgresql -d restore < $BACKUP_FILE
 ```
 
-### 3. Restart the docker deployment with the restored database
+### 2. Restart the docker deployment with the restored database
 
 ```shell
 export OM_DATABASE=restore

@@ -9,7 +9,7 @@ Tasks are an extension to the Conversation Threads feature where users can creat
 request to create or update description or tags for a data asset. Tasks are assgined to the owner of the data asset by default. If there are no owners, the task can be assigned to an appropriate user or team.
 
 {% image
-src="/images/v1.9how-to-guides/collaboration/task.webp"
+src="/images/v1.9/how-to-guides/collaboration/task.webp"
 alt="Start a Conversation"
 caption="Start a Conversation"
 /%}

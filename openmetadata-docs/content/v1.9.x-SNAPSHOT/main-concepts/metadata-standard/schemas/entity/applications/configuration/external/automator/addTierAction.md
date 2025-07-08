@@ -1,5 +1,5 @@
 ---
-title: addTierAction
+title: Add Tier Action | OpenMetadata Tier Actions
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/addtieraction
 ---
 

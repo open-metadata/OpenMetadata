@@ -13,7 +13,7 @@
 
 import { Divider } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Post,

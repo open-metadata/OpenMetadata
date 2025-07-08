@@ -26,7 +26,7 @@ Managing metadata manually can be challenging, particularly in dynamic environme
 ### 1. Bulk Description
 
 {% image
-src="/images/v1.6/how-to-guides/governance/automator-description.png"
+src="/images/v1.8/how-to-guides/governance/automator-description.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -42,7 +42,7 @@ For the Action Configuration:
 ### 2. Bulk Ownership and Domain Assignment
 
 {% image
-src="/images/v1.6/how-to-guides/governance/bulk-ownership-and.png"
+src="/images/v1.8/how-to-guides/governance/bulk-ownership-and.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -57,7 +57,7 @@ For the Action Configuration:
 ### 3. Bulk Tagging and Glossary Term Assignment
 
 {% image
-src="/images/v1.6/how-to-guides/governance/bulk-tagging-glossary.png"
+src="/images/v1.8/how-to-guides/governance/bulk-tagging-glossary.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -74,7 +74,7 @@ For the Action Configuration:
 ### 4. Metadata Propagation via Lineage
 
 {% image
-src="/images/v1.6/how-to-guides/governance/metadata-propogation.png"
+src="/images/v1.8/how-to-guides/governance/metadata-propogation.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -91,6 +91,7 @@ For the Action Configuration:
     - **Propagate Glossary Terms**: Propagates the glossary terms from the source asset to the downstream assets. Works for both parent and column-level.
     - **Propagate Owners**: Only applicable for Parent assets. Propagates the owner information to downstream assets.
     - **Propagate Tier**: Only applicable for Parent assets. Propagated the tier information to downstream assets.
+    - **Propagate Domain**: Only applicable for Parent assets. Propagates the domain information to downstream assets.
 
 As with other actions, you can choose to **Overwrite Metadata** or keep the existing metadata and only apply the new metadata to assets that do not have the metadata already.
 
@@ -98,7 +99,7 @@ As with other actions, you can choose to **Overwrite Metadata** or keep the exis
 ### 5. Automatic PII Detection and Tagging
 
 {% image
-src="/images/v1.6/how-to-guides/governance/automatic-detection.png"
+src="/images/v1.8/how-to-guides/governance/automatic-detection.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}

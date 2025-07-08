@@ -1,5 +1,5 @@
 ---
-title: index
+title: Lineage API | OpenMetadata Lineage API Integration Guide
 slug: /main-concepts/metadata-standard/schemas/api/lineage
 ---
 

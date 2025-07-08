@@ -1,5 +1,6 @@
 ---
 title: Qlik Sense Certificates | OpenMetadata Connector Setup
+description: Configure QlikSense certificate authentication for OpenMetadata dashboard connectors. Step-by-step setup guide for secure SSL/TLS connections and data integration.
 slug: /connectors/dashboard/qliksense/certificates
 ---
 
@@ -16,7 +17,7 @@ In this document we will explain how you can generate these certificates so that
 Open your Qlik Management Console (QMC) and navigate to certificates section.
 
 {% image
-  src="/images/v1.9connectors/qliksense/qlik-certificate-nav.png"
+  src="/images/v1.9/connectors/qliksense/qlik-certificate-nav.png"
   alt="Navigate to certificates in QMC"
   caption="Navigate to certificates in QMC"
  /%}
@@ -35,7 +36,7 @@ Open your Qlik Management Console (QMC) and navigate to certificates section.
 4. From the *Export file format for certificates* field select the "Platform independent PEM-format"
 
 {% image
-  src="/images/v1.9connectors/qliksense/qlik-export-cert.png"
+  src="/images/v1.9/connectors/qliksense/qlik-export-cert.png"
   alt="Provide Certificate Details"
   caption="Provide Certificate Details"
  /%}
@@ -46,7 +47,7 @@ Open your Qlik Management Console (QMC) and navigate to certificates section.
 Once you have exported the certificates you can see the location of exported certificates just below the certificate details page. When you navigate to that location you will find the `root.pem`, `client.pem` & `client_key.pem` certificates which will be used by OpenMetadata.
 
 {% image
-  src="/images/v1.9connectors/qliksense/qlik-locate-certificates.png"
+  src="/images/v1.9/connectors/qliksense/qlik-locate-certificates.png"
   alt="Locate Certificate"
   caption="Locate Certificate"
  /%}

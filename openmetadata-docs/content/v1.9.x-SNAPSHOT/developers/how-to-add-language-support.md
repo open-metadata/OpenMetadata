@@ -36,7 +36,7 @@ To copy the contents of en-us.json and add it to your translation JSON file, fol
 You can refer to the image below for a visual guide:
 
 {% image
-src="/images/v1.9developers/language-support.png"
+src="/images/v1.9/developers/language-support.png"
 alt="copy-en-us"
 /%}
 

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { EntityTabs } from '../../enums/entity.enum';
 import DatabaseVersionPage from './DatabaseVersionPage';
 
@@ -26,16 +24,14 @@ const DATABASE_SCHEMA_TABLE = 'DatabaseSchemaTable';
 const TAGS_CONTAINER_V2 = 'TagsContainerV2';
 const CUSTOM_PROPERTY_TAB_NAME = 'label.custom-property-plural';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn(() => ({
     version: '1.2',
     tab: EntityTabs.SCHEMA,
   })),
-  useHistory: jest.fn(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock(
@@ -161,7 +157,7 @@ describe('DatabaseVersionPage', () => {
     });
 
     // for tab change
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('tab', {
         name: CUSTOM_PROPERTY_TAB_NAME,
       })
@@ -170,20 +166,20 @@ describe('DatabaseVersionPage', () => {
     expect(screen.getByText(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
 
     // for back handler
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', {
         name: DATA_ASSET_VERSION_HEADER,
       })
     );
 
     // for version handler
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', {
         name: ENTITY_VERSION_TIMELINE,
       })
     );
 
-    expect(mockPush).toHaveBeenCalledTimes(3);
+    expect(mockNavigate).toHaveBeenCalledTimes(3);
   });
 
   it('should show ErrorPlaceHolder if not have view permission', async () => {

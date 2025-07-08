@@ -1,5 +1,6 @@
 ---
 title: Run the OpenAPI/REST Connector Externally
+description: Learn how to configure OpenMetadata REST API connectors using YAML. Complete documentation with examples, parameters, and best practices for seamless integration.
 slug: /connectors/api/rest/yaml
 ---
 
@@ -18,13 +19,13 @@ Configure and schedule REST metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 
 ### Generate OpenAPI Schema URL
@@ -71,14 +72,14 @@ source:
 ```
 
 
-{% partial file="/v1.9connectors/yaml/api/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/api/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}

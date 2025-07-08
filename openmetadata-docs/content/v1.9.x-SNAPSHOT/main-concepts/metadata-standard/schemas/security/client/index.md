@@ -1,5 +1,5 @@
 ---
-title: index
+title: Security Client | OpenMetadata Security Client Information
 slug: /main-concepts/metadata-standard/schemas/security/client
 ---
 

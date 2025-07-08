@@ -1,5 +1,6 @@
 ---
 title: Sigma Connector | OpenMetadata Dashboard Integration Guide
+description: Connect Sigma Analytics to OpenMetadata seamlessly. Learn how to configure the Sigma dashboard connector for automated metadata extraction and lineage tracking.
 slug: /connectors/dashboard/sigma
 ---
 
@@ -20,7 +21,7 @@ Configure and schedule Sigma metadata and profiler workflows from the OpenMetada
 - [Lineage](#lineage)
 - [Troubleshooting](/connectors/dashboard/sigma/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/sigma/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/sigma/yaml"} /%}
 
 ## Requirements
 
@@ -29,12 +30,12 @@ OpenMetadata relies on Sigma's REST API. To know more you can read the [Sigma AP
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Sigma", 
-    selectServicePath: "/images/v1.9connectors/sigma/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/sigma/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/sigma/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/sigma/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/sigma/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/sigma/service-connection.png",
 } 
 /%}
 
@@ -69,12 +70,12 @@ To get to know the Sigma REST API Version visit [here](https://help.sigmacomputi
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.9connectors/dashboard/dashboard-lineage.md" /%}
+{% partial file="/v1.9/connectors/dashboard/dashboard-lineage.md" /%}

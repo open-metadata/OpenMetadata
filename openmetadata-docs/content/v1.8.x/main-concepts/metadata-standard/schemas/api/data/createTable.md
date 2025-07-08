@@ -1,5 +1,5 @@
 ---
-title: createTable
+title: Create Table API | OpenMetadata Table API
 slug: /main-concepts/metadata-standard/schemas/api/data/createtable
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: domain
+title: Domain Feed | OpenMetadata Domain Feed and API
 slug: /main-concepts/metadata-standard/schemas/entity/feed/domain
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: trustAllConfig
+title: Trust All Config | OpenMetadata SSL Trust Config
 slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/trustallconfig
 ---
 

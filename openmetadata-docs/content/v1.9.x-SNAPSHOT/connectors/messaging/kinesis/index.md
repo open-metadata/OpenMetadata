@@ -1,5 +1,6 @@
 ---
 title: Kinesis Connector | OpenMetadata Streaming Integration
+description: Connect Amazon Kinesis to OpenMetadata with our comprehensive connector guide. Set up real-time streaming data ingestion and metadata extraction easily.
 slug: /connectors/messaging/kinesis
 ---
 
@@ -19,7 +20,7 @@ Configure and schedule Kinesis metadata workflows from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/messaging/kinesis/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/messaging/kinesis/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/messaging/kinesis/yaml"} /%}
 
 ## Requirements
 
@@ -53,12 +54,12 @@ For more information on Kinesis permissions visit the [AWS Kinesis official docu
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Kinesis", 
-    selectServicePath: "/images/v1.9connectors/kinesis/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/kinesis/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/kinesis/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/kinesis/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/kinesis/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/kinesis/service-connection.png",
 } 
 /%}
 
@@ -135,10 +136,10 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/messaging/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/messaging/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

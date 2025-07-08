@@ -1,5 +1,6 @@
 ---
 title: Oracle Connector | OpenMetadata Enterprise Database Guide
+description: Connect Oracle databases to OpenMetadata effortlessly. Complete setup guide, configuration steps, and troubleshooting tips for seamless data catalog integration.
 slug: /connectors/database/oracle
 ---
 
@@ -26,7 +27,7 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Reverse Metadata](#reverse-metadata)
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/oracle/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/oracle/yaml"} /%}
 
 ## Requirements
 
@@ -96,12 +97,12 @@ there is no routine out of the box in Oracle to grant SELECT to a full schema.
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Oracle", 
-    selectServicePath: "/images/v1.9connectors/oracle/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/oracle/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/oracle/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/oracle/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/oracle/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/oracle/service-connection.png",
 } 
 /%}
 
@@ -122,20 +123,20 @@ there is no routine out of the box in Oracle to grant SELECT to a full schema.
     We are shipping the binaries for ARM and AMD architectures from [here](https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html)
     and [here](https://www.oracle.com/database/technologies/instant-client/linux-arm-aarch64-downloads.html) for the instant client version 19.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
 {% collateContent %}
-{% partial file="/v1.9connectors/database/oracle/reverse-metadata.md" /%}
+{% partial file="/v1.9/connectors/database/oracle/reverse-metadata.md" /%}
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

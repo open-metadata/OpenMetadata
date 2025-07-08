@@ -1,5 +1,5 @@
 ---
-title: createRole
+title: Create Role API | OpenMetadata API for Creating Roles
 slug: /main-concepts/metadata-standard/schemas/api/teams/createrole
 ---
 

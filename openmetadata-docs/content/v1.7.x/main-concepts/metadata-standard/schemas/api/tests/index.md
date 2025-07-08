@@ -1,5 +1,5 @@
 ---
-title: index
+title: Tests API | OpenMetadata API for Test Management
 slug: /main-concepts/metadata-standard/schemas/api/tests
 ---
 
