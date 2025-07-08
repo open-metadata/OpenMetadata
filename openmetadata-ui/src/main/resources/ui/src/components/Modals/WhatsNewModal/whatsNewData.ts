@@ -1048,7 +1048,8 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
     description: 'Released on 9th July 2025.',
     features: [],
     changeLogs: {
-      Improvements: `- Automator - Domain Lineage Propagation Support.
+      Improvements: `- Implemented Prefix For Dashboard Service.
+- Automator - Domain Lineage Propagation Support.
 - Added Session Age for Cookies.
 - Add maxRequestHeaderSize to server.applicationConnectors section in OpenMetaData default config file.
 - Pbi display table name from source.
