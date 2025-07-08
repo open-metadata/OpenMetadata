@@ -10,45 +10,56 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) '../../../../styles/variables.less';
+@import (reference) '../../../../styles/fonts.less';
+
 .whats-new-alert-card {
   border-radius: 20px !important;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   min-width: 420px;
-  max-width: 480px;
+  max-width: 560px;
   padding: 0 !important;
 }
 
 .whats-new-alert-left {
   background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-  color: #fff;
+  color: #fff !important;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-width: 140px;
-  padding: 32px 12px;
+  padding: 24px 16px;
   text-align: center;
   height: 100%;
 }
-
-.whats-new-alert-version {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-top: 8px;
+.whats-new-alert-right {
+  padding: 16px 16px 16px 20px;
 }
 
 .whats-new-alert-close {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  background: transparent;
-  border: none;
-  z-index: 1;
+  padding: 16px;
+  color: @grey-400;
+  font-size: 12px;
+}
+
+.whats-new-alert-version {
+  .text-lg();
+  font-weight: 600;
+  margin-top: 8px;
+  color: @white !important;
 }
 
 .whats-new-alert-links {
   display: flex;
   gap: 32px;
-  margin-top: 12px;
+  margin-top: 54px;
+  a.ant-btn {
+    height: 28px;
+    line-height: 28px;
+    color: #004eeb;
+    font-weight: 600;
+  }
 }

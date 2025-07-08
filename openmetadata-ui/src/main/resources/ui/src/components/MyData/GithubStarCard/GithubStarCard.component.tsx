@@ -31,7 +31,7 @@ import { OMD_REPOSITORY_LINK } from '../../../constants/docs.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getRepositoryData } from '../../../rest/commonAPI';
-import { getVersionedStorageKey } from '../../../utils/Version/version';
+import { getVersionedStorageKey } from '../../../utils/Version/Version';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
 import './github-star-card.style.less';
 

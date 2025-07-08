@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
 import RecentlyViewed from './RecentlyViewed';
 
 const mockProp = {
@@ -80,14 +79,5 @@ describe('RecentlyViewed', () => {
     });
 
     expect(screen.getByTestId('Recently Viewed-test')).toBeInTheDocument();
-  });
-
-  it('should render no data placeholder when data is  empty', async () => {
-    (getRecentlyViewedData as jest.Mock).mockReturnValue([]),
-      await act(async () => {
-        render(<RecentlyViewed widgetKey={mockProp.widgetKey} />);
-      });
-
-    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
   });
 });

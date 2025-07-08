@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { RecentlySearchedData, RecentlyViewedData } from 'Models';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { useApplicationStore } from '../useApplicationStore';
@@ -18,6 +19,8 @@ import { useApplicationStore } from '../useApplicationStore';
 export interface UserPreferences {
   isSidebarCollapsed: boolean;
   selectedEntityTableColumns: Record<string, string[]>;
+  recentlyViewed: RecentlyViewedData[];
+  recentlySearched: RecentlySearchedData[];
 }
 
 interface Store {
@@ -33,6 +36,8 @@ interface Store {
 const defaultPreferences: UserPreferences = {
   isSidebarCollapsed: false,
   selectedEntityTableColumns: {},
+  recentlyViewed: [],
+  recentlySearched: [],
   // Add default values for other preferences
 };
 

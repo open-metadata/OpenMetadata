@@ -130,7 +130,8 @@ const NavBar = () => {
         expires: new Date(Date.now() + ONE_HOUR_MS),
       });
 
-      setAppVersion(res.version);
+      // Remove -SNAPSHOT from the version
+      setAppVersion(res.version.replace('-SNAPSHOT', ''));
     } catch (err) {
       showErrorToast(
         err as AxiosError,

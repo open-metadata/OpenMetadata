@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons';
 import { Affix, Button, Card, Col, Row, Typography } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,7 +22,7 @@ import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
-import { getVersionedStorageKey } from '../../../../utils/Version/version';
+import { getVersionedStorageKey } from '../../../../utils/Version/Version';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
 import './WhatsNewAlert.less';
 
@@ -81,38 +82,26 @@ const WhatsNewAlert = () => {
         <Affix
           style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 2000 }}>
           <Card bodyStyle={{ padding: 0 }} className="whats-new-alert-card">
-            <Row
-              gutter={0}
-              style={{ minHeight: 140, position: 'relative' }}
-              wrap={false}>
+            <Row gutter={0} wrap={false}>
               <Col className="whats-new-alert-left" flex="160px">
                 <RocketIcon
-                  style={{ width: 48, height: 48, marginBottom: 12 }}
+                  style={{ width: 48, height: 48, marginBottom: 16 }}
                 />
-                <Typography.Title
-                  className="text-md text-white"
-                  level={5}
-                  style={{ marginBottom: 8 }}>
-                  {t('label.version-number', { version: appVersion ?? '' })}
-                </Typography.Title>
+                <Typography.Text className="whats-new-alert-version">
+                  {t('label.version-number', {
+                    version: appVersion ?? '',
+                  })}
+                </Typography.Text>
               </Col>
-              <Col
-                flex="auto"
-                style={{
-                  padding: '24px 32px 24px 24px',
-                  position: 'relative',
-                }}>
-                <Typography.Title
-                  className="text-sm"
-                  level={5}
-                  style={{ marginBottom: 8 }}>
+              <Col className="whats-new-alert-right" flex="auto">
+                <Typography.Text className="text-md font-semibold">
                   {t('label.new-update-announcement')}
-                </Typography.Title>
+                </Typography.Text>
                 <div className="whats-new-alert-links">
                   <Button
+                    className="p-0"
                     href={releaseLink}
                     rel="noopener noreferrer"
-                    style={{ padding: 0, fontWeight: 600, color: '#2563eb' }}
                     target="_blank"
                     type="link">
                     {t('label.release-notes')}
@@ -120,9 +109,9 @@ const WhatsNewAlert = () => {
                   {/* Only show the blog link for major releases */}
                   {isMajorRelease && (
                     <Button
+                      className="p-0"
                       href={blogLink}
                       rel="noopener noreferrer"
-                      style={{ padding: 0, fontWeight: 600, color: '#2563eb' }}
                       target="_blank"
                       type="link">
                       {t('label.blog')}
@@ -130,12 +119,10 @@ const WhatsNewAlert = () => {
                   )}
                 </div>
               </Col>
-              <Col flex={24}>
-                <Button
-                  aria-label={t('label.close')}
-                  className="whats-new-alert-close float-right"
-                  icon={<CloseIcon color="#888" height={20} width={20} />}
-                  type="text"
+              <Col flex="48px">
+                <Icon
+                  className="whats-new-alert-close"
+                  component={CloseIcon}
                   onClick={handleCancel}
                 />
               </Col>

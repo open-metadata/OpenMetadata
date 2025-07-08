@@ -74,7 +74,8 @@ export const HELP_ITEMS = [
     key: HELP_ITEMS_ENUM.WHATS_NEW,
     label: i18n.t('label.whats-new'),
     icon: IconWhatsNew,
-    isExternal: false,
+    link: URL_OM_RELEASE_UPDATES,
+    isExternal: true,
   },
   {
     key: HELP_ITEMS_ENUM.VERSION,
