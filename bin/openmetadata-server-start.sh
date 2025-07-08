@@ -97,15 +97,23 @@ if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
 fi
 
 # GC options for Java 21
-GC_LOG_FILE_NAME='openmetadata-gc.log'
-if [ -z "$OPENMETADATA_GC_LOG_OPTS" ]; then
-  OPENMETADATA_GC_LOG_OPTS="-Xlog:gc*,gc+heap=info,gc+ergo=debug:file=$LOG_DIR/$GC_LOG_FILE_NAME:time,level,tags:filecount=10,filesize=102400"
-fi
+OPENMETADATA_GC_LOG_OPTS="-Xlog:gc*,gc+heap=info,gc+ergo=debug:file=${LOG_DIR:-/var/log/openmetadata}/openmetadata-gc.log:time,level,tags:filecount=10,filesize=102m"
 
+NOW_EPOCH=$(date +%s)
+export OPENMETADATA_DIAG_OPTS="-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${LOG_DIR:-/var/log/openmetadata} -XX:+ExitOnOutOfMemoryError -XX:StartFlightRecording=filename=${LOG_DIR:-/var/log/openmetadata}/om_${NOW_EPOCH}.jfr,duration=0s,settings=profile"
 
 # JVM performance options optimized for Java 21
 if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
-  OPENMETADATA_JVM_PERFORMANCE_OPTS="-server -XX:+UseG1GC -XX:+UseStringDeduplication -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -XX:+UseLargePages -XX:+OptimizeStringConcat -XX:+UseCompressedOops -XX:+UseCompressedClassPointers -Djava.awt.headless=true"
+    # JVM performance tuning ----------------------------------------------------
+    export OPENMETADATA_JVM_PERFORMANCE_OPTS="\
+      -server -XX:+UseG1GC \
+      -XX:MaxGCPauseMillis=200 \
+      -XX:InitiatingHeapOccupancyPercent=45 \
+      -XX:+ExplicitGCInvokesConcurrent \
+      -XX:+UseStringDeduplication \
+      -XX:-UseLargePages \
+      -XX:+UseCompressedOops -XX:+UseCompressedClassPointers \
+      -Djava.awt.headless=true"
 fi
 
 #Application classname
