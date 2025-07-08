@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { pick } from 'lodash';
+import { isEmpty, pick } from 'lodash';
 import QueryString from 'qs';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DataQualityPageParams } from '../../components/DataQuality/DataQuality.interface';
@@ -50,6 +50,18 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
 
     return params as DataQualityPageParams;
   }, [location.search]);
+
+  // Extract only filter-related parameters, excluding pagination
+  const filterParams = useMemo(() => {
+    const { currentPage, pageSize, ...filters } = params;
+
+    return filters;
+  }, [params]);
+
+  // Create a stable key for filter changes to prevent unnecessary re-renders
+  const filterKey = useMemo(() => {
+    return !isEmpty(filterParams) ? JSON.stringify(filterParams) : null;
+  }, [filterParams]);
 
   const [testCaseSummary, setTestCaseSummary] =
     useState<TestSummary>(INITIAL_TEST_SUMMARY);
@@ -121,11 +133,11 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
-      fetchTestSummary(params);
+      fetchTestSummary(filterParams);
     } else {
       setIsTestCaseSummaryLoading(false);
     }
-  }, [params]);
+  }, [filterKey]);
 
   return (
     <DataQualityContext.Provider value={dataQualityContextValue}>

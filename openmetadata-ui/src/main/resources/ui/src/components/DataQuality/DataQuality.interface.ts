@@ -49,6 +49,8 @@ export type TestCaseSearchParams = {
 export type DataQualityPageParams = TestCaseSearchParams & {
   owner?: string;
   tags?: string[];
+  currentPage?: number;
+  pageSize?: number;
 };
 
 export interface IncidentTypeAreaChartWidgetProps {
