@@ -1065,6 +1065,10 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
+    /**
      * Propagate glossary terms through lineage
      */
     propagateGlossaryTerms?: boolean;
@@ -1795,6 +1799,12 @@ export interface IncrementalMetadataExtractionConfiguration {
  * Details required to generate Lineage
  */
 export interface LineageInformation {
+    /**
+     * List of service path prefixes for lineage matching. Supported formats: DBServiceName,
+     * DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or
+     * DBServiceName.DatabaseName.SchemaName.TableName
+     */
+    dbServicePrefixes?: string[];
     /**
      * List of Database Service Names for creation of lineage
      */
@@ -2552,6 +2562,10 @@ export interface ConfigClass {
      * Authority URI for the PowerBI service.
      */
     authorityURI?: string;
+    /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
     /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
