@@ -13,10 +13,13 @@
 
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { detectBrowserLanguage } from '../../utils/i18next/LocalUtil';
+import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import { useApplicationStore } from '../useApplicationStore';
 
 export interface UserPreferences {
   isSidebarCollapsed: boolean;
+  language: SupportedLocales;
   selectedEntityTableColumns: Record<string, string[]>;
 }
 
@@ -32,6 +35,7 @@ interface Store {
 
 const defaultPreferences: UserPreferences = {
   isSidebarCollapsed: false,
+  language: detectBrowserLanguage(),
   selectedEntityTableColumns: {},
   // Add default values for other preferences
 };
