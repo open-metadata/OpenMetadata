@@ -106,7 +106,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=DatabaseService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_database_service_mssql(self):
         """
@@ -146,7 +151,12 @@ class OMetaServiceTest(TestCase):
         )
 
         # Clean
-        self.metadata.delete(entity=DatabaseService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_database_service_bigquery(self):
         """
@@ -187,12 +197,17 @@ class OMetaServiceTest(TestCase):
         assert service.serviceType == DatabaseServiceType.BigQuery
 
         # Check get
-        api_resp = self.metadata.get_service_or_create(
+        assert service == self.metadata.get_service_or_create(
             entity=DatabaseService, config=workflow_source
         )
-        # Fix for 3.10 producing empty entityReferenceList
-        service.owners = None
-        assert service == api_resp
+
+        # Clean
+        self.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_dashboard_service_looker(self):
         """
@@ -223,15 +238,17 @@ class OMetaServiceTest(TestCase):
         assert service.connection.config.clientSecret.get_secret_value() == "secret"
 
         # Check get
-        api_resp = self.metadata.get_service_or_create(
+        assert service == self.metadata.get_service_or_create(
             entity=DashboardService, config=workflow_source
         )
-        # Fix for 3.10 producing empty entityReferenceList
-        service.owners = None
-        assert service == api_resp
 
         # Clean
-        self.metadata.delete(entity=DashboardService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DashboardService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_dashboard_service_tableau(self):
         """
@@ -264,15 +281,17 @@ class OMetaServiceTest(TestCase):
         )
 
         # Check get
-        api_resp = self.metadata.get_service_or_create(
+        assert service == self.metadata.get_service_or_create(
             entity=DashboardService, config=workflow_source
         )
-        # Fix for 3.10 producing empty entityReferenceList
-        service.owners = None
-        assert service == api_resp
 
         # Clean
-        self.metadata.delete(entity=DashboardService, entity_id=service.id)
+        self.metadata.delete(
+            entity=DashboardService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_messaging_service_kafka(self):
         """
@@ -297,15 +316,17 @@ class OMetaServiceTest(TestCase):
         assert service.serviceType == MessagingServiceType.Kafka
 
         # Check get
-        api_resp = self.metadata.get_service_or_create(
+        assert service == self.metadata.get_service_or_create(
             entity=MessagingService, config=workflow_source
         )
-        # Fix for 3.10 producing empty entityReferenceList
-        service.owners = None
-        assert service == api_resp
 
         # Clean
-        self.metadata.delete(entity=MessagingService, entity_id=service.id)
+        self.metadata.delete(
+            entity=MessagingService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_db_service_without_connection(self):
         """We can create a service via API without storing the creds"""
@@ -339,15 +360,17 @@ class OMetaServiceTest(TestCase):
         self.assertIsNone(service.connection)
 
         # Check get
-        api_resp = metadata_no_password.get_service_or_create(
+        assert service == metadata_no_password.get_service_or_create(
             entity=DatabaseService, config=workflow_source
         )
-        # Fix for 3.10 producing empty entityReferenceList
-        service.owners = None
-        assert service == api_resp
 
         # Clean
-        metadata_no_password.delete(entity=DatabaseService, entity_id=service.id)
+        metadata_no_password.delete(
+            entity=DatabaseService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
 
     def test_create_dashboard_service_without_connection(self):
         """We can create a service via API without storing the creds"""
@@ -382,12 +405,14 @@ class OMetaServiceTest(TestCase):
         self.assertIsNone(service.connection)
 
         # Check get
-        api_resp = metadata_no_password.get_service_or_create(
+        assert service == metadata_no_password.get_service_or_create(
             entity=DashboardService, config=workflow_source
         )
-        # Fix for 3.10 producing empty entityReferenceList
-        service.owners = None
-        assert service == api_resp
 
         # Clean
-        metadata_no_password.delete(entity=DashboardService, entity_id=service.id)
+        metadata_no_password.delete(
+            entity=DashboardService,
+            entity_id=service.id,
+            hard_delete=True,
+            recursive=True,
+        )
