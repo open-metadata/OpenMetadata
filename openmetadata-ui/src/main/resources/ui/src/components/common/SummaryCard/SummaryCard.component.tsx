@@ -50,7 +50,7 @@ export const SummaryCard = ({
   }
 
   return (
-    <div
+    <Space
       className={classNames('summary-card', cardBackgroundClass, className)}
       data-testid="summary-card-container">
       <div
@@ -81,6 +81,6 @@ export const SummaryCard = ({
           width={65}
         />
       )}
-    </div>
+    </Space>
   );
 };
