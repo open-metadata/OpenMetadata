@@ -25,6 +25,7 @@ import {
   KNOWLEDGE_LIST_LENGTH,
   LOGGED_IN_USER_STORAGE_KEY,
 } from '../../constants/constants';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Thread } from '../../generated/entity/feed/thread';
@@ -156,17 +157,27 @@ const MyDataPage = () => {
           ? []
           : [customizePageClassBase.announcementWidget]),
         ...layout,
-      ].map((widget) => (
-        <div data-grid={widget} key={widget.i}>
-          {getWidgetFromKey({
-            announcements: announcements,
-            followedData,
-            isLoadingOwnedData: isLoadingOwnedData,
-            widgetConfig: widget,
-            currentLayout: layout,
-          })}
-        </div>
-      )),
+      ].map((widget) => {
+        const isCuratedAssetWithoutConfig =
+          widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) &&
+          isEmpty(widget.config);
+
+        if (isCuratedAssetWithoutConfig) {
+          return null;
+        }
+
+        return (
+          <div data-grid={widget} key={widget.i}>
+            {getWidgetFromKey({
+              announcements: announcements,
+              followedData,
+              isLoadingOwnedData: isLoadingOwnedData,
+              widgetConfig: widget,
+              currentLayout: layout,
+            })}
+          </div>
+        );
+      }),
     [
       layout,
       isAnnouncementLoading,
