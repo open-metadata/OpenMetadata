@@ -505,6 +505,8 @@ export enum AuthProvider {
  *
  * Regex to only fetch tables or databases that matches the pattern.
  *
+ * Regex to only fetch stored procedures that matches the pattern.
+ *
  * Regex exclude tables or databases that matches the pattern.
  *
  * Regex exclude or include charts that matches the pattern.
@@ -990,6 +992,10 @@ export interface Pipeline {
      * Set the 'Process View Lineage' toggle to control whether to process view lineage.
      */
     processViewLineage?: boolean;
+    /**
+     * Regex to only fetch stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include charts that matches the pattern.
      */

@@ -432,6 +432,10 @@ export interface Pipeline {
      */
     processViewLineage?: boolean;
     /**
+     * Regex to only fetch stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    /**
      * Regex exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
@@ -741,6 +745,8 @@ export interface Pipeline {
  * Regex to only fetch databases that matches the pattern.
  *
  * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex to only fetch stored procedures that matches the pattern.
  *
  * Regex exclude tables or databases that matches the pattern.
  *

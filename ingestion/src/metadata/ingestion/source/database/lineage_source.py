@@ -49,6 +49,7 @@ from metadata.ingestion.source.database.query_parser_source import QueryParserSo
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
+from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -313,6 +314,15 @@ class LineageSource(QueryParserSource, ABC):
     ) -> Iterable[Either[AddLineageRequest]]:
         try:
             for view in views:
+                if filter_by_table(
+                    self.source_config.tableFilterPattern,
+                    view.table_name,
+                ):
+                    self.status.filter(
+                        view.table_name,
+                        "View Filtered Out",
+                    )
+                    continue
                 for lineage in get_view_lineage(
                     view=view,
                     metadata=self.metadata,

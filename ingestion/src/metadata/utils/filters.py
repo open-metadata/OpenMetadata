@@ -164,6 +164,21 @@ def filter_by_dashboard(
     return _filter(dashboard_filter_pattern, dashboard_name)
 
 
+def filter_by_stored_procedure(
+    stored_procedure_filter_pattern: Optional[FilterPattern], stored_procedure_name: str
+) -> bool:
+    """
+    Return True if the stored procedure needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param stored_procedure_filter_pattern: Model defining stored procedure filtering logic
+    :param stored_procedure_name: stored procedure name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(stored_procedure_filter_pattern, stored_procedure_name)
+
+
 def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool:
     """
     Return True if the FQN needs to be filtered, False otherwise
