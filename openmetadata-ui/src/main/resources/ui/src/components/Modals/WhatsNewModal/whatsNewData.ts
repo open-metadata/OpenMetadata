@@ -1048,7 +1048,16 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
     description: 'Released on 9th July 2025.',
     features: [],
     changeLogs: {
-      Improvements: `- Show toast error on duplicate domain.
+      Improvements: `- Automator - Domain Lineage Propagation Support.
+- Added Session Age for Cookies.
+- Add maxRequestHeaderSize to server.applicationConnectors section in OpenMetaData default config file.
+- Pbi display table name from source.
+- Removed McpIntegrationTest.java.
+- Added Virtual Threads and Semaphore to control. 
+- Browser language support.      
+- Add logs for all api calls.
+- Add more debug logs; improve JVM params to be JVM 21.
+- Show toast error on duplicate domain.
 - Add filterJsonTree to the automatorAppConfig.
 - Primary color customization.
 - Add support for DBX system metrics.
@@ -1056,7 +1065,12 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - Supported rendering all suggestion on user avatar click.
 - Add mcp preview.
 `,
-      Fixes: `- Api version endpoint page breaking due to STRING changeDescription updated.
+      Fixes: `- Relevant fields are pulled for bulk import.
+- Snowflake map key type error.
+- Data quality tab table pagination issue.
+- Domain inheritance issue after team removal.
+- Okta multi tab refresh issue.
+- Api version endpoint page breaking due to STRING changeDescription updated.
 - Fixed TotalDataAssetsWidget a stacked graph.
 - Cron validations in Ingestion. 
 - Text Overflow from Widget and Table.
