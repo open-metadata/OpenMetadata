@@ -75,10 +75,8 @@ import {
   getEntityType,
   prepareFeedLink,
 } from '../../utils/FeedUtils';
-import {
-  languageSelectOptions,
-  SupportedLocales,
-} from '../../utils/i18next/i18nextUtil';
+import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
+import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -116,7 +114,7 @@ const NavBar = () => {
   const { appVersion: version, setAppVersion } = useApplicationStore();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
-    preferences: { isSidebarCollapsed },
+    preferences: { isSidebarCollapsed, language },
     setPreference,
   } = useCurrentUserPreferences();
 
@@ -152,12 +150,11 @@ const NavBar = () => {
     });
   }, []);
 
-  const language = useMemo(
-    () =>
-      (cookieStorage.getItem('i18next') as SupportedLocales) ||
-      SupportedLocales.English,
-    []
-  );
+  const handleSupportClick = ({ key }: MenuInfo): void => {
+    if (key === HELP_ITEMS_ENUM.WHATS_NEW) {
+      setIsFeatureModalOpen(true);
+    }
+  };
 
   const { socket } = useWebSocketConnector();
 
@@ -429,6 +426,7 @@ const NavBar = () => {
 
   const handleLanguageChange = useCallback(({ key }: MenuInfo) => {
     i18next.changeLanguage(key);
+    setPreference({ language: key as SupportedLocales });
     navigate(0);
   }, []);
 
@@ -510,10 +508,7 @@ const NavBar = () => {
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
                 type="text">
-                {upperCase(
-                  (language || SupportedLocales.English).split('-')[0]
-                )}{' '}
-                <DropDownIcon width={12} />
+                {upperCase(language.split('-')[0])} <DropDownIcon width={12} />
               </Button>
             </Dropdown>
             <Dropdown
