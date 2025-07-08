@@ -24,6 +24,7 @@ export interface UserPreferences {
   selectedEntityTableColumns: Record<string, string[]>;
   recentlyViewed: RecentlyViewedData[];
   recentlySearched: RecentlySearchedData[];
+  recentlyViewedQuickLinks: RecentlyViewedData[];
 }
 
 interface Store {
@@ -42,6 +43,7 @@ const defaultPreferences: UserPreferences = {
   selectedEntityTableColumns: {},
   recentlyViewed: [],
   recentlySearched: [],
+  recentlyViewedQuickLinks: [],
   // Add default values for other preferences
 };
 
