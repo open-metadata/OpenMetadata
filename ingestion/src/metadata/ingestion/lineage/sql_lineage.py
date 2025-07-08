@@ -540,9 +540,7 @@ def _create_lineage_by_table_name(
             (to_table, to_table_entities),
         ):
             if entity is None:
-                logger.debug(
-                    f"WARNING: Table entity [{table_name}] not found in OpenMetadata"
-                )
+                logger.warning(f"Table entity [{table_name}] not found in OpenMetadata")
         if graph is not None and (not from_table_entities or not to_table_entities):
             # Add nodes and edges with minimal data
             graph.add_node(
