@@ -41,7 +41,6 @@ import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.csv.CsvUtil;
@@ -206,7 +205,8 @@ public class DatabaseSchemaResourceTest
     assertTrue(listOrEmpty(updatedTable.getOwners()).isEmpty(), "Owner should be cleared");
     assertTrue(
         listOrEmpty(updatedTable.getTags()).isEmpty(), "Tags should be empty after clearing");
-    Assertions.assertNull(updatedTable.getDomain(), "Domain should be null after clearing");
+    assertTrue(
+        listOrEmpty(updatedTable.getDomains()).isEmpty(), "Domain should be null after clearing");
   }
 
   @Test

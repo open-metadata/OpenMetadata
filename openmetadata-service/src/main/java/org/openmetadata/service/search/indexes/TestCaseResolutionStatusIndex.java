@@ -40,7 +40,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
             .withDescription(testCase.getDescription())
             .withDisplayName(testCase.getDisplayName())
             .withDeleted(testCase.getDeleted())
-            .withDomain(testCase.getDomain())
+            .withDomains(testCase.getDomains())
             .withTags(testCase.getTags())
             .withEntityFQN(testCase.getEntityFQN())
             .withOwners(testCase.getOwners());

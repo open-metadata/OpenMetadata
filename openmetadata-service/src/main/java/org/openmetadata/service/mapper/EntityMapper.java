@@ -19,14 +19,14 @@ public interface EntityMapper<T extends EntityInterface, C extends CreateEntity>
 
   default T copy(T entity, CreateEntity request, String updatedBy) {
     List<EntityReference> owners = validateOwners(request.getOwners());
-    EntityReference domain = validateDomain(request.getDomain());
+    List<EntityReference> domains = validateDomains(request.getDomains());
     validateReviewers(request.getReviewers());
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
     entity.setDescription(request.getDescription());
     entity.setOwners(owners);
-    entity.setDomain(domain);
+    entity.setDomains(domains);
     entity.setTags(request.getTags());
     entity.setDataProducts(getEntityReferences(Entity.DATA_PRODUCT, request.getDataProducts()));
     entity.setLifeCycle(request.getLifeCycle());
@@ -39,10 +39,12 @@ public interface EntityMapper<T extends EntityInterface, C extends CreateEntity>
     return entity;
   }
 
-  default EntityReference validateDomain(String domainFqn) {
-    if (CommonUtil.nullOrEmpty(domainFqn)) {
+  default List<EntityReference> validateDomains(List<String> domainFqns) {
+    if (CommonUtil.nullOrEmpty(domainFqns)) {
       return null;
     }
-    return Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED);
+    return domainFqns.stream()
+        .map(domainFqn -> Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED))
+        .toList();
   }
 }

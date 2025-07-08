@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
@@ -180,12 +181,7 @@ public class DatabaseServiceRepository
       }
 
       // Handle optional fields that may not exist in all entity types
-      String domain =
-          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
-              ? ""
-              : entity.getDomain().getFullyQualifiedName();
-
-      addField(recordList, domain);
+      addDomains(recordList, entity.getDomains());
       addExtension(recordList, entity.getExtension());
 
       // Add entityType and fullyQualifiedName
@@ -253,7 +249,7 @@ public class DatabaseServiceRepository
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withCertification(certification)
-          .withDomain(getEntityReference(printer, csvRecord, 8, Entity.DOMAIN))
+          .withDomains(getDomains(printer, csvRecord, 8))
           .withExtension(getExtension(printer, csvRecord, 9));
 
       if (processRecord) {
@@ -317,7 +313,7 @@ public class DatabaseServiceRepository
           .withTags(tagLabels)
           .withCertification(certification)
           .withSourceUrl(csvRecord.get(9))
-          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withDomains(getDomains(printer, csvRecord, 10))
           .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
@@ -388,7 +384,7 @@ public class DatabaseServiceRepository
           .withCertification(certification)
           .withRetentionPeriod(csvRecord.get(8))
           .withSourceUrl(csvRecord.get(9))
-          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withDomains(getDomains(printer, csvRecord, 10))
           .withExtension(getExtension(printer, csvRecord, 11))
           .withUpdatedAt(System.currentTimeMillis())
           .withUpdatedBy(importedBy);

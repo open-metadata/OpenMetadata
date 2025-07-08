@@ -1337,11 +1337,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Create a user without domain and ensure it inherits domain from the parent
     CreateUser create = createRequest(test).withTeams(listOf(team.getId()));
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
-  public User assertDomainInheritance(CreateUser createRequest, EntityReference expectedDomain)
-      throws IOException {
+  public User assertSingleDomainInheritance(
+      CreateUser createRequest, EntityReference expectedDomain) throws IOException {
     User entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);

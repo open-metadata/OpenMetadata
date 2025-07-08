@@ -89,7 +89,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         Entity.getEntity(
             API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domain", ALL);
     inheritOwners(endpoint, fields, apiCollection);
-    inheritDomain(endpoint, fields, apiCollection);
+    inheritDomains(endpoint, fields, apiCollection);
   }
 
   @Override

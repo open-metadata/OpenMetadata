@@ -140,7 +140,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
           Entity.getEntity(
               TABLE, testSuite.getBasicEntityReference().getId(), "owners,domain", ALL);
       inheritOwners(testSuite, fields, table);
-      inheritDomain(testSuite, fields, table);
+      inheritDomains(testSuite, fields, table);
     }
   }
 

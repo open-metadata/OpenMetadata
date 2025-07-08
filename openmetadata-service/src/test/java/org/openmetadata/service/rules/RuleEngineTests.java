@@ -367,7 +367,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
 
     String patchedJson = JsonUtils.pojoToJson(patched);
     patched.withOwners(List.of(TEAM11_REF));
-    patched.withDomain(dataDomain.getEntityReference());
+    patched.withDomains(List.of(dataDomain.getEntityReference()));
 
     // Now we're fixing everything in one go
     Table fixedTable =

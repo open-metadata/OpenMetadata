@@ -42,7 +42,7 @@ public interface CreateEntity {
     return null;
   }
 
-  default String getDomain() {
+  default List<String> getDomains() {
     return null;
   }
 

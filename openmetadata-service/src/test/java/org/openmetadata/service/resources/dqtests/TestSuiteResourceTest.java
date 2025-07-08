@@ -315,7 +315,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuite executableTestSuite =
         createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     TestSuite testSuite = getEntity(executableTestSuite.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN1.getId(), testSuite.getDomain().getId());
+    assertEquals(DOMAIN1.getId(), testSuite.getDomains().get(0).getId());
     ResultList<TestSuite> testSuites =
         listEntitiesFromSearch(
             Map.of("domain", DOMAIN1.getFullyQualifiedName(), "fields", "domain"),
@@ -324,7 +324,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             ADMIN_AUTH_HEADERS);
     assertTrue(
         testSuites.getData().stream()
-            .allMatch(ts -> ts.getDomain().getId().equals(DOMAIN1.getId())));
+            .allMatch(ts -> ts.getDomains().get(0).getId().equals(DOMAIN1.getId())));
   }
 
   @Test

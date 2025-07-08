@@ -14,13 +14,16 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,12 +92,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void storeRelationships(DataProduct entity) {
-    addRelationship(
-        entity.getDomain().getId(),
-        entity.getId(),
-        Entity.DOMAIN,
-        Entity.DATA_PRODUCT,
-        Relationship.CONTAINS);
+    for (EntityReference domain : listOrEmpty(entity.getDomains())) {
+      addRelationship(
+          domain.getId(),
+          entity.getId(),
+          Entity.DOMAIN,
+          Entity.DATA_PRODUCT,
+          Relationship.CONTAINS);
+    }
     for (EntityReference expert : listOrEmpty(entity.getExperts())) {
       addRelationship(
           entity.getId(), expert.getId(), Entity.DATA_PRODUCT, Entity.USER, Relationship.EXPERT);
@@ -111,13 +116,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void setInheritedFields(DataProduct dataProduct, Fields fields) {
-    // If dataProduct does not have owners and experts, inherit them from its domain
-    EntityReference parentRef =
-        dataProduct.getDomain() != null ? dataProduct.getDomain() : getDomain(dataProduct);
-    if (parentRef != null) {
-      Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owners,experts", ALL);
-      inheritOwners(dataProduct, fields, parent);
-      inheritExperts(dataProduct, fields, parent);
+    // If dataProduct does not have owners and experts, inherit them from the domains
+    List<EntityReference> domains =
+        !nullOrEmpty(dataProduct.getDomains()) ? getDomains(dataProduct) : Collections.emptyList();
+    if (!nullOrEmpty(domains)) {
+      List<EntityReference> owners = new ArrayList<>();
+      List<EntityReference> experts = new ArrayList<>();
+
+      for (EntityReference domainRef : domains) {
+        Domain domain = Entity.getEntity(DOMAIN, domainRef.getId(), "owners,experts", ALL);
+        owners = mergedInheritedEntityRefs(owners, domain.getOwners());
+        experts = mergedInheritedEntityRefs(experts, domain.getExperts());
+      }
+      dataProduct.setOwners(owners);
+      dataProduct.setExperts(experts);
     }
   }
 
@@ -250,7 +262,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void restorePatchAttributes(DataProduct original, DataProduct updated) {
     super.restorePatchAttributes(original, updated);
-    updated.withDomain(original.getDomain()); // Domain can't be changed
+    updated.withDomains(original.getDomains()); // Domain can't be changed
   }
 
   @Override

@@ -475,7 +475,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
     this.supportsLifeCycle = allowedFields.contains(FIELD_LIFE_CYCLE);
     this.systemEntityName = systemEntityName;
-    this.supportsDomain = allowedFields.contains(FIELD_DOMAIN);
+    this.supportsDomain = allowedFields.contains(Entity.FIELD_DOMAINS);
     this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
     this.supportsExperts = allowedFields.contains(FIELD_EXPERTS);
     this.supportsReviewers = allowedFields.contains(FIELD_REVIEWERS);
@@ -707,7 +707,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN);
     String originalJson = JsonUtils.pojoToJson(entity);
     ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
-    entity.setDomain(domainReference);
+    // Test with a single domain reference
+    entity.setDomains(List.of(domainReference));
 
     assertResponse(
         () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
@@ -3644,7 +3645,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<EntityReference> actualOwners =
           JsonUtils.readObjects(actual.toString(), EntityReference.class);
       assertOwners(expectedOwners, actualOwners);
-    } else if (fieldName.equals(FIELD_DOMAIN) || fieldName.equals(FIELD_PARENT)) {
+    } else if (fieldName.equals(Entity.FIELD_DOMAINS) || fieldName.equals(FIELD_PARENT)) {
       assertEntityReferenceFieldChange(expected, actual);
     } else if (fieldName.endsWith(FIELD_TAGS)) {
       @SuppressWarnings("unchecked")
@@ -3780,7 +3781,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             LinkedHashMap<String, Object> source =
                 (LinkedHashMap<String, Object>) doc.get("_source");
 
-            if (keyword.equals(FIELD_DOMAIN)) {
+            if (keyword.equals(Entity.FIELD_DOMAINS)) {
               EntityReference domainReference =
                   JsonUtils.readOrConvertValue(source.get(keyword), EntityReference.class);
 
@@ -4405,38 +4406,38 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  public T assertDomainInheritance(K createRequest, EntityReference expectedDomain)
+  public T assertSingleDomainInheritance(K createRequest, EntityReference expectedDomain)
       throws IOException {
     T entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
-    assertReference(expectedDomain, entity.getDomain()); // Inherited owner
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertReference(expectedDomain, entity.getDomain()); // Inherited owner
-    assertTrue(entity.getDomain().getInherited());
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    assertTrue(entity.getDomains().get(0).getInherited());
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
-    assertReference(expectedDomain, entity.getDomain()); // Inherited owner
-    assertTrue(entity.getDomain().getInherited());
-    assertEntityReferenceFromSearch(entity, expectedDomain, FIELD_DOMAIN);
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    assertTrue(entity.getDomains().get(0).getInherited());
+    assertEntityReferenceFromSearch(entity, expectedDomain, Entity.FIELD_DOMAINS);
     return entity;
   }
 
-  public void assertDomainInheritanceOverride(T entity, K updateRequest, EntityReference newDomain)
-      throws IOException {
+  public void assertSingleDomainInheritanceOverride(
+      T entity, K updateRequest, EntityReference newDomain) throws IOException {
     // When an entity has domain set, it does not inherit domain from the parent
     String json = JsonUtils.pojoToJson(entity);
-    entity.setDomain(newDomain);
+    entity.setDomains(List.of(newDomain));
     entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
-    assertReference(newDomain, entity.getDomain());
-    assertNull(entity.getDomain().getInherited());
+    assertReference(newDomain, entity.getDomains().get(0));
+    assertNull(entity.getDomains().get(0).getInherited());
 
     // Now simulate and ingestion entity update with no domain
     entity = updateEntity(updateRequest.withDomain(null), OK, ADMIN_AUTH_HEADERS);
-    assertReference(newDomain, entity.getDomain()); // Domain remains the same
+    assertReference(newDomain, entity.getDomains().get(0)); // Domain remains the same
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertReference(newDomain, entity.getDomain()); // Domain remains the same
-    assertNull(entity.getDomain().getInherited());
+    assertReference(newDomain, entity.getDomains().get(0)); // Domain remains the same
+    assertNull(entity.getDomains().get(0).getInherited());
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
-    assertReference(newDomain, entity.getDomain()); // Domain remains the same
-    assertNull(entity.getDomain().getInherited());
+    assertReference(newDomain, entity.getDomains().get(0)); // Domain remains the same
+    assertNull(entity.getDomains().get(0).getInherited());
   }
 
   public void verifyOwnersInSearch(EntityReference entity, List<EntityReference> expectedOwners)

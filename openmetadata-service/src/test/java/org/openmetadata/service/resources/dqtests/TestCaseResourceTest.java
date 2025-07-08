@@ -1118,7 +1118,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                     .withDataLength(10)
                     .withTags(List.of(PII_SENSITIVE_TAG_LABEL))))
         .withOwners(List.of(USER1_REF))
-        .withDomain(DOMAIN1.getFullyQualifiedName())
+        .withDomains(List.of(DOMAIN1.getFullyQualifiedName()))
         .withTableConstraints(List.of())
         .withTags(List.of(PERSONAL_DATA_TAG_LABEL, TIER1_TAG_LABEL));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
@@ -1149,12 +1149,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("entityLink", String.format("<#E::table::%s>", table.getFullyQualifiedName()));
     queryParams.put("includeAllTests", "true");
-    queryParams.put("fields", "domain,owners,tags");
+    queryParams.put("fields", "domains,owners,tags");
     ResultList<TestCase> testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
     assertEquals(2, testCases.getData().size());
     for (TestCase testCase : testCases.getData()) {
       assertOwners(table.getOwners(), testCase.getOwners());
-      assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
+      assertEquals(table.getDomains().get(0).getId(), testCase.getDomains().get(0).getId());
       List<TagLabel> tags = testCase.getTags();
       HashSet<String> actualTags =
           tags.stream().map(TagLabel::getName).collect(Collectors.toCollection(HashSet::new));
@@ -1174,7 +1174,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
 
     createTable.setOwners(List.of(USER2_REF));
-    createTable.setDomain(DOMAIN.getFullyQualifiedName());
+    createTable.setDomains(List.of(DOMAIN.getFullyQualifiedName()));
     createTable.setTags(List.of(USER_ADDRESS_TAG_LABEL));
     createTable.withColumns(
         List.of(
@@ -1189,7 +1189,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     for (TestCase testCase : testCases.getData()) {
       assertOwners(table.getOwners(), testCase.getOwners());
-      assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
+      assertEquals(table.getDomains().get(0).getId(), testCase.getDomains().get(0).getId());
     }
   }
 

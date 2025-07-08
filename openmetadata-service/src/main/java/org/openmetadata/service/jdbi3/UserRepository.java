@@ -139,7 +139,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  protected void storeDomain(User entity, EntityReference exclude) {
+  protected void storeDomains(User entity, List<EntityReference> exclude) {
     for (EntityReference domainRef : listOrEmpty(entity.getDomains())) {
       // Add relationship domain --- has ---> entity
       LOG.info(
@@ -686,7 +686,7 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    protected void updateDomain() {
+    protected void updateDomains() {
       if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
         // Revert change to non-empty domain if it is being updated by a bot
         // This is to prevent bots from overwriting the domain. Domain need to be

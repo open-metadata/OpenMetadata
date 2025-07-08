@@ -122,7 +122,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Entity.withHref(uriInfo, entity.getExperts());
     Entity.withHref(uriInfo, entity.getReviewers());
     Entity.withHref(uriInfo, entity.getChildren());
-    Entity.withHref(uriInfo, entity.getDomain());
+    Entity.withHref(uriInfo, entity.getDomains());
     Entity.withHref(uriInfo, entity.getDataProducts());
     return entity;
   }

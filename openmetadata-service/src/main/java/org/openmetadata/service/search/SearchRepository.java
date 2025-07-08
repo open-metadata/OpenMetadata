@@ -5,7 +5,7 @@ import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
@@ -131,7 +131,7 @@ public class SearchRepository {
   private final List<String> inheritableFields =
       List.of(
           FIELD_OWNERS,
-          FIELD_DOMAIN,
+          FIELD_DOMAINS,
           Entity.FIELD_DISABLED,
           Entity.FIELD_TEST_SUITES,
           FIELD_DISPLAY_NAME);
@@ -525,7 +525,7 @@ public class SearchRepository {
           getInheritedFieldChanges(changeDescription, entity);
       Pair<String, String> parentMatch;
       if (!updates.getValue().isEmpty()
-          && (updates.getValue().containsKey(FIELD_DOMAIN)
+          && (updates.getValue().containsKey(FIELD_DOMAINS)
               || updates.getValue().containsKey(FIELD_DISPLAY_NAME))) {
         if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)

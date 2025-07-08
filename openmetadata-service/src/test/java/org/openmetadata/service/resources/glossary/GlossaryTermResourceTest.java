@@ -253,7 +253,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("desc");
 
-    GlossaryTerm t1 = assertDomainInheritance(create, DOMAIN.getEntityReference());
+    GlossaryTerm t1 = assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
 
     // Create terms t12 under t1 without reviewers and owner
     create =
@@ -261,7 +261,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withName("t12")
             .withGlossary(glossary.getFullyQualifiedName())
             .withParent(t1.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test

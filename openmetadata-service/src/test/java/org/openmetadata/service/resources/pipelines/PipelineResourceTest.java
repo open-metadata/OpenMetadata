@@ -622,7 +622,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     // Create a pipeline without domain and ensure it inherits domain from the parent
     CreatePipeline create = createRequest("pipeline").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test

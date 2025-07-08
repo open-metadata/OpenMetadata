@@ -88,7 +88,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
         Entity.getEntity(
             DATABASE_SCHEMA, storedProcedure.getDatabaseSchema().getId(), "owners,domain", ALL);
     inheritOwners(storedProcedure, fields, schema);
-    inheritDomain(storedProcedure, fields, schema);
+    inheritDomains(storedProcedure, fields, schema);
   }
 
   @Override

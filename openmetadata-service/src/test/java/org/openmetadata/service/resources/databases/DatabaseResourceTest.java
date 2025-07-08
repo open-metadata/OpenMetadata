@@ -17,7 +17,6 @@ import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -211,7 +210,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertTrue(
         listOrEmpty(updatedSchema.getTags()).isEmpty(), "Tags should be empty after clearing");
     assertTrue(listOrEmpty(updatedSchema.getOwners()).isEmpty(), "Owner should be cleared");
-    assertNull(updatedSchema.getDomain(), "Domain should be null after clearing");
+    assertTrue(
+        listOrEmpty(updatedSchema.getDomains()).isEmpty(), "Domain should be null after clearing");
   }
 
   @Test

@@ -121,7 +121,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
     Table table = Entity.getEntity(entityLink, "owners,domain,tags,columns", ALL);
     inheritOwners(testCase, fields, table);
-    inheritDomain(testCase, fields, table);
+    inheritDomains(testCase, fields, table);
     inheritTags(testCase, fields, table);
   }
 

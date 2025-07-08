@@ -401,7 +401,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
     // Create a topic without domain and ensure it inherits domain from the parent
     CreateTopic create = createRequest("chart").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test

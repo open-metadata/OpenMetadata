@@ -118,7 +118,7 @@
     "parentAliases": ["domain","all", "dataAsset"],
     "childAliases": []
   },
-  "domain": {
+  "domains": {
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",

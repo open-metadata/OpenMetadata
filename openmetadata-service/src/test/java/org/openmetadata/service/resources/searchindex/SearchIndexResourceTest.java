@@ -379,7 +379,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
     // Create a searchIndex without domain and ensure it inherits domain from the parent
     CreateSearchIndex create = createRequest("user").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test

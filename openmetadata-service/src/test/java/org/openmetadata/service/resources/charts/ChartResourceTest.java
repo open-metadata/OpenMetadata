@@ -180,7 +180,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
     // Create a chart without domain and ensure it inherits domain from the parent
     CreateChart create = createRequest("chart").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test

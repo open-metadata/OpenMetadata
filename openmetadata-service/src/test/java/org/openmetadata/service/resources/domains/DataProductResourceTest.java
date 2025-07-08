@@ -266,7 +266,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     return new CreateDataProduct()
         .withName(name)
         .withDescription(name)
-        .withDomain(DOMAIN.getFullyQualifiedName())
+        .withDomains(List.of(DOMAIN.getFullyQualifiedName()))
         .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
         .withExperts(listOf(USER1.getFullyQualifiedName()))
         .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
@@ -276,7 +276,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     return new CreateDataProduct()
         .withName(name)
         .withDescription(name)
-        .withDomain(DOMAIN.getFullyQualifiedName())
+        .withDomains(List.of(DOMAIN.getFullyQualifiedName()))
         .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
         .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
   }
@@ -285,7 +285,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   public void validateCreatedEntity(
       DataProduct createdEntity, CreateDataProduct request, Map<String, String> authHeaders) {
     // Entity specific validation
-    assertEquals(request.getDomain(), createdEntity.getDomain().getFullyQualifiedName());
+    assertEquals(
+        request.getDomains().get(0), createdEntity.getDomains().get(0).getFullyQualifiedName());
     assertEntityReferenceNames(request.getExperts(), createdEntity.getExperts());
     assertEntityReferences(request.getAssets(), createdEntity.getAssets());
     assertStyle(request.getStyle(), createdEntity.getStyle());
@@ -295,7 +296,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   public void compareEntities(
       DataProduct expected, DataProduct updated, Map<String, String> authHeaders) {
     // Entity specific validation
-    assertReference(expected.getDomain(), updated.getDomain());
+    assertReference(expected.getDomains().get(0), updated.getDomains().get(0));
     assertEntityReferences(expected.getExperts(), updated.getExperts());
     assertEntityReferences(expected.getAssets(), updated.getAssets());
   }
@@ -314,7 +315,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
             ? getEntityByName(getDataProduct.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(getDataProduct.getId(), fields, ADMIN_AUTH_HEADERS);
     // Fields requested are received
-    assertReference(dataProduct.getDomain(), getDataProduct.getDomain());
+    assertReference(dataProduct.getDomains().get(0), getDataProduct.getDomains().get(0));
     assertEntityReferences(dataProduct.getExperts(), getDataProduct.getExperts());
     assertEntityReferences(dataProduct.getAssets(), getDataProduct.getAssets());
 

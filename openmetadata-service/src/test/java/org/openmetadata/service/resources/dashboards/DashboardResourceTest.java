@@ -165,7 +165,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     // Create a dashboard without domain and ensure it inherits domain from the parent
     CreateDashboard create =
         createRequest("dashboard").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test

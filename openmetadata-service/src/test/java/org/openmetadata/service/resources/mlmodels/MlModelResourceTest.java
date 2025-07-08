@@ -429,7 +429,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
 
     // Create a ML Model without domain and ensure it inherits domain from the parent
     CreateMlModel create = createRequest("model").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test
