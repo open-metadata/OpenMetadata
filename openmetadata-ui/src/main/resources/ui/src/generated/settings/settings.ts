@@ -1473,6 +1473,10 @@ export interface OidcClientConfig {
      */
     serverUrl?: string;
     /**
+     * Validity for the Session in case of confidential clients
+     */
+    sessionExpiry?: number;
+    /**
      * Tenant in case of Azure.
      */
     tenant?: string;
