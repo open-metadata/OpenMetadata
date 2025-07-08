@@ -47,7 +47,8 @@ Configure the auto dbt ingestion for dbt-core.
 | dbt Owner                   | {% icon iconName="check" /%}              |
 | dbt Descriptions            | {% icon iconName="check" /%}              |
 | dbt Tests                   | {% icon iconName="check" /%}              |
-| Supported dbt Core Versions | `v1.2` `v1.3` `v1.5` `v1.5` `v1.6` `v1.7` `v1.8`|
+| dbt Exposures               | {% icon iconName="check" /%}              |
+| Supported dbt Core Versions | `v1.2` `v1.3` `v1.5` `v1.5` `v1.6` `v1.7` `v1.8` `v1.9`|
 
 {% /multiTablesWrapper %}
 

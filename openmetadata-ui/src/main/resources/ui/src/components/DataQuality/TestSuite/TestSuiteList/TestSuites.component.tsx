@@ -133,7 +133,7 @@ export const TestSuites = () => {
         sortDirections: ['ascend', 'descend'],
         render: (name, record) => {
           return (
-            <Typography.Paragraph className="m-0" style={{ maxWidth: 580 }}>
+            <Typography.Paragraph className="m-0">
               {record.basic ? (
                 <Link
                   data-testid={name}
@@ -229,7 +229,7 @@ export const TestSuites = () => {
       fetchTestSuites(currentPage, { limit: pageSize });
       handlePageChange(currentPage);
     },
-    [pageSize, paging]
+    [pageSize, handlePageChange]
   );
 
   const handleSearchParam = (
@@ -253,13 +253,13 @@ export const TestSuites = () => {
 
   useEffect(() => {
     if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
-      fetchTestSuites(INITIAL_PAGING_VALUE, {
+      fetchTestSuites(currentPage, {
         limit: pageSize,
       });
     } else {
       setIsLoading(false);
     }
-  }, [testSuitePermission, pageSize, searchValue, owner, tab]);
+  }, [testSuitePermission, pageSize, searchValue, owner, tab, currentPage]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return (
@@ -354,7 +354,7 @@ export const TestSuites = () => {
           }}
           pagination={false}
           scroll={{
-            x: true,
+            x: '100%',
           }}
           size="small"
         />
