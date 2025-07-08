@@ -108,8 +108,8 @@ const ExplorePageV1: FunctionComponent = () => {
     size,
     showDeleted,
   } = useMemo(() => {
-    return parseSearchParams(location.search);
-  }, [location.search]);
+    return parseSearchParams(location.search, queryFilter);
+  }, [location.search, queryFilter]);
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
     history.push({
