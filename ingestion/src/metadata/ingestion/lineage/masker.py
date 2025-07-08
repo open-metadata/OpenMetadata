@@ -13,6 +13,7 @@ Query masking utilities
 """
 
 import traceback
+from typing import Optional
 
 from cachetools import LRUCache
 from collate_sqllineage.runner import SQLPARSE_DIALECT, LineageRunner
@@ -25,6 +26,7 @@ MASK_TOKEN = "?"
 
 # Cache size is 128 to avoid memory issues
 masked_query_cache = LRUCache(maxsize=128)
+
 
 # pylint: disable=protected-access
 def get_logger():
@@ -52,7 +54,6 @@ def mask_literals_with_sqlparse(query: str, parser: LineageRunner):
                 Literal.Number.Integer,
                 Literal.Number.Float,
                 Literal.String.Single,
-                Literal.String.Symbol,
             ):
                 token.value = MASK_TOKEN
             elif token.is_group:
@@ -113,7 +114,9 @@ def mask_literals_with_sqlfluff(query: str, parser: LineageRunner) -> str:
 
 
 def mask_query(
-    query: str, dialect: str = Dialect.ANSI.value, parser: LineageRunner = None
+    query: str,
+    dialect: str = Dialect.ANSI.value,
+    parser: Optional[LineageRunner] = None,
 ) -> str:
     """
     Mask a query using sqlparse or sqlfluff.
