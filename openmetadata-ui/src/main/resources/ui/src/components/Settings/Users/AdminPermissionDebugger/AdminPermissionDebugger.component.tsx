@@ -28,18 +28,22 @@ import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { searchQuery } from '../../../../rest/searchAPI';
-import { showErrorToast } from '../../../../utils/ToastUtils';
-import UserPermissions from '../UsersProfile/UserPermissions/UserPermissions.component';
+import { SearchIndex } from '../../../../enums/search.enum';
+import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import {
+  SearchHitBody,
+  UserSearchSource,
+} from '../../../../interface/search.interface';
 import {
   evaluatePermission,
   getPermissionDebugInfo,
   PermissionDebugInfo,
   PermissionEvaluationDebugInfo,
 } from '../../../../rest/permissionAPI';
-import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
-import { SearchIndex } from '../../../../enums/search.enum';
+import { searchQuery } from '../../../../rest/searchAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
+import UserPermissions from '../UsersProfile/UserPermissions/UserPermissions.component';
 import './AdminPermissionDebugger.style.less';
 
 const { Title, Text } = Typography;
@@ -172,15 +176,22 @@ const AdminPermissionDebugger: React.FC = () => {
           includeDeleted: false,
           trackTotalHits: false,
           fetchSource: true,
-          includeSourceFields: ['name', 'displayName'],
+          includeFields: ['name', 'displayName'],
         });
 
-        const options = response.hits.hits.map((hit: any) => ({
-          value: hit._source.name,
-          label: `${hit._source.displayName || hit._source.name} (${
-            hit._source.name
-          })`,
-        }));
+        const options = response.hits.hits.map(
+          (
+            hit: SearchHitBody<
+              SearchIndex.USER,
+              Pick<UserSearchSource, 'displayName' | 'name'>
+            >
+          ) => ({
+            value: hit._source.name,
+            label: `${hit._source.displayName || hit._source.name} (${
+              hit._source.name
+            })`,
+          })
+        );
 
         setUserOptions(options);
       } catch (error) {
@@ -207,7 +218,7 @@ const AdminPermissionDebugger: React.FC = () => {
 
   const handleEvaluate = async (values: EvaluationFormValues) => {
     if (!selectedUsername) {
-      showErrorToast(new Error('Please select a user first'));
+      showErrorToast('Please select a user first');
 
       return;
     }
@@ -245,8 +256,8 @@ const AdminPermissionDebugger: React.FC = () => {
         <Space className="w-full" direction="vertical">
           <div className="evaluation-summary">
             <Title level={4}>
-              {/* eslint-disable-next-line i18next/no-literal-string */}
-              {t('label.decision')}: <span>{evaluationInfo.finalDecision}</span>
+              {t('label.decision') + ': '}{' '}
+              <span>{evaluationInfo.finalDecision}</span>
             </Title>
             <Text>
               {t('label.user')} <strong>{evaluationInfo.user.name}</strong>{' '}
@@ -312,21 +323,19 @@ const AdminPermissionDebugger: React.FC = () => {
                 title={
                   <Space>
                     <Text>
-                      {/* eslint-disable-next-line i18next/no-literal-string */}
-                      {t('label.step')} <span>{step.stepNumber}</span>:
+                      {t('label.step')} <span>{step.stepNumber}</span>
+                      {' : '}
                     </Text>
                     <Text strong>{step.policy.name}</Text>
                     <Text>
-                      {/* eslint-disable-next-line i18next/no-literal-string */}
-                      - {t('label.rule')}: <span>{step.rule}</span>
+                      {' - '} {t('label.rule') + ': '} <span>{step.rule}</span>
                     </Text>
                   </Space>
                 }>
                 <Space className="w-full" direction="vertical" size="small">
                   <Text>
-                    {/* eslint-disable-next-line i18next/no-literal-string */}
-                    {t('label.source')}: <span>{step.source}</span> (
-                    <span>{step.sourceEntity.name}</span>)
+                    {t('label.source') + ': '} <span>{step.source}</span>
+                    <span>({step.sourceEntity.name})</span>
                   </Text>
                   <Text>
                     {t('label.effect')}:{' '}
@@ -351,15 +360,13 @@ const AdminPermissionDebugger: React.FC = () => {
                         <div className="condition-eval" key={idx}>
                           <Text code>{cond.condition}</Text>
                           <Text>
-                            {/* eslint-disable-next-line i18next/no-literal-string */}{' '}
-                            →{' '}
+                            {' → '}
                             <span>
                               {cond.result ? t('label.true') : t('label.false')}
                             </span>
                           </Text>
                           <Text type="secondary">
-                            {/* eslint-disable-next-line i18next/no-literal-string */}{' '}
-                            (<span>{cond.evaluationDetails}</span>)
+                            <span>(${cond.evaluationDetails})</span>
                           </Text>
                         </div>
                       ))}
@@ -375,7 +382,7 @@ const AdminPermissionDebugger: React.FC = () => {
               <Title level={5}>{t('label.reasons-for-decision')}:</Title>
               {evaluationInfo.summary.reasonsForDecision.map((reason, idx) => (
                 <Text key={idx}>
-                  {/* eslint-disable-next-line i18next/no-literal-string */}•{' '}
+                  {'• '}
                   <span>{reason}</span>
                 </Text>
               ))}
@@ -412,12 +419,11 @@ const AdminPermissionDebugger: React.FC = () => {
 
               {selectedUsername && (
                 <>
-                  {/* eslint-disable-next-line i18next/no-literal-string */}
                   <Text type="secondary">
                     {t('label.selected-entity', {
                       entity: t('label.user-lowercase'),
                     })}
-                    :{' '}
+                    {': '}
                     <strong>
                       <span>{selectedUsername}</span>
                     </strong>
@@ -446,6 +452,7 @@ const AdminPermissionDebugger: React.FC = () => {
                         },
                       ]}>
                       <Select
+                        showSearch
                         placeholder={t('label.select-entity', {
                           entity: t('label.resource'),
                         })}
@@ -470,6 +477,7 @@ const AdminPermissionDebugger: React.FC = () => {
                         },
                       ]}>
                       <Select
+                        showArrow
                         placeholder={t('label.select-entity', {
                           entity: t('label.operation'),
                         })}

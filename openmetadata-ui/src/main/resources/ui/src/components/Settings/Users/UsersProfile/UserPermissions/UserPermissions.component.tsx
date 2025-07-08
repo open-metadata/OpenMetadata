@@ -28,14 +28,6 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../../../enums/entity.enum';
-import { getEntityName } from '../../../../../utils/EntityUtils';
-import {
-  getEntityDetailsPath,
-  getPolicyWithFqnPath,
-  getRoleWithFqnPath,
-  getTeamsWithFqnPath,
-} from '../../../../../utils/RouterUtils';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
 import {
   DirectRolePermission,
   getMyPermissionDebugInfo,
@@ -47,6 +39,14 @@ import {
   RuleInfo,
   TeamPermission,
 } from '../../../../../rest/permissionAPI';
+import { getEntityName } from '../../../../../utils/EntityUtils';
+import {
+  getEntityDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
+  getTeamsWithFqnPath,
+} from '../../../../../utils/RouterUtils';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
 import './UserPermissions.style.less';
 
 const { Panel } = Collapse;
@@ -74,7 +74,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
       case EntityType.TEAM:
         return getTeamsWithFqnPath(fqn);
       default:
-        return getEntityDetailsPath(entityType, fqn);
+        return getEntityDetailsPath(entityType as EntityType, fqn);
     }
   };
 
@@ -163,8 +163,8 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             {/* eslint-disable-next-line i18next/no-literal-string */}
             {/* eslint-disable-next-line i18next/no-literal-string */}
             <Text type="secondary">
-              (<span>{policy.rules.length}</span>{' '}
-              {t('label.rule-lowercase-plural')})
+              <span>{policy.rules.length}</span>
+              {t('label.rule-lowercase-plural')}
             </Text>
           </Space>
         }
@@ -214,7 +214,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     <div className="m-b-md" key={index}>
       <Space className="w-full" direction="vertical">
         <Space>
-          <Text strong>{t('label.role')}: </Text>
+          <Text strong>{t('label.role') + ': '}</Text>
           <Link
             to={getEntityLink(
               'role',
@@ -261,11 +261,10 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                   <Tag>{teamPermission.teamType}</Tag>
                   {teamPermission.hierarchyLevel > 0 && (
                     <>
-                      {/* eslint-disable-next-line i18next/no-literal-string */}
                       <Tag color="orange">
                         {t('label.level')}{' '}
-                        <span>{teamPermission.hierarchyLevel}</span> (
-                        {t('label.inherited')})
+                        <span>{teamPermission.hierarchyLevel}</span>
+                        {t('label.inherited')}
                       </Tag>
                     </>
                   )}
@@ -274,8 +273,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                 {!isEmpty(teamPermission.teamHierarchy) &&
                   teamPermission.teamHierarchy.length > 1 && (
                     <div>
-                      {/* eslint-disable-next-line i18next/no-literal-string */}
-                      <Text type="secondary">{t('label.hierarchy')}: </Text>
+                      <Text type="secondary">
+                        {t('label.hierarchy') + ': '}
+                      </Text>
                       {teamPermission.teamHierarchy.map((team, idx) => (
                         <React.Fragment key={idx}>
                           <Link
@@ -337,8 +337,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             <div className="m-b-md" key={index}>
               <Space className="w-full" direction="vertical">
                 <Space>
-                  {/* eslint-disable-next-line i18next/no-literal-string */}
-                  <Text strong>{t('label.type')}: </Text>
+                  <Text strong>{t('label.type') + ': '}</Text>
                   <Tag color="purple">
                     {t(`label.${inherited.permissionType.toLowerCase()}`) ||
                       inherited.permissionType}
@@ -347,8 +346,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                 <Text>{inherited.description}</Text>
                 {inherited.source && (
                   <div>
-                    {/* eslint-disable-next-line i18next/no-literal-string */}
-                    <Text type="secondary">{t('label.source')}: </Text>
+                    <Text type="secondary">{t('label.source') + ': '}</Text>
                     <Link
                       to={getEntityLink(
                         inherited.source.type || '',
@@ -383,11 +381,10 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             <Space direction="vertical">
               <Text type="secondary">{t('label.total-role-plural')}</Text>
               <Title level={4}>{summary.totalRoles}</Title>
-              {/* eslint-disable-next-line i18next/no-literal-string */}
               <Text type="secondary">
-                (<span>{summary.directRoles}</span>{' '}
-                {t('label.direct-lowercase')},{' '}
-                <span>{summary.inheritedRoles}</span> {t('label.inherited')})
+                <span>{summary.directRoles}</span> {t('label.direct-lowercase')}
+                {', '}
+                <span>{summary.inheritedRoles}</span> {t('label.inherited')}
               </Text>
             </Space>
           </Col>
@@ -414,8 +411,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
 
         {!isEmpty(summary.effectiveOperations) && (
           <div className="m-t-md">
-            {/* eslint-disable-next-line i18next/no-literal-string */}
-            <Text strong>{t('label.allowed-operation-plural')}: </Text>
+            <Text strong>{t('label.allowed-operation-plural') + ': '}</Text>
             <div className="m-t-xs">
               {summary.effectiveOperations.map((op, idx) => (
                 <Tag className="m-r-xs m-b-xs" color="success" key={idx}>
@@ -428,8 +424,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
 
         {!isEmpty(summary.deniedOperations) && (
           <div className="m-t-md">
-            {/* eslint-disable-next-line i18next/no-literal-string */}
-            <Text strong>{t('label.denied-operation-plural')}: </Text>
+            <Text strong>{t('label.denied-operation-plural') + ': '}</Text>
             <div className="m-t-xs">
               {summary.deniedOperations.map((op, idx) => (
                 <Tag className="m-r-xs m-b-xs" color="error" key={idx}>
