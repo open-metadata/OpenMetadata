@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, {
@@ -41,7 +42,6 @@ import {
   getWidgetFromKey,
 } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
-import { areLayoutsEqual } from '../../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
@@ -159,10 +159,12 @@ function CustomizeMyData({
       widget.i.startsWith('KnowledgePanel')
     );
 
-    return areLayoutsEqual(
+    const jsonPatch = compare(
       cloneDeep(initialPageData?.layout as WidgetConfig[]),
       cloneDeep(filteredLayout)
     );
+
+    return jsonPatch.length === 0;
   }, [initialPageData?.layout, layout]);
 
   const widgets = useMemo(

@@ -24,7 +24,6 @@ import {
   isNull,
   isString,
   isUndefined,
-  sortBy,
   toLower,
   toNumber,
 } from 'lodash';
@@ -828,51 +827,4 @@ export const calculatePercentageFromValue = (
   percentageValue: number
 ) => {
   return (value * percentageValue) / 100;
-};
-
-/**
- * Clean and sort the input object or array
- * @param input - The input object or array to clean and sort
- * @param options - Object with the key to sort the array by. If not provided, the array will not be sorted.
- * @returns The cleaned and sorted object or array
- */
-export const cleanAndSort = (
-  input: unknown,
-  options: { sortKey?: string } = {}
-): unknown => {
-  const { sortKey } = options;
-
-  if (Array.isArray(input)) {
-    const cleanedArray = [];
-
-    for (const item of input) {
-      if (item !== undefined && item !== null) {
-        cleanedArray.push(cleanAndSort(item, options));
-      }
-    }
-
-    if (
-      sortKey &&
-      cleanedArray.every((el) => el && typeof el === 'object' && sortKey in el)
-    ) {
-      return sortBy(cleanedArray, sortKey);
-    }
-
-    return cleanedArray;
-  }
-
-  if (input && typeof input === 'object' && !Array.isArray(input)) {
-    const cleanedObject: Record<string, unknown> = {};
-
-    for (const key of Object.keys(input).sort()) {
-      const value = (input as Record<string, unknown>)[key];
-      if (value !== undefined && value !== null) {
-        cleanedObject[key] = cleanAndSort(value, options);
-      }
-    }
-
-    return cleanedObject;
-  }
-
-  return input;
 };

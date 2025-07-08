@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
-import { get, isEqual, noop, uniqueId } from 'lodash';
+import { get, noop, uniqueId } from 'lodash';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { TAB_LABEL_MAP } from '../../constants/Customize.constants';
 import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
@@ -21,7 +21,6 @@ import { Page, PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import apiCollectionClassBase from '../APICollection/APICollectionClassBase';
 import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
-import { cleanAndSort } from '../CommonUtils';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
 import { getNewWidgetPlacement } from '../CustomizableLandingPageUtils';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
@@ -678,13 +677,3 @@ export const updateWidgetHeightRecursively = (
 
     return acc;
   }, [] as WidgetConfig[]);
-
-export const areLayoutsEqual = (
-  layoutA?: WidgetConfig[],
-  layoutB?: WidgetConfig[]
-): boolean => {
-  const cleanedA = cleanAndSort(layoutA, { sortKey: 'i' });
-  const cleanedB = cleanAndSort(layoutB, { sortKey: 'i' });
-
-  return isEqual(cleanedA, cleanedB);
-};

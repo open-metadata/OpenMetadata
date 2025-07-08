@@ -134,10 +134,14 @@ const DataAssetsWidget = ({
           </div>
 
           <Typography.Paragraph
-            className="widget-title"
+            className="ant-typography-ellipsis ant-typography-single-line ant-typography-ellipsis-single-line"
             ellipsis={{ tooltip: true }}
             style={{
               maxWidth: '525px',
+              fontWeight: 500,
+              fontSize: '16px',
+              lineHeight: '28px',
+              marginBottom: 0,
             }}>
             {t('label.data-asset-plural')}
           </Typography.Paragraph>
