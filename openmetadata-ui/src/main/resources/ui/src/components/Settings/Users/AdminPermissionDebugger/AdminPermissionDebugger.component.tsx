@@ -26,8 +26,9 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
@@ -37,7 +38,10 @@ import {
   PermissionEvaluationDebugInfo,
 } from '../../../../rest/permissionAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import UserPermissions from '../UsersProfile/UserPermissions/UserPermissions.component';
 import {
@@ -68,6 +72,15 @@ const AdminPermissionDebugger: React.FC = () => {
   >([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [form] = Form.useForm();
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.ACCESS,
+        t('label.permission-debugger')
+      ),
+    []
+  );
 
   const searchUsers = useCallback(
     debounce(async (searchText: string) => {
@@ -196,7 +209,7 @@ const AdminPermissionDebugger: React.FC = () => {
 
           {evaluationInfo.summary && (
             <div className="evaluation-stats">
-              <Space>
+              <Space wrap>
                 <Text>
                   {t('label.policies-evaluated')}:{' '}
                   {evaluationInfo.summary.totalPoliciesEvaluated}
@@ -249,14 +262,17 @@ const AdminPermissionDebugger: React.FC = () => {
                 }>
                 <Space className="w-full" direction="vertical" size="small">
                   <Text>
-                    {t('label.source') + ': '} <span>{step.source}</span>
+                    {t('label.source') + ': '} <span>{step.source}</span>{' '}
                     <span>({step.sourceEntity.name})</span>
                   </Text>
                   <Text>
                     {t('label.effect')}:{' '}
                     <strong
                       style={{
-                        color: step.effect === 'ALLOW' ? '#52c41a' : '#f5222d',
+                        color:
+                          step.effect.toUpperCase() === 'ALLOW'
+                            ? '#52c41a'
+                            : '#f5222d',
                       }}>
                       {step.effect}
                     </strong>
@@ -310,15 +326,20 @@ const AdminPermissionDebugger: React.FC = () => {
 
   return (
     <PageLayoutV1
-      className="bg-grey"
+      className="bg-grey admin-permission-debugger"
       pageTitle={t('label.permission-debugger')}>
-      <Row className="p-x-lg" gutter={[0, 20]}>
+      <Row className="p-x-lg" gutter={[0, 16]}>
         <Col span={24}>
-          <Card className="m-b-md" title={t('label.permission-debugger')}>
-            <Space className="w-full" direction="vertical">
-              <Title level={4}>
-                {t('label.select-user-to-debug-permissions')}
-              </Title>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col span={24}>
+          <Card>
+            <Space className="w-full" direction="vertical" size={16}>
+              <div>
+                <Title level={5}>
+                  {t('label.select-user-to-debug-permissions')}
+                </Title>
+              </div>
 
               <AutoComplete
                 className="w-full"
