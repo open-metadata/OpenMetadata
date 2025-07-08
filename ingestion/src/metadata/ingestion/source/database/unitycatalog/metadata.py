@@ -559,17 +559,18 @@ class UnitycatalogSource(
             ).connect() as connection:
                 for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
                     for tag in connection.execute(query):
-                        yield from get_ometa_tag_and_classification(
-                            tag_fqn=FullyQualifiedEntityName(
-                                fqn._build(*tag_fqn_builder(tag))
-                            ),  # pylint: disable=protected-access
-                            tags=[tag.tag_value],
-                            classification_name=tag.tag_name,
-                            tag_description=UNITY_CATALOG_TAG,
-                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                            metadata=self.metadata,
-                            system_tags=True,
-                        )
+                        if tag.tag_value:
+                            yield from get_ometa_tag_and_classification(
+                                tag_fqn=FullyQualifiedEntityName(
+                                    fqn._build(*tag_fqn_builder(tag))
+                                ),  # pylint: disable=protected-access
+                                tags=[tag.tag_value],
+                                classification_name=tag.tag_name,
+                                tag_description=UNITY_CATALOG_TAG,
+                                classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                                metadata=self.metadata,
+                                system_tags=True,
+                            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -612,17 +613,18 @@ class UnitycatalogSource(
             ).connect() as connection:
                 for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
                     for tag in connection.execute(query):
-                        yield from get_ometa_tag_and_classification(
-                            tag_fqn=FullyQualifiedEntityName(
-                                fqn._build(*tag_fqn_builder(tag))
-                            ),  # pylint: disable=protected-access
-                            tags=[tag.tag_value],
-                            classification_name=tag.tag_name,
-                            tag_description=UNITY_CATALOG_TAG,
-                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                            metadata=self.metadata,
-                            system_tags=True,
-                        )
+                        if tag.tag_value:
+                            yield from get_ometa_tag_and_classification(
+                                tag_fqn=FullyQualifiedEntityName(
+                                    fqn._build(*tag_fqn_builder(tag))
+                                ),  # pylint: disable=protected-access
+                                tags=[tag.tag_value],
+                                classification_name=tag.tag_name,
+                                tag_description=UNITY_CATALOG_TAG,
+                                classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                                metadata=self.metadata,
+                                system_tags=True,
+                            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error getting tags for schema {schema_name}: {exc}")
