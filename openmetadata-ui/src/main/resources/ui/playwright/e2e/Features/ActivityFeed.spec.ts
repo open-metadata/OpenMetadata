@@ -366,8 +366,11 @@ test.describe('Activity feed', () => {
     expect(descriptionTask).toContain('Request to update description');
 
     // Close the task from the Button.Group, should throw error when no comment is added.
-    await page.getByRole('button', { name: 'down' }).click();
-    await page.waitForSelector('.ant-dropdown', {
+    await page
+      .getByTestId('edit-accept-task-dropdown')
+      .getByRole('button', { name: 'down' })
+      .click();
+    await page.waitForSelector('.ant-dropdown-menu', {
       state: 'visible',
     });
 
@@ -388,8 +391,11 @@ test.describe('Activity feed', () => {
     const commentWithCloseTask = page.waitForResponse(
       '/api/v1/feed/tasks/*/close'
     );
-    await page.getByRole('button', { name: 'down' }).click();
-    await page.waitForSelector('.ant-dropdown', {
+    await page
+      .getByTestId('edit-accept-task-dropdown')
+      .getByRole('button', { name: 'down' })
+      .click();
+    await page.waitForSelector('.ant-dropdown-menu', {
       state: 'visible',
     });
     await page.getByRole('menuitem', { name: 'close' }).click();
