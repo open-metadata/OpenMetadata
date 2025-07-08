@@ -13,9 +13,8 @@
 import { Card, Skeleton, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.svg';
 import { WHITE_SMOKE } from '../../../constants/Color.constants';
@@ -34,6 +33,7 @@ import {
   getServiceNameQueryFilter,
 } from '../../../utils/ServiceUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
 import './total-data-assets-widget.less';
 
@@ -42,7 +42,7 @@ function TotalDataAssetsWidget({
 }: Readonly<ServiceInsightWidgetCommonProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
-  const { serviceCategory } = useParams<{
+  const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceTypes;
     tab: string;
   }>();

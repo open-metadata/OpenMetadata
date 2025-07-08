@@ -1,5 +1,5 @@
 ---
-title: tagLabel
+title: Tag Label | OpenMetadata Tag Label Schema
 slug: /main-concepts/metadata-standard/schemas/type/taglabel
 ---
 

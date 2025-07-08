@@ -35,9 +35,9 @@ import {
   uniq,
 } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -83,7 +83,7 @@ import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
 export const TestCases = () => {
   const [form] = useForm();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -133,8 +133,13 @@ export const TestCases = () => {
     key: K,
     value?: TestCaseSearchParams[K]
   ) => {
-    history.push({
-      search: QueryString.stringify({ ...params, [key]: value || undefined }),
+    navigate({
+      search: QueryString.stringify(
+        { ...params, [key]: value || undefined },
+        {
+          arrayFormat: 'brackets',
+        }
+      ),
     });
   };
 
@@ -150,44 +155,53 @@ export const TestCases = () => {
     }
   };
 
-  const fetchTestCases = async (
-    currentPage = INITIAL_PAGING_VALUE,
-    filters?: string[],
-    apiParams?: ListTestCaseParamsBySearch
-  ) => {
-    const updatedParams = getTestCaseFiltersValue(
-      params,
-      filters ?? selectedFilter
-    );
+  const fetchTestCases = useCallback(
+    async (
+      currentPage = INITIAL_PAGING_VALUE,
+      filters?: string[],
+      apiParams?: ListTestCaseParamsBySearch
+    ) => {
+      const updatedParams = getTestCaseFiltersValue(
+        params,
+        filters ?? selectedFilter
+      );
 
-    setIsLoading(true);
-    try {
-      const { data, paging } = await getListTestCaseBySearch({
-        ...updatedParams,
-        ...sortOptions,
-        ...apiParams,
-        testCaseStatus: isEmpty(params?.testCaseStatus)
-          ? undefined
-          : params?.testCaseStatus,
-        limit: pageSize,
-        includeAllTests: true,
-        fields: [
-          TabSpecificField.TEST_CASE_RESULT,
-          TabSpecificField.TESTSUITE,
-          TabSpecificField.INCIDENT_ID,
-        ],
-        q: searchValue ? `*${searchValue}*` : undefined,
-        offset: (currentPage - 1) * pageSize,
-      });
-      setTestCase(data);
-      handlePagingChange(paging);
-      handlePageChange(currentPage);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      setIsLoading(true);
+      try {
+        const { data, paging } = await getListTestCaseBySearch({
+          ...updatedParams,
+          ...sortOptions,
+          ...apiParams,
+          testCaseStatus: isEmpty(params?.testCaseStatus)
+            ? undefined
+            : params?.testCaseStatus,
+          limit: pageSize,
+          includeAllTests: true,
+          fields: [
+            TabSpecificField.TEST_CASE_RESULT,
+            TabSpecificField.TESTSUITE,
+            TabSpecificField.INCIDENT_ID,
+          ],
+          q: searchValue ? `*${searchValue}*` : undefined,
+          offset: (currentPage - 1) * pageSize,
+        });
+        setTestCase(data);
+        handlePagingChange(paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      params,
+      selectedFilter,
+      sortOptions,
+      pageSize,
+      searchValue,
+      handlePagingChange,
+    ]
+  );
 
   const sortTestCase = async (apiParams?: TestCaseSearchParams) => {
     const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
@@ -213,9 +227,13 @@ export const TestCases = () => {
     });
   };
 
-  const handlePagingClick = ({ currentPage }: PagingHandlerParams) => {
-    fetchTestCases(currentPage);
-  };
+  const handlePagingClick = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      handlePageChange(currentPage);
+      fetchTestCases(currentPage);
+    },
+    [handlePageChange, fetchTestCases]
+  );
 
   const handleFilterChange: FormProps<TestCaseSearchParams>['onValuesChange'] =
     (value?: TestCaseSearchParams) => {
@@ -438,10 +456,10 @@ export const TestCases = () => {
         getInitialOptions(key, true);
       }
       setSelectedFilter(updatedValue);
-      fetchTestCases(INITIAL_PAGING_VALUE, updatedValue);
+      fetchTestCases(currentPage, updatedValue);
       form.setFieldsValue(params);
     } else {
-      fetchTestCases(INITIAL_PAGING_VALUE);
+      fetchTestCases(currentPage);
     }
   };
 
@@ -454,7 +472,7 @@ export const TestCases = () => {
     } else {
       setIsLoading(false);
     }
-  }, [tab, testCasePermission, pageSize, params]);
+  }, [tab, testCasePermission, pageSize, params, currentPage]);
 
   const pagingData = useMemo(
     () => ({

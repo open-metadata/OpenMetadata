@@ -15,7 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row } from 'antd';
 import { cloneDeep, get } from 'lodash';
 import { EntityDetailUnion } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';

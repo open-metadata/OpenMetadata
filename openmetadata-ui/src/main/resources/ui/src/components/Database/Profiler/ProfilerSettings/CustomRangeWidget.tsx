@@ -12,7 +12,6 @@
  */
 import { WidgetProps } from '@rjsf/utils';
 import { Col, InputNumber, Row, Slider } from 'antd';
-import React from 'react';
 
 export const CustomRangeWidget = (props: WidgetProps) => {
   return (

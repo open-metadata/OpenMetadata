@@ -870,6 +870,13 @@ site_menu:
   - category: How-to Guides
     url: /how-to-guides
 
+  - category: How-to Guides / MCP
+    url: /how-to-guides/mcp
+  - category: How-to Guides / MCP / Getting Started with Claude Desktop
+    url: /how-to-guides/mcp/claude
+  - category: How-to Guides / MCP / Getting Started with Goose Desktop
+    url: /how-to-guides/mcp/goose
+
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
   - category: How-to Guides / Admin Guide / How to Ingest Metadata
@@ -1085,6 +1092,8 @@ site_menu:
     url: /how-to-guides/data-governance/glossary/export
   - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
     url: /how-to-guides/data-governance/glossary/approval
+  - category: How-to Guides / Data Governance / Glossary / Import-Export Troubleshooting
+    url: /how-to-guides/data-governance/glossary/troubleshooting
   - category: How-to Guides / Data Governance / Glossary / Glossary Styling
     url: /how-to-guides/data-governance/glossary/styling
   - category: How-to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms
@@ -1132,6 +1141,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.8.0 Release
+    url: /releases/all-releases/#1.8.0-release
   - category: Releases / All Releases / 1.7.5 Release
     url: /releases/all-releases/#1.7.5-release
   - category: Releases / All Releases / 1.7.4 Release

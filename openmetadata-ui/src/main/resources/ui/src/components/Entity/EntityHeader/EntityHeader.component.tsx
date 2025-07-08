@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { getEntityLinkFromType } from '../../../utils/EntityUtils';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';

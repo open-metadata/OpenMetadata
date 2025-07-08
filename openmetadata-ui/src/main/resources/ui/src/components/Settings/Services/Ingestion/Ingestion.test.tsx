@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DISABLED } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -208,9 +206,7 @@ describe('Ingestion', () => {
 
     const searchBar = screen.getByText('Searchbar');
 
-    await act(async () => {
-      userEvent.click(searchBar);
-    });
+    fireEvent.click(searchBar);
 
     expect(ingestionProps.handleSearchChange).toHaveBeenCalledTimes(1);
   });
@@ -227,9 +223,7 @@ describe('Ingestion', () => {
 
     const triggerPipeline = screen.getByText('triggerIngestion');
 
-    await act(async () => {
-      userEvent.click(triggerPipeline);
-    });
+    fireEvent.click(triggerPipeline);
 
     expect(triggerIngestionPipelineById).toHaveBeenCalledWith('test-id');
   });
@@ -246,9 +240,7 @@ describe('Ingestion', () => {
 
     const deployIngestion = screen.getByText('deployIngestion');
 
-    await act(async () => {
-      userEvent.click(deployIngestion);
-    });
+    fireEvent.click(deployIngestion);
 
     expect(deployIngestionPipelineById).toHaveBeenCalledWith('test-id');
   });
@@ -267,9 +259,7 @@ describe('Ingestion', () => {
       'handleEnableDisableIngestion'
     );
 
-    await act(async () => {
-      userEvent.click(handleEnableDisableIngestion);
-    });
+    fireEvent.click(handleEnableDisableIngestion);
 
     expect(enableDisableIngestionPipelineById).toHaveBeenCalledWith('test-id');
   });

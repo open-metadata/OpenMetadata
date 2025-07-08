@@ -19,7 +19,6 @@ import {
   diffWords,
   diffWordsWithSpace,
 } from 'diff';
-import { t } from 'i18next';
 import {
   cloneDeep,
   get,
@@ -32,7 +31,7 @@ import {
   uniqBy,
   uniqueId,
 } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import {
   ExtentionEntities,
@@ -67,8 +66,11 @@ import {
   TagLabelWithStatus,
   VersionEntityTypes,
 } from './EntityVersionUtils.interface';
+import { t } from './i18next/LocalUtil';
 import { getJSONFromString, isValidJSONString } from './StringsUtils';
 import { getTagsWithoutTier, getTierTags } from './TableUtils';
+
+type EntityColumn = TableColumn | ContainerColumn | Field;
 
 export const getChangedEntityName = (diffObject?: EntityDiffProps) =>
   diffObject?.added?.name ??
@@ -506,10 +508,9 @@ export function getEntityDescriptionDiff<A extends AssetsChildForVersionPages>(
   return entityList;
 }
 
-export function getEntityDisplayNameDiff<
-  A extends TableColumn | ContainerColumn | Field
->(
+export function getStringEntityDiff<A extends EntityColumn>(
   entityDiff: EntityDiffProps,
+  key: EntityField,
   changedEntityName?: string,
   entityList: A[] = []
 ) {
@@ -519,11 +520,11 @@ export function getEntityDisplayNameDiff<
   const formatEntityData = (arr: Array<A>) => {
     arr?.forEach((i) => {
       if (isEqual(i.name, changedEntityName)) {
-        i.displayName = getTextDiff(
+        i[key as keyof A] = getTextDiff(
           oldDisplayName ?? '',
           newDisplayName ?? '',
-          i.displayName
-        );
+          i[key as keyof typeof i] as unknown as string
+        ) as unknown as A[keyof A];
       } else {
         formatEntityData(i?.children as Array<A>);
       }
@@ -535,9 +536,11 @@ export function getEntityDisplayNameDiff<
   return entityList;
 }
 
-export function getEntityTagDiff<
-  A extends TableColumn | ContainerColumn | Field
->(entityDiff: EntityDiffProps, changedEntityName?: string, entityList?: A[]) {
+export function getEntityTagDiff<A extends EntityColumn>(
+  entityDiff: EntityDiffProps,
+  changedEntityName?: string,
+  entityList?: A[]
+) {
   const oldTags: TagLabel[] = JSON.parse(
     getChangedEntityOldValue(entityDiff) ?? '[]'
   );
@@ -822,7 +825,23 @@ export function getColumnsDataWithVersionChanges<
       ];
     } else if (isEndsWithField(EntityField.DISPLAYNAME, changedEntityName)) {
       newColumnsList = [
-        ...getEntityDisplayNameDiff(columnDiff, changedColName, colList),
+        ...getStringEntityDiff(
+          columnDiff,
+          EntityField.DISPLAYNAME,
+          changedColName,
+          colList
+        ),
+      ];
+    } else if (
+      isEndsWithField(EntityField.DATA_TYPE_DISPLAY, changedEntityName)
+    ) {
+      newColumnsList = [
+        ...getStringEntityDiff(
+          columnDiff,
+          EntityField.DATA_TYPE_DISPLAY,
+          changedColName,
+          colList
+        ),
       ];
     } else if (!isEndsWithField(EntityField.CONSTRAINT, changedEntityName)) {
       const changedEntity = changedEntityName
