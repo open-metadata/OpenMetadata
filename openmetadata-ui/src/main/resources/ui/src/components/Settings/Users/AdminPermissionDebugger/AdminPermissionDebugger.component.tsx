@@ -26,14 +26,10 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
-import {
-  SearchHitBody,
-  UserSearchSource,
-} from '../../../../interface/search.interface';
 import {
   evaluatePermission,
   getPermissionDebugInfo,
@@ -44,6 +40,10 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import UserPermissions from '../UsersProfile/UserPermissions/UserPermissions.component';
+import {
+  PERMISSION_OPERATIONS,
+  PERMISSION_RESOURCES,
+} from './AdminPermissionDebugger.constants';
 import './AdminPermissionDebugger.style.less';
 
 const { Title, Text } = Typography;
@@ -68,92 +68,6 @@ const AdminPermissionDebugger: React.FC = () => {
   >([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [form] = Form.useForm();
-
-  const operations = useMemo(
-    () => [
-      // View operations
-      Operation.ViewAll,
-      Operation.ViewBasic,
-      Operation.ViewUsage,
-      Operation.ViewTests,
-      Operation.ViewQueries,
-      Operation.ViewDataProfile,
-      Operation.ViewSampleData,
-      Operation.ViewProfilerGlobalConfiguration,
-      Operation.ViewTestCaseFailedRowsSample,
-
-      // Create operations
-      Operation.Create,
-      Operation.CreateIngestionPipelineAutomator,
-
-      // Edit operations
-      Operation.EditAll,
-      Operation.EditDescription,
-      Operation.EditDisplayName,
-      Operation.EditLineage,
-      Operation.EditOwners,
-      Operation.EditCustomFields,
-      Operation.EditTags,
-      Operation.EditQueries,
-      Operation.EditDataProfile,
-      Operation.EditSampleData,
-      Operation.EditTests,
-      Operation.EditCertification,
-      Operation.EditEntityRelationship,
-      Operation.EditPolicy,
-      Operation.EditReviewers,
-      Operation.EditRole,
-      Operation.EditStatus,
-      Operation.EditGlossaryTerms,
-      Operation.EditTeams,
-      Operation.EditTier,
-      Operation.EditUsage,
-      Operation.EditUsers,
-      Operation.EditLifeCycle,
-      Operation.EditKnowledgePanel,
-      Operation.EditPage,
-      Operation.EditIngestionPipelineStatus,
-
-      // Delete operations
-      Operation.Delete,
-      Operation.DeleteTestCaseFailedRowsSample,
-
-      // Other operations
-      Operation.Deploy,
-      Operation.Trigger,
-      Operation.Kill,
-      Operation.GenerateToken,
-
-      // SCIM operations
-      Operation.CreateScim,
-      Operation.EditScim,
-      Operation.DeleteScim,
-      Operation.ViewScim,
-    ],
-    []
-  );
-
-  const resources = useMemo(
-    () => [
-      'table',
-      'database',
-      'databaseSchema',
-      'dashboard',
-      'pipeline',
-      'topic',
-      'container',
-      'mlmodel',
-      'searchIndex',
-      'glossary',
-      'glossaryTerm',
-      'tag',
-      'policy',
-      'role',
-      'team',
-      'user',
-    ],
-    []
-  );
 
   const searchUsers = useCallback(
     debounce(async (searchText: string) => {
@@ -180,12 +94,12 @@ const AdminPermissionDebugger: React.FC = () => {
         });
 
         const options = response.hits.hits.map(
-          (
-            hit: SearchHitBody<
-              SearchIndex.USER,
-              Pick<UserSearchSource, 'displayName' | 'name'>
-            >
-          ) => ({
+          (hit: {
+            _source: {
+              name: string;
+              displayName?: string;
+            };
+          }) => ({
             value: hit._source.name,
             label: `${hit._source.displayName || hit._source.name} (${
               hit._source.name
@@ -195,7 +109,8 @@ const AdminPermissionDebugger: React.FC = () => {
 
         setUserOptions(options);
       } catch (error) {
-        // Error is handled by not setting user options
+        // Reset user options on error - this allows the user to try again
+        setUserOptions([]);
       } finally {
         setSearchingUsers(false);
       }
@@ -218,7 +133,7 @@ const AdminPermissionDebugger: React.FC = () => {
 
   const handleEvaluate = async (values: EvaluationFormValues) => {
     if (!selectedUsername) {
-      showErrorToast('Please select a user first');
+      showErrorToast(t('message.please-select-user-first'));
 
       return;
     }
@@ -457,7 +372,7 @@ const AdminPermissionDebugger: React.FC = () => {
                           entity: t('label.resource'),
                         })}
                         style={{ width: 200 }}>
-                        {resources.map((resource) => (
+                        {PERMISSION_RESOURCES.map((resource) => (
                           <Option key={resource} value={resource}>
                             {resource}
                           </Option>
@@ -482,7 +397,7 @@ const AdminPermissionDebugger: React.FC = () => {
                           entity: t('label.operation'),
                         })}
                         style={{ width: 200 }}>
-                        {operations.map((operation) => (
+                        {PERMISSION_OPERATIONS.map((operation) => (
                           <Option key={operation} value={operation}>
                             {operation}
                           </Option>
