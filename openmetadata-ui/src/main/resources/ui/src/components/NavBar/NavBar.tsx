@@ -511,7 +511,8 @@ const NavBar = () => {
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
                 type="text">
-                {upperCase(language.split('-')[0])} <DropDownIcon width={12} />
+                {language ? upperCase(language.split('-')[0]) : ''}{' '}
+                <DropDownIcon width={12} />
               </Button>
             </Dropdown>
             <Dropdown
