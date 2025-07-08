@@ -51,12 +51,7 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private McpServerSession.Factory sessionFactory;
   private ExecutorService executorService =
-      Executors.newCachedThreadPool(
-          r -> {
-            Thread t = new Thread(r, "MCP-Worker-SSE");
-            t.setDaemon(true);
-            return t;
-          });
+      Executors.newFixedThreadPool(10, Thread.ofVirtual().name("MCP-Worker-SSE", 0).factory());
 
   public HttpServletSseServerTransportProvider(
       ObjectMapper objectMapper, String messageEndpoint, String sseEndpoint) {
