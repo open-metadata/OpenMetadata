@@ -64,7 +64,9 @@ openmetadata:
       callbackUrl: "http://localhost:8585/callback"
       oidcConfiguration:
         oidcType: "azure"
-        oidcConfiguration.enabled: true
+        enabled: true
+        tenant: "{Tenant ID}"
+        scope: openid email profile offline_access
         clientId:
           secretRef: oidc-secrets
           secretKey: openmetadata-oidc-client-id  
