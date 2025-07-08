@@ -45,16 +45,19 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         scopes,
         pkce,
         tokenManager: {
-          autoRenew: false,
+          autoRenew: true,
+          storage: 'localStorage',
+          syncStorage: true,
           expireEarlySeconds: 60,
+          secure: true,
         },
         cookies: {
           secure: true,
-          sameSite: 'none',
+          sameSite: 'lax',
         },
         services: {
-          autoRenew: false,
-          renewOnTabActivation: false,
+          autoRenew: true,
+          renewOnTabActivation: true,
           tabInactivityDuration: 3600,
         },
       }),
@@ -104,7 +107,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         .catch(async (err) => {
           // eslint-disable-next-line no-console
           console.error(err);
-          // Redirect to login on error
+          // Redirect to login on error.
           await customAuthHandler();
         });
     },
