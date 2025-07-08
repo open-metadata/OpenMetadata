@@ -30,6 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.Getter;
@@ -69,13 +71,10 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   private final transient Map<String, MCPSession> sessions = new ConcurrentHashMap<>();
   private final transient Map<String, SSEConnection> sseConnections = new ConcurrentHashMap<>();
   private final transient SecureRandom secureRandom = new SecureRandom();
+  private final transient Semaphore sseConnectionSemaphore = new Semaphore(50, true);
   private final transient ExecutorService executorService =
-      Executors.newCachedThreadPool(
-          r -> {
-            Thread t = new Thread(r, "MCP-Worker-Streamable");
-            t.setDaemon(true);
-            return t;
-          });
+      Executors.newFixedThreadPool(
+          10, Thread.ofVirtual().name("MCP-Worker-Streamable-", 0).factory());
   private transient McpServerSession.Factory sessionFactory;
   private final transient JwtFilter jwtFilter;
   private final transient Authorizer authorizer;
@@ -296,6 +295,15 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
       String sessionId)
       throws IOException {
 
+    // Check connection limit
+    if (!sseConnectionSemaphore.tryAcquire()) {
+      sendError(
+          response,
+          HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+          "Too many concurrent SSE connections");
+      return;
+    }
+
     // Set up SSE response headers
     response.setContentType(CONTENT_TYPE_SSE);
     response.setHeader("Cache-Control", "no-cache");
@@ -311,48 +319,56 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
 
     // Start async processing
     AsyncContext asyncContext = request.startAsync();
-    asyncContext.setTimeout(300000); // 5 minutes timeout
+    asyncContext.setTimeout(60000); // Reduced to 1 minute timeout
 
     SSEConnection connection = new SSEConnection(response.getWriter(), sessionId);
     String connectionId = UUID.randomUUID().toString();
     sseConnections.put(connectionId, connection);
 
     // Process request asynchronously
-    executorService.submit(
-        () -> {
-          try {
-            // Send server-initiated messages first
-            // sendServerInitiatedMessages(connection);
-
-            // Process the actual request and send response
-            Map<String, Object> jsonResponse = processRequest(jsonRequest, sessionId);
-            String eventId = generateEventId();
-            connection.sendEventWithId(eventId, objectMapper.writeValueAsString(jsonResponse));
-
-            // Close the stream after sending response
-            connection.close();
-
-          } catch (Exception e) {
-            LOG.error("Error in SSE stream processing for request", e);
+    try {
+      executorService.submit(
+          () -> {
             try {
-              // Send error response before closing
-              Map<String, Object> errorResponse =
-                  createErrorResponse(
-                      jsonRequest.get("id"), -32603, "Internal error: " + e.getMessage());
-              connection.sendEvent(objectMapper.writeValueAsString(errorResponse));
+              // Send server-initiated messages first
+              // sendServerInitiatedMessages(connection);
+
+              // Process the actual request and send response
+              Map<String, Object> jsonResponse = processRequest(jsonRequest, sessionId);
+              String eventId = generateEventId();
+              connection.sendEventWithId(eventId, objectMapper.writeValueAsString(jsonResponse));
+
+              // Close the stream after sending response
               connection.close();
-            } catch (Exception ex) {
-              LOG.error("Error sending error response in SSE stream", ex);
-            }
-          } finally {
-            try {
-              asyncContext.complete();
+
             } catch (Exception e) {
-              LOG.error("Error completing async context", e);
+              LOG.error("Error in SSE stream processing for request", e);
+              try {
+                // Send error response before closing
+                Map<String, Object> errorResponse =
+                    createErrorResponse(
+                        jsonRequest.get("id"), -32603, "Internal error: " + e.getMessage());
+                connection.sendEvent(objectMapper.writeValueAsString(errorResponse));
+                connection.close();
+              } catch (Exception ex) {
+                LOG.error("Error sending error response in SSE stream", ex);
+              }
+            } finally {
+              try {
+                asyncContext.complete();
+              } catch (Exception e) {
+                LOG.error("Error completing async context", e);
+              }
+              sseConnections.remove(connectionId);
+              sseConnectionSemaphore.release();
             }
-            sseConnections.remove(connectionId);
-          }
-        });
+          });
+    } catch (RejectedExecutionException e) {
+      LOG.error("Task rejected by thread pool", e);
+      sseConnections.remove(connectionId);
+      sseConnectionSemaphore.release();
+      sendError(response, HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Server overloaded");
+    }
   }
 
   /**
@@ -503,6 +519,15 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
       String sessionId)
       throws IOException {
 
+    // Check connection limit
+    if (!sseConnectionSemaphore.tryAcquire()) {
+      sendError(
+          response,
+          HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+          "Too many concurrent SSE connections");
+      return;
+    }
+
     // Set up SSE response headers
     response.setContentType(CONTENT_TYPE_SSE);
     response.setHeader("Cache-Control", "no-cache");
@@ -516,51 +541,59 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
     response.setStatus(HttpServletResponse.SC_OK);
 
     AsyncContext asyncContext = request.startAsync();
-    asyncContext.setTimeout(300000); // 5 minutes timeout
+    asyncContext.setTimeout(60000); // Reduced to 1 minute timeout
 
     SSEConnection connection = new SSEConnection(response.getWriter(), sessionId);
     String connectionId = UUID.randomUUID().toString();
     sseConnections.put(connectionId, connection);
 
     // Process batch asynchronously
-    executorService.submit(
-        () -> {
-          try {
-            // Send server-initiated messages first
-            // sendServerInitiatedMessages(connection);
-
-            // Process each request in the batch
-            List<Map<String, Object>> responses = new ArrayList<>();
-            for (JsonNode req : batchRequest) {
-              Map<String, Object> jsonResponse = processRequest(req, sessionId);
-              responses.add(jsonResponse);
-            }
-
-            // Send batch response
-            String eventId = generateEventId();
-            connection.sendEventWithId(eventId, objectMapper.writeValueAsString(responses));
-
-            connection.close();
-
-          } catch (Exception e) {
-            LOG.error("Error in SSE stream processing for batch", e);
+    try {
+      executorService.submit(
+          () -> {
             try {
-              Map<String, Object> errorResponse =
-                  createErrorResponse(null, -32603, "Internal error: " + e.getMessage());
-              connection.sendEvent(objectMapper.writeValueAsString(errorResponse));
+              // Send server-initiated messages first
+              // sendServerInitiatedMessages(connection);
+
+              // Process each request in the batch
+              List<Map<String, Object>> responses = new ArrayList<>();
+              for (JsonNode req : batchRequest) {
+                Map<String, Object> jsonResponse = processRequest(req, sessionId);
+                responses.add(jsonResponse);
+              }
+
+              // Send batch response
+              String eventId = generateEventId();
+              connection.sendEventWithId(eventId, objectMapper.writeValueAsString(responses));
+
               connection.close();
-            } catch (Exception ex) {
-              LOG.error("Error sending error response in batch SSE stream", ex);
-            }
-          } finally {
-            try {
-              asyncContext.complete();
+
             } catch (Exception e) {
-              LOG.error("Error completing async context for batch", e);
+              LOG.error("Error in SSE stream processing for batch", e);
+              try {
+                Map<String, Object> errorResponse =
+                    createErrorResponse(null, -32603, "Internal error: " + e.getMessage());
+                connection.sendEvent(objectMapper.writeValueAsString(errorResponse));
+                connection.close();
+              } catch (Exception ex) {
+                LOG.error("Error sending error response in batch SSE stream", ex);
+              }
+            } finally {
+              try {
+                asyncContext.complete();
+              } catch (Exception e) {
+                LOG.error("Error completing async context for batch", e);
+              }
+              sseConnections.remove(connectionId);
+              sseConnectionSemaphore.release();
             }
-            sseConnections.remove(connectionId);
-          }
-        });
+          });
+    } catch (RejectedExecutionException e) {
+      LOG.error("Batch task rejected by thread pool", e);
+      sseConnections.remove(connectionId);
+      sseConnectionSemaphore.release();
+      sendError(response, HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Server overloaded");
+    }
   }
 
   /**
