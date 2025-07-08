@@ -11,23 +11,32 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Input, Typography } from 'antd';
+import { Button, Input, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { get } from 'lodash';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/filter.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
+import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic-suggestions-blue.svg';
+import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
+import { EntityReference } from '../../../../generated/entity/type';
 import { Page } from '../../../../generated/system/ui/page';
 import { PageType } from '../../../../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
+import { isCommandKeyPress, Keys } from '../../../../utils/KeyboardUtil';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import './customise-landing-page-header.less';
 import { CustomiseLandingPageHeaderProps } from './CustomiseLandingPageHeader.interface';
@@ -43,10 +52,15 @@ const CustomiseLandingPageHeader = ({
   placeholderWidgetKey,
 }: CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
-  const { isNLPEnabled } = useSearchStore();
+  const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
+    useDomainStore();
+  const { isNLPEnabled, isNLPActive, setNLPActive } = useSearchStore();
   const { document } = useCustomizeStore();
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
+  const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
+  const searchRef = useRef<any>(null);
 
   const defaultBackgroundColor = useMemo(
     () =>
@@ -86,6 +100,51 @@ const CustomiseLandingPageHeader = ({
     setShowCustomiseHomeModal(false);
   };
 
+  const handleDomainChange = useCallback(
+    async (domain: EntityReference | EntityReference[]) => {
+      updateActiveDomain(domain as EntityReference);
+      setIsDomainDropdownOpen(false);
+      navigate(0);
+    },
+    [updateActiveDomain, navigate]
+  );
+
+  const handleKeyPress = useCallback((event: KeyboardEvent) => {
+    if (isCommandKeyPress(event) && event.key === Keys.K) {
+      searchRef.current?.focus();
+      event.preventDefault();
+    }
+  }, []);
+
+  const handleSearchKeyPress = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        const searchValue = event.currentTarget.value.trim();
+        if (searchValue) {
+          navigate(`/explore?search=${encodeURIComponent(searchValue)}`);
+        }
+      }
+    },
+    [navigate]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const targetNode = (window.document as Document).body;
+    if (!targetNode) {
+      return;
+    }
+
+    targetNode.addEventListener('keydown', handleKeyPress);
+
+    return () => {
+      targetNode.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [handleKeyPress]);
+
   return (
     <div className="customise-landing-page" style={{ background: bgColor }}>
       <div className="header-container">
@@ -113,17 +172,32 @@ const CustomiseLandingPageHeader = ({
           <div className="mb-9 customise-search-container">
             <div className="d-flex items-center gap-4 mb-9">
               <div className="flex-center search-input">
-                {!isNLPEnabled && (
-                  <Button
-                    className="p-0 w-6 h-6"
-                    icon={
-                      <Icon
-                        component={IconSuggestionsBlue}
-                        style={{ fontSize: '20px' }}
-                      />
-                    }
-                    type="text"
-                  />
+                {isNLPEnabled && (
+                  <Tooltip
+                    title={
+                      isNLPActive
+                        ? t('message.natural-language-search-active')
+                        : t('label.use-natural-language-search')
+                    }>
+                    <Button
+                      className={classNames('nlp-search-button w-6 h-6', {
+                        active: isNLPActive,
+                      })}
+                      data-testid="nlp-suggestions-button"
+                      icon={
+                        <Icon
+                          component={
+                            isNLPActive
+                              ? IconSuggestionsActive
+                              : IconSuggestionsBlue
+                          }
+                          style={{ fontSize: '20px' }}
+                        />
+                      }
+                      type="text"
+                      onClick={() => setNLPActive(!isNLPActive)}
+                    />
+                  </Tooltip>
                 )}
                 <Input
                   autoComplete="off"
@@ -134,28 +208,54 @@ const CustomiseLandingPageHeader = ({
                   placeholder={t('label.search-for-type', {
                     type: 'Tables, Database, Schema...',
                   })}
+                  ref={searchRef}
                   type="text"
+                  onKeyDown={handleSearchKeyPress}
                 />
               </div>
-              <div
-                className="d-flex items-center gap-2 border-radius-sm p-y-sm p-x-md bg-white domain-selector"
-                data-testid="domain-selector">
-                <DomainIcon
-                  className="domain-icon"
-                  data-testid="domain-icon"
-                  height={22}
-                  width={22}
-                />
-                <Typography.Text className="text-sm font-medium domain-title">
-                  {t('label.all-domain-plural')}
-                </Typography.Text>
-                <DropdownIcon
-                  className="dropdown-icon"
-                  data-testid="dropdown-icon"
-                  height={14}
-                  width={14}
-                />
-              </div>
+              <DomainSelectableList
+                hasPermission
+                showAllDomains
+                popoverProps={{
+                  open: isDomainDropdownOpen,
+                  onOpenChange: (open) => {
+                    setIsDomainDropdownOpen(open);
+                  },
+                }}
+                selectedDomain={activeDomainEntityRef}
+                wrapInButton={false}
+                onCancel={() => setIsDomainDropdownOpen(false)}
+                onUpdate={handleDomainChange}>
+                <div
+                  className={classNames(
+                    'd-flex items-center gap-2 border-radius-sm p-y-sm p-x-md bg-white domain-selector',
+                    {
+                      'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
+                    }
+                  )}
+                  data-testid="domain-selector"
+                  onClick={() =>
+                    setIsDomainDropdownOpen(!isDomainDropdownOpen)
+                  }>
+                  <DomainIcon
+                    className="domain-icon"
+                    data-testid="domain-icon"
+                    height={22}
+                    width={22}
+                  />
+                  <Typography.Text className="text-sm font-medium domain-title">
+                    {activeDomainEntityRef
+                      ? getEntityName(activeDomainEntityRef)
+                      : activeDomain}
+                  </Typography.Text>
+                  <DropdownIcon
+                    className="dropdown-icon"
+                    data-testid="dropdown-icon"
+                    height={14}
+                    width={14}
+                  />
+                </div>
+              </DomainSelectableList>
             </div>
             {recentlyViewData.length > 0 && (
               <div className="customise-recently-viewed-data">
