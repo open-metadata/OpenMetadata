@@ -16,8 +16,9 @@ import traceback
 from datetime import datetime
 from typing import Iterable, List, Optional, Tuple
 
+import sqlalchemy.types as sqltypes
 import sqlparse
-from snowflake.sqlalchemy.custom_types import VARIANT
+from snowflake.sqlalchemy.custom_types import VARIANT, StructuredType
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier, Token
@@ -124,15 +125,36 @@ from metadata.utils.sqlalchemy_utils import (
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
+
+class MAP(StructuredType):
+    __visit_name__ = "MAP"
+
+    # Default to VARCHAR for key and value types if not provided
+    # This is a workaround to avoid the error:
+    # sqlalchemy.exc.ArgumentError: Map type requires a key_type and value_type
+    # when creating a table with a MAP column.
+    def __init__(
+        self,
+        key_type: sqltypes.TypeEngine = sqltypes.VARCHAR,
+        value_type: sqltypes.TypeEngine = sqltypes.VARCHAR,
+        not_null: bool = False,
+    ):
+        self.key_type = key_type
+        self.value_type = value_type
+        self.not_null = not_null
+        super().__init__()
+
+
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["GEOMETRY"] = create_sqlalchemy_type("GEOMETRY")
 ischema_names["VECTOR"] = create_sqlalchemy_type("VECTOR")
+ischema_names["MAP"] = MAP
 
 logger = ingestion_logger()
 
-
-SnowflakeDialect._json_deserializer = json.loads  # pylint: disable=protected-access
+# pylint: disable=protected-access
+SnowflakeDialect._json_deserializer = json.loads
 SnowflakeDialect.get_table_names = get_table_names
 SnowflakeDialect.get_view_names = get_view_names
 SnowflakeDialect.get_stream_names = get_stream_names
@@ -142,15 +164,11 @@ SnowflakeDialect.get_table_comment = get_table_comment
 SnowflakeDialect.get_all_view_definitions = get_all_view_definitions
 SnowflakeDialect.get_view_definition = get_view_definition
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
-SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
-    get_schema_columns
-)
+SnowflakeDialect._get_schema_columns = get_schema_columns
 Inspector.get_table_names = get_table_names_reflection
 Inspector.get_view_names = get_view_names_reflection
 Inspector.get_stream_names = get_stream_names_reflection
-SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-access
-    _current_database_schema
-)
+SnowflakeDialect._current_database_schema = _current_database_schema
 SnowflakeDialect.get_pk_constraint = get_pk_constraint
 SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
@@ -160,6 +178,7 @@ Inspector.get_stream_definition = get_stream_definition
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
+# pylint: disable=too-many-public-methods
 class SnowflakeSource(
     ExternalTableLineageMixin,
     CommonDbSourceService,
@@ -926,4 +945,3 @@ class SnowflakeSource(
         logger.debug(
             f"Processing ownership is not supported for {self.service_connection.type.name}"
         )
-        return None
