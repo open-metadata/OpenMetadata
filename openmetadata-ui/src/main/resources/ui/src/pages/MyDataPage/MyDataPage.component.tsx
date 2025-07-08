@@ -84,10 +84,16 @@ const MyDataPage = () => {
           (p: Page) => p.pageType === PageType.LandingPage
         ) ?? { layout: [], pageType: PageType.LandingPage };
 
+        const filteredLayout = pageData.layout.filter(
+          (widget: WidgetConfig) =>
+            !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||
+            !isEmpty(widget.config)
+        );
+
         setLayout(
-          isEmpty(pageData.layout)
+          isEmpty(filteredLayout)
             ? customizePageClassBase.defaultLayout
-            : pageData.layout
+            : filteredLayout
         );
       } else {
         setLayout(customizePageClassBase.defaultLayout);
@@ -157,27 +163,17 @@ const MyDataPage = () => {
           ? []
           : [customizePageClassBase.announcementWidget]),
         ...layout,
-      ].map((widget) => {
-        const isCuratedAssetWithoutConfig =
-          widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) &&
-          isEmpty(widget.config);
-
-        if (isCuratedAssetWithoutConfig) {
-          return null;
-        }
-
-        return (
-          <div data-grid={widget} key={widget.i}>
-            {getWidgetFromKey({
-              announcements: announcements,
-              followedData,
-              isLoadingOwnedData: isLoadingOwnedData,
-              widgetConfig: widget,
-              currentLayout: layout,
-            })}
-          </div>
-        );
-      }),
+      ].map((widget) => (
+        <div data-grid={widget} key={widget.i}>
+          {getWidgetFromKey({
+            announcements: announcements,
+            followedData,
+            isLoadingOwnedData: isLoadingOwnedData,
+            widgetConfig: widget,
+            currentLayout: layout,
+          })}
+        </div>
+      )),
     [
       layout,
       isAnnouncementLoading,
