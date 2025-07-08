@@ -4408,7 +4408,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public T assertSingleDomainInheritance(K createRequest, EntityReference expectedDomain)
       throws IOException {
-    T entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+    T entity = createEntity(createRequest.withDomainsList(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), "domains", ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
@@ -4430,7 +4430,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertNull(entity.getDomains().get(0).getInherited());
 
     // Now simulate and ingestion entity update with no domain
-    entity = updateEntity(updateRequest.withDomain(null), OK, ADMIN_AUTH_HEADERS);
+    entity = updateEntity(updateRequest.withDomainsList(null), OK, ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomains().get(0)); // Domain remains the same
     entity = getEntity(entity.getId(), "domains", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomains().get(0)); // Domain remains the same

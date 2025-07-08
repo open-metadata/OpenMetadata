@@ -72,7 +72,7 @@ public interface CreateEntity {
     return (K) this;
   }
 
-  default <K extends CreateEntity> K withDomain(String domain) {
+  default <K extends CreateEntity> K withDomainsList(List<String> domains) {
     return (K) this;
   }
 

@@ -964,7 +964,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   public Team assertSingleDomainInheritance(
       CreateTeam createRequest, EntityReference expectedDomain) throws IOException {
-    Team entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+    Team entity = createEntity(createRequest.withDomains(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner

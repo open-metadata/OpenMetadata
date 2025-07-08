@@ -53,7 +53,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     DOMAIN_DATA_PRODUCT = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
     SUB_DOMAIN_DATA_PRODUCT =
         createEntity(
-            createRequest(getEntityName(test, 1)).withDomain(SUB_DOMAIN.getFullyQualifiedName()),
+            createRequest(getEntityName(test, 1))
+                .withDomains(List.of(SUB_DOMAIN.getFullyQualifiedName())),
             ADMIN_AUTH_HEADERS);
   }
 
@@ -151,10 +152,14 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         domainTest
             .createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS)
             .getFullyQualifiedName();
-    DataProduct p1 = createEntity(createRequest(test, 1).withDomain(domain1), ADMIN_AUTH_HEADERS);
-    DataProduct p2 = createEntity(createRequest(test, 2).withDomain(domain1), ADMIN_AUTH_HEADERS);
-    DataProduct p3 = createEntity(createRequest(test, 3).withDomain(domain2), ADMIN_AUTH_HEADERS);
-    DataProduct p4 = createEntity(createRequest(test, 4).withDomain(domain2), ADMIN_AUTH_HEADERS);
+    DataProduct p1 =
+        createEntity(createRequest(test, 1).withDomains(List.of(domain1)), ADMIN_AUTH_HEADERS);
+    DataProduct p2 =
+        createEntity(createRequest(test, 2).withDomains(List.of(domain1)), ADMIN_AUTH_HEADERS);
+    DataProduct p3 =
+        createEntity(createRequest(test, 3).withDomains(List.of(domain2)), ADMIN_AUTH_HEADERS);
+    DataProduct p4 =
+        createEntity(createRequest(test, 4).withDomains(List.of(domain2)), ADMIN_AUTH_HEADERS);
 
     Map<String, String> params = new HashMap<>();
     // TODO FIXME
@@ -198,7 +203,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     // Create data product corresponding to parent domain
     CreateDataProduct create =
         createRequestWithoutExpertsOwners(getEntityName(test, 1))
-            .withDomain(parentDomain.getFullyQualifiedName());
+            .withDomains(List.of(parentDomain.getFullyQualifiedName()));
     DataProduct dataProduct = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertOwners(dataProduct.getOwners(), parentDomain.getOwners());
     assertEntityReferences(dataProduct.getExperts(), parentDomain.getExperts());
@@ -207,14 +212,14 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     CreateDomain subDomainReq =
         domainResourceTest
             .createRequestWithoutOwnersExperts(getEntityName(test, 2))
-            .withDomain(parentDomain.getFullyQualifiedName());
+            .withDomainsList(List.of(parentDomain.getFullyQualifiedName()));
     Domain subDomain = domainResourceTest.createEntity(subDomainReq, ADMIN_AUTH_HEADERS);
     subDomain = domainResourceTest.getEntity(subDomain.getId(), "*", ADMIN_AUTH_HEADERS);
 
     // Create data product corresponding to subdomain
     CreateDataProduct subDomainDataProductCreate =
         createRequestWithoutExpertsOwners(getEntityName(test, 2))
-            .withDomain(subDomain.getFullyQualifiedName());
+            .withDomains(List.of(subDomain.getFullyQualifiedName()));
     DataProduct subDomainDataProduct =
         createAndCheckEntity(subDomainDataProductCreate, ADMIN_AUTH_HEADERS);
 

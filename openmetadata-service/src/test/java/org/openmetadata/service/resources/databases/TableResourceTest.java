@@ -2484,7 +2484,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void test_domainInheritance(TestInfo test) throws IOException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
-        dbServiceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        dbServiceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     DatabaseService dbService = dbServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
 
     // Ensure database domain is inherited from database service
@@ -2529,7 +2529,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     fieldUpdated(change, "domains", DOMAIN.getEntityReference(), DOMAIN1.getEntityReference());
     dbService =
         dbServiceTest.updateAndCheckEntity(
-            createDbService.withDomain(DOMAIN1.getFullyQualifiedName()),
+            createDbService.withDomains(List.of(DOMAIN1.getFullyQualifiedName())),
             OK,
             ADMIN_AUTH_HEADERS,
             MINOR_UPDATE,
@@ -2543,12 +2543,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Change the domain of table and ensure further ingestion updates don't overwrite the domain
     assertSingleDomainInheritanceOverride(
-        table, createTable.withDomain(null), SUB_DOMAIN.getEntityReference());
+        table, createTable.withDomains(null), SUB_DOMAIN.getEntityReference());
 
     // Change the ownership of schema and ensure further ingestion updates don't overwrite the
     // ownership
     schemaTest.assertSingleDomainInheritanceOverride(
-        schema, createSchema.withDomain(null), SUB_DOMAIN.getEntityReference());
+        schema, createSchema.withDomains(null), SUB_DOMAIN.getEntityReference());
   }
 
   @Test
@@ -2564,7 +2564,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable createTable =
         createRequest(test)
             .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withDomain(DOMAIN.getFullyQualifiedName());
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     Table createdTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
@@ -2572,7 +2572,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         DOMAIN.getFullyQualifiedName(), createdTable.getDomains().get(0).getFullyQualifiedName());
 
     // update table entity domain w/ PUT request w/ bot auth and check update is ignored
-    CreateTable updateTablePayload = createTable.withDomain(DOMAIN1.getFullyQualifiedName());
+    CreateTable updateTablePayload =
+        createTable.withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
     updateEntity(updateTablePayload, OK, INGESTION_BOT_AUTH_HEADERS);
     Table updatedTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
     assertEquals(

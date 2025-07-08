@@ -54,10 +54,14 @@ public abstract class ServiceResourceTest<T extends EntityInterface, K extends C
         domainTest
             .createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS)
             .getFullyQualifiedName();
-    T s1 = createEntity(createRequest(test, 1).withDomain(domain1), ADMIN_AUTH_HEADERS);
-    T s2 = createEntity(createRequest(test, 2).withDomain(domain1), ADMIN_AUTH_HEADERS);
-    T s3 = createEntity(createRequest(test, 3).withDomain(domain2), ADMIN_AUTH_HEADERS);
-    T s4 = createEntity(createRequest(test, 4).withDomain(domain2), ADMIN_AUTH_HEADERS);
+    T s1 =
+        createEntity(createRequest(test, 1).withDomainsList(List.of(domain1)), ADMIN_AUTH_HEADERS);
+    T s2 =
+        createEntity(createRequest(test, 2).withDomainsList(List.of(domain1)), ADMIN_AUTH_HEADERS);
+    T s3 =
+        createEntity(createRequest(test, 3).withDomainsList(List.of(domain2)), ADMIN_AUTH_HEADERS);
+    T s4 =
+        createEntity(createRequest(test, 4).withDomainsList(List.of(domain2)), ADMIN_AUTH_HEADERS);
 
     Map<String, String> params = new HashMap<>();
     params.put("domain", domain1);

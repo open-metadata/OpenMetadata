@@ -159,7 +159,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     // When domain is not set for a Dashboard service, carry it forward from the dashboard
     DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
     CreateDashboardService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a dashboard without domain and ensure it inherits domain from the parent

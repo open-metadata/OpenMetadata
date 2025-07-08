@@ -617,7 +617,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // When domain is not set for a pipeline, carry it forward from the pipeline service
     PipelineServiceResourceTest serviceTest = new PipelineServiceResourceTest();
     CreatePipelineService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     PipelineService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a pipeline without domain and ensure it inherits domain from the parent
