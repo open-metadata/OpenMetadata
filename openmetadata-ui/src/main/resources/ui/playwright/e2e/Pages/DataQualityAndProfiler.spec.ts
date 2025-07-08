@@ -195,7 +195,11 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   await test.step('Edit', async () => {
     await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
-    await page.waitForSelector('.ant-modal-title');
+
+    await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      `Edit ${NEW_TABLE_TEST_CASE.name}`
+    );
+
     await page.locator('#tableTestForm_params_columnName').clear();
     await page.fill('#tableTestForm_params_columnName', 'new_column_name');
 
@@ -238,10 +242,18 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
-    await page.locator('button').filter({ hasText: 'Submit' }).click();
+    await page.getByTestId('update-btn').click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');
+    await page.waitForSelector('[data-testid="alert-bar"]', {
+      state: 'detached',
+    });
+
+    const testDefinitionResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testDefinitions/*'
+    );
     await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
+    await testDefinitionResponse;
 
     await page.waitForSelector('#tableTestForm_params_columnName');
 
@@ -387,11 +399,15 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
-    await page.locator('button').getByText('Submit').click();
+    await page.getByTestId('update-btn').click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');
 
+    const testDefinitionResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testDefinitions/*'
+    );
     await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
+    await testDefinitionResponse;
     await page.waitForSelector('#tableTestForm_params_minLength');
     const minLengthValue = await page
       .locator('#tableTestForm_params_minLength')
@@ -538,7 +554,7 @@ test(
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
-      await page.click('.ant-modal-footer >> text=Submit');
+      await page.getByTestId('update-btn').click();
       const updateResponse1 = await updateTestCaseResponse;
       const body1 = await updateResponse1.request().postData();
 
@@ -553,14 +569,18 @@ test(
       );
 
       // Edit test case description
+      const testDefinitionResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testDefinitions/*'
+      );
       await page.click(`[data-testid="edit-${testCaseName}"]`);
+      await testDefinitionResponse;
       await page.locator(descriptionBox).fill('Test case description');
       const updateTestCaseResponse2 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
-      await page.click('.ant-modal-footer >> text=Submit');
+      await page.getByTestId('update-btn').click();
       const updateResponse2 = await updateTestCaseResponse2;
       const body2 = await updateResponse2.request().postData();
 
@@ -575,14 +595,19 @@ test(
       );
 
       // Edit test case parameter values
+      const testDefinitionResponse3 = page.waitForResponse(
+        '/api/v1/dataQuality/testDefinitions/*'
+      );
       await page.click(`[data-testid="edit-${testCaseName}"]`);
+      await testDefinitionResponse3;
+      await page.locator('#tableTestForm_params_allowedValues_0_value').clear();
       await page.fill('#tableTestForm_params_allowedValues_0_value', 'test');
       const updateTestCaseResponse3 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
-      await page.click('.ant-modal-footer >> text=Submit');
+      await page.getByTestId('update-btn').click();
       const updateResponse3 = await updateTestCaseResponse3;
       const body3 = await updateResponse3.request().postData();
 
@@ -604,7 +629,7 @@ test(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
-        await page.click('[data-testid="by-test-cases"]');
+        await page.click('[data-testid="test-cases"]');
         await getTestCase;
         const searchTestCaseResponse = page.waitForResponse(
           `/api/v1/dataQuality/testCases/search/list?*q=*${testCaseName}*`
@@ -617,8 +642,12 @@ test(
         await page.waitForSelector('.ant-spin', {
           state: 'detached',
         });
+
         await page.click(`[data-testid="edit-${testCaseName}"]`);
-        await page.waitForSelector('.ant-modal-title');
+
+        await expect(
+          page.getByTestId('edit-test-case-drawer-title')
+        ).toBeVisible();
 
         await expect(page.locator('#tableTestForm_displayName')).toHaveValue(
           'Table test case display name'
@@ -626,7 +655,7 @@ test(
 
         await page.locator('#tableTestForm_displayName').clear();
         await page.fill('#tableTestForm_displayName', 'Updated display name');
-        await page.click('.ant-modal-footer >> text=Submit');
+        await page.getByTestId('update-btn').click();
         await toastNotification(page, 'Test case updated successfully.');
 
         await expect(
@@ -853,10 +882,6 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     ],
   });
   await filterTable1.createTestSuiteAndPipelines(apiContext);
-  const { testSuiteData: testSuite2Response } =
-    await filterTable1.createTestSuiteAndPipelines(apiContext, {
-      basicEntityReference: filterTable2Response?.['fullyQualifiedName'],
-    });
 
   const testCaseResult = {
     result: 'Found min=10001, max=27809 vs. the expected min=90001, max=96162.',
@@ -917,7 +942,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const getTestCaseListData = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*'
     );
-    await page.click('[data-testid="by-test-cases"]');
+    await page.click('[data-testid="test-cases"]');
     await getTestCaseListData;
     // get all the filters
     await page.click('[data-testid="advanced-filter"]');
@@ -1168,7 +1193,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const getTestCaseList = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*'
     );
-    await page.click('[data-testid="by-test-cases"]');
+    await page.click('[data-testid="test-cases"]');
     await getTestCaseList;
     await verifyFilterTestCase(page);
     await verifyFilter2TestCase(page, true);

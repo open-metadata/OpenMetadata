@@ -514,7 +514,13 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
       open={open}
       placement="right"
       size="large"
-      title={`${t('label.edit')} ${testCase?.name}`}
+      title={
+        <label data-testid="edit-test-case-drawer-title">
+          {`${t('label.edit-entity', {
+            entity: getEntityName(testCase),
+          })}`}
+        </label>
+      }
       {...drawerProps}
       onClose={() => {
         form.resetFields();

@@ -160,9 +160,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'testCaseResult',
         key: 'status',
         width: 120,
-        render: (result: TestCaseResult) => {
+        render: (result: TestCaseResult, record) => {
           return result?.testCaseStatus ? (
             <StatusBadge
+              dataTestId={`status-badge-${record.name}`}
               label={result.testCaseStatus}
               status={toLower(result.testCaseStatus) as StatusType}
             />
@@ -547,7 +548,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           ),
         }}
         pagination={false}
-        rowKey="id"
+        rowKey="fullyQualifiedName"
         scroll={{ x: true }}
         size="small"
         onChange={handleTableChange}

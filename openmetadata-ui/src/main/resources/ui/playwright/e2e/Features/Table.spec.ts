@@ -56,7 +56,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       `/api/v1/dataQuality/testCases/search/list?**`
     );
 
-    await page.click('[data-testid="by-test-cases"]');
+    await page.click('[data-testid="test-cases"]');
     await listTestCaseResponse;
     await page.getByText('Name', { exact: true }).click();
 
@@ -68,7 +68,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table search with sorting should works', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
-    await page.click('[data-testid="by-test-cases"]');
+    await page.click('[data-testid="test-cases"]');
     await page.getByText('Name', { exact: true }).click();
     await page.getByTestId('searchbar').click();
     await page.getByTestId('searchbar').fill('temp-test-case');
@@ -79,7 +79,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table filter with sorting should works', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
-    await page.click('[data-testid="by-test-cases"]');
+    await page.click('[data-testid="test-cases"]');
     await page.getByText('Name', { exact: true }).click();
 
     await page.getByTestId('status-select-filter').locator('div').click();
