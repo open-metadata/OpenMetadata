@@ -25,11 +25,11 @@ Create a new entry in the JSON schema definition of the Secrets Manager provider
 }
 ```
 
-You can find [this](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/secretsManagerProvider.json) file here in the repository.
+You can find [this](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/security/secrets/secretsManagerProvider.json) file here in the repository.
 
 ## 2. Update OM Server code
 
-Once we have updated the JSON Schema, we can start implementing our Secrets Manager, extending the `ExternalSecretsManager.java` abstract class located [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/secrets/ThirdPartySecretsManager.java). For example:
+Once we have updated the JSON Schema, we can start implementing our Secrets Manager, extending the `ExternalSecretsManager.java` abstract class located [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/secrets/ExternalSecretsManager.java). For example:
 
 ```java
 public abstract class AwesomeSecretsManager extends ExternalSecretsManager {
@@ -78,7 +78,7 @@ class AwesomeSecretsManager(ExternalSecretsManager, ABC):
         pass
 ```
 
-Similar to what we did in step 2, we have to add our implementation to the factory class `ExternalSecretsManager` that can be found [here]():
+Similar to what we did in step 2, we have to add our implementation to the factory class `ExternalSecretsManager` that can be found [here](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/secrets/secrets_manager_factory.py):
 
 ```json
 ...
