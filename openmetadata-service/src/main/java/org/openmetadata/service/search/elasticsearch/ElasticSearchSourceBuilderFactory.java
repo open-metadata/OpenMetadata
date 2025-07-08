@@ -58,28 +58,34 @@ public class ElasticSearchSourceBuilderFactory
             .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-    QueryStringQueryBuilder fuzzyQueryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(fuzzyFields)
-            .type(MOST_FIELDS)
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO)
-            .fuzzyMaxExpansions(10)
-            .fuzzyPrefixLength(3)
-            .tieBreaker(0.5f);
+    // Always use MultiMatch for consistency with table searches
+    BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
 
-    MultiMatchQueryBuilder nonFuzzyQueryBuilder =
-        QueryBuilders.multiMatchQuery(query)
-            .fields(nonFuzzyFields)
-            .type(MOST_FIELDS)
-            .operator(Operator.AND)
-            .tieBreaker(0.5f)
-            .fuzziness(Fuzziness.ZERO);
+    if (!fuzzyFields.isEmpty()) {
+      MultiMatchQueryBuilder fuzzyQueryBuilder =
+          QueryBuilders.multiMatchQuery(query)
+              .fields(fuzzyFields)
+              .type(MOST_FIELDS)
+              .fuzziness(Fuzziness.AUTO)
+              .maxExpansions(10)
+              .prefixLength(1)
+              .operator(Operator.AND)
+              .tieBreaker(0.3f);
+      combinedQuery.should(fuzzyQueryBuilder);
+    }
 
-    return QueryBuilders.boolQuery()
-        .should(fuzzyQueryBuilder)
-        .should(nonFuzzyQueryBuilder)
-        .minimumShouldMatch(1);
+    if (!nonFuzzyFields.isEmpty()) {
+      MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+          QueryBuilders.multiMatchQuery(query)
+              .fields(nonFuzzyFields)
+              .type(MOST_FIELDS)
+              .operator(Operator.AND)
+              .tieBreaker(0.3f)
+              .fuzziness(Fuzziness.ZERO);
+      combinedQuery.should(nonFuzzyQueryBuilder);
+    }
+
+    return combinedQuery.minimumShouldMatch(1);
   }
 
   @Override
