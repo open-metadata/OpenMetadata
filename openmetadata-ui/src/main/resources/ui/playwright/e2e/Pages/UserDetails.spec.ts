@@ -109,6 +109,102 @@ test.describe('User with different Roles', () => {
     );
   });
 
+  test('Create team with domain and verify visibility of inherited domain in user profile after team removal', async ({
+    adminPage,
+  }) => {
+    await redirectToUserPage(adminPage);
+    await adminPage.waitForLoadState('networkidle');
+
+    await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
+
+    await adminPage.getByTestId('edit-teams-button').click();
+
+    await expect(adminPage.getByTestId('team-select')).toBeVisible();
+
+    await adminPage.getByTestId('team-select').click();
+
+    await adminPage.waitForSelector('.ant-tree-select-dropdown', {
+      state: 'visible',
+    });
+
+    await adminPage.getByText(team.responseData.displayName).click();
+
+    const updateTeamsResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
+
+    await adminPage.getByTestId('teams-edit-save-btn').click();
+
+    await updateTeamsResponse;
+
+    await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
+      team.responseData.displayName
+    );
+
+    await adminPage.getByText(team.responseData.displayName).first().click();
+
+    await adminPage.waitForLoadState('networkidle');
+
+    const domainResponse = adminPage.waitForResponse((response) =>
+      response.url().includes('/api/v1/domains/hierarchy')
+    );
+
+    await adminPage.getByTestId('add-domain').click();
+
+    await domainResponse;
+
+    await adminPage.getByText(domain.responseData.displayName).click();
+
+    const teamsResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/teams/') &&
+        response.request().method() === 'PATCH'
+    );
+
+    await adminPage.getByText('Update').click();
+
+    await teamsResponse;
+
+    await redirectToUserPage(adminPage);
+
+    await adminPage.waitForLoadState('networkidle');
+
+    await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
+      team.responseData.displayName
+    );
+
+    await expect(
+      adminPage.locator('[data-testid="header-domain-container"]')
+    ).toContainText(domain.responseData.displayName);
+
+    await adminPage.getByTestId('edit-teams-button').click();
+
+    await adminPage.getByTestId('team-select').click();
+
+    await adminPage.waitForSelector('.ant-tree-select-dropdown', {
+      state: 'visible',
+    });
+
+    await adminPage
+      .locator('[title="' + team.responseData.displayName + '"]')
+      .first()
+      .click();
+
+    const userProfileResponse = adminPage.waitForResponse((response) =>
+      response.url().includes('/api/v1/users/')
+    );
+
+    await adminPage.getByTestId('teams-edit-save-btn').click({ force: true });
+
+    await userProfileResponse;
+
+    await expect(
+      adminPage.locator('[data-testid="header-domain-container"]')
+    ).not.toContainText(domain.responseData.displayName);
+  });
+
   test('User can search for a domain', async ({ adminPage }) => {
     await redirectToUserPage(adminPage);
 
