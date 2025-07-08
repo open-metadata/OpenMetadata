@@ -130,10 +130,10 @@ class SupersetAPISource(SupersetSourceMixin):
             )
 
     def _get_datasource_fqn_for_lineage(
-        self, chart_json: ChartResult, db_service_name: Optional[str]
+        self, chart_json: ChartResult, db_service_prefix: Optional[str]
     ):
         return (
-            self._get_datasource_fqn(chart_json.datasource_id, db_service_name)
+            self._get_datasource_fqn(chart_json.datasource_id, db_service_prefix)
             if chart_json.datasource_id
             else None
         )
@@ -153,9 +153,11 @@ class SupersetAPISource(SupersetSourceMixin):
                 chart = CreateChartRequest(
                     name=EntityName(str(chart_json.id)),
                     displayName=chart_json.slice_name,
-                    description=Markdown(chart_json.description)
-                    if chart_json.description
-                    else None,
+                    description=(
+                        Markdown(chart_json.description)
+                        if chart_json.description
+                        else None
+                    ),
                     chartType=get_standard_chart_type(chart_json.viz_type),
                     sourceUrl=SourceUrl(
                         f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}"
@@ -173,13 +175,19 @@ class SupersetAPISource(SupersetSourceMixin):
                 )
 
     def _get_datasource_fqn(
-        self, datasource_id: str, db_service_name: Optional[str]
+        self, datasource_id: str, db_service_prefix: Optional[str]
     ) -> Optional[str]:
+        (
+            db_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
         try:
             datasource_json = self.client.fetch_datasource(datasource_id)
             if datasource_json:
                 database_name = None
-                if db_service_name:
+                if db_service_prefix:
                     database_json = self.client.fetch_database(
                         datasource_json.result.database.id
                     )
@@ -194,11 +202,45 @@ class SupersetAPISource(SupersetSourceMixin):
                     database_name = get_database_name_for_lineage(
                         db_service_entity, default_database_name
                     )
+
+                    if (
+                        prefix_database_name
+                        and database_name
+                        and prefix_database_name.lower() != database_name.lower()
+                    ):
+                        logger.debug(
+                            f"Database {database_name} does not match prefix {prefix_database_name}"
+                        )
+                        return None
+
+                    if (
+                        prefix_schema_name
+                        and datasource_json.result.table_schema
+                        and prefix_schema_name.lower()
+                        != datasource_json.result.table_schema.lower()
+                    ):
+                        logger.debug(
+                            f"Schema {datasource_json.result.table_schema} does not match prefix {prefix_schema_name}"
+                        )
+                        return None
+
+                    if (
+                        prefix_table_name
+                        and datasource_json.result.table_name
+                        and prefix_table_name.lower()
+                        != datasource_json.result.table_name.lower()
+                    ):
+                        logger.debug(
+                            f"Table {datasource_json.result.table_name} does not match prefix {prefix_table_name}"
+                        )
+                        return None
+
                 return build_es_fqn_search_string(
-                    database_name=database_name,
-                    schema_name=datasource_json.result.table_schema,
+                    database_name=prefix_database_name or database_name,
+                    schema_name=prefix_schema_name
+                    or datasource_json.result.table_schema,
                     service_name=db_service_name or "*",
-                    table_name=datasource_json.result.table_name,
+                    table_name=prefix_table_name or datasource_json.result.table_name,
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())
