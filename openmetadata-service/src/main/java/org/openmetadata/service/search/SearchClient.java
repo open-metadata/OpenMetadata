@@ -169,7 +169,7 @@ public interface SearchClient {
           "dataProducts",
           "tags",
           "followers",
-          "domain",
+          "domains",
           "votes",
           "tier",
           "changeDescription");

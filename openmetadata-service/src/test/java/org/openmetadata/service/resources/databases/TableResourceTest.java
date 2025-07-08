@@ -2526,7 +2526,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Update domain of service within same session
     ChangeDescription change = getChangeDescription(dbService, MINOR_UPDATE);
-    fieldUpdated(change, "domain", DOMAIN.getEntityReference(), DOMAIN1.getEntityReference());
+    fieldUpdated(change, "domains", DOMAIN.getEntityReference(), DOMAIN1.getEntityReference());
     dbService =
         dbServiceTest.updateAndCheckEntity(
             createDbService.withDomain(DOMAIN1.getFullyQualifiedName()),

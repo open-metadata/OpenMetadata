@@ -249,7 +249,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .map(
             testSuiteId ->
                 Entity.<TestSuite>getEntity(
-                        TEST_SUITE, testSuiteId.getId(), "owners,domain", Include.ALL, false)
+                        TEST_SUITE, testSuiteId.getId(), "owners,domains", Include.ALL, false)
                     .withInherited(true)
                     .withChangeDescription(null))
         .toList();

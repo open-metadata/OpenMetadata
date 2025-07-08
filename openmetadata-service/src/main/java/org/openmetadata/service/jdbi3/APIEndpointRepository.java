@@ -87,7 +87,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   public void setInheritedFields(APIEndpoint endpoint, Fields fields) {
     APICollection apiCollection =
         Entity.getEntity(
-            API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domain", ALL);
+            API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domains", ALL);
     inheritOwners(endpoint, fields, apiCollection);
     inheritDomains(endpoint, fields, apiCollection);
   }

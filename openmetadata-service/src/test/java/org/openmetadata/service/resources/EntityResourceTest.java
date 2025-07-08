@@ -4410,10 +4410,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     T entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
-    entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
+    entity = getEntity(entity.getId(), "domains", ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     assertTrue(entity.getDomains().get(0).getInherited());
-    entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
+    entity = getEntityByName(entity.getFullyQualifiedName(), "domains", ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     assertTrue(entity.getDomains().get(0).getInherited());
     assertEntityReferenceFromSearch(entity, expectedDomain, Entity.FIELD_DOMAINS);
@@ -4432,10 +4432,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Now simulate and ingestion entity update with no domain
     entity = updateEntity(updateRequest.withDomain(null), OK, ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomains().get(0)); // Domain remains the same
-    entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
+    entity = getEntity(entity.getId(), "domains", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomains().get(0)); // Domain remains the same
     assertNull(entity.getDomains().get(0).getInherited());
-    entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
+    entity = getEntityByName(entity.getFullyQualifiedName(), "domains", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomains().get(0)); // Domain remains the same
     assertNull(entity.getDomains().get(0).getInherited());
   }
@@ -4492,7 +4492,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(1, hitsList.size());
     LinkedHashMap<String, Object> source =
         (LinkedHashMap<String, Object>) hitsList.get(0).get("_source");
-    EntityReference domain = JsonUtils.convertValue(source.get("domain"), EntityReference.class);
+    // TODO FIXME
+    EntityReference domain = JsonUtils.convertValue(source.get("domains"), EntityReference.class);
     assertEquals(expectedDomain.getId(), domain.getId());
   }
 

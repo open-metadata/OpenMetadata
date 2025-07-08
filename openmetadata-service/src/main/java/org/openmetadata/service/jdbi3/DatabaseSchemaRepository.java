@@ -153,7 +153,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void setInheritedFields(DatabaseSchema schema, Fields fields) {
     Database database =
-        Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owners,domain", ALL);
+        Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owners,domains", ALL);
     inheritOwners(schema, fields, database);
     inheritDomains(schema, fields, database);
     schema.withRetentionPeriod(

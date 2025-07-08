@@ -157,6 +157,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     DataProduct p4 = createEntity(createRequest(test, 4).withDomain(domain2), ADMIN_AUTH_HEADERS);
 
     Map<String, String> params = new HashMap<>();
+    // TODO FIXME
     params.put("domain", domain1);
     List<DataProduct> list = listEntities(params, ADMIN_AUTH_HEADERS).getData();
     assertEquals(2, list.size());

@@ -481,7 +481,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @SuppressWarnings("unused")
   protected void setInheritedFields(T entity, Fields fields) {
-    EntityInterface parent = supportsDomains ? getParentEntity(entity, "domain") : null;
+    EntityInterface parent = supportsDomains ? getParentEntity(entity, "domains") : null;
     if (parent != null) {
       inheritDomains(entity, fields, parent);
     }
