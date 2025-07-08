@@ -105,7 +105,9 @@ export const useCurrentUserPreferences = () => {
   }
 
   return {
-    preferences: preferences[currentUser.name] || defaultPreferences,
+    preferences: preferences[currentUser.name]
+      ? { ...defaultPreferences, ...preferences[currentUser.name] }
+      : defaultPreferences,
     setPreference: (newPreferences: Partial<UserPreferences>) =>
       setUserPreference(currentUser.name, newPreferences),
   };
