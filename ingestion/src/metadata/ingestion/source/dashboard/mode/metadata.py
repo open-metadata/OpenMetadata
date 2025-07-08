@@ -110,9 +110,11 @@ class ModeSource(DashboardServiceSource):
             name=EntityName(dashboard_details.get(client.TOKEN)),
             sourceUrl=SourceUrl(dashboard_url),
             displayName=dashboard_details.get(client.NAME),
-            description=Markdown(dashboard_details.get(client.DESCRIPTION))
-            if dashboard_details.get(client.DESCRIPTION)
-            else None,
+            description=(
+                Markdown(dashboard_details.get(client.DESCRIPTION))
+                if dashboard_details.get(client.DESCRIPTION)
+                else None
+            ),
             charts=[
                 FullyQualifiedEntityName(
                     fqn.build(
@@ -130,51 +132,95 @@ class ModeSource(DashboardServiceSource):
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
 
+    # pylint: disable=too-many-locals
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: dict,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+
         try:
             response_queries = self.client.get_all_queries(
                 workspace_name=self.workspace_name,
                 report_token=dashboard_details[client.TOKEN],
             )
             queries = response_queries[client.EMBEDDED][client.QUERIES]
+
             for query in queries:
                 if not query.get("data_source_id"):
                     continue
                 data_source = self.data_sources.get(query.get("data_source_id"))
                 if not data_source:
                     continue
+
+                database_name = data_source.get(client.DATABASE)
+                if (
+                    prefix_database_name
+                    and database_name
+                    and prefix_database_name.lower() != str(database_name).lower()
+                ):
+                    logger.debug(
+                        f"Database {database_name} does not match prefix {prefix_database_name}"
+                    )
+                    continue
+
                 lineage_parser = LineageParser(query.get("raw_query"))
                 for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]
                     database_schema_name = self.check_database_schema_name(
                         database_schema_name
                     )
+
+                    if (
+                        prefix_table_name
+                        and table
+                        and prefix_table_name.lower() != str(table).lower()
+                    ):
+                        logger.debug(
+                            f"Table {table} does not match prefix {prefix_table_name}"
+                        )
+                        continue
+
+                    if (
+                        prefix_schema_name
+                        and database_schema_name
+                        and prefix_schema_name.lower()
+                        != str(database_schema_name).lower()
+                    ):
+                        logger.debug(
+                            f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                        )
+                        continue
+
                     fqn_search_string = build_es_fqn_search_string(
-                        database_name=data_source.get(client.DATABASE),
-                        schema_name=database_schema_name,
-                        service_name=db_service_name or "*",
-                        table_name=table,
+                        database_name=prefix_database_name or database_name,
+                        schema_name=prefix_schema_name or database_schema_name,
+                        service_name=prefix_service_name or "*",
+                        table_name=prefix_table_name or table,
                     )
                     from_entities = self.metadata.search_in_any_service(
                         entity_type=Table,
                         fqn_search_string=fqn_search_string,
                         fetch_multiple_entities=True,
                     )
+
+                    to_entity = self.metadata.get_by_name(
+                        entity=Lineage_Dashboard,
+                        fqn=fqn.build(
+                            self.metadata,
+                            Lineage_Dashboard,
+                            service_name=self.config.serviceName,
+                            dashboard_name=dashboard_details.get(client.TOKEN),
+                        ),
+                    )
                     for from_entity in from_entities or []:
-                        to_entity = self.metadata.get_by_name(
-                            entity=Lineage_Dashboard,
-                            fqn=fqn.build(
-                                self.metadata,
-                                Lineage_Dashboard,
-                                service_name=self.config.serviceName,
-                                dashboard_name=dashboard_details.get(client.TOKEN),
-                            ),
-                        )
                         yield self._get_add_lineage_request(
                             to_entity=to_entity, from_entity=from_entity
                         )
@@ -182,7 +228,7 @@ class ModeSource(DashboardServiceSource):
             yield Either(
                 left=StackTraceError(
                     name="Lineage",
-                    error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
+                    error=f"Error to yield dashboard lineage details for service name [{prefix_service_name}]: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )

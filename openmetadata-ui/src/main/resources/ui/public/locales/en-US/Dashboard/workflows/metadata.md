@@ -54,14 +54,19 @@ Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/me
 $$
 
 $$section
-### Database Service Name $(id="dbServiceNames")
+### Database Service Prefixes $(id="dbServicePrefixes")
 
 When processing Dashboards and Charts we can extract information on which tables are used to create them.
 
 In order to create the lineage between the Dashboard sources and their tables of origin, we need to know where to look for such tables.
 
-You can enter a list of Database Services that are hosting the tables used to create the Dashboards.
+List of service path prefixes for lineage matching. Supported formats: 
+**DBServiceName**
+**DBServiceName.DatabaseName**
+**DBServiceName.DatabaseName.SchemaName**
+**DBServiceName.DatabaseName.SchemaName.TableName**
 $$
+
 
 $$section
 ### Enable Debug Logs $(id="enableDebugLog")

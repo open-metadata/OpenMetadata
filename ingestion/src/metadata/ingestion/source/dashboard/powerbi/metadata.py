@@ -466,9 +466,9 @@ class PowerbiSource(DashboardServiceSource):
         for column in table.columns or []:
             try:
                 parsed_column = {
-                    "dataTypeDisplay": column.dataType
-                    if column.dataType
-                    else DataType.UNKNOWN.value,
+                    "dataTypeDisplay": (
+                        column.dataType if column.dataType else DataType.UNKNOWN.value
+                    ),
                     "dataType": ColumnTypeParser.get_column_type(
                         column.dataType if column.dataType else None
                     ),
@@ -556,9 +556,11 @@ class PowerbiSource(DashboardServiceSource):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(dataset.id),
                         displayName=dataset.name,
-                        description=Markdown(dataset.description)
-                        if dataset.description
-                        else None,
+                        description=(
+                            Markdown(dataset.description)
+                            if dataset.description
+                            else None
+                        ),
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
                         ),
@@ -624,11 +626,13 @@ class PowerbiSource(DashboardServiceSource):
 
     def create_datamodel_report_lineage(
         self,
+        db_service_prefix: Optional[str],
         dashboard_details: PowerBIReport,
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         create the lineage between datamodel and report
         """
+
         try:
             report_fqn = fqn.build(
                 self.metadata,
@@ -846,20 +850,60 @@ class PowerbiSource(DashboardServiceSource):
 
     def _get_table_and_datamodel_lineage(
         self,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
         table: PowerBiTable,
         datamodel_entity: DashboardDataModel,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to create lineage between table and datamodels
         """
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+
         try:
             table_info = self._parse_table_info_from_source_exp(table, datamodel_entity)
+            table_name = table.name or table_info.get("table")
+            schema_name = table_info.get("schema")
+            database_name = table_info.get("database")
+            if (
+                prefix_table_name
+                and table_name
+                and prefix_table_name.lower() != table_name.lower()
+            ):
+                logger.debug(
+                    f"Table {table_name} does not match prefix {prefix_table_name}"
+                )
+                return
+
+            if (
+                prefix_schema_name
+                and schema_name
+                and prefix_schema_name.lower() != schema_name.lower()
+            ):
+                logger.debug(
+                    f"Schema {table_info.get('schema')} does not match prefix {prefix_schema_name}"
+                )
+                return
+
+            if (
+                prefix_database_name
+                and database_name
+                and prefix_database_name.lower() != database_name.lower()
+            ):
+                logger.debug(
+                    f"Database {table_info.get('database')} does not match prefix {prefix_database_name}"
+                )
+                return
+
             fqn_search_string = build_es_fqn_search_string(
-                service_name=db_service_name or "*",
-                table_name=table_info.get("table") or table.name,
-                schema_name=table_info.get("schema") or "*",
-                database_name=table_info.get("database") or "*",
+                service_name=prefix_service_name or "*",
+                table_name=(prefix_table_name or table_name),
+                schema_name=(prefix_schema_name or schema_name),
+                database_name=(prefix_database_name or database_name),
             )
             table_entity = self.metadata.search_in_any_service(
                 entity_type=Table,
@@ -889,12 +933,14 @@ class PowerbiSource(DashboardServiceSource):
 
     def create_table_datamodel_lineage_from_files(
         self,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
         datamodel_entity: Optional[DashboardDataModel],
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to create lineage between table and datamodels using pbit files
         """
+        (prefix_service_name, *_) = self.parse_db_service_prefix(db_service_prefix)
+
         try:
             # check if the datamodel_file_mappings is populated or not
             # if not, then populate the datamodel_file_mappings and process the lineage
@@ -915,7 +961,7 @@ class PowerbiSource(DashboardServiceSource):
             for datamodel_schema_file in datamodel_file_list:
                 for table in datamodel_schema_file.tables or []:
                     yield from self._get_table_and_datamodel_lineage(
-                        db_service_name=db_service_name,
+                        db_service_prefix=db_service_prefix,
                         table=table,
                         datamodel_entity=datamodel_entity,
                     )
@@ -925,7 +971,7 @@ class PowerbiSource(DashboardServiceSource):
                     name="DataModel Lineage",
                     error=(
                         "Error to yield datamodel lineage details for DB "
-                        f"service name [{str(db_service_name)}]: {exc}"
+                        f"service name [{prefix_service_name}]: {exc}"
                     ),
                     stackTrace=traceback.format_exc(),
                 )
@@ -1075,17 +1121,20 @@ class PowerbiSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Group,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         We will build the logic to build the logic as below
         tables - datamodel - report - dashboard
         """
+        (prefix_service_name, *_) = self.parse_db_service_prefix(db_service_prefix)
+
         for dashboard in self.filtered_dashboards or []:
             dashboard_details = self.get_dashboard_details(dashboard)
             try:
                 if isinstance(dashboard_details, PowerBIReport):
                     yield from self.create_datamodel_report_lineage(
+                        db_service_prefix=db_service_prefix,
                         dashboard_details=dashboard_details,
                     )
                 if isinstance(dashboard_details, PowerBIDashboard):
@@ -1096,7 +1145,7 @@ class PowerbiSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Dashboard Lineage",
-                        error=f"Error to yield dashboard lineage details for DB service name [{str(db_service_name)}]: {exc}",
+                        error=f"Error to yield dashboard lineage details for DB service name [{str(prefix_service_name)}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
@@ -1126,7 +1175,7 @@ class PowerbiSource(DashboardServiceSource):
                         # 1. datamodel-db_table lineage
                         for table in datamodel.tables or []:
                             yield from self._get_table_and_datamodel_lineage(
-                                db_service_name=db_service_name,
+                                db_service_prefix=db_service_prefix,
                                 table=table,
                                 datamodel_entity=datamodel_entity,
                             )
@@ -1141,7 +1190,7 @@ class PowerbiSource(DashboardServiceSource):
                         # create the lineage between table and datamodel using the pbit files
                         if self.client.file_client:
                             yield from self.create_table_datamodel_lineage_from_files(
-                                db_service_name=db_service_name,
+                                db_service_prefix=db_service_prefix,
                                 datamodel_entity=datamodel_entity,
                             )
                     elif isinstance(datamodel, Dataflow):
@@ -1157,7 +1206,7 @@ class PowerbiSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Datamodel Lineage",
-                        error=f"Error to yield datamodel lineage details for DB service name [{str(db_service_name)}]: {exc}",
+                        error=f"Error to yield datamodel lineage details for DB service name [{str(prefix_service_name)}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
