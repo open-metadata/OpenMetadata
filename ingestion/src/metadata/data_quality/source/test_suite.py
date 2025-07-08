@@ -289,7 +289,9 @@ class TestSuiteSource(Source):
             test_cases, key=lambda t: entity_link.get_table_fqn(t.entityLink.root)
         )
         for table_fqn, group in grouped_by_table:
-            table_entity: Table = self.metadata.get_by_name(Table, table_fqn)
+            table_entity: Table = self.metadata.get_by_name(
+                Table, table_fqn, fields=["tableProfilerConfig"]
+            )
             if table_entity is None:
                 yield Either(
                     left=StackTraceError(

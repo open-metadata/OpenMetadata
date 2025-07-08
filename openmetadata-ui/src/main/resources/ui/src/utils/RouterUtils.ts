@@ -47,7 +47,7 @@ import { ServiceAgentSubTabs } from '../enums/service.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
-import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './CommonUtils';
 import { getBasePath } from './HistoryUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
@@ -223,6 +223,18 @@ export const getSettingPath = (
   return path;
 };
 
+export const getSettingPathRelative = (
+  category?: string,
+  tab?: string,
+  withFqn = false,
+  withAction = false
+) => {
+  return getSettingPath(category, tab, withFqn, withAction).replace(
+    ROUTES.SETTINGS,
+    ''
+  );
+};
+
 export const getSettingsPathWithFqn = (
   category: string,
   tab: string,
@@ -251,7 +263,7 @@ export const getSettingCategoryPath = (category: string) => {
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }
 
-  return path;
+  return path.replace(ROUTES.SETTINGS, '');
 };
 
 export const getTeamsWithFqnPath = (fqn: string) => {
@@ -497,15 +509,34 @@ export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
   return path;
 };
 
-export const getIncidentManagerDetailPagePath = (
+export const getTestCaseDetailPagePath = (
   fqn: string,
-  tab = IncidentManagerTabs.TEST_CASE_RESULTS
+  tab = TestCasePageTabs.TEST_CASE_RESULTS
 ) => {
-  let path = ROUTES.INCIDENT_MANAGER_DETAILS_WITH_TAB;
+  let path = ROUTES.TEST_CASE_DETAILS_WITH_TAB;
 
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+  return path;
+};
+export const getTestCaseVersionPath = (
+  fqn: string,
+  version: string,
+  tab?: string
+) => {
+  let path = tab
+    ? ROUTES.TEST_CASE_DETAILS_WITH_TAB_VERSION
+    : ROUTES.TEST_CASE_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };

@@ -20,7 +20,7 @@ import {
 import { Alert, Button, Card, Col, Menu, Row, Switch, Typography } from 'antd';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -298,14 +298,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
         className="content-height-with-resizable-panel"
         firstPanel={{
           className: 'content-resizable-panel-container',
-          flex: 0.13,
+          flex: 0.2,
           minWidth: 280,
           title: t('label.data-asset-plural'),
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}
         secondPanel={{
           className: 'content-height-with-resizable-panel',
-          flex: 0.87,
+          flex: 0.8,
           minWidth: 800,
           children: (
             <div className="explore-main-container">

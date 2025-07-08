@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Divider, Space, Typography } from 'antd';
 import {
   ArrayChange,
   Change,
@@ -19,7 +19,6 @@ import {
   diffWords,
   diffWordsWithSpace,
 } from 'diff';
-import { t } from 'i18next';
 import {
   cloneDeep,
   get,
@@ -27,11 +26,12 @@ import {
   isEqual,
   isObject,
   isUndefined,
+  startCase,
   toString,
   uniqBy,
   uniqueId,
 } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import {
   ExtentionEntities,
@@ -54,6 +54,7 @@ import {
 } from '../generated/entity/services/databaseService';
 import { MetadataService } from '../generated/entity/services/metadataService';
 import { EntityReference } from '../generated/entity/type';
+import { TestCaseParameterValue } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
   EntityDiffProps,
@@ -65,8 +66,11 @@ import {
   TagLabelWithStatus,
   VersionEntityTypes,
 } from './EntityVersionUtils.interface';
+import { t } from './i18next/LocalUtil';
 import { getJSONFromString, isValidJSONString } from './StringsUtils';
 import { getTagsWithoutTier, getTierTags } from './TableUtils';
+
+type EntityColumn = TableColumn | ContainerColumn | Field;
 
 export const getChangedEntityName = (diffObject?: EntityDiffProps) =>
   diffObject?.added?.name ??
@@ -504,10 +508,9 @@ export function getEntityDescriptionDiff<A extends AssetsChildForVersionPages>(
   return entityList;
 }
 
-export function getEntityDisplayNameDiff<
-  A extends TableColumn | ContainerColumn | Field
->(
+export function getStringEntityDiff<A extends EntityColumn>(
   entityDiff: EntityDiffProps,
+  key: EntityField,
   changedEntityName?: string,
   entityList: A[] = []
 ) {
@@ -517,11 +520,11 @@ export function getEntityDisplayNameDiff<
   const formatEntityData = (arr: Array<A>) => {
     arr?.forEach((i) => {
       if (isEqual(i.name, changedEntityName)) {
-        i.displayName = getTextDiff(
+        i[key as keyof A] = getTextDiff(
           oldDisplayName ?? '',
           newDisplayName ?? '',
-          i.displayName
-        );
+          i[key as keyof typeof i] as unknown as string
+        ) as unknown as A[keyof A];
       } else {
         formatEntityData(i?.children as Array<A>);
       }
@@ -533,9 +536,11 @@ export function getEntityDisplayNameDiff<
   return entityList;
 }
 
-export function getEntityTagDiff<
-  A extends TableColumn | ContainerColumn | Field
->(entityDiff: EntityDiffProps, changedEntityName?: string, entityList?: A[]) {
+export function getEntityTagDiff<A extends EntityColumn>(
+  entityDiff: EntityDiffProps,
+  changedEntityName?: string,
+  entityList?: A[]
+) {
   const oldTags: TagLabel[] = JSON.parse(
     getChangedEntityOldValue(entityDiff) ?? '[]'
   );
@@ -631,8 +636,8 @@ export const getCommonExtraInfoForVersionDetails = (
 
   if (!isUndefined(newTier) || !isUndefined(oldTier)) {
     tierDisplayName = getDiffValue(
-      oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || '',
-      newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || ''
+      oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? '',
+      newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? ''
     );
   } else if (tier?.tagFQN) {
     tierDisplayName = tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
@@ -820,7 +825,23 @@ export function getColumnsDataWithVersionChanges<
       ];
     } else if (isEndsWithField(EntityField.DISPLAYNAME, changedEntityName)) {
       newColumnsList = [
-        ...getEntityDisplayNameDiff(columnDiff, changedColName, colList),
+        ...getStringEntityDiff(
+          columnDiff,
+          EntityField.DISPLAYNAME,
+          changedColName,
+          colList
+        ),
+      ];
+    } else if (
+      isEndsWithField(EntityField.DATA_TYPE_DISPLAY, changedEntityName)
+    ) {
+      newColumnsList = [
+        ...getStringEntityDiff(
+          columnDiff,
+          EntityField.DATA_TYPE_DISPLAY,
+          changedColName,
+          colList
+        ),
       ];
     } else if (!isEndsWithField(EntityField.CONSTRAINT, changedEntityName)) {
       const changedEntity = changedEntityName
@@ -1030,6 +1051,198 @@ export const getOwnerDiff = (
       getOwnerLabelName(item, operation)
     ),
   };
+};
+
+export const getChangedEntityStatus = (
+  oldValue?: string,
+  newValue?: string
+) => {
+  if (oldValue && newValue) {
+    return oldValue !== newValue
+      ? EntityChangeOperations.UPDATED
+      : EntityChangeOperations.NORMAL;
+  } else if (oldValue && !newValue) {
+    return EntityChangeOperations.DELETED;
+  } else if (!oldValue && newValue) {
+    return EntityChangeOperations.ADDED;
+  }
+
+  return EntityChangeOperations.NORMAL;
+};
+
+export const getParameterValuesDiff = (
+  changeDescription: ChangeDescription,
+  defaultValues?: TestCaseParameterValue[]
+): {
+  name: string;
+  oldValue: string;
+  newValue: string;
+  status: EntityChangeOperations;
+}[] => {
+  const fieldDiff = getDiffByFieldName(
+    EntityField.PARAMETER_VALUES,
+    changeDescription,
+    true
+  );
+
+  const oldValues: TestCaseParameterValue[] =
+    getChangedEntityOldValue(fieldDiff) ?? [];
+  const newValues: TestCaseParameterValue[] =
+    getChangedEntityNewValue(fieldDiff) ?? [];
+
+  // If no diffs exist and we have default values, return them as unchanged
+  if (
+    isEmpty(oldValues) &&
+    isEmpty(newValues) &&
+    defaultValues &&
+    !isEmpty(defaultValues)
+  ) {
+    return defaultValues.map((param) => ({
+      name: String(param.name),
+      oldValue: String(param.value),
+      newValue: String(param.value),
+      status: EntityChangeOperations.NORMAL,
+    }));
+  }
+
+  const result: {
+    name: string;
+    oldValue: string;
+    newValue: string;
+    status: EntityChangeOperations;
+  }[] = [];
+
+  // Find all unique parameter names
+  const allNames = Array.from(
+    new Set([...oldValues.map((p) => p.name), ...newValues.map((p) => p.name)])
+  );
+
+  allNames.forEach((name) => {
+    const oldParam = oldValues.find((p) => p.name === name);
+    const newParam = newValues.find((p) => p.name === name);
+
+    if (oldParam && newParam) {
+      if (oldParam.value !== newParam.value) {
+        result.push({
+          name: String(name),
+          oldValue: String(oldParam.value),
+          newValue: String(newParam.value),
+          status: EntityChangeOperations.UPDATED,
+        });
+      } else {
+        result.push({
+          name: String(name),
+          oldValue: String(oldParam.value),
+          newValue: String(newParam.value),
+          status: EntityChangeOperations.NORMAL,
+        });
+      }
+    } else if (!oldParam && newParam) {
+      result.push({
+        name: String(name),
+        oldValue: '',
+        newValue: String(newParam.value),
+        status: EntityChangeOperations.ADDED,
+      });
+    } else if (oldParam && !newParam) {
+      result.push({
+        name: String(name),
+        oldValue: String(oldParam.value),
+        newValue: '',
+        status: EntityChangeOperations.DELETED,
+      });
+    }
+  });
+
+  return result;
+};
+
+// New function for React element diff (for parameter value diff only)
+export const getTextDiffElements = (
+  oldText: string,
+  newText: string
+): React.ReactNode[] => {
+  const diffArr = diffWords(toString(oldText), toString(newText));
+
+  return diffArr.map((diff) => {
+    if (diff.added) {
+      return getAddedDiffElement(diff.value);
+    }
+    if (diff.removed) {
+      return getRemovedDiffElement(diff.value);
+    }
+
+    return getNormalDiffElement(diff.value);
+  });
+};
+
+export const getDiffDisplayValue = (diff: {
+  oldValue: string;
+  newValue: string;
+  status: EntityChangeOperations;
+}) => {
+  switch (diff.status) {
+    case EntityChangeOperations.UPDATED:
+      return getTextDiffElements(diff.oldValue, diff.newValue);
+    case EntityChangeOperations.ADDED:
+      return getAddedDiffElement(diff.newValue);
+    case EntityChangeOperations.DELETED:
+      return getRemovedDiffElement(diff.oldValue);
+    case EntityChangeOperations.NORMAL:
+    default:
+      return diff.oldValue;
+  }
+};
+
+export const getParameterValueDiffDisplay = (
+  changeDescription: ChangeDescription,
+  defaultValues?: TestCaseParameterValue[]
+): React.ReactNode => {
+  const diffs = getParameterValuesDiff(changeDescription, defaultValues);
+
+  // Separate sqlExpression from other params
+  const sqlParamDiff = diffs.find((diff) => diff.name === 'sqlExpression');
+  const otherParamDiffs = diffs.filter((diff) => diff.name !== 'sqlExpression');
+
+  return (
+    <>
+      {/* Render non-sqlExpression parameters as before */}
+      <Space
+        wrap
+        className="parameter-value-container parameter-value"
+        size={6}>
+        {otherParamDiffs.length === 0 ? (
+          <Typography.Text type="secondary">
+            {t('label.no-parameter-available')}
+          </Typography.Text>
+        ) : (
+          otherParamDiffs.map((diff, index) => (
+            <Space data-testid={diff.name} key={diff.name} size={4}>
+              <Typography.Text className="text-grey-muted">
+                {`${diff.name}:`}
+              </Typography.Text>
+              <Typography.Text>{getDiffDisplayValue(diff)}</Typography.Text>
+              {otherParamDiffs.length - 1 !== index && (
+                <Divider type="vertical" />
+              )}
+            </Space>
+          ))
+        )}
+      </Space>
+      {/* Render sqlExpression parameter separately, using inline diff in a code-style block */}
+      {sqlParamDiff && (
+        <div className="m-t-md">
+          <Typography.Text className="right-panel-label">
+            {startCase(sqlParamDiff.name)}
+          </Typography.Text>
+
+          <div className="m-t-sm version-sql-expression-container">
+            {getDiffDisplayValue(sqlParamDiff)}
+          </div>
+        </div>
+      )}
+    </>
+  );
 };
 
 export const getOwnerVersionLabel = (

@@ -27,6 +27,11 @@ export interface SearchRequest {
      */
     domains?: any;
     /**
+     * Exclude specified fields from the document body for each hit. Use this to exclude heavy
+     * fields like 'columns' for better performance
+     */
+    excludeSourceFields?: string[];
+    /**
      * Explain the results of the query. Defaults to false. Only for debugging purposes.
      */
     explain?: boolean;

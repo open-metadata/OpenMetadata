@@ -1,5 +1,6 @@
 ---
 title: Run the Tableau Connector Externally
+description: Configure Tableau dashboard connections in OpenMetadata using YAML. Step-by-step guide for seamless data catalog integration and metadata extraction.
 slug: /connectors/dashboard/tableau/yaml
 ---
 
@@ -19,7 +20,7 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-tableau-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -29,13 +30,13 @@ To create lineage between tableau dashboard and any database service via the que
 For more information on enabling the Tableau Metadata APIs follow the link [here](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html)
 
 {% note %}
-- If using a **default site** on Tableau Server, leave the **Site URL** and **Site Name** fields **blank** in the ingestion configuration.  
+- If using a **default site** on Tableau Server, leave the **Site Name** field **blank** in the ingestion configuration.  
 - Ensure that the **Metadata API** is enabled for the user performing the ingestion. If it is not enabled, ingestion may fail. Follow the official Tableau documentation to [enable the Metadata API](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html#enable-the-tableau-metadata-api-for-tableau-server).  
 {% /note %}
 
 ### Python Requirements
 
-{% partial file="/v1.6/connectors/python-requirements.md" /%}
+{% partial file="/v1.7/connectors/python-requirements.md" /%}
 
 To run the Tableau ingestion, you will need to install:
 
@@ -86,12 +87,6 @@ This is a sample config for Tableau:
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=3 %}
-
-**env**: The config object can have multiple environments. The default environment is defined as `tableau_prod`, and you can change this if needed by specifying an `env` parameter.
-
-{% /codeInfo %}
-
 {% codeInfo srNumber=4 %}
 
 **hostPort**: URL or IP address of your installation of Tableau Server.
@@ -101,18 +96,6 @@ This is a sample config for Tableau:
 {% codeInfo srNumber=5 %}
 
 **siteName**: Tableau Site Name. This corresponds to the `contentUrl` attribute in the Tableau REST API. The `site_name` is the portion of the URL that follows the `/site/` in the URL.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=6 %}
-
-**siteUrl**: Tableau Site URL. Tableau Site Url. To be kept empty if you are using the default Tableau site
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=7 %}
-
-**apiVersion**: Tableau API version. A lists versions of Tableau Server and of the corresponding REST API and REST API schema versions can be found [here](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm).
 
 {% /codeInfo %}
 
@@ -161,7 +144,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 {% /codeInfo %}
 
 
-{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -185,20 +168,11 @@ source:
       #   personalAccessTokenName: personal_access_token_name
       #   personalAccessTokenSecret: personal_access_token_secret
 ```
-```yaml {% srNumber=3 %}
-      env: tableau_prod
-```
 ```yaml {% srNumber=4 %}
       hostPort: http://localhost
 ```
 ```yaml {% srNumber=5 %}
       siteName: site_name
-```
-```yaml {% srNumber=6 %}
-      siteUrl: site_url
-```
-```yaml {% srNumber=7 %}
-      apiVersion: api_version
 ```
 ```yaml {% srNumber=11 %}
       paginationLimit: pagination_limit
@@ -226,11 +200,11 @@ source:
 ```
 
 
-{% partial file="/v1.6/connectors/yaml/dashboard/source-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -258,11 +232,8 @@ source:
       # authType:
       #   personalAccessTokenName: personal_access_token_name
       #   personalAccessTokenSecret: personal_access_token_secret
-      env: tableau_prod
       hostPort: http://localhost
       siteName: site_name
-      siteUrl: site_url
-      apiVersion: api_version
   sourceConfig:
     config:
       type: DashboardMetadata
@@ -368,4 +339,4 @@ To establish secure connections between OpenMetadata and Tableau, in the `YAML` 
             sslKey: "/path/to/your/ssl_key"
 ```
 
-{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}

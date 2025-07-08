@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { addDomains } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -39,8 +38,12 @@ jest.mock('../../../utils/CommonUtils', () => ({
   getIsErrorMatch: jest.fn().mockImplementation(() => Promise.resolve(error)),
 }));
 
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
+
 jest.mock('../../../utils/RouterUtils', () => ({
-  getDomainPath: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getDomainPath: jest.fn().mockImplementation(() => -1),
 }));
 jest.mock('../../common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
@@ -74,17 +77,19 @@ jest.mock('../AddDomainForm/AddDomainForm.component', () => {
     </div>
   ));
 });
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
+
+const mockProps = {
+  pageTitle: 'add-domain',
+};
 
 describe('AddDomain', () => {
   it('renders add domain', async () => {
-    render(<AddDomain />);
+    render(<AddDomain {...mockProps} />);
 
     expect(await screen.findByText('BreadCrumb')).toBeInTheDocument();
     expect(await screen.findByTestId('form-heading')).toHaveTextContent(
@@ -93,7 +98,7 @@ describe('AddDomain', () => {
   });
 
   it('Should call onSubmit function', async () => {
-    render(<AddDomain />);
+    render(<AddDomain {...mockProps} />);
 
     const submitButton = await screen.findByTestId('submit-button');
     await act(async () => {
@@ -104,19 +109,17 @@ describe('AddDomain', () => {
   });
 
   it('Should call onCancel function', async () => {
-    render(<AddDomain />);
+    render(<AddDomain {...mockProps} />);
 
     const cancelButton = await screen.findByTestId('cancel-button');
-    await act(async () => {
-      fireEvent.click(cancelButton);
-    });
+    fireEvent.click(cancelButton);
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   it('Should show error message when api fails', async () => {
     (addDomains as jest.Mock).mockRejectedValue(error);
-    render(<AddDomain />);
+    render(<AddDomain {...mockProps} />);
     const submitButton = await screen.findByTestId('submit-button');
     await act(async () => {
       fireEvent.click(submitButton);

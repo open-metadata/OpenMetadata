@@ -15,9 +15,9 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -58,6 +58,7 @@ import {
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
 import { TagsTabs } from '../shared/TagsTabs';
 import '../task-page.style.less';
@@ -66,11 +67,11 @@ import { EntityData, Option } from '../TasksPage.interface';
 const UpdateTag = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = useForm();
   const { currentUser } = useApplicationStore();
 
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const { fqn } = useFqn();
   const queryParams = new URLSearchParams(location.search);
@@ -109,7 +110,7 @@ const UpdateTag = () => {
     [value, entityType, field, entityData]
   );
 
-  const back = () => history.goBack();
+  const back = () => navigate(-1);
 
   const columnObject = useMemo(() => {
     const column = sanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
@@ -170,7 +171,7 @@ const UpdateTag = () => {
             entity: t('label.task'),
           })
         );
-        history.push(
+        navigate(
           entityUtilClassBase.getEntityLink(
             entityType,
             entityFQN,
@@ -352,8 +353,4 @@ const UpdateTag = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.update-entity', {
-    entity: i18n.t('label.tag'),
-  })
-)(UpdateTag);
+export default withPageLayout(UpdateTag);

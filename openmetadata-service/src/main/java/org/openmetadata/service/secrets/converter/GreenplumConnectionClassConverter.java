@@ -18,7 +18,7 @@ import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
 import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Converter class to get an `GreenplumConnection` object.

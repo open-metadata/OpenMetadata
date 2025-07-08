@@ -43,7 +43,7 @@ export interface RenameFormProps {
   isTier: boolean;
   onCancel: () => void;
   header: string;
-  initialValues?: Tag;
+  initialValues?: Omit<Tag, 'id'>;
   onSubmit: (value: SubmitProps) => Promise<void>;
   showMutuallyExclusive?: boolean;
   isClassification?: boolean;

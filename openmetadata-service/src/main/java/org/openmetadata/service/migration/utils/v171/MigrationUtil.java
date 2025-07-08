@@ -16,7 +16,6 @@ import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class MigrationUtil {
-
   private MigrationUtil() {}
 
   static DataInsightSystemChartRepository dataInsightSystemChartRepository;

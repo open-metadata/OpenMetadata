@@ -1,10 +1,10 @@
 package org.openmetadata.service.resources.feeds;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CREATED;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static java.util.Collections.singletonList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -24,6 +24,8 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -32,8 +34,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
@@ -60,6 +60,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -598,6 +599,91 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     Table table = tableResourceTest.getEntity(TABLE_NESTED.getId(), "columns", USER_AUTH_HEADERS);
     Column nestedColumn = table.getColumns().get(0).getChildren().get(0);
     assertEquals("Update description", nestedColumn.getDescription());
+  }
+
+  @Test
+  @Order(8)
+  void put_acceptAllColumnSuggestionsManyColumns_200(TestInfo test) throws IOException {
+
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 100; i++) {
+      Column column = getColumn("column" + i, ColumnDataType.STRING, null).withOrdinalPosition(i);
+      columns.add(column);
+      if (i == 100) {
+        column.setTags(List.of(PII_SENSITIVE_TAG_LABEL));
+      }
+    }
+
+    CreateTable createTable =
+        TABLE_RESOURCE_TEST
+            .createRequest(test)
+            .withOwners(List.of(TableResourceTest.USER1_REF))
+            .withColumns(columns)
+            .withTableConstraints(null);
+    Table table = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    String tableColumn50Link =
+        String.format("<#E::table::%s::columns::column50>", table.getFullyQualifiedName());
+    String tableColumn100Link =
+        String.format("<#E::table::%s::columns::column100>", table.getFullyQualifiedName());
+
+    CreateSuggestion create =
+        create().withEntityLink(tableColumn50Link).withDescription("Update column 50 description");
+    createAndCheck(create, USER_AUTH_HEADERS);
+
+    // And now update another column tags
+    create =
+        create()
+            .withEntityLink(tableColumn100Link)
+            .withTagLabels(List.of(PERSONAL_DATA_TAG_LABEL))
+            .withType(SuggestionType.SuggestTagLabel);
+    createAndCheck(create, USER_AUTH_HEADERS);
+
+    SuggestionsResource.SuggestionList suggestionList =
+        listSuggestions(table.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
+    assertEquals(2, suggestionList.getData().size());
+
+    acceptAllSuggestions(
+        table.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestDescription,
+        USER_AUTH_HEADERS);
+
+    acceptAllSuggestions(
+        table.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestTagLabel,
+        USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            table.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
+    assertEquals(0, suggestionList.getPaging().getTotal());
+
+    // fetch all columns
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "200")
+            .queryParam("fields", "tags");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(100, response.getData().size());
+    assertEquals(100, response.getPaging().getTotal());
+
+    for (Column column : response.getData()) {
+      if (column.getName().equals("column50")) {
+        assertEquals("Update column 50 description", column.getDescription());
+      } else if (column.getName().equals("column100")) {
+        assertEquals(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL), column.getTags());
+      }
+    }
   }
 
   public Suggestion createSuggestion(CreateSuggestion create, Map<String, String> authHeaders)

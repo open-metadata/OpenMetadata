@@ -13,9 +13,9 @@
 import { Col, Row, Space, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -50,7 +50,7 @@ const DataProductsContainer = ({
   newLook = false,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isEditMode, setIsEditMode] = useState(false);
 
   const handleAddClick = () => {
@@ -67,9 +67,12 @@ const DataProductsContainer = ({
     [activeDomain]
   );
 
-  const redirectLink = useCallback((fqn: string) => {
-    history.push(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
-  }, []);
+  const redirectLink = useCallback(
+    (fqn: string) => {
+      navigate(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
+    },
+    [navigate]
+  );
 
   const handleSave = async (dataProducts: DataProduct[]) => {
     await onSave?.(dataProducts);
@@ -150,7 +153,9 @@ const DataProductsContainer = ({
             <PlusIconButton
               data-testid="add-data-product"
               size="small"
-              title={t('label.add-data-product')}
+              title={t('label.add-entity', {
+                entity: t('label.data-product-plural'),
+              })}
               onClick={handleAddClick}
             />
           )}

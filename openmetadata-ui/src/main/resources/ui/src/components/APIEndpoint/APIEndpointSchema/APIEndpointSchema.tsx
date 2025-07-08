@@ -15,14 +15,7 @@ import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, {
-  FC,
-  Key,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {} from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -205,7 +198,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   };
 
   const renderSchemaName = useCallback(
-    (_, record: Field) => (
+    (_: string, record: Field) => (
       <div className="d-inline-flex w-max-90 vertical-align-inherit">
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
@@ -290,7 +283,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
-        accessor: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 220,
         render: renderSchemaName,
@@ -329,7 +321,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
@@ -353,7 +344,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (

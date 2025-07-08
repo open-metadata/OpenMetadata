@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.exception;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class UnhandledServerException extends WebServiceException {

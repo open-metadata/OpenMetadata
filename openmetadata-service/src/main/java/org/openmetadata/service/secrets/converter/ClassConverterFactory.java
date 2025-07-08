@@ -46,6 +46,7 @@ import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
+import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
 
@@ -96,6 +97,7 @@ public final class ClassConverterFactory {
             Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()));
     Map.entry(Workflow.class, new WorkflowClassConverter());
     Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
+    Map.entry(SSISConnection.class, new SsisConnectionClassConverter());
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {

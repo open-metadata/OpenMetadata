@@ -13,26 +13,21 @@
 
 import { OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
-import React, {
-  FunctionComponent,
-  ReactNode,
-  useCallback,
-  useMemo,
-} from 'react';
+import { FunctionComponent, ReactNode, useCallback, useMemo } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
-import { OidcUser } from './AuthProvider.interface';
+import { useAuthProvider } from './AuthProvider';
 
 interface Props {
   children: ReactNode;
-  onLoginSuccess: (user: OidcUser) => void;
 }
 
 export const OktaAuthProvider: FunctionComponent<Props> = ({
   children,
-  onLoginSuccess,
 }: Props) => {
   const { authConfig } = useApplicationStore();
+  const { handleSuccessfulLogin } = useAuthProvider();
+
   const { clientId, issuer, redirectUri, scopes, pkce } =
     authConfig as unknown as OktaAuthOptions;
 
@@ -45,11 +40,20 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         scopes,
         pkce,
         tokenManager: {
-          autoRenew: false,
+          autoRenew: true,
+          storage: 'localStorage',
+          syncStorage: true,
+          expireEarlySeconds: 60,
+          secure: true,
         },
         cookies: {
           secure: true,
-          sameSite: 'none',
+          sameSite: 'lax',
+        },
+        services: {
+          autoRenew: true,
+          renewOnTabActivation: true,
+          tabInactivityDuration: 3600,
         },
       }),
     [clientId, issuer, redirectUri, scopes, pkce]
@@ -93,16 +97,16 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
               sub: info.sub,
             },
           };
-          onLoginSuccess(user);
+          handleSuccessfulLogin(user);
         })
         .catch(async (err) => {
           // eslint-disable-next-line no-console
           console.error(err);
-          // Redirect to login on error
+          // Redirect to login on error.
           await customAuthHandler();
         });
     },
-    [onLoginSuccess]
+    [handleSuccessfulLogin]
   );
 
   return (

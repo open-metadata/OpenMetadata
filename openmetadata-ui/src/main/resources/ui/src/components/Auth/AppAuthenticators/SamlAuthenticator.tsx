@@ -23,12 +23,7 @@
  *  limitations under the License.
  */
 
-import React, {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useImperativeHandle,
-} from 'react';
+import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
 import { SamlSSOClientConfig } from '../../../generated/configuration/authenticationConfiguration';
 import { postSamlLogout } from '../../../rest/miscAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -36,23 +31,23 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AccessTokenResponse, refreshSAMLToken } from '../../../rest/auth-API';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   getOidcToken,
   getRefreshToken,
   setOidcToken,
   setRefreshToken,
 } from '../../../utils/LocalStorageUtils';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
   children: ReactNode;
-  onLogoutSuccess: () => void;
 }
 
 const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
-  ({ children, onLogoutSuccess }: Props, ref) => {
-    const { setIsAuthenticated, authConfig } = useApplicationStore();
+  ({ children }: Props, ref) => {
+    const { authConfig } = useApplicationStore();
+    const { handleSuccessfulLogout } = useAuthProvider();
     const config = authConfig?.samlConfiguration as SamlSSOClientConfig;
 
     const handleSilentSignIn = async (): Promise<AccessTokenResponse> => {
@@ -82,13 +77,12 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
       if (token) {
         try {
           await postSamlLogout();
-          setIsAuthenticated(false);
-          onLogoutSuccess();
-          TokenService.getInstance().clearRefreshInProgress();
         } catch (err) {
           // TODO: Handle error on logout failure
           // eslint-disable-next-line no-console
           console.log(err);
+        } finally {
+          handleSuccessfulLogout();
         }
       }
     };

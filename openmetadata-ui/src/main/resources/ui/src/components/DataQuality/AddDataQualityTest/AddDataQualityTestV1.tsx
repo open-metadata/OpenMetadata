@@ -13,18 +13,17 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
-import {
-  default as React,
+import React, {
   Fragment,
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import {
   DEFAULT_RANGE_DATA,
@@ -36,22 +35,18 @@ import { FormSubmitType } from '../../../enums/form.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
-import { CreateTestSuite } from '../../../generated/api/tests/createTestSuite';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
-import {
-  createExecutableTestSuite,
-  createTestCase,
-  getTestSuiteByName,
-} from '../../../rest/testAPI';
+import { createTestCase, getTestSuiteByName } from '../../../rest/testAPI';
 import {
   getEntityBreadcrumbs,
   getEntityName,
 } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -69,12 +64,11 @@ import TestSuiteIngestion from './TestSuiteIngestion';
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   table,
 }: AddDataQualityTestProps) => {
-  const { dashboardType } = useParams<{ dashboardType: string }>();
-
+  const { dashboardType } = useRequiredParams<{ dashboardType: string }>();
   const { fqn } = useFqn();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const isTableFqn = dashboardType === ProfilerDashboardType.TABLE;
-  const history = useHistory();
+  const navigate = useNavigate();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testCaseData, setTestCaseData] = useState<CreateTestCase>();
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
@@ -82,6 +76,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [addIngestion, setAddIngestion] = useState(false);
   const { currentUser } = useApplicationStore();
   const { getResourceLimit } = useLimitStore();
+  const { t } = useTranslation();
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = [
@@ -117,7 +112,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   );
 
   const handleRedirection = () => {
-    history.push({
+    navigate({
       pathname: getEntityDetailsPath(
         EntityType.TABLE,
         table.fullyQualifiedName ?? '',
@@ -125,18 +120,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       ),
       search: Qs.stringify({ activeTab: TableProfilerTab.DATA_QUALITY }),
     });
-  };
-
-  const createTestSuite = async () => {
-    const testSuite: CreateTestSuite = {
-      name: `${table.fullyQualifiedName}.testSuite`,
-      basicEntityReference: table.fullyQualifiedName,
-      owners,
-    };
-    const response = await createExecutableTestSuite(testSuite);
-    setTestSuiteData(response);
-
-    return response;
   };
 
   const fetchTestSuiteByFqn = async (fqn: string) => {
@@ -158,17 +141,21 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     setTestCaseData(data);
 
     try {
-      const testSuite = isUndefined(testSuiteData)
-        ? await createTestSuite()
-        : table.testSuite;
-
       const testCasePayload: CreateTestCase = {
         ...data,
         owners,
-        testSuite: testSuite?.fullyQualifiedName ?? '',
       };
 
       const testCaseResponse = await createTestCase(testCasePayload);
+      if (
+        testCaseResponse.testSuite.fullyQualifiedName &&
+        isUndefined(table.testSuite)
+      ) {
+        await fetchTestSuiteByFqn(
+          testCaseResponse.testSuite.fullyQualifiedName
+        );
+      }
+
       // Update current count when Create / Delete operation performed
       await getResourceLimit('dataQuality', true, true);
       setActiveServiceStep(2);

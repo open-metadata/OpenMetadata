@@ -15,7 +15,6 @@ import Icon, { SearchOutlined } from '@ant-design/icons';
 import { Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import {
   get,
   isEmpty,
@@ -28,8 +27,8 @@ import {
   upperCase,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { CSSProperties, Fragment } from 'react';
-import { useHistory } from 'react-router-dom';
+import { CSSProperties, Fragment } from 'react';
+import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
@@ -174,7 +173,7 @@ import {
 } from './CommonUtils';
 import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
@@ -744,66 +743,6 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
   });
 };
 
-export const getTableColumnConfigSelections = (
-  userFqn: string,
-  entityType: string | undefined,
-  isFullViewTable: boolean,
-  defaultColumns: string[] | undefined
-) => {
-  if (!userFqn) {
-    return [];
-  }
-
-  const storageKey = `selectedColumns-${userFqn}`;
-  const selectedColumns = JSON.parse(localStorage.getItem(storageKey) ?? '{}');
-
-  if (entityType) {
-    if (selectedColumns[entityType]) {
-      return selectedColumns[entityType];
-    } else if (!isFullViewTable) {
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          ...selectedColumns,
-          [entityType]: defaultColumns,
-        })
-      );
-
-      return defaultColumns;
-    }
-  }
-
-  return [];
-};
-
-export const handleUpdateTableColumnSelections = (
-  selected: boolean,
-  key: string,
-  columnDropdownSelections: string[],
-  userFqn: string,
-  entityType: string | undefined
-) => {
-  const updatedSelections = selected
-    ? [...columnDropdownSelections, key]
-    : columnDropdownSelections.filter((item) => item !== key);
-
-  // Updating localStorage
-  const selectedColumns = JSON.parse(
-    localStorage.getItem(`selectedColumns-${userFqn}`) ?? '{}'
-  );
-  if (entityType) {
-    localStorage.setItem(
-      `selectedColumns-${userFqn}`,
-      JSON.stringify({
-        ...selectedColumns,
-        [entityType]: updatedSelections,
-      })
-    );
-  }
-
-  return updatedSelections;
-};
-
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isTourOpen,
@@ -878,7 +817,13 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.SAMPLE_DATA,
       children:
         !isTourOpen && !viewSampleDataPermission ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         ) : (
           <SampleDataTableComponent
             isTableDeleted={deleted}
@@ -903,7 +848,13 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.TABLE_QUERIES,
       children: !viewQueriesPermission ? (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.query-plural'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       ) : (
         <TableQueries
           isTableDeleted={deleted}
@@ -925,7 +876,13 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.PROFILER,
       children:
         !isTourOpen && !viewProfilerPermission ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.data-observability'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         ) : (
           <TableProfiler
             permissions={tablePermissions}
@@ -966,6 +923,7 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.DBT,
       children: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.DBT}
           sqlQuery={
             get(tableDetails, 'dataModel.sql', '') ??
             get(tableDetails, 'dataModel.rawSql', '')
@@ -1000,7 +958,15 @@ export const getTableDetailPageBaseTabs = ({
       ),
       isHidden: isUndefined(tableDetails?.schemaDefinition),
       key: EntityTabs.VIEW_DEFINITION,
-      children: <QueryViewer sqlQuery={tableDetails?.schemaDefinition ?? ''} />,
+      children: (
+        <QueryViewer
+          isActive={[
+            EntityTabs.VIEW_DEFINITION,
+            EntityTabs.SCHEMA_DEFINITION,
+          ].includes(activeTab)}
+          sqlQuery={tableDetails?.schemaDefinition ?? ''}
+        />
+      ),
     },
     {
       label: (
@@ -1134,11 +1100,10 @@ export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
 export const ExtraTableDropdownOptions = (
   fqn: string,
   permission: OperationPermission,
-  deleted: boolean
+  deleted: boolean,
+  navigate: NavigateFunction
 ) => {
   const { showModal } = useEntityExportModalProvider();
-  const history = useHistory();
-
   const { ViewAll, EditAll } = permission;
 
   return [
@@ -1148,14 +1113,14 @@ export const ExtraTableDropdownOptions = (
             label: (
               <LimitWrapper resource="table">
                 <ManageButtonItemLabel
-                  description={i18n.t('message.import-entity-help', {
-                    entity: i18n.t('label.table'),
+                  description={t('message.import-entity-help', {
+                    entity: t('label.table'),
                   })}
                   icon={ImportIcon}
                   id="import-button"
-                  name={i18n.t('label.import')}
+                  name={t('label.import')}
                   onClick={() =>
-                    history.push(getEntityImportPath(EntityType.TABLE, fqn))
+                    navigate(getEntityImportPath(EntityType.TABLE, fqn))
                   }
                 />
               </LimitWrapper>
@@ -1169,12 +1134,12 @@ export const ExtraTableDropdownOptions = (
           {
             label: (
               <ManageButtonItemLabel
-                description={i18n.t('message.export-entity-help', {
-                  entity: i18n.t('label.table'),
+                description={t('message.export-entity-help', {
+                  entity: t('label.table'),
                 })}
                 icon={ExportIcon}
                 id="export-button"
-                name={i18n.t('label.export')}
+                name={t('label.export')}
                 onClick={() =>
                   showModal({
                     name: fqn,

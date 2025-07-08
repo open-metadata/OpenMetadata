@@ -404,9 +404,9 @@ export enum AuthProvider {
  *
  * Regex exclude pipelines.
  *
- * Regex to only fetch MlModels with names matching the pattern.
- *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch search indexes that matches the pattern.
  */
@@ -689,6 +689,8 @@ export interface RequestConnection {
  *
  * Cockroach Database Connection Config
  *
+ * SSAS Metadata Database Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -734,6 +736,8 @@ export interface RequestConnection {
  * Airflow Metadata Database Connection Config
  *
  * Wherescape Metadata Database Connection Config
+ *
+ * SSIS Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
  *
@@ -862,6 +866,10 @@ export interface ConfigClass {
      * Custom search service type
      */
     type?: RESTType;
+    /**
+     * Billing Project ID
+     */
+    billingProjectId?: string;
     /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
@@ -1151,6 +1159,8 @@ export interface ConfigClass {
      *
      * Password to connect to Exasol.
      *
+     * Password
+     *
      * Password to connect to Metabase.
      *
      * Password to connect to PowerBI report server.
@@ -1252,6 +1262,8 @@ export interface ConfigClass {
      * Username to connect to Cockroach. This user should have privileges to read all the
      * metadata in Cockroach.
      *
+     * Username
+     *
      * Username to connect to Metabase. This user should have privileges to read all the
      * metadata in Metabase.
      *
@@ -1313,8 +1325,10 @@ export interface ConfigClass {
      * The maximum amount of time (in seconds) to wait for a successful connection to the data
      * source. If the connection attempt takes longer than this timeout period, an error will be
      * returned.
+     *
+     * Connection timeout in seconds.
      */
-    connectionTimeout?: number;
+    connectionTimeout?: number | number;
     /**
      * Databricks compute resources URL.
      */
@@ -1323,6 +1337,10 @@ export interface ConfigClass {
      * Table name to fetch the query history.
      */
     queryHistoryTable?: string;
+    /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?: string;
     /**
      * License to connect to DB2.
      */
@@ -1380,6 +1398,10 @@ export interface ConfigClass {
      * SSL Configuration for OpenMetadata Server
      */
     sslConfig?: SSLConfigObject;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -1630,6 +1652,10 @@ export interface ConfigClass {
      */
     tls?: SSLTLSSettings;
     /**
+     * HTTP Link for SSAS ACCESS
+     */
+    httpConnection?: string;
+    /**
      * Regex exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
@@ -1663,6 +1689,10 @@ export interface ConfigClass {
      */
     authorityURI?: string;
     /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
+    /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
     pagination_entity_per_page?: number;
@@ -1690,6 +1720,21 @@ export interface ConfigClass {
      * Version of the Redash instance
      */
     redashVersion?: string;
+    /**
+     * Tableau API version. If not provided, the version will be used from the tableau server.
+     *
+     * Sigma API version.
+     *
+     * Airbyte API version.
+     *
+     * OpenMetadata server API version to use.
+     */
+    apiVersion?: string;
+    /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
     /**
      * Tableau Site Name.
      */
@@ -1765,14 +1810,6 @@ export interface ConfigClass {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
-    /**
-     * Sigma API version.
-     *
-     * Airbyte API version.
-     *
-     * OpenMetadata server API version to use.
-     */
-    apiVersion?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1853,6 +1890,10 @@ export interface ConfigClass {
      * Underlying database connection
      */
     databaseConnection?: DatabaseConnectionClass;
+    /**
+     * Underlying storage connection
+     */
+    packageConnection?: S3Connection | string;
     /**
      * Fivetran API Secret.
      */
@@ -3144,6 +3185,10 @@ export interface ConfigConnection {
      */
     databaseName?: string;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?: FilterPattern;
@@ -3627,6 +3672,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -3703,6 +3752,37 @@ export interface OracleConnectionType {
      */
     oracleTNSConnection?: string;
     [property: string]: any;
+}
+
+/**
+ * S3 Connection.
+ */
+export interface S3Connection {
+    awsConfig: AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: S3Type;
+}
+
+/**
+ * Service Type
+ *
+ * S3 service type
+ */
+export enum S3Type {
+    S3 = "S3",
 }
 
 /**
@@ -3872,6 +3952,7 @@ export enum KafkaSecurityProtocol {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
@@ -4142,6 +4223,8 @@ export enum RESTType {
     Snowflake = "Snowflake",
     Spark = "Spark",
     Spline = "Spline",
+    Ssas = "SSAS",
+    Ssis = "SSIS",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",

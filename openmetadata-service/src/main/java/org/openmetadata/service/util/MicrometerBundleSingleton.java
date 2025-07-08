@@ -1,72 +1,94 @@
-/*
- *  Copyright 2022 Collate
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-
 package org.openmetadata.service.util;
 
-import static io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle.prometheusRegistry;
-
-import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
-import io.micrometer.core.instrument.Timer;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
-import io.prometheus.client.Counter;
-import io.prometheus.client.Histogram;
+import com.codahale.metrics.MetricRegistry;
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.dropwizard.DropwizardConfig;
+import io.micrometer.core.instrument.dropwizard.DropwizardMeterRegistry;
+import io.micrometer.core.instrument.util.HierarchicalNameMapper;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
+import io.prometheus.client.CollectorRegistry;
+import io.prometheus.client.dropwizard.DropwizardExports;
 import lombok.Getter;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class MicrometerBundleSingleton {
-  @Getter private static final MicrometerBundle instance = new MicrometerBundle();
-  // We'll use this registry to add monitoring around Ingestion Pipelines
-  public static final PrometheusMeterRegistry prometheusMeterRegistry = prometheusRegistry;
-  @Getter private static Timer requestsLatencyTimer;
-  @Getter private static Timer jdbiLatencyTimer;
+  @Getter private static final MetricRegistry metrics = new MetricRegistry();
+
+  @Getter
+  private static final CollectorRegistry collectorRegistry = CollectorRegistry.defaultRegistry;
+
+  @Getter
+  public static final PrometheusMeterRegistry prometheusMeterRegistry =
+      new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+
+  private static final DropwizardMeterRegistry dropwizardRegistry;
+
+  static {
+    // Create a DropwizardConfig
+    DropwizardConfig config =
+        new DropwizardConfig() {
+          @Override
+          public String prefix() {
+            return "dropwizard";
+          }
+
+          @Override
+          public String get(String key) {
+            return null;
+          }
+        };
+
+    // Create concrete implementation of DropwizardMeterRegistry
+    dropwizardRegistry =
+        new DropwizardMeterRegistry(config, metrics, HierarchicalNameMapper.DEFAULT, Clock.SYSTEM) {
+          @Override
+          protected Double nullGaugeValue() {
+            return 0.0;
+          }
+        };
+
+    // Register Dropwizard metrics with Prometheus
+    new DropwizardExports(metrics).register();
+  }
+
+  @Getter private static io.micrometer.core.instrument.Timer requestsLatencyTimer;
+  @Getter private static io.micrometer.core.instrument.Timer jdbiLatencyTimer;
 
   private MicrometerBundleSingleton() {}
 
   private static final double[] latencyBuckets = new double[] {.01, .1, 1, 2, 5, 10, 20, 60};
 
-  public static final Histogram httpRequests =
-      Histogram.build()
+  public static final io.prometheus.client.Histogram httpRequests =
+      io.prometheus.client.Histogram.build()
           .name("http_server_requests_sec")
           .help("HTTP methods duration")
           .labelNames("method")
           .buckets(latencyBuckets)
-          .register(prometheusMeterRegistry.getPrometheusRegistry());
+          .register();
 
-  public static final Histogram jdbiRequests =
-      Histogram.build()
+  public static final io.prometheus.client.Histogram jdbiRequests =
+      io.prometheus.client.Histogram.build()
           .name("jdbi_requests_seconds")
           .help("jdbi requests duration distribution")
           .buckets(latencyBuckets)
-          .register(MicrometerBundle.prometheusRegistry.getPrometheusRegistry());
+          .register();
 
-  public static final Counter pipelineClientStatusCounter =
-      Counter.build()
+  public static final io.prometheus.client.Counter pipelineClientStatusCounter =
+      io.prometheus.client.Counter.build()
           .name("pipeline_client_request_status")
           .help("status codes returned by pipeline client by operation")
           .labelNames("operation", "status")
-          .register(MicrometerBundle.prometheusRegistry.getPrometheusRegistry());
+          .register();
 
-  public static void initLatencyEvents(OpenMetadataApplicationConfig config) {
+  public static void initLatencyEvents() {
     requestsLatencyTimer =
-        Timer.builder("http_latency_requests")
-            .description("HTTP request latency in seconds.")
-            .publishPercentiles(config.getEventMonitorConfiguration().getLatency())
+        io.micrometer.core.instrument.Timer.builder("http_latency_requests")
+            .description("HTTP request latency in seconds")
             .register(prometheusMeterRegistry);
 
     jdbiLatencyTimer =
-        Timer.builder("jdbi_latency_requests")
-            .description("JDBI queries latency in seconds.")
-            .publishPercentiles(config.getEventMonitorConfiguration().getLatency())
+        io.micrometer.core.instrument.Timer.builder("jdbi_latency_requests")
+            .description("JDBI queries latency in seconds")
             .register(prometheusMeterRegistry);
   }
 }

@@ -15,9 +15,9 @@ import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
@@ -43,9 +43,11 @@ import { TaskType } from '../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
 import { updateTask } from '../../../rest/feedsAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import {
   getTaskDetailPath,
@@ -53,9 +55,6 @@ import {
   isTagsTask,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
@@ -79,7 +78,7 @@ const TaskFeedCard = ({
   isForFeedTab = false,
   isOpenInDrawer = false,
 }: TaskFeedCardProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { setActiveThread } = useActivityFeedProvider();
   const { currentUser } = useApplicationStore();
@@ -121,9 +120,7 @@ const TaskFeedCard = ({
   }, [feed]);
 
   const handleTaskLinkClick = () => {
-    history.push({
-      pathname: getTaskDetailPath(feed),
-    });
+    navigate(getTaskDetailPath(feed));
     setActiveThread(feed);
   };
 
@@ -336,20 +333,20 @@ const TaskFeedCard = ({
                     width={20}
                     onClick={isForFeedTab ? showReplies : undefined}
                   />
-                  {feed.posts && feed.posts?.length > 0 && (
+                  {feed?.postsCount && feed?.postsCount > 0 ? (
                     <Button
                       className="posts-length m-r-xss p-0 remove-button-default-styling"
                       data-testid="replies-count"
                       type="link"
                       onClick={isForFeedTab ? showReplies : undefined}>
                       {t(
-                        feed.posts.length === 1
+                        feed.postsCount === 1
                           ? 'label.one-reply'
                           : 'label.number-reply-plural',
-                        { number: feed.posts.length }
+                        { number: feed.postsCount }
                       )}
                     </Button>
-                  )}
+                  ) : null}
                 </Col>
 
                 <Col

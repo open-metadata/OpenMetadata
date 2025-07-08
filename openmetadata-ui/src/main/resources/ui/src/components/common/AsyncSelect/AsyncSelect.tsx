@@ -13,9 +13,19 @@
 
 import { Select, SelectProps } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { debounce } from 'lodash';
+import { AxiosError } from 'axios';
+import { debounce, isObject } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
+import { Paging } from '../../../generated/type/paging';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
+import { AsyncSelectListProps } from './AsyncSelectList.interface';
+
+// Interface for paginated API response
+export interface PagingResponse<T> {
+  data: T;
+  paging: Paging;
+}
 
 /**
  * AsyncSelect to work with options provided from API directly
@@ -27,47 +37,131 @@ import Loader from '../Loader/Loader';
 export const AsyncSelect = ({
   options,
   api,
+  enableInfiniteScroll = false,
+  debounceTimeout = 400,
   ...restProps
-}: SelectProps & {
-  api: (queryString: string) => Promise<DefaultOptionType[]>;
-}) => {
+}: SelectProps & AsyncSelectListProps) => {
   const [optionsInternal, setOptionsInternal] = useState<DefaultOptionType[]>();
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [hasContentLoading, setHasContentLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     setOptionsInternal(options);
   }, [options]);
 
   const fetchOptions = useCallback(
-    debounce((value: string) => {
-      setLoadingOptions(true);
-      api(value).then((res) => {
-        setOptionsInternal(res);
+    debounce(async (value: string, page = 1) => {
+      if (page === 1) {
+        setLoadingOptions(true);
+        setOptionsInternal([]);
+      } else {
+        setHasContentLoading(true);
+      }
+
+      try {
+        const response = await api(
+          value,
+          enableInfiniteScroll ? page : undefined
+        );
+
+        if (
+          enableInfiniteScroll &&
+          response &&
+          isObject(response) &&
+          'data' in response
+        ) {
+          // Handle paginated response
+          const pagingResponse = response as PagingResponse<
+            DefaultOptionType[]
+          >;
+          if (page === 1) {
+            setOptionsInternal(pagingResponse.data);
+            setPaging(pagingResponse.paging);
+            setCurrentPage(1);
+          } else {
+            setOptionsInternal((prev) => [
+              ...(prev || []),
+              ...pagingResponse.data,
+            ]);
+            setPaging(pagingResponse.paging);
+            setCurrentPage(page);
+          }
+        } else {
+          // Handle simple array response
+          const simpleResponse = response as DefaultOptionType[];
+          setOptionsInternal(simpleResponse);
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
         setLoadingOptions(false);
-      });
-    }, 400),
-    [api]
+        setHasContentLoading(false);
+      }
+    }, debounceTimeout),
+    [api, enableInfiniteScroll, debounceTimeout]
   );
 
   const handleSelection = useCallback(() => {
     setSearchText('');
   }, []);
 
+  const onScroll = useCallback(
+    async (e: React.UIEvent<HTMLDivElement>) => {
+      if (!enableInfiniteScroll) {
+        return;
+      }
+
+      const { currentTarget } = e;
+      if (
+        currentTarget.scrollTop + currentTarget.offsetHeight ===
+        currentTarget.scrollHeight
+      ) {
+        const currentOptionsLength = optionsInternal?.length ?? 0;
+        if (currentOptionsLength < paging.total && !hasContentLoading) {
+          await fetchOptions(searchText, currentPage + 1);
+        }
+      }
+    },
+    [
+      enableInfiniteScroll,
+      optionsInternal,
+      paging.total,
+      hasContentLoading,
+      searchText,
+      currentPage,
+      fetchOptions,
+    ]
+  );
+
+  const dropdownRender = useCallback(
+    (menu: React.ReactElement) => (
+      <>
+        {menu}
+        {hasContentLoading && <Loader size="small" />}
+      </>
+    ),
+    [hasContentLoading]
+  );
+
   useEffect(() => {
-    fetchOptions(searchText);
+    fetchOptions(searchText, 1);
   }, [searchText]);
 
   return (
     <Select
+      dropdownRender={enableInfiniteScroll ? dropdownRender : undefined}
       filterOption={false}
       notFoundContent={loadingOptions ? <Loader size="small" /> : null}
       options={optionsInternal}
       searchValue={searchText}
-      suffixIcon={loadingOptions && <Loader size="small" />} // Controlling the search value to get the initial suggestions when not typed anything
+      suffixIcon={loadingOptions && <Loader size="small" />}
+      onPopupScroll={enableInfiniteScroll ? onScroll : undefined}
       onSearch={(value: string) => {
         setSearchText(value);
-        setLoadingOptions(true);
+        setCurrentPage(1);
       }}
       onSelect={handleSelection}
       {...restProps}

@@ -1,5 +1,6 @@
 ---
-title: Salesforce
+title: Salesforce Connector | OpenMetadata CRM Integration Guide
+description: Connect Salesforce to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration tips, and metadata extraction made easy.
 slug: /connectors/database/salesforce
 ---
 

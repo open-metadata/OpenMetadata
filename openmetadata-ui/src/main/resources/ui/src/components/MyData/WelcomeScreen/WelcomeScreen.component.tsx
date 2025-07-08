@@ -12,7 +12,7 @@
  */
 import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { split } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';

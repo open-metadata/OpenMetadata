@@ -28,15 +28,9 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isEqual, toString } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -103,6 +97,7 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -122,13 +117,16 @@ const DomainDetailsPage = ({
   onUpdate,
   onDelete,
   isVersionsView = false,
+  isFollowing,
+  isFollowingLoading,
+  handleFollowingClick,
 }: DomainDetailsPageProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
   const { getEntityPermission, permissions } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab, version } =
-    useParams<{ tab: EntityTabs; version: string }>();
+    useRequiredParams<{ tab: EntityTabs; version: string }>();
   const { fqn: domainFqn } = useFqn();
   const { currentUser } = useApplicationStore();
 
@@ -256,6 +254,12 @@ const DomainDetailsPage = ({
         setSubDomains(data);
       } catch (error) {
         setSubDomains([]);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.sub-domain-lowercase'),
+          })
+        );
       } finally {
         setIsSubDomainsLoading(false);
       }
@@ -301,7 +305,7 @@ const DomainDetailsPage = ({
 
       try {
         const res = await addDataProducts(data as CreateDataProduct);
-        history.push(
+        navigate(
           getEntityDetailsPath(
             EntityType.DATA_PRODUCT,
             res.fullyQualifiedName ?? ''
@@ -332,7 +336,7 @@ const DomainDetailsPage = ({
       ? getDomainPath(domainFqn)
       : getDomainVersionsPath(domainFqn, toString(domain.version));
 
-    history.push(path);
+    navigate(path);
   };
 
   const fetchDataProducts = async () => {
@@ -351,6 +355,12 @@ const DomainDetailsPage = ({
         setDataProductsCount(res.data.hits.total.value ?? 0);
       } catch (error) {
         setDataProductsCount(0);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.data-product-lowercase'),
+          })
+        );
       }
     }
   };
@@ -371,6 +381,12 @@ const DomainDetailsPage = ({
         setAssetCount(totalCount);
       } catch (error) {
         setAssetCount(0);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.asset-plural-lowercase'),
+          })
+        );
       }
     }
   };
@@ -393,7 +409,7 @@ const DomainDetailsPage = ({
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(getDomainDetailsPath(domainFqn, activeKey));
+      navigate(getDomainDetailsPath(domainFqn, activeKey));
     }
   };
 
@@ -417,8 +433,8 @@ const DomainDetailsPage = ({
   const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
-      color: data.color ? data.color : undefined,
-      iconURL: data.iconURL ? data.iconURL : undefined,
+      color: data.color ?? undefined,
+      iconURL: data.iconURL ?? undefined,
     };
     const updatedDetails = {
       ...domain,
@@ -435,9 +451,12 @@ const DomainDetailsPage = ({
     activeTab !== 'assets' && handleTabChange('assets');
   };
 
-  const handleAssetClick = useCallback((asset) => {
-    setPreviewAsset(asset);
-  }, []);
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   const handleCloseDataProductModal = useCallback(
     () => setShowAddDataProductModal(false),
@@ -635,7 +654,10 @@ const DomainDetailsPage = ({
             breadcrumb={breadcrumbs}
             entityData={{ ...domain, displayName, name }}
             entityType={EntityType.DOMAIN}
+            handleFollowingClick={handleFollowingClick}
             icon={iconData}
+            isFollowing={isFollowing}
+            isFollowingLoading={isFollowingLoading}
             serviceName=""
             titleColor={domain.style?.color}
           />

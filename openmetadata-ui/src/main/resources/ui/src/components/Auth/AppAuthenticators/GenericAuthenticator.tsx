@@ -10,23 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useImperativeHandle,
-} from 'react';
-import { useHistory } from 'react-router-dom';
+import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 
 export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
     const { setIsAuthenticated, setIsSigningUp } = useApplicationStore();
-    const history = useHistory();
+    const { handleSuccessfulLogout } = useAuthProvider();
+    const navigate = useNavigate();
 
     const handleLogin = () => {
       setIsAuthenticated(false);
@@ -36,16 +32,16 @@ export const GenericAuthenticator = forwardRef(
     };
 
     const handleLogout = async () => {
-      await logoutUser();
-
-      TokenService.getInstance().clearRefreshInProgress();
-      history.push(ROUTES.SIGNIN);
-      setOidcToken('');
-      setIsAuthenticated(false);
+      try {
+        await logoutUser();
+      } finally {
+        // This will cleanup the application state and redirect to login page
+        handleSuccessfulLogout();
+      }
     };
 
     const handleSilentSignIn = async () => {
-      const resp = await renewToken();
+      const resp = await renewToken(navigate);
       setOidcToken(resp.accessToken);
 
       return resp;

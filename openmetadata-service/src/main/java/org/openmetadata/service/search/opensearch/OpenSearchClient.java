@@ -1,16 +1,12 @@
 package org.openmetadata.service.search.opensearch;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
-import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
@@ -34,6 +30,10 @@ import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProce
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import es.org.elasticsearch.common.ParsingException;
+import es.org.elasticsearch.xcontent.XContentLocation;
+import jakarta.json.JsonObject;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,12 +45,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -86,8 +85,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -102,7 +103,6 @@ import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
@@ -126,7 +126,6 @@ import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
@@ -141,16 +140,23 @@ import os.org.opensearch.action.delete.DeleteRequest;
 import os.org.opensearch.action.get.GetRequest;
 import os.org.opensearch.action.get.GetResponse;
 import os.org.opensearch.action.search.SearchResponse;
+import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
+import os.org.opensearch.client.ResponseException;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
 import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.WarningsHandler;
 import os.org.opensearch.client.indices.CreateIndexRequest;
 import os.org.opensearch.client.indices.CreateIndexResponse;
+import os.org.opensearch.client.indices.DataStream;
+import os.org.opensearch.client.indices.DeleteDataStreamRequest;
+import os.org.opensearch.client.indices.GetDataStreamRequest;
+import os.org.opensearch.client.indices.GetDataStreamResponse;
 import os.org.opensearch.client.indices.GetIndexRequest;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
@@ -167,6 +173,7 @@ import os.org.opensearch.common.xcontent.XContentParser;
 import os.org.opensearch.common.xcontent.XContentType;
 import os.org.opensearch.index.IndexNotFoundException;
 import os.org.opensearch.index.query.BoolQueryBuilder;
+import os.org.opensearch.index.query.IdsQueryBuilder;
 import os.org.opensearch.index.query.MatchQueryBuilder;
 import os.org.opensearch.index.query.MultiMatchQueryBuilder;
 import os.org.opensearch.index.query.Operator;
@@ -180,6 +187,7 @@ import os.org.opensearch.index.query.TermQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
+import os.org.opensearch.index.reindex.ReindexRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.rest.RestStatus;
 import os.org.opensearch.script.Script;
@@ -205,11 +213,6 @@ import os.org.opensearch.search.sort.NestedSortBuilder;
 import os.org.opensearch.search.sort.SortBuilders;
 import os.org.opensearch.search.sort.SortMode;
 import os.org.opensearch.search.sort.SortOrder;
-import os.org.opensearch.search.suggest.Suggest;
-import os.org.opensearch.search.suggest.SuggestBuilder;
-import os.org.opensearch.search.suggest.SuggestBuilders;
-import os.org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
-import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -382,11 +385,16 @@ public class OpenSearchClient implements SearchClient {
   public Response doSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {
+    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
     OpenSearchSourceBuilderFactory searchBuilderFactory =
         new OpenSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
         searchBuilderFactory.getSearchSourceBuilder(
-            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
+            request.getIndex(),
+            request.getQuery(),
+            request.getFrom(),
+            request.getSize(),
+            request.getExplain());
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
@@ -414,59 +422,26 @@ public class OpenSearchClient implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request
-            .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName("dataAsset"))) {
-      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.existsQuery("deleted"))
-              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .mustNot(QueryBuilders.existsQuery("deleted")));
-      searchSourceBuilder.query(boolQueryBuilder);
-    } else if (request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(DATA_PRODUCT)
-                    .getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexMapping(QUERY).getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexOrAliasName("knowledge_page_search_index"))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(RAW_COST_ANALYSIS_REPORT_DATA)
-                    .getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(AGGREGATED_COST_ANALYSIS_REPORT_DATA)
-                    .getIndexName(clusterAlias))) {
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
-    } else {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+    if (!nullOrEmpty(request.getDeleted())) {
+      if (indexName.equals(GLOBAL_SEARCH_ALIAS) || indexName.equals(DATA_ASSET_SEARCH_ALIAS)) {
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+
+        boolQueryBuilder.should(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .must(QueryBuilders.existsQuery("deleted"))
+                .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+        boolQueryBuilder.should(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .mustNot(QueryBuilders.existsQuery("deleted")));
+        searchSourceBuilder.query(boolQueryBuilder);
+      } else {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+      }
     }
 
     if (!nullOrEmpty(request.getSortFieldParam())
@@ -492,7 +467,7 @@ public class OpenSearchClient implements SearchClient {
         new FetchSourceContext(
             request.getFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
-            new String[] {}));
+            request.getExcludeSourceFields().toArray(String[]::new)));
 
     if (Boolean.TRUE.equals(request.getTrackTotalHits())) {
       searchSourceBuilder.trackTotalHits(true);
@@ -544,6 +519,10 @@ public class OpenSearchClient implements SearchClient {
           os.org.opensearch.action.search.SearchRequest searchRequest =
               new os.org.opensearch.action.search.SearchRequest(request.getIndex());
           searchRequest.source(searchSourceBuilder);
+
+          // Use DFS Query Then Fetch for consistent scoring across shards
+          searchRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
+
           os.org.opensearch.action.search.SearchResponse response =
               client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
           if (response.getHits() != null
@@ -576,6 +555,10 @@ public class OpenSearchClient implements SearchClient {
       os.org.opensearch.action.search.SearchRequest osRequest =
           new os.org.opensearch.action.search.SearchRequest(request.getIndex());
       osRequest.source(searchSourceBuilder);
+
+      // Use DFS Query Then Fetch for consistent scoring across shards
+      osRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
+
       getSearchBuilderFactory().addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
       SearchResponse searchResponse = client.search(osRequest, OPENSEARCH_REQUEST_OPTIONS);
       return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
@@ -1538,42 +1521,6 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  public Response suggest(SearchRequest request) throws IOException {
-    String fieldName = request.getFieldName();
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    CompletionSuggestionBuilder suggestionBuilder =
-        SuggestBuilders.completionSuggestion(fieldName)
-            .prefix(request.getQuery(), Fuzziness.AUTO)
-            .size(request.getSize())
-            .skipDuplicates(true);
-    if (fieldName.equalsIgnoreCase("suggest")) {
-      suggestionBuilder.contexts(
-          Collections.singletonMap(
-              "deleted",
-              Collections.singletonList(
-                  CategoryQueryContext.builder()
-                      .setCategory(String.valueOf(request.getDeleted()))
-                      .build())));
-    }
-    SuggestBuilder suggestBuilder = new SuggestBuilder();
-    suggestBuilder.addSuggestion("metadata-suggest", suggestionBuilder);
-    searchSourceBuilder
-        .suggest(suggestBuilder)
-        .timeout(new TimeValue(30, TimeUnit.SECONDS))
-        .fetchSource(
-            new FetchSourceContext(
-                request.getFetchSource(),
-                request.getIncludeSourceFields().toArray(String[]::new),
-                new String[] {}));
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-                Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
-            .source(searchSourceBuilder);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    Suggest suggest = searchResponse.getSuggest();
-    return Response.status(OK).entity(suggest.toString()).build();
-  }
-
   private static QueryStringQueryBuilder buildSearchQueryBuilder(
       String query, Map<String, Float> fields) {
     return QueryBuilders.queryStringQuery(query)
@@ -1945,6 +1892,33 @@ public class OpenSearchClient implements SearchClient {
               params);
       updateByQueryRequest.setScript(script);
       updateOpenSearchByQuery(updateByQueryRequest);
+    }
+  }
+
+  @Override
+  public void reindexWithEntityIds(
+      List<String> sourceIndices,
+      String destinationIndex,
+      String pipelineName,
+      String entityType,
+      List<UUID> entityIds) {
+    String[] queryIDs = entityIds.stream().map(UUID::toString).toArray(String[]::new);
+
+    ReindexRequest request = new ReindexRequest();
+    request.setSourceIndices(sourceIndices.toArray(new String[0]));
+    request.setDestIndex(destinationIndex);
+    request.setDestPipeline(pipelineName);
+
+    // Add query to filter by IDs
+    IdsQueryBuilder idsQuery = QueryBuilders.idsQuery();
+    idsQuery.addIds(queryIDs);
+    request.setSourceQuery(idsQuery);
+
+    try {
+      client.reindex(request, RequestOptions.DEFAULT);
+      LOG.info("Reindexed {} entities of type {} to vector index", entityIds.size(), entityType);
+    } catch (IOException e) {
+      LOG.error("Failed to reindex entities: {}", e.getMessage());
     }
   }
 
@@ -2491,7 +2465,12 @@ public class OpenSearchClient implements SearchClient {
         }
         searchSourceBuilder.query(newQuery);
       } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+        LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
+        String errorMessage =
+            String.format(
+                "Error: %s.\nCause: %s",
+                ex.getMessage(), ex.getCause() != null ? ex.getCause().toString() : "Unknown");
+        throw new ParsingException(XContentLocation.UNKNOWN, errorMessage, ex);
       }
     }
   }
@@ -2522,5 +2501,300 @@ public class OpenSearchClient implements SearchClient {
     os.org.opensearch.action.search.SearchResponse searchResponse =
         client.search(searchRequest, RequestOptions.DEFAULT);
     return queryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
+  }
+
+  @Override
+  public List<String> getDataStreams(String prefix) throws IOException {
+    try {
+      GetDataStreamRequest request = new GetDataStreamRequest(prefix + "*");
+      GetDataStreamResponse response =
+          client.indices().getDataStream(request, RequestOptions.DEFAULT);
+      return response.getDataStreams().stream()
+          .map(DataStream::getName)
+          .collect(Collectors.toList());
+    } catch (OpenSearchException e) {
+      if (e.status().getStatus() == 404) {
+        LOG.warn("No DataStreams exist with prefix  '{}'. Skipping deletion.", prefix);
+        return Collections.emptyList();
+      } else {
+        LOG.error("Failed to find DataStreams", e);
+        throw e;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to get data streams with prefix {}", prefix, e);
+      return Collections.emptyList();
+    }
+  }
+
+  @Override
+  public void deleteDataStream(String dataStreamName) throws IOException {
+    try {
+      DeleteDataStreamRequest request = new DeleteDataStreamRequest(dataStreamName);
+      client.indices().deleteDataStream(request, RequestOptions.DEFAULT);
+      LOG.debug("Deleted data stream {}", dataStreamName);
+    } catch (OpenSearchStatusException e) {
+      if (e.status().getStatus() == 404) {
+        LOG.warn("Data Stream {} does not exist. Skipping Deletion.", dataStreamName);
+      } else {
+        LOG.error("Failed to delete data stream {}", dataStreamName, e);
+        throw e;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete data stream {}", dataStreamName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteILMPolicy(String policyName) throws IOException {
+    try {
+      // OpenSearch uses _plugins/_ism/policies/{policyName} for ISM policies
+      Request request = new Request("DELETE", "/_plugins/_ism/policies/" + policyName);
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+
+      if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("ISM policy {} does not exist", policyName);
+        return;
+      }
+      if (response.getStatusLine().getStatusCode() != 200) {
+        throw new IOException(
+            "Failed to delete ISM policy: " + response.getStatusLine().getReasonPhrase());
+      }
+      LOG.info("Successfully deleted ISM policy: {}", policyName);
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("ISM Policy {} does not exist. Skipping deletion.", policyName);
+      } else {
+        throw new IOException(
+            "Failed to delete ISM policy: " + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Error deleting ISM policy: {}", policyName, e);
+      throw new IOException("Failed to delete ISM policy: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public void deleteIndexTemplate(String templateName) throws IOException {
+    try {
+      // OpenSearch uses the low-level REST client for index template operations
+      Request request = new Request("DELETE", "/_index_template/" + templateName);
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() == 200) {
+        LOG.debug("Deleted index template {}", templateName);
+      } else if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
+      } else {
+        LOG.error(
+            "Failed to delete index template {}. Status: {}",
+            templateName,
+            response.getStatusLine().getStatusCode());
+        throw new IOException(
+            "Failed to delete index template: " + response.getStatusLine().getReasonPhrase());
+      }
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
+      } else {
+        throw new IOException(
+            "Failed to delete index template: "
+                + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete index template {}", templateName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteComponentTemplate(String componentTemplateName) throws IOException {
+    try {
+      Request request = new Request("DELETE", "/_component_template/" + componentTemplateName);
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Component template {} does not exist", componentTemplateName);
+        return;
+      }
+      if (response.getStatusLine().getStatusCode() != 200) {
+        throw new IOException(
+            "Failed to delete component template: " + response.getStatusLine().getReasonPhrase());
+      }
+      LOG.info("Successfully deleted component template: {}", componentTemplateName);
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Component template {} does not exist. Skipping deletion.", componentTemplateName);
+      } else {
+        throw new IOException(
+            "Failed to delete component template: "
+                + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Error deleting component template: {}", componentTemplateName, e);
+      throw new IOException("Failed to delete component template: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
+    try {
+      // 1. Get all indices matching the pattern
+      Request catRequest = new Request("GET", "/_cat/indices/" + indexPattern);
+      catRequest.addParameter("format", "json");
+      os.org.opensearch.client.Response catResponse =
+          client.getLowLevelClient().performRequest(catRequest);
+      String responseBody = org.apache.http.util.EntityUtils.toString(catResponse.getEntity());
+      com.fasterxml.jackson.databind.JsonNode indices = JsonUtils.readTree(responseBody);
+      if (!indices.isArray()) {
+        LOG.warn("No indices found matching pattern: {}", indexPattern);
+        return;
+      }
+      for (com.fasterxml.jackson.databind.JsonNode indexNode : indices) {
+        String indexName = indexNode.get("index").asText();
+        try {
+          // 2. Remove ISM policy by updating settings
+          Request putSettings = new Request("PUT", "/" + indexName + "/_settings");
+          putSettings.setJsonEntity("{\"index.plugins.index_state_management.policy_id\": null}");
+          os.org.opensearch.client.Response putResponse =
+              client.getLowLevelClient().performRequest(putSettings);
+          if (putResponse.getStatusLine().getStatusCode() == 200) {
+            LOG.info("Detached ISM policy from index: {}", indexName);
+          } else {
+            LOG.warn(
+                "Failed to detach ISM policy from index: {}. Status: {}",
+                indexName,
+                putResponse.getStatusLine().getStatusCode());
+          }
+        } catch (Exception e) {
+          LOG.error("Error detaching ISM policy from index: {}", indexName, e);
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Error detaching ISM policy from indexes matching pattern: {}", indexPattern, e);
+      throw new IOException("Failed to detach ISM policy from indexes: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/stats");
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster stats", e);
+      throw new IOException("Failed to fetch cluster stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> nodesStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_nodes/stats");
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch nodes stats", e);
+      throw new IOException("Failed to fetch nodes stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterSettings() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/settings");
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster settings", e);
+      throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public void updateGlossaryTermByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
+    if (isClientAvailable) {
+      // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
+      PrefixQueryBuilder prefixQuery = new PrefixQueryBuilder(prefixFieldCondition, oldParentFQN);
+
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      updateByQueryRequest.setQuery(prefixQuery);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("oldParentFQN", oldParentFQN);
+      params.put("newParentFQN", newParentFQN);
+
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE,
+              Script.DEFAULT_SCRIPT_LANG,
+              UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT,
+              params);
+
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateOpenSearchByQuery(updateByQueryRequest);
+        LOG.info("Successfully Updated FQN for Glossary Term: {}", oldParentFQN);
+      } catch (Exception e) {
+        LOG.error("Error while updating Glossary Term tag FQN: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
+
+    Map<String, Object> params = new HashMap<>();
+
+    params.put("columnUpdates", originalUpdatedColumnFqnMap);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, UPDATE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateOpenSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while updating Column Lineage: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("deletedFQNs", deletedColumns);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, DELETE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateOpenSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while deleting Column Lineage: {}", e.getMessage(), e);
+      }
+    }
   }
 }

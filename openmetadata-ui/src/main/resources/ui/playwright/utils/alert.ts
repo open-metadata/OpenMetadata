@@ -397,7 +397,7 @@ export const addDomainFilter = async ({
 
   // Search and select domain
   const getSearchResult = page.waitForResponse(
-    '/api/v1/search/query?q=**index=domain_search_index'
+    '/api/v1/search/query?q=**index=domain_search_index*'
   );
   await page.fill(
     '[data-testid="domain-select"] [role="combobox"]',

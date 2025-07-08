@@ -14,26 +14,19 @@
 import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import {
-  cloneDeep,
-  groupBy,
-  isEmpty,
-  isEqual,
-  isUndefined,
-  set,
-  sortBy,
-  uniqBy,
-} from 'lodash';
+import classNames from 'classnames';
+import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
@@ -49,10 +42,21 @@ import {
   Column,
   Table as TableType,
 } from '../../../generated/entity/data/table';
+import {
+  Suggestion,
+  SuggestionType,
+} from '../../../generated/entity/feed/suggestion';
 import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
+import { useSub } from '../../../hooks/usePubSub';
+import {
+  getTableColumnsByFQN,
+  searchTableColumnsByFQN,
+  updateTableColumn,
+} from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
@@ -63,7 +67,6 @@ import {
   getFrequentlyJoinedColumns,
   highlightSearchArrayElement,
   highlightSearchText,
-  searchInColumns,
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -73,14 +76,15 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  findColumnByEntityLink,
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
-  makeData,
   prepareConstraintIcon,
-  updateFieldTags,
+  updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -93,42 +97,49 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
-import {
-  TableCellRendered,
-  UpdatedColumnFieldData,
-} from './SchemaTable.interface';
+import { TableCellRendered } from './SchemaTable.interface';
 
 const SchemaTable = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
-  const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
-
   const [editColumn, setEditColumn] = useState<Column>();
+
+  const {
+    currentPage,
+    pageSize,
+    handlePageChange,
+    handlePageSizeChange,
+    showPagination,
+    paging,
+    handlePagingChange,
+  } = usePaging(PAGE_SIZE_LARGE);
+
+  // Pagination state for columns
+  const [tableColumns, setTableColumns] = useState<Column[]>([]);
+  const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
 
   const { fqn: decodedEntityFqn } = useFqn();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
+
   const {
     permissions: tablePermissions,
     data: table,
-    onUpdate,
     onThreadLinkSelect,
   } = useGenericContext<TableType>();
 
-  const { testCaseCounts, tableColumns, joins, tableConstraints, deleted } =
-    useMemo(
-      () => ({
-        testCaseCounts: testCaseSummary?.columnTestSummary ?? [],
-        tableColumns: table?.columns ?? [],
-        joins: table?.joins?.columnJoins ?? [],
-        tableConstraints: table?.tableConstraints,
-        deleted: table?.deleted,
-      }),
-      [table, testCaseSummary]
-    );
+  const { testCaseCounts, joins, tableConstraints, deleted } = useMemo(
+    () => ({
+      testCaseCounts: testCaseSummary?.columnTestSummary ?? [],
+      joins: table?.joins?.columnJoins ?? [],
+      tableConstraints: table?.tableConstraints,
+      deleted: table?.deleted,
+    }),
+    [table, testCaseSummary]
+  );
 
   const tableFqn = useMemo(
     () =>
@@ -176,34 +187,118 @@ const SchemaTable = () => {
     [tablePermissions, deleted]
   );
 
-  const sortByOrdinalPosition = useMemo(
-    () => sortBy(tableColumns, 'ordinalPosition'),
-    [tableColumns]
+  // Function to fetch paginated columns or search results
+  const fetchPaginatedColumns = useCallback(
+    async (page = 1, searchQuery?: string) => {
+      if (!tableFqn) {
+        return;
+      }
+
+      setColumnsLoading(true);
+      try {
+        const offset = (page - 1) * pageSize;
+
+        // Use search API if there's a search query, otherwise use regular pagination
+        const response = searchQuery
+          ? await searchTableColumnsByFQN(tableFqn, {
+              q: searchQuery,
+              limit: pageSize,
+              offset: offset,
+              fields: 'tags,customMetrics',
+            })
+          : await getTableColumnsByFQN(tableFqn, {
+              limit: pageSize,
+              offset: offset,
+              fields: 'tags,customMetrics',
+            });
+
+        setTableColumns(response.data || []);
+        handlePagingChange(response.paging);
+      } catch {
+        // Set empty state if API fails
+        setTableColumns([]);
+        handlePagingChange({
+          offset: 1,
+          limit: PAGE_SIZE_LARGE,
+          total: 0,
+        });
+      }
+      setColumnsLoading(false);
+    },
+    [decodedEntityFqn, pageSize]
+  );
+
+  const handleColumnsPageChange = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      fetchPaginatedColumns(currentPage, searchText);
+      handlePageChange(currentPage);
+    },
+    [paging, fetchPaginatedColumns, searchText]
   );
 
   const fetchTestCaseSummary = async () => {
     try {
       const response = await getTestCaseExecutionSummary(table?.testSuite?.id);
       setTestCaseSummary(response);
-    } catch (error) {
+    } catch {
       setTestCaseSummary(undefined);
     }
   };
 
-  const data = React.useMemo(
-    () => makeData(searchedColumns),
-    [searchedColumns]
-  );
-
-  const nestedTableFqnKeys = useMemo(
-    () =>
-      getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName'),
-    [tableColumns]
-  );
-
   useEffect(() => {
     fetchTestCaseSummary();
   }, [tableFqn]);
+
+  // Fetch columns when search changes
+  useEffect(() => {
+    if (tableFqn) {
+      // Reset to first page when search changes
+      fetchPaginatedColumns(1, searchText || undefined);
+    }
+  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+
+  const updateDescriptionTagFromSuggestions = useCallback(
+    (suggestion: Suggestion) => {
+      setTableColumns((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        const activeCol = findColumnByEntityLink(
+          tableFqn ?? '',
+          prev,
+          suggestion.entityLink
+        );
+
+        if (activeCol) {
+          const update =
+            suggestion.type === SuggestionType.SuggestDescription
+              ? { description: suggestion.description }
+              : { tags: suggestion.tagLabels };
+
+          // Update the column in the nested structure
+          const updatedColumns = updateColumnInNestedStructure(
+            prev,
+            activeCol.fullyQualifiedName ?? '',
+            update
+          );
+
+          return updatedColumns;
+        }
+
+        return prev;
+      });
+    },
+    []
+  );
+
+  useSub(
+    'updateDetails',
+    (suggestion: Suggestion) => {
+      updateDescriptionTagFromSuggestions(suggestion);
+    },
+    [tableColumns]
+  );
 
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
@@ -212,46 +307,34 @@ const SchemaTable = () => {
     setEditColumn(undefined);
   };
 
-  const handleColumnUpdate = async (updatedColumns: Column[]) => {
-    if (table && !isEqual(tableColumns, updatedColumns)) {
-      const updatedTableDetails = {
-        ...table,
-        columns: updatedColumns,
-      };
-      await onUpdate(updatedTableDetails);
-    }
-  };
+  const updateColumnDetails = async (
+    columnFqn: string,
+    column: Partial<Column>,
+    field?: keyof Column
+  ) => {
+    const response = await updateTableColumn(columnFqn, column);
 
-  const updateColumnFields = ({
-    fqn,
-    field,
-    value,
-    columns,
-  }: UpdatedColumnFieldData) => {
-    columns?.forEach((col) => {
-      if (col.fullyQualifiedName === fqn) {
-        set(col, field, value);
-      } else {
-        updateColumnFields({
-          fqn,
-          field,
-          value,
-          columns: col.children as Column[],
-        });
-      }
-    });
+    setTableColumns((prev) =>
+      prev.map((col) =>
+        col.fullyQualifiedName === columnFqn
+          ? // Have to omit the field which is being updated to avoid persisted old value
+            { ...omit(col, field ?? ''), ...response }
+          : col
+      )
+    );
+
+    return response;
   };
 
   const handleEditColumnChange = async (columnDescription: string) => {
     if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
-      const tableCols = cloneDeep(tableColumns);
-      updateColumnFields({
-        fqn: editColumn.fullyQualifiedName,
-        value: columnDescription,
-        field: 'description',
-        columns: tableCols,
-      });
-      await handleColumnUpdate(tableCols);
+      await updateColumnDetails(
+        editColumn.fullyQualifiedName,
+        {
+          description: columnDescription,
+        },
+        'description'
+      );
       setEditColumn(undefined);
     } else {
       setEditColumn(undefined);
@@ -262,15 +345,14 @@ const SchemaTable = () => {
     selectedTags: EntityTags[],
     editColumnTag: Column
   ) => {
-    if (selectedTags && editColumnTag) {
-      const tableCols = cloneDeep(tableColumns);
-
-      updateFieldTags<Column>(
-        editColumnTag.fullyQualifiedName ?? '',
-        selectedTags,
-        tableCols
+    if (selectedTags && editColumnTag.fullyQualifiedName) {
+      await updateColumnDetails(
+        editColumnTag.fullyQualifiedName,
+        {
+          tags: selectedTags,
+        },
+        'tags'
       );
-      await handleColumnUpdate(tableCols);
     }
   };
 
@@ -344,15 +426,6 @@ const SchemaTable = () => {
     [expandedRowKeys]
   );
 
-  useEffect(() => {
-    if (!searchText) {
-      setSearchedColumns(sortByOrdinalPosition);
-    } else {
-      const searchCols = searchInColumns(sortByOrdinalPosition, searchText);
-      setSearchedColumns(searchCols);
-    }
-  }, [searchText, sortByOrdinalPosition]);
-
   const handleEditDisplayNameClick = (record: Column) => {
     setEditColumnDisplayName(record);
   };
@@ -363,22 +436,19 @@ const SchemaTable = () => {
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
     ) {
-      const tableCols = cloneDeep(tableColumns);
+      await updateColumnDetails(
+        editColumnDisplayName.fullyQualifiedName,
+        {
+          displayName: displayName,
+          ...(isEmpty(constraint)
+            ? {
+                removeConstraint: true,
+              }
+            : { constraint }),
+        },
+        'displayName'
+      );
 
-      updateColumnFields({
-        fqn: editColumnDisplayName.fullyQualifiedName,
-        value: isEmpty(displayName) ? undefined : displayName,
-        field: 'displayName',
-        columns: tableCols,
-      });
-
-      updateColumnFields({
-        fqn: editColumnDisplayName.fullyQualifiedName,
-        value: isEmpty(constraint) ? undefined : constraint,
-        field: 'constraint',
-        columns: tableCols,
-      });
-      await handleColumnUpdate(tableCols);
       setEditColumnDisplayName(undefined);
     } else {
       setEditColumnDisplayName(undefined);
@@ -386,13 +456,13 @@ const SchemaTable = () => {
   };
 
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(data);
+    const tags = getAllTags(tableColumns);
 
     return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [data]);
+  }, [tableColumns]);
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -400,7 +470,6 @@ const SchemaTable = () => {
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
-        accessor: TABLE_COLUMNS_KEYS.NAME,
         width: 200,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
@@ -416,7 +485,9 @@ const SchemaTable = () => {
                   tableConstraints,
                 })}
                 <Typography.Text
-                  className="m-b-0 d-block break-word"
+                  className={classNames('m-b-0 d-block break-word', {
+                    'text-grey-600': !isEmpty(displayName),
+                  })}
                   data-testid="column-name">
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
@@ -458,7 +529,6 @@ const SchemaTable = () => {
         title: t('label.type'),
         dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         key: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
-        accessor: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         width: 150,
         render: renderDataTypeDisplay,
       },
@@ -466,7 +536,6 @@ const SchemaTable = () => {
         title: t('label.description'),
         dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 300,
         render: renderDescription,
       },
@@ -474,7 +543,6 @@ const SchemaTable = () => {
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 230,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Column, index: number) => (
@@ -498,7 +566,6 @@ const SchemaTable = () => {
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 230,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Column, index: number) => (
@@ -523,7 +590,7 @@ const SchemaTable = () => {
         dataIndex: TABLE_COLUMNS_KEYS.DATA_QUALITY_TEST,
         key: TABLE_COLUMNS_KEYS.DATA_QUALITY_TEST,
         width: 120,
-        render: (_, record) => {
+        render: (_: string, record: Column) => {
           const testCounts = testCaseCounts.find((column) => {
             return isEqual(
               getEntityColumnFQN(column.entityLink ?? ''),
@@ -561,6 +628,7 @@ const SchemaTable = () => {
       })}
       name="constraint">
       <Select
+        allowClear
         data-testid="constraint-type-select"
         options={COLUMN_CONSTRAINT_TYPE_OPTIONS}
         placeholder={t('label.select-entity', {
@@ -573,14 +641,14 @@ const SchemaTable = () => {
   );
 
   const handleEditTable = () => {
-    history.push({
-      pathname: getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn),
-    });
+    navigate(getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn));
   };
 
   useEffect(() => {
-    setExpandedRowKeys(nestedTableFqnKeys);
-  }, [searchText]);
+    setExpandedRowKeys(
+      getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
+    );
+  }, [tableColumns]);
 
   // Need to scroll to the selected row
   useEffect(() => {
@@ -593,20 +661,46 @@ const SchemaTable = () => {
 
     const row = document.querySelector(`[data-row-key="${decodedEntityFqn}"]`);
 
-    if (row && data.length > 0) {
+    if (row && tableColumns?.length && tableColumns.length > 0) {
       // Need to wait till table loads fully so that we can call scroll accurately
       setTimeout(() => row.scrollIntoView(), 1);
     }
-  }, [data, decodedEntityFqn]);
+  }, [tableColumns, decodedEntityFqn]);
 
   const searchProps = useMemo(
     () => ({
       placeholder: t('message.find-in-table'),
       value: searchText,
-      onSearch: (value: string) => setSearchText(value),
+      onSearch: (value: string) => {
+        setSearchText(value);
+        handlePageChange(1);
+      },
       onClear: () => setSearchText(''),
     }),
-    [searchText]
+    [searchText, handlePageChange]
+  );
+
+  const paginationProps = useMemo(
+    () => ({
+      currentPage,
+      showPagination,
+      isLoading: columnsLoading,
+      isNumberBased: Boolean(searchText),
+      pageSize,
+      paging,
+      pagingHandler: handleColumnsPageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      currentPage,
+      showPagination,
+      columnsLoading,
+      searchText,
+      pageSize,
+      paging,
+      handleColumnsPageChange,
+      handlePageSizeChange,
+    ]
   );
 
   return (
@@ -615,14 +709,16 @@ const SchemaTable = () => {
         <Table
           className="align-table-filter-left"
           columns={columns}
+          customPaginationProps={paginationProps}
           data-testid="entity-table"
-          dataSource={data}
+          dataSource={tableColumns}
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
           expandable={expandableConfig}
           extraTableFilters={getBulkEditButton(
             tablePermissions.EditAll && !deleted,
             handleEditTable
           )}
+          loading={columnsLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}

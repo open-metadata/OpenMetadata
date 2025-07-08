@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { ReactComponent as IconCreateIngestion } from '../../../assets/svg/creating-ingestion.svg';
 import { ReactComponent as IconDeployIngestion } from '../../../assets/svg/deploy-ingestion.svg';
 import { LITE_GRAY_COLOR } from '../../../constants/constants';

@@ -32,6 +32,11 @@ export const FollowSupportedServices = [
   EntityTypeEndpoint.Database,
 ];
 
+export const CertificationSupportedServices = [
+  EntityTypeEndpoint.DatabaseSchema,
+  EntityTypeEndpoint.Database,
+];
+
 export const VISIT_SERVICE_PAGE_DETAILS = {
   [SERVICE_TYPE.Database]: {
     settingsMenuId: GlobalSettingOptions.DATABASES,

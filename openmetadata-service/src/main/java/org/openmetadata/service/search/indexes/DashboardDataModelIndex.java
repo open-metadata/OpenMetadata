@@ -12,22 +12,9 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.models.FlattenColumn;
-import org.openmetadata.service.search.models.SearchSuggest;
 
 public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     implements ColumnIndex {
-
-  @Override
-  public List<SearchSuggest> getSuggest() {
-    List<SearchSuggest> suggest = new ArrayList<>();
-    suggest.add(SearchSuggest.builder().input(dashboardDataModel.getName()).weight(10).build());
-    suggest.add(
-        SearchSuggest.builder()
-            .input(dashboardDataModel.getFullyQualifiedName())
-            .weight(5)
-            .build());
-    return suggest;
-  }
 
   @Override
   public Object getEntity() {
@@ -35,20 +22,20 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    List<SearchSuggest> columnSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();
     if (dashboardDataModel.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(dashboardDataModel.getColumns(), cols, null);
       for (FlattenColumn col : cols) {
-        columnSuggest.add(SearchSuggest.builder().input(col.getName()).weight(5).build());
         columnsWithChildrenName.add(col.getName());
         if (col.getTags() != null) {
           tagsWithChildren.add(col.getTags());
         }
       }
       doc.put("columnNames", columnsWithChildrenName);
+      // Add flat column names field for fuzzy search to avoid array-based clause multiplication
+      doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
     }
     ParseTags parseTags =
         new ParseTags(Entity.getEntityTags(Entity.DASHBOARD_DATA_MODEL, dashboardDataModel));
@@ -61,7 +48,6 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
         getCommonAttributesMap(dashboardDataModel, Entity.DASHBOARD_DATA_MODEL);
     doc.putAll(commonAttributes);
     doc.put("tags", flattenedTagList);
-    doc.put("column_suggest", columnSuggest);
     doc.put("tier", parseTags.getTierTag());
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
     doc.put("upstreamLineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));

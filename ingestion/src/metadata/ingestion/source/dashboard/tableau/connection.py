@@ -13,7 +13,7 @@
 Source connection handler
 """
 import traceback
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import tableauserverclient as TSC
 
@@ -38,7 +38,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.tableau.client import TableauClient
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ingestion_logger()
 
@@ -48,12 +47,12 @@ def get_connection(connection: TableauConnection) -> TableauClient:
     Create connection
     """
     tableau_server_auth = build_server_config(connection)
-    get_verify_ssl = get_verify_ssl_fn(connection.verifySSL)
+    verify_ssl = set_verify_ssl(connection)
     try:
         return TableauClient(
             tableau_server_auth=tableau_server_auth,
             config=connection,
-            verify_ssl=get_verify_ssl(connection.sslConfig),
+            verify_ssl=verify_ssl,
             pagination_limit=connection.paginationLimit,
         )
     except Exception as exc:
@@ -61,6 +60,21 @@ def get_connection(connection: TableauConnection) -> TableauClient:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection}: {exc}."
         )
+
+
+def set_verify_ssl(connection: TableauConnection) -> Union[bool, str]:
+    """
+    Set verify ssl based on connection configuration
+    ref: https://tableau.github.io/server-client-python/docs/sign-in-out#handling-ssl-certificates-for-tableau-server
+    """
+    if connection.verifySSL.value == "validate":
+        if connection.sslConfig.root.caCertificate:
+            return connection.sslConfig.root.caCertificate.get_secret_value()
+        if connection.sslConfig.root.sslCertificate:
+            return connection.sslConfig.root.sslCertificate.get_secret_value()
+    if connection.verifySSL.value == "ignore":
+        return False
+    return None
 
 
 def test_connection(

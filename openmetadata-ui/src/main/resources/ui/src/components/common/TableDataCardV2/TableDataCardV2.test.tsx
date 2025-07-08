@@ -12,7 +12,6 @@
  */
 
 import { render } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TableDataCardV2 from './TableDataCardV2';
 
@@ -22,15 +21,6 @@ jest.mock('../../../utils/TableUtils', () => ({
   getUsagePercentile: jest
     .fn()
     .mockImplementation((value = 0) => `${value} value`),
-}));
-
-jest.mock('../../../constants/constants', () => ({
-  ROUTES: {
-    TOUR: `tour`,
-  },
-  getDatasetDetailsPath: jest
-    .fn()
-    .mockImplementation((path) => `/dataset/${path}`),
 }));
 
 jest.mock('../../Database/TableDataCardBody/TableDataCardBody', () => {

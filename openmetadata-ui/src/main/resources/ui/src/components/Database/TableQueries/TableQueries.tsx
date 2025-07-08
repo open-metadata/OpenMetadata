@@ -16,15 +16,14 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Button, Col, DatePicker, Row, Space, Tooltip, Typography } from 'antd';
-import { RangePickerProps } from 'antd/lib/date-picker';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import Qs from 'qs';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
@@ -63,6 +62,9 @@ import {
 } from '../../../utils/Query/QueryUtils';
 import { getAddQueryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DatePicker, {
+  RangePickerProps,
+} from '../../common/DatePicker/DatePicker';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -86,7 +88,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   const { t } = useTranslation();
   const location = useCustomLocation();
   const { fqn: datasetFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const searchParams = useMemo(() => {
     const searchData = parseSearchParams(location.search);
@@ -145,7 +147,7 @@ const TableQueries: FC<TableQueriesProp> = ({
         selectedQuery.id ?? ''
       );
       setQueryPermissions(permission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
@@ -209,7 +211,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     if (query.id !== selectedQuery?.id) {
       setIsLoading((pre) => ({ ...pre, rightPanel: true }));
       setSelectedQuery(query);
-      history.push({
+      navigate({
         search: Qs.stringify({
           ...searchParams,
           query: query.id,
@@ -260,13 +262,16 @@ const TableQueries: FC<TableQueriesProp> = ({
             queries[0]
           : queries[0];
         setSelectedQuery(selectedQueryData);
-        history.replace({
-          search: stringifySearchParams({
-            tableId,
-            query: selectedQueryData.id,
-            queryFrom: pageNumber,
-          }),
-        });
+        navigate(
+          {
+            search: stringifySearchParams({
+              tableId,
+              query: selectedQueryData.id,
+              queryFrom: pageNumber,
+            }),
+          },
+          { replace: true }
+        );
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -312,7 +317,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       const options = await fetchTags(searchText);
       setTagsFilter((pre) => ({ ...pre, options }));
-    } catch (error) {
+    } catch {
       setTagsFilter((pre) => ({ ...pre, options: [] }));
     } finally {
       setIsTagsLoading(false);
@@ -329,7 +334,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       const options = await fetchTags();
       setTagsFilter((pre) => ({ ...pre, options, initialOptions: options }));
-    } catch (error) {
+    } catch {
       setTagsFilter((pre) => ({ ...pre, options: [], initialOptions: [] }));
     } finally {
       setIsTagsLoading(false);
@@ -370,7 +375,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       const options = await fetchOwner();
       setOwnerFilter((pre) => ({ ...pre, options, initialOptions: options }));
-    } catch (error) {
+    } catch {
       setOwnerFilter((pre) => ({ ...pre, options: [], initialOptions: [] }));
     } finally {
       setIsOwnerLoading(false);
@@ -397,7 +402,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       const options = await fetchOwner(searchText);
       setOwnerFilter((pre) => ({ ...pre, options }));
-    } catch (error) {
+    } catch {
       setOwnerFilter((pre) => ({ ...pre, options: [] }));
     } finally {
       setIsOwnerLoading(false);
@@ -464,7 +469,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   }, [tableId, pageSize]);
 
   const handleAddQueryClick = () => {
-    history.push(getAddQueryPath(datasetFQN));
+    navigate(getAddQueryPath(datasetFQN));
   };
 
   const addButton = (
@@ -491,6 +496,9 @@ const TableQueries: FC<TableQueriesProp> = ({
         doc={USAGE_DOCS}
         heading={t('label.query-lowercase-plural')}
         permission={permissions?.query.Create}
+        permissionValue={t('label.create-entity', {
+          entity: t('label.query'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={handleAddQueryClick}
       />

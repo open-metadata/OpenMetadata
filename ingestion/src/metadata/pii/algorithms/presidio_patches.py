@@ -13,7 +13,12 @@ Patch the Presidio recognizer results to make adapt them to specific use cases.
 """
 from typing import List, Protocol, Sequence
 
+from dateutil.parser import parse
 from presidio_analyzer import RecognizerResult
+
+from metadata.utils.logger import pii_logger
+
+logger = pii_logger()
 
 
 class PresidioRecognizerResultPatcher(Protocol):
@@ -29,6 +34,24 @@ class PresidioRecognizerResultPatcher(Protocol):
         ...
 
 
+def combine_patchers(
+    *patchers: PresidioRecognizerResultPatcher,
+) -> PresidioRecognizerResultPatcher:
+    """
+    Combine multiple patchers into one.
+    This allows us to apply multiple patches in sequence.
+    """
+
+    def combined_patcher(
+        recognizer_results: Sequence[RecognizerResult], text: str
+    ) -> Sequence[RecognizerResult]:
+        for patcher in patchers:
+            recognizer_results = patcher(recognizer_results, text)
+        return recognizer_results
+
+    return combined_patcher
+
+
 def url_patcher(
     recognizer_results: Sequence[RecognizerResult], text: str
 ) -> Sequence[RecognizerResult]:
@@ -40,6 +63,28 @@ def url_patcher(
         if result.entity_type == "URL":
             if text[: result.start].endswith("@"):
                 # probably an email address, skip the URL
+                continue
+        patched_result.append(result)
+    return patched_result
+
+
+def date_time_patcher(
+    recognizer_results: Sequence[RecognizerResult], text: str
+) -> Sequence[RecognizerResult]:
+    """
+    Patch the recognizer result to remove date time false positive with date.
+    """
+    patched_result: List[RecognizerResult] = []
+    for result in recognizer_results:
+        if result.entity_type == "DATE_TIME":
+            # try to parse using dateutils, if it fails, skip the result
+            try:
+                _ = parse(text[result.start : result.end])
+            except (ValueError, OverflowError):
+                # if parsing fails, skip the result
+                continue
+            except Exception as e:
+                logger.info("Unexpected error while parsing date time: %s", e)
                 continue
         patched_result.append(result)
     return patched_result

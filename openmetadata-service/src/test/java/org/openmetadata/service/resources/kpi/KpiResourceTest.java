@@ -1,9 +1,8 @@
 package org.openmetadata.service.resources.kpi;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -31,12 +30,12 @@ import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.dataInsight.type.KpiTargetType;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -65,19 +64,19 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
             "dataProduct",
             "glossaryTerm",
             "tag");
-    if (getSearchRepository()
+    if (Entity.getSearchRepository()
         .getSearchType()
         .equals(ElasticSearchConfiguration.SearchType.ELASTICSEARCH)) {
       searchInterface =
           new ElasticSearchDataInsightsClient(
-              (RestClient) getSearchRepository().getSearchClient().getLowLevelClient(),
-              getSearchRepository().getClusterAlias());
+              (RestClient) Entity.getSearchRepository().getSearchClient().getLowLevelClient(),
+              Entity.getSearchRepository().getClusterAlias());
     } else {
       searchInterface =
           new OpenSearchDataInsightsClient(
               (os.org.opensearch.client.RestClient)
-                  getSearchRepository().getSearchClient().getLowLevelClient(),
-              getSearchRepository().getClusterAlias());
+                  Entity.getSearchRepository().getSearchClient().getLowLevelClient(),
+              Entity.getSearchRepository().getClusterAlias());
     }
     try {
       for (String dataAssetType : dataAssetTypes) {
@@ -87,7 +86,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
           searchInterface.createDataAssetsDataStream(
               dataStreamName,
               dataAssetType,
-              getSearchRepository().getIndexMapping(dataAssetType),
+              Entity.getSearchRepository().getIndexMapping(dataAssetType),
               "en",
               7);
         }
@@ -108,7 +107,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     assertResponse(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
   }
 
   @Test

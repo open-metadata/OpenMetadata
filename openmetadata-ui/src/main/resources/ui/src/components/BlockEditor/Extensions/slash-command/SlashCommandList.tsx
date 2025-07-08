@@ -14,7 +14,7 @@ import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import { Image, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import { isInViewport } from '../../../../utils/BlockEditorUtils';
 import { useEntityAttachment } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 

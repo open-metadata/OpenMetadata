@@ -17,7 +17,6 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
@@ -175,6 +174,7 @@ const mockProp = {
   versionHandler: jest.fn(),
   handleToggleDelete: jest.fn(),
   onUpdateVote: jest.fn(),
+  onMlModelUpdateCertification: jest.fn(),
 };
 
 const mockParams = {
@@ -187,7 +187,6 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 

@@ -18,8 +18,12 @@ on:
     branches:
       - main
       - "0.[0-9]+.[0-9]+"
+    paths-ignore:
+      - 'openmetadata-docs/**'
   pull_request_target:
     types: [opened, synchronize, reopened, labeled]
+    paths-ignore:
+      - 'openmetadata-docs/**'
 
 permissions:
   contents: read
@@ -67,10 +71,10 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Run checkstyle

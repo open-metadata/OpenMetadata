@@ -191,6 +191,10 @@ export interface Connection {
      */
     authorityURI?: string;
     /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
+    /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
     pagination_entity_per_page?: number;
@@ -229,6 +233,12 @@ export interface Connection {
      */
     connection?: SupersetConnection;
     /**
+     * Tableau API version. If not provided, the version will be used from the tableau server.
+     *
+     * Sigma API version.
+     */
+    apiVersion?: string;
+    /**
      * Types of methods used to authenticate to the tableau instance
      */
     authType?: AuthenticationTypeForTableau;
@@ -236,6 +246,11 @@ export interface Connection {
      * Pagination limit used while querying the tableau metadata API for getting data sources
      */
     paginationLimit?: number;
+    /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
     /**
      * Tableau Site Name.
      */
@@ -339,10 +354,6 @@ export interface Connection {
      * token to connect to Qlik Cloud.
      */
     token?: string;
-    /**
-     * Sigma API version.
-     */
-    apiVersion?: string;
 }
 
 /**
@@ -592,6 +603,10 @@ export interface SupersetConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -1082,6 +1097,7 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",

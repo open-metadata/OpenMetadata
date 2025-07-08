@@ -310,3 +310,16 @@ def filter_by_collection(
     :return: True for filtering, False otherwise
     """
     return _filter(collection_pattern, collection_name)
+
+
+def filter_by_tag(tag_pattern: Optional[FilterPattern], tag_name: str) -> bool:
+    """
+    Return True if the models needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param tag_pattern: Model defining tag filtering logic
+    :param tag_name: tag name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(tag_pattern, tag_name)

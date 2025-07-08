@@ -13,9 +13,9 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -37,8 +37,12 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -64,9 +68,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedMetricFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -98,14 +102,26 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     await onMetricUpdate(updatedData, 'displayName');
   };
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      const certificationTag = updateCertificationTag(newCertification);
+      const updatedData = {
+        ...metricDetails,
+        certification: certificationTag,
+      };
+
+      await onMetricUpdate(updatedData, 'certification');
+    },
+    [metricDetails, onMetricUpdate]
+  );
+
   const handleRestoreMetric = async () => {
     try {
       const { version: newVersion } = await restoreMetric(metricDetails.id);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.metric'),
-        }),
-        2000
+        })
       );
       onToggleDelete(newVersion);
     } catch (error) {
@@ -120,8 +136,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.replace(
-        getEntityDetailsPath(EntityType.METRIC, decodedMetricFqn, activeKey)
+      navigate(
+        getEntityDetailsPath(EntityType.METRIC, decodedMetricFqn, activeKey),
+        { replace: true }
       );
     }
   };
@@ -155,7 +172,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     getFeedCounts(EntityType.METRIC, decodedMetricFqn, handleFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push(ROUTES.METRICS),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate(ROUTES.METRICS),
     []
   );
 
@@ -249,6 +266,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             entityType={EntityType.METRIC}
             openTaskCount={feedCount.openTaskCount}
             permissions={metricPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMetric}
             onMetricUpdate={onMetricUpdate}
