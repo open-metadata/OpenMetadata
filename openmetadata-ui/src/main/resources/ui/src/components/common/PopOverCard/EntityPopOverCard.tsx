@@ -16,6 +16,7 @@ import { isUndefined } from 'lodash';
 import {
   FC,
   HTMLAttributes,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -274,7 +275,7 @@ const EntityPopOverCard: FC<Props> = ({
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>
-      {children}
+      {children as ReactNode}
     </Popover>
   );
 };
