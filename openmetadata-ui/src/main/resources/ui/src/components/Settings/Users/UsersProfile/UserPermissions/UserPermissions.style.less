@@ -1,0 +1,103 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../../../../styles/variables.less');
+
+.user-permissions-container {
+  padding: 16px;
+  max-width: 1200px;
+
+  .user-permissions-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+  }
+
+  .ant-card {
+    margin-bottom: 24px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+
+  .policy-collapse {
+    .ant-collapse-header {
+      padding-left: 0 !important;
+    }
+
+    .ant-collapse-content-box {
+      padding-left: 24px;
+    }
+  }
+
+  .rule-item {
+    padding: 12px;
+    background-color: @grey-1;
+    border-radius: 4px;
+    margin-bottom: 8px;
+
+    .ant-tag {
+      margin-bottom: 4px;
+    }
+  }
+
+  .team-permission {
+    padding-bottom: 16px;
+    
+    &:last-child {
+      .ant-divider {
+        display: none;
+      }
+    }
+  }
+
+  .rules-container {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .w-full {
+    width: 100%;
+  }
+
+  .m-t-sm {
+    margin-top: 8px;
+  }
+
+  .m-t-md {
+    margin-top: 16px;
+  }
+
+  .m-t-xs {
+    margin-top: 4px;
+  }
+
+  .m-b-xs {
+    margin-bottom: 4px;
+  }
+
+  .m-b-sm {
+    margin-bottom: 8px;
+  }
+
+  .m-b-md {
+    margin-bottom: 16px;
+  }
+
+  .m-b-lg {
+    margin-bottom: 24px;
+  }
+
+  .m-r-xs {
+    margin-right: 4px;
+  }
+}

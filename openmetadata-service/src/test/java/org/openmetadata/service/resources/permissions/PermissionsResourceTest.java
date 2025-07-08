@@ -547,7 +547,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> TestUtils.get(target, PermissionDebugInfo.class, user1AuthHeaders),
         FORBIDDEN,
-        "Principal: CatalogPrincipal{name='" + testUser1.getName() + "'} is not authorized");
+        "Principal: CatalogPrincipal{name='" + testUser1.getName() + "'} is not admin");
   }
 
   @Test
@@ -638,7 +638,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> TestUtils.get(target, PermissionEvaluationDebugInfo.class, user1AuthHeaders),
         FORBIDDEN,
-        "Principal: CatalogPrincipal{name='" + testUser1.getName() + "'} is not authorized");
+        "Principal: CatalogPrincipal{name='" + testUser1.getName() + "'} is not admin");
   }
 
   @Test
@@ -670,6 +670,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   }
 
   // Helper methods
+
   private User createUser(String name) throws HttpResponseException {
     UserResourceTest userResourceTest = new UserResourceTest();
     CreateUser createUser = userResourceTest.createRequest(name).withEmail(name + "@test.com");

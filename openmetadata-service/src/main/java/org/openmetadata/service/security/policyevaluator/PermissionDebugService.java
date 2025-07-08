@@ -307,7 +307,7 @@ public class PermissionDebugService {
   }
 
   public PermissionEvaluationDebugInfo debugPermissionEvaluation(
-      String userName, String resourceType, String resourceId, MetadataOperation operation) {
+      String userName, String resourceType, String resourceIdOrFqn, MetadataOperation operation) {
     long startTime = System.currentTimeMillis();
 
     User user = userRepository.getByName(null, userName, userRepository.getFields("*"));
@@ -315,18 +315,28 @@ public class PermissionDebugService {
     PermissionEvaluationDebugInfo debugInfo = new PermissionEvaluationDebugInfo();
     debugInfo.setUser(user.getEntityReference());
     debugInfo.setResource(resourceType);
-    debugInfo.setResourceId(resourceId);
+    debugInfo.setResourceId(resourceIdOrFqn);
     debugInfo.setOperation(operation);
 
-    // Get the resource if resourceId is provided
+    // Get the resource if resourceIdOrFqn is provided
     EntityInterface resource = null;
-    if (resourceId != null) {
+    if (resourceIdOrFqn != null) {
       try {
         EntityRepository<?> repository = Entity.getEntityRepository(resourceType);
-        resource = repository.get(null, UUID.fromString(resourceId), repository.getFields("*"));
+        // Try to parse as UUID first
+        try {
+          UUID resourceId = UUID.fromString(resourceIdOrFqn);
+          resource = repository.get(null, resourceId, repository.getFields("*"));
+        } catch (IllegalArgumentException e) {
+          // Not a UUID, try as FQN
+          resource = repository.getByName(null, resourceIdOrFqn, repository.getFields("*"));
+        }
       } catch (Exception e) {
         LOG.warn(
-            "Failed to fetch resource {} with id {}: {}", resourceType, resourceId, e.getMessage());
+            "Failed to fetch resource {} with id/fqn {}: {}",
+            resourceType,
+            resourceIdOrFqn,
+            e.getMessage());
       }
     }
 
@@ -345,7 +355,12 @@ public class PermissionDebugService {
     // Evaluate policies with tracking
     boolean finalDecision =
         evaluatePoliciesWithTracking(
-            subjectContext, resourceContext, operationContext, evaluationSteps, stepNumber);
+            subjectContext,
+            resourceContext,
+            operationContext,
+            operation,
+            evaluationSteps,
+            stepNumber);
 
     debugInfo.setAllowed(finalDecision);
     debugInfo.setFinalDecision(finalDecision ? "ALLOWED" : "DENIED");
@@ -389,6 +404,7 @@ public class PermissionDebugService {
       SubjectContext subjectContext,
       ResourceContext resourceContext,
       OperationContext operationContext,
+      MetadataOperation operation,
       List<PolicyEvaluationStep> evaluationSteps,
       int startStepNumber) {
 
@@ -405,17 +421,18 @@ public class PermissionDebugService {
       List<CompiledRule> rules = policyContext.getRules();
 
       for (CompiledRule compiledRule : rules) {
-        // Get the operation from operationContext
+        // For permission debugging, we're checking a single specific operation
         List<MetadataOperation> operations = operationContext.getOperations(resourceContext);
-        for (MetadataOperation operation : operations) {
+
+        // If operations is null or empty, use the single operation from operationContext
+        if (operations == null || operations.isEmpty()) {
+          operations = List.of(operation);
+        }
+
+        for (MetadataOperation op : operations) {
           PolicyEvaluationStep step =
               createEvaluationStep(
-                  stepNumber++,
-                  policyContext,
-                  compiledRule,
-                  subjectContext,
-                  resourceContext,
-                  operation);
+                  stepNumber++, policyContext, compiledRule, subjectContext, resourceContext, op);
           evaluationSteps.add(step);
 
           if (step.isMatched()) {
@@ -440,7 +457,7 @@ public class PermissionDebugService {
   private PolicyEvaluationStep createEvaluationStep(
       int stepNumber,
       SubjectContext.PolicyContext policyContext,
-      Rule rule,
+      CompiledRule rule,
       SubjectContext subjectContext,
       ResourceContext resourceContext,
       MetadataOperation operation) {
@@ -488,9 +505,9 @@ public class PermissionDebugService {
       step.setSourceEntity(teamRef);
     }
 
-    // Check if rule matches
-    boolean operationMatches = rule.getOperations().contains(operation);
-    boolean resourceMatches = matchResource(rule, resourceContext.getResource());
+    // Check if rule matches - use the same logic as CompiledRule
+    boolean operationMatches = matchOperation(rule, operation);
+    boolean resourceMatches = rule.matchResource(resourceContext.getResource());
     boolean conditionMatches = true;
 
     if (rule.getCondition() != null && !rule.getCondition().isEmpty()) {
@@ -543,17 +560,20 @@ public class PermissionDebugService {
     return step;
   }
 
-  private boolean matchResource(Rule rule, String resourceType) {
-    if (rule.getResources() == null || rule.getResources().isEmpty()) {
-      return true; // No resource filter means all resources
+  // Helper method that replicates CompiledRule.matchOperation logic
+  private boolean matchOperation(CompiledRule rule, MetadataOperation operation) {
+    List<MetadataOperation> operations = rule.getOperations();
+    if (operations.contains(MetadataOperation.ALL)) {
+      return true; // Match all operations
     }
-
-    for (String resource : rule.getResources()) {
-      if ("*".equals(resource) || resource.equals(resourceType)) {
-        return true;
-      }
+    if (operations.contains(MetadataOperation.EDIT_ALL)
+        && OperationContext.isEditOperation(operation)) {
+      return true;
     }
-
-    return false;
+    if (operations.contains(MetadataOperation.VIEW_ALL)
+        && OperationContext.isViewOperation(operation)) {
+      return true;
+    }
+    return operations.contains(operation);
   }
 }

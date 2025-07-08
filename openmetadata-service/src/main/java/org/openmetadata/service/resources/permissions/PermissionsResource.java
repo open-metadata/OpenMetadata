@@ -298,7 +298,9 @@ public class PermissionsResource {
               required = true)
           @QueryParam("resource")
           String resourceType,
-      @Parameter(description = "ID of the specific resource instance (optional)")
+      @Parameter(
+              description =
+                  "UUID or Fully Qualified Name (FQN) of the specific resource instance (optional)")
           @QueryParam("resourceId")
           String resourceId,
       @Parameter(
