@@ -242,9 +242,9 @@ class TableauSource(DashboardServiceSource):
             data_model_request = CreateDashboardDataModelRequest(
                 name=EntityName(data_model.id),
                 displayName=data_model_name,
-                description=Markdown(data_model.description)
-                if data_model.description
-                else None,
+                description=(
+                    Markdown(data_model.description) if data_model.description else None
+                ),
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 dataModelType=data_model_type.value,
                 serviceType=DashboardServiceType.Tableau.value,
@@ -312,9 +312,11 @@ class TableauSource(DashboardServiceSource):
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 project=self.get_project_name(dashboard_details=dashboard_details),
                 charts=[
                     FullyQualifiedEntityName(
@@ -459,7 +461,7 @@ class TableauSource(DashboardServiceSource):
         self,
         upstream_data_model: DataSource,
         datamodel: DataSource,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
         upstream_data_model_entity: DashboardDataModel,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -473,7 +475,7 @@ class TableauSource(DashboardServiceSource):
                 if column is not None
             }
             for table in datamodel.upstreamTables or []:
-                om_tables = self._get_database_tables(db_service_name, table)
+                om_tables = self._get_database_tables(db_service_prefix, table)
                 for om_table_and_query in om_tables or []:
                     column_lineage = self._get_column_lineage(
                         table,
@@ -573,11 +575,17 @@ class TableauSource(DashboardServiceSource):
         self,
         datamodel: DataSource,
         data_model_entity: DashboardDataModel,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
     ) -> Iterable[Either[AddLineageRequest]]:
         """ "
         Method to create lineage between tables<->published datasource<->embedded datasource
         """
+        (
+            db_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
         for upstream_data_model in datamodel.upstreamDatasources or []:
             try:
                 upstream_data_model_entity = self._get_datamodel(
@@ -597,7 +605,7 @@ class TableauSource(DashboardServiceSource):
                     yield from self._get_table_datamodel_lineage(
                         upstream_data_model=upstream_data_model,
                         datamodel=datamodel,
-                        db_service_name=db_service_name,
+                        db_service_prefix=db_service_prefix,
                         upstream_data_model_entity=upstream_data_model_entity,
                     )
 
@@ -614,11 +622,13 @@ class TableauSource(DashboardServiceSource):
                                 )
                             lineage_parser = LineageParser(
                                 query,
-                                ConnectionTypeDialectMapper.dialect_of(
-                                    db_service_entity.serviceType.value
-                                )
-                                if db_service_entity
-                                else Dialect.ANSI,
+                                (
+                                    ConnectionTypeDialectMapper.dialect_of(
+                                        db_service_entity.serviceType.value
+                                    )
+                                    if db_service_entity
+                                    else Dialect.ANSI
+                                ),
                             )
                             for source_table in lineage_parser.source_tables or []:
                                 database_schema_table = fqn.split_table_name(
@@ -638,11 +648,44 @@ class TableauSource(DashboardServiceSource):
                                     database_schema_table.get("database_schema")
                                 )
                                 table_name = database_schema_table.get("table")
+
+                                if (
+                                    prefix_database_name
+                                    and database_name
+                                    and prefix_database_name.lower()
+                                    != database_name.lower()
+                                ):
+                                    logger.debug(
+                                        f"Database {database_name} does not match prefix {prefix_database_name}"
+                                    )
+                                    continue
+
+                                if (
+                                    prefix_schema_name
+                                    and schema_name
+                                    and prefix_schema_name.lower()
+                                    != schema_name.lower()
+                                ):
+                                    logger.debug(
+                                        f"Schema {schema_name} does not match prefix {prefix_schema_name}"
+                                    )
+                                    continue
+
+                                if (
+                                    prefix_table_name
+                                    and table_name
+                                    and prefix_table_name.lower() != table_name.lower()
+                                ):
+                                    logger.debug(
+                                        f"Table {table_name} does not match prefix {prefix_table_name}"
+                                    )
+                                    continue
+
                                 fqn_search_string = build_es_fqn_search_string(
-                                    database_name=database_name,
-                                    schema_name=schema_name,
+                                    database_name=prefix_database_name or database_name,
+                                    schema_name=prefix_schema_name or schema_name,
                                     service_name=db_service_name or "*",
-                                    table_name=table_name,
+                                    table_name=prefix_table_name or table_name,
                                 )
                                 from_entities = self.metadata.search_in_any_service(
                                     entity_type=Table,
@@ -676,7 +719,7 @@ class TableauSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: TableauDashboard,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         This method creates the lineage between tables and datamodels
@@ -698,7 +741,7 @@ class TableauSource(DashboardServiceSource):
                         yield from self._get_datamodel_table_lineage(
                             datamodel=datamodel,
                             data_model_entity=data_model_entity,
-                            db_service_name=db_service_name,
+                            db_service_prefix=db_service_prefix,
                         )
                     else:
                         # else we'll create lineage only using Embedded Datasources in below format
@@ -706,7 +749,7 @@ class TableauSource(DashboardServiceSource):
                         yield from self._get_table_datamodel_lineage(
                             upstream_data_model=datamodel,
                             datamodel=datamodel,
-                            db_service_name=db_service_name,
+                            db_service_prefix=db_service_prefix,
                             upstream_data_model_entity=data_model_entity,
                         )
 
@@ -716,7 +759,7 @@ class TableauSource(DashboardServiceSource):
                         name="Lineage",
                         error=(
                             "Error to yield dashboard lineage details for DB "
-                            f"service name [{db_service_name}]: {err}"
+                            f"service prefix [{db_service_prefix}]: {err}"
                         ),
                         stackTrace=traceback.format_exc(),
                     )
@@ -786,18 +829,26 @@ class TableauSource(DashboardServiceSource):
         self.metadata.close()
 
     def _get_table_entities_from_api(
-        self, db_service_name: Optional[str], table: UpstreamTable
+        self, db_service_prefix: Optional[str], table: UpstreamTable
     ) -> Optional[List[TableAndQuery]]:
         """
         In case we get the table details from the Graphql APIs we process them
         """
         try:
+            (
+                db_service_name,
+                prefix_database_name,
+                prefix_schema_name,
+                prefix_table_name,
+            ) = self.parse_db_service_prefix(db_service_prefix)
+
             database_schema_table = fqn.split_table_name(table.name)
             database_name = (
                 table.database.name
                 if table.database and table.database.name
                 else database_schema_table.get("database")
             )
+
             if db_service_name:
                 db_service_entity = self.metadata.get_by_name(
                     entity=DatabaseService, fqn=db_service_name
@@ -813,11 +864,38 @@ class TableauSource(DashboardServiceSource):
                 else database_schema_table.get("database_schema")
             )
             table_name = database_schema_table.get("table")
+
+            if (
+                prefix_database_name
+                and database_name
+                and prefix_database_name.lower() != database_name.lower()
+            ):
+                logger.debug(
+                    f"Database {database_name} does not match prefix {prefix_database_name}"
+                )
+                return None
+            if (
+                prefix_schema_name
+                and schema_name
+                and prefix_schema_name.lower() != schema_name.lower()
+            ):
+                logger.debug(
+                    f"Schema {schema_name} does not match prefix {prefix_schema_name}"
+                )
+            if (
+                prefix_table_name
+                and table_name
+                and prefix_table_name.lower() != table_name.lower()
+            ):
+                logger.debug(
+                    f"Table {table_name} does not match prefix {prefix_table_name}"
+                )
+
             fqn_search_string = build_es_fqn_search_string(
-                database_name=database_name,
-                schema_name=schema_name,
+                database_name=prefix_database_name or database_name,
+                schema_name=prefix_schema_name or schema_name,
                 service_name=db_service_name or "*",
-                table_name=table_name,
+                table_name=prefix_table_name or table_name,
             )
             table_entity = self.metadata.search_in_any_service(
                 entity_type=Table,
@@ -862,13 +940,20 @@ class TableauSource(DashboardServiceSource):
         return None
 
     def _get_table_entities_from_query(
-        self, db_service_name: Optional[str], table: UpstreamTable
+        self, db_service_prefix: Optional[str], table: UpstreamTable
     ) -> Optional[List[TableAndQuery]]:
         """
         In case we get the table details from the Graphql APIs we process them
         """
         tables_list = []
         try:
+            (
+                db_service_name,
+                prefix_database_name,
+                prefix_schema_name,
+                prefix_table_name,
+            ) = self.parse_db_service_prefix(db_service_prefix)
+
             for custom_sql_table in table.referencedByQueries or []:
                 db_service_entity = None
                 if db_service_name:
@@ -877,11 +962,13 @@ class TableauSource(DashboardServiceSource):
                     )
                 lineage_parser = LineageParser(
                     custom_sql_table.query,
-                    ConnectionTypeDialectMapper.dialect_of(
-                        db_service_entity.serviceType.value
-                    )
-                    if db_service_entity
-                    else Dialect.ANSI,
+                    (
+                        ConnectionTypeDialectMapper.dialect_of(
+                            db_service_entity.serviceType.value
+                        )
+                        if db_service_entity
+                        else Dialect.ANSI
+                    ),
                 )
                 for source_table in lineage_parser.source_tables or []:
                     database_schema_table = fqn.split_table_name(str(source_table))
@@ -898,11 +985,40 @@ class TableauSource(DashboardServiceSource):
                         database_schema_table.get("database_schema")
                     )
                     table_name = database_schema_table.get("table")
+
+                    if (
+                        prefix_database_name
+                        and database_name
+                        and prefix_database_name.lower() != database_name.lower()
+                    ):
+                        logger.debug(
+                            f"Database {database_name} does not match prefix {prefix_database_name}"
+                        )
+                        continue
+                    if (
+                        prefix_schema_name
+                        and schema_name
+                        and prefix_schema_name.lower() != schema_name.lower()
+                    ):
+                        logger.debug(
+                            f"Schema {schema_name} does not match prefix {prefix_schema_name}"
+                        )
+                        continue
+                    if (
+                        prefix_table_name
+                        and table_name
+                        and prefix_table_name.lower() != table_name.lower()
+                    ):
+                        logger.debug(
+                            f"Table {table_name} does not match prefix {prefix_table_name}"
+                        )
+                        continue
+
                     fqn_search_string = build_es_fqn_search_string(
-                        database_name=database_name,
-                        schema_name=schema_name,
+                        database_name=prefix_database_name or database_name,
+                        schema_name=prefix_schema_name or schema_name,
                         service_name=db_service_name or "*",
-                        table_name=table_name,
+                        table_name=prefix_table_name or table_name,
                     )
                     from_entities = self.metadata.search_in_any_service(
                         entity_type=Table,
@@ -929,7 +1045,7 @@ class TableauSource(DashboardServiceSource):
         return tables_list or []
 
     def _get_database_tables(
-        self, db_service_name: Optional[str], table: UpstreamTable
+        self, db_service_prefix: Optional[str], table: UpstreamTable
     ) -> Optional[List[TableAndQuery]]:
         """
         Get the table entities for lineage
@@ -937,12 +1053,12 @@ class TableauSource(DashboardServiceSource):
         # If we get the table details from the Graphql APIs we process them directly
         if table.name:
             return self._get_table_entities_from_api(
-                db_service_name=db_service_name, table=table
+                db_service_prefix=db_service_prefix, table=table
             )
         # Else we get the table details from the SQL queries and process them using SQL lineage parser
         if table.referencedByQueries:
             return self._get_table_entities_from_query(
-                db_service_name=db_service_name, table=table
+                db_service_prefix=db_service_prefix, table=table
             )
         return None
 
@@ -972,9 +1088,11 @@ class TableauSource(DashboardServiceSource):
             try:
                 if column:
                     parsed_column = {
-                        "dataTypeDisplay": column.remoteType
-                        if column.remoteType
-                        else DataType.UNKNOWN.value,
+                        "dataTypeDisplay": (
+                            column.remoteType
+                            if column.remoteType
+                            else DataType.UNKNOWN.value
+                        ),
                         "dataType": ColumnTypeParser.get_column_type(
                             column.remoteType if column.remoteType else None
                         ),
