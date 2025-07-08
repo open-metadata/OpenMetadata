@@ -11,7 +11,7 @@
   ],
   "definitions": {
     "dashboardServiceType": {
-      "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode, or Lightdash",
+      "description": "Type of Dashboard service - Superset, Looker, Redash, Grafana, Tableau, Metabase, PowerBi, Mode, or Lightdash",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "enum": [
@@ -19,6 +19,7 @@
         "Looker",
         "Tableau",
         "Redash",
+        "Grafana",
         "Metabase",
         "PowerBI",
         "PowerBIReportServer",
@@ -44,6 +45,9 @@
         },
         {
           "name": "Redash"
+        },
+        {
+          "name": "Grafana"
         },
         {
           "name": "Metabase"
@@ -108,6 +112,9 @@
             },
             {
               "$ref": "./connections/dashboard/redashConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/grafanaConnection.json"
             },
             {
               "$ref": "./connections/dashboard/supersetConnection.json"

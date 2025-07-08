@@ -1,0 +1,28 @@
+{
+    "name": "Grafana",
+    "displayName": "Grafana Test Connection",
+    "description": "This Test Connection validates the access against the Grafana server and basic metadata extraction of dashboards, folders, and organization information.",
+    "steps": [
+      {
+        "name": "GetOrganizationInfo",
+        "description": "Validate access to Grafana organization information",
+        "errorMessage": "Failed to fetch organization info, please validate the credentials or check if the user has access to the organization",
+        "shortCircuit": true,
+        "mandatory": true
+      },
+      {
+        "name": "GetDashboards",
+        "description": "List all the dashboards available to the user",
+        "errorMessage": "Failed to fetch dashboards, please validate the credentials or check if user has access to fetch dashboards",
+        "shortCircuit": false,
+        "mandatory": true
+      },
+      {
+        "name": "GetFolders",
+        "description": "List all the folders available to the user",
+        "errorMessage": "Failed to fetch folders, please validate the credentials or check if user has access to fetch folders",
+        "shortCircuit": false,
+        "mandatory": false
+      }
+    ]
+  } 

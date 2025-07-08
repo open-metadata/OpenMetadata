@@ -1,0 +1,88 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/grafanaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GrafanaConnection",
+  "description": "Grafana Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.GrafanaConnection",
+  "definitions": {
+    "grafanaType": {
+      "description": "Grafana service type",
+      "type": "string",
+      "enum": ["Grafana"],
+      "default": "Grafana"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/grafanaType",
+      "default": "Grafana"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "URL for the Grafana instance",
+      "type": "string",
+      "format": "uri",
+      "default": "http://localhost:3000"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "mask": true,
+      "oneOf": [
+        {
+          "$ref": "./grafana/apiKeyAuth.json"
+        },
+        {
+          "$ref": "./grafana/basicAuth.json"
+        }
+      ]
+    },
+    "orgId": {
+      "title": "Organization ID",
+      "description": "Organization ID for Grafana. If not provided, uses default organization.",
+      "type": "string"
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Whether to verify SSL certificates",
+      "type": "boolean",
+      "default": true
+    },
+    "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Dashboard Filter Pattern"
+    },
+    "chartFilterPattern": {
+      "description": "Regex exclude or include charts that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Chart Filter Pattern"
+    },
+    "dataModelFilterPattern": {
+      "description": "Regex exclude or include data models that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Data Model Filter Pattern"
+    },
+    "projectFilterPattern": {
+      "description": "Regex to exclude or include projects that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Project Filter Pattern"
+    },
+    "includeTags": {
+      "title": "Include Tags",
+      "description": "Include tags as classifications",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "authType"]
+} 

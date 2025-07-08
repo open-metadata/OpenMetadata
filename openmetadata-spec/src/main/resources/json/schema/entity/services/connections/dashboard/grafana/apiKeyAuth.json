@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/grafana/apiKeyAuth.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "API Key Auth",
+  "description": "API Key Authentication for Grafana",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.grafana.apiKeyAuth",
+  "type": "object",
+  "properties": {
+    "apiKey": {
+      "title": "API Key",
+      "description": "API Key for Grafana authentication",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["apiKey"]
+} 
