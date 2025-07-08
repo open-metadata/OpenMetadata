@@ -267,7 +267,7 @@ const UserPopOverCard: FC<Props> = ({
       }
       trigger="hover"
       zIndex={9999}>
-      {children ?? (
+      {(children as ReactNode) ?? (
         <Link
           className={classNames(
             'assignee-item d-flex gap-1 cursor-pointer items-center',

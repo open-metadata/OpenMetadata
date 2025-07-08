@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { WidgetProps } from '@rjsf/utils';
 import { TreeSelect } from 'antd';
 import { startCase } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import React, { FC, ReactNode, useMemo } from 'react';
 import { ReactComponent as ArrowIcon } from '../../../../../assets/svg/ic-arrow-down.svg';
 import { TEXT_BODY_COLOR } from '../../../../../constants/constants';
 
@@ -65,8 +65,9 @@ const TreeSelectWidget: FC<WidgetProps> = ({
       onBlur={() => onBlur(rest.id, rest.value)}
       onChange={onChange}
       onFocus={() => onFocus(rest.id, rest.value)}
-      {...rest}
-    />
+      {...rest}>
+      {rest.children as ReactNode}
+    </TreeSelect>
   );
 };
 
