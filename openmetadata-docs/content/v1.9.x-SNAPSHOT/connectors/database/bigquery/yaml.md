@@ -1,5 +1,6 @@
 ---
 title: Run the BigQuery Connector Externally
+description: Configure BigQuery database connections in OpenMetadata using YAML. Complete setup guide with authentication, SSL, and connection parameters.
 slug: /connectors/database/bigquery/yaml
 ---
 
@@ -149,11 +150,26 @@ credentials:
 the GCP credentials empty. This is why they are not marked as required.
 
 ```yaml
+# ADC authentication with optional billing project
 ...
   config:
     type: BigQuery
     credentials:
-      gcpConfig: {}
+      gcpConfig:
+        type: gcp_adc
+        projectId: ["your-data-project-id"]  # Optional: specify project(s) for data access
+    billingProjectId: "your-billing-project-id"  # Optional: for billing attribution
+...
+```
+
+```yaml
+# ADC authentication without billing project  
+...
+  config:
+    type: BigQuery
+    credentials:
+      gcpConfig:
+        type: gcp_adc
 ...
 ```
 

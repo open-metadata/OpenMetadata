@@ -128,17 +128,13 @@ export const selectSubDomain = async (
   });
 
   if (!isSelected) {
-    const subDomainRes = page.waitForResponse(
-      '/api/v1/search/query?*&from=0&size=50&index=domain_search_index'
-    );
     await menuItem.click();
-    await subDomainRes;
+    await page.waitForLoadState('networkidle');
   }
 
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
   await page.getByTestId(subDomain.name).click();
   await page.waitForLoadState('networkidle');
-  await page.locator('[data-testid="loader"]').waitFor({ state: 'detached' });
 };
 
 export const selectDataProductFromTab = async (
@@ -202,7 +198,7 @@ const fillCommonFormItems = async (
   }
 };
 
-const fillDomainForm = async (
+export const fillDomainForm = async (
   page: Page,
   entity: Domain['data'] | SubDomain['data'],
   isDomain = true
