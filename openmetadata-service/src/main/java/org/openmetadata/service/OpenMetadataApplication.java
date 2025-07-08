@@ -76,6 +76,9 @@ import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.cache.CachedCollectionDAO;
+import org.openmetadata.service.cache.RedisCacheBundle;
+import org.openmetadata.service.cache.RelationshipCache;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -221,6 +224,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);
+
+    // Initialize Redis Cache if enabled
+    initializeCache(catalogConfig, environment);
 
     initializeWebsockets(catalogConfig, environment);
 
@@ -403,6 +409,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected void initializeSearchRepository(OpenMetadataApplicationConfig config) {
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
+    Integer databaseMaxSize = config.getDataSourceFactory().getMaxSize();
+    LOG.info(
+        "AUTO-TUNE INIT: Initializing SearchRepository with database max pool size: {}",
+        databaseMaxSize);
     SearchRepository searchRepository =
         new SearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
@@ -448,7 +458,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
-    return jdbi.onDemand(CollectionDAO.class);
+    CollectionDAO originalDAO = jdbi.onDemand(CollectionDAO.class);
+
+    // Wrap with caching decorator if cache is available
+    if (RelationshipCache.isAvailable()) {
+      LOG.info("Wrapping CollectionDAO with caching support");
+      return new CachedCollectionDAO(originalDAO);
+    }
+
+    LOG.info("Using original CollectionDAO without caching");
+    return originalDAO;
   }
 
   private void registerSamlServlets(
@@ -725,6 +744,24 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
+    }
+  }
+
+  private void initializeCache(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    if (catalogConfig.getCacheConfiguration() != null
+        && catalogConfig.getCacheConfiguration().isEnabled()) {
+      LOG.info("Initializing Redis cache");
+      try {
+        RedisCacheBundle cacheBundle = new RedisCacheBundle();
+        cacheBundle.run(catalogConfig, environment);
+        LOG.info("Redis cache initialized successfully");
+      } catch (Exception e) {
+        LOG.error("Failed to initialize Redis cache", e);
+        throw new RuntimeException("Failed to initialize Redis cache", e);
+      }
+    } else {
+      LOG.info("Redis cache is disabled");
     }
   }
 
