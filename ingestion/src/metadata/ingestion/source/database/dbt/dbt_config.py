@@ -19,6 +19,7 @@ from functools import singledispatch
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import requests
+
 from metadata.clients.aws_client import AWSClient
 from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
@@ -78,9 +79,7 @@ def _(config: DbtLocalConfig):
     try:
         blob_grouped_by_directory = defaultdict(list)
 
-        subdirectory = (
-            os.path.dirname(config.dbtManifestFilePath)
-        )
+        subdirectory = os.path.dirname(config.dbtManifestFilePath)
         blob_grouped_by_directory[subdirectory] = [
             config.dbtManifestFilePath,
             config.dbtCatalogFilePath,
