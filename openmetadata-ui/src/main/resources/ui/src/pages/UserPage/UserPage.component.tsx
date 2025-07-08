@@ -132,6 +132,13 @@ const UserPage = () => {
               roles: response.roles,
               isAdmin: response.isAdmin,
             };
+          } else if (key === 'teams') {
+            // Handle teams update - this affects inherited domains
+            updatedKeyData = {
+              [key]: response[key],
+              // Also update domains since they are inherited from teams
+              domains: response.domains,
+            };
           } else {
             updatedKeyData = { [key]: response[key] };
           }
