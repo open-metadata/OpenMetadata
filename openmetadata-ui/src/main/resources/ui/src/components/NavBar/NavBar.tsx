@@ -82,10 +82,8 @@ import {
   getEntityType,
   prepareFeedLink,
 } from '../../utils/FeedUtils';
-import {
-  languageSelectOptions,
-  SupportedLocales,
-} from '../../utils/i18next/i18nextUtil';
+import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
+import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -125,7 +123,7 @@ const NavBar = () => {
   const [version, setVersion] = useState<string>();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
-    preferences: { isSidebarCollapsed },
+    preferences: { isSidebarCollapsed, language },
     setPreference,
   } = useCurrentUserPreferences();
 
@@ -165,13 +163,6 @@ const NavBar = () => {
       setIsFeatureModalOpen(true);
     }
   };
-
-  const language = useMemo(
-    () =>
-      (cookieStorage.getItem('i18next') as SupportedLocales) ||
-      SupportedLocales.English,
-    []
-  );
 
   const { socket } = useWebSocketConnector();
 
@@ -443,6 +434,7 @@ const NavBar = () => {
 
   const handleLanguageChange = useCallback(({ key }) => {
     i18next.changeLanguage(key);
+    setPreference({ language: key as SupportedLocales });
     refreshPage();
   }, []);
 
@@ -526,10 +518,7 @@ const NavBar = () => {
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
                 type="text">
-                {upperCase(
-                  (language || SupportedLocales.English).split('-')[0]
-                )}{' '}
-                <DropDownIcon width={12} />
+                {upperCase(language.split('-')[0])} <DropDownIcon width={12} />
               </Button>
             </Dropdown>
             <Dropdown

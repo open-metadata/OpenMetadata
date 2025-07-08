@@ -13,6 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { isEmpty } from 'lodash';
+import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { EntityType } from '../enums/entity.enum';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';

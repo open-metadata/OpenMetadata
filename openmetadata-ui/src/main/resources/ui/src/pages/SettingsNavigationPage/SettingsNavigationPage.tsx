@@ -155,7 +155,7 @@ export const SettingsNavigationPage = ({
 
   const titleRenderer = (node: TreeDataNode) => (
     <div className="space-between">
-      {node.title}
+      {t(node.title as string)}
       <Switch
         checked={!hiddenKeys.includes(node.key as string)}
         onChange={(checked) => handleRemoveToggle(checked, node.key as string)}
