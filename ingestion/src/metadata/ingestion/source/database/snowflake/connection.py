@@ -151,7 +151,9 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             url = f"{url}?{params}"
         return url
 
-    def _get_private_key(self) -> Optional[bytes]:
+    def _get_private_key(
+        self, encoding: serialization.Encoding = serialization.Encoding.DER
+    ) -> Optional[bytes]:
         connection = self.service_connection
         if connection.privateKey:
             snowflake_private_key_passphrase = (
@@ -170,7 +172,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
                 backend=default_backend(),
             )
             pkb = p_key.private_bytes(
-                encoding=serialization.Encoding.DER,
+                encoding=encoding,
                 format=serialization.PrivateFormat.PKCS8,
                 encryption_algorithm=serialization.NoEncryption(),
             )

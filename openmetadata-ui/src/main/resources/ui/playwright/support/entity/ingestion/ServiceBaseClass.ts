@@ -277,7 +277,7 @@ class ServiceBaseClass {
 
     await expect(
       page.getByText(
-        'Error: Expression has only 4 parts. At least 5 parts are required.'
+        'Cron expression must have exactly 5 fields (minute hour day-of-month month day-of-week)'
       )
     ).toBeAttached();
 
