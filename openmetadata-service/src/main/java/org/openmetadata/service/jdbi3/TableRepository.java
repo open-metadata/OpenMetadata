@@ -825,7 +825,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     // Validate table
-    Table table = getByName(null, name, new Fields(allowedFields, "owners,domain,tags,columns"));
+    Table table = getByName(null, name, new Fields(allowedFields, "owners,domains,tags,columns"));
     return new TableCsv(table, user).exportCsv(listOf(table));
   }
 
@@ -919,7 +919,7 @@ public class TableRepository extends EntityRepository<Table> {
             null,
             name,
             new Fields(
-                allowedFields, "owners,domain,tags,columns,database,service,databaseSchema"));
+                allowedFields, "owners,domains,tags,columns,database,service,databaseSchema"));
     return new TableCsv(table, user).importCsv(csv, dryRun);
   }
 

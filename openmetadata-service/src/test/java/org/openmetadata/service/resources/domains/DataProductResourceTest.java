@@ -309,7 +309,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
             ? getEntityByName(dataProduct.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
             : getEntity(dataProduct.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(getDataProduct.getOwners(), getDataProduct.getExperts());
-    String fields = "owners,domain,experts,assets,tags,followers";
+    String fields = "owners,domains,experts,assets,tags,followers";
     getDataProduct =
         byName
             ? getEntityByName(getDataProduct.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

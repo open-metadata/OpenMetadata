@@ -211,7 +211,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
     List<Table> tables =
         tableRepository.listAllForCSV(
-            tableRepository.getFields("owners,tags,domain,extension"),
+            tableRepository.getFields("owners,tags,domains,extension"),
             schema.getFullyQualifiedName());
     tables.forEach(
         table -> tableRepository.setFieldsInternal(table, new Fields(Set.of("columns", "tags"))));
@@ -222,7 +222,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
     List<StoredProcedure> storedProcedures =
         spRepository.listAllForCSV(
-            spRepository.getFields("owners,tags,domain,extension,storedProcedureCode"),
+            spRepository.getFields("owners,tags,domains,extension,storedProcedureCode"),
             schema.getFullyQualifiedName());
     storedProcedures.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
 

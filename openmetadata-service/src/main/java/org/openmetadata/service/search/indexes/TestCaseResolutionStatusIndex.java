@@ -30,7 +30,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     // denormalize the parent relationships for search
     EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
     TestCase testCase =
-        Entity.getEntityOrNull(testCaseReference, "testSuite,domain,tags,owners", Include.ALL);
+        Entity.getEntityOrNull(testCaseReference, "testSuite,domains,tags,owners", Include.ALL);
     if (testCase == null) return;
     testCase =
         new TestCase()

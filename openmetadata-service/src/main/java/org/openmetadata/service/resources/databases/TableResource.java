@@ -96,7 +96,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,"
-          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
+          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash";
 
   @Override
   public Table addHref(UriInfo uriInfo, Table table) {

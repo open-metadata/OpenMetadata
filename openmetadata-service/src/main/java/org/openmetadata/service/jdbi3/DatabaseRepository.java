@@ -140,7 +140,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
     List<DatabaseSchema> schemas =
         schemaRepository.listAllForCSV(
-            schemaRepository.getFields("owners,tags,domain,extension"),
+            schemaRepository.getFields("owners,tags,domains,extension"),
             database.getFullyQualifiedName());
     schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
 
@@ -311,7 +311,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
         List<Table> tables =
             tableRepository.listAllForCSV(
-                tableRepository.getFields("owners,tags,domain,extension,columns"),
+                tableRepository.getFields("owners,tags,domains,extension,columns"),
                 schema.getFullyQualifiedName());
 
         // Add tables and their columns
@@ -328,7 +328,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
             (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
         List<StoredProcedure> storedProcedures =
             spRepository.listAllForCSV(
-                spRepository.getFields("owners,tags,domain,extension,storedProcedureCode"),
+                spRepository.getFields("owners,tags,domains,extension,storedProcedureCode"),
                 schema.getFullyQualifiedName());
 
         // Add stored procedures

@@ -104,7 +104,12 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     }
     try {
       // First, check direct parent, which are always singular
-      parentEntities = List.of(entityRepository.getParentEntity(entity, fields.toString()));
+      EntityInterface directParent = entityRepository.getParentEntity(entity, fields.toString());
+      if (directParent == null) {
+        parentEntities = null;
+        return;
+      }
+      parentEntities = List.of(directParent);
       // If direct parent is not found, check for root-level parent
       if (nullOrEmpty(parentEntities)) {
         parentEntities = resolveRootParentEntities(entity, fields);
