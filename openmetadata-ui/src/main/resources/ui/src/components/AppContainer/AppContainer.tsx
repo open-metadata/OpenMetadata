@@ -17,10 +17,12 @@ import { useCallback, useEffect } from 'react';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { SettingType } from '../../generated/settings/settings';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
+import i18n from '../../utils/i18next/LocalUtil';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import NavBar from '../NavBar/NavBar';
@@ -32,6 +34,9 @@ const { Content } = Layout;
 const AppContainer = () => {
   const { currentUser, setAppPreferences, appPreferences } =
     useApplicationStore();
+  const {
+    preferences: { language },
+  } = useCurrentUserPreferences();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const { isAuthenticated } = useApplicationStore();
@@ -60,6 +65,12 @@ const AppContainer = () => {
       fetchAppConfigurations();
     }
   }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (language) {
+      i18n.changeLanguage(language);
+    }
+  }, [language]);
 
   return (
     <Layout>

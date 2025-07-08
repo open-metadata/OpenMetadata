@@ -718,6 +718,10 @@ export interface ConfigClass {
      */
     authorityURI?: string;
     /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
+    /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
     pagination_entity_per_page?: number;
@@ -4707,6 +4711,10 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
+    /**
      * Propagate glossary terms through lineage
      */
     propagateGlossaryTerms?: boolean;
@@ -5086,6 +5094,11 @@ export interface DataQualityConfig {
  */
 export interface Resource {
     /**
+     * Filter JSON tree to be used for rendering the filters in the UI. This comes from
+     * Immutable Tree type of react-awesome-query-builder.
+     */
+    filterJsonTree?: string;
+    /**
      * Query filter to be passed to ES. E.g.,
      * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
@@ -5290,6 +5303,12 @@ export interface IncrementalMetadataExtractionConfiguration {
  * Details required to generate Lineage
  */
 export interface LineageInformation {
+    /**
+     * List of service path prefixes for lineage matching. Supported formats: DBServiceName,
+     * DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or
+     * DBServiceName.DatabaseName.SchemaName.TableName
+     */
+    dbServicePrefixes?: string[];
     /**
      * List of Database Service Names for creation of lineage
      */

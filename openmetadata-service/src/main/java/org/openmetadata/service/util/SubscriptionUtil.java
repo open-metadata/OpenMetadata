@@ -148,7 +148,11 @@ public class SubscriptionUtil {
       List<Team> teams =
           ownerOrFollowers.stream()
               .filter(e -> TEAM.equals(e.getType()))
-              .map(team -> (Team) Entity.getEntity(TEAM, team.getId(), "", Include.NON_DELETED))
+              .map(
+                  team ->
+                      (Team)
+                          Entity.getEntity(
+                              TEAM, team.getId(), "id,profile,email", Include.NON_DELETED))
               .toList();
       data.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
     } catch (Exception ex) {
