@@ -349,12 +349,12 @@ const CuratedAssetsWidget = ({
             {isEditView ? (
               <>
                 <DragOutlined
-                  className="drag-widget-icon cursor-pointer widget-header-options"
+                  className="drag-widget-icon cursor-pointer curated-assets-header-options"
                   data-testid="drag-widget-button"
                   size={20}
                 />
                 <Button
-                  className="widget-header-options"
+                  className="curated-assets-header-options"
                   disabled={isEmpty(selectedResource)}
                   icon={
                     <EditIcon
@@ -366,7 +366,7 @@ const CuratedAssetsWidget = ({
                   onClick={handleModalOpen}
                 />
                 <Dropdown
-                  className="widget-header-options"
+                  className="curated-assets-header-options"
                   data-testid="more-button"
                   menu={{
                     items: CURATED_ASSETS_MORE_MENU_ITEMS,
@@ -391,7 +391,7 @@ const CuratedAssetsWidget = ({
               </>
             ) : (
               <Dropdown
-                className="widget-header-options"
+                className="curated-assets-header-options"
                 data-testid="sort-by-button"
                 menu={{
                   items: CURATED_ASSETS_SORT_BY_OPTIONS,

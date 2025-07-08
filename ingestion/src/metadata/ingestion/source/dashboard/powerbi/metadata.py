@@ -489,11 +489,20 @@ class PowerbiSource(DashboardServiceSource):
         datasource_columns = []
         for table in dataset.tables or []:
             try:
+                table_display_name = None
+                if self.service_connection.displayTableNameFromSource:
+                    table_display_name = self.parse_table_name_from_source(table=table)
+                    if table_display_name:
+                        logger.debug(
+                            f"Parsed Table display name: {table_display_name} for table: {table.name}"
+                        )
+                if not table_display_name:
+                    table_display_name = table.name
                 parsed_table = {
                     "dataTypeDisplay": "PowerBI Table",
                     "dataType": DataType.TABLE,
                     "name": table.name,
-                    "displayName": table.name,
+                    "displayName": table_display_name,
                     "description": table.description,
                     "children": [],
                 }
@@ -682,6 +691,41 @@ class PowerbiSource(DashboardServiceSource):
         except Exception as exc:
             logger.debug(f"Error to get data_model_column_fqn {exc}")
             logger.debug(traceback.format_exc())
+
+    def parse_table_name_from_source(self, table: PowerBiTable) -> Optional[str]:
+        """
+        Parse the snowflake table name
+        """
+        try:
+            if not isinstance(table.source, list):
+                return None
+            source_expression = table.source[0].expression
+            if not source_expression:
+                logger.debug(f"No source expression found for table: {table.name}")
+                return None
+
+            if "Snowflake.Databases" in source_expression:
+                # snowflake expression
+                table_match = re.search(
+                    r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Table"\]', source_expression
+                )
+                view_match = re.search(
+                    r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="View"\]', source_expression
+                )
+                table = table_match.group(1) if table_match else None
+                view = view_match.group(1) if view_match else None
+                return table if table else view
+
+            # other general expressions
+            table_match = re.findall(r'\[Name="([^"]+)"\]', source_expression)
+            table = None
+            if isinstance(table_match, list):
+                table = table_match[1] if len(table_match) > 1 else None
+            return table
+        except Exception as exc:
+            logger.debug(f"Error to parse display table name: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
 
     def _parse_snowflake_regex_exp(
         self, match: re.Match, datamodel_entity: DashboardDataModel

@@ -42,6 +42,7 @@ import {
   LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
   ONE_HOUR_MS,
+  ROUTES,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -75,10 +76,8 @@ import {
   getEntityType,
   prepareFeedLink,
 } from '../../utils/FeedUtils';
-import {
-  languageSelectOptions,
-  SupportedLocales,
-} from '../../utils/i18next/i18nextUtil';
+import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
+import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -118,9 +117,19 @@ const NavBar = () => {
   const [version, setVersion] = useState<string>();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
-    preferences: { isSidebarCollapsed },
+    preferences: { isSidebarCollapsed, language },
     setPreference,
   } = useCurrentUserPreferences();
+
+  // Check if current route should hide global search
+  const shouldHideGlobalSearchAndDomainDropdown = useMemo(() => {
+    const pathname = location.pathname;
+
+    return (
+      pathname === ROUTES.MY_DATA ||
+      pathname.startsWith(ROUTES.CUSTOMIZE_PAGE.replace('/:fqn/:pageFqn', ''))
+    );
+  }, [location.pathname]);
 
   const fetchOMVersion = async () => {
     try {
@@ -158,13 +167,6 @@ const NavBar = () => {
       setIsFeatureModalOpen(true);
     }
   };
-
-  const language = useMemo(
-    () =>
-      (cookieStorage.getItem('i18next') as SupportedLocales) ||
-      SupportedLocales.English,
-    []
-  );
 
   const { socket } = useWebSocketConnector();
 
@@ -436,6 +438,7 @@ const NavBar = () => {
 
   const handleLanguageChange = useCallback(({ key }: MenuInfo) => {
     i18next.changeLanguage(key);
+    setPreference({ language: key as SupportedLocales });
     navigate(0);
   }, []);
 
@@ -468,43 +471,47 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            <GlobalSearchBar />
-            <DomainSelectableList
-              hasPermission
-              showAllDomains
-              popoverProps={{
-                open: isDomainDropdownOpen,
-                onOpenChange: (open) => {
-                  setIsDomainDropdownOpen(open);
-                },
-              }}
-              selectedDomain={activeDomainEntityRef}
-              wrapInButton={false}
-              onCancel={() => setIsDomainDropdownOpen(false)}
-              onUpdate={handleDomainChange}>
-              <Button
-                className={classNames(
-                  'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
-                  {
-                    'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
-                  }
-                )}
-                data-testid="domain-dropdown"
-                onClick={() => setIsDomainDropdownOpen(!isDomainDropdownOpen)}>
-                <DomainIcon
-                  className="d-flex"
-                  height={20}
-                  name="domain"
-                  width={20}
-                />
-                <Typography.Text ellipsis className="domain-text">
-                  {activeDomainEntityRef
-                    ? getEntityName(activeDomainEntityRef)
-                    : activeDomain}
-                </Typography.Text>
-                <DropDownIcon width={12} />
-              </Button>
-            </DomainSelectableList>
+            {!shouldHideGlobalSearchAndDomainDropdown && <GlobalSearchBar />}
+            {!shouldHideGlobalSearchAndDomainDropdown && (
+              <DomainSelectableList
+                hasPermission
+                showAllDomains
+                popoverProps={{
+                  open: isDomainDropdownOpen,
+                  onOpenChange: (open) => {
+                    setIsDomainDropdownOpen(open);
+                  },
+                }}
+                selectedDomain={activeDomainEntityRef}
+                wrapInButton={false}
+                onCancel={() => setIsDomainDropdownOpen(false)}
+                onUpdate={handleDomainChange}>
+                <Button
+                  className={classNames(
+                    'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
+                    {
+                      'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
+                    }
+                  )}
+                  data-testid="domain-dropdown"
+                  onClick={() =>
+                    setIsDomainDropdownOpen(!isDomainDropdownOpen)
+                  }>
+                  <DomainIcon
+                    className="d-flex"
+                    height={20}
+                    name="domain"
+                    width={20}
+                  />
+                  <Typography.Text ellipsis className="domain-text">
+                    {activeDomainEntityRef
+                      ? getEntityName(activeDomainEntityRef)
+                      : activeDomain}
+                  </Typography.Text>
+                  <DropDownIcon width={12} />
+                </Button>
+              </DomainSelectableList>
+            )}
           </div>
 
           <div className="flex-center gap-5 nav-bar-side-items">
@@ -519,10 +526,7 @@ const NavBar = () => {
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
                 type="text">
-                {upperCase(
-                  (language || SupportedLocales.English).split('-')[0]
-                )}{' '}
-                <DropDownIcon width={12} />
+                {upperCase(language.split('-')[0])} <DropDownIcon width={12} />
               </Button>
             </Dropdown>
             <Dropdown

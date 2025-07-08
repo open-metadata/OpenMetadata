@@ -14,12 +14,13 @@
 import { FC } from 'react';
 import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
 import AnnouncementImg from '../assets/img/announcement.png';
-import CuratedAssets from '../assets/img/curated-assets.png';
+import CuratedAssetsImg from '../assets/img/curated-assets.png';
 import DataAssetsImg from '../assets/img/data-assets-widget.png';
 import FollowingImg from '../assets/img/following-widget.png';
 import KPISmallImg from '../assets/img/kpi-widget.png';
 import KPIImg from '../assets/img/kpi.png';
 import MyDataImg from '../assets/img/my-data-widget.png';
+import MyTaskImg from '../assets/img/my-task-widget.png';
 import RecentViewsImg from '../assets/img/recent-views.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets-widget.png';
@@ -39,6 +40,7 @@ import FollowingWidget, {
 import CuratedAssetsWidget from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget';
 import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
 import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
+import MyTaskWidget from '../components/MyData/Widgets/MyTaskWidget/MyTaskWidget';
 import RecentlyViewed from '../components/MyData/Widgets/RecentlyViewed/RecentlyViewed';
 import TotalDataAssetsWidget from '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import {
@@ -66,6 +68,7 @@ class CustomizeMyDataPageClassBase {
     totalAssets: 4,
     DataAssets: 4,
     curatedAssets: 4,
+    myTask: 4,
   };
 
   curatedAssetsWidgetDefaultValues: WidgetConfig = {
@@ -76,8 +79,17 @@ class CustomizeMyDataPageClassBase {
     i: LandingPageWidgetKeys.CURATED_ASSETS,
     static: false,
     w: 1,
-    x: 0,
-    y: 0,
+    x: 2,
+    y: 12,
+  };
+
+  myTaskWidgetDefaultValues: WidgetConfig = {
+    h: this.landingPageWidgetDefaultHeights.myTask,
+    i: LandingPageWidgetKeys.MY_TASK,
+    static: false,
+    w: 1,
+    x: 2,
+    y: 12,
   };
 
   announcementWidget: WidgetConfig = {
@@ -197,6 +209,9 @@ class CustomizeMyDataPageClassBase {
     if (widgetKey.startsWith(LandingPageWidgetKeys.CURATED_ASSETS)) {
       return CuratedAssetsWidget;
     }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.MY_TASK)) {
+      return MyTaskWidget;
+    }
 
     return (() => null) as React.FC;
   }
@@ -236,7 +251,10 @@ class CustomizeMyDataPageClassBase {
         return RecentViewsImg;
       }
       case LandingPageWidgetKeys.CURATED_ASSETS: {
-        return CuratedAssets;
+        return CuratedAssetsImg;
+      }
+      case LandingPageWidgetKeys.MY_TASK: {
+        return MyTaskImg;
       }
       default: {
         return '';
@@ -262,6 +280,12 @@ class CustomizeMyDataPageClassBase {
         return TotalAssetsIcon;
       }
       case LandingPageWidgetKeys.FOLLOWING: {
+        return FollowingIcon;
+      }
+      case LandingPageWidgetKeys.CURATED_ASSETS: {
+        return FollowingIcon;
+      }
+      case LandingPageWidgetKeys.MY_TASK: {
         return FollowingIcon;
       }
       default: {
@@ -290,6 +314,8 @@ class CustomizeMyDataPageClassBase {
         return this.landingPageWidgetDefaultHeights.totalAssets;
       case 'CuratedAssets':
         return this.landingPageWidgetDefaultHeights.curatedAssets;
+      case 'MyTask':
+        return this.landingPageWidgetDefaultHeights.myTask;
       default:
         return this.defaultWidgetHeight;
     }

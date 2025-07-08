@@ -67,6 +67,7 @@ interface TaskFeedCardProps {
   onUpdateEntityDetails?: () => void;
   isForFeedTab?: boolean;
   isOpenInDrawer?: boolean;
+  hideCardBorder?: boolean;
 }
 
 const TaskFeedCard = ({
@@ -77,6 +78,7 @@ const TaskFeedCard = ({
   onUpdateEntityDetails,
   isForFeedTab = false,
   isOpenInDrawer = false,
+  hideCardBorder = false,
 }: TaskFeedCardProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -249,7 +251,7 @@ const TaskFeedCard = ({
       <div
         className={classNames(className, 'task-feed-card-v1-new', {
           active: isActive,
-          'no-bg-border': isOpenInDrawer,
+          'no-bg-border': hideCardBorder,
         })}
         data-testid="task-feed-card">
         <Row
