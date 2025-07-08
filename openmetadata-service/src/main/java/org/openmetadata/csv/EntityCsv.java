@@ -1056,7 +1056,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     Database database;
     try {
-      database = Entity.getEntityByName(DATABASE, dbFQN, "*", Include.NON_DELETED);
+      database =
+          Entity.getEntityByName(
+              DATABASE, dbFQN, "name,displayName,fullyQualifiedName,service", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       LOG.warn("Database not found: {}. Handling based on dryRun mode.", dbFQN);
       if (importResult.getDryRun()) {
@@ -1072,7 +1074,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
         (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
     String schemaFqn = FullyQualifiedName.add(dbFQN, csvRecord.get(0));
     try {
-      schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+      schema =
+          Entity.getEntityByName(
+              DATABASE_SCHEMA,
+              schemaFqn,
+              "name,displayName,fullyQualifiedName",
+              Include.NON_DELETED);
     } catch (Exception ex) {
       LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
       schema =
@@ -1126,7 +1133,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     // Fetch Schema Entity
     DatabaseSchema schema;
     try {
-      schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+      schema =
+          Entity.getEntityByName(
+              DATABASE_SCHEMA, schemaFQN, "name,displayName,service,database", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
       if (importResult.getDryRun()) {
@@ -1147,7 +1156,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     Table table;
 
     try {
-      table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
+      table =
+          Entity.getEntityByName(
+              TABLE, tableFqn, "name,displayName,fullyQualifiedName,columns", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       // Table not found, create a new one
 
@@ -1211,7 +1222,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     DatabaseSchema schema;
 
     try {
-      schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+      schema =
+          Entity.getEntityByName(
+              DATABASE_SCHEMA, schemaFQN, "name,displayName,service,database", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
       if (importResult.getDryRun()) {
@@ -1228,7 +1241,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     StoredProcedure sp;
     try {
-      sp = Entity.getEntityByName(STORED_PROCEDURE, entityFQN, "*", Include.NON_DELETED);
+      sp =
+          Entity.getEntityByName(
+              STORED_PROCEDURE,
+              entityFQN,
+              "name,displayName,fullyQualifiedName",
+              Include.NON_DELETED);
     } catch (Exception ex) {
       LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
       sp =
@@ -1291,10 +1309,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
     Table table;
     DatabaseSchema schema;
     try {
-      table = Entity.getEntityByName(TABLE, tableFQN, "*", Include.NON_DELETED);
+      table =
+          Entity.getEntityByName(
+              TABLE, tableFQN, "name,displayName,fullyQualifiedName,columns", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       try {
-        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+        schema =
+            Entity.getEntityByName(
+                DATABASE_SCHEMA,
+                schemaFQN,
+                "name,displayName,service,database",
+                Include.NON_DELETED);
       } catch (EntityNotFoundException exception) {
         LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
 
