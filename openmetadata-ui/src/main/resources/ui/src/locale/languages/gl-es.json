@@ -2157,6 +2157,7 @@
     "permanently-delete-ingestion-pipeline": "A eliminación permanente deste <0>{{entityName}}</0> provocará a perda da configuración da canalización e non se poderá recuperar.",
     "permanently-delete-metadata": "Eliminar permanentemente este <0>{{entityName}}</0> eliminará os seus metadatos de OpenMetadata e non poderá recuperarse.",
     "permanently-delete-metadata-and-dependents": "Eliminar permanentemente este {{entityName}} eliminará os seus metadatos, así como os metadatos de {{dependents}} de OpenMetadata de forma permanente.",
+    "persona-preference-updated": "Preferencia de persona actualizada correctamente!",
     "personal-access-token": "Token de Acceso Persoal",
     "pii-coverage-widget-description": "Cobertura PII para todos os activos de datos no servizo. <0>saber máis.</0>",
     "pii-distribution-description": "Información personal identificable que, cando se usa soa ou con outros datos relevantes, pode identificar a un individuo.",

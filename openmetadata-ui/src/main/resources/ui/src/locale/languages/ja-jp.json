@@ -2157,6 +2157,7 @@
     "permanently-delete-ingestion-pipeline": "Permanently deleting this <0>{{entityName}}</0> will result in loss of pipeline configuration, and it cannot be recovered.",
     "permanently-delete-metadata": "Permanently deleting this <0>{{entityName}}</0> will remove its metadata from OpenMetadata permanently.",
     "permanently-delete-metadata-and-dependents": "Permanently deleting this {{entityName}} will remove its metadata, as well as the metadata of {{dependents}} from OpenMetadata permanently.",
+    "persona-preference-updated": "ペルソナ設定が正常に更新されました!",
     "personal-access-token": "Personal Access Token",
     "pii-coverage-widget-description": "サービス内の全データアセットのPIIカバレッジ。<0>詳細を見る。</0>",
     "pii-distribution-description": "個人を特定できる情報で、単独で使用されるか、他の関連データと組み合わせて使用されると、個人を特定できます。",

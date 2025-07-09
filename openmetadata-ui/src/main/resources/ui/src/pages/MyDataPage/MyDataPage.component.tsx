@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
@@ -31,6 +32,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
+import { PersonaPreferences } from '../../generated/type/personaPreferences';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
@@ -38,9 +40,10 @@ import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import { updateUserDetail } from '../../rest/userAPI';
 import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 
@@ -50,7 +53,8 @@ const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
 
 const MyDataPage = () => {
   const { t } = useTranslation();
-  const { currentUser, selectedPersona } = useApplicationStore();
+  const { currentUser, selectedPersona, setCurrentUser } =
+    useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
@@ -72,6 +76,12 @@ const MyDataPage = () => {
       ? storageData.split(',').includes(loggedInUserName)
       : false;
   }, [storageData, loggedInUserName]);
+
+  const backgroundColor = useMemo(() => {
+    return currentUser?.personaPreferences?.find(
+      (persona) => persona.personaId === selectedPersona?.id
+    )?.landingPageSettings?.headerColor;
+  }, [currentUser, selectedPersona]);
 
   const fetchDocument = async () => {
     try {
@@ -196,6 +206,62 @@ const MyDataPage = () => {
     }
   }, []);
 
+  const handleBackgroundColorUpdate = async (color: string) => {
+    try {
+      if (!currentUser?.id) {
+        return;
+      }
+
+      //   Find the persona preference for the selected persona
+      const hasPersonaPreference = currentUser.personaPreferences?.find(
+        (persona) => persona.personaId === selectedPersona?.id
+      );
+
+      //   If the persona preference is found, update the landing page settings else add a new persona preference
+      const updatedPersonaPreferences = hasPersonaPreference
+        ? currentUser.personaPreferences?.map((persona) =>
+            persona.personaId === selectedPersona?.id
+              ? {
+                  ...persona,
+                  landingPageSettings: {
+                    ...persona.landingPageSettings,
+                    headerColor: color,
+                  },
+                }
+              : persona
+          )
+        : [
+            ...(currentUser.personaPreferences ?? []),
+            {
+              personaName: selectedPersona?.name,
+              personaId: selectedPersona?.id,
+              landingPageSettings: {
+                headerColor: color,
+              },
+            },
+          ];
+
+      //   Compare the current user with the updated user to get the json patch
+      const jsonPatch = compare(currentUser, {
+        ...currentUser,
+        personaPreferences: updatedPersonaPreferences,
+      });
+
+      const response = await updateUserDetail(currentUser.id, jsonPatch);
+
+      //   Update the current user with the updated persona preferences
+      if (response) {
+        setCurrentUser({
+          ...currentUser,
+          personaPreferences: updatedPersonaPreferences as PersonaPreferences[],
+        });
+        showSuccessToast(t('message.persona-preference-updated'));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     fetchAnnouncements();
   }, []);
@@ -220,8 +286,9 @@ const MyDataPage = () => {
       <div className="grid-wrapper">
         <CustomiseLandingPageHeader
           overlappedContainer
+          backgroundColor={backgroundColor}
           onHomePage
-          // onBackgroundColorUpdate={handleBackgroundColorUpdate} TODO: Update this updation call when we get the api
+          onBackgroundColorUpdate={handleBackgroundColorUpdate}
         />
         <ReactGridLayout
           className="grid-container p-x-box"

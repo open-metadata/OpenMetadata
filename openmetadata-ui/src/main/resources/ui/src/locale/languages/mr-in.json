@@ -2157,6 +2157,7 @@
     "permanently-delete-ingestion-pipeline": "हे <0>{{entityName}}</0> कायमचे मिटवल्याने पाइपलाइन संरचना गमावली जाईल आणि ती पुनर्प्राप्त केली जाऊ शकत नाही.",
     "permanently-delete-metadata": "हे <0>{{entityName}}</0> कायमचे मिटवल्याने त्याचे मेटाडेटा OpenMetadata मधून काढले जाईल आणि ते पुनर्प्राप्त केले जाऊ शकत नाही.",
     "permanently-delete-metadata-and-dependents": "हे {{entityName}} कायमचे मिटवल्याने त्याचे मेटाडेटा तसेच {{dependents}} चे मेटाडेटा OpenMetadata मधून कायमचे काढले जाईल.",
+    "persona-preference-updated": "व्यक्तिमत्व प्राधान्य यशस्वीरित्या अद्ययावत केले!",
     "personal-access-token": "वैयक्तिक प्रवेश टोकन",
     "pii-coverage-widget-description": "सेवेतील सर्व डेटा मालमत्तांसाठी पीआयआय व्याप्ती. <0>अधिक जाणून घ्या.</0>",
     "pii-distribution-description": "वैयक्तिक पहवत जाणकारी जे एकाच वेळी वापरले जाते किंवा अन्य संबंधित डेटांसह वापरले जाते जे व्यक्तिवाचक असते.",
