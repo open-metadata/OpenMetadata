@@ -24,7 +24,6 @@ import {
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
-import { PAGE_SIZE } from '../../constants/constants';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
 import {
   mockSearchData,
@@ -107,7 +106,7 @@ const ExplorePageV1: FC<unknown> = () => {
     size,
     showDeleted,
   } = useMemo(() => {
-    return parseSearchParams(location.search, queryFilter);
+    return parseSearchParams(location.search, globalPageSize, queryFilter);
   }, [location.search, queryFilter]);
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
@@ -126,7 +125,7 @@ const ExplorePageV1: FC<unknown> = () => {
       search: Qs.stringify({
         ...parsedSearch,
         page,
-        size: size ?? PAGE_SIZE,
+        size,
         sort: sortVal,
       }),
     });
@@ -137,7 +136,7 @@ const ExplorePageV1: FC<unknown> = () => {
       search: Qs.stringify({
         ...parsedSearch,
         page,
-        size: size ?? PAGE_SIZE,
+        size,
         sortOrder: sortOrderVal,
       }),
     });
