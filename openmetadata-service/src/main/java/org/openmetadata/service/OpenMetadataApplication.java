@@ -529,6 +529,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             return configuration.getWebConfiguration();
           }
         });
+
+    // Add Micrometer bundle for Prometheus metrics
+    bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
+
     super.initialize(bootstrap);
   }
 
