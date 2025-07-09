@@ -1235,7 +1235,6 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     verifyColumnChangeEventInFeed(isolatedTable, "tags_col", List.of("tags"), Entity.TABLE);
   }
 
-
   @Test
   void test_dashboardDataModelColumnChangeEvents() throws IOException {
     // Create a new dashboard data model specifically for this test to avoid feed pollution
