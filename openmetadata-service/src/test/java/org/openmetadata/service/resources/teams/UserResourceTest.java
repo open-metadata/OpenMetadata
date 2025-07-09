@@ -892,7 +892,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(create.getDescription(), entity.getDescription());
     assertEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
-    assertOwners(create.getOwners(), entity.getOwners());
+    assertReferenceList(create.getOwners(), entity.getOwners());
     assertEquals(updatedBy, entity.getUpdatedBy());
   }
 

@@ -239,13 +239,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     create.setTasks(List.of(task));
     Pipeline entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Task actualTask = entity.getTasks().get(0);
-    assertOwners(List.of(USER1_REF), actualTask.getOwners());
+    assertReferenceList(List.of(USER1_REF), actualTask.getOwners());
 
     // We can GET the task retrieving the owner info
     Pipeline storedPipeline =
         getPipelineByName(entity.getFullyQualifiedName(), "owners,tasks", ADMIN_AUTH_HEADERS);
     Task storedTask = storedPipeline.getTasks().get(0);
-    assertOwners(List.of(USER1_REF), storedTask.getOwners());
+    assertReferenceList(List.of(USER1_REF), storedTask.getOwners());
   }
 
   @Test

@@ -205,7 +205,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         createRequestWithoutExpertsOwners(getEntityName(test, 1))
             .withDomains(List.of(parentDomain.getFullyQualifiedName()));
     DataProduct dataProduct = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    assertOwners(dataProduct.getOwners(), parentDomain.getOwners());
+    assertReferenceList(dataProduct.getOwners(), parentDomain.getOwners());
     assertEntityReferences(dataProduct.getExperts(), parentDomain.getExperts());
 
     // Create subdomain with no owners and experts
@@ -224,9 +224,9 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         createAndCheckEntity(subDomainDataProductCreate, ADMIN_AUTH_HEADERS);
 
     // Subdomain and its data product should inherit owners and experts from parent domain
-    assertOwners(subDomain.getOwners(), parentDomain.getOwners());
+    assertReferenceList(subDomain.getOwners(), parentDomain.getOwners());
     assertEntityReferences(subDomain.getExperts(), parentDomain.getExperts());
-    assertOwners(subDomainDataProduct.getOwners(), parentDomain.getOwners());
+    assertReferenceList(subDomainDataProduct.getOwners(), parentDomain.getOwners());
     assertEntityReferences(subDomainDataProduct.getExperts(), parentDomain.getExperts());
 
     // Add owner and expert to subdomain
@@ -251,7 +251,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     subDomain = domainResourceTest.getEntity(subDomain.getId(), "*", ADMIN_AUTH_HEADERS);
 
     // Data product of subdomain should also have the same changes as its corresponding domain
-    assertOwners(subDomainDataProduct.getOwners(), subDomain.getOwners());
+    assertReferenceList(subDomainDataProduct.getOwners(), subDomain.getOwners());
     assertEntityReferences(subDomainDataProduct.getExperts(), subDomain.getExperts());
   }
 

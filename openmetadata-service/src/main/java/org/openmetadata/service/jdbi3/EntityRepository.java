@@ -2982,15 +2982,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .collect(Collectors.toList());
   }
 
-  /*'TODO: REMOVE ME BUT CHECK WHERE AM I BEING USED?? REPLACE BY validateDomainsByRef
-  public final void validateDomains(List<EntityReference> domains) {
-    if (!supportsDomain) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DOMAIN));
-    }
-    getEntityReferenceById(DOMAIN, domain.getId(), NON_DELETED);
-  }
-   */
-
   public final void validateDataProducts(List<EntityReference> dataProducts) {
     if (!supportsDataProducts) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DATA_PRODUCTS));
@@ -3566,6 +3557,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected void updateDomains() {
       List<EntityReference> origDomains = getEntityReferences(original.getDomains());
       List<EntityReference> updatedDomains = getEntityReferences(updated.getDomains());
+      List<EntityReference> addedDomains = new ArrayList<>();
+      List<EntityReference> removedDomains = new ArrayList<>();
+
       if (origDomains == updatedDomains) {
         return;
       }
@@ -3577,24 +3571,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      List<EntityReference> addedDomains =
-          diffLists(
-              updatedDomains,
-              origDomains,
-              EntityReference::getId,
-              EntityReference::getId,
-              Function.identity());
-      List<EntityReference> removedDomains =
-          diffLists(
-              origDomains,
-              updatedDomains,
-              EntityReference::getId,
-              EntityReference::getId,
-              Function.identity());
-      if (nullOrEmpty(addedDomains) && nullOrEmpty(removedDomains)) {
-        return;
-      }
-
       if ((operation.isPatch() || !nullOrEmpty(updatedDomains))
           && recordListChange(
               FIELD_DOMAINS,
@@ -3603,14 +3579,37 @@ public abstract class EntityRepository<T extends EntityInterface> {
               addedDomains,
               removedDomains,
               entityReferenceMatch)) {
-        removeDomains(original, removedDomains);
-        storeDomains(original, addedDomains);
+        updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
         // Clean up data products associated with the domains we are removing
         removeCrossDomainDataProducts(removedDomains, updated);
       } else {
         updated.setDomains(original.getDomains());
       }
+    }
+
+    @Transaction
+    public final void updateDomains(
+        T entity, List<EntityReference> originalDomains, List<EntityReference> newDomains) {
+      List<EntityReference> addedDomains =
+          diffLists(
+              newDomains,
+              originalDomains,
+              EntityReference::getId,
+              EntityReference::getId,
+              Function.identity());
+      List<EntityReference> removedDomains =
+          diffLists(
+              originalDomains,
+              newDomains,
+              EntityReference::getId,
+              EntityReference::getId,
+              Function.identity());
+      if (nullOrEmpty(addedDomains) && nullOrEmpty(removedDomains)) {
+        return;
+      }
+      removeDomains(entity, removedDomains);
+      storeDomains(entity, newDomains);
     }
 
     /** Remove domain relationship for a given entity */
@@ -3632,22 +3631,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected void updateDomainsForImport() {
       List<EntityReference> origDomains = getEntityReferences(original.getDomains());
       List<EntityReference> updatedDomains = getEntityReferences(updated.getDomains());
+      List<EntityReference> addedDomains = new ArrayList<>();
+      List<EntityReference> removedDomains = new ArrayList<>();
 
-      List<EntityReference> addedDomains =
-          diffLists(
-              updatedDomains,
-              origDomains,
-              EntityReference::getId,
-              EntityReference::getId,
-              Function.identity());
-      List<EntityReference> removedDomains =
-          diffLists(
-              origDomains,
-              updatedDomains,
-              EntityReference::getId,
-              EntityReference::getId,
-              Function.identity());
-      if (nullOrEmpty(addedDomains) && nullOrEmpty(removedDomains)) {
+      if (origDomains == updatedDomains) {
         return;
       }
 
@@ -3658,8 +3645,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           addedDomains,
           removedDomains,
           entityReferenceMatch)) {
-        removeDomains(original, removedDomains);
-        storeDomains(original, addedDomains);
+        updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
         // Clean up data products associated with the domains we are removing
         removeCrossDomainDataProducts(removedDomains, updated);

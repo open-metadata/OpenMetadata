@@ -1805,7 +1805,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(initialTableCount + 2, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
-      assertOwners(Lists.newArrayList(USER1_REF), table.getOwners());
+      assertReferenceList(Lists.newArrayList(USER1_REF), table.getOwners());
       assertReference(DATABASE.getFullyQualifiedName(), table.getDatabase());
     }
 
@@ -2526,7 +2526,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Update domain of service within same session
     ChangeDescription change = getChangeDescription(dbService, MINOR_UPDATE);
-    fieldUpdated(change, "domains", DOMAIN.getEntityReference(), DOMAIN1.getEntityReference());
+    fieldAdded(change, "domains", List.of(DOMAIN1.getEntityReference()));
+    fieldDeleted(change, "domains", List.of(DOMAIN.getEntityReference()));
     dbService =
         dbServiceTest.updateAndCheckEntity(
             createDbService.withDomains(List.of(DOMAIN1.getFullyQualifiedName())),
@@ -2536,6 +2537,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             change);
 
     // Check domain properly updated in search
+    // TODO: THIS NEEDS TO BE FIXED IN SEARCH??
     verifyDomainInSearch(db.getEntityReference(), DOMAIN1.getEntityReference());
     verifyDomainInSearch(schema.getEntityReference(), DOMAIN1.getEntityReference());
     verifyDomainInSearch(table.getEntityReference(), DOMAIN1.getEntityReference());
@@ -3709,7 +3711,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
               : JsonUtils.readObjects(expected.toString(), EntityReference.class);
       List<EntityReference> actualOwners =
           JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertOwners(expectedOwners, actualOwners);
+      assertReferenceList(expectedOwners, actualOwners);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

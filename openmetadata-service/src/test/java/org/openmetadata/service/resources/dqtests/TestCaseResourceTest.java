@@ -1153,7 +1153,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     ResultList<TestCase> testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
     assertEquals(2, testCases.getData().size());
     for (TestCase testCase : testCases.getData()) {
-      assertOwners(table.getOwners(), testCase.getOwners());
+      assertReferenceList(table.getOwners(), testCase.getOwners());
       assertEquals(table.getDomains().get(0).getId(), testCase.getDomains().get(0).getId());
       List<TagLabel> tags = testCase.getTags();
       HashSet<String> actualTags =
@@ -1188,7 +1188,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
 
     for (TestCase testCase : testCases.getData()) {
-      assertOwners(table.getOwners(), testCase.getOwners());
+      assertReferenceList(table.getOwners(), testCase.getOwners());
       assertEquals(table.getDomains().get(0).getId(), testCase.getDomains().get(0).getId());
     }
   }

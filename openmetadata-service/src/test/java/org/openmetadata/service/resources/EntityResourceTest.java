@@ -3351,7 +3351,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(create.getDescription(), entity.getDescription());
     assertEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
-    assertOwners(create.getOwners(), entity.getOwners());
+    assertReferenceList(create.getOwners(), entity.getOwners());
     assertEquals(updatedBy, entity.getUpdatedBy());
   }
 
@@ -3363,7 +3363,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(
         JsonUtils.valueToTree(expected.getExtension()),
         JsonUtils.valueToTree(actual.getExtension()));
-    assertOwners(expected.getOwners(), actual.getOwners());
+    assertReferenceList(expected.getOwners(), actual.getOwners());
     assertEquals(updatedBy, actual.getUpdatedBy());
   }
 
@@ -3636,16 +3636,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
     if (fieldName.equals(FIELD_EXPERTS) || fieldName.equals(FIELD_REVIEWERS)) {
       assertEntityReferencesFieldChange(expected, actual);
-    } else if (fieldName.endsWith(FIELD_OWNERS) && (expected != null && actual != null)) {
+    } else if ((fieldName.endsWith(FIELD_OWNERS) || fieldName.equals(Entity.FIELD_DOMAINS))
+        && (expected != null && actual != null)) {
       @SuppressWarnings("unchecked")
-      List<EntityReference> expectedOwners =
+      List<EntityReference> expectedRefList =
           expected instanceof List
               ? (List<EntityReference>) expected
               : JsonUtils.readObjects(expected.toString(), EntityReference.class);
-      List<EntityReference> actualOwners =
+      List<EntityReference> actualRefList =
           JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertOwners(expectedOwners, actualOwners);
-    } else if (fieldName.equals(Entity.FIELD_DOMAINS) || fieldName.equals(FIELD_PARENT)) {
+      assertReferenceList(expectedRefList, actualRefList);
+    } else if (fieldName.equals(FIELD_PARENT)) {
       assertEntityReferenceFieldChange(expected, actual);
     } else if (fieldName.endsWith(FIELD_TAGS)) {
       @SuppressWarnings("unchecked")
@@ -3717,14 +3718,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected static void assertOwners(List<EntityReference> expected, List<EntityReference> actual) {
+  protected static void assertReferenceList(
+      List<EntityReference> expected, List<EntityReference> actual) {
     if (!nullOrEmpty(expected) && !nullOrEmpty(actual)) {
-      List<UUID> expectedOwners = expected.stream().map(EntityReference::getId).toList();
-      List<UUID> actualOwners = actual.stream().map(EntityReference::getId).toList();
+      List<UUID> expectedUuids = expected.stream().map(EntityReference::getId).toList();
+      List<UUID> actualUuids = actual.stream().map(EntityReference::getId).toList();
       assertTrue(
-          expectedOwners.size() == actualOwners.size()
-              && expectedOwners.containsAll(actualOwners)
-              && actualOwners.containsAll(expectedOwners));
+          expectedUuids.size() == actualUuids.size()
+              && expectedUuids.containsAll(actualUuids)
+              && actualUuids.containsAll(expectedUuids));
     }
   }
 
@@ -3781,19 +3783,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             LinkedHashMap<String, Object> source =
                 (LinkedHashMap<String, Object>) doc.get("_source");
 
-            if (keyword.equals(Entity.FIELD_DOMAINS)) {
-              EntityReference domainReference =
-                  JsonUtils.readOrConvertValue(source.get(keyword), EntityReference.class);
-
-              assertEquals(domainReference.getId(), actual.getId());
-              assertEquals(domainReference.getType(), actual.getType());
-            } else if (keyword.equals(FIELD_DOMAINS)) {
-              List<EntityReference> domainReference =
-                  JsonUtils.convertObjects(source.get(keyword), EntityReference.class);
-
-              assertEquals(domainReference.get(0).getId(), actual.getId());
-              assertEquals(domainReference.get(0).getType(), actual.getType());
-            }
+            List<EntityReference> domainReference =
+                JsonUtils.convertObjects(source.get(keyword), EntityReference.class);
+            assertEquals(domainReference.get(0).getId(), actual.getId());
+            assertEquals(domainReference.get(0).getType(), actual.getType());
           });
     } finally {
       searchClient.close();
@@ -4366,14 +4359,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create entity with no owner and ensure it inherits owner from the parent
     createRequest.setOwners(null);
     T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
-    assertOwners(List.of(expectedOwner), entity.getOwners()); // Inherited owner
+    assertReferenceList(List.of(expectedOwner), entity.getOwners()); // Inherited owner
     entity = getEntity(entity.getId(), "owners", ADMIN_AUTH_HEADERS);
-    assertOwners(List.of(expectedOwner), entity.getOwners()); // Inherited owner
+    assertReferenceList(List.of(expectedOwner), entity.getOwners()); // Inherited owner
     for (EntityReference owner : entity.getOwners()) {
       assertTrue(owner.getInherited());
     }
     entity = getEntityByName(entity.getFullyQualifiedName(), "owners", ADMIN_AUTH_HEADERS);
-    assertOwners(List.of(expectedOwner), entity.getOwners()); // Inherited owner
+    assertReferenceList(List.of(expectedOwner), entity.getOwners()); // Inherited owner
     for (EntityReference owner : entity.getOwners()) {
       assertTrue(owner.getInherited());
     }
@@ -4386,21 +4379,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     String json = JsonUtils.pojoToJson(entity);
     entity.setOwners(List.of(newOwner));
     entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
-    assertOwners(List.of(newOwner), entity.getOwners());
+    assertReferenceList(List.of(newOwner), entity.getOwners());
     for (EntityReference owner : entity.getOwners()) {
       assertNull(owner.getInherited());
     }
     // Now simulate and ingestion entity update with no owner
     updateRequest.setOwners(null);
     entity = updateEntity(updateRequest, OK, ADMIN_AUTH_HEADERS);
-    assertOwners(List.of(newOwner), entity.getOwners());
+    assertReferenceList(List.of(newOwner), entity.getOwners());
     entity = getEntity(entity.getId(), "owners", ADMIN_AUTH_HEADERS);
-    assertOwners(List.of(newOwner), entity.getOwners());
+    assertReferenceList(List.of(newOwner), entity.getOwners());
     for (EntityReference owner : entity.getOwners()) {
       assertNull(owner.getInherited());
     }
     entity = getEntityByName(entity.getFullyQualifiedName(), "owners", ADMIN_AUTH_HEADERS);
-    assertOwners(List.of(newOwner), entity.getOwners()); // Owner remains the same
+    assertReferenceList(List.of(newOwner), entity.getOwners()); // Owner remains the same
     for (EntityReference owner : entity.getOwners()) {
       assertNull(owner.getInherited());
     }
@@ -4465,7 +4458,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     LinkedHashMap<String, Object> source =
         (LinkedHashMap<String, Object>) hitsList.get(0).get("_source");
     List<EntityReference> owners = extractEntities(source, "owners");
-    assertOwners(expectedOwners, owners);
+    assertReferenceList(expectedOwners, owners);
   }
 
   public void verifyDomainInSearch(EntityReference entity, EntityReference expectedDomain)
@@ -4492,9 +4485,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(1, hitsList.size());
     LinkedHashMap<String, Object> source =
         (LinkedHashMap<String, Object>) hitsList.get(0).get("_source");
-    // TODO FIXME
-    EntityReference domain = JsonUtils.convertValue(source.get("domains"), EntityReference.class);
-    assertEquals(expectedDomain.getId(), domain.getId());
+    List<EntityReference> domains =
+        JsonUtils.convertObjects(source.get("domains"), EntityReference.class);
+    assertEquals(expectedDomain.getId(), domains.get(0).getId());
   }
 
   private List<EntityReference> extractEntities(

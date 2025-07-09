@@ -72,6 +72,7 @@ public interface CreateEntity {
     return (K) this;
   }
 
+  // TODO: IS THIS OK?
   default <K extends CreateEntity> K withDomainsList(List<String> domains) {
     return (K) this;
   }

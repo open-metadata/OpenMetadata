@@ -285,14 +285,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuite executableTestSuite =
         createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     TestSuite testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertOwners(testSuite.getOwners(), table.getOwners());
+    assertReferenceList(testSuite.getOwners(), table.getOwners());
     Table updateTableOwner = table;
     updateTableOwner.setOwners(List.of(TEAM11_REF));
     tableResourceTest.patchEntity(
         table.getId(), JsonUtils.pojoToJson(table), updateTableOwner, ADMIN_AUTH_HEADERS);
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertOwners(table.getOwners(), testSuite.getOwners());
+    assertReferenceList(table.getOwners(), testSuite.getOwners());
   }
 
   @Test
