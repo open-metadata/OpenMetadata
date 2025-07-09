@@ -277,7 +277,7 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
-    expect(await screen.findByText('label.schema')).toBeInTheDocument();
+    expect(await screen.findByText('label.column-plural')).toBeInTheDocument();
     expect(
       await screen.findByText('label.activity-feed-and-task-plural')
     ).toBeInTheDocument();
