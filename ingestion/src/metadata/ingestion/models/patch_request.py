@@ -437,7 +437,7 @@ def build_patch(
                     entity_info = f" for '{source.name.root}'"
             except Exception:
                 pass
-            
+
             logger.warning(
                 f"Failed to build patch{entity_info}. The patch generation was skipped. "
                 f"Reason: {exc}"
@@ -452,7 +452,7 @@ def build_patch(
                     entity_info = f" for '{source.name.root}'"
             except Exception:
                 pass
-                
+
             raise RuntimeError(
                 f"Failed to build patch{entity_info}. The patch generation failed. "
                 f"Set 'skip_on_failure=True' to skip failed patch operations. Error: {exc}"
