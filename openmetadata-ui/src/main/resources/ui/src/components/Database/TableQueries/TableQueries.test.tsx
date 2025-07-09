@@ -131,10 +131,10 @@ describe('Test TableQueries Component', () => {
     expect(noDataPlaceholder).toBeInTheDocument();
   });
 
-  it('If paging count is more than 15, pagination should be visible', async () => {
+  it('If paging count is more than 50, pagination should be visible', async () => {
     (searchQuery as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
-        hits: { total: { value: 16 }, hits: MOCK_QUERIES_ES_DATA },
+        hits: { total: { value: 55 }, hits: MOCK_QUERIES_ES_DATA },
       })
     );
     render(<TableQueries {...mockTableQueriesProp} />, {

@@ -120,7 +120,7 @@ const ColumnProfileTable = () => {
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const columnCount = useMemo(() => {
     return tableProfiler?.profile?.columnCount ?? paging.total;

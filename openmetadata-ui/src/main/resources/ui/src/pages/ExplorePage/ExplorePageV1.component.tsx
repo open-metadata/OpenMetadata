@@ -35,6 +35,7 @@ import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
@@ -64,6 +65,10 @@ const ExplorePageV1: FC<unknown> = () => {
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
   const { isNLPActive, isNLPEnabled } = useSearchStore();
   const isNLPRequestEnabled = isNLPEnabled && isNLPActive;
+  const {
+    preferences: { globalPageSize },
+    setPreference,
+  } = useCurrentUserPreferences();
 
   const { tab } = useRequiredParams<UrlParams>();
 
@@ -106,8 +111,13 @@ const ExplorePageV1: FC<unknown> = () => {
   }, [location.search, queryFilter]);
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
+    setPreference({ globalPageSize: size ?? globalPageSize });
     navigate({
-      search: Qs.stringify({ ...parsedSearch, page, size: size ?? PAGE_SIZE }),
+      search: Qs.stringify({
+        ...parsedSearch,
+        page,
+        size: size ?? globalPageSize,
+      }),
     });
   };
 

@@ -83,7 +83,7 @@ describe('UserTab', () => {
 
     expect(getUsers).toHaveBeenCalledWith({
       fields: 'roles',
-      limit: 25,
+      limit: 50,
       team: 'Marketing',
     });
     expect(
@@ -127,7 +127,7 @@ describe('UserTab', () => {
   it('Pagination should visible if total value is greater then 25', async () => {
     (getUsers as jest.Mock).mockResolvedValueOnce({
       data: [{ id: 'test', name: 'testing' }],
-      paging: { total: 30 },
+      paging: { total: 60 },
     });
     render(
       <BrowserRouter>

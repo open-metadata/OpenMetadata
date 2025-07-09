@@ -156,7 +156,7 @@ describe('Test UserListPage component', () => {
       include: 'non-deleted',
       isAdmin: false,
       isBot: false,
-      limit: 25,
+      limit: 50,
     });
   });
 
@@ -168,7 +168,7 @@ describe('Test UserListPage component', () => {
       include: 'non-deleted',
       isAdmin: false,
       isBot: false,
-      limit: 25,
+      limit: 50,
     });
 
     const deletedSwitch = await findByTestId('show-deleted');
@@ -206,7 +206,7 @@ describe('Test UserListPage component', () => {
       include: 'deleted',
       isAdmin: false,
       isBot: false,
-      limit: 25,
+      limit: 50,
     });
   });
 
@@ -218,7 +218,7 @@ describe('Test UserListPage component', () => {
       include: 'non-deleted',
       isAdmin: false,
       isBot: false,
-      limit: 25,
+      limit: 50,
     });
 
     const searchBar = await findByTestId('search-bar-container');
