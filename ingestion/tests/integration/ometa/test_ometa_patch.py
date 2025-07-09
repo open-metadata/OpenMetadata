@@ -15,8 +15,7 @@ OpenMetadata high-level API Table test
 import logging
 import time
 from datetime import datetime
-from unittest import TestCase
-from unittest import mock
+from unittest import TestCase, mock
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.data.database import Database
@@ -686,19 +685,19 @@ class OMetaTableTest(TestCase):
         """Test that patch operation skips failures when skip_on_failure=True."""
         # Create a corrupted destination to trigger an exception
         corrupted_destination = self.table.model_copy(deep=True)
-        
+
         # Mock the client.patch to raise an exception
-        with mock.patch.object(self.metadata.client, 'patch') as mock_patch_client:
+        with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:
             mock_patch_client.side_effect = Exception("API error")
-            
+
             # Test with skip_on_failure=True (should return None)
             result = self.metadata.patch(
                 entity=Table,
                 source=self.table,
                 destination=corrupted_destination,
-                skip_on_failure=True
+                skip_on_failure=True,
             )
-            
+
             assert result is None
             mock_patch_client.assert_called_once()
 
@@ -706,20 +705,20 @@ class OMetaTableTest(TestCase):
         """Test that patch operation raises exception when skip_on_failure=False."""
         # Create a destination to trigger an exception
         corrupted_destination = self.table.model_copy(deep=True)
-        
+
         # Mock the client.patch to raise an exception
-        with mock.patch.object(self.metadata.client, 'patch') as mock_patch_client:
+        with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:
             mock_patch_client.side_effect = Exception("API error")
-            
+
             # Test with skip_on_failure=False (should raise exception)
             with self.assertRaises(Exception) as context:
                 self.metadata.patch(
                     entity=Table,
                     source=self.table,
                     destination=corrupted_destination,
-                    skip_on_failure=False
+                    skip_on_failure=False,
                 )
-            
+
             assert str(context.exception) == "API error"
             mock_patch_client.assert_called_once()
 
@@ -727,87 +726,85 @@ class OMetaTableTest(TestCase):
         """Test that patch operation defaults to skip_on_failure=True."""
         # Create a destination to trigger an exception
         corrupted_destination = self.table.model_copy(deep=True)
-        
+
         # Mock the client.patch to raise an exception
-        with mock.patch.object(self.metadata.client, 'patch') as mock_patch_client:
+        with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:
             mock_patch_client.side_effect = Exception("API error")
-            
+
             # Test without explicitly setting skip_on_failure (should default to True)
             result = self.metadata.patch(
-                entity=Table,
-                source=self.table,
-                destination=corrupted_destination
+                entity=Table, source=self.table, destination=corrupted_destination
             )
-            
+
             assert result is None
             mock_patch_client.assert_called_once()
 
     def test_patch_description_skip_on_failure_true(self):
         """Test that patch_description skips failures when skip_on_failure=True."""
         # Mock _fetch_entity_if_exists to raise an exception
-        with mock.patch.object(self.metadata, '_fetch_entity_if_exists') as mock_fetch:
+        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
             mock_fetch.side_effect = Exception("Database error")
-            
+
             # Test with skip_on_failure=True
             result = self.metadata.patch_description(
                 entity=Table,
                 source=self.table,
                 description="New description",
-                skip_on_failure=True
+                skip_on_failure=True,
             )
-            
+
             assert result is None
             mock_fetch.assert_called_once()
 
     def test_patch_description_skip_on_failure_false(self):
         """Test that patch_description raises exception when skip_on_failure=False."""
         # Mock _fetch_entity_if_exists to raise an exception
-        with mock.patch.object(self.metadata, '_fetch_entity_if_exists') as mock_fetch:
+        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
             mock_fetch.side_effect = Exception("Database error")
-            
+
             # Test with skip_on_failure=False
             with self.assertRaises(Exception) as context:
                 self.metadata.patch_description(
                     entity=Table,
                     source=self.table,
                     description="New description",
-                    skip_on_failure=False
+                    skip_on_failure=False,
                 )
-            
+
             assert str(context.exception) == "Database error"
             mock_fetch.assert_called_once()
 
     def test_patch_tags_skip_on_failure_true(self):
         """Test that patch_tags skips failures when skip_on_failure=True."""
         # Mock _fetch_entity_if_exists to raise an exception
-        with mock.patch.object(self.metadata, '_fetch_entity_if_exists') as mock_fetch:
+        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
             mock_fetch.side_effect = Exception("Database error")
-            
+
             # Test with skip_on_failure=True
             result = self.metadata.patch_tags(
                 entity=Table,
                 source=self.table,
                 tag_labels=[PII_TAG_LABEL],
-                skip_on_failure=True
+                skip_on_failure=True,
             )
-            
+
             assert result is None
             mock_fetch.assert_called_once()
 
     def test_patch_tags_skip_on_failure_false(self):
         """Test that patch_tags raises exception when skip_on_failure=False."""
         # Mock _fetch_entity_if_exists to raise an exception
-        with mock.patch.object(self.metadata, '_fetch_entity_if_exists') as mock_fetch:
+        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
             mock_fetch.side_effect = Exception("Database error")
-            
+
             # Test with skip_on_failure=False
             with self.assertRaises(Exception) as context:
                 self.metadata.patch_tags(
                     entity=Table,
                     source=self.table,
                     tag_labels=[PII_TAG_LABEL],
-                    skip_on_failure=False
+                    skip_on_failure=False,
                 )
-            
+
             assert str(context.exception) == "Database error"
             mock_fetch.assert_called_once()
