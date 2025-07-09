@@ -373,7 +373,7 @@ const AddKPIPage = () => {
                   htmlType="submit"
                   loading={isCreatingKPI}
                   type="primary">
-                  {t('label.submit')}
+                  {t('label.create')}
                 </Button>
               </Space>
             </Form>

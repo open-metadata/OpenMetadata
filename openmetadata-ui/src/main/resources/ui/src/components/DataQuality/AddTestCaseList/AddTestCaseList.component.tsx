@@ -281,7 +281,7 @@ export const AddTestCaseList = ({
             loading={isLoading}
             type="primary"
             onClick={handleSubmit}>
-            {submitText ?? t('label.submit')}
+            {submitText ?? t('label.create')}
           </Button>
         </Col>
       )}
