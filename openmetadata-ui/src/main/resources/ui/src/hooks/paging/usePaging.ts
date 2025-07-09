@@ -55,20 +55,22 @@ export interface UsePagingInterface {
   pagingCursor: PagingUrlParams;
 }
 
-export const usePaging = (): UsePagingInterface => {
+export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
   const {
     preferences: { globalPageSize },
     setPreference,
   } = useCurrentUserPreferences();
 
+  const processedPageSize = defaultPageSize ?? globalPageSize;
+
   const { filters: urlParams, setFilters: updateUrlParams } = useTableFilters({
     cursorType: undefined,
     cursorValue: undefined,
     currentPage: String(INITIAL_PAGING_VALUE),
-    pageSize: String(globalPageSize),
+    pageSize: String(processedPageSize),
   });
 
-  const initialPageSize = Number(urlParams.pageSize) || globalPageSize;
+  const initialPageSize = Number(urlParams.pageSize) || processedPageSize;
   const initialCurrentPage =
     Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
 
@@ -81,14 +83,14 @@ export const usePaging = (): UsePagingInterface => {
       cursorType: urlParams.cursorType,
       cursorValue: urlParams.cursorValue,
       currentPage: urlParams.currentPage,
-      pageSize: Number(urlParams.pageSize) || globalPageSize,
+      pageSize: Number(urlParams.pageSize) || processedPageSize,
     }),
     [
       urlParams.cursorType,
       urlParams.cursorValue,
       urlParams.currentPage,
       urlParams.pageSize,
-      globalPageSize,
+      processedPageSize,
     ]
   );
 
@@ -110,8 +112,8 @@ export const usePaging = (): UsePagingInterface => {
   );
 
   const paginationVisible = useMemo(() => {
-    return paging.total > pageSize || pageSize !== globalPageSize;
-  }, [globalPageSize, paging, pageSize]);
+    return paging.total > pageSize || pageSize !== processedPageSize;
+  }, [processedPageSize, paging, pageSize]);
 
   const handlePageChange = useCallback(
     (

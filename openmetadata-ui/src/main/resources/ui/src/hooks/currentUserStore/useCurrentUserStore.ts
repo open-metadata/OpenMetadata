@@ -13,7 +13,7 @@
 
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { detectBrowserLanguage } from '../../utils/i18next/LocalUtil';
 import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import { useApplicationStore } from '../useApplicationStore';
@@ -39,7 +39,7 @@ const defaultPreferences: UserPreferences = {
   isSidebarCollapsed: false,
   language: detectBrowserLanguage(),
   selectedEntityTableColumns: {},
-  globalPageSize: PAGE_SIZE_LARGE,
+  globalPageSize: PAGE_SIZE_BASE,
   // Add default values for other preferences
 };
 
