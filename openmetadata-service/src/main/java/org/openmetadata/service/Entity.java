@@ -576,7 +576,7 @@ public final class Entity {
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId) {
     EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.restoreEntity(updatedBy, entityType, entityId);
+    dao.restoreEntity(updatedBy, entityId);
   }
 
   public static <T> String getEntityTypeFromClass(Class<T> clz) {
