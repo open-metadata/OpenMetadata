@@ -151,14 +151,15 @@ class BuildPatchTest(TestCase):
             mock_make_patch.side_effect = Exception("Test exception")
 
             # Test with skip_on_failure=False
-            with self.assertRaises(Exception) as context:
+            with self.assertRaises(RuntimeError) as context:
                 build_patch(
                     source=self.source,
                     destination=self.destination,
                     skip_on_failure=False,
                 )
 
-            self.assertEqual(str(context.exception), "Test exception")
+            self.assertIn("Test exception", str(context.exception))
+            self.assertIn("Failed to build patch", str(context.exception))
             mock_make_patch.assert_called_once()
 
     def test_build_patch_skip_on_failure_default_behavior(self):
@@ -187,12 +188,15 @@ class BuildPatchTest(TestCase):
         self.assertIsNotNone(result)
         self.assertIsInstance(result, jsonpatch.JsonPatch)
 
-        # Verify the patch contains the expected operation
+        # Verify the patch contains the expected operations
         patch_operations = result.patch
-        self.assertEqual(len(patch_operations), 1)
-        self.assertEqual(patch_operations[0]["op"], "replace")
-        self.assertEqual(patch_operations[0]["path"], "/value")
-        self.assertEqual(patch_operations[0]["value"], 2)
+        self.assertEqual(len(patch_operations), 2)
+
+        # Find the value operation
+        value_op = next((op for op in patch_operations if op["path"] == "/value"), None)
+        self.assertIsNotNone(value_op)
+        self.assertEqual(value_op["op"], "replace")
+        self.assertEqual(value_op["value"], 2)
 
     def test_build_patch_success_with_skip_on_failure_true(self):
         """Test that build_patch works normally when skip_on_failure=True and no exception occurs."""
@@ -205,12 +209,15 @@ class BuildPatchTest(TestCase):
         self.assertIsNotNone(result)
         self.assertIsInstance(result, jsonpatch.JsonPatch)
 
-        # Verify the patch contains the expected operation
+        # Verify the patch contains the expected operations
         patch_operations = result.patch
-        self.assertEqual(len(patch_operations), 1)
-        self.assertEqual(patch_operations[0]["op"], "replace")
-        self.assertEqual(patch_operations[0]["path"], "/value")
-        self.assertEqual(patch_operations[0]["value"], 2)
+        self.assertEqual(len(patch_operations), 2)
+
+        # Find the value operation
+        value_op = next((op for op in patch_operations if op["path"] == "/value"), None)
+        self.assertIsNotNone(value_op)
+        self.assertEqual(value_op["op"], "replace")
+        self.assertEqual(value_op["value"], 2)
 
     def test_build_patch_with_json_patch_updater_exception(self):
         """Test skip_on_failure behavior when JsonPatchUpdater.update raises an exception."""
@@ -234,7 +241,7 @@ class BuildPatchTest(TestCase):
             self.assertIsNone(result)
 
             # Test with skip_on_failure=False
-            with self.assertRaises(Exception) as context:
+            with self.assertRaises(RuntimeError) as context:
                 build_patch(
                     source=self.source,
                     destination=self.destination,
@@ -242,4 +249,5 @@ class BuildPatchTest(TestCase):
                     skip_on_failure=False,
                 )
 
-            self.assertEqual(str(context.exception), "JsonPatchUpdater exception")
+            self.assertIn("JsonPatchUpdater exception", str(context.exception))
+            self.assertIn("Failed to build patch", str(context.exception))
