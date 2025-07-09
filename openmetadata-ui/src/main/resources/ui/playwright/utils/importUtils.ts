@@ -626,6 +626,7 @@ export const fillRowDetails = async (
     .press('Enter', { delay: 100 });
 
   await page.click(`[data-testid="radio-btn-${row.tier}"]`);
+  await page.click(`[data-testid="update-tier-card"]`);
 
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')
