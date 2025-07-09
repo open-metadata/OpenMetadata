@@ -1,0 +1,120 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../../../styles/variables.less');
+
+.admin-permission-debugger {
+  .ant-card {
+    margin-bottom: 16px;
+  }
+
+  .ant-typography-h5 {
+    margin-bottom: 8px;
+  }
+
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+  }
+
+  .w-full {
+    width: 100%;
+  }
+
+  .m-t-md {
+    margin-top: 16px;
+  }
+
+  .m-b-md {
+    margin-bottom: 16px;
+  }
+
+  .evaluation-summary {
+    padding: 16px;
+    background-color: @grey-1;
+    border-radius: 8px;
+    margin-bottom: 16px;
+
+    h4 {
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+  }
+
+  .evaluation-stats {
+    padding: 12px;
+    background-color: @grey-2;
+    border-radius: 4px;
+    margin-bottom: 16px;
+
+    .ant-space-item {
+      padding: 0 8px;
+      border-right: 1px solid @grey-4;
+
+      &:last-child {
+        border-right: none;
+      }
+    }
+  }
+
+  .evaluation-steps {
+    margin-top: 24px;
+
+    .evaluation-step {
+      margin-bottom: 12px;
+      border-left: 4px solid transparent;
+
+      &.matched {
+        border-left-color: #52c41a;
+        background-color: rgba(82, 196, 26, 0.05);
+      }
+
+      &.not-matched {
+        border-left-color: @grey-4;
+        background-color: @grey-1;
+      }
+
+      .ant-card-head {
+        background-color: transparent;
+        border-bottom: 1px solid @grey-3;
+        padding: 12px 16px;
+      }
+
+      .condition-eval {
+        margin-left: 16px;
+        padding: 4px 8px;
+        background-color: @grey-2;
+        border-radius: 4px;
+        margin-top: 4px;
+      }
+    }
+  }
+
+  .decision-reasons {
+    margin-top: 16px;
+    padding: 16px;
+    background-color: #f0f5ff;
+    border-radius: 8px;
+
+    h5 {
+      margin-bottom: 8px;
+    }
+
+    .ant-typography {
+      display: block;
+      margin-bottom: 4px;
+    }
+  }
+}

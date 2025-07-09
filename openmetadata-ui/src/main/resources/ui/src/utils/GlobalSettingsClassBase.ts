@@ -325,6 +325,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
             icon: PoliciesIcon,
           },
+          {
+            label: t('label.permission-debugger'),
+            description: t('message.page-sub-header-for-permission-debugger'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.PERMISSION_DEBUGGER}`,
+            icon: AccessControlIcon,
+          },
         ],
       },
       {
