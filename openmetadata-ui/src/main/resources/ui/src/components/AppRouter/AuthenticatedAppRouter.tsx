@@ -28,6 +28,7 @@ import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
 import PlatformLineage from '../../pages/PlatformLineage/PlatformLineage';
 import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
+import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -289,6 +290,8 @@ const AddMetricPage = withSuspenseFallback(
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
+  const { applicationRoutes } = useApplicationsProvider();
+
   const { t } = useTranslation();
 
   const createBotPermission = useMemo(
@@ -300,6 +303,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   return (
     <Routes>
+      {applicationRoutes.map((route, index) => {
+        return <Route key={index} {...route} />;
+      })}
       <Route
         element={<ForbiddenPage pageTitle={t('label.no-access')} />}
         path={ROUTES.FORBIDDEN}

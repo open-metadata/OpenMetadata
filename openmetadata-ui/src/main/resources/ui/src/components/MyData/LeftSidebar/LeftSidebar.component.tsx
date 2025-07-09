@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { Link } from 'react-router-dom';
 import {
   LOGOUT_ITEM,
@@ -47,6 +48,8 @@ const LeftSidebar = () => {
   const { i18n } = useTranslation();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
+  const pluginStore = usePluginStore();
+  const pluginItems = pluginStore.executeFunction('sidebarAdd');
 
   const { navigation } = useCustomPages('Navigation');
 
@@ -99,6 +102,7 @@ const LeftSidebar = () => {
           }),
         };
       }),
+      ...(pluginItems ?? []),
     ];
   }, [sideBarItems]);
 

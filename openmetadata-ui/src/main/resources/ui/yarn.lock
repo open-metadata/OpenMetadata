@@ -12666,6 +12666,13 @@ react-papaparse@^4.1.0:
     "@types/papaparse" "^5.3.1"
     papaparse "^5.3.1"
 
+react-pluggable@^0.4.3:
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/react-pluggable/-/react-pluggable-0.4.3.tgz#84e1cb5f403b31dbfd0d1c228fa129dd6c1b153b"
+  integrity sha512-hWBAVWrhyYPrnSbDFSay2KMJ4TCkOdumdjsyTX/PTZcMwufxJydEZ7yB73pevTRDA6/jEb0kmblvwUXsbC2IlQ==
+  dependencies:
+    semver "^7.3.2"
+
 react-property@2.0.0:
   version "2.0.0"
   resolved "https://registry.npmjs.org/react-property/-/react-property-2.0.0.tgz"
