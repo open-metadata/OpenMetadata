@@ -2191,7 +2191,7 @@
     "select-team": "Bitte wählen Sie einen Teamtyp aus",
     "select-test-case": "Wählen Sie einen Testfall aus, der in einem geplanten Intervall ausgeführt werden soll. Wenn kein Testfall ausgewählt wird, werden standardmäßig alle Testfälle ausgeführt.",
     "select-token-expiration": "Wählen Sie das Token-Ablaufdatum aus",
-    "select-user-first": "Please select a user first",
+    "select-user-first": "Wählen Sie zuerst einen Benutzer aus",
     "service-created-entity-description": "Der <Service-Name> wurde erfolgreich erstellt. Besuchen Sie den neu erstellten Dienst, um sich die Details anzusehen. {{entity}}",
     "service-description": "Richten Sie Konnektoren ein und ingestieren Sie Metadaten aus verschiedenen Quellen.",
     "service-name-length": "Der Dienstname muss zwischen 1 und 128 Zeichen lang sein",
