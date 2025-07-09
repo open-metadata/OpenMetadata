@@ -185,7 +185,7 @@ public class OpenSearchBulkSink implements BulkSink {
       LOG.debug("No index mapping found for entityType '{}'. Skipping indexing.", entityType);
       return;
     }
-    String indexName = indexMapping.getIndexName();
+    String indexName = indexMapping.getIndexName(searchRepository.getClusterAlias());
 
     try {
       // Check if these are time series entities

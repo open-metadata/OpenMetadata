@@ -365,7 +365,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       MutableServletContextHandler contextHandler = environment.getApplicationContext();
       SessionHandler sessionHandler = contextHandler.getSessionHandler();
       if (sessionHandler == null) {
-        contextHandler.setSessionHandler(new SessionHandler());
+        sessionHandler = new SessionHandler();
+        contextHandler.setSessionHandler(sessionHandler);
       }
 
       SessionCookieConfig cookieConfig =
