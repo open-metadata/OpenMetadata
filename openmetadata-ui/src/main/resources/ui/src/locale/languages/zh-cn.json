@@ -2157,6 +2157,7 @@
     "permanently-delete-ingestion-pipeline": "Permanently deleting this <0>{{entityName}}</0> will result in loss of pipeline configuration, and it cannot be recovered.",
     "permanently-delete-metadata": "永久删除此<0>{{entityName}}</0>将永久从 OpenMetadata 中删除其元数据",
     "permanently-delete-metadata-and-dependents": "永久删除此{{entityName}}将永久从 OpenMetadata 中删除其元数据以及{{dependents}}的元数据",
+    "persona-preference-updated": "角色偏好设置已成功更新!",
     "personal-access-token": "个人访问令牌",
     "pii-coverage-widget-description": "服务中所有数据资产的 PII 覆盖率。<0>了解更多。</0>",
     "pii-distribution-description": "个人可识别信息, 当单独使用或与其他相关数据一起使用时, 可以识别个人。",

@@ -2157,6 +2157,7 @@
     "permanently-delete-ingestion-pipeline": "Das dauerhafte Löschen von <0>{{entityName}}</0> führt zum Verlust der Pipeline-Konfiguration und kann nicht wiederhergestellt werden.",
     "permanently-delete-metadata": "Das dauerhafte Löschen dieses <0>{{entityName}}</0> entfernt seine Metadaten dauerhaft aus OpenMetadata.",
     "permanently-delete-metadata-and-dependents": "Das dauerhafte Löschen dieses {{entityName}} entfernt seine Metadaten sowie die Metadaten von {{dependents}} dauerhaft aus OpenMetadata.",
+    "persona-preference-updated": "Persona-Einstellung erfolgreich aktualisiert!",
     "personal-access-token": "Personal Access Token",
     "pii-coverage-widget-description": "PII-Abdeckung für alle Datenvermögenswerte im Dienst. <0>Mehr erfahren.</0>",
     "pii-distribution-description": "Persönlich identifizierbare Informationen, die allein oder mit anderen relevanten Daten verwendet werden können, um eine Person zu identifizieren.",

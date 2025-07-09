@@ -2157,6 +2157,7 @@
     "permanently-delete-ingestion-pipeline": "이 <0>{{entityName}}</0>을(를) 영구적으로 삭제하면 파이프라인 구성이 손실되며 복구할 수 없습니다.",
     "permanently-delete-metadata": "이 <0>{{entityName}}</0>을(를) 영구적으로 삭제하면 OpenMetadata에서 해당 메타데이터가 제거되며 복구할 수 없습니다.",
     "permanently-delete-metadata-and-dependents": "이 {{entityName}}을(를) 영구적으로 삭제하면 해당 메타데이터와 {{dependents}}의 메타데이터가 OpenMetadata에서 영구적으로 제거됩니다.",
+    "persona-preference-updated": "페르소나 설정이 성공적으로 업데이트되었습니다!",
     "personal-access-token": "개인 접근 토큰",
     "pii-coverage-widget-description": "서비스 내 모든 데이터 자산의 PII(개인 식별 정보) 커버리지입니다. <0>더 알아보기.</0>",
     "pii-distribution-description": "다른 관련 데이터와 함께 또는 단독으로 사용될 때 개인을 식별할 수 있는 개인 식별 정보(PII)입니다.",

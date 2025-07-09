@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
 import CustomiseHomeModal from './CustomiseHomeModal';
 
@@ -210,7 +210,7 @@ describe('CustomiseHomeModal Component', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('should call onBackgroundColorUpdate and onClose when apply button is clicked with color change', () => {
+    it('should call onBackgroundColorUpdate and onClose when apply button is clicked with color change', async () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       // Change color first
@@ -218,22 +218,25 @@ describe('CustomiseHomeModal Component', () => {
       fireEvent.click(colorChangeButton);
 
       const applyButton = screen.getByTestId('apply-btn');
-      fireEvent.click(applyButton);
+      await act(async () => {
+        fireEvent.click(applyButton);
+      });
 
       expect(mockOnBackgroundColorUpdate).toHaveBeenCalledWith('#ff0000');
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('should call onBackgroundColorUpdate with updated color when apply is clicked after color change', () => {
+    it('should call onBackgroundColorUpdate with updated color when apply is clicked after color change', async () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       // Change color
       const colorChangeButton = screen.getByTestId('color-change-button');
       fireEvent.click(colorChangeButton);
 
-      // Apply changes
       const applyButton = screen.getByTestId('apply-btn');
-      fireEvent.click(applyButton);
+      await act(async () => {
+        fireEvent.click(applyButton);
+      });
 
       expect(mockOnBackgroundColorUpdate).toHaveBeenCalledWith('#ff0000');
       expect(mockOnClose).toHaveBeenCalledTimes(1);

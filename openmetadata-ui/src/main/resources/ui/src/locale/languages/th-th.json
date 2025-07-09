@@ -2157,6 +2157,7 @@
     "permanently-delete-ingestion-pipeline": "การลบ <0>{{entityName}}</0> นี้อย่างถาวรจะทำให้การตั้งค่าท่อสูญหายและไม่สามารถกู้คืนได้",
     "permanently-delete-metadata": "การลบ <0>{{entityName}}</0> นี้อย่างถาวรจะทำให้ข้อมูลเมตาของมันถูกลบออกจาก OpenMetadata และไม่สามารถกู้คืนได้",
     "permanently-delete-metadata-and-dependents": "การลบ {{entityName}} นี้อย่างถาวรจะทำให้ข้อมูลเมตาของมันและข้อมูลเมตาของ {{dependents}} ถูกลบออกจาก OpenMetadata อย่างถาวร",
+    "persona-preference-updated": "อัปเดตการตั้งค่าบุคลิกภาพสำเร็จแล้ว!",
     "personal-access-token": "โทเค็นการเข้าถึงส่วนบุคคล",
     "pii-coverage-widget-description": "ความครอบคลุมของ PII สำหรับสินทรัพย์ข้อมูลทั้งหมดในบริการ <0>เรียนรู้เพิ่มเติม</0>",
     "pii-distribution-description": "ข้อมูลที่สามารถใช้เพื่อระบุบุคคลเฉพาะเมื่อใช้งานคนเดียวหรือกับข้อมูลที่เกี่ยวข้องกัน",
