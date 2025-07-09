@@ -38,6 +38,7 @@ const CustomiseHomeModal = ({
   onHomePage,
 }: CustomiseHomeModalProps) => {
   const { t } = useTranslation();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedColor, setSelectedColor] = useState<string>(
     currentBackgroundColor ?? DEFAULT_HEADER_BG_COLOR
   );
@@ -194,28 +195,35 @@ const CustomiseHomeModal = ({
     );
   }, [sidebarItems, selectedKey, handleSidebarClick]);
 
-  const handleApply = () => {
-    const colorChanged = selectedColor !== currentBackgroundColor;
-    if (onBackgroundColorUpdate && colorChanged) {
-      onBackgroundColorUpdate(selectedColor);
-    }
+  const handleApply = async () => {
+    try {
+      setIsLoading(true);
+      const colorChanged = selectedColor !== currentBackgroundColor;
+      if (onBackgroundColorUpdate && colorChanged) {
+        await onBackgroundColorUpdate(selectedColor);
+      }
 
-    if (handleAddWidget && selectedWidgets.length > 0) {
-      selectedWidgets.forEach((widgetId) => {
-        const widget = widgets.find((w) => w.id === widgetId);
-        if (widget) {
-          handleAddWidget(
-            widget,
-            placeholderWidgetKey ??
-              LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
-            1
-          );
-        }
-      });
-    }
+      if (handleAddWidget && selectedWidgets.length > 0) {
+        selectedWidgets.forEach((widgetId) => {
+          const widget = widgets.find((w) => w.id === widgetId);
+          if (widget) {
+            handleAddWidget(
+              widget,
+              placeholderWidgetKey ??
+                LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+              1
+            );
+          }
+        });
+      }
 
-    setSelectedWidgets([]);
-    onClose();
+      setSelectedWidgets([]);
+      onClose();
+    } catch (error) {
+      return;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const hasChanges = useMemo(() => {
@@ -265,6 +273,7 @@ const CustomiseHomeModal = ({
             className="apply-btn border-radius-xs font-semibold text-white text-md"
             data-testid="apply-btn"
             disabled={!hasChanges}
+            loading={isLoading}
             type="primary"
             onClick={handleApply}>
             {t('label.apply')}
