@@ -6,7 +6,7 @@ import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineS
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
-import org.openmetadata.service.util.MicrometerBundleSingleton;
+import io.micrometer.core.instrument.Metrics;
 import org.quartz.Job;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -47,7 +47,10 @@ public class ServicesStatusJobHandler {
       throws SchedulerException {
     this.config = config;
     this.pipelineServiceClient = PipelineServiceClientFactory.createPipelineServiceClient(config);
-    this.meterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
+    this.meterRegistry = (PrometheusMeterRegistry) Metrics.globalRegistry.getRegistries().stream()
+        .filter(registry -> registry instanceof PrometheusMeterRegistry)
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("No PrometheusMeterRegistry found in global registry"));
     this.clusterName = clusterName;
     this.healthCheckInterval = config.getHealthCheckInterval();
     this.servicesHealthCheckInterval = monitorConfiguration.getServicesHealthCheckInterval();

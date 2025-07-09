@@ -15,7 +15,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
-import org.openmetadata.service.util.MicrometerBundleSingleton;
+import io.micrometer.core.instrument.Metrics;
 
 public class MeteredPipelineServiceClient implements PipelineServiceClientInterface {
   private final String DEPLOY = "deploy";
@@ -30,8 +30,6 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
   private final String VALIDATE_APP_REGISTRATION = "validate_app_registration";
 
   private final PipelineServiceClientInterface decoratedClient;
-  private final Counter pipelineClientStatusCounter =
-      MicrometerBundleSingleton.pipelineClientStatusCounter;
 
   public MeteredPipelineServiceClient(PipelineServiceClientInterface decoratedClient) {
     this.decoratedClient = decoratedClient;
@@ -40,13 +38,19 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
   private <T> T executeWithMetering(String name, Supplier<T> operation) {
     try {
       T result = operation.get();
-      pipelineClientStatusCounter.labels(name, "200").inc();
+      Metrics.counter("pipeline_client_request_status", 
+          "operation", name, 
+          "status", "200").increment();
       return result;
     } catch (PipelineServiceClientException e) {
-      pipelineClientStatusCounter.labels(name, Integer.toString(e.getResponse().getStatus())).inc();
+      Metrics.counter("pipeline_client_request_status", 
+          "operation", name, 
+          "status", Integer.toString(e.getResponse().getStatus())).increment();
       throw e;
     } catch (Exception e) {
-      pipelineClientStatusCounter.labels(name, "unknown").inc();
+      Metrics.counter("pipeline_client_request_status", 
+          "operation", name, 
+          "status", "unknown").increment();
       throw e;
     }
   }
@@ -55,13 +59,19 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
       String name, Supplier<PipelineServiceClientResponse> operation) {
     try {
       PipelineServiceClientResponse result = operation.get();
-      pipelineClientStatusCounter.labels(name, Integer.toString(result.getCode())).inc();
+      Metrics.counter("pipeline_client_request_status", 
+          "operation", name, 
+          "status", Integer.toString(result.getCode())).increment();
       return result;
     } catch (PipelineServiceClientException e) {
-      pipelineClientStatusCounter.labels(name, Integer.toString(e.getResponse().getStatus())).inc();
+      Metrics.counter("pipeline_client_request_status", 
+          "operation", name, 
+          "status", Integer.toString(e.getResponse().getStatus())).increment();
       throw e;
     } catch (Exception e) {
-      pipelineClientStatusCounter.labels(name, "unknown").inc();
+      Metrics.counter("pipeline_client_request_status", 
+          "operation", name, 
+          "status", "unknown").increment();
       throw e;
     }
   }

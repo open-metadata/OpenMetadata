@@ -12,7 +12,6 @@
  */
 package org.openmetadata.service.security.saml;
 
-import static org.openmetadata.service.util.MicrometerBundleSingleton.prometheusMeterRegistry;
 
 import io.micrometer.core.instrument.Timer;
 import jakarta.servlet.Filter;
@@ -24,7 +23,7 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.util.MicrometerBundleSingleton;
+import io.micrometer.core.instrument.Metrics;
 
 /**
  * This is OMMicrometerHttpFilter is similar to MicrometerHttpFilter with support to handle OM Servlets, and provide
@@ -46,13 +45,18 @@ public class OMMicrometerHttpFilter implements Filter {
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
-    Timer.Sample timer = Timer.start(prometheusMeterRegistry);
+    Timer.Sample timer = Timer.start(Metrics.globalRegistry);
     long startTime = System.nanoTime();
     chain.doFilter(request, response);
     double elapsed = (System.nanoTime() - startTime) / 1.0E9;
     String requestMethod = ((HttpServletRequest) request).getMethod();
-    MicrometerBundleSingleton.httpRequests.labels(requestMethod).observe(elapsed);
-    timer.stop(MicrometerBundleSingleton.getRequestsLatencyTimer());
+    
+    // Record using Micrometer API
+    Timer httpTimer = Metrics.timer("http_server_requests_sec", "method", requestMethod);
+    httpTimer.record((long)(elapsed * 1000), java.util.concurrent.TimeUnit.MILLISECONDS);
+    
+    // Record latency metric
+    timer.stop(Metrics.timer("http_latency_requests_seconds"));
   }
 
   @Override
