@@ -89,6 +89,7 @@
     "elkjs": "^0.9.3",
     "eventemitter3": "^5.0.1",
     "fast-json-patch": "^3.1.1",
+    "focus-trap-react": "^11.0.4",
     "html-react-parser": "^1.4.14",
     "html-to-image": "1.11.11",
     "https-browserify": "^1.0.0",

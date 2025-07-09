@@ -27,4 +27,5 @@ export interface TierCardProps {
   updateTier?: (value?: Tag) => Promise<void>;
   children?: ReactNode;
   popoverProps?: PopoverProps;
+  onClose?: () => void;
 }
