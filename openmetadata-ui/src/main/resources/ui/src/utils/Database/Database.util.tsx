@@ -139,7 +139,7 @@ export const getDatabasePageBaseTabs = ({
           count={schemaInstanceCount}
           id={EntityTabs.SCHEMAS}
           isActive={activeTab === EntityTabs.SCHEMAS}
-          name={labelMap?.[EntityTabs.SCHEMAS] ?? t('label.schema-plural')}
+          name={labelMap?.[EntityTabs.SCHEMAS] ?? t('label.database-schema')}
         />
       ),
       key: EntityTabs.SCHEMAS,
