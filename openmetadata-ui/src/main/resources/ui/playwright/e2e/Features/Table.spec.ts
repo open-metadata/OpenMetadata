@@ -91,7 +91,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table page should show schema tab with count', async ({ page }) => {
     await table1.visitEntityPage(page);
 
-    await expect(page.getByRole('tab', { name: 'Schema' })).toContainText('4');
+    await expect(page.getByRole('tab', { name: 'Columns' })).toContainText('4');
   });
 
   test('should persist current page', async ({ page }) => {
