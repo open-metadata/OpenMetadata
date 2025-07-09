@@ -8,7 +8,7 @@ slug: /connectors/database/teradata
 name="Teradata"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "View Lineage", "View Column-level Lineage", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "View Lineage", "View Column-level Lineage", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Data Quality", "Owners", "Tags", "Stored Procedures", "dbt"]
 / %}
 
