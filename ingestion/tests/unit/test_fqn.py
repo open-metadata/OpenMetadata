@@ -495,6 +495,17 @@ class TestFqnGrammar(TestCase):
             FqnTestCase(
                 "service::db::schema::table", False, "Double colons instead of dots"
             ),
+            # Unsupported table name formats
+            FqnTestCase(
+                "service.db.schema.table\\with\\backslashes",
+                False,
+                "Table name with backslashes not supported"
+            ),
+            FqnTestCase(
+                'service.db.schema.table.with.dots.and"quotes"',
+                False,
+                "Table name with dots and quotes not supported"
+            ),
             # Special invalid characters
             FqnTestCase("service\x00db", False, "Null character"),
             FqnTestCase("service\ndb", False, "Newline character"),

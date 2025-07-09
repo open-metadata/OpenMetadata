@@ -1407,60 +1407,6 @@
       "sourceUrl": "https://localhost:3306/posts_db"
     },
     {
-      "name": "table\\with\\backslashes",
-      "displayName": null,
-      "fullyQualifiedName": "mysql_sample.default.posts_db.\"table\\\\with\\\\backslashes\"",
-      "description": "Table to test FQN with escaped backslashes",
-      "tableType": "Regular",
-      "columns": [
-        {
-          "name": "id",
-          "dataType": "INT",
-          "dataTypeDisplay": "int",
-          "description": null,
-          "constraint": "PRIMARY_KEY",
-          "ordinalPosition": 1
-        },
-        {
-          "name": "column\\with\\backslashes",
-          "dataType": "VARCHAR",
-          "dataLength": 100,
-          "dataTypeDisplay": "varchar(100)",
-          "description": null,
-          "constraint": "NOT_NULL",
-          "ordinalPosition": 2
-        }
-      ],
-      "databaseSchema": {
-        "type": "databaseSchema",
-        "name": "posts_db",
-        "fullyQualifiedName": "mysql_sample.default.posts_db",
-        "description": null,
-        "displayName": "posts_db",
-        "deleted": false,
-        "inherited": null
-      },
-      "database": {
-        "type": "database",
-        "name": "default",
-        "fullyQualifiedName": "mysql_sample.default",
-        "description": null,
-        "displayName": "default",
-        "deleted": false,
-        "inherited": null
-      },
-      "service": {
-        "type": "databaseService",
-        "name": "mysql_sample",
-        "fullyQualifiedName": "mysql_sample",
-        "description": null,
-        "displayName": "mysql_sample",
-        "deleted": false,
-        "inherited": null
-      },
-      "sourceUrl": "https://localhost:3306/posts_db"
-    },
-    {
       "name": "table-with-hyphens",
       "displayName": null,
       "fullyQualifiedName": "mysql_sample.default.posts_db.table-with-hyphens",
@@ -2069,69 +2015,6 @@
       },
       "service": {
         "id": "c0382692-7cf3-40b7-9aa7-b14bf2cbecdd",
-        "type": "databaseService",
-        "name": "mysql_sample",
-        "fullyQualifiedName": "mysql_sample",
-        "description": null,
-        "displayName": "mysql_sample",
-        "deleted": false,
-        "inherited": null
-      },
-      "sourceUrl": "https://localhost:3306/posts_db"
-    },
-    {
-      "name": "table.with.dots.and\"quotes\"",
-      "displayName": null,
-      "fullyQualifiedName": "mysql_sample.default.posts_db.\"table.with.dots.and\\\"quotes\\\"\"",
-      "description": "Table with complex FQN pattern - dots and quotes",
-      "tableType": "Regular",
-      "columns": [
-        {
-          "name": "id",
-          "dataType": "INT",
-          "dataTypeDisplay": "int",
-          "description": null,
-          "constraint": "PRIMARY_KEY",
-          "ordinalPosition": 1
-        },
-        {
-          "name": "column.with.dots.and\"quotes\"",
-          "dataType": "VARCHAR",
-          "dataLength": 100,
-          "dataTypeDisplay": "varchar(100)",
-          "description": null,
-          "constraint": "NOT_NULL",
-          "ordinalPosition": 2
-        },
-        {
-          "name": "column\\with\\backslash.and.dots",
-          "dataType": "VARCHAR",
-          "dataLength": 100,
-          "dataTypeDisplay": "varchar(100)",
-          "description": null,
-          "constraint": "NOT_NULL",
-          "ordinalPosition": 3
-        }
-      ],
-      "databaseSchema": {
-        "type": "databaseSchema",
-        "name": "posts_db",
-        "fullyQualifiedName": "mysql_sample.default.posts_db",
-        "description": null,
-        "displayName": "posts_db",
-        "deleted": false,
-        "inherited": null
-      },
-      "database": {
-        "type": "database",
-        "name": "default",
-        "fullyQualifiedName": "mysql_sample.default",
-        "description": null,
-        "displayName": "default",
-        "deleted": false,
-        "inherited": null
-      },
-      "service": {
         "type": "databaseService",
         "name": "mysql_sample",
         "fullyQualifiedName": "mysql_sample",

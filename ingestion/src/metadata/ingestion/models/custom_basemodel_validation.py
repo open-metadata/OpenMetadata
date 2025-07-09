@@ -20,7 +20,6 @@ logger = logging.getLogger("metadata")
 RESTRICTED_KEYWORDS = ["::", ">"]
 RESERVED_COLON_KEYWORD = "__reserved__colon__"
 RESERVED_ARROW_KEYWORD = "__reserved__arrow__"
-RESERVED_QUOTE_KEYWORD = "__reserved__quote__"
 
 CREATE_ADJACENT_MODELS = {"ProfilerResponse", "SampleData"}
 NAME_FIELDS = {"EntityName", "str", "ColumnName", "TableData"}
@@ -32,7 +31,6 @@ def revert_separators(value):
     return (
         value.replace(RESERVED_COLON_KEYWORD, "::")
         .replace(RESERVED_ARROW_KEYWORD, ">")
-        .replace(RESERVED_QUOTE_KEYWORD, '"')
     )
 
 
@@ -40,7 +38,6 @@ def replace_separators(value):
     return (
         value.replace("::", RESERVED_COLON_KEYWORD)
         .replace(">", RESERVED_ARROW_KEYWORD)
-        .replace('"', RESERVED_QUOTE_KEYWORD)
     )
 
 
