@@ -166,12 +166,18 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             if skip_on_failure:
-                logger.warning(f"Error trying to PATCH {get_log_name(source)}: {exc}")
+                entity_name = get_log_name(source)
+                logger.warning(
+                    f"Failed to update {entity_name}. The patch operation was skipped. "
+                    f"Reason: {exc}"
+                )
                 return None
             else:
-                raise
-
-        return None
+                entity_name = get_log_name(source)
+                raise RuntimeError(
+                    f"Failed to update {entity_name}. The patch operation failed. "
+                    f"Set 'skip_on_failure=True' to skip failed patches. Error: {exc}"
+                ) from exc
 
     def patch_description(
         self,

@@ -429,10 +429,34 @@ def build_patch(
     except Exception as exc:
         logger.debug(traceback.format_exc())
         if skip_on_failure:
-            logger.warning(f"Couldn't build patch for Entity: {exc}")
+            entity_info = ""
+            try:
+                if hasattr(source, "fullyQualifiedName"):
+                    entity_info = f" for '{source.fullyQualifiedName.root}'"
+                elif hasattr(source, "name"):
+                    entity_info = f" for '{source.name.root}'"
+            except Exception:
+                pass
+            
+            logger.warning(
+                f"Failed to build patch{entity_info}. The patch generation was skipped. "
+                f"Reason: {exc}"
+            )
             return None
         else:
-            raise
+            entity_info = ""
+            try:
+                if hasattr(source, "fullyQualifiedName"):
+                    entity_info = f" for '{source.fullyQualifiedName.root}'"
+                elif hasattr(source, "name"):
+                    entity_info = f" for '{source.name.root}'"
+            except Exception:
+                pass
+                
+            raise RuntimeError(
+                f"Failed to build patch{entity_info}. The patch generation failed. "
+                f"Set 'skip_on_failure=True' to skip failed patch operations. Error: {exc}"
+            ) from exc
 
 
 def _get_attribute_name(attr: T) -> str:
