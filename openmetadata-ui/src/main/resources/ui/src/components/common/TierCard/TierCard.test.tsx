@@ -99,6 +99,14 @@ describe('Test TierCard Component', () => {
       fireEvent.click(radioButton);
     });
 
+    const updateTierCard = await screen.findByTestId('update-tier-card');
+
+    expect(updateTierCard).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(updateTierCard);
+    });
+
     expect(mockOnUpdate).toHaveBeenCalled();
   });
 

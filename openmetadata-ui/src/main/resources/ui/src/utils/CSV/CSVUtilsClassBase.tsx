@@ -149,6 +149,7 @@ class CSVUtilsClassBase {
           return (
             <InlineEdit onCancel={props.onCancel} onSave={props.onComplete}>
               <TagSuggestion
+                autoFocus
                 selectProps={{
                   className: 'react-grid-select-dropdown',
                   size: 'small',
@@ -198,11 +199,16 @@ class CSVUtilsClassBase {
             }, 1);
           };
 
+          const onClose = () => {
+            props.onCancel();
+          };
+
           return (
             <TierCard
               currentTier={value}
               popoverProps={{ open: true }}
-              updateTier={handleChange}>
+              updateTier={handleChange}
+              onClose={onClose}>
               {' '}
             </TierCard>
           );

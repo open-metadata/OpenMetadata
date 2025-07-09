@@ -35,6 +35,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
@@ -255,7 +256,7 @@ export const UserTeamSelectableList = ({
     <Popover
       destroyTooltipOnHide
       content={
-        <>
+        <FocusTrapWithContainer active={popoverProps?.open || false}>
           {previewSelected && (
             <Space
               className="user-team-popover-header w-full p-x-sm p-y-md"
@@ -285,7 +286,6 @@ export const UserTeamSelectableList = ({
               </div>
             </Space>
           )}
-
           <Tabs
             centered
             activeKey={activeTab}
@@ -349,7 +349,7 @@ export const UserTeamSelectableList = ({
             // Users.component collapsible panel
             onClick={(e) => e.stopPropagation()}
           />
-        </>
+        </FocusTrapWithContainer>
       }
       open={popupVisible}
       overlayClassName="user-team-select-popover card-shadow"
