@@ -1103,6 +1103,168 @@
       "sourceUrl": "https://localhost:3306/posts_db"
     },
     {
+      "name": "table.with.dots",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.\"table.with.dots\"",
+      "description": "Table to test FQN with dots",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "column.with.dots",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "table with spaces",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.table with spaces",
+      "description": "Table to test FQN with spaces",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "column with spaces",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "table@with#special$chars",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.table@with#special$chars",
+      "description": "Table to test FQN with special characters",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "column@with#special$chars",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
       "name": "PostTags",
       "displayName": null,
       "fullyQualifiedName": "mysql_sample.default.posts_db.PostTags",
@@ -1191,6 +1353,654 @@
       "sourceUrl": "https://localhost:3306/posts_db"
     },
     {
+      "name": "table\"with\"quotes",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.\"table\\\"with\\\"quotes\"",
+      "description": "Table to test FQN with escaped quotes",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "column\"with\"quotes",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "table\\with\\backslashes",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.\"table\\\\with\\\\backslashes\"",
+      "description": "Table to test FQN with escaped backslashes",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "column\\with\\backslashes",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "table-with-hyphens",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.table-with-hyphens",
+      "description": "Table to test FQN with hyphens",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "column-with-hyphens",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "表_中文",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.表_中文",
+      "description": "Table with Unicode Chinese characters",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "列_中文",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "🚀_emoji_table",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.🚀_emoji_table",
+      "description": "Table with emoji characters",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "🌟_column",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "table.multiple.dots.here",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.\"table.multiple.dots.here\"",
+      "description": "Table with multiple dots in name",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "column.many.dots.here",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "table(with)parentheses",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.table(with)parentheses",
+      "description": "Table with parentheses",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "column(with)parentheses",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "table[with]brackets",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.table[with]brackets",
+      "description": "Table with square brackets",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "column[with]brackets",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "table_with_underscore",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.table_with_underscore",
+      "description": "Table with underscores",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "column_with_underscore",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "123numeric_table",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.123numeric_table",
+      "description": "Table starting with numbers",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "456numeric_column",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "UPPERCASE_TABLE",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.UPPERCASE_TABLE",
+      "description": "Table with uppercase name",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "ID",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "UPPERCASE_COLUMN",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "MixedCase_Table",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.MixedCase_Table",
+      "description": "Table with mixed case name",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "MixedCase_Column",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
       "name": "Profiles",
       "displayName": null,
       "fullyQualifiedName": "mysql_sample.default.posts_db.Profiles",
@@ -1259,6 +2069,393 @@
       },
       "service": {
         "id": "c0382692-7cf3-40b7-9aa7-b14bf2cbecdd",
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "table.with.dots.and\"quotes\"",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.\"table.with.dots.and\\\"quotes\\\"\"",
+      "description": "Table with complex FQN pattern - dots and quotes",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "column.with.dots.and\"quotes\"",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "column\\with\\backslash.and.dots",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 3
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "\"quoted_table_name\"",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.\"quoted_table_name\"",
+      "description": "Table with quoted name",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "\"quoted_column_name\"",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "\"table with spaces in quotes\"",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.\"table with spaces in quotes\"",
+      "description": "Quoted table name with spaces",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "\"column with spaces\"",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "\"table-with-special@chars#in$quotes\"",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.\"table-with-special@chars#in$quotes\"",
+      "description": "Quoted table name with special characters",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "\"column@with#special$chars\"",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "\"123table_starting_with_number\"",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.\"123table_starting_with_number\"",
+      "description": "Quoted table name starting with number",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "\"456column_with_number\"",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "\"UPPERCASE.TABLE.NAME\"",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.\"UPPERCASE.TABLE.NAME\"",
+      "description": "Quoted uppercase table name with dots",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "\"UPPERCASE.COLUMN.NAME\"",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "test_case_table",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.test_case_table",
+      "description": "Table to test test case FQN splitting",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "customer_id",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "customer.name.with.dots",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
         "type": "databaseService",
         "name": "mysql_sample",
         "fullyQualifiedName": "mysql_sample",
