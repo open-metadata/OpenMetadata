@@ -1,6 +1,9 @@
+from copy import deepcopy
+
 import pytest
 
 from _openmetadata_testutils.postgres.conftest import postgres_container
+from ingestion.tests.integration.conftest import ingestion_config
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -28,6 +31,20 @@ def create_service_request(postgres_container, tmp_path_factory):
                 hostPort="localhost:"
                 + postgres_container.get_exposed_port(postgres_container.port),
                 database="dvdrental",
+                ingestAllDatabases=True,
             )
         ),
     )
+
+
+@pytest.fixture(scope="module")
+def postgres_ingestion_config(
+    db_service, ingestion_config, metadata, workflow_config, sink_config
+):
+    ingestion_config = deepcopy(ingestion_config)
+    ingestion_config["source"]["sourceConfig"]["config"].update(
+        {
+            "schemaFilterPattern": {"excludes": ["information_schema"]},
+        }
+    )
+    return ingestion_config
