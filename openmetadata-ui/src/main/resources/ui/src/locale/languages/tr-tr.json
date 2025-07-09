@@ -2089,6 +2089,7 @@
     "permanently-delete-ingestion-pipeline": "Bu <0>{{entityName}}</0> kalıcı olarak silinmesi, iş akışı yapılandırmasının kaybolmasına neden olacak ve kurtarılamayacaktır.",
     "permanently-delete-metadata": "Bu <0>{{entityName}}</0> kalıcı olarak silinmesi, metadatasının OpenMetadata'dan kaldırılmasına neden olacak ve kurtarılamayacaktır.",
     "permanently-delete-metadata-and-dependents": "Bu {{entityName}} kalıcı olarak silinmesi, metadatasının yanı sıra {{dependents}} metadatasını da OpenMetadata'dan kalıcı olarak kaldıracaktır.",
+    "persona-preference-updated": "Kişilik tercihi başarıyla güncellendi!",
     "personal-access-token": "Kişisel Erişim Anahtarı",
     "pii-coverage-widget-description": "Servisteki tüm veri varlıkları için KVT kapsamı. <0>daha fazla bilgi edinin.</0>",
     "pii-distribution-description": "Kişisel Tanımlanabilir Bilgi, tek başına veya diğer ilgili verilerle kullanıldığında bir bireyi tanımlayabilen bilgilerdir.",

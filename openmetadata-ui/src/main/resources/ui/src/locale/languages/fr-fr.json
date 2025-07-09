@@ -2089,6 +2089,7 @@
     "permanently-delete-ingestion-pipeline": "Permanently deleting this <0>{{entityName}}</0> will result in loss of pipeline configuration, and it cannot be recovered.",
     "permanently-delete-metadata": "La suppression permanente de cette <0>{{entityName}}</0> supprimera ses métadonnées de façon permanente d'OpenMetadata.",
     "permanently-delete-metadata-and-dependents": "La suppression permanente de cette {{entityName}} supprimera ses métadonnées ainsi que les métadonnées de {{dependents}} de façon permanente d'OpenMetadata.",
+    "persona-preference-updated": "Préférence de persona mise à jour avec succès!",
     "personal-access-token": "Jeton d'Accès Personnel (PAT)",
     "pii-coverage-widget-description": "Couverture des données PII pour tous les actifs de données dans le service. <0>en savoir plus.</0>",
     "pii-distribution-description": "Information personnelle identifiable qui, lorsqu'elle est utilisée seule ou avec d'autres données pertinentes, peut identifier une personne.",

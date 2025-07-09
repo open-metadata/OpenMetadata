@@ -2089,6 +2089,7 @@
     "permanently-delete-ingestion-pipeline": "Permanently deleting this <0>{{entityName}}</0> will result in loss of pipeline configuration, and it cannot be recovered.",
     "permanently-delete-metadata": "حذف دائم این <0>{{entityName}}</0> منجر به حذف متادیتای آن از OpenMetadata می‌شود و قابل بازیابی نخواهد بود.",
     "permanently-delete-metadata-and-dependents": "حذف دائمی این {{entityName}} منجر به حذف متادیتای آن و همچنین متادیتای {{dependents}} از OpenMetadata به‌طور دائم می‌شود.",
+    "persona-preference-updated": "ترجیح شخصیت با موفقیت به‌روزرسانی شد!",
     "personal-access-token": "توکن دسترسی شخصی.",
     "pii-coverage-widget-description": "پوشش PII برای تمام دارایی‌های داده در سرویس. <0>بیشتر بدانید.</0>",
     "pii-distribution-description": "اطلاعات شخصی قابل شناسایی که وقتی به تنهایی یا همراه با سایر داده های مرتبط استفاده می شود، می تواند یک فرد را شناسایی کند.",

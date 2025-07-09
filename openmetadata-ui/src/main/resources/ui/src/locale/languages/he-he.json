@@ -2089,6 +2089,7 @@
     "permanently-delete-ingestion-pipeline": "Permanently deleting this <0>{{entityName}}</0> will result in loss of pipeline configuration, and it cannot be recovered.",
     "permanently-delete-metadata": "מחיקה של {{entityName}} תסיר את המטה-דאטה שלו מ-OpenMetadata לצמיתות.",
     "permanently-delete-metadata-and-dependents": "מחיקה של {{entityName}} תסיר את המטה-דאטה שלו, כמו גם את המטה-דאטה של {{dependents}} מ-OpenMetadata לצמיתות.",
+    "persona-preference-updated": "העדפת אישיות עודכנה בהצלחה!",
     "personal-access-token": "Personal Access Token",
     "pii-coverage-widget-description": "כיסוי PII עבור כל נכסי הנתונים בשירות. <0>למד עוד</0>.",
     "pii-distribution-description": "מידע שיכול להזהיר את מי שמשתמש בו או עם נתונים אחרים שיכולים לזהות אדם.",

@@ -43,7 +43,7 @@ import { searchQuery } from '../../rest/searchAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 
@@ -255,6 +255,7 @@ const MyDataPage = () => {
           ...currentUser,
           personaPreferences: updatedPersonaPreferences as PersonaPreferences[],
         });
+        showSuccessToast(t('message.persona-preference-updated'));
       }
     } catch (error) {
       showErrorToast(error as AxiosError);

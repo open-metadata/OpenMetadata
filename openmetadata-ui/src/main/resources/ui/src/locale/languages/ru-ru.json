@@ -2089,6 +2089,7 @@
     "permanently-delete-ingestion-pipeline": "Permanently deleting this <0>{{entityName}}</0> will result in loss of pipeline configuration, and it cannot be recovered.",
     "permanently-delete-metadata": "При окончательном удалении этого объекта <0>{{entityName}}</0> его метаданные будут навсегда удалены из OpenMetadata.",
     "permanently-delete-metadata-and-dependents": "Безвозвратное удаление этого {{entityName}} удалит его метаданные, а также метаданные {{dependers}} из OpenMetadata навсегда.",
+    "persona-preference-updated": "Предпочтения персонажа успешно обновлены!",
     "personal-access-token": "Personal Access Token",
     "pii-coverage-widget-description": "Покрытие PII для всех объектов данных в сервисе. <0>узнать больше.</0>",
     "pii-distribution-description": "Личные данные, которые, когда используются отдельно или вместе с другими релевантными данными, могут идентифицировать индивидуального человека.",
