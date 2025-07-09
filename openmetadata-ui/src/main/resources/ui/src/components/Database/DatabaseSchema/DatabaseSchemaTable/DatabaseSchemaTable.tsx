@@ -234,7 +234,7 @@ export const DatabaseSchemaTable = ({
   const schemaTableColumns: ColumnsType<DatabaseSchema> = useMemo(
     () => [
       {
-        title: t('label.database-schema-plural'),
+        title: t('label.schema-name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
