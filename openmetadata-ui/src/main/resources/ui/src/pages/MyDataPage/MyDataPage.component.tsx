@@ -25,6 +25,7 @@ import {
   KNOWLEDGE_LIST_LENGTH,
   LOGGED_IN_USER_STORAGE_KEY,
 } from '../../constants/constants';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Thread } from '../../generated/entity/feed/thread';
@@ -83,10 +84,16 @@ const MyDataPage = () => {
           (p: Page) => p.pageType === PageType.LandingPage
         ) ?? { layout: [], pageType: PageType.LandingPage };
 
+        const filteredLayout = pageData.layout.filter(
+          (widget: WidgetConfig) =>
+            !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||
+            !isEmpty(widget.config)
+        );
+
         setLayout(
-          isEmpty(pageData.layout)
+          isEmpty(filteredLayout)
             ? customizePageClassBase.defaultLayout
-            : pageData.layout
+            : filteredLayout
         );
       } else {
         setLayout(customizePageClassBase.defaultLayout);
