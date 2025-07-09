@@ -12,7 +12,8 @@
  */
 
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { cloneDeep, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, {
   Layout,
@@ -153,6 +154,19 @@ function CustomizeMyData({
     [layout]
   );
 
+  const disableSave = useMemo(() => {
+    const filteredLayout = layout.filter((widget) =>
+      widget.i.startsWith('KnowledgePanel')
+    );
+
+    const jsonPatch = compare(
+      cloneDeep(initialPageData?.layout as WidgetConfig[]),
+      cloneDeep(filteredLayout)
+    );
+
+    return jsonPatch.length === 0;
+  }, [initialPageData?.layout, layout]);
+
   const widgets = useMemo(
     () =>
       layout.map((widget) => (
@@ -228,6 +242,7 @@ function CustomizeMyData({
           entity: t('label.landing-page'),
         })}>
         <CustomizablePageHeader
+          disableSave={disableSave}
           personaName={getEntityName(personaDetails)}
           onReset={handleReset}
           onSave={handleSave}

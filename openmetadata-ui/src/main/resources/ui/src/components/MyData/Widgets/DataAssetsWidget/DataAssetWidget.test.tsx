@@ -73,6 +73,13 @@ describe('DataAssetsWidget', () => {
   });
 
   it('should render DataAssetsWidget', async () => {
+    (searchData as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        data: {
+          aggregations: { 'sterms#serviceType': { buckets: [] } },
+        },
+      })
+    );
     await act(async () => {
       render(<DataAssetsWidget {...widgetProps} />);
     });
