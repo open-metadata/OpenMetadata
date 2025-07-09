@@ -39,7 +39,7 @@ const AccountActivationConfirmation = () => {
       const res = await confirmRegistration(searchParam.get('token') as string);
       if (!isEmpty(res)) {
         setIsAccountVerified(true);
-        showSuccessToast(t('server. account-verify-success'));
+        showSuccessToast(t('server.account-verify-success'));
         navigate(ROUTES.SIGNIN);
       }
     } catch (err) {
