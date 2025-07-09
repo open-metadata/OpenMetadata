@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Input, Radio, Row, Select, Typography } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
+import { Card, Col, Input, Radio, Row, Select, Typography } from 'antd';
 import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -33,6 +34,7 @@ import {
 } from '../../../../../utils/SchedularUtils';
 import SelectionCardGroup from '../../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
+import './schedule-interval.less';
 import { StateValue } from './ScheduleInterval.interface';
 
 export interface ScheduleIntervalV1Props {
@@ -41,6 +43,7 @@ export interface ScheduleIntervalV1Props {
   disabled?: boolean;
   includePeriodOptions?: string[];
   defaultSchedule?: string;
+  entity?: string;
 }
 
 const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
@@ -49,6 +52,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
   disabled,
   includePeriodOptions,
   defaultSchedule,
+  entity,
 }) => {
   const { t } = useTranslation();
   // Schedule options for SelectionCardGroup
@@ -56,13 +60,17 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
     {
       value: SchedularOptions.SCHEDULE,
       label: t('label.schedule'),
-      description: t('message.schedule-description'),
+      description: t('message.schedule-entity-description', {
+        entity: entity ?? t('label.ingestion'),
+      }),
       icon: <ClockIcon />,
     },
     {
       value: SchedularOptions.ON_DEMAND,
       label: t('label.on-demand'),
-      description: t('message.on-demand-description'),
+      description: t('message.on-demand-entity-description', {
+        entity: entity ?? t('label.ingestion'),
+      }),
       icon: <PlayIcon />,
     },
   ];
@@ -166,6 +174,29 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
     }
   }, [includePeriodOptions]);
 
+  const cronExpressionCard = useMemo(() => {
+    const cronStringValue = cronString
+      ? t('label.entity-scheduled-to-run-value', {
+          entity: entity ?? t('label.ingestion'),
+          value: cronstrue.toString(cronString, {
+            use24HourTimeFormat: false,
+            verbose: true,
+            locale: getCurrentLocaleForConstrue(),
+            throwExceptionOnParseError: false,
+          }),
+        })
+      : t('message.pipeline-will-trigger-manually');
+
+    return (
+      <Card className="cron-expression-card">
+        <InfoCircleOutlined className="cron-expression-card-icon" />
+        <Typography.Text className="text-grey-muted">
+          {cronStringValue}
+        </Typography.Text>
+      </Card>
+    );
+  }, [cronString, entity]);
+
   // Update internal state when external value changes
   useEffect(() => {
     if (value !== cronString) {
@@ -185,7 +216,6 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <SelectionCardGroup
-            className="schedular-card-container"
             options={SCHEDULE_OPTIONS}
             value={selectedSchedular}
             onChange={(value) =>
@@ -193,14 +223,13 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
             }
           />
         </Col>
-
         {selectedSchedular === SchedularOptions.SCHEDULE && (
           <Col span={24}>
             <Row data-testid="cron-container" gutter={[16, 16]}>
               <Col data-testid="time-dropdown-container" span={12}>
-                <label>{`${t('label.every')}:`}</label>
+                <label>{t('label.every')}</label>
                 <Select
-                  className="w-full"
+                  className="w-full m-t-xs"
                   data-testid="cron-type"
                   disabled={disabled}
                   options={filteredPeriodOptions.map(
@@ -218,10 +247,13 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
               {selectedPeriod === 'custom' && (
                 <Col span={12}>
-                  <label>{`${t('label.cron')}:`}</label>
+                  <label>{t('label.cron')}</label>
                   <Input
+                    className="m-t-xs"
                     disabled={disabled}
-                    placeholder={t('label.enter-cron-expression')}
+                    placeholder={t('label.please-enter-value', {
+                      name: t('label.cron'),
+                    })}
                     value={state.cron}
                     onChange={(e) => {
                       const cronValue = e.target.value;
@@ -234,9 +266,9 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
               {showHourSelect && (
                 <Col span={hourCol}>
-                  <label>{`${t('label.hour')}:`}</label>
+                  <label>{t('label.hour')}</label>
                   <Select
-                    className="w-full"
+                    className="w-full m-t-xs"
                     disabled={disabled}
                     options={Array.from({ length: 24 }, (_, i) => ({
                       label: i.toString().padStart(2, '0'),
@@ -250,9 +282,9 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
               {showMinuteSelect && (
                 <Col span={minuteCol}>
-                  <label>{`${t('label.minute')}:`}</label>
+                  <label>{t('label.minute')}</label>
                   <Select
-                    className="w-full"
+                    className="w-full m-t-xs"
                     disabled={disabled}
                     options={Array.from({ length: 60 }, (_, i) => ({
                       label: i.toString().padStart(2, '0'),
@@ -266,10 +298,10 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
               {showWeekSelect && (
                 <Col span={weekCol}>
-                  <label>{`${t('label.day')}:`}</label>
+                  <label>{t('label.day')}</label>
                   <Radio.Group
                     buttonStyle="solid"
-                    className="d-flex gap-2"
+                    className="d-flex gap-2 m-t-xs"
                     disabled={disabled}
                     value={dow}
                     onChange={(e) =>
@@ -290,10 +322,10 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
               {showMonthSelect && (
                 <Col span={monthCol}>
-                  <label>{`${t('label.date')}:`}</label>
+                  <label>{t('label.date')}</label>
                   <Radio.Group
                     buttonStyle="solid"
-                    className="d-flex flex-wrap gap-2"
+                    className="d-flex flex-wrap gap-2 m-t-xs"
                     disabled={disabled}
                     value={dom}
                     onChange={(e) =>
@@ -313,39 +345,11 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
                   </Radio.Group>
                 </Col>
               )}
-
-              {cronString && (
-                <Col span={24}>
-                  <Typography.Text className="text-grey-muted">
-                    {cronstrue.toString(cronString, {
-                      use24HourTimeFormat: false,
-                      verbose: true,
-                      locale: getCurrentLocaleForConstrue(),
-                      throwExceptionOnParseError: false,
-                    })}
-                  </Typography.Text>
-                </Col>
-              )}
-
-              {isEmpty(cronString) &&
-                selectedSchedular === SchedularOptions.SCHEDULE && (
-                  <Col span={24}>
-                    <Typography.Text className="text-grey-muted">
-                      {t('message.pipeline-will-trigger-manually')}
-                    </Typography.Text>
-                  </Col>
-                )}
             </Row>
           </Col>
         )}
 
-        {selectedSchedular === SchedularOptions.ON_DEMAND && (
-          <Col span={24}>
-            <Typography.Text className="text-grey-muted">
-              {t('message.pipeline-will-trigger-manually')}
-            </Typography.Text>
-          </Col>
-        )}
+        <Col span={24}>{cronExpressionCard}</Col>
       </Row>
     </div>
   );

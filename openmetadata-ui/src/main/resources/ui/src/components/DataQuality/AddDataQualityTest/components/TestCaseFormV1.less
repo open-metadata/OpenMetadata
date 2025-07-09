@@ -25,8 +25,14 @@
     }
   }
 
+  .form-switch-container {
+    .ant-form-item-control-input {
+      align-items: baseline;
+    }
+  }
+
   .ant-form-item-label > label {
-    color: @grey-800;
+    color: @grey-900;
     font-weight: @font-medium;
     font-size: @font-size-base;
   }
@@ -35,13 +41,13 @@
   .test-type-card,
   .test-details-card,
   .scheduler-card {
-    background-color: @grey-1;
-    border: 1px solid @grey-200;
+    background-color: @grey-26;
     border-radius: @border-radius-sm;
-    margin-bottom: @size-lg;
+    margin-bottom: @size-mlg;
+    border: none;
 
     .ant-card-body {
-      padding: @size-sm @size-mlg @size-mlg;
+      padding: @size-md;
     }
 
     .ant-form-item {
@@ -57,13 +63,16 @@
       font-weight: @font-medium;
       font-size: @font-size-base;
     }
-
-    .card-title {
-      color: @grey-800;
-      font-size: @size-md;
-      font-weight: @font-medium;
-      margin-bottom: @size-mlg;
-      line-height: 1.4;
+    .card-title-container {
+      .card-title-text {
+        color: @grey-700;
+        font-weight: @font-semibold;
+        margin-bottom: 0px;
+      }
+      .card-title-description {
+        color: @grey-600;
+        margin-bottom: @margin-mlg;
+      }
     }
   }
 
@@ -119,12 +128,24 @@
     }
   }
 
-  .block-editor-wrapper.block-editor-wrapper--bar-menu .om-block-editor {
-    background-color: @white;
-    max-height: 150px;
-  }
-  .block-editor-wrapper .om-block-editor > p:last-child {
-    padding-bottom: 130px;
+  .block-editor-wrapper {
+    .om-block-editor {
+      background-color: @white;
+      max-height: 120px;
+      padding: @size-sm;
+
+      p:last-child {
+        padding-bottom: 75px;
+      }
+    }
+
+    .bar-menu-wrapper {
+      padding: @size-xxs;
+      .bar-menu-wrapper--format--button--icon {
+        width: @size-mlg;
+        height: @size-mlg;
+      }
+    }
   }
 }
 

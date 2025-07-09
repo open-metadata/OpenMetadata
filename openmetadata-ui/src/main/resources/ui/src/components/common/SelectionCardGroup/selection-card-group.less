@@ -19,15 +19,14 @@
 
   .selection-card {
     flex: 1;
-    border: 1px solid @grey-200;
-    border-radius: @border-radius-sm;
+    border: 1px solid @grey-300;
+    border-radius: @border-radius-xs;
     cursor: pointer;
     transition: all 0.3s ease;
-    background: @grey-50;
+    background: @white;
 
     .ant-card-body {
-      padding: @size-mlg @size-lg;
-      min-height: 90px;
+      padding: @size-md;
 
       .selection-content {
         display: flex;
@@ -42,13 +41,14 @@
           height: 40px;
           border-radius: 50%;
           background-color: @grey-100;
+          border: 6px solid @grey-50;
           transition: all 0.3s ease;
           flex-shrink: 0;
 
           svg {
-            width: @size-mlg;
-            height: @size-mlg;
-            color: @grey-500;
+            width: @size-md;
+            height: @size-md;
+            color: @grey-600;
           }
         }
 
@@ -57,24 +57,22 @@
         }
 
         .selection-title {
-          color: @grey-800;
-          font-size: @size-md;
-          font-weight: @font-medium;
+          color: @grey-700;
+          font-weight: @font-semibold;
           line-height: 1.4;
           margin-bottom: @size-xxs;
         }
 
         .selection-description {
-          color: @grey-400;
-          font-size: @font-size-base;
+          color: @grey-600;
           line-height: 1.4;
         }
 
         .custom-radio {
-          margin-left: @size-md;
+          margin-left: @size-xxs;
           flex-shrink: 0;
-          width: 22px;
-          height: 22px;
+          width: 16px;
+          height: 16px;
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -82,8 +80,8 @@
           transition: all 0.3s ease;
 
           &.unchecked {
-            border: 2px solid @grey-300;
-            background-color: transparent;
+            border: 1px solid @grey-300;
+            background-color: @white;
           }
 
           &.checked {
@@ -91,9 +89,9 @@
             border: none;
             color: @white;
 
-            .anticon {
-              font-size: 14px;
-              font-weight: @font-bold;
+            svg {
+              width: 10px;
+              height: 10px;
             }
           }
         }
@@ -103,24 +101,25 @@
     // Selected state styles
     &.selected,
     &:hover {
-      border-color: @primary-color;
-      background-color: @blue-22;
+      border-color: @blue-300;
+      background-color: @blue-50;
 
       .selection-content {
         .selection-icon {
-          background-color: @primary-1;
+          background-color: @blue-100;
+          border: 6px solid @blue-50;
 
           svg {
-            color: @primary-color;
+            color: @blue-600;
           }
         }
 
         .selection-title {
-          color: @primary-color;
+          color: @blue-800;
         }
 
         .selection-description {
-          color: @blue-9;
+          color: @blue-600;
         }
 
         .custom-radio.unchecked {
@@ -132,11 +131,11 @@
     // Disabled state styles
     &.disabled {
       opacity: 0.6;
-      cursor: not-allowed !important;
+      cursor: not-allowed;
       pointer-events: none;
 
       &:hover {
-        border-color: @grey-200;
+        border-color: @grey-300;
         background-color: @grey-50;
 
         .selection-content {

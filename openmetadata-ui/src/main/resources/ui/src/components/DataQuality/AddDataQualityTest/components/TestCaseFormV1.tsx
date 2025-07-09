@@ -34,7 +34,7 @@ import { isEmpty, isEqual, isString, snakeCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
-import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-format-table.svg';
+import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
 import {
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
@@ -81,6 +81,7 @@ import {
 import {
   filterSelectOptions,
   replaceAllSpacialCharWith_,
+  Transi18next,
 } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
@@ -89,6 +90,7 @@ import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import AlertBar from '../../../AlertBar/AlertBar';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCardGroup.interface';
@@ -400,6 +402,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         type: FieldTypes.TAG_SUGGESTION,
         props: {
           selectProps: { 'data-testid': 'tags-selector' },
+          newLook: true,
         },
       },
       {
@@ -412,6 +415,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           selectProps: { 'data-testid': 'glossary-terms-selector' },
           open: false,
           hasNoActionButtons: true,
+          newLook: true,
           isTreeSelect: true,
           tagType: TagSource.Glossary,
           placeholder: t('label.select-field', {
@@ -958,6 +962,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         className
       )}>
       <Form
+        className="new-form-style"
         data-testid="test-case-form-v1"
         form={form}
         initialValues={{
@@ -979,14 +984,13 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         preserve={false}
         onFinish={handleSubmit}
         onValuesChange={handleValuesChange}>
-        <Form.Item
-          label="Select on which element your test should be performed"
-          name="testLevel"
-          rules={[{ required: true, message: 'Please select test level' }]}>
-          <SelectionCardGroup options={TEST_LEVEL_OPTIONS} />
-        </Form.Item>
-
         <Card className="select-table-card" data-testid="select-table-card">
+          <Form.Item
+            label="Select on which element your test should be performed"
+            name="testLevel"
+            rules={[{ required: true, message: 'Please select test level' }]}>
+            <SelectionCardGroup options={TEST_LEVEL_OPTIONS} />
+          </Form.Item>
           <Form.Item
             label="Select Table"
             name="selectedTable"
@@ -996,7 +1000,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               enableInfiniteScroll
               showSearch
               api={fetchTables}
-              placeholder="Select one or more table at a time"
+              placeholder="Select a table"
             />
           </Form.Item>
 
@@ -1008,11 +1012,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               <Select
                 allowClear
                 showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '')
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
+                filterOption={filterSelectOptions}
                 loading={!selectedTableData}
                 options={columnOptions}
                 placeholder="Select a column"
@@ -1021,9 +1021,16 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           )}
         </Card>
 
+        <Card className="test-details-card" data-testid="test-details-card">
+          {generateFormFields(testDetailsFormFields)}
+
+          {isComputeRowCountFieldVisible &&
+            generateFormFields(computeRowCountField)}
+        </Card>
+
         <Card className="test-type-card" data-testid="test-type-card">
           <Form.Item
-            label="Test Type"
+            label="Type"
             name="testTypeId"
             rules={[{ required: true, message: 'Please select a test type' }]}
             tooltip={selectedTestDefinition?.description}>
@@ -1057,103 +1064,126 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           </Form.Item>
         </Card>
 
-        <Card className="test-details-card" data-testid="test-details-card">
-          {generateFormFields(testDetailsFormFields)}
-
-          {isComputeRowCountFieldVisible &&
-            generateFormFields(computeRowCountField)}
-        </Card>
-
-        {shouldShowScheduler && (
-          <Card className="scheduler-card" data-testid="scheduler-card">
-            <div className="card-title">
-              {t('label.schedule-for-entity', {
-                entity: t('label.test-case-plural'),
-              })}
-            </div>
-
-            {generateFormFields(schedulerFormFields)}
-
-            <Form.Item label={t('label.schedule-interval')} name="cron">
-              <ScheduleIntervalV1
-                defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
-                includePeriodOptions={schedulerOptions}
+        {(true || shouldShowScheduler) && (
+          <Row gutter={[20, 20]}>
+            <Col span={24}>
+              <AlertBar
+                className="h-full custom-alert-description"
+                message={
+                  <Transi18next
+                    i18nKey="message.test-case-pipeline-information"
+                    renderElement={<strong />}
+                  />
+                }
+                type="grey-info"
               />
-            </Form.Item>
+            </Col>
 
-            {/* Debug Log and Raise on Error switches */}
-            <div style={{ marginTop: '24px' }}>
-              <Row gutter={[24, 16]}>
-                <Col span={12}>
-                  <div className="d-flex justify-between align-center">
-                    <Typography.Text className="font-medium">
-                      {t('label.enable-debug-log')}
-                    </Typography.Text>
-                    <Form.Item
-                      name="enableDebugLog"
-                      style={{ marginBottom: 0 }}
-                      valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div className="d-flex justify-between align-center">
-                    <Typography.Text className="font-medium">
-                      {t('label.raise-on-error')}
-                    </Typography.Text>
-                    <Form.Item
-                      name="raiseOnError"
-                      style={{ marginBottom: 0 }}
-                      valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div
-                    className="d-flex justify-between align-center"
-                    style={{ marginBottom: '16px' }}>
-                    <Typography.Text className="font-medium">
-                      {t('label.select-all-entity', {
-                        entity: t('label.test-case-plural'),
-                      })}
-                    </Typography.Text>
-                    <Form.Item
-                      name="selectAllTestCases"
-                      style={{ marginBottom: 0 }}
-                      valuePropName="checked">
-                      <Switch disabled={!isSelectAllTestCasesEnabled} />
-                    </Form.Item>
-                  </div>
-                </Col>
+            <Col span={24}>
+              <Card className="scheduler-card" data-testid="scheduler-card">
+                <div className="card-title-container">
+                  <Typography.Paragraph className="card-title-text">
+                    {t('label.create-entity', {
+                      entity: t('label.pipeline'),
+                    })}
+                  </Typography.Paragraph>
+                  <Typography.Paragraph className="card-title-description">
+                    {t('message.pipeline-entity-description', {
+                      entity: t('label.test-case'),
+                    })}
+                  </Typography.Paragraph>
+                </div>
+
                 {!selectAllTestCases && isSelectAllTestCasesEnabled && (
-                  <Col span={24}>
-                    <Form.Item
-                      label={t('label.test-case')}
-                      name="testCases"
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.test-case'),
-                          }),
-                        },
-                      ]}
-                      valuePropName="selectedTest">
-                      <AddTestCaseList
-                        showButton={false}
-                        testCaseParams={{
-                          testSuiteId:
-                            testSuite?.id ?? selectedTableData?.testSuite?.id,
-                        }}
-                      />
-                    </Form.Item>
-                  </Col>
+                  <Row className="m-b-md" gutter={[16, 16]}>
+                    <Col span={12}>
+                      <div className="d-flex gap-2">
+                        <Form.Item
+                          className="form-switch-container"
+                          name="selectAllTestCases"
+                          style={{ marginBottom: 0 }}
+                          valuePropName="checked">
+                          <Switch disabled={!isSelectAllTestCasesEnabled} />
+                        </Form.Item>
+                        <Typography.Text className="font-medium">
+                          {t('label.select-all-entity', {
+                            entity: t('label.test-case-plural'),
+                          })}
+                        </Typography.Text>
+                      </div>
+                    </Col>
+
+                    <Col span={24}>
+                      <Form.Item
+                        label={t('label.test-case')}
+                        name="testCases"
+                        rules={[
+                          {
+                            required: true,
+                            message: t('label.field-required', {
+                              field: t('label.test-case'),
+                            }),
+                          },
+                        ]}
+                        valuePropName="selectedTest">
+                        <AddTestCaseList
+                          showButton={false}
+                          testCaseParams={{
+                            testSuiteId:
+                              testSuite?.id ?? selectedTableData?.testSuite?.id,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
                 )}
-              </Row>
-            </div>
-          </Card>
+
+                {generateFormFields(schedulerFormFields)}
+
+                <Form.Item name="cron">
+                  <ScheduleIntervalV1
+                    defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
+                    entity={t('label.test-case')}
+                    includePeriodOptions={schedulerOptions}
+                  />
+                </Form.Item>
+
+                {/* Debug Log and Raise on Error switches */}
+                <div style={{ marginTop: '24px' }}>
+                  <Row gutter={[24, 16]}>
+                    <Col span={12}>
+                      <div className="d-flex gap-2">
+                        <Form.Item
+                          className="form-switch-container"
+                          name="enableDebugLog"
+                          style={{ marginBottom: 0 }}
+                          valuePropName="checked">
+                          <Switch />
+                        </Form.Item>
+                        <Typography.Paragraph className="font-medium m-0">
+                          {t('label.enable-debug-log')}
+                        </Typography.Paragraph>
+                      </div>
+                    </Col>
+                    <Col span={12}>
+                      <div className="d-flex gap-2">
+                        <Form.Item
+                          className="form-switch-container"
+                          name="raiseOnError"
+                          style={{ marginBottom: 0 }}
+                          valuePropName="checked">
+                          <Switch />
+                        </Form.Item>
+                        <Typography.Paragraph className="font-medium m-0">
+                          {t('label.raise-on-error')}
+                        </Typography.Paragraph>
+                      </div>
+                    </Col>
+                  </Row>
+                </div>
+              </Card>
+            </Col>
+          </Row>
         )}
       </Form>
 

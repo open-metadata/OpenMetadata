@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined } from '@ant-design/icons';
+
 import { Card } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
+import { ReactComponent as CheckIcon } from '../../../assets/svg/check-colored.svg';
 import './selection-card-group.less';
 import {
   SelectionCardGroupProps,
@@ -34,7 +35,7 @@ const SelectionCard: FC<SelectionCardProps> = ({
     style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
     onClick={disabled ? undefined : onClick}>
     <div className="selection-content">
-      <div className="d-flex gap-4">
+      <div className="d-flex gap-3">
         <span className="selection-icon">{option.icon}</span>
         <div className="selection-header">
           <div className="selection-title">{option.label}</div>
@@ -43,7 +44,7 @@ const SelectionCard: FC<SelectionCardProps> = ({
       </div>
       {isSelected ? (
         <div className="custom-radio checked">
-          <CheckOutlined />
+          <CheckIcon />
         </div>
       ) : (
         <div className="custom-radio unchecked" />
