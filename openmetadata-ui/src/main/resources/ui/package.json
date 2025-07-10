@@ -108,6 +108,7 @@
     "react": "^18.2.0",
     "react-antd-column-resize": "1.0.3",
     "react-codemirror2": "^7.2.1",
+    "react-data-grid": "7.0.0-beta.47",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",

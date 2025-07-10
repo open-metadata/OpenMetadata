@@ -46,7 +46,8 @@ describe('CSVUtils', () => {
       ];
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
         csv,
-        EntityType.GLOSSARY
+        EntityType.GLOSSARY,
+        false
       );
 
       expect(columns).toHaveLength(2);
@@ -56,7 +57,10 @@ describe('CSVUtils', () => {
 
   describe('getCSVStringFromColumnsAndDataSource', () => {
     it('should return the CSV string from the columns and data source for non-quoted columns', () => {
-      const columns = [{ name: 'col1' }, { name: 'col2' }];
+      const columns = [
+        { name: 'col1', key: 'col1' },
+        { name: 'col2', key: 'col2' },
+      ];
       const dataSource = [{ col1: 'value1', col2: 'value2' }];
       const csvString = getCSVStringFromColumnsAndDataSource(
         columns,
@@ -68,10 +72,10 @@ describe('CSVUtils', () => {
 
     it('should return the CSV string from the columns and data source with quoted columns', () => {
       const columns = [
-        { name: 'tags' },
-        { name: 'glossaryTerms' },
-        { name: 'description' },
-        { name: 'domain' },
+        { name: 'tags', key: 'tags' },
+        { name: 'glossaryTerms', key: 'glossaryTerms' },
+        { name: 'description', key: 'description' },
+        { name: 'domain', key: 'domain' },
       ];
       const dataSource = [
         {
@@ -93,10 +97,10 @@ describe('CSVUtils', () => {
 
     it('should return quoted value if data contains comma', () => {
       const columns = [
-        { name: 'tags' },
-        { name: 'glossaryTerms' },
-        { name: 'description' },
-        { name: 'domain' },
+        { name: 'tags', key: 'tags' },
+        { name: 'glossaryTerms', key: 'glossaryTerms' },
+        { name: 'description', key: 'description' },
+        { name: 'domain', key: 'domain' },
       ];
       const dataSource = [
         {

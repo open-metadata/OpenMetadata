@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import ReactDataGrid from '@inovua/reactdatagrid-community';
 import { Button, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { useEffect } from 'react';
+import DataGrid from 'react-data-grid';
+import 'react-data-grid/lib/styles.css';
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
 import { useNavigate } from 'react-router-dom';
@@ -33,14 +34,9 @@ import Stepper from '../Settings/Services/Ingestion/IngestionStepper/IngestionSt
 import { BulkEditEntityProps } from './BulkEditEntity.interface';
 
 const BulkEditEntity = ({
-  onKeyDown,
-  onEditStop,
-  onEditStart,
-  onEditComplete,
   dataSource,
   columns,
   breadcrumbList,
-  setGridRef,
   activeStep,
   handleBack,
   handleValidate,
@@ -49,6 +45,11 @@ const BulkEditEntity = ({
   validateCSVData,
   activeAsyncImportJob,
   onCSVReadComplete,
+  onEditComplete,
+  gridContainerRef,
+  handleCopy,
+  handlePaste,
+  pushToUndoStack,
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -119,22 +120,19 @@ const BulkEditEntity = ({
         <>
           <Col span={24}>
             {activeStep === 1 && (
-              <ReactDataGrid
-                editable
-                columns={columns}
-                dataSource={dataSource}
-                defaultActiveCell={[0, 0]}
-                handle={setGridRef}
-                idProperty="id"
-                loading={isValidating}
-                minRowHeight={30}
-                showZebraRows={false}
-                style={{ height: 'calc(100vh - 245px)' }}
-                onEditComplete={onEditComplete}
-                onEditStart={onEditStart}
-                onEditStop={onEditStop}
-                onKeyDown={onKeyDown}
-              />
+              <div ref={gridContainerRef}>
+                <DataGrid
+                  className="rdg-light"
+                  columns={columns}
+                  rows={dataSource}
+                  onCopy={handleCopy}
+                  onPaste={handlePaste}
+                  onRowsChange={(updatedRows) => {
+                    onEditComplete(updatedRows);
+                    pushToUndoStack(dataSource);
+                  }}
+                />
+              </div>
             )}
 
             {activeStep === 2 && validationData && (
@@ -145,11 +143,10 @@ const BulkEditEntity = ({
 
                 <Col span={24}>
                   {validateCSVData && (
-                    <ReactDataGrid
-                      idProperty="id"
-                      loading={isValidating}
-                      style={{ height: 'calc(100vh - 300px)' }}
-                      {...validateCSVData}
+                    <DataGrid
+                      className="rdg-light"
+                      columns={validateCSVData.columns}
+                      rows={validateCSVData.dataSource}
                     />
                   )}
                 </Col>

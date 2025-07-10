@@ -33,7 +33,15 @@ export const FocusTrapWithContainer = ({
             'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
           ) as HTMLElement) || containerRef.current,
       }}>
-      <div ref={containerRef}>{children}</div>
+      <div
+        ref={containerRef}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.stopPropagation();
+          }
+        }}>
+        {children}
+      </div>
     </FocusTrap>
   );
 };

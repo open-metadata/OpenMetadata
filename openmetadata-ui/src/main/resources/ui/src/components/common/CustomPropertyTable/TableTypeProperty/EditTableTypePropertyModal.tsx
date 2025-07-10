@@ -17,6 +17,7 @@ import { isEmpty, omit } from 'lodash';
 import { FC, MutableRefObject, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { KeyDownStopPropagationWrapper } from '../../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import { TableTypePropertyValueType } from '../CustomPropertyTable.interface';
 import './edit-table-type-property.less';
 import { EditTableTypePropertyModalProps } from './EditTableTypePropertyModal.interface';
@@ -79,32 +80,34 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
       closable={false}
       data-testid="edit-table-type-property-modal"
       footer={
-        <div className="d-flex justify-between">
-          <Button
-            data-testid="add-new-row"
-            disabled={isUpdating}
-            type="primary"
-            onClick={handleAddRow}>
-            {t('label.add-entity', { entity: t('label.row') })}
-          </Button>
-
-          <div className="d-flex gap-2">
+        <KeyDownStopPropagationWrapper>
+          <div className="d-flex justify-between">
             <Button
-              data-testid="cancel-update-table-type-property"
+              data-testid="add-new-row"
               disabled={isUpdating}
-              onClick={onCancel}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              data-testid="update-table-type-property"
-              disabled={isUpdating}
-              loading={isUpdating}
               type="primary"
-              onClick={handleUpdate}>
-              {t('label.update')}
+              onClick={handleAddRow}>
+              {t('label.add-entity', { entity: t('label.row') })}
             </Button>
+
+            <div className="d-flex gap-2">
+              <Button
+                data-testid="cancel-update-table-type-property"
+                disabled={isUpdating}
+                onClick={onCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                data-testid="update-table-type-property"
+                disabled={isUpdating}
+                loading={isUpdating}
+                type="primary"
+                onClick={handleUpdate}>
+                {t('label.update')}
+              </Button>
+            </div>
           </div>
-        </div>
+        </KeyDownStopPropagationWrapper>
       }
       maskClosable={false}
       open={isVisible}
@@ -120,13 +123,15 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
       {isEmpty(dataSource) ? (
         <TableTypePropertyView columns={columns} rows={rows} />
       ) : (
-        <TableTypePropertyEditTable
-          columns={columns}
-          dataSource={dataSource}
-          gridRef={gridRef}
-          handleEditDataSource={handleEditDataSource}
-          handleEditGridRef={handleEditGridRef}
-        />
+        <KeyDownStopPropagationWrapper>
+          <TableTypePropertyEditTable
+            columns={columns}
+            dataSource={dataSource}
+            gridRef={gridRef}
+            handleEditDataSource={handleEditDataSource}
+            handleEditGridRef={handleEditGridRef}
+          />
+        </KeyDownStopPropagationWrapper>
       )}
     </Modal>
   );
