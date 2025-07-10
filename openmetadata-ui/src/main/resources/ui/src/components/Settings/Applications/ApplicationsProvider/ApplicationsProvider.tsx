@@ -71,9 +71,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const loadPlugin = useCallback(async (appName: string) => {
     try {
       // Construct the module path dynamically based on the appName
-      const PluginModule = await import(
-        applicationsClassBase.getPluginPath(appName)
-      );
+      const PluginModule = await applicationsClassBase.getPlugin(appName);
 
       // Initialize and activate the plugin with axiosClient
       const plugin = new PluginModule.default(axiosClient);

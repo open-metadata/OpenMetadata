@@ -40,10 +40,11 @@ import {
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
 
+const pluginStore = createPluginStore();
+pluginStore.install(new RendererPlugin());
+
 const App: FC = () => {
   const { applicationConfig, setApplicationConfig } = useApplicationStore();
-  const pluginStore = createPluginStore();
-  pluginStore.install(new RendererPlugin());
 
   const fetchApplicationConfig = async () => {
     try {
