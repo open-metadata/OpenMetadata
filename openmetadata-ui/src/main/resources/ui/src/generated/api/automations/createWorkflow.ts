@@ -308,6 +308,8 @@ export interface RequestConnection {
  *
  * Sigma Connection Config
  *
+ * ThoughtSpot Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -555,6 +557,8 @@ export interface ConfigClass {
      * Host and Port of the Qlik Cloud instance.
      *
      * Sigma API url.
+     *
+     * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      *
      * Pipeline Service Management/UI URI.
      *
@@ -1305,6 +1309,8 @@ export interface ConfigClass {
      *
      * Sigma API version.
      *
+     * ThoughtSpot API version to use
+     *
      * Airbyte API version.
      *
      * OpenMetadata server API version to use.
@@ -1390,6 +1396,15 @@ export interface ConfigClass {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * ThoughtSpot authentication configuration
+     */
+    authentication?: Authentication;
+    /**
+     * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
+     * only.
+     */
+    orgId?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -2110,13 +2125,41 @@ export enum NoConfigAuthenticationTypes {
     OAuth2 = "OAuth2",
 }
 
+/**
+ * ThoughtSpot authentication configuration
+ *
+ * Username and password authentication
+ *
+ * API Token authentication
+ *
+ * Bearer token authentication for custom authentication flows
+ */
+export interface Authentication {
+    /**
+     * Password for ThoughtSpot
+     */
+    password?: string;
+    /**
+     * Username for ThoughtSpot
+     */
+    username?: string;
+    /**
+     * ThoughtSpot API Token for authentication
+     */
+    apiToken?: string;
+    /**
+     * Bearer token for authentication
+     */
+    bearerToken?: string;
+}
+
 export interface AuthenticationModeObject {
     /**
      * Authentication from Connection String for AzureSQL.
      *
      * Authentication from Connection String for Azure Synapse.
      */
-    authentication?: Authentication;
+    authentication?: AuthenticationEnum;
     /**
      * Connection Timeout from Connection String for AzureSQL.
      *
@@ -2143,7 +2186,7 @@ export interface AuthenticationModeObject {
  *
  * Authentication from Connection String for Azure Synapse.
  */
-export enum Authentication {
+export enum AuthenticationEnum {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
 }
@@ -3820,6 +3863,8 @@ export enum TransactionMode {
  *
  * Sigma service type
  *
+ * ThoughtSpot service type
+ *
  * Kafka service type
  *
  * Redpanda service type
@@ -3954,6 +3999,7 @@ export enum RESTType {
     Synapse = "Synapse",
     Tableau = "Tableau",
     Teradata = "Teradata",
+    ThoughtSpot = "ThoughtSpot",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
