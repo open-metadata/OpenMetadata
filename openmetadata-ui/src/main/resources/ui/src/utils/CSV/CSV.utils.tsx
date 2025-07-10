@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { TypeColumn } from '@inovua/reactdatagrid-community/types';
-import { Typography } from 'antd';
 import {
   compact,
   get,
@@ -39,7 +38,7 @@ import {
   Type,
 } from '../../generated/entity/type';
 import { Status } from '../../generated/type/csvImportResult';
-import { removeOuterEscapes, Transi18next } from '../CommonUtils';
+import { removeOuterEscapes } from '../CommonUtils';
 import csvUtilsClassBase from './CSVUtilsClassBase';
 
 export interface EditorProps {
@@ -61,39 +60,21 @@ export const COLUMNS_WIDTH: Record<string, number> = {
   status: 70,
 };
 
-const statusRenderer = (value: Status, column?: string) => {
-  const showText = column === 'glossaryStatus';
-
+const statusRenderer = (value: Status) => {
   return value === Status.Failure ? (
-    <div className="flex items-center gap-2">
-      <FailBadgeIcon
-        className="m-t-xss"
-        data-testid="failure-badge"
-        height={16}
-        width={16}
-      />
-      {showText && (
-        <Transi18next
-          i18nKey="label.draft"
-          renderElement={<Typography.Text />}
-        />
-      )}
-    </div>
+    <FailBadgeIcon
+      className="m-t-xss"
+      data-testid="failure-badge"
+      height={16}
+      width={16}
+    />
   ) : (
-    <div className="flex items-center gap-2">
-      <SuccessBadgeIcon
-        className="m-t-xss"
-        data-testid="success-badge"
-        height={16}
-        width={16}
-      />
-      {showText && (
-        <Transi18next
-          i18nKey="label.approved"
-          renderElement={<Typography.Text />}
-        />
-      )}
-    </div>
+    <SuccessBadgeIcon
+      className="m-t-xss"
+      data-testid="success-badge"
+      height={16}
+      width={16}
+    />
   );
 };
 
@@ -108,7 +89,7 @@ const renderColumnDataEditor = (
   switch (column) {
     case 'status':
     case 'glossaryStatus':
-      return statusRenderer(value as Status, column);
+      return statusRenderer(value as Status);
     case 'description':
       return (
         <RichTextEditorPreviewerV1
