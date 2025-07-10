@@ -14,6 +14,7 @@ import {
   DEFAULT_DATE_FORMAT,
   DEFAULT_DATE_TIME_FORMAT,
   DEFAULT_TIME_FORMAT,
+  ENTITY_REFERENCE_OPTIONS,
   SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING,
 } from '../constants/CustomProperty.constants';
 import {
@@ -166,6 +167,49 @@ describe('CustomProperty.utils', () => {
         ];
 
       expect(result).toBe(expectedFormat);
+    });
+  });
+
+  describe('Entity Reference Options', () => {
+    it('should have correct structure for metric option', () => {
+      const metricOption = ENTITY_REFERENCE_OPTIONS.find(
+        (option) => option.key === 'metric'
+      );
+
+      expect(metricOption).toMatchObject({
+        key: 'metric',
+        value: 'metric',
+        label: 'Metric',
+      });
+    });
+
+    it('should have all expected entity types including metric', () => {
+      const expectedEntityTypes = [
+        'table',
+        'storedProcedure',
+        'databaseSchema',
+        'database',
+        'dashboard',
+        'dashboardDataModel',
+        'pipeline',
+        'topic',
+        'container',
+        'searchIndex',
+        'mlmodel',
+        'glossaryTerm',
+        'tag',
+        'user',
+        'team',
+        'metric',
+      ];
+
+      const actualEntityTypes = ENTITY_REFERENCE_OPTIONS.map(
+        (option) => option.key
+      );
+
+      expectedEntityTypes.forEach((entityType) => {
+        expect(actualEntityTypes).toContain(entityType);
+      });
     });
   });
 });

@@ -112,9 +112,9 @@ export const ENTITY_REFERENCE_OPTIONS = [
     label: 'Team',
   },
   {
-    key: 'matric',
-    value: 'matric',
-    label: 'Matric',
+    key: 'metric',
+    value: 'metric',
+    label: 'Metric',
   },
 ];
 
