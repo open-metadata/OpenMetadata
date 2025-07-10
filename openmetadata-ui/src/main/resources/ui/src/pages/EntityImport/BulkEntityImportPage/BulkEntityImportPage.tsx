@@ -78,6 +78,10 @@ const BulkEntityImportPage = () => {
     useState<CSVImportJobType>();
   const activeAsyncImportJobRef = useRef<CSVImportJobType>();
 
+  // Add pending websocket response to handle race condition for latest result only
+  const pendingWebsocketResponseRef =
+    useRef<CSVImportAsyncWebsocketResponse | null>(null);
+
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
   );
@@ -99,6 +103,7 @@ const BulkEntityImportPage = () => {
     MutableRefObject<TypeComputedProps | null>
   >({ current: null });
   const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
+  const [loading, setLoading] = useState(false);
 
   const filterColumns = useMemo(
     () =>
@@ -148,6 +153,8 @@ const BulkEntityImportPage = () => {
   const handleResetImportJob = useCallback(() => {
     setActiveAsyncImportJob(undefined);
     activeAsyncImportJobRef.current = undefined;
+    // Clear pending response when job is reset
+    pendingWebsocketResponseRef.current = null;
   }, [setActiveAsyncImportJob, activeAsyncImportJobRef]);
 
   const focusToGrid = useCallback(() => {
@@ -174,8 +181,155 @@ const BulkEntityImportPage = () => {
     [setDataSource, setColumns, handleActiveStepChange, focusToGrid]
   );
 
+  const handleImportWebsocketResponseWithActiveStep = useCallback(
+    (importResults: CSVImportResult) => {
+      const activeStep = activeStepRef.current;
+
+      if (activeStep === VALIDATION_STEP.UPDATE) {
+        if (importResults?.status === 'failure') {
+          setValidationData(importResults);
+          readString(importResults?.importResultsCsv ?? '', {
+            worker: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              // results.data is returning data with unknown type
+              setValidateCSVData(
+                getEntityColumnsAndDataSourceFromCSV(
+                  results.data as string[][],
+                  importedEntityType
+                )
+              );
+            },
+          });
+          handleActiveStepChange(VALIDATION_STEP.UPDATE);
+          setIsValidating(false);
+        } else {
+          showSuccessToast(
+            t('message.entity-details-updated', {
+              entityType: capitalize(entityType),
+              fqn,
+            })
+          );
+          navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
+          handleResetImportJob();
+          setIsValidating(false);
+        }
+      } else if (activeStep === VALIDATION_STEP.EDIT_VALIDATE) {
+        setValidationData(importResults);
+        handleActiveStepChange(VALIDATION_STEP.UPDATE);
+        readString(importResults?.importResultsCsv ?? '', {
+          worker: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            // results.data is returning data with unknown type
+            setValidateCSVData(
+              getEntityColumnsAndDataSourceFromCSV(
+                results.data as string[][],
+                importedEntityType
+              )
+            );
+          },
+        });
+        handleResetImportJob();
+        setIsValidating(false);
+      }
+    },
+    [
+      activeStepRef,
+      entityType,
+      fqn,
+      importedEntityType,
+      handleResetImportJob,
+      handleActiveStepChange,
+      history,
+    ]
+  );
+
+  const handleImportWebsocketResponse = useCallback(
+    (websocketResponse: CSVImportAsyncWebsocketResponse) => {
+      if (!websocketResponse.jobId) {
+        return;
+      }
+
+      const activeImportJob = activeAsyncImportJobRef.current;
+
+      // If no active job or jobId doesn't match, store latest response
+
+      if (
+        !activeImportJob ||
+        websocketResponse.jobId !== activeImportJob.jobId
+      ) {
+        // Store only the latest response, overwriting any previous one
+        pendingWebsocketResponseRef.current = websocketResponse;
+
+        return;
+      }
+
+      setActiveAsyncImportJob((job) => {
+        if (!job) {
+          return;
+        }
+
+        return {
+          ...job,
+          ...websocketResponse,
+        };
+      });
+
+      if (websocketResponse.status === 'COMPLETED') {
+        const importResults = websocketResponse.result;
+
+        // If the job is complete and the status is either failure or aborted
+        // then reset the validation data and active step
+        if (['failure', 'aborted'].includes(importResults?.status ?? '')) {
+          setValidationData(importResults);
+
+          handleActiveStepChange(VALIDATION_STEP.UPLOAD);
+
+          handleResetImportJob();
+
+          return;
+        }
+
+        // If the job is complete and the status is success
+        // and job was for initial load then check if the initial result is available
+        // and then read the initial result
+        if (
+          activeImportJob.type === 'initialLoad' &&
+          activeImportJob.initialResult
+        ) {
+          readString(activeImportJob.initialResult, {
+            worker: true,
+            skipEmptyLines: true,
+            complete: onCSVReadComplete,
+          });
+
+          handleResetImportJob();
+
+          return;
+        }
+
+        handleImportWebsocketResponseWithActiveStep(importResults);
+      }
+
+      if (websocketResponse.status === 'FAILED') {
+        setIsValidating(false);
+      }
+    },
+    [
+      activeStepRef,
+      activeAsyncImportJobRef,
+      onCSVReadComplete,
+      setActiveAsyncImportJob,
+      handleResetImportJob,
+      handleActiveStepChange,
+      handleImportWebsocketResponseWithActiveStep,
+    ]
+  );
+
   const handleLoadData = useCallback(
     async (e: ProgressEvent<FileReader>) => {
+      setLoading(true);
       try {
         const result = e.target?.result as string;
         const validationResponse = await validateCsvString(
@@ -193,8 +347,18 @@ const BulkEntityImportPage = () => {
 
         setActiveAsyncImportJob(jobData);
         activeAsyncImportJobRef.current = jobData;
+
+        // Process pending websocket response if it matches this job
+        const pendingResponse = pendingWebsocketResponseRef.current;
+        if (pendingResponse && pendingResponse.jobId === jobData.jobId) {
+          handleImportWebsocketResponse(pendingResponse);
+          // Clear the pending response after processing
+          pendingWebsocketResponseRef.current = null;
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
+      } finally {
+        setLoading(false);
       }
     },
     [onCSVReadComplete, entityType, fqn]
@@ -241,6 +405,14 @@ const BulkEntityImportPage = () => {
 
       setActiveAsyncImportJob(jobData);
       activeAsyncImportJobRef.current = jobData;
+
+      // Process pending websocket response if it matches this job
+      const pendingResponse = pendingWebsocketResponseRef.current;
+      if (pendingResponse && pendingResponse.jobId === jobData.jobId) {
+        handleImportWebsocketResponse(pendingResponse);
+        // Clear the pending response after processing
+        pendingWebsocketResponseRef.current = null;
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsValidating(false);
@@ -331,141 +503,6 @@ const BulkEntityImportPage = () => {
     handleActiveStepChange(VALIDATION_STEP.UPLOAD);
   };
 
-  const handleImportWebsocketResponseWithActiveStep = useCallback(
-    (importResults: CSVImportResult) => {
-      const activeStep = activeStepRef.current;
-
-      if (activeStep === VALIDATION_STEP.UPDATE) {
-        if (importResults?.status === 'failure') {
-          setValidationData(importResults);
-          readString(importResults?.importResultsCsv ?? '', {
-            worker: true,
-            skipEmptyLines: true,
-            complete: (results) => {
-              // results.data is returning data with unknown type
-              setValidateCSVData(
-                getEntityColumnsAndDataSourceFromCSV(
-                  results.data as string[][],
-                  importedEntityType
-                )
-              );
-            },
-          });
-          handleActiveStepChange(VALIDATION_STEP.UPDATE);
-          setIsValidating(false);
-        } else {
-          showSuccessToast(
-            t('message.entity-details-updated', {
-              entityType: capitalize(entityType),
-              fqn,
-            })
-          );
-          navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
-          handleResetImportJob();
-          setIsValidating(false);
-        }
-      } else if (activeStep === VALIDATION_STEP.EDIT_VALIDATE) {
-        setValidationData(importResults);
-        handleActiveStepChange(VALIDATION_STEP.UPDATE);
-        readString(importResults?.importResultsCsv ?? '', {
-          worker: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            // results.data is returning data with unknown type
-            setValidateCSVData(
-              getEntityColumnsAndDataSourceFromCSV(
-                results.data as string[][],
-                importedEntityType
-              )
-            );
-          },
-        });
-        handleResetImportJob();
-        setIsValidating(false);
-      }
-    },
-    [
-      activeStepRef,
-      entityType,
-      fqn,
-      importedEntityType,
-      handleResetImportJob,
-      handleActiveStepChange,
-      history,
-    ]
-  );
-
-  const handleImportWebsocketResponse = useCallback(
-    (websocketResponse: CSVImportAsyncWebsocketResponse) => {
-      if (!websocketResponse.jobId) {
-        return;
-      }
-
-      const activeImportJob = activeAsyncImportJobRef.current;
-
-      if (websocketResponse.jobId === activeImportJob?.jobId) {
-        setActiveAsyncImportJob((job) => {
-          if (!job) {
-            return;
-          }
-
-          return {
-            ...job,
-            ...websocketResponse,
-          };
-        });
-
-        if (websocketResponse.status === 'COMPLETED') {
-          const importResults = websocketResponse.result;
-
-          // If the job is complete and the status is either failure or aborted
-          // then reset the validation data and active step
-          if (['failure', 'aborted'].includes(importResults?.status ?? '')) {
-            setValidationData(importResults);
-
-            handleActiveStepChange(VALIDATION_STEP.UPLOAD);
-
-            handleResetImportJob();
-
-            return;
-          }
-
-          // If the job is complete and the status is success
-          // and job was for initial load then check if the initial result is available
-          // and then read the initial result
-          if (
-            activeImportJob.type === 'initialLoad' &&
-            activeImportJob.initialResult
-          ) {
-            readString(activeImportJob.initialResult, {
-              worker: true,
-              skipEmptyLines: true,
-              complete: onCSVReadComplete,
-            });
-
-            handleResetImportJob();
-
-            return;
-          }
-
-          handleImportWebsocketResponseWithActiveStep(importResults);
-        }
-
-        if (websocketResponse.status === 'FAILED') {
-          setIsValidating(false);
-        }
-      }
-    },
-    [
-      activeStepRef,
-      activeAsyncImportJobRef,
-      onCSVReadComplete,
-      setActiveAsyncImportJob,
-      handleResetImportJob,
-      handleActiveStepChange,
-    ]
-  );
-
   useEffect(() => {
     fetchEntityData();
   }, [fetchEntityData]);
@@ -522,17 +559,18 @@ const BulkEntityImportPage = () => {
               <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
             </Col>
             <Col span={24}>
-              {activeAsyncImportJob?.jobId && (
+              {(loading || activeAsyncImportJob?.jobId) && (
                 <Banner
                   className="border-radius"
-                  isLoading={isEmpty(activeAsyncImportJob.error)}
+                  isLoading={isEmpty(activeAsyncImportJob?.error)}
                   message={
-                    activeAsyncImportJob.error ??
-                    activeAsyncImportJob.message ??
+                    activeAsyncImportJob?.error ??
+                    activeAsyncImportJob?.message ??
+                    t('message.import-data-in-progress') ??
                     ''
                   }
                   type={
-                    !isEmpty(activeAsyncImportJob.error) ? 'error' : 'success'
+                    !isEmpty(activeAsyncImportJob?.error) ? 'error' : 'success'
                   }
                 />
               )}
