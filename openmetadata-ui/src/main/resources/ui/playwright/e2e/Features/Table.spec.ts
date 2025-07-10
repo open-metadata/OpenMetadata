@@ -10,24 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
+import { redirectToHomePage } from '../../utils/common';
 import { getFirstRowColumnLink } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
-
 const table1 = new TableClass();
+const adminUser = new UserClass();
+
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
 
 test.slow(true);
 
 test.describe('Table pagination sorting search scenarios ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
+    const { afterAction, apiContext } = await performAdminLogin(browser);
 
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
     await table1.create(apiContext);
 
     for (let i = 0; i < 17; i++) {
@@ -38,8 +49,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
+    const { afterAction, apiContext } = await performAdminLogin(browser);
 
+    await adminUser.delete(apiContext);
     await table1.delete(apiContext);
 
     await afterAction();
@@ -182,7 +194,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test('should persist page size', async ({ page }) => {
-    page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.waitForLoadState('networkidle');
+
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -232,7 +246,24 @@ test.describe('Table pagination sorting search scenarios ', () => {
 });
 
 test.describe('Table & Data Model columns table pagination', () => {
-  test('paginatino for table column should work', async ({ page }) => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll('Clean up', async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    await adminUser.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test('pagination for table column should work', async ({ page }) => {
     await page.goto(
       '/table/sample_data.ecommerce_db.shopify.performance_test_table'
     );

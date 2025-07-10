@@ -26,6 +26,7 @@ import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
@@ -114,7 +115,7 @@ const SchemaTable = () => {
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging();
+  } = usePaging(PAGE_SIZE_LARGE);
 
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
