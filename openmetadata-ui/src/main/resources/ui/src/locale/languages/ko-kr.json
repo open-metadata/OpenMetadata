@@ -1862,6 +1862,7 @@
     "entity-not-contain-whitespace": "{{entity}}에는 공백이 포함되어서는 안 됩니다",
     "entity-owned-by-name": "이 엔티티는 {{entityOwner}}이(가) 소유하고 있습니다",
     "entity-pattern-validation": "{{entity}}에는 공백과 다음 특수 문자만 포함될 수 있습니다: {{pattern}}",
+    "entity-pipeline-information": "<0>Every {{entity}} must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your {{entity}} can be linked and scheduled.",
     "entity-restored-error": "{{entity}} 복원 중 오류가 발생했습니다",
     "entity-restored-success": "{{entity}}이(가) 성공적으로 복원되었습니다",
     "entity-saved-successfully": "{{entity}}이(가) 성공적으로 저장되었습니다",
@@ -2241,7 +2242,6 @@
     "team-moved-success": "팀이 성공적으로 이동되었습니다!",
     "team-no-asset": "귀하의 팀은 자산이 없습니다.",
     "test-case-insight-description": "구성된 테스트 검증을 기반으로 데이터셋 상태의 중앙 집중식 보기에 액세스합니다.",
-    "test-case-pipeline-information": "<0>Every test case must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your test can be linked and scheduled.",
     "test-case-schedule-description": "데이터 품질 테스트는 원하는 빈도로 실행되도록 예약할 수 있습니다. 시간대는 UTC입니다.",
     "test-connection-cannot-be-triggered": "연결 테스트를 트리거할 수 없습니다.",
     "test-connection-taking-too-long": {

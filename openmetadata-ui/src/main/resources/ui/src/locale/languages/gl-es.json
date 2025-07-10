@@ -1862,6 +1862,7 @@
     "entity-not-contain-whitespace": "{{entity}} non debe conter espazos en branco",
     "entity-owned-by-name": "Esta entidade é propiedade de {{entityOwner}}",
     "entity-pattern-validation": "{{entity}} pode incluír espazos e só os seguintes caracteres especiais {{pattern}}",
+    "entity-pipeline-information": "<0>Every {{entity}} must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your {{entity}} can be linked and scheduled.",
     "entity-restored-error": "Erro ao restaurar {{entity}}",
     "entity-restored-success": "{{entity}} restaurado correctamente",
     "entity-saved-successfully": "{{entity}} gardado correctamente",
@@ -2241,7 +2242,6 @@
     "team-moved-success": "O equipo moveuse correctamente!",
     "team-no-asset": "O teu equipo non ten ningún activo.",
     "test-case-insight-description": "Accede a unha vista centralizada da saúde do teu conxunto de datos baseada en validacións de proba configuradas.",
-    "test-case-pipeline-information": "<0>Every test case must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your test can be linked and scheduled.",
     "test-case-schedule-description": "As probas de calidade de datos poden programarse para executarse coa frecuencia desexada. A zona horaria está en UTC.",
     "test-connection-cannot-be-triggered": "Non se pode iniciar a conexión de proba.",
     "test-connection-taking-too-long": {

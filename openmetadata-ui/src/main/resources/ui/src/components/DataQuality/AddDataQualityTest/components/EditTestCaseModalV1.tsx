@@ -51,6 +51,7 @@ import { isValidJSONString } from '../../../../utils/StringsUtils';
 import { getFilterTags } from '../../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier, getTierTags } from '../../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import AlertBar from '../../../AlertBar/AlertBar';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../../common/Loader/Loader';
 import ParameterForm from './ParameterForm';
@@ -89,6 +90,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
   const [table, setTable] = useState<Table>();
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   // =============================================
   // COMPUTED VALUES
@@ -180,6 +182,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
           selectProps: {
             'data-testid': 'tags-selector',
           },
+          newLook: true,
           initialValue: tags,
         },
       },
@@ -193,6 +196,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
           selectProps: {
             'data-testid': 'glossary-terms-selector',
           },
+          newLook: true,
           initialValue: glossaryTerms,
           open: false,
           hasNoActionButtons: true,
@@ -211,6 +215,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
   // HANDLERS
   // =============================================
   const handleFormSubmit: FormProps['onFinish'] = async (value) => {
+    setErrorMessage('');
     const updatedTestCase = {
       ...testCase,
       ...testCaseClassBase.getCreateTestCaseObject(value, selectedDefinition),
@@ -250,7 +255,12 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
         onCancel();
         form.resetFields();
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        const errorMsg =
+          (error as AxiosError<{ message: string }>)?.response?.data?.message ||
+          t('server.update-entity-error', {
+            entity: t('label.test-case'),
+          });
+        setErrorMessage(errorMsg);
       } finally {
         setIsLoadingOnSave(false);
       }
@@ -391,12 +401,29 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
         <Loader />
       ) : (
         <div className="test-case-form-v1 drawer-mode">
+          {/* Floating Error Alert - always visible at top */}
+          {errorMessage && (
+            <div className="floating-error-alert">
+              <AlertBar
+                defafultExpand
+                className="h-full custom-alert-description"
+                message={errorMessage}
+                type="error"
+              />
+            </div>
+          )}
+
           <Form
             className="new-form-style"
             data-testid="edit-test-form"
             form={form}
             layout="vertical"
             name="tableTestForm"
+            scrollToFirstError={{
+              behavior: 'smooth',
+              block: 'center',
+              scrollMode: 'if-needed',
+            }}
             onFinish={handleFormSubmit}>
             {!showOnlyParameter && (
               <Card className="form-card-section">

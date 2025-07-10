@@ -1862,6 +1862,7 @@
     "entity-not-contain-whitespace": "{{entity}} boşluk içermemelidir",
     "entity-owned-by-name": "Bu varlık {{entityOwner}} adlı kullanıcıya aittir",
     "entity-pattern-validation": "{{entity}} boşluk ve yalnızca şu özel karakterleri içerebilir: {{pattern}}",
+    "entity-pipeline-information": "<0>Every {{entity}} must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your {{entity}} can be linked and scheduled.",
     "entity-restored-error": "{{entity}} geri yüklenirken hata oluştu",
     "entity-restored-success": "{{entity}} başarıyla geri yüklendi",
     "entity-saved-successfully": "{{entity}} başarıyla kaydedildi",
@@ -2241,7 +2242,6 @@
     "team-moved-success": "Takım başarıyla taşındı!",
     "team-no-asset": "Takımınızın herhangi bir varlığı yok.",
     "test-case-insight-description": "Yapılandırılmış test doğrulamalarına dayalı olarak veri setinizin sağlığının merkezi görünümüne erişin.",
-    "test-case-pipeline-information": "<0>Every test case must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your test can be linked and scheduled.",
     "test-case-schedule-description": "Veri kalitesi testleri istenen sıklıkta çalışacak şekilde zamanlanabilir. Saat dilimi UTC'dir.",
     "test-connection-cannot-be-triggered": "Bağlantı testi tetiklenemez.",
     "test-connection-taking-too-long": {

@@ -1862,6 +1862,7 @@
     "entity-not-contain-whitespace": "{{entity}}不应包含空格",
     "entity-owned-by-name": "此实体归{{entityOwner}}所有",
     "entity-pattern-validation": "{{entity}}可以包含空格和以下特殊字符{{pattern}}",
+    "entity-pipeline-information": "<0>Every {{entity}} must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your {{entity}} can be linked and scheduled.",
     "entity-restored-error": "还原{{entity}}时出现错误",
     "entity-restored-success": "{{entity}}还原成功",
     "entity-saved-successfully": "{{entity}}保存成功",
@@ -2241,7 +2242,6 @@
     "team-moved-success": "团队移动成功",
     "team-no-asset": "您的团队没有任何资产",
     "test-case-insight-description": "基于配置的测试验证，访问数据集健康状况的集中视图。",
-    "test-case-pipeline-information": "<0>Every test case must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your test can be linked and scheduled.",
     "test-case-schedule-description": "数据质控测试可按所需频率安排运行, 时区为 UTC",
     "test-connection-cannot-be-triggered": "连接测试无法被触发",
     "test-connection-taking-too-long": {

@@ -172,6 +172,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   // =============================================
   // Form state
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Test definition state
@@ -705,6 +706,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const handleSubmit = useCallback(
     async (values: FormValues) => {
       setLoading(true);
+      setErrorMessage(''); // Clear any previous errors
       try {
         const testCaseObj = createTestCaseObj(values);
         const createdTestCase = await createTestCase(testCaseObj);
@@ -781,7 +783,23 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           onCancel?.();
         }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        // Show inline error alert for drawer mode, toast for standalone
+        if (isDrawer) {
+          const errorMsg =
+            (error as AxiosError<{ message: string }>)?.response?.data
+              ?.message ||
+            t('server.create-entity-error', {
+              entity: t('label.test-case'),
+            });
+          setErrorMessage(errorMsg);
+        } else {
+          showErrorToast(
+            error as AxiosError,
+            t('server.create-entity-error', {
+              entity: t('label.test-case'),
+            })
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -961,6 +979,18 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         },
         className
       )}>
+      {/* Floating Error Alert - always visible at top */}
+      {isDrawer && errorMessage && (
+        <div className="floating-error-alert">
+          <AlertBar
+            defafultExpand
+            className="h-full custom-alert-description"
+            message={errorMessage}
+            type="error"
+          />
+        </div>
+      )}
+
       <Form
         className="new-form-style"
         data-testid="test-case-form-v1"
@@ -982,6 +1012,11 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         layout="vertical"
         name="testCaseFormV1"
         preserve={false}
+        scrollToFirstError={{
+          behavior: 'smooth',
+          block: 'center',
+          scrollMode: 'if-needed',
+        }}
         onFinish={handleSubmit}
         onValuesChange={handleValuesChange}>
         <Card className="form-card-section" data-testid="select-table-card">
@@ -1068,6 +1103,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           <Row gutter={[20, 20]}>
             <Col span={24}>
               <AlertBar
+                defafultExpand
                 className="h-full custom-alert-description"
                 message={
                   <Transi18next

@@ -98,6 +98,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
   // HOOKS - State
   // =============================================
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>(
     initialValues?.testCases || []
   );
@@ -274,6 +275,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
 
   const handleFormSubmit = async (values: BundleSuiteFormData) => {
     setIsSubmitting(true);
+    setErrorMessage('');
     try {
       const formData = {
         ...values,
@@ -294,12 +296,22 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         onCancel?.();
       }
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.test-suite'),
-        })
-      );
+      // Show inline error alert for drawer mode, toast for standalone
+      if (isDrawer) {
+        const errorMsg =
+          (error as AxiosError<{ message: string }>)?.response?.data?.message ||
+          t('server.create-entity-error', {
+            entity: t('label.test-suite'),
+          });
+        setErrorMessage(errorMsg);
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.create-entity-error', {
+            entity: t('label.test-suite'),
+          })
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -339,6 +351,18 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         },
         className
       )}>
+      {/* Floating Error Alert - always visible at top */}
+      {isDrawer && errorMessage && (
+        <div className="floating-error-alert">
+          <AlertBar
+            defafultExpand
+            className="h-full custom-alert-description"
+            message={errorMessage}
+            type="error"
+          />
+        </div>
+      )}
+
       <Form
         className="new-form-style"
         form={form}
@@ -350,6 +374,11 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
           ...initialValues,
         }}
         layout="vertical"
+        scrollToFirstError={{
+          behavior: 'smooth',
+          block: 'center',
+          scrollMode: 'if-needed',
+        }}
         onFinish={handleFormSubmit}>
         {!isDrawer && (
           <Typography.Title level={4}>
@@ -388,6 +417,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         <Row gutter={[20, 20]}>
           <Col span={24}>
             <AlertBar
+              defafultExpand
               className="h-full custom-alert-description"
               message={
                 <Transi18next

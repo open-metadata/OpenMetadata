@@ -1862,6 +1862,7 @@
     "entity-not-contain-whitespace": "{{entity}} نباید شامل فاصله باشد.",
     "entity-owned-by-name": "این موجودیت متعلق به {{entityOwner}} است.",
     "entity-pattern-validation": "{{entity}} می‌تواند شامل فاصله‌ها و تنها کاراکترهای خاص {{pattern}} باشد.",
+    "entity-pipeline-information": "<0>Every {{entity}} must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your {{entity}} can be linked and scheduled.",
     "entity-restored-error": "خطا در هنگام بازیابی {{entity}}",
     "entity-restored-success": "{{entity}} با موفقیت بازیابی شد.",
     "entity-saved-successfully": "{{entity}} با موفقیت ذخیره شد.",
@@ -2241,7 +2242,6 @@
     "team-moved-success": "تیم با موفقیت منتقل شد!",
     "team-no-asset": "تیم شما هیچ دارایی ندارد.",
     "test-case-insight-description": "دسترسی به نمای متمرکز سلامت مجموعه داده‌های شما بر اساس اعتبارسنجی‌های آزمایش پیکربندی شده.",
-    "test-case-pipeline-information": "<0>Every test case must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your test can be linked and scheduled.",
     "test-case-schedule-description": "آزمون‌های کیفیت داده می‌توانند به صورت دوره‌ای برنامه‌ریزی شوند. منطقه زمانی به صورت UTC است.",
     "test-connection-cannot-be-triggered": "اتصال تست نمی‌تواند اجرا شود.",
     "test-connection-taking-too-long": {

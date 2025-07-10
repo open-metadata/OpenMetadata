@@ -1862,6 +1862,7 @@
     "entity-not-contain-whitespace": "{{entity}} ไม่ควรมีช่องว่าง",
     "entity-owned-by-name": "เอนทิตีนี้เป็นของ {{entityOwner}}",
     "entity-pattern-validation": "{{entity}} สามารถรวมช่องว่างและตัวอักษรพิเศษต่อไปนี้ได้ {{pattern}}",
+    "entity-pipeline-information": "<0>Every {{entity}} must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your {{entity}} can be linked and scheduled.",
     "entity-restored-error": "เกิดข้อผิดพลาดขณะกู้คืน {{entity}}",
     "entity-restored-success": "กู้คืน {{entity}} สำเร็จ",
     "entity-saved-successfully": "{{entity}} ถูกบันทึกสำเร็จ",
@@ -2241,7 +2242,6 @@
     "team-moved-success": "ย้ายทีมสำเร็จ!",
     "team-no-asset": "ทีมของคุณไม่มีสินทรัพย์ใด ๆ",
     "test-case-insight-description": "เข้าถึงมุมมองรวมศูนย์ของสุขภาพชุดข้อมูลของคุณตามการตรวจสอบทดสอบที่กำหนดค่าไว้",
-    "test-case-pipeline-information": "<0>Every test case must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your test can be linked and scheduled.",
     "test-case-schedule-description": "การทดสอบคุณภาพข้อมูลสามารถกำหนดเวลาให้ดำเนินการในความถี่ที่ต้องการ เขตเวลาคือ UTC",
     "test-connection-cannot-be-triggered": "ไม่สามารถกระตุ้นการทดสอบการเชื่อมต่อได้",
     "test-connection-taking-too-long": {

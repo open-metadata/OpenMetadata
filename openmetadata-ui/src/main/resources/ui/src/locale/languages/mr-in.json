@@ -1862,6 +1862,7 @@
     "entity-not-contain-whitespace": "{{entity}} मध्ये पांढरी जागा नसावी",
     "entity-owned-by-name": "हा घटक {{entityOwner}} द्वारे मालकीचा आहे",
     "entity-pattern-validation": "{{entity}} मध्ये स्पेस आणि फक्त खालील विशेष वर्णांचा समावेश असू शकतो {{pattern}}",
+    "entity-pipeline-information": "<0>Every {{entity}} must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your {{entity}} can be linked and scheduled.",
     "entity-restored-error": "{{entity}} पुनर्संचयित करताना त्रुटी",
     "entity-restored-success": "{{entity}} यशस्वीरित्या पुनर्संचयित केले",
     "entity-saved-successfully": "{{entity}} यशस्वीरित्या जतन केले",
@@ -2241,7 +2242,6 @@
     "team-moved-success": "टीम यशस्वीरित्या हलवली!",
     "team-no-asset": "तुमच्या टीमकडे कोणतीही ॲसेट नाहीत.",
     "test-case-insight-description": "कॉन्फिगर केलेल्या चाचणी प्रमाणीकरणांवर आधारित आपल्या डेटासेटच्या आरोग्याचे केंद्रीकृत दृश्य प्रवेश करा.",
-    "test-case-pipeline-information": "<0>Every test case must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your test can be linked and scheduled.",
     "test-case-schedule-description": "डेटा गुणवत्ता चाचण्या इच्छित वारंवारतेवर चालवण्यासाठी वेळापत्रक करता येतात. टाइमझोन UTC मध्ये आहे.",
     "test-connection-cannot-be-triggered": "कनेक्शन चाचणी ट्रिगर केली जाऊ शकत नाही.",
     "test-connection-taking-too-long": {

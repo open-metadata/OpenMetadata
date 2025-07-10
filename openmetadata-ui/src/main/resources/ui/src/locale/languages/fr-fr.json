@@ -1862,6 +1862,7 @@
     "entity-not-contain-whitespace": "{{entity}} ne doit pas contenir d'espace",
     "entity-owned-by-name": "Cette Resource appartient à {{entityOwner}}",
     "entity-pattern-validation": "{{entity}} peut contenir des espaces et seulement les caractères spéciaux suivants {{pattern}}",
+    "entity-pipeline-information": "<0>Every {{entity}} must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your {{entity}} can be linked and scheduled.",
     "entity-restored-error": "Erreur lors de la restauration de {{entity}}",
     "entity-restored-success": "{{entity}} restauré avec succès",
     "entity-saved-successfully": "{{entity}} sauvegardé avec succès",
@@ -2241,7 +2242,6 @@
     "team-moved-success": "L'équipe a été déplacée avec succès !",
     "team-no-asset": "Votre équipe n'a pas d'actifs de données",
     "test-case-insight-description": "Accédez à une vue centralisée de la santé de votre dataset basée sur les validations de test configurées.",
-    "test-case-pipeline-information": "<0>Every test case must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your test can be linked and scheduled.",
     "test-case-schedule-description": "Les tests de quelité de données peuvent être planifiés pour tourner à la fréquence désirée. La timezone est en UTC.",
     "test-connection-cannot-be-triggered": "Le test de connexion ne peut pas être déclenché.",
     "test-connection-taking-too-long": {

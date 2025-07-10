@@ -1862,6 +1862,7 @@
     "entity-not-contain-whitespace": "{{entity}}は空白を含んではいけません",
     "entity-owned-by-name": "このエンティティは{{entityOwner}}が所有しています",
     "entity-pattern-validation": "{{entity}} can include spaces and only the following special characters {{pattern}}",
+    "entity-pipeline-information": "<0>Every {{entity}} must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your {{entity}} can be linked and scheduled.",
     "entity-restored-error": "{{entity}}のリストア中にエラーが発生しました",
     "entity-restored-success": "{{entity}}のリストアは正常に終了しました",
     "entity-saved-successfully": "{{entity}} saved successfully",
@@ -2241,7 +2242,6 @@
     "team-moved-success": "チームの移動が成功しました！",
     "team-no-asset": "あなたのチームはアセットを持っていません。",
     "test-case-insight-description": "設定されたテスト検証に基づいて、データセットの健全性の集中ビューにアクセスします。",
-    "test-case-pipeline-information": "<0>Every test case must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your test can be linked and scheduled.",
     "test-case-schedule-description": "The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.",
     "test-connection-cannot-be-triggered": "Test connection cannot be triggered.",
     "test-connection-taking-too-long": {

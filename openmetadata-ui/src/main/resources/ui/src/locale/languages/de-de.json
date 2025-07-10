@@ -1862,6 +1862,7 @@
     "entity-not-contain-whitespace": "{{entity}} darf keine Leerzeichen enthalten.",
     "entity-owned-by-name": "Diese Entität gehört {{entityOwner}}.",
     "entity-pattern-validation": "{{entity}} kann Leerzeichen und nur die folgenden Sonderzeichen enthalten: {{pattern}}",
+    "entity-pipeline-information": "<0>Every {{entity}} must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your {{entity}} can be linked and scheduled.",
     "entity-restored-error": "Fehler beim Wiederherstellen von {{entity}}.",
     "entity-restored-success": "{{entity}} erfolgreich wiederhergestellt.",
     "entity-saved-successfully": "{{entity}} erfolgreich gespeichert",
@@ -2241,7 +2242,6 @@
     "team-moved-success": "Team erfolgreich verschoben!",
     "team-no-asset": "Ihr Team hat keine Vermögenswerte.",
     "test-case-insight-description": "Zugriff auf eine zentrale Ansicht der Gesundheit Ihres Datensatzes basierend auf konfigurierten Testvalidierungen.",
-    "test-case-pipeline-information": "<0>Every test case must be linked to a pipeline!</0> This entity doesn't have a pipeline yet. Let's create one so your test can be linked and scheduled.",
     "test-case-schedule-description": "Die Datenqualitätstests können mit der gewünschten Häufigkeit geplant werden. Die Zeitzone ist UTC.",
     "test-connection-cannot-be-triggered": "Die Testverbindung kann nicht ausgelöst werden.",
     "test-connection-taking-too-long": {
