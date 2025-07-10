@@ -12,7 +12,10 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import {
+  visitEntityPage,
+  visitEntityPageWithCustomSearchBox,
+} from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -59,6 +62,14 @@ export class MetricClass extends EntityClass {
 
   async visitEntityPage(page: Page) {
     await visitEntityPage({
+      page,
+      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
+      dataTestId: `${this.entity.name}-${this.entity.name}`,
+    });
+  }
+
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.entity.name}-${this.entity.name}`,

@@ -95,6 +95,11 @@ export class EntityClass {
     // Override for entity visit
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async visitEntityPageWithCustomSearchBox(_: Page) {
+    // Override for entity visit
+  }
+
   async prepareCustomProperty(apiContext: APIRequestContext) {
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {

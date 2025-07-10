@@ -54,9 +54,64 @@ export const visitEntityPage = async (data: {
   // Wait for the entity to be visible and clickable
   await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
     state: 'visible',
+    timeout: 30000,
   });
-  await page.getByTestId(dataTestId).getByTestId('data-name').click();
+
+  // Try different ways to click on the entity
+  const entityElement = page.getByTestId(dataTestId);
+
+  // First try to click on data-name if it exists
+  const dataNameElement = entityElement.getByTestId('data-name');
+  const dataNameExists = await dataNameElement.isVisible().catch(() => false);
+
+  if (dataNameExists) {
+    await dataNameElement.click();
+  } else {
+    // If data-name doesn't exist, try clicking on the entity directly
+    await entityElement.click();
+  }
+
   await page.getByTestId('searchBox').clear();
+};
+
+export const visitEntityPageWithCustomSearchBox = async (data: {
+  page: Page;
+  searchTerm: string;
+  dataTestId: string;
+}) => {
+  const { page, searchTerm, dataTestId } = data;
+  await page.waitForLoadState('networkidle');
+  const waitForSearchResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*index=dataAsset*'
+  );
+  const customSearchBox = page.getByTestId('customise-searchbox');
+  await customSearchBox.fill(searchTerm);
+  await customSearchBox.press('Enter');
+  await waitForSearchResponse;
+
+  // Wait for the entity to be visible and clickable
+  await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
+    state: 'visible',
+    timeout: 30000,
+  });
+
+  // Try different ways to click on the entity
+  const entityElement = page.getByTestId(dataTestId);
+
+  // First try to click on data-name if it exists
+  const dataNameElement = entityElement.getByTestId('data-name');
+  const dataNameExists = await dataNameElement.isVisible().catch(() => false);
+
+  if (dataNameExists) {
+    await dataNameElement.click();
+  } else {
+    // If data-name doesn't exist, try clicking on the entity directly
+    await entityElement.click();
+  }
+
+  const globalSearchBox = page.getByTestId('searchBox');
+
+  await globalSearchBox.clear();
 };
 
 export const addOwner = async ({
@@ -1737,7 +1792,9 @@ export const checkExploreSearchFilter = async (
 
   await expect(
     page.getByTestId(
-      `table-data-card_${entity?.entityResponseData?.fullyQualifiedName}`
+      `table-data-card_${
+        (entity as any)?.entityResponseData?.fullyQualifiedName
+      }`
     )
   ).toBeVisible();
 

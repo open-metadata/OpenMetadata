@@ -15,7 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
   EntityTypeEndpoint,
@@ -240,7 +240,7 @@ export class ApiCollectionClass extends EntityClass {
   }
 
   async verifyOwnerPropagation(page: Page, owner: string) {
-    await visitEntityPage({
+    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: this.apiEndpointResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.apiEndpoint.name}`,
