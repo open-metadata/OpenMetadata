@@ -381,7 +381,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       MutableServletContextHandler contextHandler = environment.getApplicationContext();
       SessionHandler sessionHandler = contextHandler.getSessionHandler();
       if (sessionHandler == null) {
-        contextHandler.setSessionHandler(new SessionHandler());
+        sessionHandler = new SessionHandler();
+        contextHandler.setSessionHandler(sessionHandler);
       }
 
       SessionCookieConfig cookieConfig =
@@ -557,6 +558,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             return configuration.getWebConfiguration();
           }
         });
+
+    // Add Micrometer bundle for Prometheus metrics
+    bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
+
     super.initialize(bootstrap);
   }
 
