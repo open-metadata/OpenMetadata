@@ -111,6 +111,11 @@ export const ENTITY_REFERENCE_OPTIONS = [
     value: 'team',
     label: 'Team',
   },
+  {
+    key: 'matric',
+    value: 'matric',
+    label: 'Matric',
+  },
 ];
 
 // supported date formats on backend
