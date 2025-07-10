@@ -683,8 +683,9 @@ class OMetaTableTest(TestCase):
 
     def test_patch_skip_on_failure_true(self):
         """Test that patch operation skips failures when skip_on_failure=True."""
-        # Create a corrupted destination to trigger an exception
+        # Create a destination with a change to trigger a patch
         corrupted_destination = self.table.model_copy(deep=True)
+        corrupted_destination.description = Markdown("Modified description")
 
         # Mock the client.patch to raise an exception
         with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:
@@ -703,15 +704,16 @@ class OMetaTableTest(TestCase):
 
     def test_patch_skip_on_failure_false(self):
         """Test that patch operation raises exception when skip_on_failure=False."""
-        # Create a destination to trigger an exception
+        # Create a destination with a change to trigger a patch
         corrupted_destination = self.table.model_copy(deep=True)
+        corrupted_destination.description = Markdown("Modified description")
 
         # Mock the client.patch to raise an exception
         with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:
             mock_patch_client.side_effect = Exception("API error")
 
             # Test with skip_on_failure=False (should raise exception)
-            with self.assertRaises(Exception) as context:
+            with self.assertRaises(RuntimeError) as context:
                 self.metadata.patch(
                     entity=Table,
                     source=self.table,
@@ -719,13 +721,15 @@ class OMetaTableTest(TestCase):
                     skip_on_failure=False,
                 )
 
-            assert str(context.exception) == "API error"
+            assert "API error" in str(context.exception)
+            assert "Failed to update" in str(context.exception)
             mock_patch_client.assert_called_once()
 
     def test_patch_skip_on_failure_default_behavior(self):
         """Test that patch operation defaults to skip_on_failure=True."""
-        # Create a destination to trigger an exception
+        # Create a destination with a change to trigger a patch
         corrupted_destination = self.table.model_copy(deep=True)
+        corrupted_destination.description = Markdown("Modified description")
 
         # Mock the client.patch to raise an exception
         with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:

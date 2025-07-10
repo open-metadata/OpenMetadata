@@ -196,38 +196,51 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             description: new description to add
             force: if True, we will patch any existing description. Otherwise, we will maintain
                 the existing data.
+            skip_on_failure: if True, return None on failure instead of raising exception
         Returns
             Updated Entity
         """
-        if isinstance(source, TestCase):
-            instance: Optional[T] = self._fetch_entity_if_exists(
+        try:
+            if isinstance(source, TestCase):
+                instance: Optional[T] = self._fetch_entity_if_exists(
+                    entity=entity,
+                    entity_id=source.id,
+                    fields=["testDefinition", "testSuite"],
+                )
+            else:
+                instance: Optional[T] = self._fetch_entity_if_exists(
+                    entity=entity, entity_id=source.id
+                )
+
+            if not instance:
+                return None
+
+            if instance.description and not force:
+                # If the description is already present and force is not passed,
+                # description will not be overridden
+                return None
+
+            # https://docs.pydantic.dev/latest/usage/exporting_models/#modelcopy
+            destination = source.model_copy(deep=True)
+            destination.description = Markdown(description)
+
+            return self.patch(
                 entity=entity,
-                entity_id=source.id,
-                fields=["testDefinition", "testSuite"],
+                source=source,
+                destination=destination,
+                skip_on_failure=skip_on_failure,
             )
-        else:
-            instance: Optional[T] = self._fetch_entity_if_exists(
-                entity=entity, entity_id=source.id
-            )
-
-        if not instance:
-            return None
-
-        if instance.description and not force:
-            # If the description is already present and force is not passed,
-            # description will not be overridden
-            return None
-
-        # https://docs.pydantic.dev/latest/usage/exporting_models/#modelcopy
-        destination = source.model_copy(deep=True)
-        destination.description = Markdown(description)
-
-        return self.patch(
-            entity=entity,
-            source=source,
-            destination=destination,
-            skip_on_failure=skip_on_failure,
-        )
+        except Exception as exc:
+            if skip_on_failure:
+                logger.debug(traceback.format_exc())
+                entity_name = get_log_name(source)
+                logger.warning(
+                    f"Failed to patch description for {entity_name}. The patch operation was skipped. "
+                    f"Reason: {exc}"
+                )
+                return None
+            else:
+                raise
 
     def patch_table_constraints(
         self,
@@ -306,34 +319,47 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             source: Source entity object
             tag_label: TagLabel to add or remove
             operation: Patch Operation to add or remove the tag.
+            skip_on_failure: if True, return None on failure instead of raising exception
         Returns
             Updated Entity
         """
-        instance: Optional[T] = self._fetch_entity_if_exists(
-            entity=entity, entity_id=source.id, fields=["tags"]
-        )
-        if not instance:
-            return None
+        try:
+            instance: Optional[T] = self._fetch_entity_if_exists(
+                entity=entity, entity_id=source.id, fields=["tags"]
+            )
+            if not instance:
+                return None
 
-        # Initialize empty tag list or the last updated tags
-        source.tags = instance.tags or []
-        destination = source.model_copy(deep=True)
+            # Initialize empty tag list or the last updated tags
+            source.tags = instance.tags or []
+            destination = source.model_copy(deep=True)
 
-        tag_fqns = {label.tagFQN.root for label in tag_labels}
+            tag_fqns = {label.tagFQN.root for label in tag_labels}
 
-        if operation == PatchOperation.REMOVE:
-            for tag in destination.tags:
-                if tag.tagFQN.root in tag_fqns:
-                    destination.tags.remove(tag)
-        else:
-            destination.tags.extend(tag_labels)
+            if operation == PatchOperation.REMOVE:
+                for tag in destination.tags:
+                    if tag.tagFQN.root in tag_fqns:
+                        destination.tags.remove(tag)
+            else:
+                destination.tags.extend(tag_labels)
 
-        return self.patch(
-            entity=entity,
-            source=source,
-            destination=destination,
-            skip_on_failure=skip_on_failure,
-        )
+            return self.patch(
+                entity=entity,
+                source=source,
+                destination=destination,
+                skip_on_failure=skip_on_failure,
+            )
+        except Exception as exc:
+            if skip_on_failure:
+                logger.debug(traceback.format_exc())
+                entity_name = get_log_name(source)
+                logger.warning(
+                    f"Failed to patch tags for {entity_name}. The patch operation was skipped. "
+                    f"Reason: {exc}"
+                )
+                return None
+            else:
+                raise
 
     def patch_tag(
         self,
