@@ -228,8 +228,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (directoryFqn == null) {
       return "";
     }
-    return String.format(
-        "JSON_UNQUOTE(JSON_EXTRACT(json, '$.directory.fullyQualifiedName')) = '%s'", directoryFqn);
+    return String.format("directoryFqn = '%s'", directoryFqn);
   }
 
   public String getSpreadsheetCondition(String tableName) {
@@ -237,9 +236,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (spreadsheetFqn == null) {
       return "";
     }
-    return String.format(
-        "JSON_UNQUOTE(JSON_EXTRACT(json, '$.spreadsheet.fullyQualifiedName')) = '%s'",
-        spreadsheetFqn);
+    return String.format("spreadsheetFqn = '%s'", spreadsheetFqn);
   }
 
   public String getFileTypeCondition(String tableName) {
@@ -247,7 +244,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (fileType == null) {
       return "";
     }
-    return String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.fileType')) = '%s'", fileType);
+    return String.format("fileType = '%s'", fileType);
   }
 
   public String getDisabledCondition() {
