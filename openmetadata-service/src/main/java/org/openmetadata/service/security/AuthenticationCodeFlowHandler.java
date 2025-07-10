@@ -253,19 +253,21 @@ public class AuthenticationCodeFlowHandler {
   // Login
   public void handleLogin(HttpServletRequest req, HttpServletResponse resp) {
     try {
-      checkAndStoreRedirectUriInSession(req);
-      LOG.debug("Performing Auth Login For User Session: {} ", req.getSession().getId());
-      Optional<OidcCredentials> credentials = getUserCredentialsFromSession(req);
+      HttpSession session = getHttpSession(req, true);
+      checkAndStoreRedirectUriInSession(session, req.getParameter(REDIRECT_URI_KEY));
+
+      LOG.debug("Performing Auth Login For User Session: {} ", session.getId());
+      Optional<OidcCredentials> credentials = getUserCredentialsFromSession(session);
       if (credentials.isPresent()) {
-        LOG.debug("Auth Tokens Located from Session: {} ", req.getSession().getId());
-        sendRedirectWithToken(req, resp, credentials.get());
+        LOG.debug("Auth Tokens Located from Session: {} ", session.getId());
+        sendRedirectWithToken(session, resp, credentials.get());
       } else {
-        LOG.debug("Performing Auth Code Flow to Idp: {} ", req.getSession().getId());
+        LOG.debug("Performing Auth Code Flow to Idp: {} ", session.getId());
         Map<String, String> params = buildLoginParams();
 
         params.put(OidcConfiguration.REDIRECT_URI, client.getCallbackUrl());
 
-        addStateAndNonceParameters(client, req, params);
+        addStateAndNonceParameters(client, session, params);
 
         // This is always used to prompt the user to login
         if (!nullOrEmpty(promptType)) {
@@ -286,19 +288,37 @@ public class AuthenticationCodeFlowHandler {
     }
   }
 
-  public static void checkAndStoreRedirectUriInSession(HttpServletRequest request) {
-    String redirectUri = request.getParameter(REDIRECT_URI_KEY);
+  public static HttpSession getHttpSession(HttpServletRequest request, boolean createSession) {
+    HttpSession session = request.getSession(false);
+    if (session == null) {
+      if (createSession) {
+        LOG.debug("Creating new session for user");
+        session = request.getSession(true);
+      }
+    } else {
+      LOG.debug("Using existing session: {}", session.getId());
+    }
+    return session;
+  }
+
+  public static void checkAndStoreRedirectUriInSession(HttpSession session, String redirectUri) {
     if (nullOrEmpty(redirectUri)) {
       throw new TechnicalException("Redirect URI is required");
     }
 
-    request.getSession().setAttribute(SESSION_REDIRECT_URI, redirectUri);
+    session.setAttribute(SESSION_REDIRECT_URI, redirectUri);
   }
 
   // Callback
   public void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
     try {
-      LOG.debug("Performing Auth Callback For User Session: {} ", req.getSession().getId());
+      HttpSession session = getHttpSession(req, false);
+      if (session == null) {
+        LOG.error("No session found for callback, redirecting to login");
+        throw new TechnicalException("No session found for callback, redirecting to login");
+      }
+
+      LOG.debug("Performing Auth Callback For User Session: {} ", session.getId());
       String computedCallbackUrl = client.getCallbackUrl();
       Map<String, List<String>> parameters = retrieveCallbackParameters(req);
       AuthenticationResponse response =
@@ -320,26 +340,26 @@ public class AuthenticationCodeFlowHandler {
       }
 
       // Optional state validation
-      validateStateIfRequired(req, resp, successResponse);
+      validateStateIfRequired(session, resp, successResponse);
 
       // Build Credentials
       OidcCredentials credentials = buildCredentials(successResponse);
 
       // Validations
-      validateAndSendTokenRequest(req, credentials, computedCallbackUrl);
+      validateAndSendTokenRequest(session, credentials, computedCallbackUrl);
 
       // Log Error if the Refresh Token is null
       if (credentials.getRefreshToken() == null) {
-        LOG.error("Refresh token is null for user session: {}", req.getSession().getId());
+        LOG.error("Refresh token is null for user session: {}", session.getId());
       }
 
-      validateNonceIfRequired(req, credentials.getIdToken().getJWTClaimsSet());
+      validateNonceIfRequired(session, credentials.getIdToken().getJWTClaimsSet());
 
       // Put Credentials in Session
-      req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+      session.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
 
       // Redirect
-      sendRedirectWithToken(req, resp, credentials);
+      sendRedirectWithToken(session, resp, credentials);
     } catch (Exception e) {
       getErrorMessage(resp, e);
     }
@@ -349,8 +369,8 @@ public class AuthenticationCodeFlowHandler {
   public void handleLogout(
       HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
     try {
+      HttpSession session = getHttpSession(httpServletRequest, false);
       LOG.debug("Performing application logout");
-      HttpSession session = httpServletRequest.getSession(false);
       if (session != null) {
         LOG.debug("Invalidating the session for logout");
         session.invalidate();
@@ -367,12 +387,16 @@ public class AuthenticationCodeFlowHandler {
   public void handleRefresh(
       HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
     try {
-      LOG.debug(
-          "Performing Auth Refresh For User Session: {} ", httpServletRequest.getSession().getId());
-      Optional<OidcCredentials> credentials = getUserCredentialsFromSession(httpServletRequest);
+      HttpSession session = getHttpSession(httpServletRequest, false);
+      if (session == null) {
+        LOG.error("No session found for refresh, redirecting to login");
+        throw new TechnicalException("No session found for refresh, redirecting to login");
+      }
+
+      LOG.debug("Performing Auth Refresh For User Session: {} ", session.getId());
+      Optional<OidcCredentials> credentials = getUserCredentialsFromSession(session);
       if (credentials.isPresent()) {
-        LOG.debug(
-            "Credentials Found For User Session: {} ", httpServletRequest.getSession().getId());
+        LOG.debug("Credentials Found For User Session: {} ", session.getId());
         JwtResponse jwtResponse = new JwtResponse();
         jwtResponse.setAccessToken(credentials.get().getIdToken().getParsedString());
         jwtResponse.setExpiryDuration(
@@ -386,8 +410,7 @@ public class AuthenticationCodeFlowHandler {
         writeJsonResponse(httpServletResponse, JsonUtils.pojoToJson(jwtResponse));
       } else {
         LOG.debug(
-            "Credentials Not Found For User Session: {}, Redirect to Logout ",
-            httpServletRequest.getSession().getId());
+            "Credentials Not Found For User Session: {}, Redirect to Logout ", session.getId());
         this.handleLogout(httpServletRequest, httpServletResponse);
       }
     } catch (Exception e) {
@@ -425,55 +448,45 @@ public class AuthenticationCodeFlowHandler {
     return new HashMap<>(authParams);
   }
 
-  private Optional<OidcCredentials> getUserCredentialsFromSession(HttpServletRequest request) {
-    OidcCredentials credentials =
-        (OidcCredentials) request.getSession().getAttribute(OIDC_CREDENTIAL_PROFILE);
-
+  private Optional<OidcCredentials> getUserCredentialsFromSession(HttpSession session) {
+    OidcCredentials credentials = (OidcCredentials) session.getAttribute(OIDC_CREDENTIAL_PROFILE);
     if (credentials != null && credentials.getRefreshToken() != null) {
       LOG.trace("Credentials found in session: {}", credentials);
-      renewOidcCredentials(request, credentials);
+      renewOidcCredentials(session, credentials);
       return Optional.of(credentials);
     } else {
       if (credentials == null) {
-        LOG.error("No credentials found against session. ID: {}", request.getSession().getId());
+        LOG.error("No credentials found against session. ID: {}", session.getId());
       } else {
-        LOG.error("No refresh token found against session. ID: {}", request.getSession().getId());
+        LOG.error("No refresh token found against session. ID: {}", session.getId());
       }
     }
     return Optional.empty();
   }
 
   private void validateAndSendTokenRequest(
-      HttpServletRequest httpServletRequest,
-      OidcCredentials oidcCredentials,
-      String computedCallbackUrl)
+      HttpSession session, OidcCredentials oidcCredentials, String computedCallbackUrl)
       throws URISyntaxException {
     if (oidcCredentials.getCode() != null) {
-      LOG.debug(
-          "Initiating Token Request for User Session: {} ",
-          httpServletRequest.getSession().getId());
+      LOG.debug("Initiating Token Request for User Session: {} ", session.getId());
       CodeVerifier verifier =
-          (CodeVerifier)
-              httpServletRequest
-                  .getSession()
-                  .getAttribute(client.getCodeVerifierSessionAttributeName());
+          (CodeVerifier) session.getAttribute(client.getCodeVerifierSessionAttributeName());
       // Token request
       TokenRequest request =
           createTokenRequest(
               new AuthorizationCodeGrant(
                   oidcCredentials.getCode(), new URI(computedCallbackUrl), verifier));
-      executeAuthorizationCodeTokenRequest(httpServletRequest, request, oidcCredentials);
+      executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
     }
   }
 
   private void validateStateIfRequired(
-      HttpServletRequest req,
+      HttpSession session,
       HttpServletResponse resp,
       AuthenticationSuccessResponse successResponse) {
     if (client.getConfiguration().isWithState()) {
       // Validate state for CSRF mitigation
-      State requestState =
-          (State) req.getSession().getAttribute(client.getStateSessionAttributeName());
+      State requestState = (State) session.getAttribute(client.getStateSessionAttributeName());
       if (requestState == null || CommonHelper.isBlank(requestState.getValue())) {
         getErrorMessage(resp, new TechnicalException("Missing state parameter"));
         return;
@@ -513,11 +526,10 @@ public class AuthenticationCodeFlowHandler {
     return credentials;
   }
 
-  private void validateNonceIfRequired(HttpServletRequest req, JWTClaimsSet claimsSet)
+  private void validateNonceIfRequired(HttpSession session, JWTClaimsSet claimsSet)
       throws BadJOSEException {
     if (client.getConfiguration().isUseNonce()) {
-      String expectedNonce =
-          (String) req.getSession().getAttribute(client.getNonceSessionAttributeName());
+      String expectedNonce = (String) session.getAttribute(client.getNonceSessionAttributeName());
       if (CommonHelper.isNotBlank(expectedNonce)) {
         String tokenNonce;
         try {
@@ -657,7 +669,7 @@ public class AuthenticationCodeFlowHandler {
   }
 
   private void sendRedirectWithToken(
-      HttpServletRequest request, HttpServletResponse response, OidcCredentials credentials)
+      HttpSession httpSession, HttpServletResponse response, OidcCredentials credentials)
       throws ParseException, IOException {
     JWT jwt = credentials.getIdToken();
     Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -666,7 +678,7 @@ public class AuthenticationCodeFlowHandler {
     String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
 
-    String redirectUri = (String) request.getSession().getAttribute(SESSION_REDIRECT_URI);
+    String redirectUri = (String) httpSession.getAttribute(SESSION_REDIRECT_URI);
 
     String storedUserStr =
         Entity.getCollectionDAO().userDAO().findUserByNameAndEmail(userName, email);
@@ -681,19 +693,18 @@ public class AuthenticationCodeFlowHandler {
     response.sendRedirect(url);
   }
 
-  private void renewOidcCredentials(HttpServletRequest request, OidcCredentials credentials) {
-    LOG.debug("Renewing Credentials for User Session {}", request.getSession().getId());
+  private void renewOidcCredentials(HttpSession httpSession, OidcCredentials credentials) {
+    LOG.debug("Renewing Credentials for User Session {}", httpSession.getId());
     if (client.getConfiguration() instanceof AzureAd2OidcConfiguration azureAd2OidcConfiguration) {
       refreshAccessTokenAzureAd2Token(azureAd2OidcConfiguration, credentials);
     } else {
-      refreshTokenRequest(request, credentials);
+      refreshTokenRequest(httpSession, credentials);
     }
-    request.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+    httpSession.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
   }
 
-  public void refreshTokenRequest(
-      final HttpServletRequest httpServletRequest, final OidcCredentials credentials) {
-    final var refreshToken = credentials.getRefreshToken();
+  public void refreshTokenRequest(HttpSession httpSession, OidcCredentials credentials) {
+    var refreshToken = credentials.getRefreshToken();
     if (refreshToken != null) {
       try {
         final var request = createTokenRequest(new RefreshTokenGrant(refreshToken));
@@ -728,8 +739,7 @@ public class AuthenticationCodeFlowHandler {
             populateCredentialsFromTokenResponse(tokenSuccessResponse, credentials);
 
             OidcCredentials storedCredentials =
-                (OidcCredentials)
-                    httpServletRequest.getSession().getAttribute(OIDC_CREDENTIAL_PROFILE);
+                (OidcCredentials) httpSession.getAttribute(OIDC_CREDENTIAL_PROFILE);
 
             // Get the claims from the stored credentials
             Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -891,19 +901,19 @@ public class AuthenticationCodeFlowHandler {
   }
 
   private void addStateAndNonceParameters(
-      final OidcClient client, final HttpServletRequest request, final Map<String, String> params) {
+      OidcClient client, HttpSession session, Map<String, String> params) {
     // Init state for CSRF mitigation
     if (client.getConfiguration().isWithState()) {
       State state = new State(CommonHelper.randomString(10));
       params.put(OidcConfiguration.STATE, state.getValue());
-      request.getSession().setAttribute(client.getStateSessionAttributeName(), state);
+      session.setAttribute(client.getStateSessionAttributeName(), state);
     }
 
     // Init nonce for replay attack mitigation
     if (client.getConfiguration().isUseNonce()) {
       Nonce nonce = new Nonce();
       params.put(OidcConfiguration.NONCE, nonce.getValue());
-      request.getSession().setAttribute(client.getNonceSessionAttributeName(), nonce.getValue());
+      session.setAttribute(client.getNonceSessionAttributeName(), nonce.getValue());
     }
 
     CodeChallengeMethod pkceMethod = client.getConfiguration().findPkceMethod();
@@ -914,7 +924,7 @@ public class AuthenticationCodeFlowHandler {
     }
     if (pkceMethod != null) {
       CodeVerifier verfifier = new CodeVerifier(CommonHelper.randomString(43));
-      request.getSession().setAttribute(client.getCodeVerifierSessionAttributeName(), verfifier);
+      session.setAttribute(client.getCodeVerifierSessionAttributeName(), verfifier);
       params.put(
           OidcConfiguration.CODE_CHALLENGE,
           CodeChallenge.compute(pkceMethod, verfifier).getValue());
@@ -924,7 +934,7 @@ public class AuthenticationCodeFlowHandler {
 
   @SneakyThrows
   private void executeAuthorizationCodeTokenRequest(
-      HttpServletRequest httpServletRequest, TokenRequest request, OidcCredentials credentials) {
+      HttpSession session, TokenRequest request, OidcCredentials credentials) {
     HTTPResponse httpResponse = executeTokenHttpRequest(request);
     OIDCTokenResponse tokenSuccessResponse = parseTokenResponseFromHttpResponse(httpResponse);
 
@@ -935,7 +945,7 @@ public class AuthenticationCodeFlowHandler {
     Date expirationTime = credentials.getIdToken().getJWTClaimsSet().getExpirationTime();
     if (expirationTime != null
         && expirationTime.before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
-      renewOidcCredentials(httpServletRequest, credentials);
+      renewOidcCredentials(session, credentials);
     }
   }
 
