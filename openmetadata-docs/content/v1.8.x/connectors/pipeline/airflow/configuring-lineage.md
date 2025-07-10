@@ -23,7 +23,7 @@ the relationship.
 
 {% note %}
 
-We support lineage for the following entities: `Table`, `Container`, `Dashboard`, `DashboardDataModel`, `Pipeline`, `Topic`, `SearchIndex` and `MlModel`.
+We support lineage for the following entities: `Table`, `Container`, `Dashboard`, `DashboardDataModel`, `Pipeline`, `Topic`, `SearchIndex`, `REST API`, and `MlModel`.
 
 Moreover, note that this example requires the `openmetadata-ingestion` package to be installed. If you are planning to
 ingest the Airflow metadata (and lineage) externally and don't want to install it, please refer to the next section.
