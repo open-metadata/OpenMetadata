@@ -80,8 +80,13 @@ const WhatsNewAlert = () => {
     <>
       {showWhatsNew.alert && isHomePage && (
         <Affix
-          style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 2000 }}>
-          <Card bodyStyle={{ padding: 0 }} className="whats-new-alert-card">
+          style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 2000 }}
+        >
+          <Card
+            bodyStyle={{ padding: 0 }}
+            className="whats-new-alert-card"
+            data-testid="whats-new-alert-card"
+          >
             <Row gutter={0} wrap={false}>
               <Col className="whats-new-alert-left" flex="160px">
                 <RocketIcon
@@ -103,7 +108,8 @@ const WhatsNewAlert = () => {
                     href={releaseLink}
                     rel="noopener noreferrer"
                     target="_blank"
-                    type="link">
+                    type="link"
+                  >
                     {t('label.release-notes')}
                   </Button>
                   {/* Only show the blog link for major releases */}
@@ -113,7 +119,8 @@ const WhatsNewAlert = () => {
                       href={blogLink}
                       rel="noopener noreferrer"
                       target="_blank"
-                      type="link">
+                      type="link"
+                    >
                       {t('label.blog')}
                     </Button>
                   )}

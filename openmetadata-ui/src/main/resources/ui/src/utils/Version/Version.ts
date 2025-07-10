@@ -11,17 +11,9 @@
  *  limitations under the License.
  */
 import { snakeCase } from 'lodash';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 
-let version = '';
-
-// Subscribe to the app version and update the version variable
-useApplicationStore.subscribe((state) => {
-  version = state.appVersion ?? '';
-});
-
-export const getVersionedStorageKey = (key: string) => {
-  const versionedKey = key + '_' + snakeCase(version);
+export const getVersionedStorageKey = (key: string, appVersion?: string) => {
+  const versionedKey = key + '_' + snakeCase(appVersion ?? '');
 
   return versionedKey;
 };

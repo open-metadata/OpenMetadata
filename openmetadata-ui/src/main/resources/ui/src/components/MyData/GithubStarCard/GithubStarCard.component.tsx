@@ -40,14 +40,16 @@ const cookieStorage = new CookieStorage();
 const GithubStarCard = () => {
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, appVersion } = useApplicationStore();
   const [showGithubStarPopup, setShowGithubStarPopup] = useState(false);
   const [starredCount, setStarredCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const isWhatNewAlertVisible = useMemo(
-    () => cookieStorage.getItem(getVersionedStorageKey(VERSION)) !== 'true',
-    [cookieStorage]
+    () =>
+      cookieStorage.getItem(getVersionedStorageKey(VERSION, appVersion)) !==
+      'true',
+    [cookieStorage, appVersion]
   );
 
   const userCookieName = useMemo(
@@ -124,7 +126,8 @@ const GithubStarCard = () => {
           ? 'github-star-popup-card-with-alert'
           : 'github-star-popup-card-without-alert'
       }
-      `}>
+      `}
+    >
       <Card data-testid="github-star-popup-card">
         <Space align="center" className="d-flex justify-between">
           <Space>
@@ -152,10 +155,12 @@ const GithubStarCard = () => {
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,
-            }}>
+            }}
+          >
             <Button
               className="github-star-button github-modal-action-button"
-              icon={<Icon component={StarGithubIcon} size={12} />}>
+              icon={<Icon component={StarGithubIcon} size={12} />}
+            >
               {t('label.star')}
             </Button>
           </Link>
@@ -164,7 +169,8 @@ const GithubStarCard = () => {
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,
-            }}>
+            }}
+          >
             <Button className="github-modal-action-button">
               {isLoading ? (
                 <div data-testid="skeleton-loader">

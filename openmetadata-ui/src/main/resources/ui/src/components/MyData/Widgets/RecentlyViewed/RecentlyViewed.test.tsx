@@ -33,21 +33,24 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
-  getRecentlyViewedData: jest.fn().mockReturnValue([
-    {
-      displayName: 'test',
-      entityType: 'table',
-      fqn: 'test',
-      id: '1',
-      serviceType: 'BigQuery',
-      name: 'Test Item',
-      fullyQualifiedName: 'test.item',
-      type: 'test',
-      timestamp: 1706533046620,
+jest.mock('../../../../hooks/currentUserStore/useCurrentUserStore', () => ({
+  useCurrentUserPreferences: jest.fn().mockReturnValue({
+    preferences: {
+      recentlyViewed: [
+        {
+          displayName: 'test',
+          entityType: 'table',
+          fqn: 'test',
+          id: '1',
+          serviceType: 'BigQuery',
+          name: 'Test Item',
+          fullyQualifiedName: 'test.item',
+          type: 'test',
+          timestamp: 1706533046620,
+        },
+      ],
     },
-  ]),
-  prepareLabel: jest.fn(),
+  }),
 }));
 
 describe('RecentlyViewed', () => {
