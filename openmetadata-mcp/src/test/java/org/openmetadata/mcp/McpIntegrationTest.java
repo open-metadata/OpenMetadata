@@ -404,6 +404,277 @@ public class McpIntegrationTest extends OpenMetadataApplicationTest {
     }
   }
 
+  @Test
+  void testConcurrentStreamableHttpConnections() throws Exception {
+    int numberOfConnections = 500;
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch completionLatch = new CountDownLatch(numberOfConnections);
+    AtomicReference<Exception> firstError = new AtomicReference<>();
+
+    // Create a separate client for concurrent testing with increased timeouts
+    OkHttpClient concurrentClient =
+        new OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build();
+
+    // Create concurrent requests
+    for (int i = 0; i < numberOfConnections; i++) {
+      final int requestId = i;
+      Thread.ofVirtual()
+          .start(
+              () -> {
+                try {
+                  // Wait for all threads to be ready
+                  startLatch.await();
+
+                  // Step 1: Initialize session
+                  Map<String, Object> initRequest = McpTestUtils.createInitializeRequest();
+                  String initRequestBody = objectMapper.writeValueAsString(initRequest);
+
+                  okhttp3.RequestBody initBody =
+                      okhttp3.RequestBody.create(
+                          initRequestBody, okhttp3.MediaType.parse("application/json"));
+
+                  Request initReq =
+                      new Request.Builder()
+                          .url(getMcpUrl("/mcp"))
+                          .header("Accept", "application/json, text/event-stream")
+                          .header("Authorization", authToken)
+                          .post(initBody)
+                          .build();
+
+                  String sessionId = null;
+                  try (okhttp3.Response initResponse =
+                      concurrentClient.newCall(initReq).execute()) {
+                    if (initResponse.code() == 503) {
+                      System.out.println(
+                          "Request " + requestId + " init hit connection limit (503)");
+                      return; // Exit early if we hit the limit
+                    } else if (initResponse.code() == 200) {
+                      String responseBody = initResponse.body().string();
+                      JsonNode responseJson = objectMapper.readTree(responseBody);
+
+                      if (!responseJson.has("result")) {
+                        throw new RuntimeException(
+                            "Missing result in init response for request " + requestId);
+                      }
+
+                      sessionId = initResponse.header("Mcp-Session-Id");
+                      if (sessionId == null) {
+                        throw new RuntimeException("Missing session ID for request " + requestId);
+                      }
+
+                      System.out.println("Request " + requestId + " initialized successfully");
+                    } else {
+                      throw new RuntimeException(
+                          "Unexpected init response code "
+                              + initResponse.code()
+                              + " for request "
+                              + requestId);
+                    }
+                  }
+
+                  // Step 2: Make a tool call using the session
+                  if (sessionId != null) {
+                    Map<String, Object> toolCallRequest =
+                        McpTestUtils.createSearchMetadataToolCall("test" + requestId, 3);
+                    String toolRequestBody = objectMapper.writeValueAsString(toolCallRequest);
+
+                    okhttp3.RequestBody toolBody =
+                        okhttp3.RequestBody.create(
+                            toolRequestBody, okhttp3.MediaType.parse("application/json"));
+
+                    Request toolReq =
+                        new Request.Builder()
+                            .url(getMcpUrl("/mcp"))
+                            .header("Accept", "application/json, text/event-stream")
+                            .header("Authorization", authToken)
+                            .header("Mcp-Session-Id", sessionId)
+                            .post(toolBody)
+                            .build();
+
+                    try (okhttp3.Response toolResponse =
+                        concurrentClient.newCall(toolReq).execute()) {
+                      if (toolResponse.code() == 503) {
+                        System.out.println(
+                            "Request " + requestId + " tool call hit server limit (503)");
+                      } else if (toolResponse.code() == 200) {
+                        String responseBody = toolResponse.body().string();
+
+                        // Handle SSE response format if present
+                        String jsonContent = responseBody;
+                        if (responseBody.startsWith("id:") || responseBody.startsWith("data:")) {
+                          String[] lines = responseBody.split("\n");
+                          for (String line : lines) {
+                            if (line.startsWith("data:")) {
+                              jsonContent = line.substring(5).trim();
+                              break;
+                            }
+                          }
+                        }
+
+                        JsonNode responseJson = objectMapper.readTree(jsonContent);
+                        if (!responseJson.has("result")) {
+                          throw new RuntimeException(
+                              "Missing result in tool call response for request " + requestId);
+                        }
+
+                        System.out.println(
+                            "Request " + requestId + " tool call completed successfully");
+                      } else {
+                        throw new RuntimeException(
+                            "Unexpected tool call response code "
+                                + toolResponse.code()
+                                + " for request "
+                                + requestId);
+                      }
+                    }
+                  }
+                } catch (Exception e) {
+                  firstError.compareAndSet(null, e);
+                  System.err.println("Request " + requestId + " failed: " + e.getMessage());
+                } finally {
+                  completionLatch.countDown();
+                }
+              });
+    }
+
+    // Start all requests simultaneously
+    System.out.println(
+        "Starting " + numberOfConnections + " concurrent connections with tool calls...");
+    long startTime = System.currentTimeMillis();
+    startLatch.countDown();
+
+    // Wait for all requests to complete (with timeout)
+    boolean allCompleted =
+        completionLatch.await(90, TimeUnit.SECONDS); // Increased timeout for tool calls
+    long duration = System.currentTimeMillis() - startTime;
+
+    System.out.println("Test completed in " + duration + "ms");
+    System.out.println("All requests completed: " + allCompleted);
+
+    // Clean up
+    concurrentClient.dispatcher().executorService().shutdown();
+    concurrentClient.connectionPool().evictAll();
+
+    // Assert results
+    assertThat(allCompleted).isTrue();
+
+    // If there was an error, it should be a connection limit error (503) or timeout, not a server
+    // crash
+    if (firstError.get() != null) {
+      String errorMessage = firstError.get().getMessage();
+      boolean isExpectedError =
+          errorMessage.contains("503")
+              || errorMessage.contains("Service unavailable")
+              || errorMessage.contains("timeout")
+              || errorMessage.contains("connection limit");
+      assertThat(isExpectedError).isTrue();
+    }
+  }
+
+  @Test
+  void testConcurrentToolCalls() throws Exception {
+    int numberOfCalls = 100;
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch completionLatch = new CountDownLatch(numberOfCalls);
+    AtomicReference<Exception> firstError = new AtomicReference<>();
+
+    // Initialize a session first
+    String sessionId = initializeMcpSession();
+
+    // Create concurrent tool calls
+    for (int i = 0; i < numberOfCalls; i++) {
+      final int callId = i;
+      Thread.ofVirtual()
+          .start(
+              () -> {
+                try {
+                  startLatch.await();
+
+                  Map<String, Object> toolCallRequest =
+                      McpTestUtils.createSearchMetadataToolCall("test" + callId, 5);
+                  String requestBody = objectMapper.writeValueAsString(toolCallRequest);
+
+                  okhttp3.RequestBody body =
+                      okhttp3.RequestBody.create(
+                          requestBody, okhttp3.MediaType.parse("application/json"));
+
+                  Request request =
+                      new Request.Builder()
+                          .url(getMcpUrl("/mcp"))
+                          .header("Accept", "application/json, text/event-stream")
+                          .header("Authorization", authToken)
+                          .header("Mcp-Session-Id", sessionId)
+                          .post(body)
+                          .build();
+
+                  try (okhttp3.Response response = client.newCall(request).execute()) {
+                    if (response.code() == 503) {
+                      System.out.println("Tool call " + callId + " hit server limit (503)");
+                    } else if (response.code() == 200) {
+                      String responseBody = response.body().string();
+
+                      // Handle SSE response format if present
+                      String jsonContent = responseBody;
+                      if (responseBody.startsWith("id:") || responseBody.startsWith("data:")) {
+                        String[] lines = responseBody.split("\n");
+                        for (String line : lines) {
+                          if (line.startsWith("data:")) {
+                            jsonContent = line.substring(5).trim();
+                            break;
+                          }
+                        }
+                      }
+
+                      JsonNode responseJson = objectMapper.readTree(jsonContent);
+                      if (!responseJson.has("result")) {
+                        throw new RuntimeException(
+                            "Missing result in tool call response " + callId);
+                      }
+
+                      System.out.println("Tool call " + callId + " completed successfully");
+                    } else {
+                      throw new RuntimeException(
+                          "Unexpected response code "
+                              + response.code()
+                              + " for tool call "
+                              + callId);
+                    }
+                  }
+                } catch (Exception e) {
+                  firstError.compareAndSet(null, e);
+                  System.err.println("Tool call " + callId + " failed: " + e.getMessage());
+                } finally {
+                  completionLatch.countDown();
+                }
+              });
+    }
+
+    System.out.println("Starting " + numberOfCalls + " concurrent tool calls...");
+    long startTime = System.currentTimeMillis();
+    startLatch.countDown();
+
+    boolean allCompleted = completionLatch.await(30, TimeUnit.SECONDS);
+    long duration = System.currentTimeMillis() - startTime;
+
+    System.out.println("Tool calls test completed in " + duration + "ms");
+    System.out.println("All tool calls completed: " + allCompleted);
+
+    assertThat(allCompleted).isTrue();
+
+    if (firstError.get() != null) {
+      String errorMessage = firstError.get().getMessage();
+      boolean isExpectedError =
+          errorMessage.contains("503")
+              || errorMessage.contains("Service unavailable")
+              || errorMessage.contains("timeout");
+      assertThat(isExpectedError).isTrue();
+    }
+  }
+
   private String initializeMcpSession() throws Exception {
     Map<String, Object> initRequest = McpTestUtils.createInitializeRequest();
     String requestBody = objectMapper.writeValueAsString(initRequest);

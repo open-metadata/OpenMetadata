@@ -249,7 +249,7 @@ export const TestSuites = () => {
       fetchTestSuites(currentPage, { limit: pageSize });
       handlePageChange(currentPage);
     },
-    [pageSize, paging]
+    [pageSize, handlePageChange]
   );
 
   const handleSearchParam = (
@@ -277,13 +277,13 @@ export const TestSuites = () => {
 
   useEffect(() => {
     if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
-      fetchTestSuites(INITIAL_PAGING_VALUE, {
+      fetchTestSuites(currentPage, {
         limit: pageSize,
       });
     } else {
       setIsLoading(false);
     }
-  }, [testSuitePermission, pageSize, searchValue, owner, subTab]);
+  }, [testSuitePermission, pageSize, searchValue, owner, subTab, currentPage]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return (

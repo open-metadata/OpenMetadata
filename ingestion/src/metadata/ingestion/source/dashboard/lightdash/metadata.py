@@ -124,9 +124,11 @@ class LightdashSource(DashboardServiceSource):
                 sourceUrl=SourceUrl(dashboard_url),
                 project=self.client.get_project_name(dashboard_details.projectUuid),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -178,9 +180,9 @@ class LightdashSource(DashboardServiceSource):
                     right=CreateChartRequest(
                         name=EntityName(chart.uuid),
                         displayName=chart.name,
-                        description=Markdown(chart.description)
-                        if chart.description
-                        else None,
+                        description=(
+                            Markdown(chart.description) if chart.description else None
+                        ),
                         sourceUrl=SourceUrl(chart_url),
                         service=self.context.get().dashboard_service,
                         chartType=chart_type,
@@ -194,7 +196,8 @@ class LightdashSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: LightdashDashboard,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
+        _: Optional[str] = None,
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Get lineage method
 

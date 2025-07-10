@@ -325,4 +325,51 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
   public List<String> getTargetFQNHashForTagPrefix(String tagFQNHashPrefix) {
     return delegate.getTargetFQNHashForTagPrefix(tagFQNHashPrefix);
   }
+
+  @Override
+  public Map<String, Integer> getTagCountsBulk(int source, List<String> tagFQNs) {
+    if (!RelationshipCache.isAvailable() || tagFQNs == null || tagFQNs.isEmpty()) {
+      return delegate.getTagCountsBulk(source, tagFQNs);
+    }
+
+    String cacheKey = TAG_BATCH_CACHE_PREFIX + "counts:" + source + ":" + tagFQNs.hashCode();
+
+    try {
+      Map<String, Object> cachedData = RelationshipCache.get(cacheKey);
+      @SuppressWarnings("unchecked")
+      Map<String, Integer> cachedCounts = (Map<String, Integer>) cachedData.get("tagCounts");
+      if (cachedCounts != null) {
+        LOG.debug("Cache hit for bulk tag counts: {} tags from source {}", tagFQNs.size(), source);
+        return cachedCounts;
+      }
+
+      Map<String, Integer> counts = delegate.getTagCountsBulk(source, tagFQNs);
+
+      if (counts != null) {
+        Map<String, Object> cacheData = new HashMap<>();
+        cacheData.put("tagCounts", counts);
+        RelationshipCache.put(cacheKey, cacheData);
+        LOG.debug("Cached bulk tag counts for {} tags from source {}", tagFQNs.size(), source);
+      }
+
+      return counts;
+    } catch (Exception e) {
+      LOG.error("Error retrieving bulk tag counts: {}", e.getMessage(), e);
+      return delegate.getTagCountsBulk(source, tagFQNs);
+    }
+  }
+
+  @Override
+  @Deprecated
+  public List<Map.Entry<String, Integer>> getTagCountsBulkComplex(
+      String sampleTagFQN,
+      int source,
+      String tagFQNHash,
+      String tagFQNHashPrefix,
+      List<String> tagFQNs) {
+    // Since this is deprecated, we'll delegate directly without caching
+    // This ensures backward compatibility while encouraging use of the newer method
+    return delegate.getTagCountsBulkComplex(
+        sampleTagFQN, source, tagFQNHash, tagFQNHashPrefix, tagFQNs);
+  }
 }
