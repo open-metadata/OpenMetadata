@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # since it helps us organize and isolate version management
 [project]
 name = "openmetadata_managed_apis"
-version = "1.8.3.0"
+version = "1.8.4.0"
 readme = "README.md"
 authors = [
     {name = "OpenMetadata Committers"}

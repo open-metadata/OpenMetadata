@@ -14,7 +14,7 @@ services:
   execute-migrate-all:
     container_name: execute_migrate_all
     command: "./bootstrap/openmetadata-ops.sh migrate"
-    image: docker.getcollate.io/openmetadata/server:1.8.3
+    image: docker.getcollate.io/openmetadata/server:1.8.4
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -231,7 +231,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: docker.getcollate.io/openmetadata/server:1.8.3
+    image: docker.getcollate.io/openmetadata/server:1.8.4
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
