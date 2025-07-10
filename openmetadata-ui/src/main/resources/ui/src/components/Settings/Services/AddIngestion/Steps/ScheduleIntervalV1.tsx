@@ -17,8 +17,8 @@ import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClockIcon } from '../../../../../assets/svg/clock.svg';
-import { ReactComponent as PlayIcon } from '../../../../../assets/svg/ic-play.svg';
+import { ReactComponent as ClockIcon } from '../../../../../assets/svg/calender-v1.svg';
+import { ReactComponent as PlayIcon } from '../../../../../assets/svg/trigger.svg';
 import {
   DAY_IN_MONTH_OPTIONS,
   DAY_OPTIONS,
@@ -189,8 +189,10 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
     return (
       <Card className="cron-expression-card">
-        <InfoCircleOutlined className="cron-expression-card-icon" />
-        <Typography.Text className="text-grey-muted">
+        <div className="cron-expression-card-icon">
+          <InfoCircleOutlined />
+        </div>
+        <Typography.Text className="expression-text">
           {cronStringValue}
         </Typography.Text>
       </Card>

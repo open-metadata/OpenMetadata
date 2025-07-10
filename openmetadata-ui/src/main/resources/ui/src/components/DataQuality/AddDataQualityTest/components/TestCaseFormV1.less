@@ -12,7 +12,8 @@
  */
 @import (reference) '../../../../styles/variables.less';
 
-.test-case-form-v1 {
+.test-case-form-v1,
+.bundle-suite-form {
   position: relative;
   min-height: 100vh;
   padding-bottom: 80px; // Space for fixed buttons
@@ -25,22 +26,22 @@
     }
   }
 
+  .ant-btn-icon-only.ant-btn-sm {
+    &.list-add-btn {
+      height: 24px;
+      width: 24px;
+      padding: 0;
+      border-radius: 4px;
+    }
+  }
+
   .form-switch-container {
     .ant-form-item-control-input {
       align-items: baseline;
     }
   }
 
-  .ant-form-item-label > label {
-    color: @grey-900;
-    font-weight: @font-medium;
-    font-size: @font-size-base;
-  }
-
-  .select-table-card,
-  .test-type-card,
-  .test-details-card,
-  .scheduler-card {
+  .form-card-section {
     background-color: @grey-26;
     border-radius: @border-radius-sm;
     margin-bottom: @size-mlg;
@@ -58,11 +59,6 @@
       }
     }
 
-    .ant-form-item-label > label {
-      color: @grey-800;
-      font-weight: @font-medium;
-      font-size: @font-size-base;
-    }
     .card-title-container {
       .card-title-text {
         color: @grey-700;
@@ -72,6 +68,13 @@
       .card-title-description {
         color: @grey-600;
         margin-bottom: @margin-mlg;
+      }
+    }
+    .schedule-interval-v1 {
+      .cron-expression-card {
+        .ant-card-body {
+          padding: @padding-xs;
+        }
       }
     }
   }
@@ -149,45 +152,6 @@
   }
 }
 
-// Edit Test Case Modal V1 styles
-.edit-test-case-form-v1 {
-  .test-case-info-card,
-  .test-parameters-card,
-  .test-metadata-card {
-    background-color: @grey-1;
-    border: 1px solid @grey-200;
-    border-radius: @border-radius-sm;
-    margin-bottom: @size-lg;
-
-    .ant-card-body {
-      padding: @size-sm @size-mlg @size-mlg;
-    }
-
-    .ant-form-item {
-      margin-bottom: @size-lg;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-    }
-
-    .ant-form-item-label > label {
-      color: @grey-800;
-      font-weight: @font-medium;
-      font-size: @font-size-base;
-    }
-  }
-
-  .block-editor-wrapper.block-editor-wrapper--bar-menu .om-block-editor {
-    background-color: @white;
-    max-height: 150px;
-  }
-
-  .block-editor-wrapper .om-block-editor > p:last-child {
-    padding-bottom: 130px;
-  }
-}
-
 // Drawer specific styles
 .drawer-form-content {
   .test-case-form-v1,
@@ -203,40 +167,5 @@
 
   .ant-space {
     width: auto;
-  }
-}
-
-// Custom gradient header for drawer
-.custom-gradient-drawer {
-  .ant-drawer-header {
-    background: linear-gradient(90deg, #e3f0fa 0%, #e6f3e6 100%);
-    border-bottom: 1px solid #f0f0f0;
-    padding: 24px 32px 16px 32px;
-  }
-  .custom-drawer-header {
-    background: none;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0;
-    .drawer-title {
-      font-size: 2rem;
-      font-weight: 600;
-      color: #232323;
-    }
-    .drawer-header-icons {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-      .drawer-icon {
-        font-size: 1.5rem;
-        color: #232323;
-        cursor: pointer;
-        transition: color 0.2s;
-        &:hover {
-          color: #1890ff;
-        }
-      }
-    }
   }
 }

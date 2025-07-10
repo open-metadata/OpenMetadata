@@ -13,7 +13,6 @@
 import { RightOutlined } from '@ant-design/icons';
 import {
   Button,
-  Card,
   Col,
   Dropdown,
   Form,
@@ -528,160 +527,158 @@ export const TestCases = () => {
   return (
     <Row data-testid="test-case-container" gutter={[16, 16]}>
       <Col span={24}>
-        <Card className="data-quality-filters-bar">
-          <Form<TestCaseSearchParams>
-            form={form}
-            layout="horizontal"
-            onValuesChange={handleFilterChange}>
-            <Space wrap align="center" className="w-full" size={16}>
-              <Form.Item noStyle name="selectedFilters">
-                <Dropdown
-                  menu={{
-                    items: filterMenu,
-                    selectedKeys: selectedFilter,
-                    onClick: handleMenuClick,
-                  }}
-                  trigger={['click']}>
-                  <Button
-                    ghost
-                    className="expand-btn"
-                    data-testid="advanced-filter"
-                    type="primary">
-                    {t('label.advanced')}
-                    <RightOutlined />
-                  </Button>
-                </Dropdown>
+        <Form<TestCaseSearchParams>
+          form={form}
+          layout="horizontal"
+          onValuesChange={handleFilterChange}>
+          <Space wrap align="center" className="w-full" size={16}>
+            <Form.Item noStyle name="selectedFilters">
+              <Dropdown
+                menu={{
+                  items: filterMenu,
+                  selectedKeys: selectedFilter,
+                  onClick: handleMenuClick,
+                }}
+                trigger={['click']}>
+                <Button
+                  ghost
+                  className="expand-btn"
+                  data-testid="advanced-filter"
+                  type="primary">
+                  {t('label.advanced')}
+                  <RightOutlined />
+                </Button>
+              </Dropdown>
+            </Form.Item>
+            {selectedFilter.includes(TEST_CASE_FILTERS.table) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.table')}
+                name="tableFqn">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="table-select-filter"
+                  loading={isOptionsLoading}
+                  options={tableOptions}
+                  placeholder={t('label.table')}
+                  onSearch={debounceFetchTableData}
+                />
               </Form.Item>
-              {selectedFilter.includes(TEST_CASE_FILTERS.table) && (
-                <Form.Item
-                  className="m-0 w-80"
-                  label={t('label.table')}
-                  name="tableFqn">
-                  <Select
-                    allowClear
-                    showSearch
-                    data-testid="table-select-filter"
-                    loading={isOptionsLoading}
-                    options={tableOptions}
-                    placeholder={t('label.table')}
-                    onSearch={debounceFetchTableData}
-                  />
-                </Form.Item>
-              )}
-              {selectedFilter.includes(TEST_CASE_FILTERS.platform) && (
-                <Form.Item
-                  className="m-0 w-min-20"
-                  label={t('label.platform')}
-                  name="testPlatforms">
-                  <Select
-                    allowClear
-                    data-testid="platform-select-filter"
-                    mode="multiple"
-                    options={TEST_CASE_PLATFORM_OPTION}
-                    placeholder={t('label.platform')}
-                  />
-                </Form.Item>
-              )}
-              {selectedFilter.includes(TEST_CASE_FILTERS.type) && (
-                <Form.Item
-                  className="m-0 w-40"
-                  label={t('label.type')}
-                  name="testCaseType">
-                  <Select
-                    allowClear
-                    data-testid="test-case-type-select-filter"
-                    options={TEST_CASE_TYPE_OPTION}
-                    placeholder={t('label.type')}
-                  />
-                </Form.Item>
-              )}
-              {selectedFilter.includes(TEST_CASE_FILTERS.status) && (
-                <Form.Item
-                  className="m-0 w-40"
-                  label={t('label.status')}
-                  name="testCaseStatus">
-                  <Select
-                    allowClear
-                    data-testid="status-select-filter"
-                    options={TEST_CASE_STATUS_OPTION}
-                    placeholder={t('label.status')}
-                  />
-                </Form.Item>
-              )}
-              {selectedFilter.includes(TEST_CASE_FILTERS.lastRun) && (
-                <Form.Item
-                  className="m-0"
-                  label={t('label.last-run')}
-                  name="lastRunRange"
-                  trigger="handleDateRangeChange"
-                  valuePropName="defaultDateRange">
-                  <DatePickerMenu showSelectedCustomRange />
-                </Form.Item>
-              )}
-              {selectedFilter.includes(TEST_CASE_FILTERS.tags) && (
-                <Form.Item
-                  className="m-0 w-80"
-                  label={t('label.tag-plural')}
-                  name="tags">
-                  <Select
-                    allowClear
-                    showSearch
-                    data-testid="tags-select-filter"
-                    loading={isOptionsLoading}
-                    mode="multiple"
-                    options={tagOptions}
-                    placeholder={t('label.tag-plural')}
-                    onSearch={debounceFetchTagOptions}
-                  />
-                </Form.Item>
-              )}
-              {selectedFilter.includes(TEST_CASE_FILTERS.tier) && (
-                <Form.Item
-                  className="m-0 w-40"
-                  label={t('label.tier')}
-                  name="tier">
-                  <Select
-                    allowClear
-                    showSearch
-                    data-testid="tier-select-filter"
-                    options={tierOptions}
-                    placeholder={t('label.tier')}
-                  />
-                </Form.Item>
-              )}
-              {selectedFilter.includes(TEST_CASE_FILTERS.service) && (
-                <Form.Item
-                  className="m-0 w-80"
-                  label={t('label.service')}
-                  name="serviceName">
-                  <Select
-                    allowClear
-                    showSearch
-                    data-testid="service-select-filter"
-                    loading={isOptionsLoading}
-                    options={serviceOptions}
-                    placeholder={t('label.service')}
-                    onSearch={debounceFetchServiceOptions}
-                  />
-                </Form.Item>
-              )}
-              {selectedFilter.includes(TEST_CASE_FILTERS.dimension) && (
-                <Form.Item
-                  className="m-0 w-80"
-                  label={t('label.dimension')}
-                  name="dataQualityDimension">
-                  <Select
-                    allowClear
-                    showSearch
-                    data-testid="dimension-select-filter"
-                    options={TEST_CASE_DIMENSIONS_OPTION}
-                    placeholder={t('label.dimension')}
-                  />
-                </Form.Item>
-              )}
-            </Space>
-          </Form>
-        </Card>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.platform) && (
+              <Form.Item
+                className="m-0 w-min-20"
+                label={t('label.platform')}
+                name="testPlatforms">
+                <Select
+                  allowClear
+                  data-testid="platform-select-filter"
+                  mode="multiple"
+                  options={TEST_CASE_PLATFORM_OPTION}
+                  placeholder={t('label.platform')}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.type) && (
+              <Form.Item
+                className="m-0 w-40"
+                label={t('label.type')}
+                name="testCaseType">
+                <Select
+                  allowClear
+                  data-testid="test-case-type-select-filter"
+                  options={TEST_CASE_TYPE_OPTION}
+                  placeholder={t('label.type')}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.status) && (
+              <Form.Item
+                className="m-0 w-40"
+                label={t('label.status')}
+                name="testCaseStatus">
+                <Select
+                  allowClear
+                  data-testid="status-select-filter"
+                  options={TEST_CASE_STATUS_OPTION}
+                  placeholder={t('label.status')}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.lastRun) && (
+              <Form.Item
+                className="m-0"
+                label={t('label.last-run')}
+                name="lastRunRange"
+                trigger="handleDateRangeChange"
+                valuePropName="defaultDateRange">
+                <DatePickerMenu showSelectedCustomRange size="small" />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.tags) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.tag-plural')}
+                name="tags">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="tags-select-filter"
+                  loading={isOptionsLoading}
+                  mode="multiple"
+                  options={tagOptions}
+                  placeholder={t('label.tag-plural')}
+                  onSearch={debounceFetchTagOptions}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.tier) && (
+              <Form.Item
+                className="m-0 w-40"
+                label={t('label.tier')}
+                name="tier">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="tier-select-filter"
+                  options={tierOptions}
+                  placeholder={t('label.tier')}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.service) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.service')}
+                name="serviceName">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="service-select-filter"
+                  loading={isOptionsLoading}
+                  options={serviceOptions}
+                  placeholder={t('label.service')}
+                  onSearch={debounceFetchServiceOptions}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.dimension) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.dimension')}
+                name="dataQualityDimension">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="dimension-select-filter"
+                  options={TEST_CASE_DIMENSIONS_OPTION}
+                  placeholder={t('label.dimension')}
+                />
+              </Form.Item>
+            )}
+          </Space>
+        </Form>
       </Col>
       <Col span={24}>
         <PieChartSummaryPanel

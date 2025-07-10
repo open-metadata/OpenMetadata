@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Card,
   Col,
   Form,
   Radio,
@@ -300,25 +299,23 @@ export const TestSuites = () => {
   return (
     <Row data-testid="test-suite-container" gutter={[16, 16]}>
       <Col span={24}>
-        <Card className="data-quality-filters-bar">
-          <Form layout="inline">
-            <Space align="center" className="w-full justify-between" size={16}>
-              <Form.Item className="m-0" label={t('label.owner')} name="owner">
-                <UserTeamSelectableList
-                  hasPermission
-                  owner={selectedOwner}
-                  onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
-                  <Select
-                    data-testid="owner-select-filter"
-                    open={false}
-                    placeholder={t('label.owner')}
-                    value={ownerFilterValue}
-                  />
-                </UserTeamSelectableList>
-              </Form.Item>
-            </Space>
-          </Form>
-        </Card>
+        <Form layout="inline">
+          <Space align="center" className="w-full justify-between" size={16}>
+            <Form.Item className="m-0" label={t('label.owner')} name="owner">
+              <UserTeamSelectableList
+                hasPermission
+                owner={selectedOwner}
+                onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
+                <Select
+                  data-testid="owner-select-filter"
+                  open={false}
+                  placeholder={t('label.owner')}
+                  value={ownerFilterValue}
+                />
+              </UserTeamSelectableList>
+            </Form.Item>
+          </Space>
+        </Form>
       </Col>
 
       <Col span={24}>

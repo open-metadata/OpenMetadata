@@ -29,6 +29,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../constants/Schedular.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
@@ -55,6 +56,7 @@ import {
 import {
   getNameFromFQN,
   replaceAllSpacialCharWith_,
+  Transi18next,
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields } from '../../../utils/formUtils';
@@ -62,13 +64,14 @@ import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import AlertBar from '../../AlertBar/AlertBar';
 import ScheduleIntervalV1 from '../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
+import '../AddDataQualityTest/components/TestCaseFormV1.less';
 import { AddTestCaseList } from '../AddTestCaseList/AddTestCaseList.component';
 import {
   BundleSuiteFormData,
   BundleSuiteFormProps,
 } from './BundleSuiteForm.interface';
-import './BundleSuiteForm.less';
 
 // =============================================
 // MAIN COMPONENT
@@ -312,7 +315,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
 
   const renderActionButtons = (
     <Space size={16}>
-      <Button data-testid="cancel-button" onClick={handleCancel}>
+      <Button data-testid="cancel-button" type="link" onClick={handleCancel}>
         {t('label.cancel')}
       </Button>
       <Button
@@ -337,6 +340,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         className
       )}>
       <Form
+        className="new-form-style"
         form={form}
         id="bundle-suite-form"
         initialValues={{
@@ -354,13 +358,13 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         )}
 
         {/* Basic Information */}
-        <Card className="basic-info-card" data-testid="basic-info-card">
+        <Card className="form-card-section" data-testid="basic-info-card">
           {generateFormFields(basicInfoFormFields)}
         </Card>
 
         {/* Test Case Selection */}
         <Card
-          className="test-case-selection-card"
+          className="form-card-section"
           data-testid="test-case-selection-card">
           <Form.Item
             label={t('label.test-case-plural')}
@@ -381,52 +385,81 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
           </Form.Item>
         </Card>
 
-        {/* Scheduler - Always Visible */}
-        <Card className="scheduler-card" data-testid="scheduler-card">
-          <div className="card-title">
-            {t('label.schedule-for-entity', {
-              entity: t('label.test-suite'),
-            })}
-          </div>
+        <Row gutter={[20, 20]}>
+          <Col span={24}>
+            <AlertBar
+              className="h-full custom-alert-description"
+              message={
+                <Transi18next
+                  i18nKey="message.entity-pipeline-information"
+                  renderElement={<strong />}
+                  values={{
+                    entity: t('label.test-suite-lowercase'),
+                  }}
+                />
+              }
+              type="grey-info"
+            />
+          </Col>
+          <Col span={24}>
+            {/* Scheduler - Always Visible */}
+            <Card className="form-card-section" data-testid="scheduler-card">
+              <div className="card-title-container">
+                <Typography.Paragraph className="card-title-text">
+                  {t('label.create-entity', {
+                    entity: t('label.pipeline'),
+                  })}
+                </Typography.Paragraph>
+                <Typography.Paragraph className="card-title-description">
+                  {t('message.pipeline-entity-description', {
+                    entity: t('label.test-suite'),
+                  })}
+                </Typography.Paragraph>
+              </div>
 
-          {generateFormFields(schedulerFormFields)}
+              {generateFormFields(schedulerFormFields)}
 
-          <Form.Item label={t('label.schedule-interval')} name="cron">
-            <ScheduleIntervalV1 includePeriodOptions={schedulerOptions} />
-          </Form.Item>
+              <Form.Item label={t('label.schedule-interval')} name="cron">
+                <ScheduleIntervalV1
+                  entity={t('label.test-suite')}
+                  includePeriodOptions={schedulerOptions}
+                />
+              </Form.Item>
 
-          {/* Debug Log and Raise on Error switches */}
-          <div style={{ marginTop: '24px' }}>
-            <Row gutter={[24, 16]}>
-              <Col span={12}>
-                <div className="d-flex justify-between align-center">
-                  <Typography.Text className="font-medium">
-                    {t('label.enable-debug-log')}
-                  </Typography.Text>
-                  <Form.Item
-                    name="enableDebugLog"
-                    style={{ marginBottom: 0 }}
-                    valuePropName="checked">
-                    <Switch />
-                  </Form.Item>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div className="d-flex justify-between align-center">
-                  <Typography.Text className="font-medium">
-                    {t('label.raise-on-error')}
-                  </Typography.Text>
-                  <Form.Item
-                    name="raiseOnError"
-                    style={{ marginBottom: 0 }}
-                    valuePropName="checked">
-                    <Switch />
-                  </Form.Item>
-                </div>
-              </Col>
-            </Row>
-          </div>
-        </Card>
+              {/* Debug Log and Raise on Error switches */}
+              <div className="m-t-md">
+                <Row gutter={[24, 16]}>
+                  <Col span={12}>
+                    <div className="d-flex gap-2">
+                      <Form.Item
+                        className="form-switch-container m-b-0"
+                        name="enableDebugLog"
+                        valuePropName="checked">
+                        <Switch />
+                      </Form.Item>
+                      <Typography.Paragraph className="font-medium m-0">
+                        {t('label.enable-debug-log')}
+                      </Typography.Paragraph>
+                    </div>
+                  </Col>
+                  <Col span={12}>
+                    <div className="d-flex gap-2">
+                      <Form.Item
+                        className="form-switch-container m-b-0"
+                        name="raiseOnError"
+                        valuePropName="checked">
+                        <Switch />
+                      </Form.Item>
+                      <Typography.Paragraph className="font-medium m-0">
+                        {t('label.raise-on-error')}
+                      </Typography.Paragraph>
+                    </div>
+                  </Col>
+                </Row>
+              </div>
+            </Card>
+          </Col>
+        </Row>
       </Form>
 
       {!isDrawer && (
@@ -443,7 +476,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
     return (
       <Drawer
         destroyOnClose
-        className="custom-gradient-drawer"
+        className="custom-drawer-style"
         closable={false}
         footer={drawerFooter}
         maskClosable={false}
@@ -453,6 +486,14 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
           entity: t('label.bundle-suite'),
         })}
         {...drawerProps}
+        extra={
+          <Button
+            className="drawer-close-icon flex-center"
+            icon={<CloseIcon />}
+            type="link"
+            onClick={onCancel}
+          />
+        }
         onClose={onCancel}>
         <div className="drawer-form-content">{formContent}</div>
       </Drawer>

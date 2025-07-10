@@ -18,6 +18,7 @@ import { compare } from 'fast-json-patch';
 import { isArray, isEmpty, isEqual, pick } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -356,28 +357,30 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
   // =============================================
   // RENDER
   // =============================================
-  const renderActionButtons = () => (
-    <Space size={16}>
-      <Button
-        data-testid="cancel-btn"
-        disabled={isLoadingOnSave}
-        size="large"
-        onClick={() => {
-          form.resetFields();
-          onCancel();
-        }}>
-        {t('label.cancel')}
-      </Button>
-      <Button
-        data-testid="update-btn"
-        htmlType="submit"
-        loading={isLoadingOnSave}
-        size="large"
-        type="primary"
-        onClick={() => form.submit()}>
-        {t('label.update')}
-      </Button>
-    </Space>
+  const renderActionButtons = useMemo(
+    () => (
+      <Space size={16}>
+        <Button
+          data-testid="cancel-btn"
+          disabled={isLoadingOnSave}
+          type="link"
+          onClick={() => {
+            form.resetFields();
+            onCancel();
+          }}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          data-testid="update-btn"
+          htmlType="submit"
+          loading={isLoadingOnSave}
+          type="primary"
+          onClick={() => form.submit()}>
+          {t('label.update')}
+        </Button>
+      </Space>
+    ),
+    [isLoadingOnSave]
   );
 
   const formContent = (
@@ -389,13 +392,14 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
       ) : (
         <div className="test-case-form-v1 drawer-mode">
           <Form
+            className="new-form-style"
             data-testid="edit-test-form"
             form={form}
             layout="vertical"
             name="tableTestForm"
             onFinish={handleFormSubmit}>
             {!showOnlyParameter && (
-              <Card className="select-table-card">
+              <Card className="form-card-section">
                 <Form.Item required label={t('label.table')} name="table">
                   <Input disabled />
                 </Form.Item>
@@ -408,7 +412,36 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
             )}
 
             {!showOnlyParameter && (
-              <Card className="test-type-card">
+              <Card className="form-card-section">
+                <Form.Item
+                  required
+                  label={t('label.name')}
+                  name="name"
+                  rules={[
+                    {
+                      pattern: ENTITY_NAME_REGEX,
+                      message: t('message.entity-name-validation'),
+                    },
+                  ]}>
+                  <Input
+                    disabled
+                    placeholder={t('message.enter-test-case-name')}
+                  />
+                </Form.Item>
+
+                <Form.Item label={t('label.display-name')} name="displayName">
+                  <Input placeholder={t('message.enter-test-case-name')} />
+                </Form.Item>
+
+                {generateFormFields(formFields)}
+
+                {isComputeRowCountFieldVisible &&
+                  generateFormFields(computeRowCountField)}
+              </Card>
+            )}
+
+            {!showOnlyParameter && (
+              <Card className="form-card-section">
                 <Form.Item
                   required
                   label={t('label.test-entity', {
@@ -442,35 +475,6 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
               </Card>
             )}
 
-            {!showOnlyParameter && (
-              <Card className="test-details-card">
-                <Form.Item
-                  required
-                  label={t('label.name')}
-                  name="name"
-                  rules={[
-                    {
-                      pattern: ENTITY_NAME_REGEX,
-                      message: t('message.entity-name-validation'),
-                    },
-                  ]}>
-                  <Input
-                    disabled
-                    placeholder={t('message.enter-test-case-name')}
-                  />
-                </Form.Item>
-
-                <Form.Item label={t('label.display-name')} name="displayName">
-                  <Input placeholder={t('message.enter-test-case-name')} />
-                </Form.Item>
-
-                {generateFormFields(formFields)}
-
-                {isComputeRowCountFieldVisible &&
-                  generateFormFields(computeRowCountField)}
-              </Card>
-            )}
-
             {/* Show params and dynamic assertion fields outside cards when showOnlyParameter is true */}
             {showOnlyParameter && (
               <>
@@ -501,13 +505,13 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
   );
 
   const drawerFooter = (
-    <div className="drawer-footer-actions">{renderActionButtons()}</div>
+    <div className="drawer-footer-actions">{renderActionButtons}</div>
   );
 
   return (
     <Drawer
       destroyOnClose
-      className="custom-gradient-drawer"
+      className="custom-drawer-style"
       closable={false}
       footer={drawerFooter}
       maskClosable={false}
@@ -516,12 +520,20 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
       size="large"
       title={
         <label data-testid="edit-test-case-drawer-title">
-          {`${t('label.edit-entity', {
+          {t('label.edit-entity', {
             entity: getEntityName(testCase),
-          })}`}
+          })}
         </label>
       }
       {...drawerProps}
+      extra={
+        <Button
+          className="drawer-close-icon flex-center"
+          icon={<CloseIcon />}
+          type="link"
+          onClick={onCancel}
+        />
+      }
       onClose={() => {
         form.resetFields();
         onCancel();

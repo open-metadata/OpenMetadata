@@ -33,6 +33,7 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, isEqual, isString, snakeCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
 import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
 import {
@@ -517,7 +518,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         <Button
           data-testid="cancel-btn"
           disabled={isFormLoading}
-          size="large"
+          type="link"
           onClick={handleCancel}>
           {t('label.cancel')}
         </Button>
@@ -525,7 +526,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           data-testid="create-btn"
           htmlType="submit"
           loading={isFormLoading}
-          size="large"
           type="primary"
           onClick={() => form.submit()}>
           {t('label.create')}
@@ -984,7 +984,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         preserve={false}
         onFinish={handleSubmit}
         onValuesChange={handleValuesChange}>
-        <Card className="select-table-card" data-testid="select-table-card">
+        <Card className="form-card-section" data-testid="select-table-card">
           <Form.Item
             label="Select on which element your test should be performed"
             name="testLevel"
@@ -1021,14 +1021,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           )}
         </Card>
 
-        <Card className="test-details-card" data-testid="test-details-card">
+        <Card className="form-card-section" data-testid="test-details-card">
           {generateFormFields(testDetailsFormFields)}
 
           {isComputeRowCountFieldVisible &&
             generateFormFields(computeRowCountField)}
         </Card>
 
-        <Card className="test-type-card" data-testid="test-type-card">
+        <Card className="form-card-section" data-testid="test-type-card">
           <Form.Item
             label="Type"
             name="testTypeId"
@@ -1064,15 +1064,18 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           </Form.Item>
         </Card>
 
-        {(true || shouldShowScheduler) && (
+        {shouldShowScheduler && (
           <Row gutter={[20, 20]}>
             <Col span={24}>
               <AlertBar
                 className="h-full custom-alert-description"
                 message={
                   <Transi18next
-                    i18nKey="message.test-case-pipeline-information"
+                    i18nKey="message.entity-pipeline-information"
                     renderElement={<strong />}
+                    values={{
+                      entity: t('label.test-case-lowercase'),
+                    }}
                   />
                 }
                 type="grey-info"
@@ -1080,7 +1083,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             </Col>
 
             <Col span={24}>
-              <Card className="scheduler-card" data-testid="scheduler-card">
+              <Card className="form-card-section" data-testid="scheduler-card">
                 <div className="card-title-container">
                   <Typography.Paragraph className="card-title-text">
                     {t('label.create-entity', {
@@ -1149,14 +1152,13 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 </Form.Item>
 
                 {/* Debug Log and Raise on Error switches */}
-                <div style={{ marginTop: '24px' }}>
+                <div className="m-t-md">
                   <Row gutter={[24, 16]}>
                     <Col span={12}>
                       <div className="d-flex gap-2">
                         <Form.Item
-                          className="form-switch-container"
+                          className="form-switch-container m-b-0"
                           name="enableDebugLog"
-                          style={{ marginBottom: 0 }}
                           valuePropName="checked">
                           <Switch />
                         </Form.Item>
@@ -1168,9 +1170,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                     <Col span={12}>
                       <div className="d-flex gap-2">
                         <Form.Item
-                          className="form-switch-container"
+                          className="form-switch-container m-b-0"
                           name="raiseOnError"
-                          style={{ marginBottom: 0 }}
                           valuePropName="checked">
                           <Switch />
                         </Form.Item>
@@ -1201,7 +1202,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     return (
       <Drawer
         destroyOnClose
-        className="custom-gradient-drawer"
+        className="custom-drawer-style"
         closable={false}
         footer={drawerFooter}
         maskClosable={false}
@@ -1211,6 +1212,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           entity: t('label.test-case'),
         })}
         {...drawerProps}
+        extra={
+          <Button
+            className="drawer-close-icon flex-center"
+            icon={<CloseIcon />}
+            type="link"
+            onClick={onCancel}
+          />
+        }
         onClose={onCancel}>
         <div className="drawer-form-content">{formContent}</div>
       </Drawer>
