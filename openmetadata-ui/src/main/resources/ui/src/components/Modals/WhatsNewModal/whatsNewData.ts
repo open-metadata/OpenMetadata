@@ -1092,7 +1092,7 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
     description: 'Released on 10th July 2025.',
     features: [],
     changeLogs: {
-      Improvements: `- Renamed confusing labels in the UI.
+      Improvements: `- Improve tab labels for better readability.
 - Improved German ui translations.`,
       Fixes: `- Databricks default schema issue.
 - Fix ElasticSearchSink and OpenSearchSink.
