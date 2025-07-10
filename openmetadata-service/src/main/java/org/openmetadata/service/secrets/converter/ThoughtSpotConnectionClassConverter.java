@@ -11,17 +11,12 @@
  *  limitations under the License.
  */
 
-
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-
-
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection;
 import org.openmetadata.schema.services.connections.dashboard.thoughtspot.ApiTokenAuthentication;
-
-
 import org.openmetadata.schema.services.connections.dashboard.thoughtspot.BearerTokenAuthentication;
 import org.openmetadata.schema.utils.JsonUtils;
 
