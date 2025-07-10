@@ -81,6 +81,19 @@ export const visitEntityPageWithCustomSearchBox = async (data: {
 }) => {
   const { page, searchTerm, dataTestId } = data;
   await page.waitForLoadState('networkidle');
+
+  // Wait for welcome screen and close it if visible
+  const isWelcomeScreenVisible = await page
+    .waitForSelector('[data-testid="welcome-screen-img"]', {
+      state: 'visible',
+      timeout: 5000,
+    })
+    .catch(() => false);
+
+  if (isWelcomeScreenVisible) {
+    await page.getByTestId('welcome-screen-close-btn').click();
+  }
+
   const waitForSearchResponse = page.waitForResponse(
     '/api/v1/search/query?q=*index=dataAsset*'
   );
