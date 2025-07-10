@@ -12,7 +12,7 @@
  */
 package org.openmetadata.service.security.saml;
 
-
+import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
@@ -23,7 +23,6 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
-import io.micrometer.core.instrument.Metrics;
 
 /**
  * This is OMMicrometerHttpFilter is similar to MicrometerHttpFilter with support to handle OM Servlets, and provide
@@ -50,11 +49,11 @@ public class OMMicrometerHttpFilter implements Filter {
     chain.doFilter(request, response);
     double elapsed = (System.nanoTime() - startTime) / 1.0E9;
     String requestMethod = ((HttpServletRequest) request).getMethod();
-    
+
     // Record using Micrometer API
     Timer httpTimer = Metrics.timer("http_server_requests_sec", "method", requestMethod);
-    httpTimer.record((long)(elapsed * 1000), java.util.concurrent.TimeUnit.MILLISECONDS);
-    
+    httpTimer.record((long) (elapsed * 1000), java.util.concurrent.TimeUnit.MILLISECONDS);
+
     // Record latency metric
     timer.stop(Metrics.timer("http_latency_requests_seconds"));
   }

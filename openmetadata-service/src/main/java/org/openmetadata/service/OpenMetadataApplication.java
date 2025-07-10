@@ -682,6 +682,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig);
       environment.jersey().register(eventFilter);
     }
+
+    // Register metrics request filter for tracking request latencies
+    environment.jersey().register(org.openmetadata.service.monitoring.MetricsRequestFilter.class);
   }
 
   private void registerUserActivityTracking(Environment environment) {
