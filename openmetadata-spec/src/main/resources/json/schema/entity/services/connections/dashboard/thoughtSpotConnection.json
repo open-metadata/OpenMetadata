@@ -75,8 +75,7 @@
         "title": "Host and Port",
         "description": "ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud",
         "type": "string",
-        "format": "uri",
-        "default": "https://localhost"
+        "format": "uri"
       },
       "authentication": {
         "title": "Authentication",

@@ -24,7 +24,6 @@ import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
-import org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
@@ -86,7 +85,6 @@ public final class ClassConverterFactory {
             Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
             Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
-            Map.entry(ThoughtSpotConnection.class, new ThoughtSpotConnectionClassConverter()),
             Map.entry(SalesforceConnection.class, new SalesforceConnectorClassConverter()),
             Map.entry(
                 TestServiceConnectionRequest.class,
