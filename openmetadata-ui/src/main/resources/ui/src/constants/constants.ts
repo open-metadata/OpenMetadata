@@ -275,6 +275,8 @@ export const ROUTES = {
   CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+  CHART_DETAILS: `/chart/${PLACEHOLDER_ROUTE_FQN}`,
+  CHART_DETAILS_WITH_TAB: `/chart/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // Observability
   OBSERVABILITY: '/observability',

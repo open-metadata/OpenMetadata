@@ -19,6 +19,7 @@ import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import {
@@ -35,6 +36,7 @@ import { updateChart } from '../../../rest/chartAPI';
 import { fetchCharts } from '../../../utils/DashboardDetailsUtils';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getChartDetailsPath } from '../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
@@ -276,20 +278,22 @@ export const DashboardChartTable = ({
         render: (_, record) => {
           const chartName = getEntityName(record);
 
-          return record.sourceUrl ? (
+          return (
             <div className="d-flex items-center">
-              <Typography.Link href={record.sourceUrl} target="_blank">
+              <Link to={getChartDetailsPath(record.fullyQualifiedName)}>
                 <span className="break-all">{chartName}</span>
+              </Link>
 
-                <Icon
-                  className="m-l-xs flex-none align-middle"
-                  component={ExternalLinkIcon}
-                  style={DATA_ASSET_ICON_DIMENSION}
-                />
-              </Typography.Link>
+              {record.sourceUrl && (
+                <Typography.Link href={record.sourceUrl} target="_blank">
+                  <Icon
+                    className="m-l-xs flex-none align-middle"
+                    component={ExternalLinkIcon}
+                    style={DATA_ASSET_ICON_DIMENSION}
+                  />
+                </Typography.Link>
+              )}
             </div>
-          ) : (
-            <Typography.Text className="w-full">{chartName}</Typography.Text>
           );
         },
       },
