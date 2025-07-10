@@ -113,7 +113,9 @@ export const visitEntityPageWithCustomSearchBox = async (data: {
 
   // First try to click on data-name if it exists
   const dataNameElement = entityElement.getByTestId('data-name');
-  const dataNameExists = await dataNameElement.isVisible().catch(() => false);
+  const dataNameExists = await dataNameElement
+    .isVisible({ timeout: 5000 })
+    .catch(() => false);
 
   if (dataNameExists) {
     await dataNameElement.click();

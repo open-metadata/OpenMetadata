@@ -485,7 +485,7 @@ export class EntityClass {
   async followUnfollowEntity(page: Page, entity: string) {
     await followEntity(page, this.endpoint);
     await validateFollowedEntityToWidget(page, entity, true);
-    await this.visitEntityPage(page);
+    await this.visitEntityPageWithCustomSearchBox(page);
     await unFollowEntity(page, this.endpoint);
     await validateFollowedEntityToWidget(page, entity, false);
   }
