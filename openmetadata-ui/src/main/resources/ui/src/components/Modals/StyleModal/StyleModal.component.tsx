@@ -28,8 +28,6 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
     try {
       setSaving(true);
       await onSubmit(omit(value, 'colorInput'));
-    } catch (err) {
-      // Error is handled in parent component
     } finally {
       setSaving(false);
     }

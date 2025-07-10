@@ -140,7 +140,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       });
 
       setTestCases(data);
-    } catch (error) {
+    } catch {
       setTestCases([]);
     }
   };

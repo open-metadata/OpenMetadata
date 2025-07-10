@@ -76,7 +76,7 @@ const AddKPIPage = () => {
       });
 
       setKpiList(response.data);
-    } catch (err) {
+    } catch {
       setKpiList([]);
     }
   };

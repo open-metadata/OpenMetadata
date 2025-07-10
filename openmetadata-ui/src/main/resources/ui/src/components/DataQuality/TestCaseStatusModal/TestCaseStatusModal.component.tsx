@@ -175,7 +175,7 @@ export const TestCaseStatusModal = ({
         EntityType.USER
       );
       setUsersList(filterData);
-    } catch (error) {
+    } catch {
       setUsersList([]);
     }
   }, []);

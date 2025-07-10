@@ -96,8 +96,6 @@ export const AddTestCaseList = ({
             : (prevItems) => [...prevItems, ...testCaseResponse.data]
         );
         setPageNumber(page);
-      } catch (_) {
-        // Nothing here
       } finally {
         setIsLoading(false);
       }
