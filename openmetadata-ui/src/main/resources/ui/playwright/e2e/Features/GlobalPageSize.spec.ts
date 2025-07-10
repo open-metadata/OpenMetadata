@@ -10,41 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
-
-const adminUser = new UserClass();
-
-const test = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-});
+import { test } from '../fixtures/pages';
 
 test.describe('Table & Data Model columns table pagination', () => {
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
-
-    await afterAction();
-  });
-
-  test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-
-    await afterAction();
-  });
-
-  test('Page size should persist across different pages', async ({ page }) => {
+  test('Page size should persist across different pages', async ({
+    dataConsumerPage: page,
+  }) => {
     await page.goto(
       '/table/sample_data.ecommerce_db.shopify.performance_test_table'
     );

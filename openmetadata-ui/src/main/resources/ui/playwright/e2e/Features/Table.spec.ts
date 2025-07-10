@@ -10,35 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
-import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { getFirstRowColumnLink } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
-const adminUser = new UserClass();
-
-const test = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-});
 
 test.slow(true);
 
 test.describe('Table pagination sorting search scenarios ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
-
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
     await table1.create(apiContext);
 
     for (let i = 0; i < 17; i++) {
@@ -50,18 +37,18 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
   test.afterAll('Clean up', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
-
-    await adminUser.delete(apiContext);
     await table1.delete(apiContext);
 
     await afterAction();
   });
 
-  test.beforeEach('Visit home page', async ({ page }) => {
+  test.beforeEach('Visit home page', async ({ dataConsumerPage: page }) => {
     await redirectToHomePage(page);
   });
 
-  test('Table pagination with sorting should works', async ({ page }) => {
+  test('Table pagination with sorting should works', async ({
+    dataConsumerPage: page,
+  }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     const listTestCaseResponse = page.waitForResponse(
@@ -77,7 +64,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
     expect(await page.locator('.ant-table-row').count()).toBe(15);
   });
 
-  test('Table search with sorting should works', async ({ page }) => {
+  test('Table search with sorting should works', async ({
+    dataConsumerPage: page,
+  }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="by-test-cases"]');
@@ -88,7 +77,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
   });
 
-  test('Table filter with sorting should works', async ({ page }) => {
+  test('Table filter with sorting should works', async ({
+    dataConsumerPage: page,
+  }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.waitForLoadState('networkidle');
@@ -118,13 +109,15 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
   });
 
-  test('Table page should show schema tab with count', async ({ page }) => {
+  test('Table page should show schema tab with count', async ({
+    dataConsumerPage: page,
+  }) => {
     await table1.visitEntityPage(page);
 
     await expect(page.getByRole('tab', { name: 'Columns' })).toContainText('4');
   });
 
-  test('should persist current page', async ({ page }) => {
+  test('should persist current page', async ({ dataConsumerPage: page }) => {
     await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -193,7 +186,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     expect(pageIndicatorAfterSecondBack).toBe(initialPageIndicator);
   });
 
-  test('should persist page size', async ({ page }) => {
+  test('should persist page size', async ({ dataConsumerPage: page }) => {
     await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
     await page.waitForLoadState('networkidle');
 
@@ -246,24 +239,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
 });
 
 test.describe('Table & Data Model columns table pagination', () => {
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
-
-    await afterAction();
-  });
-
-  test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-
-    await adminUser.delete(apiContext);
-
-    await afterAction();
-  });
-
-  test('pagination for table column should work', async ({ page }) => {
+  test('pagination for table column should work', async ({
+    dataConsumerPage: page,
+  }) => {
     await page.goto(
       '/table/sample_data.ecommerce_db.shopify.performance_test_table'
     );
@@ -321,7 +299,7 @@ test.describe('Table & Data Model columns table pagination', () => {
   });
 
   test('pagination for dashboard data model columns should work', async ({
-    page,
+    dataConsumerPage: page,
   }) => {
     await page.goto(
       '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'

@@ -17,7 +17,11 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  pagingObject,
+} from '../../constants/constants';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
 import { useCurrentUserPreferences } from '../currentUserStore/useCurrentUserStore';
@@ -112,7 +116,10 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
   );
 
   const paginationVisible = useMemo(() => {
-    return paging.total > pageSize || pageSize !== processedPageSize;
+    return (
+      paging.total > pageSize ||
+      pageSize !== (defaultPageSize ?? PAGE_SIZE_BASE)
+    );
   }, [processedPageSize, paging, pageSize]);
 
   const handlePageChange = useCallback(

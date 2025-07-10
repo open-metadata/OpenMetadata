@@ -10,41 +10,44 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
+import { redirectToHomePage } from '../../utils/common';
+import { test } from '../fixtures/pages';
 
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
-
+const user = new UserClass();
 const container = new ContainerClass();
 
 test.slow(true);
 
 test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
+    const { afterAction, apiContext } = await performAdminLogin(browser);
 
+    await user.create(apiContext);
     await container.create(apiContext, CONTAINER_CHILDREN);
 
     await afterAction();
   });
 
   test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
+    const { afterAction, apiContext } = await performAdminLogin(browser);
 
-    await container.delete(apiContext);
+    await user.delete(apiContext);
+    // await container.delete(apiContext);
 
     await afterAction();
   });
 
-  test.beforeEach('Visit home page', async ({ page }) => {
+  test.beforeEach('Visit home page', async ({ dataConsumerPage: page }) => {
     await redirectToHomePage(page);
   });
 
   test('Container page should show Schema and Children count', async ({
-    page,
+    dataConsumerPage: page,
   }) => {
     await container.visitEntityPage(page);
 
@@ -54,7 +57,9 @@ test.describe('Container entity specific tests ', () => {
     ).toBeVisible();
   });
 
-  test('Container page children pagination', async ({ page }) => {
+  test('Container page children pagination', async ({
+    dataConsumerPage: page,
+  }) => {
     await container.visitEntityPage(page);
 
     await page.getByText('Children').click();
