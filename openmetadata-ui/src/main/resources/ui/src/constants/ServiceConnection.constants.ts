@@ -32,6 +32,7 @@ export const FILTER_PATTERN_BY_SERVICE_TYPE = {
     ServiceConnectionFilterPatternFields.DATABASE_FILTER_PATTERN,
     ServiceConnectionFilterPatternFields.SCHEMA_FILTER_PATTERN,
     ServiceConnectionFilterPatternFields.TABLE_FILTER_PATTERN,
+    ServiceConnectionFilterPatternFields.STORED_PROCEDURE_FILTER_PATTERN,
     ServiceConnectionFilterPatternFields.CLASSIFICATION_FILTER_PATTERN,
   ],
   [EntityType.MESSAGING_SERVICE]: [
