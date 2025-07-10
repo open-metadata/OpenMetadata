@@ -198,6 +198,10 @@ export interface Connection {
      */
     authorityURI?: string;
     /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
+    /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
     pagination_entity_per_page?: number;

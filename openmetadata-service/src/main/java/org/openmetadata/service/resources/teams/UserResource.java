@@ -184,7 +184,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
   private boolean isSelfSignUpEnabled = false;
-  static final String FIELDS = "profile,roles,teams,follows,owns,domains,personas,defaultPersona";
+  static final String FIELDS =
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -966,6 +967,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
         if (path.equals("/isAdmin") || path.equals("/isBot") || path.contains("/roles")) {
           authorizer.authorizeAdmin(securityContext);
           continue;
+        }
+        // Check if updating personaPreferences - users can only update their own
+        if (path.startsWith("/personaPreferences")) {
+          String authenticatedUserName = securityContext.getUserPrincipal().getName();
+          User authenticatedUser =
+              repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
+          if (!authenticatedUser.getId().equals(id)) {
+            throw new AuthorizationException("Users can only update their own persona preferences");
+          }
         }
         // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")
