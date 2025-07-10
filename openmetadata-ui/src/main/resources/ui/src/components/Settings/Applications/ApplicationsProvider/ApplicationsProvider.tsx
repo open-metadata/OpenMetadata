@@ -28,6 +28,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import axiosClient from '../../../../rest';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
 import Loader from '../../../common/Loader/Loader';
+import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import { ApplicationsContextType } from './ApplicationsProvider.interface';
 
 export const ApplicationsContext = createContext({} as ApplicationsContextType);
@@ -71,7 +72,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Construct the module path dynamically based on the appName
       const PluginModule = await import(
-        `../../../../../public/plugins/${appName}`
+        applicationsClassBase.getPluginPath(appName)
       );
 
       // Initialize and activate the plugin with axiosClient
