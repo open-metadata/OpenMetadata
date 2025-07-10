@@ -222,7 +222,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(subjectContext, resourceContext, resourcePermission, policyContext);
       }
     }
-    return PolicyEvaluator.trimResourcePermission(resourcePermission);
+    return resourcePermission;
   }
 
   /** Get list of resources with all their permissions set to given Access */
