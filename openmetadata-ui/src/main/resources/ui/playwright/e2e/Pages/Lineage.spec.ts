@@ -118,6 +118,31 @@ for (const EntityClass of entities) {
           await verifyNodePresent(page, entity);
         }
         await page.click('[data-testid="edit-lineage"]');
+
+        // Check the Entity Drawer
+        await performZoomOut(page);
+        for (const entity of entities) {
+          const toNodeFqn = get(
+            entity,
+            'entityResponseData.fullyQualifiedName'
+          );
+          await page
+            .locator(
+              `[data-testid="lineage-node-${toNodeFqn}"] .lineage-node-content`
+            )
+            .click();
+
+          await expect(
+            page.locator('.ant-drawer [data-testid="entity-header-title"]')
+          ).toHaveText(get(entity, 'entityResponseData.displayName'));
+
+          await page.getByTestId('entity-panel-close-icon').click();
+
+          // Drawer should not open after closing it
+          await expect(
+            page.locator('.ant-drawer-content-wrapper')
+          ).not.toBeVisible();
+        }
       });
 
       await test.step('Should create pipeline between entities', async () => {
