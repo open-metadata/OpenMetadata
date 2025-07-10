@@ -343,6 +343,8 @@ export const assignTier = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByTestId(`radio-btn-${tier}`).click();
+  await page.click(`[data-testid="update-tier-card"]`);
+
   await patchRequest;
   await clickOutside(page);
 
@@ -358,6 +360,7 @@ export const removeTier = async (page: Page, endpoint: string) => {
       response.request().method() === 'PATCH'
   );
   await page.getByTestId('clear-tier').click();
+
   await patchRequest;
   await clickOutside(page);
 
@@ -1727,4 +1730,23 @@ export const checkExploreSearchFilter = async (
   await page.click('[data-testid="clear-filters"]');
 
   await entity?.visitEntityPage(page);
+};
+
+export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
+  switch (entity.getType()) {
+    case 'Table':
+    case 'Dashboard Data Model':
+      return '/columns/0/dataTypeDisplay';
+    case 'ApiEndpoint':
+      return '/requestSchema/schemaFields/0/dataTypeDisplay';
+    case 'Topic':
+      return '/messageSchema/schemaFields/0/dataTypeDisplay';
+    case 'Container':
+      return '/dataModel/columns/0/dataTypeDisplay';
+    case 'SearchIndex':
+      return '/fields/0/dataTypeDisplay';
+
+    default:
+      return undefined;
+  }
 };

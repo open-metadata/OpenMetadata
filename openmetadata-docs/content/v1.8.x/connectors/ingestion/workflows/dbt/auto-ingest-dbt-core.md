@@ -226,8 +226,8 @@ The command automatically discovers artifacts from your dbt project's `target/` 
 | Artifact | Required | Description |
 |----------|----------|-------------|
 | `manifest.json` | ✅ Yes | Model definitions, relationships, and metadata |
-| `catalog.json` | ❌ Optional | Table and column statistics from `dbt docs generate` |
-| `run_results.json` | ❌ Optional | Test results from `dbt test` |
+| `catalog.json` | Optional | Table and column statistics from `dbt docs generate` |
+| `run_results.json` | Optional | Test results from `dbt test` |
 
 ### Generate All Artifacts
 
@@ -240,9 +240,11 @@ dbt test                 # Generate run_results.json
 ## What Gets Ingested
 
 - **Model Definitions**: Queries, configurations, and relationships
-- **Lineage**: Table-to-table and column-level lineage
+- **Lineage**: 
+  - table-to-table lineage with column-level lineage (column-level lineage is supported only in dbt cloud).
+  - table-to-dashboard,mlmodel,apiendpoint through [dbt exposures](https://docs.getdbt.com/docs/build/exposures)
 - **Documentation**: Model and column descriptions
-- **Data Quality**: dbt test definitions and results
+- **Data Quality**: dbt test definitions and results - including [dbt freshness](https://docs.getdbt.com/reference/resource-properties/freshness) tests
 - **Tags & Classification**: Model and column tags
 - **Ownership**: Model owners and team assignments
 
