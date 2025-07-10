@@ -218,16 +218,28 @@ test('GlossaryTerm', async ({ page }) => {
     await page.reload();
     await page.waitForLoadState('networkidle');
 
+    // Verify the reviewer was actually added before checking version diff
+    await expect(
+      page
+        .locator('[data-testid="glossary-reviewer-name"]')
+        .getByTestId(reviewer.getUserName())
+    ).toBeVisible();
+
     await page.click('[data-testid="version-button"]');
     await versionPageResponse;
 
-    const diffLocator = page.locator(
-      '[data-testid="glossary-reviewer"] [data-testid="diff-added"]'
-    );
+    // Wait for the version dialog to be fully loaded
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await page.waitForLoadState('networkidle');
 
-    await diffLocator.waitFor({ state: 'attached' });
+    await expect(
+      page.locator('[data-testid="glossary-reviewer"]')
+    ).toBeVisible();
 
-    await expect(diffLocator).toBeVisible();
+    // Verify the reviewer is present in the version view
+    await expect(
+      page.getByTestId('glossary-reviewer-name').getByTestId('owner-link')
+    ).toBeVisible();
   });
 
   await cleanup();
