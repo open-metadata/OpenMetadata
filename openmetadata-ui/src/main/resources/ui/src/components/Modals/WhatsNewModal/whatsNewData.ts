@@ -16,7 +16,7 @@
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 import { CarousalData } from './FeaturesCarousel.interface';
 
-export const COOKIE_VERSION = 'VERSION_1_8_2'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_8_3'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1084,6 +1084,20 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - ActivityFeedProvider context not available in KnowledgeCenter page.
 - Automator conditions not showing properly for the filters for custom properties.
 `,
+    },
+  },
+  {
+    id: 77,
+    version: 'v1.8.3',
+    description: 'Released on 10th July 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- Improve tab labels for better readability.
+- Improved German ui translations.`,
+      Fixes: `- Databricks default schema issue.
+- Fix ElasticSearchSink and OpenSearchSink.
+- Fix Promtheus endpoint.
+- Removed debug test.`,
     },
   },
 ];
