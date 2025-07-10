@@ -457,12 +457,21 @@ public class ElasticSearchClient implements SearchClient {
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
 
     try {
+      // Start search operation timing using Micrometer
+      io.micrometer.core.instrument.Timer.Sample searchTimerSample =
+          org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
 
       SearchResponse searchResponse =
           client.search(
               new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
                   .source(searchSourceBuilder),
               RequestOptions.DEFAULT);
+
+      // End search operation timing
+      if (searchTimerSample != null) {
+        org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
+            searchTimerSample);
+      }
 
       if (!request.getIsHierarchy()) {
         return Response.status(OK).entity(searchResponse.toString()).build();
