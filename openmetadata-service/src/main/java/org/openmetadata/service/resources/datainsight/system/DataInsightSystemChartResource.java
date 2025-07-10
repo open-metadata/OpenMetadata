@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -19,12 +20,13 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
@@ -32,8 +34,10 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
 @Path("/v1/analytics/dataInsights/system/charts")
 @Tag(
     name = "Data Insights System Chats",
@@ -45,6 +49,7 @@ import org.openmetadata.service.security.Authorizer;
 public class DataInsightSystemChartResource
     extends EntityResource<DataInsightCustomChart, DataInsightSystemChartRepository> {
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
+  private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartResource.class);
 
   public DataInsightSystemChartResource(Authorizer authorizer, Limits limit) {
     super(Entity.DATA_INSIGHT_CUSTOM_CHART, authorizer, limit);
@@ -159,5 +164,81 @@ public class DataInsightSystemChartResource
     Map<String, DataInsightCustomChartResultList> resultList =
         repository.listChartData(chartNames, start, end, filter, live);
     return Response.status(Response.Status.OK).entity(resultList).build();
+  }
+
+  @POST
+  @Path("/stream")
+  @Operation(
+      operationId = "startChartDataStreaming",
+      summary = "Start streaming chart data via WebSocket",
+      description =
+          "Starts a WebSocket streaming session for chart data that lasts 10 minutes with updates every 2 seconds",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Streaming session started successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+      })
+  public Response startChartDataStreaming(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "List of chart names separated by `,`",
+              required = true,
+              schema = @Schema(type = "String", example = "chart1,chart2"))
+          @QueryParam("chartNames")
+          String chartNames,
+      @Parameter(
+              description = "Service name for filtering",
+              schema = @Schema(type = "String", example = "myService"))
+          @QueryParam("serviceName")
+          String serviceName,
+      @Parameter(
+              description = "Any additional filter to fetch the data",
+              schema = @Schema(type = "string", example = "{\"query\":{...}}"))
+          @QueryParam("filter")
+          String filter,
+      @Parameter(
+              description = "Start time for data fetching (unix timestamp in milliseconds)",
+              schema = @Schema(type = "long", example = "1426349294842"))
+          @QueryParam("startTime")
+          Long startTime,
+      @Parameter(
+              description = "End time for data fetching (unix timestamp in milliseconds)",
+              schema = @Schema(type = "long", example = "1426349294842"))
+          @QueryParam("endTime")
+          Long endTime) {
+
+    try {
+      // Get the current user
+      String username = securityContext.getUserPrincipal().getName();
+      User user =
+          Entity.getCollectionDAO()
+              .userDAO()
+              .findEntityByName(FullyQualifiedName.quoteName(username));
+
+      // Call repository method to handle streaming
+      Map<String, Object> response =
+          repository.startChartDataStreaming(
+              chartNames, serviceName, filter, user.getId(), startTime, endTime);
+
+      // Check if there's an error in the response
+      if (response.containsKey("error")) {
+        return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+      }
+
+      return Response.status(Response.Status.OK).entity(response).build();
+
+    } catch (Exception e) {
+      LOG.error("Error starting chart data streaming", e);
+      Map<String, Object> errorResponse = new HashMap<>();
+      errorResponse.put("error", "Failed to start streaming: " + e.getMessage());
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(errorResponse).build();
+    }
   }
 }
