@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
@@ -70,7 +71,7 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
     DirectoryRepository repository = (DirectoryRepository) Entity.getEntityRepository(DIRECTORY);
     List<Directory> directories =
         repository.listAllForCSV(
-            repository.getFields("name,owners,tags,domain,extension"),
+            repository.getFields("name,owners,tags,domains,extension"),
             driveService.getFullyQualifiedName());
 
     directories.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
@@ -193,11 +194,7 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
       addOwners(recordList, entity.getOwners());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
-      String domain =
-          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
-              ? ""
-              : entity.getDomain().getFullyQualifiedName();
-      addField(recordList, domain);
+      addDomains(recordList, entity.getDomains());
       addExtension(recordList, entity.getExtension());
 
       // Add entity type and FQN for recursive export
