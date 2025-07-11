@@ -175,141 +175,6 @@ const BulkEntityImportPage = () => {
     [setDataSource, setColumns, handleActiveStepChange, focusToGrid]
   );
 
-  const handleImportWebsocketResponseWithActiveStep = useCallback(
-    (importResults: CSVImportResult) => {
-      const activeStep = activeStepRef.current;
-
-      if (activeStep === VALIDATION_STEP.UPDATE) {
-        if (importResults?.status === 'failure') {
-          setValidationData(importResults);
-          readString(importResults?.importResultsCsv ?? '', {
-            worker: true,
-            skipEmptyLines: true,
-            complete: (results) => {
-              // results.data is returning data with unknown type
-              setValidateCSVData(
-                getEntityColumnsAndDataSourceFromCSV(
-                  results.data as string[][],
-                  importedEntityType
-                )
-              );
-            },
-          });
-          handleActiveStepChange(VALIDATION_STEP.UPDATE);
-          setIsValidating(false);
-        } else {
-          showSuccessToast(
-            t('message.entity-details-updated', {
-              entityType: capitalize(entityType),
-              fqn,
-            })
-          );
-          navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
-          handleResetImportJob();
-          setIsValidating(false);
-        }
-      } else if (activeStep === VALIDATION_STEP.EDIT_VALIDATE) {
-        setValidationData(importResults);
-        handleActiveStepChange(VALIDATION_STEP.UPDATE);
-        readString(importResults?.importResultsCsv ?? '', {
-          worker: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            // results.data is returning data with unknown type
-            setValidateCSVData(
-              getEntityColumnsAndDataSourceFromCSV(
-                results.data as string[][],
-                importedEntityType
-              )
-            );
-          },
-        });
-        handleResetImportJob();
-        setIsValidating(false);
-      }
-    },
-    [
-      activeStepRef,
-      entityType,
-      fqn,
-      importedEntityType,
-      handleResetImportJob,
-      handleActiveStepChange,
-      history,
-    ]
-  );
-
-  const handleImportWebsocketResponse = useCallback(
-    (websocketResponse: CSVImportAsyncWebsocketResponse) => {
-      if (!websocketResponse.jobId) {
-        return;
-      }
-
-      const activeImportJob = activeAsyncImportJobRef.current;
-      if (websocketResponse.jobId === activeImportJob?.jobId) {
-        setActiveAsyncImportJob((job) => {
-          if (!job) {
-            return;
-          }
-
-          return {
-            ...job,
-            ...websocketResponse,
-          };
-        });
-
-        if (websocketResponse.status === 'COMPLETED') {
-          const importResults = websocketResponse.result;
-
-          // If the job is complete and the status is either failure or aborted
-          // then reset the validation data and active step
-          if (['failure', 'aborted'].includes(importResults?.status ?? '')) {
-            setValidationData(importResults);
-
-            handleActiveStepChange(VALIDATION_STEP.UPLOAD);
-
-            handleResetImportJob();
-
-            return;
-          }
-
-          // If the job is complete and the status is success
-          // and job was for initial load then check if the initial result is available
-          // and then read the initial result
-          if (
-            activeImportJob.type === 'initialLoad' &&
-            activeImportJob.initialResult
-          ) {
-            readString(activeImportJob.initialResult, {
-              worker: true,
-              skipEmptyLines: true,
-              complete: onCSVReadComplete,
-            });
-
-            handleResetImportJob();
-
-            return;
-          }
-
-          handleImportWebsocketResponseWithActiveStep(importResults);
-        }
-
-        if (websocketResponse.status === 'FAILED') {
-          setIsValidating(false);
-        }
-      }
-    },
-    [
-      activeStepRef,
-      activeAsyncImportJobRef,
-      onCSVReadComplete,
-      setActiveAsyncImportJob,
-      handleResetImportJob,
-      handleActiveStepChange,
-      handleImportWebsocketResponseWithActiveStep,
-    ]
-  );
-
   const handleLoadData = useCallback(
     async (e: ProgressEvent<FileReader>) => {
       setLoading(true);
@@ -469,6 +334,141 @@ const BulkEntityImportPage = () => {
 
     handleActiveStepChange(VALIDATION_STEP.UPLOAD);
   };
+
+  const handleImportWebsocketResponseWithActiveStep = useCallback(
+    (importResults: CSVImportResult) => {
+      const activeStep = activeStepRef.current;
+
+      if (activeStep === VALIDATION_STEP.UPDATE) {
+        if (importResults?.status === 'failure') {
+          setValidationData(importResults);
+          readString(importResults?.importResultsCsv ?? '', {
+            worker: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              // results.data is returning data with unknown type
+              setValidateCSVData(
+                getEntityColumnsAndDataSourceFromCSV(
+                  results.data as string[][],
+                  importedEntityType
+                )
+              );
+            },
+          });
+          handleActiveStepChange(VALIDATION_STEP.UPDATE);
+          setIsValidating(false);
+        } else {
+          showSuccessToast(
+            t('message.entity-details-updated', {
+              entityType: capitalize(entityType),
+              fqn,
+            })
+          );
+          navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
+          handleResetImportJob();
+          setIsValidating(false);
+        }
+      } else if (activeStep === VALIDATION_STEP.EDIT_VALIDATE) {
+        setValidationData(importResults);
+        handleActiveStepChange(VALIDATION_STEP.UPDATE);
+        readString(importResults?.importResultsCsv ?? '', {
+          worker: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            // results.data is returning data with unknown type
+            setValidateCSVData(
+              getEntityColumnsAndDataSourceFromCSV(
+                results.data as string[][],
+                importedEntityType
+              )
+            );
+          },
+        });
+        handleResetImportJob();
+        setIsValidating(false);
+      }
+    },
+    [
+      activeStepRef,
+      entityType,
+      fqn,
+      importedEntityType,
+      handleResetImportJob,
+      handleActiveStepChange,
+      history,
+    ]
+  );
+
+  const handleImportWebsocketResponse = useCallback(
+    (websocketResponse: CSVImportAsyncWebsocketResponse) => {
+      if (!websocketResponse.jobId) {
+        return;
+      }
+
+      const activeImportJob = activeAsyncImportJobRef.current;
+      if (websocketResponse.jobId === activeImportJob?.jobId) {
+        setActiveAsyncImportJob((job) => {
+          if (!job) {
+            return;
+          }
+
+          return {
+            ...job,
+            ...websocketResponse,
+          };
+        });
+
+        if (websocketResponse.status === 'COMPLETED') {
+          const importResults = websocketResponse.result;
+
+          // If the job is complete and the status is either failure or aborted
+          // then reset the validation data and active step
+          if (['failure', 'aborted'].includes(importResults?.status ?? '')) {
+            setValidationData(importResults);
+
+            handleActiveStepChange(VALIDATION_STEP.UPLOAD);
+
+            handleResetImportJob();
+
+            return;
+          }
+
+          // If the job is complete and the status is success
+          // and job was for initial load then check if the initial result is available
+          // and then read the initial result
+          if (
+            activeImportJob.type === 'initialLoad' &&
+            activeImportJob.initialResult
+          ) {
+            readString(activeImportJob.initialResult, {
+              worker: true,
+              skipEmptyLines: true,
+              complete: onCSVReadComplete,
+            });
+
+            handleResetImportJob();
+
+            return;
+          }
+
+          handleImportWebsocketResponseWithActiveStep(importResults);
+        }
+
+        if (websocketResponse.status === 'FAILED') {
+          setIsValidating(false);
+        }
+      }
+    },
+    [
+      activeStepRef,
+      activeAsyncImportJobRef,
+      onCSVReadComplete,
+      setActiveAsyncImportJob,
+      handleResetImportJob,
+      handleActiveStepChange,
+      handleImportWebsocketResponseWithActiveStep,
+    ]
+  );
 
   useEffect(() => {
     fetchEntityData();
