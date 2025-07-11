@@ -157,6 +157,7 @@ class REST:
         base_url: URL = None,
         api_version: str = None,
         headers: dict = None,
+        return_headers: bool = False,
     ):
         # pylint: disable=too-many-locals
         if path in self._limits_reached:
@@ -227,7 +228,7 @@ class REST:
         retry = total_retries
         while retry >= 0:
             try:
-                return self._one_request(method, url, opts, retry)
+                return self._one_request(method, url, opts, retry, return_headers)
             except LimitsException as exc:
                 logger.error(f"Feature limit exceeded for {url}")
                 self._limits_reached.add(path)
@@ -247,12 +248,19 @@ class REST:
                     traceback.format_exc()
         return None
 
-    def _one_request(self, method: str, url: URL, opts: dict, retry: int):
+    def _one_request(self, method: str, url: URL, opts: dict, retry: int, return_headers: bool = False):
         """
         Perform one request, possibly raising RetryException in the case
         the response is 429. Otherwise, if error text contain "code" string,
         then it decodes to json object and returns APIError.
         Returns the body json in the 200 status.
+        
+        Args:
+            method: HTTP method
+            url: Request URL
+            opts: Request options
+            retry: Retry count
+            return_headers: If True, returns (data, headers) tuple instead of just data
         """
         retry_codes = self._retry_codes
         limit_codes = self._limit_codes
@@ -262,12 +270,17 @@ class REST:
 
             if resp.text != "":
                 try:
-                    return resp.json()
+                    data = resp.json()
+                    if return_headers:
+                        return data, dict(resp.headers)
+                    return data
                 except JSONDecodeError as json_decode_error:
                     logger.error(
                         f"Json decoding error while returning response {resp} in json format - {json_decode_error}."
                         f"The Response still returned to be handled by client..."
                     )
+                    if return_headers:
+                        return resp, dict(resp.headers)
                     return resp
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -290,7 +303,11 @@ class REST:
         except requests.ConnectionError as conn:
             # Trying to solve https://github.com/psf/requests/issues/4664
             try:
-                return self._session.request(method, url, **opts).json()
+                result = self._session.request(method, url, **opts)
+                data = result.json()
+                if return_headers:
+                    return data, dict(result.headers)
+                return data
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -306,18 +323,20 @@ class REST:
         return None
 
     @calculate_execution_time(context="GET")
-    def get(self, path, data=None):
+    def get(self, path, data=None, headers=None, return_headers=False):
         """
         GET method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional custom headers
+            return_headers (bool): If True, returns (data, headers) tuple
 
         Returns:
-            Response
+            Response or (Response, headers) tuple if return_headers=True
         """
-        return self._request("GET", path, data)
+        return self._request("GET", path, data, headers=headers, return_headers=return_headers)
 
     @calculate_execution_time(context="POST")
     def post(self, path, data=None, json=None):
@@ -349,22 +368,28 @@ class REST:
         return self._request("PUT", path, data)
 
     @calculate_execution_time(context="PATCH")
-    def patch(self, path, data=None):
+    def patch(self, path, data=None, headers=None, return_headers=False):
         """
         PATCH method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional custom headers
+            return_headers (bool): If True, returns (data, headers) tuple
 
         Returns:
-            Response
+            Response or (Response, headers) tuple if return_headers=True
         """
+        patch_headers = {"Content-type": "application/json-patch+json"}
+        if headers:
+            patch_headers.update(headers)
         return self._request(
             method="PATCH",
             path=path,
             data=data,
-            headers={"Content-type": "application/json-patch+json"},
+            headers=patch_headers,
+            return_headers=return_headers,
         )
 
     @calculate_execution_time(context="DELETE")

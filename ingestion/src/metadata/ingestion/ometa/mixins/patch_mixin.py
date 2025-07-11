@@ -48,7 +48,14 @@ from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     PatchOperation,
     PatchPath,
 )
-from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.ometa.utils import (
+    extract_etag_from_headers,
+    get_stored_etag,
+    handle_response_with_headers,
+    handle_response_without_headers,
+    model_str,
+    store_etag,
+)
 from metadata.utils.deprecation import deprecated
 from metadata.utils.logger import get_log_name, ometa_logger
 
@@ -124,6 +131,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         restrict_update_fields: Optional[List] = None,
         array_entity_fields: Optional[List] = None,
         override_metadata: Optional[bool] = False,
+        if_match: Optional[str] = None,
     ) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
@@ -135,6 +143,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             destination: payload with changes applied to the source.
             allowed_fields: List of field names to filter from source and destination models
             restrict_update_fields: List of field names which will only support add operation
+            if_match: Optional ETag value for conditional PATCH requests
 
         Returns
             Updated Entity
@@ -152,9 +161,15 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             if not patch:
                 return None
 
+            # Prepare headers for conditional PATCH if ETag is provided
+            headers = {}
+            if if_match:
+                headers["If-Match"] = if_match
+
             res = self.client.patch(
                 path=f"{self.get_suffix(entity)}/{model_str(source.id)}",
                 data=str(patch),
+                headers=headers if headers else None,
             )
             return entity(**res)
 
@@ -568,3 +583,101 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 f"Error trying to Patch Domain for {entity.fullyQualifiedName.root}: {exc}"
             )
             return None
+
+    def get_and_capture_etag(
+        self, entity: Type[T], entity_id: Union[str, int], fields: Optional[List[str]] = None
+    ) -> Optional[T]:
+        """
+        Fetch an entity and capture its ETag for later use in conditional PATCH operations.
+        
+        Args:
+            entity: Entity type to fetch
+            entity_id: ID of the entity to fetch
+            fields: Optional list of fields to include in the response
+            
+        Returns:
+            The fetched entity or None if not found
+        """
+        try:
+            path = f"{self.get_suffix(entity)}/{model_str(entity_id)}"
+            if fields:
+                field_params = "&".join([f"fields={field}" for field in fields])
+                path = f"{path}?{field_params}"
+            
+            # Get response with headers to capture ETag
+            response = self.client.get(path, return_headers=True)
+            if isinstance(response, tuple):
+                data, headers = response
+                # Store ETag for this entity
+                etag = extract_etag_from_headers(headers)
+                if etag:
+                    store_etag(str(entity_id), etag)
+                
+                if data:
+                    return entity(**data)
+            elif response:
+                # Fallback if headers not returned
+                return entity(**response)
+                
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching entity {entity.__name__} with ID {entity_id}: {exc}")
+            
+        return None
+
+    def patch_with_etag(  # pylint: disable=too-many-arguments
+        self,
+        entity: Type[T],
+        source: T,
+        destination: T,
+        allowed_fields: Optional[Dict] = None,
+        restrict_update_fields: Optional[List] = None,
+        array_entity_fields: Optional[List] = None,
+        override_metadata: Optional[bool] = False,
+    ) -> Optional[T]:
+        """
+        Perform a conditional PATCH operation using a stored ETag for the source entity.
+        
+        This method automatically retrieves the ETag for the source entity from the cache
+        and includes it in the If-Match header for the PATCH request.
+        
+        Args:
+            entity: Entity Type
+            source: Source payload which is current state of the source in OpenMetadata
+            destination: payload with changes applied to the source
+            allowed_fields: List of field names to filter from source and destination models
+            restrict_update_fields: List of field names which will only support add operation
+            array_entity_fields: List of array field names for special handling
+            override_metadata: Whether to override existing metadata
+            
+        Returns:
+            Updated Entity or None if no ETag found or PATCH fails
+        """
+        # Get stored ETag for this entity
+        etag = get_stored_etag(str(source.id))
+        if not etag:
+            logger.warning(
+                f"No ETag found for entity {get_log_name(source)}. "
+                f"Use get_and_capture_etag() first to capture the ETag."
+            )
+            # Fall back to regular patch without If-Match header
+            return self.patch(
+                entity=entity,
+                source=source,
+                destination=destination,
+                allowed_fields=allowed_fields,
+                restrict_update_fields=restrict_update_fields,
+                array_entity_fields=array_entity_fields,
+                override_metadata=override_metadata,
+            )
+        
+        return self.patch(
+            entity=entity,
+            source=source,
+            destination=destination,
+            allowed_fields=allowed_fields,
+            restrict_update_fields=restrict_update_fields,
+            array_entity_fields=array_entity_fields,
+            override_metadata=override_metadata,
+            if_match=etag,
+        )
