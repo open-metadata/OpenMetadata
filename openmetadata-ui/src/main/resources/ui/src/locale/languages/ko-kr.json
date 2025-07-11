@@ -1329,6 +1329,7 @@
     "selected-lowercase": "선택됨",
     "selected-user": "선택된 사용자: {{username}}",
     "send": "보내기",
+    "send-login-link": "로그인 링크 전송",
     "send-now": "지금 보내기",
     "send-to": "보내기 대상",
     "sender-email": "발신자 이메일",

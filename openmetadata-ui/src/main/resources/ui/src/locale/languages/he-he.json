@@ -1329,6 +1329,7 @@
     "selected-lowercase": "נבחר",
     "selected-user": "משתמש נבחר: {{username}}",
     "send": "שלח",
+    "send-login-link": "שלח קישור התחברות",
     "send-now": "שלח כעת",
     "send-to": "שלח ל",
     "sender-email": "דואר אלקטרוני שולח",

@@ -1329,6 +1329,7 @@
     "selected-lowercase": "انتخاب شده",
     "selected-user": "کاربر انتخاب شده: {{username}}",
     "send": "ارسال",
+    "send-login-link": "ارسال لینک درون‌بر",
     "send-now": "الان ارسال کنید",
     "send-to": "ارسال به",
     "sender-email": "ایمیل فرستنده",
