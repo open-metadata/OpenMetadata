@@ -46,7 +46,7 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
         // Since we have load balancer in our application
         // We need to enforce transports to be websocket only
         // Refer: https://socket.io/docs/v3/using-multiple-nodes/
-        // transports: ['websocket'],
+        transports: ['websocket'],
       })
     );
   }, [currentUser]);

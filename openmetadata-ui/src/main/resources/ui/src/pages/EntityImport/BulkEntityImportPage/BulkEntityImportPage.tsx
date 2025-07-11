@@ -78,10 +78,6 @@ const BulkEntityImportPage = () => {
     useState<CSVImportJobType>();
   const activeAsyncImportJobRef = useRef<CSVImportJobType>();
 
-  // Add pending websocket response to handle race condition for latest result only
-  const pendingWebsocketResponseRef =
-    useRef<CSVImportAsyncWebsocketResponse | null>(null);
-
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
   );
@@ -153,8 +149,6 @@ const BulkEntityImportPage = () => {
   const handleResetImportJob = useCallback(() => {
     setActiveAsyncImportJob(undefined);
     activeAsyncImportJobRef.current = undefined;
-    // Clear pending response when job is reset
-    pendingWebsocketResponseRef.current = null;
   }, [setActiveAsyncImportJob, activeAsyncImportJobRef]);
 
   const focusToGrid = useCallback(() => {
@@ -252,68 +246,57 @@ const BulkEntityImportPage = () => {
       }
 
       const activeImportJob = activeAsyncImportJobRef.current;
+      if (websocketResponse.jobId === activeImportJob?.jobId) {
+        setActiveAsyncImportJob((job) => {
+          if (!job) {
+            return;
+          }
 
-      // If no active job or jobId doesn't match, store latest response
+          return {
+            ...job,
+            ...websocketResponse,
+          };
+        });
 
-      if (
-        !activeImportJob ||
-        websocketResponse.jobId !== activeImportJob.jobId
-      ) {
-        // Store only the latest response, overwriting any previous one
-        pendingWebsocketResponseRef.current = websocketResponse;
+        if (websocketResponse.status === 'COMPLETED') {
+          const importResults = websocketResponse.result;
 
-        return;
-      }
+          // If the job is complete and the status is either failure or aborted
+          // then reset the validation data and active step
+          if (['failure', 'aborted'].includes(importResults?.status ?? '')) {
+            setValidationData(importResults);
 
-      setActiveAsyncImportJob((job) => {
-        if (!job) {
-          return;
+            handleActiveStepChange(VALIDATION_STEP.UPLOAD);
+
+            handleResetImportJob();
+
+            return;
+          }
+
+          // If the job is complete and the status is success
+          // and job was for initial load then check if the initial result is available
+          // and then read the initial result
+          if (
+            activeImportJob.type === 'initialLoad' &&
+            activeImportJob.initialResult
+          ) {
+            readString(activeImportJob.initialResult, {
+              worker: true,
+              skipEmptyLines: true,
+              complete: onCSVReadComplete,
+            });
+
+            handleResetImportJob();
+
+            return;
+          }
+
+          handleImportWebsocketResponseWithActiveStep(importResults);
         }
 
-        return {
-          ...job,
-          ...websocketResponse,
-        };
-      });
-
-      if (websocketResponse.status === 'COMPLETED') {
-        const importResults = websocketResponse.result;
-
-        // If the job is complete and the status is either failure or aborted
-        // then reset the validation data and active step
-        if (['failure', 'aborted'].includes(importResults?.status ?? '')) {
-          setValidationData(importResults);
-
-          handleActiveStepChange(VALIDATION_STEP.UPLOAD);
-
-          handleResetImportJob();
-
-          return;
+        if (websocketResponse.status === 'FAILED') {
+          setIsValidating(false);
         }
-
-        // If the job is complete and the status is success
-        // and job was for initial load then check if the initial result is available
-        // and then read the initial result
-        if (
-          activeImportJob.type === 'initialLoad' &&
-          activeImportJob.initialResult
-        ) {
-          readString(activeImportJob.initialResult, {
-            worker: true,
-            skipEmptyLines: true,
-            complete: onCSVReadComplete,
-          });
-
-          handleResetImportJob();
-
-          return;
-        }
-
-        handleImportWebsocketResponseWithActiveStep(importResults);
-      }
-
-      if (websocketResponse.status === 'FAILED') {
-        setIsValidating(false);
       }
     },
     [
@@ -347,14 +330,6 @@ const BulkEntityImportPage = () => {
 
         setActiveAsyncImportJob(jobData);
         activeAsyncImportJobRef.current = jobData;
-
-        // Process pending websocket response if it matches this job
-        const pendingResponse = pendingWebsocketResponseRef.current;
-        if (pendingResponse && pendingResponse.jobId === jobData.jobId) {
-          handleImportWebsocketResponse(pendingResponse);
-          // Clear the pending response after processing
-          pendingWebsocketResponseRef.current = null;
-        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -405,14 +380,6 @@ const BulkEntityImportPage = () => {
 
       setActiveAsyncImportJob(jobData);
       activeAsyncImportJobRef.current = jobData;
-
-      // Process pending websocket response if it matches this job
-      const pendingResponse = pendingWebsocketResponseRef.current;
-      if (pendingResponse && pendingResponse.jobId === jobData.jobId) {
-        handleImportWebsocketResponse(pendingResponse);
-        // Clear the pending response after processing
-        pendingWebsocketResponseRef.current = null;
-      }
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsValidating(false);
