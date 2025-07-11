@@ -267,7 +267,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
     const saveTestResponse = userPage.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
-    await userPage.locator('.ant-modal-footer').getByText('Submit').click();
+    await userPage.locator('.ant-modal-footer').getByText('Save').click();
     await saveTestResponse;
   });
 });

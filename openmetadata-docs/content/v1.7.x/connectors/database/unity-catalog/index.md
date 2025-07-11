@@ -1,6 +1,6 @@
 ---
 title: Unity Catalog Connector | OpenMetadata Data Governance
-description: Connect Unity Catalog to OpenMetadata seamlessly. Complete setup guide, configuration steps, and metadata extraction for Databricks Unity Catalog integration.
+description: Learn how to connect Unity Catalog to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration tips, and metadata integrat...
 slug: /connectors/database/unity-catalog
 ---
 
@@ -8,7 +8,7 @@ slug: /connectors/database/unity-catalog
 name="Unity Catalog"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
