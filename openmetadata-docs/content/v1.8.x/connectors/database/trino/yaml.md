@@ -1,5 +1,6 @@
 ---
 title: Run the Trino Connector Externally
+description: Configure OpenMetadata's Trino database connector with YAML. Step-by-step setup guide for seamless data catalog integration and metadata extraction.
 slug: /connectors/database/trino/yaml
 ---
 
