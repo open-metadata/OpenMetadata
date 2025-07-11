@@ -1,5 +1,5 @@
 ---
-title: How To Guides Guide | Collate Docs
+title: How To Guides Guide | Official Documentation
 description: Step-by-step guidance for how to guides using Collate. Learn key actions, features, and best practices.
 slug: /how-to-guides
 ---
