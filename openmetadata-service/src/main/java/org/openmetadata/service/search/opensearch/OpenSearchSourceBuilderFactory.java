@@ -159,8 +159,13 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    // Use the same search logic as buildSearchQueryBuilder for consistency
-    QueryBuilder queryBuilder = buildSearchQueryBuilder(query, SearchIndex.getAllFields());
+    String queryStringInput =
+        containsQuerySyntax(query) ? query : SearchUtils.escapeSpecialCharactersForQuery(query);
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(queryStringInput)
+            .fields(SearchIndex.getAllFields())
+            .fuzziness(Fuzziness.AUTO)
+            .fuzzyMaxExpansions(10);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }

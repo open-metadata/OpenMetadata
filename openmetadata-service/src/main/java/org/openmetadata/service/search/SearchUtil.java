@@ -42,6 +42,8 @@ public class SearchUtil {
           Entity.GLOSSARY_TERM,
           "glossary_search_index",
           Entity.GLOSSARY,
+          "metric_search_index",
+          Entity.METRIC,
           "tag_search_index",
           Entity.TAG,
           "search_entity_search_index",
@@ -84,12 +86,12 @@ public class SearchUtil {
       case "api_service_search_index",
           "mlmodel_service_search_index",
           "database_service_search_index",
-          "messaging_service_index",
-          "dashboard_service_index",
-          "pipeline_service_index",
-          "storage_service_index",
-          "search_service_index",
-          "metadata_service_index",
+          "messaging_service_search_index",
+          "dashboard_service_search_index",
+          "pipeline_service_search_index",
+          "storage_service_search_index",
+          "search_service_search_index",
+          "metadata_service_search_index",
           "drive_service_index" -> true;
       default -> false;
     };
@@ -118,6 +120,7 @@ public class SearchUtil {
       case "data_product_search_index", Entity.DATA_PRODUCT -> Entity.DATA_PRODUCT;
       case "team_search_index", Entity.TEAM -> Entity.TEAM;
       case "user_search_index", Entity.USER -> Entity.USER;
+      case "metric_search_index", Entity.METRIC -> Entity.METRIC;
       case "directory_search_index", Entity.DIRECTORY -> Entity.DIRECTORY;
       case "file_search_index", Entity.FILE -> Entity.FILE;
       case "worksheet_search_index", Entity.WORKSHEET -> Entity.WORKSHEET;
