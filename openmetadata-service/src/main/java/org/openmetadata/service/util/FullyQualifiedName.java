@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.TABLE;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -266,5 +269,33 @@ public class FullyQualifiedName {
                 String.join(
                     Entity.SEPARATOR, java.util.Arrays.copyOfRange(parts, 0, parts.length - i)))
         .toList();
+  }
+
+  /**
+   * Split columnFQN of format serviceName.model.dataModelName.columnName
+   * column FQN for struct columns are of format
+   * serviceName.model.dataModelName.column.child1.child2
+   * and not serviceName.model.dataModelName."column.child1.child2" so split length should be 4 or more
+   * Return data model FQN of format serviceName.model.dataModelName
+   *
+   * @param columnFQN the FQN of the column
+   * @return the FQN of the parent dashboard data model
+   */
+  public static String getDashboardDataModelFQN(String columnFQN) {
+    String[] split = split(columnFQN);
+    if (split.length < 4) {
+      throw new IllegalArgumentException("Invalid dashboard data model column FQN: " + columnFQN);
+    }
+    // Return data model FQN of format serviceName.model.dataModelName
+    return build(split[0], split[1], split[2]);
+  }
+
+  // Get parent entity fqn for a given column fqn
+  public static String getParentEntityFQN(String columnFQN, String entityType) {
+    return switch (entityType) {
+      case TABLE -> getTableFQN(columnFQN);
+      case DASHBOARD_DATA_MODEL -> getDashboardDataModelFQN(columnFQN);
+      default -> throw new IllegalArgumentException("Unsupported entity type: " + entityType);
+    };
   }
 }

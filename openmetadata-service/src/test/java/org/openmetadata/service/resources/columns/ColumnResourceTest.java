@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
@@ -830,7 +831,9 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> updateColumnByFQN(invalidFQN, updateColumn),
         NOT_FOUND,
-        "table instance for " + FullyQualifiedName.getParentFQN(invalidFQN) + " not found");
+        "table instance for "
+            + FullyQualifiedName.getParentEntityFQN(invalidFQN, TABLE)
+            + " not found");
   }
 
   @Test
@@ -1206,8 +1209,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     assertEquals("Test description for feed verification", updatedDescriptionCol.getDescription());
 
     // Verify description change appears in activity feed
-    verifyColumnChangeEventInFeed(
-        isolatedTable, "description_col", List.of("description"), Entity.TABLE);
+    verifyColumnChangeEventInFeed(isolatedTable, "description_col", List.of("description"), TABLE);
 
     // 2. Test tags/terms change in feed
     String tagsColFQN = isolatedTable.getFullyQualifiedName() + ".tags_col";
@@ -1232,7 +1234,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     assertEquals(2, updatedTagsCol.getTags().size());
 
     // Verify tags change appears in activity feed
-    verifyColumnChangeEventInFeed(isolatedTable, "tags_col", List.of("tags"), Entity.TABLE);
+    verifyColumnChangeEventInFeed(isolatedTable, "tags_col", List.of("tags"), TABLE);
   }
 
   @Test
@@ -1303,6 +1305,58 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     // Verify tags change appears in activity feed
     verifyColumnChangeEventInFeed(
         isolatedModel, "tags_col", List.of("tags"), Entity.DASHBOARD_DATA_MODEL);
+  }
+
+  @Test
+  void test_updateNestedTableColumn_description() throws IOException {
+    // Create a deeply nested column structure
+    List<Column> nestedColumns =
+        List.of(
+            new Column().withName("personal_details").withDataType(ColumnDataType.STRING),
+            new Column().withName("other_info").withDataType(ColumnDataType.STRING));
+    List<Column> customerInfoChildren =
+        List.of(
+            new Column()
+                .withName("personal_details")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(nestedColumns));
+    List<Column> deeplyNestedDataChildren =
+        List.of(
+            new Column()
+                .withName("customer_info")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(customerInfoChildren));
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("deeply_nested_data")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(deeplyNestedDataChildren));
+    CreateTable createTable =
+        new CreateTable()
+            .withName("deeply_nested_table")
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(columns);
+    Table nestedTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Build the FQN for the innermost nested column
+    String columnFQN =
+        nestedTable.getFullyQualifiedName() + ".deeply_nested_data.customer_info.personal_details";
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDescription("<p>Personal details nested structure updated</p>");
+
+    Column updatedColumn = updateColumnByFQN(columnFQN, updateColumn, "table");
+    assertEquals(
+        "<p>Personal details nested structure updated</p>", updatedColumn.getDescription());
+
+    // Fetch the table and verify the nested column's description is updated
+    Table updatedTable =
+        tableResourceTest.getEntity(nestedTable.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column deeplyNestedData = updatedTable.getColumns().getFirst();
+    Column customerInfo = deeplyNestedData.getChildren().getFirst();
+    Column personalDetails = customerInfo.getChildren().getFirst();
+    assertEquals(
+        "<p>Personal details nested structure updated</p>", personalDetails.getDescription());
   }
 
   private Column updateColumnByFQN(String columnFQN, UpdateColumn updateColumn, String entityType)

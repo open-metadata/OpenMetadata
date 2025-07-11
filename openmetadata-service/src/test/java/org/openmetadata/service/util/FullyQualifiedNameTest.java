@@ -175,4 +175,68 @@ class FullyQualifiedNameTest {
     assertEquals("\"a.1\".b", quotedAncestors.get(1));
     assertEquals("\"a.1\"", quotedAncestors.get(2));
   }
+
+  @Test
+  void test_getDashboardDataModelFQN() {
+    // Standard case
+    assertEquals(
+        "service.model.dataModel",
+        FullyQualifiedName.getDashboardDataModelFQN("service.model.dataModel.col1"));
+    // Nested column
+    assertEquals(
+        "service.model.dataModel",
+        FullyQualifiedName.getDashboardDataModelFQN("service.model.dataModel.col1.child1"));
+    // Quoted names
+    assertEquals(
+        "service.model.\"data.model\"",
+        FullyQualifiedName.getDashboardDataModelFQN("service.model.\"data.model\".col1"));
+    // Error: too few segments
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> FullyQualifiedName.getDashboardDataModelFQN("service.model"));
+  }
+
+  @Test
+  void test_getParentEntityFQN() {
+    // Table case
+    assertEquals(
+        "service.db.schema.table",
+        FullyQualifiedName.getParentEntityFQN("service.db.schema.table.col1", "table"));
+    // Table with nested column
+    assertEquals(
+        "service.db.schema.table",
+        FullyQualifiedName.getParentEntityFQN("service.db.schema.table.col1.child1", "table"));
+    // DashboardDataModel case
+    assertEquals(
+        "service.model.dataModel",
+        FullyQualifiedName.getParentEntityFQN(
+            "service.model.dataModel.col1", "dashboardDataModel"));
+    // DashboardDataModel with nested column
+    assertEquals(
+        "service.model.dataModel",
+        FullyQualifiedName.getParentEntityFQN(
+            "service.model.dataModel.col1.child1", "dashboardDataModel"));
+    // Error: unsupported entity type
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> FullyQualifiedName.getParentEntityFQN("service.model.dataModel.col1", "mlmodel"));
+  }
+
+  @Test
+  void test_getParentEntityFQN_failure_cases() {
+    // Using 'table' entityType for a dashboard data model column FQN (should throw)
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> FullyQualifiedName.getParentEntityFQN("service.model.dataModel.col1", "table"));
+
+    // Too short for dashboard data model
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> FullyQualifiedName.getParentEntityFQN("service.db", "dashboardDataModel"));
+
+    // Too short for table
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> FullyQualifiedName.getParentEntityFQN("service.db.schema", "table"));
+  }
 }
