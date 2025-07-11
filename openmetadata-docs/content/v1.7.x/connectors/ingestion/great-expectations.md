@@ -1,5 +1,6 @@
 ---
 title: Great Expectations | OpenMetadata Data Quality Integration
+description: Integrate Great Expectations with OpenMetadata for automated data quality validation. Complete setup guide, connector configuration, and best practices.
 slug: /connectors/ingestion/great-expectations
 ---
 

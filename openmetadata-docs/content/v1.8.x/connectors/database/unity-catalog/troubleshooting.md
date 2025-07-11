@@ -1,5 +1,6 @@
 ---
 title: Unity Catalog Connector Troubleshooting
+description: Resolve Unity Catalog connector issues quickly with OpenMetadata's comprehensive troubleshooting guide. Fix common errors, configuration problems, and c...
 slug: /connectors/database/unity-catalog/troubleshooting
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Metadata Ingestion | OpenMetadata Data Pipeline Overview
-description: Explore OpenMetadata's powerful ingestion connectors to seamlessly extract metadata from databases, dashboards, pipelines & more. Setup guides included.
+description: Discover OpenMetadata connectors to extract metadata from databases, dashboards, pipelines & more. Easy setup with included guides.
 slug: /connectors/ingestion
 ---
 
