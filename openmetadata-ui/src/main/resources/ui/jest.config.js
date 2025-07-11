@@ -86,7 +86,9 @@ module.exports = {
   testResultsProcessor: 'jest-sonar-reporter',
 
   // use fake timers
-  timers: 'fake',
+  fakeTimers: {
+    enableGlobally: true,
+  },
 
   moduleDirectories: ['node_modules', 'src'],
 
