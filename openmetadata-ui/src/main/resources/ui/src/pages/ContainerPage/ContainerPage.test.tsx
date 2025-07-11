@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
@@ -231,12 +231,10 @@ const mockUseParams = jest.fn().mockReturnValue({
   tab: 'schema',
 });
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockUseParams()),
 }));
 
@@ -250,45 +248,44 @@ describe('Container Page Component', () => {
       ViewBasic: false,
     });
 
-    await act(async () => {
-      render(<ContainerPage />);
+    render(<ContainerPage />);
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    expect(screen.getByText('Loader')).toBeVisible();
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
 
     expect(getContainerByName).not.toHaveBeenCalled();
 
     expect(
-      screen.getByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
+      await screen.findByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
     ).toBeInTheDocument();
   });
 
   it('fetch container data, if have view permission', async () => {
-    await act(async () => {
-      render(<ContainerPage />);
+    render(<ContainerPage />);
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    expect(screen.getByText('Loader')).toBeVisible();
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-    expect(getContainerByName).toHaveBeenCalledWith(
-      MOCK_CONTAINER_DATA.fullyQualifiedName,
-      {
-        fields: [
-          'parent',
-          'dataModel',
-          'owners',
-          'tags',
-          'followers',
-          'extension',
-          'domain',
-          'dataProducts',
-          'votes',
-        ],
-        include: Include.All,
-      }
+
+    await waitFor(() =>
+      expect(getContainerByName).toHaveBeenCalledWith(
+        MOCK_CONTAINER_DATA.fullyQualifiedName,
+        {
+          fields: [
+            'parent',
+            'dataModel',
+            'owners',
+            'tags',
+            'followers',
+            'extension',
+            'domain',
+            'dataProducts',
+            'votes',
+          ],
+          include: Include.All,
+        }
+      )
     );
   });
 
@@ -297,14 +294,13 @@ describe('Container Page Component', () => {
       'failed to fetch container data'
     );
 
-    await act(async () => {
-      render(<ContainerPage />);
+    render(<ContainerPage />);
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    expect(screen.getByText('Loader')).toBeVisible();
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-    expect(getContainerByName).toHaveBeenCalled();
+
+    await waitFor(() => expect(getContainerByName).toHaveBeenCalled());
 
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
@@ -313,29 +309,31 @@ describe('Container Page Component', () => {
     (getContainerByName as jest.Mock).mockResolvedValueOnce(
       MOCK_CONTAINER_DATA
     );
-    await act(async () => {
-      render(<ContainerPage />);
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    render(<ContainerPage />);
+
+    expect(screen.getByText('Loader')).toBeVisible();
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-    expect(getContainerByName).toHaveBeenCalledWith(
-      's3_storage_sample.transactions',
-      {
-        fields: [
-          'parent',
-          'dataModel',
-          'owners',
-          'tags',
-          'followers',
-          'extension',
-          'domain',
-          'dataProducts',
-          'votes',
-        ],
-        include: 'all',
-      }
+
+    await waitFor(() =>
+      expect(getContainerByName).toHaveBeenCalledWith(
+        's3_storage_sample.transactions',
+        {
+          fields: [
+            'parent',
+            'dataModel',
+            'owners',
+            'tags',
+            'followers',
+            'extension',
+            'domain',
+            'dataProducts',
+            'votes',
+          ],
+          include: 'all',
+        }
+      )
     );
 
     expect(screen.getByTestId('data-asset-header')).toBeInTheDocument();
@@ -356,38 +354,41 @@ describe('Container Page Component', () => {
     (getContainerByName as jest.Mock).mockResolvedValueOnce(
       MOCK_CONTAINER_DATA
     );
-    await act(async () => {
-      render(<ContainerPage />);
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    render(<ContainerPage />);
 
-    const followButton = screen.getByRole('button', {
+    expect(screen.getByText('Loader')).toBeVisible();
+
+    const followButton = await screen.findByRole('button', {
       name: 'Follow Container',
     });
 
     userEvent.click(followButton);
 
-    expect(addContainerFollower).toHaveBeenCalled();
+    await waitFor(() => expect(addContainerFollower).toHaveBeenCalled());
   });
 
   it('tab switch should work', async () => {
     (getContainerByName as jest.Mock).mockResolvedValueOnce(
       MOCK_CONTAINER_DATA
     );
-    await act(async () => {
-      render(<ContainerPage />);
 
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
+    render(<ContainerPage />);
 
-    const childrenTab = screen.getByRole('tab', {
+    expect(screen.getByText('Loader')).toBeVisible();
+
+    const childrenTab = await screen.findByRole('tab', {
       name: 'label.children',
     });
 
     userEvent.click(childrenTab);
 
-    expect(mockPush).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith(
+        { pathname: '/container-detail-path' },
+        { replace: true }
+      )
+    );
   });
 
   it('children should render on children tab', async () => {
@@ -399,13 +400,13 @@ describe('Container Page Component', () => {
       tab: EntityTabs.CHILDREN,
     });
 
-    await act(async () => {
-      render(<ContainerPage />);
+    render(<ContainerPage />);
 
-      expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByText('Loader')).toBeVisible();
+
+    const childrenTab = await screen.findByRole('tab', {
+      name: 'label.children',
     });
-
-    const childrenTab = screen.getByRole('tab', { name: 'label.children' });
 
     expect(childrenTab).toHaveAttribute('aria-selected', 'true');
 

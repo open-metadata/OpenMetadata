@@ -14,9 +14,9 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { toString } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -35,6 +35,7 @@ import {
 } from '../../utils/EntityVersionUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import Loader from '../common/Loader/Loader';
 import TabsLabel from '../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
@@ -58,8 +59,8 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   entityPermissions,
 }: SearchIndexVersionProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -86,7 +87,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.SEARCH_INDEX,
         entityFqn,
@@ -159,12 +160,14 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.SEARCH_INDEX}
                     key={tagType}
                     permission={false}

@@ -24,6 +24,7 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
   descriptionBox,
+  descriptionBoxReadOnly,
   getApiContext,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
@@ -78,6 +79,7 @@ export const visitClassificationPage = async (
   );
 
   await fetchTags;
+  await page.waitForLoadState('networkidle');
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
     { state: 'detached' }
@@ -91,9 +93,7 @@ export const addAssetsToTag = async (
   tag: TagClass,
   otherAsset?: EntityClass[]
 ) => {
-  const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
-  await res;
 
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
@@ -113,34 +113,43 @@ export const addAssetsToTag = async (
   if (!isUndefined(otherAsset)) {
     for (const asset of otherAsset) {
       const name = get(asset, 'entityResponseData.name');
-
+      const entityDisplayName = get(asset, 'entityResponseData.displayName');
+      const visibleName = entityDisplayName ?? name;
       const searchRes = page.waitForResponse(
-        `/api/v1/search/query?q=${name}&index=all&from=0&size=25&**`
+        `/api/v1/search/query?q=${visibleName}&index=all&from=0&size=25&**`
       );
       await page
         .getByTestId('asset-selection-modal')
         .getByTestId('searchbar')
-        .fill(name);
+        .fill(visibleName);
       await searchRes;
 
-      await expect(page.getByText(name)).not.toBeVisible();
+      await expect(page.getByText(visibleName)).not.toBeVisible();
     }
   }
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const entityDisplayName = get(asset, 'entityResponseData.displayName');
+    const visibleName = entityDisplayName ?? name;
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&**`
+      `/api/v1/search/query?q=${visibleName}&index=all&from=0&size=25&**`
     );
     await page
       .getByTestId('asset-selection-modal')
       .getByTestId('searchbar')
-      .fill(name);
+      .fill(visibleName);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+    await expect(
+      page.locator(
+        `[data-testid="table-data-card_${fqn}"] [data-testid="entity-header-name"]`
+      )
+    ).toContainText(visibleName);
   }
 
   const assetsAddRes = page.waitForResponse(`/api/v1/tags/*/assets/add`);
@@ -173,6 +182,7 @@ export const removeAssetsFromTag = async (
   await page.getByTestId('delete-all-button').click();
   await assetsRemoveRes;
 
+  await page.waitForLoadState('networkidle');
   await checkAssetsCount(page, 0);
 };
 
@@ -324,9 +334,7 @@ export const verifyTagPageUI = async (
   limitedAccess = false
 ) => {
   await redirectToHomePage(page);
-  const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
-  await res;
 
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
@@ -336,7 +344,9 @@ export const verifyTagPageUI = async (
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
   );
-  await expect(page.getByText(tag.data.description)).toBeVisible();
+  await expect(page.locator(descriptionBoxReadOnly)).toContainText(
+    tag.data.description
+  );
 
   await expect(
     page.getByTestId('data-classification-add-button')
@@ -351,8 +361,9 @@ export const verifyTagPageUI = async (
     `/api/v1/classifications/name/*`
   );
   await page.getByRole('link', { name: classificationName }).click();
-  classificationTable;
+  await classificationTable;
 
+  const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await page.getByTestId(tag.data.name).click();
   await res;
 
@@ -479,7 +490,10 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
   await adminPage.fill('[data-testid="icon-url"]', NEW_TAG.icon);
   await adminPage.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
-  await adminPage.click('[data-testid="add-domain"]');
+
+  await adminPage.click(
+    '[data-testid="modal-container"] [data-testid="add-domain"]'
+  );
   await adminPage
     .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
     .click();

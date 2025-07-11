@@ -13,14 +13,11 @@
 
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React from 'react';
 import DisplayName from '../components/common/DisplayName/DisplayName';
 import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
-import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
 import { ServiceCategory } from '../enums/service.enum';
@@ -35,8 +32,14 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
+import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
-import { ownerTableObject } from './TableColumn.util';
+import {
+  dataProductTableObject,
+  domainTableObject,
+  ownerTableObject,
+  tagTableObject,
+} from './TableColumn.util';
 import { getUsagePercentile } from './TableUtils';
 
 export const getServiceMainTabColumns = (
@@ -54,8 +57,8 @@ export const getServiceMainTabColumns = (
     width: 280,
     render: (_, record: ServicePageData) => (
       <DisplayName
-        allowRename={editDisplayNamePermission}
         displayName={record.displayName}
+        hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}
         link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}
@@ -97,15 +100,9 @@ export const getServiceMainTabColumns = (
       ]
     : []),
   ...ownerTableObject<ServicePageData>(),
-  {
-    title: t('label.tag-plural'),
-    dataIndex: TABLE_COLUMNS_KEYS.TAGS,
-    width: 200,
-    key: TABLE_COLUMNS_KEYS.TAGS,
-    render: (_, record: ServicePageData) => (
-      <TagsViewer tags={record.tags ?? []} />
-    ),
-  },
+  ...domainTableObject<ServicePageData>(),
+  ...dataProductTableObject<ServicePageData>(),
+  ...tagTableObject<ServicePageData>(),
   ...(ServiceCategory.DATABASE_SERVICES === serviceCategory
     ? [
         {

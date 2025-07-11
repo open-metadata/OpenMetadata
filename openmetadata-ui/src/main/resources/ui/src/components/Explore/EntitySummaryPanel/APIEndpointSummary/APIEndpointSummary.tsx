@@ -13,7 +13,7 @@
 
 import { Col, Radio, RadioChangeEvent, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';

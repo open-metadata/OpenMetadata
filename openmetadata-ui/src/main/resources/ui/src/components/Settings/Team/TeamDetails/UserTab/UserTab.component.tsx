@@ -16,9 +16,9 @@ import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remove.svg';
@@ -72,14 +72,10 @@ export const UserTab = ({
   onRemoveUser,
 }: UserTabProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [deletingUser, setDeletingUser] = useState<EntityReference>();
   const { showModal } = useEntityExportModalProvider();
-  const handleRemoveClick = (id: string) => {
-    const user = usersList?.find((u) => u.id === id);
-    setDeletingUser(user);
-  };
   const [isLoading, setIsLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -98,6 +94,11 @@ export const UserTab = ({
       getEntityReferenceFromEntity(item, EntityType.USER)
     );
   }, [users]);
+
+  const handleRemoveClick = (id: string) => {
+    const user = usersList?.find((u) => u.id === id);
+    setDeletingUser(user);
+  };
 
   const isGroupType = useMemo(
     () => currentTeam.teamType === TeamType.Group,
@@ -254,7 +255,7 @@ export const UserTab = ({
   }, [currentTeam, exportUserOfTeam]);
 
   const handleImportClick = useCallback(async () => {
-    history.push({
+    navigate({
       pathname: getSettingsPathWithFqn(
         GlobalSettingsMenuCategory.MEMBERS,
         GlobalSettingOptions.TEAMS,
@@ -355,9 +356,12 @@ export const UserTab = ({
             )}
           </Space>
         }
-        className="mt-0-important"
+        className="mt-0-important border-none"
         heading={t('label.user')}
         permission={editUserPermission}
+        permissionValue={t('label.edit-entity', {
+          entity: t('label.user'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
       />
     ) : (

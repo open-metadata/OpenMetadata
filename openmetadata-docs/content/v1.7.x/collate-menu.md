@@ -529,6 +529,12 @@ site_menu:
     url: /connectors/pipeline/spline/yaml
   - category: Connectors / Pipeline / Spline / Troubleshooting
     url: /connectors/pipeline/spline/troubleshooting
+  - category: Connectors / Pipeline / SSIS
+    url: /connectors/pipeline/ssis
+  - category: Connectors / Pipeline / SSIS / Run Externally
+    url: /connectors/pipeline/ssis/yaml
+  - category: Connectors / Pipeline / SSIS / Troubleshooting
+    url: /connectors/pipeline/ssis/troubleshooting
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
   - category: Connectors / Pipeline / Stitch / Run Externally
@@ -669,6 +675,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt
   - category: Connectors / Ingestion / Workflows / dbt / Configure dbt workflow from OpenMetadata UI
     url: /connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui
+  - category: Connectors / Ingestion / Workflows / dbt / Auto Ingest DBT Core Artifacts
+    url: /connectors/ingestion/workflows/dbt/auto-ingest-dbt-core    
   - category: Connectors / Ingestion / Workflows / dbt / Run Externally
     url: /connectors/ingestion/workflows/dbt/run-dbt-workflow-externally
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
@@ -713,9 +721,34 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
-
   - category: Connectors / Troubleshooting
     url: /connectors/troubleshooting
+
+  - category: Collate AI
+    url: /collateai
+
+  - category: Collate AI / Autopilot
+    url: /collateai/collate-ai-autopilot-workflows
+  - category: Collate AI / How to Use Collate AI
+    url: /collateai/how-to-use-collate-ai
+  - category: Collate AI / Collate AI Tier Agent
+    url: /collateai/tier-agent
+  - category: Collate AI / Collate AI Quality Agent
+    url: /collateai/quality-agent
+  - category: Collate AI / Collate AI Documentation Agent
+    url: /collateai/documentation-agent
+
+  - category: Applications
+    url: /applications
+
+  - category: Applications / Reverse Metadata Application
+    url: /applications/reverse-metadata
+  - category: Applications / Autopilot
+    url: /applications/autopilot
+  - category: Applications / Data Retention Application
+    url: /applications/data-retention
+  - category: Applications / Slack Application
+    url: /applications/slack
 
   - category: How-to Guides
     url: /how-to-guides
@@ -754,8 +787,8 @@ site_menu:
     url: /how-to-guides/admin-guide/Reindexing-Search
   - category: How-to Guides / Admin Guide / Data Insights
     url: /how-to-guides/admin-guide/data-insights
-  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
-    url: /how-to-guides/admin-guide/persona-landing-page-customization 
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization
+    url: /how-to-guides/admin-guide/persona-landing-page-customization
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
     url: /how-to-guides/admin-guide/persona-landing-page-customization/customizable-landing-page
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Define Personas
@@ -784,7 +817,7 @@ site_menu:
   - category: How-to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
     url: /how-to-guides/guide-for-data-users/custom
   - category: How-to Guides / Guide for Data Users / How to Customize OpenMetadata
-    url: /how-to-guides/guide-for-data-users/theme  
+    url: /how-to-guides/guide-for-data-users/theme
   - category: How-to Guides / Guide for Data Users / Overview of Announcements
     url: /how-to-guides/guide-for-data-users/announcements
   - category: How-to Guides / Guide for Data Users / How to Create an Announcement
@@ -808,14 +841,14 @@ site_menu:
     url: /how-to-guides/data-discovery/details
   - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
     url: /how-to-guides/data-discovery/advanced
-  - category: How-to Guides / Data Discovery / Troubleshooting
-    url: /how-to-guides/data-discovery/troubleshooting
   - category: How-to Guides / Data Discovery / Bulk Upload Data Assets
     url: /how-to-guides/data-discovery/bulk-upload
   - category: How-to Guides / Data Discovery / How to Bulk Import Data Asset
     url: /how-to-guides/data-discovery/import
   - category: How-to Guides / Data Discovery / How to Export Data Asset
     url: /how-to-guides/data-discovery/export
+  - category: How-to Guides / Data Discovery / Import-Export Troubleshooting
+    url: /how-to-guides/data-discovery/troubleshooting
   - category: How-to Guides / Data Discovery / Table Constraint
     url: /how-to-guides/data-discovery/table-constraint
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension
@@ -875,8 +908,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
     url: /how-to-guides/data-quality-observability/profiler/custom-metrics
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
-    url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
     url: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
   - category: How-to Guides / Data Quality and Observability / Data Observability
@@ -934,7 +965,7 @@ site_menu:
     url: /how-to-guides/data-governance
   - category: How-to Guides / Data Governance / Automation
     url: /how-to-guides/data-governance/automation
-  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate 
+  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate
     url: /how-to-guides/data-governance/automation/set-up-automation
   - category: How-to Guides / Data Governance / Glossary
     url: /how-to-guides/data-governance/glossary
@@ -950,6 +981,8 @@ site_menu:
     url: /how-to-guides/data-governance/glossary/export
   - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
     url: /how-to-guides/data-governance/glossary/approval
+  - category: How-to Guides / Data Governance / Glossary / Import-Export Troubleshooting
+    url: /how-to-guides/data-governance/glossary/troubleshooting
   - category: How-to Guides / Data Governance / Glossary / Glossary Styling
     url: /how-to-guides/data-governance/glossary/styling
   - category: How-to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms
@@ -964,6 +997,8 @@ site_menu:
     url: /how-to-guides/data-governance/classification/assets
   - category: How-to Guides / Data Governance / Classification / How to Request for Classification Tags
     url: /how-to-guides/data-governance/classification/request-tags
+  - category: How-to Guides / Data Governance / Classification / Sample Data Handling Using PII Tags
+    url: /how-to-guides/data-governance/classification/sample-data-using-pii-tag
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow
     url: /how-to-guides/data-governance/classification/auto-classification
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Workflow
@@ -972,6 +1007,8 @@ site_menu:
     url: /how-to-guides/data-governance/classification/auto-classification/external-workflow
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Auto PII Tagging
     url: /how-to-guides/data-governance/classification/auto-classification/auto-pii-tagging
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Sample Data
+    url: /how-to-guides/data-governance/classification/auto-classification/external-sample-data
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
@@ -1043,138 +1080,6 @@ site_menu:
     url: /security/saml/aws
   - category: Enable Security / Saml / Azure
     url: /security/saml/azure
-
-  - category: Releases
-    url: /releases
-  - category: Releases / Latest Release
-    url: /releases/latest-release
-  - category: Releases / Supported Releases
-    url: /releases/supported
-  - category: Releases / All Releases
-    url: /releases/all-releases
-  - category: Releases / All Releases / 1.6.10 Release
-    url: /releases/all-releases/#1.6.10-release
-  - category: Releases / All Releases / 1.6.9 Release
-    url: /releases/all-releases/#1.6.9-release
-  - category: Releases / All Releases / 1.6.8 Release
-    url: /releases/all-releases/#1.6.8-release
-  - category: Releases / All Releases / 1.6.7 Release
-    url: /releases/all-releases/#1.6.7-release
-  - category: Releases / All Releases / 1.6.6 Release
-    url: /releases/all-releases/#1.6.6-release
-  - category: Releases / All Releases / 1.6.5 Release
-    url: /releases/all-releases/#1.6.5-release
-  - category: Releases / All Releases / 1.6.4 Release
-    url: /releases/all-releases/#1.6.4-release
-  - category: Releases / All Releases / 1.6.3 Release
-    url: /releases/all-releases/#1.6.3-release
-  - category: Releases / All Releases / 1.6.2 Release
-    url: /releases/all-releases/#1.6.2-release
-  - category: Releases / All Releases / 1.6.1 Release
-    url: /releases/all-releases/#1.6.1-release
-  - category: Releases / All Releases / 1.5.15 Release
-    url: /releases/all-releases/#1.5.15-release
-  - category: Releases / All Releases / 1.5.14 Release
-    url: /releases/all-releases/#1.5.14-release
-  - category: Releases / All Releases / 1.5.13 Release
-    url: /releases/all-releases/#1.5.13-release
-  - category: Releases / All Releases / 1.5.12 Release
-    url: /releases/all-releases/#1.5.12-release
-  - category: Releases / All Releases / 1.5.11 Release
-    url: /releases/all-releases/#1.5.11-release
-  - category: Releases / All Releases / 1.5.10 Release
-    url: /releases/all-releases/#1.5.10-release
-  - category: Releases / All Releases / 1.5.9 Release
-    url: /releases/all-releases/#1.5.9-release
-  - category: Releases / All Releases / 1.5.8 Release
-    url: /releases/all-releases/#1.5.8-release
-  - category: Releases / All Releases / 1.5.7 Release
-    url: /releases/all-releases/#1.5.7-release
-  - category: Releases / All Releases / 1.5.6 Release
-    url: /releases/all-releases/#1.5.6-release
-  - category: Releases / All Releases / 1.5.5 Release
-    url: /releases/all-releases/#1.5.5-release
-  - category: Releases / All Releases / 1.5.4 Release
-    url: /releases/all-releases/#1.5.4-release
-  - category: Releases / All Releases / 1.5.3 Release
-    url: /releases/all-releases/#1.5.3-release
-  - category: Releases / All Releases / 1.5.2 Release
-    url: /releases/all-releases/#1.5.2-release
-  - category: Releases / All Releases / 1.5.1 Release
-    url: /releases/all-releases/#1.5.1-release
-  - category: Releases / All Releases / 1.4.8 Release
-    url: /releases/all-releases/#1.4.8-release
-  - category: Releases / All Releases / 1.4.7 Release
-    url: /releases/all-releases/#1.4.7-release
-  - category: Releases / All Releases / 1.4.6 Release
-    url: /releases/all-releases/#1.4.6-release
-  - category: Releases / All Releases / 1.4.5 Release
-    url: /releases/all-releases/#1.4.5-release
-  - category: Releases / All Releases / 1.4.4 Release
-    url: /releases/all-releases/#1.4.4-release
-  - category: Releases / All Releases / 1.4.3 Release
-    url: /releases/all-releases/#1.4.3-release
-  - category: Releases / All Releases / 1.4.2 Release
-    url: /releases/all-releases/#1.4.2-release
-  - category: Releases / All Releases / 1.4.1 Release
-    url: /releases/all-releases/#1.4.1-release
-  - category: Releases / All Releases / 1.4.0 Release
-    url: /releases/all-releases/#1.4.0-release
-  - category: Releases / All Releases / 1.3.4 Release
-    url: /releases/all-releases/#1.3.4-release
-  - category: Releases / All Releases / 1.3.3 Release
-    url: /releases/all-releases/#1.3.3-release
-  - category: Releases / All Releases / 1.3.2 Release
-    url: /releases/all-releases/#1.3.2-release
-  - category: Releases / All Releases / 1.3.1 Release
-    url: /releases/all-releases/#1.3.1-release
-  - category: Releases / All Releases / 1.3.0 Release
-    url: /releases/all-releases/#1.3.0-release
-  - category: Releases / All Releases / 1.2.0 Release
-    url: /releases/all-releases/#1.2.0-release
-  - category: Releases / All Releases / 1.1.2 Release
-    url: /releases/all-releases/#1.1.2-release
-  - category: Releases / All Releases / 1.1.1 Release
-    url: /releases/all-releases/#1.1.1-release
-  - category: Releases / All Releases / 1.1.0 Release
-    url: /releases/all-releases/#1.1.0-release
-  - category: Releases / All Releases / 1.0.0 Release
-    url: /releases/all-releases/#1.0.0-release
-  - category: Releases / All Releases / 0.13.3 Release
-    url: /releases/all-releases/#0.13.3-release
-  - category: Releases / All Releases / 0.13.2 Release
-    url: /releases/all-releases/#0.13.2-release
-  - category: Releases / All Releases / 0.13.1 Release
-    url: /releases/all-releases/#0.13.1-release
-  - category: Releases / All Releases / 0.13.0 Release
-    url: /releases/all-releases/#0.13.0-release
-  - category: Releases / All Releases / 0.12.3 Release
-    url: /releases/all-releases/#0.12.3-release
-  - category: Releases / All Releases / 0.12.2 Release
-    url: /releases/all-releases/#0.12.2-release
-  - category: Releases / All Releases / 0.12.1 Release
-    url: /releases/all-releases/#0.12.1-release
-  - category: Releases / All Releases / 0.12.0 Release
-    url: /releases/all-releases/#0.12.0-release
-  - category: Releases / All Releases / 0.11.0 Release
-    url: /releases/all-releases/#0.11.0-release
-  - category: Releases / All Releases / 0.10.1 Release
-    url: /releases/all-releases/#0.10.1-release
-  - category: Releases / All Releases / 0.10.0 Release
-    url: /releases/all-releases/#0.10.0-release
-  - category: Releases / All Releases / 0.9.0 Release
-    url: /releases/all-releases/#0.9.0-release
-  - category: Releases / All Releases / 0.8.0 Release
-    url: /releases/all-releases/#0.8.0-release
-  - category: Releases / All Releases / 0.7.0 Release
-    url: /releases/all-releases/#0.7.0-release
-  - category: Releases / All Releases / 0.6.0 Release
-    url: /releases/all-releases/#0.6.0-release
-  - category: Releases / All Releases / 0.5.0 Release
-    url: /releases/all-releases/#0.5.0-release
-  - category: Releases / All Releases / 0.4.0 Release
-    url: /releases/all-releases/#0.4.0-release
-
 
   - category: Main Concepts
     url: /main-concepts
@@ -2193,9 +2098,4 @@ site_menu:
     url: /sdk/java
   - category: SDK / Go
     url: /sdk/go
-
-  - category: Collate AI
-    url: /collateai
-  - category: Collate AI / How to Use Collate AI
-    url: /collateai/how-to-use-collate-ai
 ---

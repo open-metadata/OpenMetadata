@@ -4,6 +4,7 @@ import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
@@ -15,6 +16,7 @@ import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
+@Slf4j
 public class RunIngestionPipelineImpl {
   private final PipelineServiceClientInterface pipelineServiceClient;
 
@@ -50,10 +52,21 @@ public class RunIngestionPipelineImpl {
     long startTime = System.currentTimeMillis();
     long timeoutMillis = timeoutSeconds * 1000;
 
+    LOG.info(
+        "[GovernanceWorkflows] '{}' running for '{}'",
+        ingestionPipeline.getDisplayName(),
+        ingestionPipeline.getService().getName());
     runIngestionPipeline(ingestionPipeline);
 
     if (waitForCompletion) {
       wasSuccessful = waitForCompletion(repository, ingestionPipeline, startTime, timeoutMillis);
+
+      if (!wasSuccessful) {
+        LOG.warn(
+            "[GovernanceWorkflows] '{}' failed for '{}'",
+            ingestionPipeline.getDisplayName(),
+            ingestionPipeline.getService().getName());
+      }
     }
     return wasSuccessful;
   }

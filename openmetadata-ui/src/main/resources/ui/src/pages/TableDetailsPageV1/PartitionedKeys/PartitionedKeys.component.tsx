@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import classNames from 'classnames';
-import { t } from 'i18next';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import Table from '../../../components/common/Table/Table';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
@@ -24,8 +23,13 @@ import {
   Table as TableType,
 } from '../../../generated/entity/data/table';
 
-export const PartitionedKeys = ({ newLook = false }: { newLook?: boolean }) => {
+export const PartitionedKeys = ({
+  renderAsExpandableCard = true,
+}: {
+  renderAsExpandableCard?: boolean;
+}) => {
   const { data, filterWidgets } = useGenericContext<TableType>();
+  const { t } = useTranslation();
 
   const partitionColumnDetails = useMemo(
     () =>
@@ -70,16 +74,6 @@ export const PartitionedKeys = ({ newLook = false }: { newLook?: boolean }) => {
     return null;
   }
 
-  const header = (
-    <Typography.Text
-      className={classNames({
-        'right-panel-label': !newLook,
-        'text-sm font-medium': newLook,
-      })}>
-      {t('label.table-partition-plural')}
-    </Typography.Text>
-  );
-
   const content = (
     <Table
       columns={columns}
@@ -91,18 +85,15 @@ export const PartitionedKeys = ({ newLook = false }: { newLook?: boolean }) => {
     />
   );
 
-  if (newLook) {
-    return (
-      <Card className="w-full new-header-border-card" title={header}>
-        {content}
-      </Card>
-    );
-  }
-
-  return (
-    <>
-      {header}
+  return renderAsExpandableCard ? (
+    <ExpandableCard
+      cardProps={{
+        title: t('label.table-partition-plural'),
+      }}
+      isExpandDisabled={isEmpty(partitionColumnDetails)}>
       {content}
-    </>
+    </ExpandableCard>
+  ) : (
+    content
   );
 };

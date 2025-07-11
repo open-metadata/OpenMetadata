@@ -36,13 +36,14 @@ test('Table difference test case', async ({ page }) => {
     name: `${table1.entity.name}_test_case`,
     table2: table2.entity.name,
     threshold: '23',
+    type: 'tableDiff',
   };
 
   await table1.visitEntityPage(page);
   const profileResponse = page.waitForResponse(
     `/api/v1/tables/${encodeURIComponent(
       table1.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest`
+    )}/tableProfile/latest?includeColumnProfile=false`
   );
   await page.getByText('Data Observability').click();
   await profileResponse;
@@ -54,6 +55,7 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
+      await page.fill('#tableTestForm_testTypeId', testCase.type);
       const tableListSearchResponse = page.waitForResponse(
         `/api/v1/search/query?q=*index=table_search_index*`
       );
@@ -178,13 +180,14 @@ test('Custom SQL Query', async ({ page }) => {
     name: `${table.entity.name}_test_case`,
     displayName: 'SQL Test Case Display Name',
     sqlQuery: 'SELECT * FROM table',
+    type: 'tableCustomSQLQuery',
   };
 
   await table.visitEntityPage(page);
   const profileResponse = page.waitForResponse(
     `/api/v1/tables/${encodeURIComponent(
       table.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest`
+    )}/tableProfile/latest?includeColumnProfile=false`
   );
   await page.getByText('Data Observability').click();
   await profileResponse;
@@ -196,6 +199,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
+      await page.fill('#tableTestForm_testTypeId', testCase.type);
       await page.getByTestId('tableCustomSQLQuery').click();
       await page.click('#tableTestForm_params_strategy');
       await page.locator('.CodeMirror-scroll').click();
@@ -203,7 +207,7 @@ test('Custom SQL Query', async ({ page }) => {
         .getByTestId('code-mirror-container')
         .getByRole('textbox')
         .fill(testCase.sqlQuery);
-      await page.getByLabel('Strategy:').click();
+      await page.getByLabel('Strategy').click();
       await page.getByTitle('ROWS').click();
       await page.fill('#tableTestForm_params_threshold', '23');
       const createTestCaseResponse = page.waitForResponse(

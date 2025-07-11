@@ -39,6 +39,11 @@ class PowerBIUser(BaseModel):
 
     displayName: Optional[str] = None
     email: Optional[str] = Field(alias="emailAddress", default=None)
+    userType: Optional[str] = None
+    reportUserAccessRight: Optional[str] = None
+    datasetUserAccessRight: Optional[str] = None
+    dataflowUserAccessRight: Optional[str] = None
+    dashboardUserAccessRight: Optional[str] = None
 
 
 class PowerBIDashboard(BaseModel):
@@ -65,6 +70,7 @@ class PowerBIReport(BaseModel):
     name: str
     datasetId: Optional[str] = None
     users: Optional[List[PowerBIUser]] = []
+    modifiedBy: Optional[str] = None
 
 
 class DashboardsResponse(BaseModel):
@@ -137,7 +143,7 @@ class PowerBITableSource(BaseModel):
     PowerBI Table Source
     """
 
-    expression: str
+    expression: Optional[str] = None
 
 
 class PowerBiTable(BaseModel):
@@ -163,6 +169,21 @@ class TablesResponse(BaseModel):
     value: List[PowerBiTable]
 
 
+class DatasetExpression(BaseModel):
+    name: str
+    expression: Optional[str] = None
+
+
+class UpstreaDataflow(BaseModel):
+    groupId: Optional[str] = None
+    targetDataflowId: Optional[str] = None
+
+
+class UpstreaDataset(BaseModel):
+    groupId: Optional[str] = None
+    targetDatasetId: Optional[str] = None
+
+
 class Dataset(BaseModel):
     """
     PowerBI Dataset Model
@@ -174,6 +195,10 @@ class Dataset(BaseModel):
     tables: Optional[List[PowerBiTable]] = []
     description: Optional[str] = None
     users: Optional[List[PowerBIUser]] = []
+    expressions: Optional[List[DatasetExpression]] = []
+    configuredBy: Optional[str] = None
+    upstreamDataflows: Optional[List[UpstreaDataflow]] = []
+    upstreamDatasets: Optional[List[UpstreaDataset]] = []
 
 
 class DatasetResponse(BaseModel):
@@ -184,6 +209,15 @@ class DatasetResponse(BaseModel):
 
     odata_context: str = Field(alias="@odata.context")
     value: List[Dataset]
+
+
+class Dataflow(BaseModel):
+    id: str = Field(alias="objectId")
+    name: str
+    description: Optional[str] = None
+    users: Optional[List[PowerBIUser]] = []
+    modifiedBy: Optional[str] = None
+    upstreamDataflows: Optional[List[UpstreaDataflow]] = []
 
 
 class Group(BaseModel):
@@ -199,6 +233,7 @@ class Group(BaseModel):
     dashboards: Optional[List[PowerBIDashboard]] = []
     reports: Optional[List[PowerBIReport]] = []
     datasets: Optional[List[Dataset]] = []
+    dataflows: Optional[List[Dataflow]] = []
 
 
 class GroupsResponse(BaseModel):

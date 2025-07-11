@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EdgeProps, Position } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
@@ -82,14 +81,9 @@ describe('Test CustomEdge Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const edgePathElement = await screen.findAllByTestId(
-      'react-flow-edge-path'
-    );
-
     const deleteButton = screen.queryByTestId('delete-button');
 
     expect(deleteButton).not.toBeInTheDocument();
-    expect(edgePathElement).toHaveLength(edgePathElement.length);
   });
 
   it('Pipeline as edge should be visible', async () => {

@@ -7,7 +7,7 @@ slug: /connectors/database/postgres/yaml
 name="PostgreSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Sample Data", "Stored Procedures", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Sample Data", "Stored Procedures", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=[]
 / %}
 
@@ -60,6 +60,42 @@ To run the PostgreSQL ingestion, you will need to install:
 ```bash
 pip3 install "openmetadata-ingestion[postgres]"
 ```
+
+### IAM Authentication
+
+In order to be able to connect via IAM, you need to have the following:
+
+1. Database is configured to use IAM authentication
+Ensure that the RDS has IAM DB authentication enabled. Otherwise, you can click on Modify to enable it.
+
+2. The user has the necessary IAM permissions
+Even if you use IAM to connect to postgres, you need to specify a user to prepare the connection. You need to create a user as follows:
+
+```sql
+CREATE USER iam_user WITH LOGIN;
+GRANT rds_iam TO iam_user;
+```
+3. The AWS Role has the necessary permissions
+The role that is going to be used to perform the ingestion, needs to have the following permissions:
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "rds-db:connect"
+            ],
+            "Resource": [
+                "arn:aws:rds-db:eu-west-1:<aws_account_number>:dbuser:<rds_db_resource_id>/<postgres_user>"
+            ]
+        }
+    ]
+}
+```
+Otherwise, you might be finding issues such as
+
+PAM authentication failed for user "<user>"
 
 ## Metadata Ingestion
 

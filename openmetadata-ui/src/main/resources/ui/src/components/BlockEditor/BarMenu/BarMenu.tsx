@@ -12,7 +12,7 @@
  */
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
-import React, { FC, Fragment } from 'react';
+import { FC, Fragment } from 'react';
 import BlockQuoteIcon from '../../../assets/svg/ic-format-block-quote.svg';
 import BoldIcon from '../../../assets/svg/ic-format-bold.svg';
 import UnorderedListIcon from '../../../assets/svg/ic-format-bullet-list.svg';
@@ -84,10 +84,27 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
       {
         name: 'image',
         icon: ImageIcon,
-        command: () =>
+        command: () => {
+          const { state } = editor.view;
+          const { selection } = state;
+
+          // Get the current position
+          const pos = selection.$anchor.pos;
+
+          // Create a new selection at the current position
+          editor.commands.setTextSelection(pos);
+
+          // Insert a new line if we're at the end of a block
+          if (
+            selection.$anchor.parentOffset ===
+            selection.$anchor.parent.content.size
+          ) {
+            editor.commands.insertContent('\n');
+          }
+
+          // Now add the image
           editor
             .chain()
-            .focus()
             .setFile({
               url: '',
               fileName: '',
@@ -96,7 +113,11 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
               type: FileType.IMAGE,
               isImage: true,
             })
-            .run(),
+            .run();
+
+          // Move cursor after the image
+          editor.commands.setTextSelection(pos + 1);
+        },
         isActive: () => editor.isActive('image'),
       },
       {

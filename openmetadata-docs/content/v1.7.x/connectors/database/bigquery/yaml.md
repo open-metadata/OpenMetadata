@@ -1,5 +1,6 @@
 ---
 title: Run the BigQuery Connector Externally
+description: Configure BigQuery database connections in OpenMetadata using YAML. Complete setup guide with authentication, SSL, and connection parameters.
 slug: /connectors/database/bigquery/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/bigquery/yaml
 name="BigQuery"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -131,6 +132,12 @@ In this field you need to specify the location/region in which the taxonomy was 
 **Usage Location (Optional)**:
 Location used to query `INFORMATION_SCHEMA.JOBS_BY_PROJECT` to fetch usage data. You can pass multi-regions, such as `us` or `eu`, or your specific region such as `us-east1`. Australia and Asia multi-regions are not yet supported.
 
+**Cost Per TiB (Optional)**:
+The cost (in USD) per tebibyte (TiB) of data processed during BigQuery usage analysis. This value is used to estimate query costs when analyzing usage metrics from `INFORMATION_SCHEMA.JOBS_BY_PROJECT`.
+
+This setting does **not** affect actual billing—it is only used for internal reporting and visualization of estimated costs.
+
+The default value, if not set, may assume the standard on-demand BigQuery pricing (e.g., $5.00 per TiB), but you should adjust it according to your organization's negotiated rates or flat-rate pricing model.
 
 - If you prefer to pass the credentials file, you can do so as follows:
 ```yaml

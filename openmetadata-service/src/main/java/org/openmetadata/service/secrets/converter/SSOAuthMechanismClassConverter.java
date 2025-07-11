@@ -20,7 +20,7 @@ import org.openmetadata.schema.security.client.AzureSSOClientConfig;
 import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `SSOAuthMechanism` object. */
 public class SSOAuthMechanismClassConverter extends ClassConverter {

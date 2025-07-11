@@ -20,7 +20,7 @@ pipeline.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.5/connectors/schedule.png"
+src="/images/v1.7/connectors/schedule.png"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy" /%}
 
@@ -40,7 +40,7 @@ Ingestion Pipeline running from the Service Page.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.5/connectors/view-ingestion-pipeline.png"
+src="/images/v1.7/connectors/view-ingestion-pipeline.png"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page" /%}
 

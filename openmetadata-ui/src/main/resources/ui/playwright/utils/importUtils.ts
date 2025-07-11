@@ -18,7 +18,12 @@ import {
   FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
-import { descriptionBox, descriptionBoxReadOnly, uuid } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  uuid,
+} from './common';
 import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
@@ -39,13 +44,23 @@ export const createGlossaryTermRowDetails = () => {
 };
 
 export const fillTextInputDetails = async (page: Page, text: string) => {
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.locator('.ant-layout-content').getByRole('textbox').fill(text);
-  await page
+  const isVisible = await page
     .locator('.ant-layout-content')
     .getByRole('textbox')
-    .press('Enter', { delay: 100 });
+    .isVisible();
+
+  if (!isVisible) {
+    await page.keyboard.press('Enter', { delay: 100 });
+  }
+
+  const textboxLocator = page
+    .locator('.ant-layout-content')
+    .getByRole('textbox');
+
+  await textboxLocator.fill(text);
+  await textboxLocator.press('Enter', { delay: 100 });
 };
 
 export const fillDescriptionDetails = async (
@@ -213,6 +228,8 @@ const editGlossaryCustomProperty = async (
       .locator(descriptionBox)
       .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
 
+    await clickOutside(page);
+
     await page.getByTestId('markdown-editor').getByTestId('save').click();
 
     await page.waitForSelector(descriptionBox, {
@@ -301,7 +318,7 @@ export const fillGlossaryRowDetails = async (
     owners: string[];
   },
   page: Page,
-  propertyListName: Record<string, string>
+  propertyListName?: Record<string, string>
 ) => {
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')
@@ -362,7 +379,9 @@ export const fillGlossaryRowDetails = async (
     .locator('.InovuaReactDataGrid__cell--cell-active')
     .press('ArrowRight', { delay: 100 });
 
-  await fillCustomPropertyDetails(page, propertyListName);
+  if (propertyListName) {
+    await fillCustomPropertyDetails(page, propertyListName);
+  }
 };
 
 export const validateImportStatus = async (
@@ -408,6 +427,7 @@ export const createDatabaseRowDetails = () => {
     entityType: 'Database',
     retentionPeriod: '1 year',
     sourceUrl: 'www.xyz.com',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -423,6 +443,7 @@ export const createDatabaseSchemaRowDetails = () => {
     retentionPeriod: '1 year',
     sourceUrl: 'www.xy,z.com',
     entityType: 'Database Schema',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -438,6 +459,7 @@ export const createTableRowDetails = () => {
     retentionPeriod: '1 year',
     sourceUrl: 'www.xy,z.com',
     entityType: 'Table',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -469,6 +491,7 @@ export const createStoredProcedureRowDetails = () => {
     entityType: 'Stored Procedure',
     retentionPeriod: '1 year',
     sourceUrl: 'www.xyz.com',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -539,6 +562,7 @@ export const fillRowDetails = async (
       parent: string;
     };
     tier: string;
+    certification: string;
     retentionPeriod?: string;
     sourceUrl?: string;
     domains: {
@@ -602,6 +626,17 @@ export const fillRowDetails = async (
     .press('Enter', { delay: 100 });
 
   await page.click(`[data-testid="radio-btn-${row.tier}"]`);
+  await page.click(`[data-testid="update-tier-card"]`);
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('Enter', { delay: 100 });
+
+  await page.click(`[data-testid="radio-btn-${row.certification}"]`);
+  await page.getByTestId('update-certification').click();
 
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')
@@ -704,10 +739,46 @@ export const pressKeyXTimes = async (
   length: number,
   key: string
 ) => {
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second delay between retries
+
   for (let i = 0; i < length; i++) {
-    await page
-      .locator('.InovuaReactDataGrid__cell--cell-active')
-      .press(key, { delay: 100 });
+    let retryCount = 0;
+    let success = false;
+
+    while (!success && retryCount < maxRetries) {
+      try {
+        // Wait for the active cell to be visible
+        const activeCell = page.locator(
+          '.InovuaReactDataGrid__cell--cell-active'
+        );
+        await activeCell.waitFor({ state: 'visible', timeout: 5000 });
+
+        // Ensure the cell is focused
+        if (!(await activeCell.isVisible())) {
+          await activeCell.click({ timeout: 5000 });
+        }
+
+        // Perform the key press with a longer delay
+        await activeCell.press(key, { delay: 200 });
+
+        // Verify the key press was successful by checking if the cell is still active
+        await page.waitForTimeout(100); // Small delay to allow for state updates
+        const isStillActive = await activeCell.isVisible();
+
+        if (isStillActive) {
+          success = true;
+        } else {
+          // If cell lost focus, try to regain it
+          await activeCell.click({ timeout: 5000 });
+          retryCount++;
+          await page.waitForTimeout(retryDelay);
+        }
+      } catch {
+        retryCount++;
+        await page.waitForTimeout(retryDelay);
+      }
+    }
   }
 };
 
@@ -832,7 +903,7 @@ export const fillRecursiveColumnDetails = async (
     .press('ArrowRight', { delay: 100 });
   await fillGlossaryTermDetails(page, row.glossary);
 
-  await pressKeyXTimes(page, 6, 'ArrowRight');
+  await pressKeyXTimes(page, 7, 'ArrowRight');
 
   await fillEntityTypeDetails(page, row.entityType);
 

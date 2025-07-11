@@ -14,11 +14,12 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import PipelineDetails from '../../components/Pipeline/PipelineDetails/PipelineDetails.component';
 import { ROUTES } from '../../constants/constants';
@@ -52,7 +53,7 @@ const PipelineDetailsPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const { fqn: decodedPipelineFQN } = useFqn();
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
@@ -81,7 +82,7 @@ const PipelineDetailsPage = () => {
         entityFqn
       );
       setPipelinePermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -136,7 +137,7 @@ const PipelineDetailsPage = () => {
       } else if (
         (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
       ) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       } else {
         showErrorToast(
           error as AxiosError,
@@ -198,6 +199,24 @@ const PipelineDetailsPage = () => {
     }
   };
 
+  const onPipelineUpdate = async (
+    updatedPipeline: Pipeline,
+    key?: keyof Pipeline
+  ) => {
+    try {
+      const response = await saveUpdatedPipelineData(updatedPipeline);
+      setPipelineDetails((previous) => {
+        return {
+          ...previous,
+          version: response.version,
+          ...(key ? { [key]: response[key] } : response),
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const settingsUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
       const res = await saveUpdatedPipelineData(updatedPipeline);
@@ -222,7 +241,7 @@ const PipelineDetailsPage = () => {
   };
 
   const versionHandler = () => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.PIPELINE,
         decodedPipelineFQN,
@@ -274,14 +293,17 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const updatePipelineDetailsState = useCallback((data) => {
-    const updatedData = data as Pipeline;
+  const updatePipelineDetailsState = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as Pipeline;
 
-    setPipelineDetails((data) => ({
-      ...(data ?? updatedData),
-      version: updatedData.version,
-    }));
-  }, []);
+      setPipelineDetails((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+    },
+    []
+  );
 
   useEffect(() => {
     if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {
@@ -306,7 +328,15 @@ const PipelineDetailsPage = () => {
   }
 
   if (!pipelinePermissions.ViewAll && !pipelinePermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.pipeline-detail-plural'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
@@ -324,6 +354,7 @@ const PipelineDetailsPage = () => {
       updatePipelineDetailsState={updatePipelineDetailsState}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
+      onPipelineUpdate={onPipelineUpdate}
       onUpdateVote={updateVote}
     />
   );

@@ -15,7 +15,7 @@ import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DataAssetsIcon } from '../../../../assets/svg/data-assets-widget.svg';
 import { HOW_TO_GUIDE_DOCS } from '../../../../constants/docs.constants';

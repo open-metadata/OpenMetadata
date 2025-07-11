@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons';
 import { Button } from 'antd';
-import React from 'react';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -20,9 +19,10 @@ import {
   exportDatabaseDetailsInCSV,
   exportDatabaseSchemaDetailsInCSV,
 } from '../../rest/databaseAPI';
+import { exportGlossaryInCSVFormat } from '../../rest/glossaryAPI';
 import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
-import i18n from '../i18next/LocalUtil';
+import { t } from '../i18next/LocalUtil';
 
 export const isBulkEditRoute = (pathname: string) => {
   return pathname.includes(ROUTES.BULK_EDIT_ENTITY);
@@ -38,6 +38,9 @@ export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
 
     case EntityType.DATABASE_SCHEMA:
       return exportDatabaseSchemaDetailsInCSV;
+
+    case EntityType.GLOSSARY_TERM:
+      return exportGlossaryInCSVFormat;
 
     case EntityType.TABLE:
       return exportTableDetailsInCSV;
@@ -58,7 +61,7 @@ export const getBulkEditButton = (
       icon={<Icon component={IconEdit} />}
       type="text"
       onClick={onClickHandler}>
-      {i18n.t('label.edit')}
+      {t('label.edit')}
     </Button>
   ) : null;
 };

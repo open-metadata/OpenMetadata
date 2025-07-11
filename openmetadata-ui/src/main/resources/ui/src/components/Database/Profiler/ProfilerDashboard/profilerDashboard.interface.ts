@@ -41,6 +41,7 @@ export interface ProfilerDetailsCardProps {
   curveType?: CurveType;
   isLoading?: boolean;
   noDataPlaceholderText?: ReactNode;
+  children?: ReactNode;
 }
 
 export enum TableProfilerTab {

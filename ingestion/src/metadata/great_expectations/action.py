@@ -96,6 +96,7 @@ class OpenMetadataValidationAction(ValidationAction):
     def __init__(
         self,
         data_context: DataContext,  # type: ignore
+        name: str = "OpenMetadataValidationAction",
         *,
         config_file_path: Optional[str] = None,
         database_service_name: Optional[str] = None,
@@ -103,7 +104,7 @@ class OpenMetadataValidationAction(ValidationAction):
         database_name: Optional[str] = None,
         table_name: Optional[str] = None,
     ):
-        super().__init__(data_context)
+        super().__init__(data_context, name=name)
         self.database_service_name = database_service_name
         self.database_name = database_name
         self.table_name = table_name
@@ -152,9 +153,8 @@ class OpenMetadataValidationAction(ValidationAction):
             )
 
         if table_entity:
-            test_suite = self._check_or_create_test_suite(table_entity)
             for result in validation_result_suite.results:
-                self._handle_test_case(result, table_entity, test_suite)
+                self._handle_test_case(result, table_entity)
 
     @staticmethod
     def _get_checkpoint_batch_spec(
@@ -375,9 +375,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
         return [test_result_value]
 
-    def _handle_test_case(
-        self, result: Dict, table_entity: Table, test_suite: TestSuite
-    ):
+    def _handle_test_case(self, result: Dict, table_entity: Table):
         """Handle adding test to table entity based on the test case.
         Test Definitions will be created on the fly from the results of the
         great expectations run. We will then write the test case results to the
@@ -386,7 +384,6 @@ class OpenMetadataValidationAction(ValidationAction):
         Args:
             result: GE test result
             table_entity: table entity object
-            test_suite: test suite object
         """
 
         try:
@@ -416,7 +413,6 @@ class OpenMetadataValidationAction(ValidationAction):
                     fqn=table_entity.fullyQualifiedName.root,
                     column_name=fqn.split_test_case_fqn(test_case_fqn).column,
                 ),
-                test_suite_fqn=test_suite.fullyQualifiedName.root,
                 test_definition_fqn=test_definition.fullyQualifiedName.root,
                 test_case_parameter_values=self._get_test_case_params_value(result),
             )

@@ -13,19 +13,16 @@
 @import (reference) url('../../../styles/variables.less');
 
 .entity-header-title {
+  flex: 1;
   .ant-typography-ellipsis.entity-header-name {
     margin-bottom: 0px;
     display: block;
     color: @grey-900;
-    max-width: 500px;
+    min-width: 0;
   }
   .ant-typography-ellipsis.entity-header-display-name {
     font-size: 16px;
     color: @grey-700;
-    max-width: 500px;
-  }
-  .ant-col.entity-header-content {
-    max-width: calc(100% - 100px);
   }
 }
 
@@ -44,6 +41,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  svg {
+    // to make follow button icon color same as primary color
+    color: @primary-color;
   }
   span.ant-typography {
     margin-left: 0px;

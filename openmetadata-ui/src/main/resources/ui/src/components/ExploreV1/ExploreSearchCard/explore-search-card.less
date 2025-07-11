@@ -22,10 +22,13 @@
   border: 0.5px solid #eaecf5;
   margin: 0 0 20px;
   overflow: hidden;
-
+  .no-owner-text {
+    font-size: @size-sm;
+    font-weight: @font-regular;
+  }
   &.highlight-card {
-    border-left: 4px solid #1570ef;
-    background: #eff8ff !important;
+    border-left: 4px solid @primary-color;
+    background: @primary-50 !important;
   }
 
   &:last-child {
@@ -49,6 +52,9 @@
     border-radius: 6px;
     display: flex;
   }
+  .ProseMirror-hideselection *::selection {
+    background: inherit;
+  }
 }
 
 .assets-checkbox .ant-checkbox-inner {
@@ -64,6 +70,6 @@
   border-radius: 6px;
 
   .score {
-    color: @blue-9;
+    color: @primary-heading-color;
   }
 }

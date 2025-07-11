@@ -251,6 +251,8 @@ export interface ServiceConnection {
  *
  * Cockroach Database Connection Config
  *
+ * SSAS Metadata Database Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -275,6 +277,8 @@ export interface ServiceConnection {
  * Airflow Metadata Database Connection Config
  *
  * Wherescape Metadata Database Connection Config
+ *
+ * SSIS Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
  *
@@ -439,7 +443,7 @@ export interface ConfigClass {
      *
      * URL for the superset instance.
      *
-     * Tableau Server.
+     * Tableau Server url.
      *
      * URL for the mode instance.
      *
@@ -592,6 +596,8 @@ export interface ConfigClass {
      *
      * Password to connect to Exasol.
      *
+     * Password
+     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -697,6 +703,8 @@ export interface ConfigClass {
      * Username to connect to Cockroach. This user should have privileges to read all the
      * metadata in Cockroach.
      *
+     * Username
+     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -709,6 +717,10 @@ export interface ConfigClass {
      * Authority URI for the PowerBI service.
      */
     authorityURI?: string;
+    /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
     /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
@@ -762,7 +774,7 @@ export interface ConfigClass {
      */
     connection?: ConfigConnection;
     /**
-     * Tableau API version.
+     * Tableau API version. If not provided, the version will be used from the tableau server.
      *
      * Sigma API version.
      *
@@ -780,10 +792,6 @@ export interface ConfigClass {
      */
     authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
     /**
-     * Tableau Environment Name.
-     */
-    env?: string;
-    /**
      * Pagination limit used while querying the tableau metadata API for getting data sources
      *
      * Pagination limit used while querying the SAP ERP API for fetching the entities
@@ -792,13 +800,14 @@ export interface ConfigClass {
      */
     paginationLimit?: number;
     /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
+    /**
      * Tableau Site Name.
      */
     siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?: string;
     /**
      * SSL Configuration details.
      *
@@ -909,6 +918,10 @@ export interface ConfigClass {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * Billing Project ID
+     */
+    billingProjectId?: string;
     /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
@@ -1083,8 +1096,10 @@ export interface ConfigClass {
      * The maximum amount of time (in seconds) to wait for a successful connection to the data
      * source. If the connection attempt takes longer than this timeout period, an error will be
      * returned.
+     *
+     * Connection timeout in seconds.
      */
-    connectionTimeout?: number;
+    connectionTimeout?: number | number;
     /**
      * Databricks compute resources URL.
      */
@@ -1093,6 +1108,10 @@ export interface ConfigClass {
      * Table name to fetch the query history.
      */
     queryHistoryTable?: string;
+    /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?: string;
     /**
      * License to connect to DB2.
      */
@@ -1136,6 +1155,10 @@ export interface ConfigClass {
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -1312,6 +1335,10 @@ export interface ConfigClass {
      * Client SSL/TLS settings.
      */
     tls?: SSLTLSSettings;
+    /**
+     * HTTP Link for SSAS ACCESS
+     */
+    httpConnection?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1570,6 +1597,10 @@ export interface ConfigClass {
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
+     * Underlying storage connection
+     */
+    packageConnection?: S3Connection | string;
+    /**
      * Fivetran API Secret.
      */
     apiSecret?: string;
@@ -1737,9 +1768,9 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex exclude pipelines.
  *
- * Regex to only fetch MlModels with names matching the pattern.
- *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch search indexes that matches the pattern.
  *
@@ -1747,10 +1778,14 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only fetch tables or databases that matches the pattern.
  *
+ * Regex to only fetch stored procedures that matches the pattern.
+ *
  * Regex exclude tables or databases that matches the pattern.
  *
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
  * pattern.
+ *
+ * Regex to only fetch tags that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -2776,6 +2811,10 @@ export interface ConfigConnection {
      */
     databaseSchema?: string;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port>
      * <USERNAME> <PASSWORD>`
      */
@@ -3275,6 +3314,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -3351,6 +3394,37 @@ export interface OracleConnectionType {
      */
     oracleTNSConnection?: string;
     [property: string]: any;
+}
+
+/**
+ * S3 Connection.
+ */
+export interface S3Connection {
+    awsConfig: AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: S3Type;
+}
+
+/**
+ * Service Type
+ *
+ * S3 service type
+ */
+export enum S3Type {
+    S3 = "S3",
 }
 
 /**
@@ -3562,6 +3636,7 @@ export enum KafkaSecurityProtocol {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
@@ -3832,6 +3907,8 @@ export enum RESTType {
     Snowflake = "Snowflake",
     Spark = "Spark",
     Spline = "Spline",
+    Ssas = "SSAS",
+    Ssis = "SSIS",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",
@@ -4054,6 +4131,10 @@ export interface Pipeline {
      */
     processViewLineage?: boolean;
     /**
+     * Regex to only fetch stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    /**
      * Regex exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
@@ -4131,6 +4212,7 @@ export interface Pipeline {
      * level metrics.
      */
     computeTableMetrics?: boolean;
+    processingEngine?:    ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
@@ -4311,9 +4393,13 @@ export interface Pipeline {
      */
     searchAcrossDatabases?: boolean;
     /**
+     * Regex to only fetch tags that matches the pattern.
+     */
+    tagFilterPattern?: FilterPattern;
+    /**
      * Application configuration
      */
-    appConfig?: any[] | boolean | CollateAIAppConfig | number | null | string;
+    appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
      * Application private configuration
      */
@@ -4332,6 +4418,10 @@ export interface Pipeline {
      * like endpoints, etc., with that collection will be deleted
      */
     markDeletedApiCollections?: boolean;
+    /**
+     * Optional value of the ingestion runner name responsible for running the workflow
+     */
+    ingestionRunner?: string;
     /**
      * List of operations to be performed on the service
      */
@@ -4407,6 +4497,11 @@ export interface CollateAIAppConfig {
     sendToAdmins?:            boolean;
     sendToTeams?:             boolean;
     /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
      * Number of threads to use for reindexing
      */
     consumerThreads?: number;
@@ -4457,6 +4552,11 @@ export interface CollateAIAppConfig {
      */
     active?: boolean;
     /**
+     * Enter the retention period for Activity Threads of type = 'Conversation' records in days
+     * (e.g., 30 for one month, 60 for two months).
+     */
+    activityThreadsRetentionPeriod?: number;
+    /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
      */
@@ -4465,6 +4565,7 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    [property: string]: any;
 }
 
 /**
@@ -4616,6 +4717,10 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
+    /**
      * Propagate glossary terms through lineage
      */
     propagateGlossaryTerms?: boolean;
@@ -4759,6 +4864,7 @@ export interface TagLabel {
 export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -4804,6 +4910,10 @@ export interface TestCaseDefinitions {
      */
     computePassedFailedRowCount?: boolean;
     parameterValues?:             TestCaseParameterValue[];
+    /**
+     * Tags to apply
+     */
+    tags?: TagLabel[];
     /**
      * Fully qualified name of the test definition.
      */
@@ -4990,6 +5100,11 @@ export interface DataQualityConfig {
  */
 export interface Resource {
     /**
+     * Filter JSON tree to be used for rendering the filters in the UI. This comes from
+     * Immutable Tree type of react-awesome-query-builder.
+     */
+    filterJsonTree?: string;
+    /**
      * Query filter to be passed to ES. E.g.,
      * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
@@ -5027,19 +5142,20 @@ export interface PrivateConfig {
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io
      */
-    collateURL: string;
+    collateURL?: string;
     /**
      * Limits for the CollateAI Application.
      */
-    limits: AppLimitsConfig;
+    limits?: AppLimitsConfig;
     /**
      * WAII API Token
      */
-    token: string;
+    token?: string;
     /**
      * WAII API host URL
      */
-    waiiInstance: string;
+    waiiInstance?: string;
+    [property: string]: any;
 }
 
 /**
@@ -5194,6 +5310,12 @@ export interface IncrementalMetadataExtractionConfiguration {
  */
 export interface LineageInformation {
     /**
+     * List of service path prefixes for lineage matching. Supported formats: DBServiceName,
+     * DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or
+     * DBServiceName.DatabaseName.SchemaName.TableName
+     */
+    dbServicePrefixes?: string[];
+    /**
      * List of Database Service Names for creation of lineage
      */
     dbServiceNames?: string[];
@@ -5228,7 +5350,7 @@ export interface Operation {
     /**
      * Type of operation to perform
      */
-    type: Type;
+    type: OperationType;
 }
 
 /**
@@ -5270,10 +5392,41 @@ export interface ReverseIngestionConfig {
 /**
  * Type of operation to perform
  */
-export enum Type {
+export enum OperationType {
     UpdateDescription = "UPDATE_DESCRIPTION",
     UpdateOwner = "UPDATE_OWNER",
     UpdateTags = "UPDATE_TAGS",
+}
+
+/**
+ * Processing Engine Configuration. If not provided, the Native Engine will be used by
+ * default.
+ *
+ * Configuration for the native metadata ingestion engine
+ *
+ * This schema defines the configuration for a Spark Engine runner.
+ */
+export interface ProcessingEngine {
+    /**
+     * The type of the engine configuration
+     */
+    type: ProcessingEngineType;
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    config?: { [key: string]: any };
+    /**
+     * Spark Connect Remote URL.
+     */
+    remote?: string;
+}
+
+/**
+ * The type of the engine configuration
+ */
+export enum ProcessingEngineType {
+    Native = "Native",
+    Spark = "Spark",
 }
 
 /**
@@ -5412,6 +5565,10 @@ export interface WorkflowConfig {
     config?:                  { [key: string]: any };
     loggerLevel?:             LogLevels;
     openMetadataServerConfig: OpenMetadataConnection;
+    /**
+     * Control if we want to flag the workflow as failed if we encounter any processing errors.
+     */
+    raiseOnError?: boolean;
     /**
      * The percentage of successfully processed records that must be achieved for the pipeline
      * to be considered successful. Otherwise, the pipeline will be marked as failed.

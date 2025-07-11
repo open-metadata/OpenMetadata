@@ -18,7 +18,7 @@ volumes:
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: docker.getcollate.io/openmetadata/db:1.7.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/db:1.8.0-SNAPSHOT
     command: "--sort_buffer_size=10M"
     restart: always
     environment:
@@ -59,7 +59,7 @@ services:
 
   execute-migrate-all:
     container_name: execute_migrate_all
-    image: docker.getcollate.io/openmetadata/server:1.7.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/server:1.8.0-SNAPSHOT
     command: "./bootstrap/openmetadata-ops.sh migrate"
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
@@ -108,6 +108,8 @@ services:
       OIDC_MAX_CLOCK_SKEW: ${OIDC_MAX_CLOCK_SKEW:-""}
       OIDC_CUSTOM_PARAMS: ${OIDC_CUSTOM_PARAMS:-{}}
       OIDC_MAX_AGE: ${OIDC_MAX_AGE:-"0"}
+      OIDC_PROMPT_TYPE: ${OIDC_PROMPT_TYPE:-"consent"}
+      OIDC_SESSION_EXPIRY: ${OIDC_SESSION_EXPIRY:-"604800"}
       # For SAML Authentication
       # SAML_DEBUG_MODE: ${SAML_DEBUG_MODE:-false}
       # SAML_IDP_ENTITY_ID: ${SAML_IDP_ENTITY_ID:-""}
@@ -275,7 +277,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: docker.getcollate.io/openmetadata/server:1.7.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/server:1.8.0-SNAPSHOT
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -320,6 +322,8 @@ services:
       OIDC_MAX_CLOCK_SKEW: ${OIDC_MAX_CLOCK_SKEW:-""}
       OIDC_CUSTOM_PARAMS: ${OIDC_CUSTOM_PARAMS:-{}}
       OIDC_MAX_AGE: ${OIDC_MAX_AGE:-"0"}
+      OIDC_PROMPT_TYPE: ${OIDC_PROMPT_TYPE:-"consent"}
+      OIDC_SESSION_EXPIRY: ${OIDC_SESSION_EXPIRY:-"604800"}
       # For SAML Authentication
       # SAML_DEBUG_MODE: ${SAML_DEBUG_MODE:-false}
       # SAML_IDP_ENTITY_ID: ${SAML_IDP_ENTITY_ID:-""}
@@ -486,7 +490,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: docker.getcollate.io/openmetadata/ingestion:1.7.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/ingestion:1.8.0-SNAPSHOT
     depends_on:
       elasticsearch:
         condition: service_started

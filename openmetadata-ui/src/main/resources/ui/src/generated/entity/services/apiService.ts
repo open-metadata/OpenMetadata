@@ -41,6 +41,10 @@ export interface APIService {
      */
     domain?: EntityReference;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;
@@ -348,6 +352,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

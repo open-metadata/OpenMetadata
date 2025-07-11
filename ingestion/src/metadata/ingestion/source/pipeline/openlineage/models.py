@@ -14,7 +14,7 @@ Openlineage Source Model module
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -76,8 +76,9 @@ class TableDetails:
     Minimal table information.
     """
 
-    schema: str
     name: str
+    schema: str
+    database: Optional[str] = None
 
 
 class EventType(str, Enum):

@@ -1,5 +1,5 @@
 ---
-title: AWS EKS Deployment
+title: AWS EKS Deployment | OpenMetadata Kubernetes Guide
 slug: /deployment/kubernetes/eks
 collate: false
 ---
@@ -26,7 +26,7 @@ We support
 
 - Amazon RDS (MySQL) engine version 8 or higher
 - Amazon RDS (PostgreSQL) engine version 12 or higher
-- Amazon OpenSearch engine version 2.X (upto 2.7)
+- Amazon OpenSearch engine version 2.X (upto 2.19)
 
 {%note noteType="Tip"%}
 When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch, as you can see in the ElasticSearch configuration example below.

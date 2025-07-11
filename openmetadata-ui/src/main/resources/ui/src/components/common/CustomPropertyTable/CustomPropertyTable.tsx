@@ -11,17 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Divider, Row, Skeleton, Typography } from 'antd';
+import { Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
@@ -43,13 +37,13 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
+import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import './custom-property-table.less';
 import {
   CustomPropertyProps,
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from './CustomPropertyTable.interface';
-import { ExtensionTable } from './ExtensionTable';
 import { PropertyValue } from './PropertyValue';
 
 export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
@@ -60,7 +54,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   hasPermission,
   maxDataCap,
   isRenderedInRightPanel = false,
-  newLook = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -220,7 +213,13 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   if (!hasPermission) {
     return (
       <div className="flex-center">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.custom-property-plural'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       </div>
     );
   }
@@ -257,24 +256,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     );
   }
 
-  if (
-    isEmpty(entityTypeDetail.customProperties) &&
-    !isUndefined(entityDetails?.extension)
-  ) {
-    return <ExtensionTable extension={entityDetails?.extension} />;
-  }
-
-  if (isRenderedInRightPanel || newLook) {
+  if (isRenderedInRightPanel) {
     const header = (
-      <div
-        className={classNames('d-flex justify-between', {
-          'm-b-md': !newLook,
-        })}>
-        <Typography.Text
-          className={classNames({
-            'text-sm font-medium': newLook,
-            'right-panel-label': !newLook,
-          })}>
+      <div className={classNames('d-flex justify-between')}>
+        <Typography.Text className={classNames('text-sm font-medium')}>
           {t('label.custom-property-plural')}
         </Typography.Text>
         {viewAllBtn}
@@ -312,26 +297,19 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       return null;
     }
 
-    if (newLook) {
-      return (
-        <Card
-          className="w-full new-header-border-card no-scrollbar"
-          title={header}>
-          {propertyList}
-        </Card>
-      );
-    }
-
     return (
-      <>
-        {header}
+      <ExpandableCard
+        cardProps={{
+          className: 'no-scrollbar',
+          title: header,
+        }}>
         {propertyList}
-      </>
+      </ExpandableCard>
     );
   }
 
   return !isEmpty(entityTypeDetail.customProperties) ? (
-    <div className="h-full custom-properties-card">
+    <div className="custom-properties-card">
       <Row data-testid="custom-properties-card" gutter={[16, 16]}>
         {dataSourceColumns.map((columns, colIndex) => (
           <Col key={colIndex} span={8}>

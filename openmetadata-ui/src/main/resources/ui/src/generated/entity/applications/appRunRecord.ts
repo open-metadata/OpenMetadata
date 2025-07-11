@@ -86,7 +86,8 @@ export interface FailureContext {
 }
 
 /**
- * This schema defines Event Publisher Job Error Schema.
+ * This schema defines Event Publisher Job Error Schema. Additional properties exist for
+ * backward compatibility. Don't use it.
  */
 export interface IndexingAppError {
     errorSource?:      ErrorSource;
@@ -98,6 +99,7 @@ export interface IndexingAppError {
     stackTrace?:       string;
     submittedCount?:   number;
     successCount?:     number;
+    [property: string]: any;
 }
 
 export enum ErrorSource {
@@ -128,7 +130,7 @@ export interface AppScheduleClass {
  */
 export enum ScheduleTimeline {
     Custom = "Custom",
-    Daily = " Daily",
+    Daily = "Daily",
     Hourly = "Hourly",
     Monthly = "Monthly",
     None = "None",
@@ -195,6 +197,7 @@ export enum Status {
     Pending = "pending",
     Running = "running",
     Started = "started",
+    StopInProgress = "stopInProgress",
     Stopped = "stopped",
     Success = "success",
 }

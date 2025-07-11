@@ -23,7 +23,10 @@ from sqlalchemy.orm import DeclarativeMeta, Query, Session
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.utils.logger import query_runner_logger
-from metadata.utils.sqa_utils import get_query_filter_for_runner
+from metadata.utils.sqa_utils import (
+    get_query_filter_for_runner,
+    get_query_group_by_for_runner,
+)
 
 logger = query_runner_logger()
 
@@ -88,6 +91,11 @@ class QueryRunner:
         """Table name attribute access"""
         return self._session
 
+    @property
+    def dialect(self) -> str:
+        """Dialect attribute access"""
+        return self._session.get_bind().dialect.name
+
     def _build_query(self, *entities, **kwargs) -> Query:
         """Build query object
 
@@ -106,11 +114,15 @@ class QueryRunner:
             **kwargs: kwargs to pass to the query
         """
         filter_ = get_query_filter_for_runner(kwargs)
+        group_by_ = get_query_group_by_for_runner(kwargs)
 
         query = self._build_query(*entities, **kwargs).select_from(self._dataset)
 
         if filter_ is not None:
-            return query.filter(filter_)
+            query = query.filter(filter_)
+
+        if group_by_ is not None:
+            query = query.group_by(*group_by_)
 
         return query
 
@@ -122,7 +134,7 @@ class QueryRunner:
             **kwargs: kwargs to pass to the query
         """
         filter_ = get_query_filter_for_runner(kwargs)
-
+        group_by_ = get_query_group_by_for_runner(kwargs)
         user_query = self._session.query(self._dataset).from_statement(
             text(f"{self.profile_sample_query}")
         )
@@ -130,7 +142,10 @@ class QueryRunner:
         query = self._build_query(*entities, **kwargs).select_from(user_query)
 
         if filter_ is not None:
-            return query.filter(filter_)
+            query = query.filter(filter_)
+
+        if group_by_ is not None:
+            query = query.group_by(*group_by_)
 
         return query
 
@@ -143,13 +158,17 @@ class QueryRunner:
             **kwargs: kwargs to pass to the query
         """
         filter_ = get_query_filter_for_runner(kwargs)
+        group_by_ = get_query_group_by_for_runner(kwargs)
 
         if self.profile_sample_query:
             return self._select_from_user_query(*entities, **kwargs).first()
         query = self._build_query(*entities, **kwargs).select_from(self.table)
 
         if filter_ is not None:
-            return query.filter(filter_).first()
+            query = query.filter(filter_)
+
+        if group_by_ is not None:
+            query = query.group_by(*group_by_)
 
         return query.first()
 
@@ -162,6 +181,7 @@ class QueryRunner:
             **kwargs: kwargs to pass to the query
         """
         filter_ = get_query_filter_for_runner(kwargs)
+        group_by_ = get_query_group_by_for_runner(kwargs)
 
         if self.profile_sample_query:
             return self._select_from_user_query(*entities, **kwargs).all()
@@ -169,7 +189,10 @@ class QueryRunner:
         query = self._build_query(*entities, **kwargs).select_from(self.table)
 
         if filter_ is not None:
-            return query.filter(filter_).all()
+            query = query.filter(filter_)
+
+        if group_by_ is not None:
+            query = query.group_by(*group_by_)
 
         return query.all()
 

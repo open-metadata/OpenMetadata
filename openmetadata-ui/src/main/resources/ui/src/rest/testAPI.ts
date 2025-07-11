@@ -30,6 +30,7 @@ import {
   TestPlatform,
 } from '../generated/tests/testDefinition';
 import { TestSuite, TestSummary } from '../generated/tests/testSuite';
+import { EntityHistory } from '../generated/type/entityHistory';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -143,7 +144,7 @@ export const getListTestCaseResults = async (
   fqn: string,
   params?: ListTestCaseResultsParams
 ) => {
-  const url = `${testCaseUrl}/${getEncodedFqn(fqn)}/testCaseResult`;
+  const url = `${testCaseUrl}/testCaseResults/${getEncodedFqn(fqn)}`;
   const response = await APIClient.get<{
     data: TestCaseResult[];
     paging: Paging;
@@ -213,6 +214,25 @@ export const removeTestCaseFromTestSuite = async (
     AddTestCaseToLogicalTestSuiteType,
     AxiosResponse<TestCase>
   >(`${testCaseUrl}/logicalTestCases/${testSuiteId}/${testCaseId}`);
+
+  return response.data;
+};
+
+export const getTestCaseVersionList = async (id: string) => {
+  const url = `${testCaseUrl}/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getTestCaseVersionDetails = async (
+  id: string,
+  version: string
+) => {
+  const url = `${testCaseUrl}/${id}/versions/${version}`;
+
+  const response = await APIClient.get(url);
 
   return response.data;
 };

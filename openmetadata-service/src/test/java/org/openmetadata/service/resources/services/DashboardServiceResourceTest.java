@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.resources.services;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -27,13 +27,13 @@ import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -52,12 +52,13 @@ import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DashboardConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
+import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -69,7 +70,7 @@ public class DashboardServiceResourceTest
         DashboardService.class,
         DashboardServiceList.class,
         "services/dashboardServices",
-        "owners");
+        DashboardServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 
@@ -79,7 +80,7 @@ public class DashboardServiceResourceTest
     assertResponse(
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[serviceType must not be null]");
+        "[query param serviceType must not be null]");
   }
 
   @Test
@@ -247,7 +248,7 @@ public class DashboardServiceResourceTest
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwners());
 
-    fields = "owners,tags";
+    fields = "owners,tags,followers";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

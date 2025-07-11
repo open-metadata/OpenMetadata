@@ -122,6 +122,7 @@ export type IngestionWorkflowData = Pipeline & {
   name: string;
   enableDebugLog?: boolean;
   displayName?: string;
+  raiseOnError?: boolean;
 };
 
 export interface IngestionWorkflowFormProps {

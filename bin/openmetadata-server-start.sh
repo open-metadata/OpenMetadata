@@ -96,21 +96,24 @@ if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
     OPENMETADATA_OPTS="$JAVA_DEBUG_OPTS $OPENMETADATA_OPTS"
 fi
 
-# GC options
-GC_LOG_FILE_NAME='openmetadata-gc.log'
-if [ -z "$OPENMETADATA_GC_LOG_OPTS" ]; then
-  JAVA_MAJOR_VERSION=$($JAVA -version 2>&1 | sed -E -n 's/.* version "([0-9]*).*$/\1/p')
-  if [[ "$JAVA_MAJOR_VERSION" -ge "9" ]] ; then
-    OPENMETADATA_GC_LOG_OPTS="-Xlog:gc*:file=$LOG_DIR/$GC_LOG_FILE_NAME:time,tags:filecount=10,filesize=102400"
-  else
-    OPENMETADATA_GC_LOG_OPTS="-Xloggc:$LOG_DIR/$GC_LOG_FILE_NAME -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M"
-  fi
-fi
+# GC options for Java 21
+OPENMETADATA_GC_LOG_OPTS="-Xlog:gc*,gc+heap=info,gc+ergo=debug:file=${LOG_DIR:-/var/log/openmetadata}/openmetadata-gc.log:time,level,tags:filecount=10,filesize=102m"
 
+NOW_EPOCH=$(date +%s)
+export OPENMETADATA_DIAG_OPTS="-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${LOG_DIR:-/var/log/openmetadata} -XX:+ExitOnOutOfMemoryError -XX:StartFlightRecording=filename=${LOG_DIR:-/var/log/openmetadata}/om_${NOW_EPOCH}.jfr,duration=0s,settings=profile"
 
-# JVM performance options
+# JVM performance options optimized for Java 21
 if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
-  OPENMETADATA_JVM_PERFORMANCE_OPTS="-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true"
+    # JVM performance tuning ----------------------------------------------------
+    export OPENMETADATA_JVM_PERFORMANCE_OPTS="\
+      -server -XX:+UseG1GC \
+      -XX:MaxGCPauseMillis=200 \
+      -XX:InitiatingHeapOccupancyPercent=45 \
+      -XX:+ExplicitGCInvokesConcurrent \
+      -XX:+UseStringDeduplication \
+      -XX:-UseLargePages \
+      -XX:+UseCompressedOops -XX:+UseCompressedClassPointers \
+      -Djava.awt.headless=true"
 fi
 
 #Application classname

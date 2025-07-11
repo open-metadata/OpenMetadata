@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Source } from '../generated/type/entityLineage';
+import { t } from '../utils/i18next/LocalUtil';
 
 export const FOREIGN_OBJECT_SIZE = 40;
 export const ZOOM_VALUE = 0.65;
@@ -128,3 +128,7 @@ export const LINEAGE_EXPORT_HEADERS = [
   { field: 'glossaryTerms', title: 'Glossary Terms' },
   { field: 'depth', title: 'Level' },
 ];
+
+export const INITIAL_NODE_ITEMS_LENGTH = 50;
+export const NODE_ITEMS_PAGE_SIZE = 50;
+export const DEBOUNCE_TIMEOUT = 300;

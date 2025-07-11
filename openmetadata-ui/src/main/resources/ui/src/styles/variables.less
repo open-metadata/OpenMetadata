@@ -19,10 +19,19 @@
 @error-color: ~'var(--ant-error-color)';
 @info-color: ~'var(--ant-info-color)';
 @link-color: ~'var(--ant-primary-color)';
-@primary-1: ~'var(--ant-primary-1)';
 @radio-button-checked-bg: ~'var(--ant-primary-1)';
 @highlight-color: #f41111;
-
+@primary-25: ~'var(--ant-primary-25)';
+@primary-50: ~'var(--ant-primary-50)';
+@primary-1: ~'var(--ant-primary-1)';
+@primary-2: ~'var(--ant-primary-2)';
+@primary-3: ~'var(--ant-primary-3)';
+@primary-4: ~'var(--ant-primary-4)';
+@primary-5: ~'var(--ant-primary-5)';
+@primary-6: ~'var(--ant-primary-6)';
+@primary-7: ~'var(--ant-primary-7)';
+@primary-8: ~'var(--ant-primary-8)';
+@primary-9: ~'var(--ant-primary-9)';
 @green-1: #28a744;
 @green-2: #ebf9f4;
 @green-3: #48ca9e;
@@ -70,6 +79,7 @@
 @red-16: #7e2410;
 @red-17: #c01048;
 @red-18: #fff1f3;
+@red-19: #fecdca;
 @orange-1: #fff6ed;
 @orange-2: #c4320a;
 
@@ -84,29 +94,31 @@
 @blue-6: #eff5ff;
 @blue-7: #3062d4;
 @blue-8: #f5f8ff;
-@blue-9: #175cd3;
+@blue-9: @primary-7;
 @blue-10: #005bc4;
-@blue-11: #eff8ff;
-@blue-12: #1570ef;
+@blue-12: @primary-color;
 @blue-13: #e0f2fe;
-@blue-14: #f5faff;
-@blue-15: #eaecf5;
-@blue-16: #84caff;
+@blue-14: @primary-25;
+@blue-16: @primary-3;
 @blue-17: #0968da;
 @blue-18: #e3e3e3;
-@blue-19: #d1e9ff;
 @blue-20: #d5d9eb;
 @blue-21: #026aa2;
 @blue-22: #f0f9ff;
 @blue-23: #e6f1fe;
-@blue-24: #2e90fa;
+@blue-24: @primary-5;
+@blue-25: @primary-2;
+@blue-26: @primary-8;
+@blue-27: #2196f3;
+@blue-28: #e3f2fd4d;
+@grey-text: #2c2c2c;
 
 @partial-success-1: #06a4a4;
 @partial-success-2: #bdeeee;
 @black: #000000;
 @aborted-color: #efae2f;
-@text-color: #181d27;
-@text-color-tertiary: #414651;
+@text-color: @grey-900;
+@text-color-tertiary: @grey-700;
 
 @grey-1: #f8f8f8;
 @grey-2: #f2f2f2;
@@ -115,25 +127,29 @@
 @grey-5: #fbfbfb;
 @grey-6: #f9f9f9;
 @grey-7: #9ca3af;
-@grey-8: #717680;
 @grey-9: #f8f9fc;
-@grey-10: #f5f5f5;
-@grey-11: #fdfdfd;
-@grey-12: #e9eaeb;
 @grey-13: #71717a;
-@grey-14: #a4a7ae;
 @grey-15: #eaecf5;
 @grey-16: #f4f5f7;
-@grey-17: #fafafa;
 @grey-18: #afb5d9;
 @grey-19: #363f72;
 @grey-20: #dce3ec;
 @grey-21: #ababab;
+@grey-22: #d9d9d9;
+@grey-23: #f7f7f7;
+@grey-24: #979797;
 
 @text-grey-muted: @grey-4;
 @de-active-color: #6b7280;
 @font-size-base: 14px;
 @box-shadow-base: 0px 2px 10px rgba(0, 0, 0, 0.12);
+@button-box-shadow-default: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
+@button-box-shadow-hover: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
+@button-box-shadow-focus: 0px 0px 0px 4px @primary-1;
+@button-box-shadow-disabled: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
+@button-box-shadow-grey: 0px 1px 2px 0px rgba(10, 13, 18, 0.05),
+  0px 0px 0px 4px #f5f5f5;
+
 @white: #fff;
 @checkbox-size: 14px;
 @switch-height: 16px;
@@ -153,11 +169,10 @@
 @size-3xl: 64px;
 
 @margin-xlg: 48px;
-@body-bg-color: #f8f9fa;
 @body-dark-bg-color: #f1f1f3;
-@border-color: @blue-15;
-@border-color-1: #e9eaeb;
-@border-color-2: #d5d7da;
+@border-color: @grey-15;
+@border-color-1: @grey-200;
+@border-color-2: @grey-300;
 @border-color-3: #d4d4d8;
 @border-color-4: #e4e4e7;
 @border-color-5: #dde3ea;
@@ -165,9 +180,9 @@
 @global-border: 1px solid @border-color;
 @active-color: #e8f4ff;
 @background-color: #ffffff;
-@announcement-background: #0950c50d;
+@announcement-background: @blue-28;
 @announcement-background-dark: #e1edff;
-@announcement-border: @blue-3;
+@announcement-border: @blue-27;
 @announcement-border-light: #e2e2e2;
 @test-parameter-bg-color: #e7ebf0;
 @group-title-color: #76746f;
@@ -197,8 +212,8 @@
 @alert-error: @red-13;
 @alert-info: @blue-16;
 @alert-info-icon: @blue-12;
-@alert-info-icon-bg-1: #d1e9ff;
-@alert-info-icon-bg-2: @blue-11;
+@alert-info-icon-bg-1: @primary-1;
+@alert-info-icon-bg-2: @primary-button-background;
 @alert-success-icon: @green-13;
 @alert-success-icon-bg-1: @green-12;
 @alert-success-icon-bg-2: @green-9;
@@ -221,7 +236,7 @@
 @tab-height: 60px;
 
 @entity-details-tab-height: calc(
-  100vh - @data-asset-header-height - @tab-height - @om-navbar-height - @size-md
+  100vh - @data-asset-header-height - @tab-height - @om-navbar-height - @size-xs
 );
 @entity-version-page-tabs-height: calc(
   100vh - @data-asset-header-height-versions-page - @tab-height -
@@ -267,9 +282,9 @@
 
 @welcome-page-height: calc(100vh - 112px);
 
-@profile-page-sidebar: calc(100vh - @om-navbar-height - 40px);
+@profile-page-sidebar: calc(100vh - @om-navbar-height - 20px);
 @profile-entity-details-tab-height: calc(@profile-page-sidebar - 64px);
-@user-profile-page-panel-height: calc(100vh - @om-navbar-height - 108px);
+@user-profile-page-panel-height: calc(100vh - @om-navbar-height - 88px);
 
 //  48px - navbar height
 @welcome-page-height: calc(100vh - 48px - @om-navbar-height);
@@ -361,10 +376,14 @@
 @border-secondary: #e2c6f2;
 
 @background-primary: #f8f9fa;
-@background-secondary: #f3e2fd;
-@background-tertiary: #f9f5ff;
-@background-quaternary: #f8f9fa;
 
-@primary-heading-color: #175cd3;
+@primary-heading-color: @blue-9;
 @navigation-text-color: #787486;
-@primary-button-background: #eff8ff;
+@primary-button-background: @primary-50;
+
+// button sizes
+@btn-height-sm: 36px;
+@btn-height-base: 40px;
+@btn-height-lg: 44px;
+
+@focus-outline-color: #e6f4ff;

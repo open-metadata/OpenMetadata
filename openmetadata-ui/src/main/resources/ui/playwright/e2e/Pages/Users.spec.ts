@@ -31,6 +31,7 @@ import {
   addUser,
   checkDataConsumerPermissions,
   checkEditOwnerButtonPermission,
+  checkForUserExistError,
   checkStewardPermissions,
   checkStewardServicesPermissions,
   generateToken,
@@ -98,6 +99,8 @@ const test = base.extend<{
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.slow(true);
+
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
   await adminUser.create(apiContext);
@@ -116,6 +119,8 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
+  test.slow(true);
+
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await dataConsumerUser.delete(apiContext);
@@ -153,6 +158,17 @@ test.describe('User with Admin Roles', () => {
     await visitUserProfilePage(adminPage, updatedUserDetails.name);
 
     await visitUserListPage(adminPage);
+
+    await test.step(
+      "User shouldn't be allowed to create User with same Email",
+      async () => {
+        await checkForUserExistError(adminPage, {
+          name: updatedUserDetails.name,
+          email: updatedUserDetails.email,
+          password: updatedUserDetails.password,
+        });
+      }
+    );
 
     await permanentDeleteUser(
       adminPage,
@@ -417,7 +433,7 @@ test.describe('User with Data Steward Roles', () => {
 
     await addOwner({
       page: adminPage,
-      owner: user.responseData.displayName,
+      owner: user.responseData.displayName ?? user.responseData.name,
       type: 'Users',
       endpoint: EntityTypeEndpoint.Table,
       dataTestId: 'data-assets-header',
@@ -471,21 +487,54 @@ test.describe('User Profile Feed Interactions', () => {
     );
 
     const avatar = adminPage
-      .locator('[data-testid="message-container"]')
+      .locator('#feedData [data-testid="message-container"]')
       .first()
-      .locator('[data-testid="profile-avatar"]');
+      .locator('[data-testid="profile-avatar"]')
+      .first();
 
     await avatar.hover();
     await adminPage.waitForSelector('.ant-popover-card');
-    await adminPage.getByTestId('user-name').nth(1).click();
 
-    await userDetailsResponse;
-    await userFeedResponse;
-    const response = await userDetailsResponse;
-    const { fullyQualifiedName } = await response.json();
+    // Ensure popover is stable and visible before clicking
+    await adminPage.waitForTimeout(500); // Give popover time to stabilize
+
+    // Get the user name element and ensure it's ready for interaction
+    const userNameElement = adminPage.getByTestId('user-name').nth(1);
+
+    // Click with force to handle pointer event interception
+    await userNameElement.click({ force: true });
+
+    const [response] = await Promise.all([
+      userDetailsResponse,
+      userFeedResponse,
+    ]);
+    const { name, displayName } = await response.json();
+
+    // The UI shows displayName if available, otherwise falls back to name
+    const expectedText = displayName ?? name;
 
     await expect(
       adminPage.locator('[data-testid="user-display-name"]')
-    ).toHaveText(fullyQualifiedName);
+    ).toHaveText(expectedText);
+  });
+
+  test('Close the profile dropdown after redirecting to user profile page', async ({
+    adminPage,
+  }) => {
+    await redirectToHomePage(adminPage);
+    await adminPage.locator('[data-testid="dropdown-profile"] svg').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+    const userResponse = adminPage.waitForResponse(
+      '/api/v1/users/name/*?fields=*&include=all'
+    );
+    await adminPage.getByTestId('user-name').click();
+    await userResponse;
+    await adminPage.waitForLoadState('networkidle');
+
+    await expect(
+      adminPage.locator('.user-profile-dropdown-overlay')
+    ).not.toBeVisible();
   });
 });

@@ -151,6 +151,10 @@
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "domain" : {
       "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReference.json"

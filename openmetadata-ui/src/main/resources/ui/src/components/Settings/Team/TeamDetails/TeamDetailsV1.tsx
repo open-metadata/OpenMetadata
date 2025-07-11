@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import {
   Avatar,
   Button,
   Col,
-  Collapse,
   Modal,
   Row,
   Space,
@@ -31,9 +30,9 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
@@ -60,8 +59,8 @@ import { OwnerType } from '../../../../enums/user.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import {
-  User,
   EntityReference as UserTeams,
+  User,
 } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useAuth } from '../../../../hooks/authHooks';
@@ -133,7 +132,7 @@ const TeamDetailsV1 = ({
   isFetchingAllTeamAdvancedDetails,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { isAdminUser } = useAuth();
   const { currentUser } = useApplicationStore();
@@ -209,7 +208,7 @@ const TeamDetailsV1 = ({
     [childTeamList, currentTeam.childrenCount]
   );
   const updateActiveTab = (key: string) => {
-    history.push({ search: Qs.stringify({ activeTab: key }) });
+    navigate({ search: Qs.stringify({ activeTab: key }) });
   };
 
   const { createTeamPermission, editUserPermission } = useMemo(() => {
@@ -250,10 +249,19 @@ const TeamDetailsV1 = ({
     }: PlaceholderProps) => (
       <ErrorPlaceHolder
         button={button}
-        className="mt-0-important border-none"
+        className="mt-0-important border-none p-lg"
         doc={doc}
         heading={heading}
         permission={permission}
+        permissionValue={
+          type === ERROR_PLACEHOLDER_TYPE.CREATE
+            ? t('label.create-entity', {
+                entity: heading,
+              })
+            : t('label.edit-entity', {
+                entity: heading,
+              })
+        }
         type={type}
         onClick={onClick}>
         {children}
@@ -497,7 +505,7 @@ const TeamDetailsV1 = ({
     }
   }, [currentTeam]);
   const handleImportClick = useCallback(async () => {
-    history.push({
+    navigate({
       pathname: getSettingsPathWithFqn(
         GlobalSettingsMenuCategory.MEMBERS,
         GlobalSettingOptions.TEAMS,
@@ -720,7 +728,7 @@ const TeamDetailsV1 = ({
         noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
         type={AssetsOfEntity.TEAM}
-        onAddAsset={() => history.push(ROUTES.EXPLORE)}
+        onAddAsset={() => navigate(ROUTES.EXPLORE)}
         onAssetClick={setPreviewAsset}
       />
     ),
@@ -805,6 +813,7 @@ const TeamDetailsV1 = ({
       isEmpty(currentTeam.policies) ? (
         fetchErrorPlaceHolder({
           permission: entityPermissions.EditAll,
+          heading: t('label.policy'),
           children: t('message.assigning-team-entity-description', {
             entity: t('label.policy-lowercase-plural'),
             name: currentTeam.name,
@@ -911,6 +920,12 @@ const TeamDetailsV1 = ({
     ]
   );
 
+  const editDescriptionPermission = useMemo(
+    () =>
+      (entityPermissions.EditAll || entityPermissions.EditDescription) &&
+      !isTeamDeleted,
+    [entityPermissions, isTeamDeleted]
+  );
   const teamsCollapseHeader = useMemo(
     () => (
       <>
@@ -983,6 +998,17 @@ const TeamDetailsV1 = ({
             updateTeamHandler={updateTeamHandler}
           />
         </div>
+        <div className="m-t-md">
+          <DescriptionV1
+            wrapInCard
+            description={currentTeam.description ?? ''}
+            entityName={getEntityName(currentTeam)}
+            entityType={EntityType.TEAM}
+            hasEditAccess={editDescriptionPermission}
+            showCommentsIcon={false}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
+        </div>
       </>
     ),
     [
@@ -999,6 +1025,8 @@ const TeamDetailsV1 = ({
       updateTeamHandler,
       afterDeleteAction,
       getDeleteMessagePostFix,
+      editDescriptionPermission,
+      onDescriptionUpdate,
     ]
   );
 
@@ -1077,13 +1105,6 @@ const TeamDetailsV1 = ({
     ]
   );
 
-  const editDescriptionPermission = useMemo(
-    () =>
-      (entityPermissions.EditDescription || entityPermissions.EditAll) &&
-      !isTeamDeleted,
-    [entityPermissions, isTeamDeleted]
-  );
-
   if (isTeamMemberLoading > 0) {
     return <Loader />;
   }
@@ -1108,40 +1129,9 @@ const TeamDetailsV1 = ({
 
         <Col
           className="teams-profile-container"
-          data-testid="team-detail-header"
+          data-testid="team-details-collapse"
           span={24}>
-          <Collapse
-            accordion
-            bordered={false}
-            className="header-collapse-custom-collapse"
-            expandIcon={({ isActive }) => (
-              <span
-                className={classNames('ant-collapse-arrow', {
-                  'arrow-icon-non-organization': !isOrganization,
-                })}>
-                {isActive ? <DownOutlined /> : <RightOutlined />}
-              </span>
-            )}
-            expandIconPosition="end">
-            <Collapse.Panel
-              className={classNames('collapse-panel-container', {
-                'm-t-sm': !isOrganization,
-              })}
-              data-testid="team-details-collapse"
-              header={teamsCollapseHeader}
-              key="1">
-              <DescriptionV1
-                newLook
-                wrapInCard
-                description={currentTeam.description ?? ''}
-                entityName={getEntityName(currentTeam)}
-                entityType={EntityType.TEAM}
-                hasEditAccess={editDescriptionPermission}
-                showCommentsIcon={false}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-            </Collapse.Panel>
-          </Collapse>
+          {teamsCollapseHeader}
         </Col>
 
         <Col className="m-t-sm" span={24}>

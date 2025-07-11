@@ -10,12 +10,12 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.5/connectors/configure-metadata-ingestion-database-1.png"
+  src="/images/v1.7/connectors/configure-metadata-ingestion-database-1.png"
   alt="Configure Metadata Ingestion"
   caption="Configure Metadata Ingestion Page - 1" /%}
 
 {% image
-  src="/images/v1.5/connectors/configure-metadata-ingestion-database-2.png"
+  src="/images/v1.7/connectors/configure-metadata-ingestion-database-2.png"
   alt="Configure Metadata Ingestion"
   caption="Configure Metadata Ingestion Page - 2" /%}
 

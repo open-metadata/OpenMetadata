@@ -85,6 +85,7 @@ import superset from '../assets/img/service-icon-superset.png';
 import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import trino from '../assets/img/service-icon-trino.png';
+import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
 import vertica from '../assets/img/service-icon-vertica.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
@@ -149,7 +150,7 @@ export const METABASE = metabase;
 export const AZURESQL = azuresql;
 export const CLICKHOUSE = clickhouse;
 export const DATABRICK = databrick;
-export const UNITYCATALOG = databrick;
+export const UNITYCATALOG = unitycatalog;
 export const IBMDB2 = ibmdb2;
 export const DORIS = doris;
 export const DRUID = druid;
@@ -270,6 +271,10 @@ export const servicesDisplayName: { [key: string]: string } = {
 };
 
 export const DEF_UI_SCHEMA = {
+  supportsIncrementalMetadataExtraction: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsSystemProfile: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDataDiff: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -417,20 +422,14 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.BigTable,
-  DatabaseServiceType.SAS,
-  PipelineServiceType.Spline,
   PipelineServiceType.OpenLineage,
-  PipelineServiceType.Flink,
   PipelineServiceType.Wherescape,
-  DatabaseServiceType.Teradata,
-  StorageServiceType.Gcs,
-  DatabaseServiceType.SapERP,
   DatabaseServiceType.Cassandra,
   MetadataServiceType.AlationSink,
-  DatabaseServiceType.Synapse,
   DatabaseServiceType.Cockroach,
   SearchServiceType.OpenSearch,
+  PipelineServiceType.Ssis,
+  DatabaseServiceType.Ssas,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -447,10 +446,6 @@ export const TEST_CONNECTION_FAILURE_MESSAGE = i18n.t(
 
 export const TEST_CONNECTION_TESTING_MESSAGE = i18n.t(
   'message.testing-your-connection-may-take-two-minutes'
-);
-
-export const TEST_CONNECTION_INFO_MESSAGE = i18n.t(
-  'message.test-connection-taking-too-long'
 );
 
 export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(

@@ -26,7 +26,7 @@ button {
 }
 
 .ant-btn.ant-btn-default:not(:hover) {
-  border-color: @blue-15;
+  border-color: @grey-15;
 }
 
 .ant-btn-background-ghost.ant-btn-primary.hover-button:hover {
@@ -74,7 +74,40 @@ button {
 }
 
 .ant-btn-primary {
-  box-shadow: none;
+  background: @primary-color;
+  border-color: @primary-color;
+  color: @white;
+  box-shadow: @button-box-shadow-default;
+
+  &.ant-btn-lg {
+    font-weight: 600;
+  }
+
+  &:hover {
+    background: @blue-9;
+    border-color: @blue-9;
+    color: @white;
+    box-shadow: @button-box-shadow-hover;
+  }
+  &:focus {
+    background: @blue-12;
+    border-color: @blue-12;
+    color: @white;
+    box-shadow: @button-box-shadow-focus;
+  }
+  &:disabled {
+    background: @blue-25;
+    border-color: @blue-25;
+    color: @white;
+    box-shadow: @button-box-shadow-disabled;
+
+    &:hover {
+      background: @blue-25;
+      border-color: @blue-25;
+      color: @white;
+      box-shadow: @button-box-shadow-disabled;
+    }
+  }
 }
 
 .ant-btn.btn-outlined {
@@ -84,18 +117,23 @@ button {
 }
 
 .ant-btn.ant-btn-icon-only.bordered {
-  border: 1px solid @border-light;
+  border: 1px solid @grey-300;
   background-color: @white;
 
   &.ant-btn-sm {
     width: 20px;
     height: 20px;
     border-radius: @border-radius-base;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 
     svg {
       width: 12px;
       height: 12px;
-      vertical-align: text-top;
+      vertical-align: middle;
     }
   }
 
@@ -126,7 +164,7 @@ button {
   }
 
   .ant-btn-default:not(.ant-btn-primary):not([disabled]) {
-    border-left-color: @blue-15;
+    border-left-color: @grey-15;
 
     &:hover {
       border-left-color: @primary-color;
@@ -137,7 +175,7 @@ button {
     background-color: @background-color;
 
     &:hover {
-      background-color: @blue-11;
+      background-color: @primary-button-background;
       border-color: @primary-color;
     }
   }
@@ -152,4 +190,36 @@ button {
 .remove-button-background-hover.ant-btn-text:hover {
   background-color: @white;
   color: inherit;
+}
+.ant-btn.ant-btn-dangerous {
+  background: @red-14;
+  border-color: @red-14;
+  color: @white;
+  box-shadow: @button-box-shadow-default;
+  &:hover {
+    background: @red-10;
+    border-color: @red-10;
+    color: @white;
+    box-shadow: @button-box-shadow-hover;
+  }
+
+  &:focus {
+    background: @red-14;
+    border-color: @red-14;
+    color: @white;
+    box-shadow: @button-box-shadow-focus;
+  }
+
+  &:disabled {
+    background: @red-19;
+    color: @white;
+    border: 1px solid @red-19;
+    box-shadow: @button-box-shadow-disabled;
+    &:hover {
+      background: @red-19;
+      color: @white;
+      border: 1px solid @red-19;
+      box-shadow: @button-box-shadow-disabled;
+    }
+  }
 }

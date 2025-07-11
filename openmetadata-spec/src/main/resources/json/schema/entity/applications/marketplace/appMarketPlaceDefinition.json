@@ -90,7 +90,7 @@
       "type": "string"
     },
     "className": {
-      "description": "Full Qualified ClassName for the the application",
+      "description": "Full Qualified ClassName for the the application. Use can use 'org.openmetadata.service.apps.AbstractNativeApplication' if you don't have one yet.",
       "type": "string"
     },
     "sourcePythonClass": {

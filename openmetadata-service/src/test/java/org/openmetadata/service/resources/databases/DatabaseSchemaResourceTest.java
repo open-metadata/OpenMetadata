@@ -13,11 +13,14 @@
 
 package org.openmetadata.service.resources.databases;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsv.entityNotFound;
@@ -30,13 +33,13 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
-import static org.pac4j.core.util.CommonHelper.assertTrue;
 
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -44,18 +47,32 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource.DatabaseSchemaList;
+import org.openmetadata.service.resources.domains.DomainResourceTest;
+import org.openmetadata.service.resources.tags.TagResourceTest;
+import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -76,6 +93,400 @@ public class DatabaseSchemaResourceTest
     CreateDatabaseSchema create = createRequest(test).withDatabase(null);
     assertResponseContains(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "database must not be null");
+  }
+
+  @Test
+  void test_bulkFetchWithOwners_pagination(TestInfo test) throws IOException {
+    // This test specifically targets the bulk fetcher issue with pagination
+    // Create multiple database schemas with different owners to trigger bulk fetching
+    List<DatabaseSchema> createdSchemas = new ArrayList<>();
+
+    // Create 5 schemas with different owners to ensure bulk fetching is triggered
+    for (int i = 0; i < 5; i++) {
+      CreateDatabaseSchema create =
+          createRequest(test.getDisplayName() + "_schema" + i)
+              .withDatabase(DATABASE.getFullyQualifiedName())
+              .withOwners(
+                  List.of(i % 2 == 0 ? USER1.getEntityReference() : USER2.getEntityReference()));
+
+      DatabaseSchema schema = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      createdSchemas.add(schema);
+    }
+
+    // Test 1: Get all schemas with owners field via list API
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fields", "owners");
+    queryParams.put("database", DATABASE.getFullyQualifiedName());
+    queryParams.put("limit", "100"); // Ensure we get all schemas in one page
+
+    ResultList<DatabaseSchema> schemaList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertNotNull(schemaList);
+    assertTrue(schemaList.getData().size() >= 5, "Should have at least 5 schemas");
+
+    // Count how many of our created schemas are in the response
+    long foundCount =
+        schemaList.getData().stream()
+            .filter(
+                schema -> createdSchemas.stream().anyMatch(s -> s.getId().equals(schema.getId())))
+            .count();
+
+    // Log if we don't find all schemas
+    if (foundCount < createdSchemas.size()) {
+      LOG.warn(
+          "Only found {} of {} created schemas in bulk response",
+          foundCount,
+          createdSchemas.size());
+    }
+
+    // Verify that owners are populated for all schemas we find
+    for (DatabaseSchema schema : schemaList.getData()) {
+      if (createdSchemas.stream().anyMatch(s -> s.getId().equals(schema.getId()))) {
+        assertListNotNull(schema.getOwners());
+        assertEquals(
+            1,
+            schema.getOwners().size(),
+            "Schema " + schema.getName() + " should have exactly one owner");
+
+        // Verify the owner is either USER1 or USER2
+        String ownerId = schema.getOwners().getFirst().getId().toString();
+        assertTrue(
+            USER1.getId().toString().equals(ownerId) || USER2.getId().toString().equals(ownerId),
+            "Owner should be either USER1 or USER2");
+      }
+    }
+
+    // Test 2: Get each schema individually and compare with bulk response if present
+    for (DatabaseSchema createdSchema : createdSchemas) {
+      DatabaseSchema individualSchema =
+          getEntityByName(createdSchema.getFullyQualifiedName(), "owners", ADMIN_AUTH_HEADERS);
+
+      assertListNotNull(individualSchema.getOwners());
+      assertEquals(1, individualSchema.getOwners().size());
+
+      // Find the same schema in bulk response
+      DatabaseSchema bulkSchema =
+          schemaList.getData().stream()
+              .filter(s -> s.getId().equals(createdSchema.getId()))
+              .findFirst()
+              .orElse(null);
+
+      // Only assert if the schema is in the bulk response (it might be on a different page)
+      if (bulkSchema != null) {
+        assertEquals(
+            individualSchema.getOwners().getFirst().getId(),
+            bulkSchema.getOwners().getFirst().getId(),
+            "Owner from bulk fetch should match individual fetch");
+      } else {
+        LOG.info(
+            "Schema {} not found in bulk response - might be on a different page",
+            createdSchema.getName());
+      }
+    }
+  }
+
+  @Test
+  void test_bulkFetchWithTablesAndProfilerConfig_pagination(TestInfo test) throws IOException {
+    // This test verifies bulk fetching of tables and profiler configs works correctly
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    List<DatabaseSchema> createdSchemas = new ArrayList<>();
+
+    // Create 5 schemas with tables and profiler configs
+    for (int i = 0; i < 5; i++) {
+      CreateDatabaseSchema createSchema =
+          createRequest(test.getDisplayName() + "_schema" + i)
+              .withDatabase(DATABASE.getFullyQualifiedName());
+
+      DatabaseSchema schema = createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+      // Add 2 tables to each schema
+      for (int j = 0; j < 2; j++) {
+        CreateTable createTable =
+            tableResourceTest
+                .createRequest("table_" + i + "_" + j, "", "", null)
+                .withDatabaseSchema(schema.getFullyQualifiedName());
+        tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+      }
+
+      // Add profiler config to schemas with even index
+      if (i % 2 == 0) {
+        DatabaseSchemaProfilerConfig profilerConfig =
+            new DatabaseSchemaProfilerConfig()
+                .withProfileSampleType(TableProfilerConfig.ProfileSampleType.PERCENTAGE)
+                .withProfileSample(50.0);
+
+        // Use the repository to add profiler config
+        DatabaseSchemaRepository repository =
+            (DatabaseSchemaRepository) Entity.getEntityRepository(Entity.DATABASE_SCHEMA);
+        repository.addDatabaseSchemaProfilerConfig(schema.getId(), profilerConfig);
+      }
+
+      createdSchemas.add(schema);
+    }
+
+    // Test 1: Get all schemas with tables and profilerConfig fields via list API
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fields", "tables,databaseSchemaProfilerConfig");
+    queryParams.put("database", DATABASE.getFullyQualifiedName());
+    queryParams.put("limit", "100");
+
+    ResultList<DatabaseSchema> schemaList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertNotNull(schemaList);
+    assertTrue(schemaList.getData().size() >= 5, "Should have at least 5 schemas");
+
+    // Verify tables and profiler configs are populated correctly
+    for (DatabaseSchema schema : schemaList.getData()) {
+      DatabaseSchema createdSchema =
+          createdSchemas.stream()
+              .filter(s -> s.getId().equals(schema.getId()))
+              .findFirst()
+              .orElse(null);
+
+      if (createdSchema != null) {
+        // Verify tables are populated
+        assertListNotNull(schema.getTables());
+        assertEquals(
+            2,
+            schema.getTables().size(),
+            "Schema " + schema.getName() + " should have exactly 2 tables");
+
+        // Verify table names
+        for (EntityReference tableRef : schema.getTables()) {
+          assertNotNull(tableRef.getId());
+          assertNotNull(tableRef.getName());
+          assertNotNull(tableRef.getType());
+          assertEquals(Entity.TABLE, tableRef.getType());
+        }
+
+        // Verify profiler config
+        int schemaIndex =
+            Integer.parseInt(
+                schema.getName().substring(schema.getName().lastIndexOf("schema") + 6));
+        if (schemaIndex % 2 == 0) {
+          assertNotNull(
+              schema.getDatabaseSchemaProfilerConfig(),
+              "Even-indexed schema should have profiler config");
+          assertEquals(
+              TableProfilerConfig.ProfileSampleType.PERCENTAGE,
+              schema.getDatabaseSchemaProfilerConfig().getProfileSampleType());
+          assertEquals(50.0, schema.getDatabaseSchemaProfilerConfig().getProfileSample());
+        } else {
+          assertNull(
+              schema.getDatabaseSchemaProfilerConfig(),
+              "Odd-indexed schema should not have profiler config");
+        }
+      }
+    }
+
+    // Test 2: Compare with individual fetches
+    for (DatabaseSchema createdSchema : createdSchemas) {
+      DatabaseSchema individualSchema =
+          getEntityByName(
+              createdSchema.getFullyQualifiedName(),
+              "tables,databaseSchemaProfilerConfig",
+              ADMIN_AUTH_HEADERS);
+
+      // Find in bulk response
+      DatabaseSchema bulkSchema =
+          schemaList.getData().stream()
+              .filter(s -> s.getId().equals(createdSchema.getId()))
+              .findFirst()
+              .orElse(null);
+
+      if (bulkSchema != null) {
+        // Compare tables
+        assertEquals(
+            individualSchema.getTables().size(),
+            bulkSchema.getTables().size(),
+            "Table count should match between individual and bulk fetch");
+
+        // Compare profiler config
+        if (individualSchema.getDatabaseSchemaProfilerConfig() != null) {
+          assertNotNull(
+              bulkSchema.getDatabaseSchemaProfilerConfig(),
+              "Profiler config should be present in bulk fetch if present in individual fetch");
+          assertEquals(
+              individualSchema.getDatabaseSchemaProfilerConfig().getProfileSampleType(),
+              bulkSchema.getDatabaseSchemaProfilerConfig().getProfileSampleType(),
+              "Profiler config should match");
+        } else {
+          assertNull(
+              bulkSchema.getDatabaseSchemaProfilerConfig(),
+              "Profiler config should be null in bulk fetch if null in individual fetch");
+        }
+      }
+    }
+  }
+
+  @Test
+  void test_inheritedFieldsWithPagination(TestInfo test) throws IOException {
+    // Create resource test instances
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+    UserResourceTest userResourceTest = new UserResourceTest();
+    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
+
+    // Create a domain
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName("test_domain_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Test domain for inheritance");
+    Domain domain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    // Create database owners (multiple users instead of user + team to avoid validation error)
+    User databaseOwner1 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(
+                "db_owner1_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"),
+                "db_owner1@example.com",
+                "DB Owner 1",
+                null),
+            ADMIN_AUTH_HEADERS);
+    User databaseOwner2 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(
+                "db_owner2_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"),
+                "db_owner2@example.com",
+                "DB Owner 2",
+                null),
+            ADMIN_AUTH_HEADERS);
+
+    // Create a database with domain and multiple user owners
+    CreateDatabase createDb =
+        databaseResourceTest
+            .createRequest("test_db_inheritance_" + test.getDisplayName())
+            .withService(DATABASE.getService().getFullyQualifiedName())
+            .withOwners(
+                List.of(databaseOwner1.getEntityReference(), databaseOwner2.getEntityReference()))
+            .withDomain(domain.getFullyQualifiedName());
+    Database database = databaseResourceTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
+
+    // Create multiple schemas - some with their own owners/domains, some without
+    List<DatabaseSchema> schemas = new ArrayList<>();
+    Domain schemaDomain = null;
+
+    for (int i = 0; i < 4; i++) {
+      CreateDatabaseSchema createSchema =
+          createRequest(test.getDisplayName() + "_inherit_schema" + i)
+              .withDatabase(database.getFullyQualifiedName());
+
+      // Schema 1 has its own owner
+      if (i == 1) {
+        User schemaOwner =
+            userResourceTest.createEntity(
+                userResourceTest.createRequest(
+                    "schema_owner_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_") + i,
+                    "schema_owner_" + i + "@example.com",
+                    "Schema Owner " + i,
+                    null),
+                ADMIN_AUTH_HEADERS);
+        createSchema.withOwners(List.of(schemaOwner.getEntityReference()));
+      }
+
+      // Schema 2 has its own domain
+      if (i == 2) {
+        schemaDomain =
+            domainResourceTest.createEntity(
+                new CreateDomain()
+                    .withName("schema_domain_" + test.getDisplayName() + i)
+                    .withDomainType(DomainType.AGGREGATE)
+                    .withDescription("Schema specific domain"),
+                ADMIN_AUTH_HEADERS);
+        createSchema.withDomain(schemaDomain.getFullyQualifiedName());
+      }
+
+      DatabaseSchema schema = createEntity(createSchema, ADMIN_AUTH_HEADERS);
+      schemas.add(schema);
+
+      // Create a table for schema 0 to test table inheritance
+      if (i == 0) {
+        TableResourceTest tableResourceTest = new TableResourceTest();
+        CreateTable createTable =
+            tableResourceTest
+                .createRequest("inherit_test_table", "", "", null)
+                .withDatabaseSchema(schema.getFullyQualifiedName());
+        tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+      }
+    }
+
+    // Test 1: Fetch schemas with pagination including inherited fields
+    ResultList<DatabaseSchema> resultList =
+        listEntities(
+            Map.of("database", database.getFullyQualifiedName(), "fields", "owners,domain"),
+            ADMIN_AUTH_HEADERS);
+
+    // Verify inheritance behavior
+    assertEquals(4, resultList.getData().size());
+
+    for (DatabaseSchema fetchedSchema : resultList.getData()) {
+      int index =
+          Integer.parseInt(fetchedSchema.getName().substring(fetchedSchema.getName().length() - 1));
+
+      // Verify domain inheritance
+      assertNotNull(fetchedSchema.getDomain());
+      if (index == 2) {
+        // Schema 2 has its own domain
+        assert schemaDomain != null;
+        assertEquals(
+            schemaDomain.getFullyQualifiedName(),
+            fetchedSchema.getDomain().getFullyQualifiedName());
+        assertNull(
+            fetchedSchema.getDomain().getInherited(),
+            "Own domain should not be marked as inherited");
+      } else {
+        // Other schemas inherit from database
+        assertEquals(
+            domain.getFullyQualifiedName(), fetchedSchema.getDomain().getFullyQualifiedName());
+        assertTrue(
+            fetchedSchema.getDomain().getInherited(),
+            "Domain should be marked as inherited from database");
+      }
+
+      // Verify owner inheritance
+      assertListNotNull(fetchedSchema.getOwners());
+      if (index == 1) {
+        // Schema 1 has its own owner
+        assertEquals(1, fetchedSchema.getOwners().size());
+        assertTrue(fetchedSchema.getOwners().getFirst().getName().contains("schema_owner_"));
+        assertNull(
+            fetchedSchema.getOwners().getFirst().getInherited(),
+            "Own owners should not be marked as inherited");
+      } else {
+        // Other schemas inherit from database (should have both users)
+        assertEquals(2, fetchedSchema.getOwners().size());
+        List<String> ownerNames =
+            fetchedSchema.getOwners().stream().map(EntityReference::getName).toList();
+        assertTrue(ownerNames.contains(databaseOwner1.getName()));
+        assertTrue(ownerNames.contains(databaseOwner2.getName()));
+        fetchedSchema
+            .getOwners()
+            .forEach(
+                owner ->
+                    assertTrue(
+                        owner.getInherited(), "Inherited owners should be marked as inherited"));
+      }
+    }
+
+    // Test 2: Verify table inheritance from schema/database
+    if (!schemas.isEmpty()) {
+      TableResourceTest tableResourceTest = new TableResourceTest();
+      Table table =
+          tableResourceTest.getEntityByName(
+              schemas.getFirst().getFullyQualifiedName() + ".inherit_test_table",
+              "owners,domain",
+              ADMIN_AUTH_HEADERS);
+
+      // Table should inherit domain from database (schema 0 doesn't have its own domain)
+      assertNotNull(table.getDomain());
+      assertEquals(domain.getFullyQualifiedName(), table.getDomain().getFullyQualifiedName());
+      assertTrue(table.getDomain().getInherited(), "Table domain should be inherited");
+
+      // Table should inherit owners from database (schema 0 doesn't have its own owners)
+      assertListNotNull(table.getOwners());
+      assertEquals(2, table.getOwners().size());
+      table
+          .getOwners()
+          .forEach(owner -> assertTrue(owner.getInherited(), "Table owners should be inherited"));
+    }
   }
 
   @Test
@@ -119,11 +530,12 @@ public class DatabaseSchemaResourceTest
         tableTest.createRequest("s1").withDatabaseSchema(schema.getFullyQualifiedName());
     tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
-    // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,
+    // retentionPeriod, sourceUrl, domain, extension
     // Create table with invalid tags field
     String resultsHeader =
         recordToString(EntityCsv.getResultHeaders(getDatabaseSchemaCsvHeaders(schema, false)));
-    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,";
+    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,,";
     String csv = createCsv(getDatabaseSchemaCsvHeaders(schema, false), listOf(record), null);
     CsvImportResult result = importCsv(schemaName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -134,7 +546,7 @@ public class DatabaseSchemaResourceTest
     assertRows(result, expectedRows);
 
     // Tag will cause failure
-    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,,";
+    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,,,";
     csv = createCsv(getDatabaseSchemaCsvHeaders(schema, false), listOf(record), null);
     result = importCsv(schemaName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -145,7 +557,7 @@ public class DatabaseSchemaResourceTest
     assertRows(result, expectedRows);
 
     // non-existing table will cause
-    record = "non-existing,dsp1,dsc1,,,,,,,,";
+    record = "non-existing,dsp1,dsc1,,,,,,,,,";
     String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), "non-existing");
     csv = createCsv(getDatabaseSchemaCsvHeaders(schema, false), listOf(record), null);
     result = importCsv(schemaName, csv, false);
@@ -165,13 +577,20 @@ public class DatabaseSchemaResourceTest
         tableTest.createRequest("s1").withDatabaseSchema(schema.getFullyQualifiedName());
     tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
+    // Create certification
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    Tag certificationTag =
+        tagResourceTest.createEntity(
+            tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
+
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
-    // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,",
-                user1, escapeCsv(DOMAIN.getFullyQualifiedName())));
+                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,%s,P23DT23H,http://test.com,%s,",
+                user1,
+                certificationTag.getFullyQualifiedName(),
+                escapeCsv(DOMAIN.getFullyQualifiedName())));
 
     // Update created entity with changes
     importCsvAndValidate(
@@ -179,6 +598,22 @@ public class DatabaseSchemaResourceTest
         getDatabaseSchemaCsvHeaders(schema, false),
         null,
         updateRecords);
+
+    List<String> clearRecords = listOf("s1,dsp1,new-dsc2,,,,,,P23DT23H,http://test.com,,");
+
+    importCsvAndValidate(
+        schema.getFullyQualifiedName(),
+        getDatabaseSchemaCsvHeaders(schema, false),
+        null,
+        clearRecords);
+
+    String tableFqn = String.format("%s.%s", schema.getFullyQualifiedName(), "s1");
+    Table updatedTable = tableTest.getEntityByName(tableFqn, ADMIN_AUTH_HEADERS);
+    assertEquals("new-dsc2", updatedTable.getDescription());
+    assertTrue(listOrEmpty(updatedTable.getOwners()).isEmpty(), "Owner should be cleared");
+    assertTrue(
+        listOrEmpty(updatedTable.getTags()).isEmpty(), "Tags should be empty after clearing");
+    assertNull(updatedTable.getDomain(), "Domain should be null after clearing");
   }
 
   @Test
@@ -196,7 +631,7 @@ public class DatabaseSchemaResourceTest
             .withDescription("Initial Table Description");
 
     // Set column description
-    createTable.getColumns().get(0).setDescription("Initial Column Description");
+    createTable.getColumns().getFirst().setDescription("Initial Column Description");
 
     Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
@@ -207,7 +642,7 @@ public class DatabaseSchemaResourceTest
     List<String> csvLines = List.of(exportedCsv.split(CsvUtil.LINE_SEPARATOR));
     assertTrue(csvLines.size() > 1, "Export should contain schema, table, and column");
 
-    String header = csvLines.get(0);
+    String header = csvLines.getFirst();
     List<String> modified = new ArrayList<>();
     modified.add(header);
 
@@ -226,7 +661,8 @@ public class DatabaseSchemaResourceTest
 
     // Validate updated table
     Table updated =
-        tableTest.getEntityByName(table.getFullyQualifiedName(), "description", ADMIN_AUTH_HEADERS);
+        tableTest.getEntityByName(
+            table.getFullyQualifiedName(), "description,certification", ADMIN_AUTH_HEADERS);
     assertEquals("Updated Table Description", updated.getDescription());
 
     // Validate updated column
@@ -262,7 +698,7 @@ public class DatabaseSchemaResourceTest
     assertListNotNull(schema.getService(), schema.getServiceType(), schema.getDatabase());
     assertListNull(schema.getOwners(), schema.getTables());
 
-    fields = "owners,tags,tables";
+    fields = "owners,tags,tables,followers";
     schema =
         byName
             ? getEntityByName(schema.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

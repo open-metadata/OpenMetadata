@@ -1,5 +1,6 @@
 ---
-title: Databricks
+title: Databricks Connector | OpenMetadata Integration Guide
+description: Connect Databricks to OpenMetadata effortlessly. Complete setup guide, configuration steps, and metadata extraction for your data lakehouse platform.
 slug: /connectors/database/databricks
 ---
 
@@ -7,8 +8,8 @@ slug: /connectors/database/databricks
 name="Databricks"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data", "Reverse Metadata (Collate Only)"]
-unavailableFeatures=["Owners", "Stored Procedures"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data", "Owners", "Reverse Metadata (Collate Only)", "Auto-Classification"]
+unavailableFeatures=["Stored Procedures"]
 / %}
 
 {% note %}
@@ -20,6 +21,7 @@ In this section, we provide guides and references to use the Databricks connecto
 
 Configure and schedule Databricks metadata and profiler workflows from the OpenMetadata UI:
 
+- [Requirements](#requirements)
 - [Unity Catalog](#unity-catalog)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](/connectors/ingestion/workflows/usage)
@@ -35,6 +37,51 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
+
+## Requirements
+
+### Python Requirements
+
+{% partial file="/v1.8/connectors/python-requirements.md" /%}
+
+To run the Databricks ingestion, you will need to install:
+
+```bash
+pip3 install "openmetadata-ingestion[databricks]"
+```
+
+### Permission Requirement
+
+To enable full functionality of metadata extraction, profiling, usage, and lineage features in OpenMetadata, the following permissions must be granted to the relevant users in your Databricks environment.
+
+### Metadata and Profiling Permissions
+
+These permissions are required on the catalogs, schemas, and tables from which metadata and profiling information will be ingested.
+
+```sql
+GRANT USE CATALOG ON CATALOG <catalog_name> TO `<user>`;
+GRANT USE SCHEMA ON SCHEMA <schema_name> TO `<user>`;
+GRANT SELECT ON TABLE <table_name> TO `<user>`;
+```
+
+Ensure these grants are applied to all relevant tables for metadata ingestion and profiling operations.
+
+### Usage and Lineage
+
+These permissions enable OpenMetadata to extract query history and construct lineage information.
+
+```sql
+GRANT SELECT ON SYSTEM.QUERY.HISTORY TO `<user>`;
+GRANT USE SCHEMA ON SCHEMA system.query TO `<user>`;
+```
+
+These permissions allow access to Databricks system tables that track query activity, enabling lineage and usage statistics generation.
+
+{% note %}
+
+Adjust <user>, <catalog_name>, <schema_name>, and <table_name> according to your specific deployment and security requirements.
+
+{% /note %}
 
 ## Unity Catalog
 

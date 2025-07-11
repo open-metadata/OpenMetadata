@@ -68,7 +68,7 @@ class ContainerDetailsClassBase {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
       [DetailPageWidgetKeys.CONTAINER_CHILDREN]: 8,
       [DetailPageWidgetKeys.CONTAINER_SCHEMA]: 5,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCK_PERMISSIONS,
@@ -29,6 +28,10 @@ const mockContext = {
 
 jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
+}));
+
+jest.mock('../../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
 }));
 
 describe('GlossaryTermReferences', () => {

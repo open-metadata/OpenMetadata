@@ -1,5 +1,6 @@
 ---
-title: Great Expectations
+title: Great Expectations | OpenMetadata Data Quality Integration
+description: Integrate Great Expectations with OpenMetadata for automated data quality validation. Complete setup guide, connector configuration, and best practices.
 slug: /connectors/ingestion/great-expectations
 ---
 
@@ -115,6 +116,138 @@ great_expectations checkpoint run <my_checkpoint>
 src="/images/v1.7/features/integrations/ge-run-checkpoint.gif"
 alt="Run Great Expectations checkpoint"
  /%}
+
+### Running GX using the Python SDK?
+If you are running GX using their Python SDK below is a full example of how to add the action to your code
+
+```python
+ import great_expectations as gx
+
+from great_expectations.checkpoint import Checkpoint
+
+context = gx.get_context()
+conn_string = f"postgresql+psycopg2://user:pw@host:port/db"
+
+data_source = context.sources.add_postgres(
+    name="source_name",
+    connection_string=conn_string, 
+)
+
+data_asset = data_source.add_table_asset(
+    name="name",
+    table_name="table_name",
+    schema_name="schema_name",
+)
+
+batch_request = data_source.get_asset("name").build_batch_request()
+
+expectation_suite_name = "expectation_suite_name"
+context.add_or_update_expectation_suite(expectation_suite_name=expectation_suite_name)
+validator = context.get_validator(
+    batch_request=batch_request,
+    expectation_suite_name=expectation_suite_name,
+)
+
+validator.expect_column_values_to_not_be_null(column="column_name")
+
+validator.expect_column_values_to_be_between(
+    column="column_name", min_value=min_value, max_value=max_value
+)
+
+validator.save_expectation_suite(discard_failed_expectations=False)
+
+my_checkpoint_name = "my_sql_checkpoint"
+
+checkpoint = Checkpoint(
+    name=my_checkpoint_name,
+    run_name_template="%Y%m%d-%H%M%S-my-run-name-template",
+    data_context=context,
+    batch_request=batch_request,
+    expectation_suite_name=expectation_suite_name,
+    action_list=[
+        {
+            "name": "store results in OpenMetadata",
+            "action": {
+                "module_name": "metadata.great_expectations.action",
+                "class_name": "OpenMetadataValidationAction",
+                "config_file_path": "path/to/config/file",
+                "database_service_name": "openmetadata_service_name",
+                "database_name": "database_name",
+                "table_name": "table_name",
+                "schema_name": "schema_name",
+            }
+        },
+    ],
+)
+
+context.add_or_update_checkpoint(checkpoint=checkpoint)
+checkpoint_result = checkpoint.run()
+```
+
+### Working with GX 1.x.x?
+In v1.x.x GX introduced significant changes to their SDK. One notable change was the removal of the `great_expectations` CLI. OpenMetadata introduced support for 1.x.x version through its `OpenMetadataValidationAction1xx` class. You will need to first `pip install 'open-metadata[great-expectations-1xx]'. Below is a complete example 
+
+```python
+import great_expectations as gx
+
+from metadata.great_expectations.action1xx import OpenMetadataValidationAction1xx # OpenMetadata Validation Action for GX 1.x.x
+
+
+context = gx.get_context()
+conn_string = f"redshift+psycopg2://user:pw@host:port/db"
+
+data_source = context.data_sources.add_redshift(
+    name="name",
+    connection_string=conn_string, 
+)
+
+data_asset = data_source.add_table_asset(
+    name="name",
+    table_name="table_name",
+    schema_name="schema_name",
+)
+
+batch_definition = data_asset.add_batch_definition_whole_table("batch definition")
+batch = batch_definition.get_batch()
+
+suite = context.suites.add(
+    gx.core.expectation_suite.ExpectationSuite(name="name")
+)
+suite.add_expectation(
+    gx.expectations.ExpectColumnValuesToNotBeNull(
+        column="column_name"
+    )
+)
+suite.add_expectation(
+    gx.expectations.ExpectColumnValuesToBeBetween(column="column_name", min_value=50, max_value=1000000)
+)
+
+validation_definition = context.validation_definitions.add(
+    gx.core.validation_definition.ValidationDefinition(
+        name="validation definition",
+        data=batch_definition,
+        suite=suite,
+    )
+)
+
+action_list = [
+    OpenMetadataValidationAction1xx(
+        database_service_name="openmetadata_service_name",
+        database_name="openmetadata_database_name",
+        table_name="openmetadata_table_name",
+        schema_name="openmetadata_schema_name",
+        config_file_path="path/to/config/file",
+    )
+]
+
+checkpoint = context.checkpoints.add(
+    gx.checkpoint.checkpoint.Checkpoint(
+        name="checkpoint", validation_definitions=[validation_definition], actions=action_list
+    )
+)
+
+checkpoint_result = checkpoint.run()
+```
 
 ### List of Great Expectations Supported Test
 We currently only support a certain number of Great Expectations tests. The full list can be found in the [Tests](/how-to-guides/data-quality-observability/quality/tests-yaml) section.

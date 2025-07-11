@@ -12,8 +12,8 @@
  */
 
 @import (reference) url('../variables.less');
-@import (reference) url('antd/dist/antd.variable.less');
 @import (reference) url('../fonts.less');
+@import (reference) url('antd/dist/antd.variable.less');
 
 .scrollable-card-body-sm() {
   max-height: calc(100% - @card-head-height-sm - @card-padding-base-sm);
@@ -40,6 +40,36 @@
 .card-padding-0 {
   .ant-card-body {
     padding: 0;
+  }
+}
+
+.card-padding-xss {
+  > .ant-card-body {
+    padding: @padding-xss;
+  }
+}
+
+.card-padding-xs {
+  > .ant-card-body {
+    padding: @padding-xs;
+  }
+}
+
+.card-padding-sm {
+  > .ant-card-body {
+    padding: @padding-sm;
+  }
+}
+
+.card-padding-md {
+  > .ant-card-body {
+    padding: @padding-md;
+  }
+}
+
+.card-padding-lg {
+  > .ant-card-body {
+    padding: @padding-lg;
   }
 }
 
@@ -75,9 +105,10 @@
 }
 
 .ant-card.new-header-border-card {
+  height: auto !important;
+
   .ant-card-head {
     background: @grey-50;
-    border-bottom: none;
     border-radius: @border-radius-sm;
 
     .text-sm();
@@ -85,14 +116,59 @@
   }
 
   .ant-card-body {
-    .scrollable-card-body();
+    height: auto !important;
+    max-height: none !important;
+    transition: all 200ms ease;
+    transition-property: height, left, top;
   }
 
-  border: 1px solid @blue-15;
+  .expand-collapse-icon {
+    transform: rotate(180deg);
+  }
+
+  &.expanded {
+    .ant-card-head {
+      border-bottom: none;
+      margin-bottom: 0;
+
+      .expand-collapse-icon {
+        transform: rotate(0deg);
+      }
+    }
+  }
+
+  &:not(.expanded) {
+    .ant-card-body {
+      height: 0 !important;
+      overflow: hidden;
+      padding: 0;
+    }
+  }
+
+  .expand-collapse-icon {
+    & svg {
+      fill: @white;
+    }
+  }
+
+  .ant-card-extra {
+    margin-left: @size-sm;
+  }
+
+  border: 1px solid @grey-15;
 }
 
-.ant-card.scrollable-body-card {
+.bot-page-roles-card-header {
+  .ant-card-head {
+    background: @grey-50;
+    border-radius: @border-radius-sm;
+    .text-sm();
+    font-weight: 500;
+    border-bottom: none;
+  }
+
   .ant-card-body {
-    .scrollable-card-body();
+    height: auto !important;
+    max-height: none !important;
   }
 }

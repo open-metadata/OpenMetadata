@@ -10,24 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
 @import (reference) url('antd/dist/antd.variable.less');
+@import (reference) url('../../../styles/variables.less');
 
 .grid-container {
+  position: relative;
+  height: auto !important;
+
   .react-grid-item {
-    & > div {
-      height: 100%;
-    }
+    background: transparent;
+    transition: all 200ms ease;
+    transition-property: left, top;
 
     .ant-card.ant-card-bordered,
     .ant-card.new-description-card {
-      height: 100%;
-      .ant-card-body {
-        // calculate body height
-        max-height: calc(100% - @card-head-height-sm - @card-padding-base-sm);
-        overflow-y: auto;
-      }
-
       &.empty-widget-placeholder {
         .ant-card-body {
           max-height: initial;
@@ -46,8 +42,8 @@
     background: white;
     padding: @padding-md;
     border-radius: @border-radius-sm;
-    border: 1px solid @blue-15;
-    box-shadow: 0px 0px 0px 4px @grey-10;
+    border: 1px solid @grey-15;
+    box-shadow: 0px 0px 0px 4px @grey-100;
     box-shadow: 0px 1px 2px 0px #0a0d120d;
   }
 }
@@ -61,4 +57,11 @@
   .grid-container > #KnowledgePanel\.DomainType {
     height: initial !important;
   }
+}
+
+// Dynamic height widget styles
+.dynamic-height-widget {
+  height: auto !important;
+  min-height: 54px; // Minimum height to prevent collapse
+  overflow: visible;
 }

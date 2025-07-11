@@ -10,18 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isArray, isEmpty, isNil } from 'lodash';
+import { isArray, isEmpty, isNil, isString } from 'lodash';
 import qs, { ParsedQs } from 'qs';
 import { useMemo } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useLocationSearch } from './LocationSearch/useLocationSearch';
 import useCustomLocation from './useCustomLocation/useCustomLocation';
 
-type FilterState = Record<string, string | boolean | string[] | null>;
+type FilterState = Record<
+  string,
+  string | boolean | string[] | null | undefined
+>;
 
 export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const searchQuery = useLocationSearch<ParsedQs>();
 
   const parseFiltersFromUrl = (): T => {
@@ -35,10 +38,14 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
         if (typeof initialValue === 'boolean') {
           parsedFilters[key as keyof T] = (paramValue === 'true') as T[keyof T];
         } else if (isArray(initialValue)) {
-          parsedFilters[key as keyof T] =
-            typeof paramValue === 'string'
-              ? (paramValue.split(',').map((val) => val.trim()) as T[keyof T])
-              : (paramValue as T[keyof T]);
+          // Handle both array format (from brackets) and comma-separated string format
+          if (isArray(paramValue)) {
+            parsedFilters[key as keyof T] = paramValue as T[keyof T];
+          } else if (isString(paramValue)) {
+            parsedFilters[key as keyof T] = paramValue
+              .split(',')
+              .map((val) => val.trim()) as T[keyof T];
+          }
         } else {
           parsedFilters[key as keyof T] = paramValue as T[keyof T];
         }
@@ -65,15 +72,21 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
 
       if (isNil(value) || (isArray(value) && isEmpty(value))) {
         delete mergedQueryParams[key];
-      } else if (isArray(value)) {
-        mergedQueryParams[key] = value.join(',');
       }
+      // Remove the array to string conversion to preserve array format
+      // The qs.stringify function will handle arrays properly
     });
-    history.replace({
-      search: qs.stringify(mergedQueryParams, {
-        addQueryPrefix: true,
-      }),
-    });
+    navigate(
+      {
+        search: qs.stringify(mergedQueryParams, {
+          addQueryPrefix: true,
+          arrayFormat: 'brackets', // This will format arrays as key[0]=value&key[1]=value
+        }),
+      },
+      {
+        replace: true,
+      }
+    );
   };
 
   const filters = useMemo(

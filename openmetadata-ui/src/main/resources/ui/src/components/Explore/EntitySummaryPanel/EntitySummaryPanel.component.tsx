@@ -13,8 +13,9 @@
 
 import { Card, Typography } from 'antd';
 import { get } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -22,6 +23,7 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
@@ -29,9 +31,11 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 
@@ -39,7 +43,8 @@ export default function EntitySummaryPanel({
   entityDetails,
   highlights,
 }: EntitySummaryPanelProps) {
-  const { tab } = useParams<{ tab: string }>();
+  const { tab } = useRequiredParams<{ tab: string }>();
+  const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const [isPermissionLoading, setIsPermissionLoading] =
     useState<boolean>(false);
@@ -59,7 +64,7 @@ export default function EntitySummaryPanel({
         get(entityDetails, 'details.entityType') ?? ResourceEntity.TABLE;
       const permissions = await getEntityPermission(type, entityFqn);
       setEntityPermissions(permissions);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsPermissionLoading(false);
@@ -84,6 +89,10 @@ export default function EntitySummaryPanel({
     if (!viewPermission) {
       return (
         <ErrorPlaceHolder
+          className="border-none h-min-80"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-asset'),
+          })}
           size={SIZE.MEDIUM}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
@@ -99,7 +108,11 @@ export default function EntitySummaryPanel({
             ? tab
             : DRAWER_NAVIGATION_OPTIONS.explore
         }
-        dataAsset={entity}
+        dataAsset={
+          entity as SearchedDataProps['data'][number]['_source'] & {
+            dataProducts: DataProduct[];
+          }
+        }
         entityType={type}
         highlights={highlights}
       />

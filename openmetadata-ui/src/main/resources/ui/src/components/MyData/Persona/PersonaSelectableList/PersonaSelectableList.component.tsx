@@ -12,8 +12,7 @@
  */
 import { Button, Popover, Select, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
@@ -32,6 +31,8 @@ import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
 export const PersonaListItemRenderer = (props: EntityReference) => {
+  const { t } = useTranslation();
+
   return (
     <Space>
       {props ? (
@@ -228,9 +229,7 @@ export const PersonaSelectableList = ({
             <Button
               className="persona-profile-edit-save"
               data-testid="user-profile-persona-edit-cancel"
-              icon={
-                <ClosePopoverIcon height={24} style={{ marginTop: '2px' }} />
-              }
+              icon={<ClosePopoverIcon height={24} />}
               size="small"
               type="primary"
               onClick={handleCloseEditTeam}
@@ -238,9 +237,7 @@ export const PersonaSelectableList = ({
             <Button
               className="persona-profile-edit-cancel"
               data-testid="user-profile-persona-edit-save"
-              icon={
-                <SavePopoverIcon height={24} style={{ marginTop: '2px' }} />
-              }
+              icon={<SavePopoverIcon height={24} />}
               loading={isSaving}
               size="small"
               type="primary"

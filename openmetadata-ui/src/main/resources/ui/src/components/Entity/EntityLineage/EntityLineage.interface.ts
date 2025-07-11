@@ -12,8 +12,9 @@
  */
 
 import { LoadingState } from 'Models';
-import { HTMLAttributes } from 'react';
+import { HTMLAttributes, ReactNode } from 'react';
 import { Edge as FlowEdge, Node } from 'reactflow';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../../generated/entity/type';
 
 export interface Edge {
@@ -71,4 +72,25 @@ export interface LineageConfigModalProps {
   config: LineageConfig;
   onCancel: () => void;
   onSave: (config: LineageConfig) => void;
+}
+
+export interface NodeHandlesProps {
+  nodeType: string;
+  id: string;
+  isConnectable: boolean;
+  expandCollapseHandles: ReactNode;
+}
+
+export interface ExpandCollapseHandlesProps {
+  isEditMode: boolean;
+  hasOutgoers: boolean;
+  hasIncomers: boolean;
+  isDownstreamNode: boolean;
+  isUpstreamNode: boolean;
+  isRootNode: boolean;
+  upstreamExpandPerformed: boolean;
+  downstreamExpandPerformed: boolean;
+  upstreamLineageLength: number;
+  onCollapse: (direction?: LineageDirection) => void;
+  onExpand: (direction: LineageDirection) => void;
 }

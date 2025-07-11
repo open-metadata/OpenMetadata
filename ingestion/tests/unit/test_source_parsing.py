@@ -482,25 +482,6 @@ def test_mariadb():
     assert isinstance(config.serviceConnection.root.config, MariaDBConnection)
 
 
-def test_mariadb():
-    source = {
-        "type": "mariadb",
-        "serviceName": "local_mariadb",
-        "serviceConnection": {
-            "config": {
-                "type": "MariaDB",
-                "username": "openmetadata_user",
-                "password": "openmetadata_password",
-                "hostPort": "localhost:3306",
-            }
-        },
-        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
-    }
-
-    config: WorkflowSource = WorkflowSource.model_validate(source)
-    assert isinstance(config.serviceConnection.root.config, MariaDBConnection)
-
-
 def test_metabase():
     source = {
         "type": "metabase",
@@ -846,10 +827,8 @@ def test_tableau():
             "config": {
                 "type": "Tableau",
                 "authType": {"username": "username", "password": "password"},
-                "env": "tableau_prod",
                 "hostPort": "http://localhost",
                 "siteName": "site_name",
-                "apiVersion": "api_version",
             }
         },
         "sourceConfig": {

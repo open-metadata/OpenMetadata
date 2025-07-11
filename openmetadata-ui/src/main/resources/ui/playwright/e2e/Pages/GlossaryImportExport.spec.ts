@@ -155,7 +155,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
-        const fileInput = await page.$('[type="file"]');
+        const fileInput = page.getByTestId('upload-file-widget');
         await fileInput?.setInputFiles([
           'downloads/' + glossary1.data.displayName + '.csv',
         ]);

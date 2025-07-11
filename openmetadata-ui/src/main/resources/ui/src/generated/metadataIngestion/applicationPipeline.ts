@@ -17,7 +17,7 @@ export interface ApplicationPipeline {
     /**
      * Application configuration
      */
-    appConfig?: any[] | boolean | CollateAIAppConfig | number | null | string;
+    appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
      * Application private configuration
      */
@@ -97,6 +97,11 @@ export interface CollateAIAppConfig {
     sendToAdmins?:            boolean;
     sendToTeams?:             boolean;
     /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
      * Number of threads to use for reindexing
      */
     consumerThreads?: number;
@@ -147,6 +152,11 @@ export interface CollateAIAppConfig {
      */
     active?: boolean;
     /**
+     * Enter the retention period for Activity Threads of type = 'Conversation' records in days
+     * (e.g., 30 for one month, 60 for two months).
+     */
+    activityThreadsRetentionPeriod?: number;
+    /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
      */
@@ -155,6 +165,7 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    [property: string]: any;
 }
 
 /**
@@ -306,6 +317,10 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
+    /**
      * Propagate glossary terms through lineage
      */
     propagateGlossaryTerms?: boolean;
@@ -447,6 +462,7 @@ export interface TagLabel {
 export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -492,6 +508,10 @@ export interface TestCaseDefinitions {
      */
     computePassedFailedRowCount?: boolean;
     parameterValues?:             TestCaseParameterValue[];
+    /**
+     * Tags to apply
+     */
+    tags?: TagLabel[];
     /**
      * Fully qualified name of the test definition.
      */
@@ -678,6 +698,11 @@ export interface DataQualityConfig {
  */
 export interface Resource {
     /**
+     * Filter JSON tree to be used for rendering the filters in the UI. This comes from
+     * Immutable Tree type of react-awesome-query-builder.
+     */
+    filterJsonTree?: string;
+    /**
      * Query filter to be passed to ES. E.g.,
      * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
@@ -726,19 +751,20 @@ export interface PrivateConfig {
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io
      */
-    collateURL: string;
+    collateURL?: string;
     /**
      * Limits for the CollateAI Application.
      */
-    limits: AppLimitsConfig;
+    limits?: AppLimitsConfig;
     /**
      * WAII API Token
      */
-    token: string;
+    token?: string;
     /**
      * WAII API host URL
      */
-    waiiInstance: string;
+    waiiInstance?: string;
+    [property: string]: any;
 }
 
 /**

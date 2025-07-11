@@ -26,6 +26,9 @@ public class IngestionPipelineMapper
         .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withSourceConfig(create.getSourceConfig())
         .withLoggerLevel(create.getLoggerLevel())
-        .withService(create.getService());
+        .withRaiseOnError(create.getRaiseOnError())
+        .withProvider(create.getProvider())
+        .withService(create.getService())
+        .withProcessingEngine(create.getProcessingEngine());
   }
 }

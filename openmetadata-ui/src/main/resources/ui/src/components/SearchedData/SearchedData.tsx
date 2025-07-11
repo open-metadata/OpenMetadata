@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { isNumber } from 'lodash';
 import Qs from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -116,7 +116,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
               <div data-testid="search-results">
                 {searchResultCards}
                 <PaginationComponent
-                  className="text-center m-b-sm"
+                  className="text-center p-b-box"
                   current={isNumber(Number(page)) ? Number(page) : 1}
                   pageSize={
                     size && isNumber(Number(size)) ? Number(size) : PAGE_SIZE

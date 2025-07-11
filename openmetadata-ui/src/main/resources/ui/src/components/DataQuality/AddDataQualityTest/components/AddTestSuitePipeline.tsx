@@ -14,9 +14,9 @@ import { Col, Form, Row } from 'antd';
 import { FormProviderProps } from 'antd/lib/form/context';
 import { isEmpty, isString } from 'lodash';
 import QueryString from 'qs';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { TestCase } from '../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
@@ -27,6 +27,7 @@ import {
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
+import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
 import { escapeESReservedCharacters } from '../../../../utils/StringsUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
@@ -46,7 +47,7 @@ const AddTestSuitePipeline = ({
   testSuite,
 }: AddTestSuitePipelineProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn, ingestionFQN } = useFqn();
   const location = useCustomLocation();
 
@@ -99,14 +100,20 @@ const AddTestSuitePipeline = ({
   ];
 
   const handleCancelBtn = () => {
-    history.goBack();
+    navigate(-1);
   };
 
   const onFinish = (
     values: WorkflowExtraConfig & TestSuiteIngestionDataType
   ) => {
-    const { cron, enableDebugLog, testCases, name, selectAllTestCases } =
-      values;
+    const {
+      cron,
+      enableDebugLog,
+      testCases,
+      name,
+      selectAllTestCases,
+      raiseOnError,
+    } = values;
     onSubmit({
       cron,
       enableDebugLog,
@@ -115,6 +122,7 @@ const AddTestSuitePipeline = ({
       testCases: testCases?.map((testCase: TestCase | string) =>
         isString(testCase) ? testCase : testCase.name
       ),
+      raiseOnError,
     });
   };
 
@@ -129,6 +137,8 @@ const AddTestSuitePipeline = ({
       form.setFieldsValue({ testCases: undefined });
     }
   };
+
+  const raiseOnErrorFormField = useMemo(() => getRaiseOnErrorFormField(), []);
 
   return (
     <Form.Provider onFormChange={handleFromChange}>
@@ -151,37 +161,40 @@ const AddTestSuitePipeline = ({
         }
         onBack={onCancel ?? handleCancelBtn}
         onDeploy={onFinish}>
-        <Row className="add-test-case-container" gutter={[0, 16]}>
-          <Col span={24}>{generateFormFields(testCaseFormFields)}</Col>
-          {!selectAllTestCases && (
-            <Col span={24}>
-              <Form.Item
-                label={t('label.test-case')}
-                name="testCases"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.test-case'),
-                    }),
-                  },
-                ]}
-                valuePropName="selectedTest">
-                <AddTestCaseList
-                  filters={
-                    !testSuiteId
-                      ? `testSuite.fullyQualifiedName:${escapeESReservedCharacters(
-                          testSuite?.fullyQualifiedName ?? fqn
-                        )}`
-                      : undefined
-                  }
-                  showButton={false}
-                  testCaseParams={{ testSuiteId }}
-                />
-              </Form.Item>
-            </Col>
-          )}
-        </Row>
+        <Col span={24}>{generateFormFields([raiseOnErrorFormField])}</Col>
+        <Col span={24}>
+          <Row className="add-test-case-container" gutter={[0, 16]}>
+            <Col span={24}>{generateFormFields(testCaseFormFields)}</Col>
+            {!selectAllTestCases && (
+              <Col span={24}>
+                <Form.Item
+                  label={t('label.test-case')}
+                  name="testCases"
+                  rules={[
+                    {
+                      required: true,
+                      message: t('label.field-required', {
+                        field: t('label.test-case'),
+                      }),
+                    },
+                  ]}
+                  valuePropName="selectedTest">
+                  <AddTestCaseList
+                    filters={
+                      !testSuiteId
+                        ? `testSuite.fullyQualifiedName:"${escapeESReservedCharacters(
+                            testSuite?.fullyQualifiedName ?? fqn
+                          )}"`
+                        : undefined
+                    }
+                    showButton={false}
+                    testCaseParams={{ testSuiteId }}
+                  />
+                </Form.Item>
+              </Col>
+            )}
+          </Row>
+        </Col>
       </ScheduleInterval>
     </Form.Provider>
   );

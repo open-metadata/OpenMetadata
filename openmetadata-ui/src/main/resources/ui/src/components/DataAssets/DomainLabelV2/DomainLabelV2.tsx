@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
@@ -33,6 +33,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
@@ -117,7 +118,7 @@ export const DomainLabelV2 = <
         ) : null;
 
         return (
-          <div className="d-flex items-center gap-1" key={domain.id}>
+          <div className="d-flex w-max-full items-center gap-1" key={domain.id}>
             <Typography.Text className="self-center text-xs whitespace-nowrap">
               <DomainIcon
                 className="d-flex"
@@ -131,7 +132,8 @@ export const DomainLabelV2 = <
               domain,
               getEntityName(domain),
               true,
-              'text-primary domain-link'
+              'text-primary domain-link',
+              true
             )}
             {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
           </div>
@@ -171,20 +173,22 @@ export const DomainLabelV2 = <
   const label = useMemo(() => {
     if (props.showDomainHeading) {
       return (
-        <Card
-          className="new-header-border-card"
-          title={
-            <div className="d-flex items-center gap-1">
-              <Typography.Text className="text-sm font-medium">
-                {t('label.domain')}
-              </Typography.Text>
-              {selectableList}
-            </div>
-          }>
+        <ExpandableCard
+          cardProps={{
+            title: (
+              <div className="d-flex items-center gap-1">
+                <Typography.Text className="text-sm font-medium">
+                  {t('label.domain')}
+                </Typography.Text>
+                {selectableList}
+              </div>
+            ),
+          }}
+          isExpandDisabled={!Array.isArray(domainLink)}>
           <div className="d-flex items-center gap-1 flex-wrap">
             {domainLink}
           </div>
-        </Card>
+        </ExpandableCard>
       );
     }
 

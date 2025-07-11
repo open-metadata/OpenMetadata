@@ -13,12 +13,18 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.ResponseBuilder;
+import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
@@ -31,11 +37,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.TimeZone;
 import java.util.UUID;
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
@@ -70,12 +71,14 @@ public final class RestUtil {
   public static URI getHref(UriInfo uriInfo, String collectionPath) {
     collectionPath = removeSlashes(collectionPath);
     OpenMetadataBaseUrlConfiguration urlConfiguration =
-        SettingsCache.getSettingOrDefault(
+        SettingsCache.getSetting(
             SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
-            new OpenMetadataBaseUrlConfiguration()
-                .withOpenMetadataUrl(uriInfo.getBaseUri().toString()),
             OpenMetadataBaseUrlConfiguration.class);
-    return URI.create(urlConfiguration.getOpenMetadataUrl() + "/" + collectionPath);
+    String url =
+        nullOrEmpty(urlConfiguration.getOpenMetadataUrl())
+            ? uriInfo.getBaseUri().toString()
+            : urlConfiguration.getOpenMetadataUrl();
+    return URI.create(url + "/" + collectionPath);
   }
 
   public static URI getHref(URI parent, String child) {

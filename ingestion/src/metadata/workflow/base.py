@@ -219,7 +219,14 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             if self.workflow_config.successThreshold <= self.calculate_success() < 100:
                 pipeline_state = PipelineState.partialSuccess
 
-        # Any unhandled exception breaking the workflow should update the status
+            # If there's any steps that should raise a failed status,
+            # raise it here to set the pipeline status as failed
+            try:
+                self.raise_from_status_internal()
+            except WorkflowExecutionError:
+                pipeline_state = PipelineState.failed
+
+        # Any unhandled exception should blow up the execution
         except Exception as err:
             pipeline_state = PipelineState.failed
             raise err

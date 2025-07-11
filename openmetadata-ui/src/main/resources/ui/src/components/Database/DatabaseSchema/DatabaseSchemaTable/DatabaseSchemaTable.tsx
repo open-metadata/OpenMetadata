@@ -14,16 +14,17 @@ import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { t } from 'i18next';
+
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
+import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS,
@@ -45,14 +46,21 @@ import {
   patchDatabaseSchemaDetails,
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getEntityBulkEditPath,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
+import { t } from '../../../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
-import { ownerTableObject } from '../../../../utils/TableColumn.util';
+import {
+  dataProductTableObject,
+  domainTableObject,
+  ownerTableObject,
+  tagTableObject,
+} from '../../../../utils/TableColumn.util';
 import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
@@ -69,7 +77,7 @@ export const DatabaseSchemaTable = ({
   isCustomizationPage = false,
 }: Readonly<DatabaseSchemaTableProps>) => {
   const { fqn: decodedDatabaseFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { permissions } = usePermissionProvider();
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
@@ -119,7 +127,7 @@ export const DatabaseSchemaTable = ({
           after: params?.after,
           before: params?.before,
           include: showDeletedSchemas ? Include.Deleted : Include.NonDeleted,
-          fields: [TabSpecificField.OWNERS, TabSpecificField.USAGE_SUMMARY],
+          fields: [TabSpecificField.USAGE_SUMMARY, commonTableFields],
         });
 
         setSchemas(data);
@@ -185,7 +193,7 @@ export const DatabaseSchemaTable = ({
   );
 
   const onSchemaSearch = (value: string) => {
-    history.push({
+    navigate({
       search: QueryString.stringify({
         schema: isEmpty(value) ? undefined : value,
       }),
@@ -226,16 +234,16 @@ export const DatabaseSchemaTable = ({
   const schemaTableColumns: ColumnsType<DatabaseSchema> = useMemo(
     () => [
       {
-        title: t('label.schema-name'),
+        title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         render: (_, record: DatabaseSchema) => (
           <DisplayName
-            allowRename={allowEditDisplayNamePermission}
             displayName={stringToHTML(
               highlightSearchText(record.displayName, searchValue)
             )}
+            hasEditPermission={allowEditDisplayNamePermission}
             id={record.id ?? ''}
             key={record.id}
             link={
@@ -266,6 +274,9 @@ export const DatabaseSchemaTable = ({
           ),
       },
       ...ownerTableObject<DatabaseSchema>(),
+      ...domainTableObject<DatabaseSchema>(),
+      ...dataProductTableObject<DatabaseSchema>(),
+      ...tagTableObject<DatabaseSchema>(),
       {
         title: t('label.usage'),
         dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
@@ -279,9 +290,7 @@ export const DatabaseSchemaTable = ({
   );
 
   const handleEditTable = () => {
-    history.push({
-      pathname: getEntityBulkEditPath(EntityType.DATABASE, decodedDatabaseFQN),
-    });
+    navigate(getEntityBulkEditPath(EntityType.DATABASE, decodedDatabaseFQN));
   };
 
   useEffect(() => {
@@ -341,6 +350,7 @@ export const DatabaseSchemaTable = ({
       }}
       pagination={false}
       rowKey="id"
+      scroll={TABLE_SCROLL_VALUE}
       searchProps={{
         placeholder: t('label.search-for-type', {
           type: t('label.schema'),

@@ -12,7 +12,7 @@
  */
 import { Col, Row } from 'antd';
 import { first, last } from 'lodash';
-import React, { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENDS_WITH_NUMBER_REGEX,
@@ -20,7 +20,7 @@ import {
 } from '../../../constants/regex.constants';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
-import { SupportedLocales } from '../../../utils/i18next/i18nextUtil';
+import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
 import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';

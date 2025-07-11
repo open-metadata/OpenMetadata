@@ -15,9 +15,9 @@ import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -28,9 +28,13 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
-  PAGE_SIZE,
 } from '../../constants/constants';
 import { DUMMY_DATABASE_SCHEMA_TABLES_DETAILS } from '../../constants/Database.constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DATABASE_SCHEMA_TABLE_VISIBLE_COLUMNS,
+} from '../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -45,9 +49,16 @@ import {
   patchTableDetails,
   TableListParams,
 } from '../../rest/tableAPI';
+import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBulkEditPath } from '../../utils/EntityUtils';
+import {
+  dataProductTableObject,
+  domainTableObject,
+  ownerTableObject,
+  tagTableObject,
+} from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 interface SchemaTablesTabProps {
@@ -60,7 +71,7 @@ function SchemaTablesTab({
   isCustomizationPage = false,
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [tableData, setTableData] = useState<Array<Table>>([]);
   const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const { permissions } = usePermissionProvider();
@@ -80,7 +91,7 @@ function SchemaTablesTab({
     handlePageSizeChange,
     handlePageChange,
     pagingCursor,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging();
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
@@ -123,7 +134,10 @@ function SchemaTablesTab({
 
   const handleShowDeletedTables = (value: boolean) => {
     setFilters({ showDeletedTables: value });
-    handlePageChange(INITIAL_PAGING_VALUE);
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   };
 
   const getSchemaTables = useCallback(
@@ -132,6 +146,7 @@ function SchemaTablesTab({
       try {
         const res = await getTableList({
           ...params,
+          fields: commonTableFields,
           databaseSchema: decodedDatabaseSchemaFQN,
           limit: pageSize,
           include: tableFilters.showDeletedTables
@@ -162,7 +177,6 @@ function SchemaTablesTab({
           pageSize
         );
       }
-      handlePageChange(currentPage);
     },
     [paging, getSchemaTables, handlePageChange]
   );
@@ -173,12 +187,12 @@ function SchemaTablesTab({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 500,
+        width: 300,
         render: (_, record: Table) => {
           return (
             <DisplayName
-              allowRename={allowEditDisplayNamePermission}
               displayName={record.displayName}
+              hasEditPermission={allowEditDisplayNamePermission}
               id={record.id}
               key={record.id}
               link={entityUtilClassBase.getEntityLink(
@@ -195,6 +209,7 @@ function SchemaTablesTab({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: 400,
         render: (text: string) =>
           text?.trim() ? (
             <RichTextEditorPreviewerNew markdown={text} />
@@ -202,12 +217,16 @@ function SchemaTablesTab({
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
+      ...ownerTableObject<Table>(),
+      ...domainTableObject<Table>(),
+      ...dataProductTableObject<Table>(),
+      ...tagTableObject<Table>(),
     ],
     [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
 
   const handleEditTable = () => {
-    history.push({
+    navigate({
       pathname: getEntityBulkEditPath(
         EntityType.DATABASE_SCHEMA,
         decodedDatabaseSchemaFQN
@@ -223,11 +242,10 @@ function SchemaTablesTab({
       return;
     }
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      if (pagingCursor?.cursorData?.cursorType) {
-        // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
+      if (pagingCursor?.cursorType && pagingCursor?.cursorValue) {
+        // Fetch data if cursorType is present in URL params with cursor Value to handle browser back navigation
         getSchemaTables({
-          [pagingCursor?.cursorData?.cursorType]:
-            pagingCursor?.cursorData?.cursorValue,
+          [pagingCursor.cursorType]: pagingCursor.cursorValue,
         });
       } else {
         // Otherwise, just fetch the data without cursor value
@@ -243,8 +261,11 @@ function SchemaTablesTab({
   ]);
 
   useEffect(() => {
-    setFilters({ showDeletedTables: databaseSchemaDetails.deleted ?? false });
-  }, [databaseSchemaDetails.deleted]);
+    setFilters({
+      showDeletedTables:
+        tableFilters.showDeletedTables ?? databaseSchemaDetails.deleted,
+    });
+  }, [databaseSchemaDetails.deleted, tableFilters.showDeletedTables]);
 
   return (
     <TableAntd
@@ -260,6 +281,7 @@ function SchemaTablesTab({
       }}
       data-testid="databaseSchema-tables"
       dataSource={tableData}
+      defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_TABLE_VISIBLE_COLUMNS}
       extraTableFilters={
         !isVersionView && (
           <>
@@ -292,7 +314,9 @@ function SchemaTablesTab({
       }}
       pagination={false}
       rowKey="id"
+      scroll={TABLE_SCROLL_VALUE}
       size="small"
+      staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />
   );
 }

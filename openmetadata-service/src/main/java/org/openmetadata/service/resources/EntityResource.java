@@ -21,6 +21,11 @@ import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -30,11 +35,6 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
@@ -724,7 +724,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
   protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {VIEW_BASIC};
 
-  private MetadataOperation[] getViewOperations(Fields fields) {
+  protected MetadataOperation[] getViewOperations(Fields fields) {
     if (fields.getFieldList().isEmpty()) {
       return VIEW_BASIC_OPERATIONS;
     }

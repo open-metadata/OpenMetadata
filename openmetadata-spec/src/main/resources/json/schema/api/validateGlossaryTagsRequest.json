@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/api/validateGlossaryTagsRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ValidateGlossaryTagsRequest",
+  "description": "Request schema for validating glossary tags addition",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ValidateGlossaryTagsRequest",
+  "properties": {
+    "dryRun": {
+      "description": "If true, the request will be validated but no changes will be made",
+      "type": "boolean",
+      "default": true
+    },
+    "glossaryTags": {
+      "description": "Glossary Tags to be validated",
+      "type": "array",
+      "items": {
+        "$ref": "../type/tagLabel.json"
+      }
+    }
+  },
+  "additionalProperties": false
+} 

@@ -14,7 +14,7 @@
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
 import { ReactComponent as DeletedIcon } from '../../../../../assets/svg/deleted-icon.svg';
@@ -64,7 +64,7 @@ function OwnersFeed({
     (ownerList: EntityReference[]) => {
       return ownerList.length <= maxVisibleOwners ? (
         <Row wrap align="middle">
-          {ownerList.map((owner: EntityReference, index: number) =>
+          {ownerList.map((owner: EntityReference) =>
             owner.type === EntityType.USER ? (
               <UserPopOverCard key={owner.id} userName={owner.name ?? ''}>
                 <div
@@ -92,7 +92,6 @@ function OwnersFeed({
                   isCompactView
                   avatarSize={24}
                   className="owner-chip-text"
-                  index={index}
                   owner={owner}
                 />
               </div>

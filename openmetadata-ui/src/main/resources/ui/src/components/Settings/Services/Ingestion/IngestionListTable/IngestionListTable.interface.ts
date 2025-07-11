@@ -14,6 +14,7 @@
 import { TableProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactNode } from 'react';
+import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { PipelineType } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
@@ -22,13 +23,12 @@ import {
 } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../../generated/type/paging';
 import { UsePagingInterface } from '../../../../../hooks/paging/usePaging';
-import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 
 export interface IngestionListTableProps {
   tableContainerClassName?: string;
   afterDeleteAction?: () => void;
-  airflowInformation?: UseAirflowStatusProps;
+  airflowInformation?: AirflowStatusContextType;
   deployIngestion?: (id: string, displayName: string) => Promise<void>;
   emptyPlaceholder?: ReactNode;
   enableActions?: boolean;

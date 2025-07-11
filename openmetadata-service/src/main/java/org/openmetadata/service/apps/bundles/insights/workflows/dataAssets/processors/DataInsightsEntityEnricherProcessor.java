@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -22,20 +21,17 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeSummaryMap;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
 
@@ -152,11 +148,7 @@ public class DataInsightsEntityEnricherProcessor
 
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
 
-    Map<String, ChangeSummary> changeSummaryMap =
-        Optional.ofNullable(entity.getChangeDescription())
-            .map(ChangeDescription::getChangeSummary)
-            .map(ChangeSummaryMap::getAdditionalProperties)
-            .orElse(null);
+    Map<String, ChangeSummary> changeSummaryMap = SearchIndexUtils.getChangeSummaryMap(entity);
 
     // Enrich with EntityType
     if (CommonUtil.nullOrEmpty(entityType)) {
@@ -171,10 +163,12 @@ public class DataInsightsEntityEnricherProcessor
     entityMap.put("endTimestamp", endTimestamp);
 
     // Process Description Source
-    entityMap.put("descriptionSources", processDescriptionSources(entity, changeSummaryMap));
+    entityMap.put(
+        "descriptionSources", SearchIndexUtils.processDescriptionSources(entity, changeSummaryMap));
 
     // Process Tag Source
-    TagAndTierSources tagAndTierSources = processTagAndTierSources(entity);
+    SearchIndexUtils.TagAndTierSources tagAndTierSources =
+        SearchIndexUtils.processTagAndTierSources(entity);
     entityMap.put("tagSources", tagAndTierSources.getTagSources());
     entityMap.put("tierSources", tagAndTierSources.getTierSources());
 
@@ -187,7 +181,7 @@ public class DataInsightsEntityEnricherProcessor
     // Enrich with Description Stats
     entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
 
-    if (hasColumns(entity)) {
+    if (SearchIndexUtils.hasColumns(entity)) {
       entityMap.put("numberOfColumns", ((ColumnsEntityInterface) entity).getColumns().size());
       entityMap.put(
           "numberOfColumnsWithDescription",
@@ -203,65 +197,6 @@ public class DataInsightsEntityEnricherProcessor
         o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
 
     return entityMap;
-  }
-
-  private boolean hasColumns(EntityInterface entity) {
-    return List.of(entity.getClass().getInterfaces()).contains(ColumnsEntityInterface.class);
-  }
-
-  private String getDescriptionSource(
-      String description, Map<String, ChangeSummary> changeSummaryMap, String changeSummaryKey) {
-    if (description == null) {
-      return null;
-    }
-
-    String descriptionSource = ChangeSource.INGESTED.value();
-
-    if (changeSummaryMap != null) {
-      if (changeSummaryMap.containsKey(changeSummaryKey)
-          && changeSummaryMap.get(changeSummaryKey).getChangeSource() != null) {
-        descriptionSource = changeSummaryMap.get(changeSummaryKey).getChangeSource().value();
-      }
-    }
-    return descriptionSource;
-  }
-
-  private void processDescriptionSource(
-      EntityInterface entity,
-      Map<String, ChangeSummary> changeSummaryMap,
-      Map<String, Integer> descriptionSources) {
-    Optional.ofNullable(
-            getDescriptionSource(entity.getDescription(), changeSummaryMap, "description"))
-        .ifPresent(
-            source ->
-                descriptionSources.put(source, descriptionSources.getOrDefault(source, 0) + 1));
-  }
-
-  private void processColumnDescriptionSources(
-      ColumnsEntityInterface entity,
-      Map<String, ChangeSummary> changeSummaryMap,
-      Map<String, Integer> descriptionSources) {
-    for (Column column : entity.getColumns()) {
-      Optional.ofNullable(
-              getDescriptionSource(
-                  column.getDescription(),
-                  changeSummaryMap,
-                  String.format("columns.%s.description", column.getName())))
-          .ifPresent(
-              source ->
-                  descriptionSources.put(source, descriptionSources.getOrDefault(source, 0) + 1));
-    }
-  }
-
-  private Map<String, Integer> processDescriptionSources(
-      EntityInterface entity, Map<String, ChangeSummary> changeSummaryMap) {
-    Map<String, Integer> descriptionSources = new HashMap<>();
-    processDescriptionSource(entity, changeSummaryMap, descriptionSources);
-    if (hasColumns(entity)) {
-      processColumnDescriptionSources(
-          (ColumnsEntityInterface) entity, changeSummaryMap, descriptionSources);
-    }
-    return descriptionSources;
   }
 
   private String processTeam(EntityInterface entity) {
@@ -301,52 +236,6 @@ public class DataInsightsEntityEnricherProcessor
       }
     }
     return team;
-  }
-
-  private void processTagAndTierSources(
-      List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
-    Optional.ofNullable(tagList)
-        .ifPresent(
-            tags -> {
-              tags.forEach(
-                  tag -> {
-                    String tagSource = tag.getLabelType().value();
-                    if (tag.getTagFQN().startsWith("Tier.")) {
-                      tagAndTierSources
-                          .getTierSources()
-                          .put(
-                              tagSource,
-                              tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
-                    } else {
-                      tagAndTierSources
-                          .getTagSources()
-                          .put(
-                              tagSource,
-                              tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
-                    }
-                  });
-            });
-  }
-
-  private void processEntityTagSources(
-      EntityInterface entity, TagAndTierSources tagAndTierSources) {
-    processTagAndTierSources(entity.getTags(), tagAndTierSources);
-  }
-
-  private void processColumnTagSources(
-      ColumnsEntityInterface entity, TagAndTierSources tagAndTierSources) {
-    for (Column column : entity.getColumns()) {
-      processTagAndTierSources(column.getTags(), tagAndTierSources);
-    }
-  }
-
-  private TagAndTierSources processTagAndTierSources(EntityInterface entity) {
-    TagAndTierSources tagAndTierSources = new TagAndTierSources();
-    processEntityTagSources(entity, tagAndTierSources);
-    if (hasColumns(entity)) {
-      processColumnTagSources((ColumnsEntityInterface) entity, tagAndTierSources);
-    }
-    return tagAndTierSources;
   }
 
   private String processTier(EntityInterface entity) {
@@ -411,16 +300,5 @@ public class DataInsightsEntityEnricherProcessor
   @Override
   public StepStats getStats() {
     return stats;
-  }
-
-  @Getter
-  public static class TagAndTierSources {
-    private final Map<String, Integer> tagSources;
-    private final Map<String, Integer> tierSources;
-
-    public TagAndTierSources() {
-      this.tagSources = new HashMap<>();
-      this.tierSources = new HashMap<>();
-    }
   }
 }

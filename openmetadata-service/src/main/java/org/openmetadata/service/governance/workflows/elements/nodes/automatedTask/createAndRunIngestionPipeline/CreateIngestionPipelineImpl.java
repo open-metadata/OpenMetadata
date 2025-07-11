@@ -43,11 +43,12 @@ import org.openmetadata.schema.metadataIngestion.SearchServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
@@ -155,16 +156,24 @@ public class CreateIngestionPipelineImpl {
         pipelineType, JsonUtils.getMap(service.getConnection().getConfig()))) {
       LOG.debug(
           String.format(
-              "Service '%s' does not support Ingestion Pipeline of type '%s'",
-              service.getDisplayName(), pipelineType));
+              "[GovernanceWorkflows] Service '%s' does not support Ingestion Pipeline of type '%s'",
+              service.getName(), pipelineType));
       return new CreateIngestionPipelineResult(null, true);
     }
+    LOG.info(
+        "[GovernanceWorkflows] Creating '{}' Agent for '{}'",
+        pipelineType.value(),
+        service.getName());
 
     boolean wasSuccessful = true;
 
     IngestionPipeline ingestionPipeline = getOrCreateIngestionPipeline(pipelineType, service);
 
     if (deploy) {
+      LOG.info(
+          "[GovernanceWorkflows] Deploying '{}' for '{}'",
+          ingestionPipeline.getDisplayName(),
+          service.getName());
       wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
       if (wasSuccessful) {
         // Mark the pipeline as deployed
@@ -172,6 +181,11 @@ public class CreateIngestionPipelineImpl {
         IngestionPipelineRepository repository =
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         repository.createOrUpdate(null, ingestionPipeline, ingestionPipeline.getUpdatedBy());
+      } else {
+        LOG.warn(
+            "[GovernanceWorkflows] '{}' deployment failed for '{}'",
+            pipelineType.value(),
+            service.getName());
       }
     }
 
@@ -231,6 +245,7 @@ public class CreateIngestionPipelineImpl {
             .withOwners(service.getOwners())
             .withPipelineType(pipelineType)
             .withService(service.getEntityReference())
+            .withProvider(ProviderType.AUTOMATION)
             .withSourceConfig(
                 new SourceConfig().withConfig(getSourceConfig(pipelineType, service)));
     IngestionPipeline ingestionPipeline = mapper.createToEntity(create, "governance-bot");
@@ -347,8 +362,8 @@ public class CreateIngestionPipelineImpl {
         .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
         .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
         .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN))
-        .withClassificationFilterPattern(new FilterPattern().withIncludes(DEFAULT_TIERS_TO_PROCESS))
-        .withEnableAutoClassification(true);
+        .withEnableAutoClassification(true)
+        .withStoreSampleData(false);
   }
 
   // Other Services Metadata Pipelines

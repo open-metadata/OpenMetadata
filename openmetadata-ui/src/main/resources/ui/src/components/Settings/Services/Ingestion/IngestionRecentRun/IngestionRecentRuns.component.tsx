@@ -14,7 +14,7 @@
 import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { App } from '../../../../../generated/entity/applications/app';

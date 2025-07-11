@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Popover, Space, Tabs, Typography } from 'antd';
 import { isArray, isEmpty, noop, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -35,6 +35,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
@@ -255,7 +256,7 @@ export const UserTeamSelectableList = ({
     <Popover
       destroyTooltipOnHide
       content={
-        <>
+        <FocusTrapWithContainer active={popoverProps?.open || false}>
           {previewSelected && (
             <Space
               className="user-team-popover-header w-full p-x-sm p-y-md"
@@ -285,7 +286,6 @@ export const UserTeamSelectableList = ({
               </div>
             </Space>
           )}
-
           <Tabs
             centered
             activeKey={activeTab}
@@ -349,7 +349,7 @@ export const UserTeamSelectableList = ({
             // Users.component collapsible panel
             onClick={(e) => e.stopPropagation()}
           />
-        </>
+        </FocusTrapWithContainer>
       }
       open={popupVisible}
       overlayClassName="user-team-select-popover card-shadow"

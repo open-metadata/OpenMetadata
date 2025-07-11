@@ -1,8 +1,8 @@
 package org.openmetadata.service.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import javax.validation.constraints.AssertTrue;
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;

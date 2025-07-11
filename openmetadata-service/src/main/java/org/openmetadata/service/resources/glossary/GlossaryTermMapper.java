@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.glossary;
 
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
+import static org.openmetadata.service.util.EntityUtil.getEntityReferenceByName;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
@@ -14,7 +15,7 @@ public class GlossaryTermMapper implements EntityMapper<GlossaryTerm, CreateGlos
     return copy(new GlossaryTerm(), create, user)
         .withSynonyms(create.getSynonyms())
         .withStyle(create.getStyle())
-        .withGlossary(getEntityReference(Entity.GLOSSARY, create.getGlossary()))
+        .withGlossary(getEntityReferenceByName(Entity.GLOSSARY, create.getGlossary()))
         .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
         .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
         .withReferences(create.getReferences())

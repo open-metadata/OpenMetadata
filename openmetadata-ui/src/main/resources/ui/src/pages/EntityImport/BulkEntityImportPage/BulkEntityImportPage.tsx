@@ -15,11 +15,12 @@ import '@inovua/reactdatagrid-community/index.css';
 import {
   TypeColumn,
   TypeComputedProps,
+  TypeEditInfo,
 } from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
-import React, {
+import { capitalize, isEmpty } from 'lodash';
+import {
   MutableRefObject,
   useCallback,
   useEffect,
@@ -29,12 +30,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
-import {
-  CSVImportAsyncWebsocketResponse,
-  CSVImportJobType,
-} from '../../../components/BulkImport/BulkEntityImport.interface';
 import Banner from '../../../components/common/Banner/Banner';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -53,22 +50,25 @@ import { EntityType } from '../../../enums/entity.enum';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import { useFqn } from '../../../hooks/useFqn';
 import {
-  importEntityInCSVFormat,
-  importServiceInCSVFormat,
-} from '../../../rest/importExportAPI';
-import {
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
 } from '../../../utils/CSV/CSV.utils';
+import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getBulkEntityBreadcrumbList,
   getImportedEntityType,
+  getImportValidateAPIEntityType,
   validateCsvString,
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import './bulk-entity-import-page.less';
+import {
+  CSVImportAsyncWebsocketResponse,
+  CSVImportJobType,
+} from './BulkEntityImportPage.interface';
 
 let inEdit = false;
 
@@ -85,13 +85,13 @@ const BulkEntityImportPage = () => {
 
   const location = useLocation();
   const { t } = useTranslation();
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
   const [validationData, setValidationData] = useState<CSVImportResult>();
   const [columns, setColumns] = useState<TypeColumn[]>([]);
   const [dataSource, setDataSource] = useState<Record<string, string>[]>([]);
-  const history = useHistory();
+  const navigate = useNavigate();
   const { readString } = usePapaParse();
   const [validateCSVData, setValidateCSVData] =
     useState<{ columns: TypeColumn[]; dataSource: Record<string, string>[] }>();
@@ -100,6 +100,15 @@ const BulkEntityImportPage = () => {
   >({ current: null });
   const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
 
+  const filterColumns = useMemo(
+    () =>
+      columns?.filter(
+        (col) =>
+          !csvUtilsClassBase.hideImportsColumnList().includes(col.name ?? '')
+      ),
+    [columns]
+  );
+
   const fetchEntityData = useCallback(async () => {
     try {
       const response = await entityUtilClassBase.getEntityByFqn(
@@ -107,7 +116,7 @@ const BulkEntityImportPage = () => {
         fqn
       );
       setEntity(response);
-    } catch (error) {
+    } catch {
       // not show error here
     }
   }, [entityType, fqn]);
@@ -192,10 +201,9 @@ const BulkEntityImportPage = () => {
   );
 
   const onEditComplete = useCallback(
-    ({ value, columnId, rowId }) => {
+    ({ value, columnId, rowId }: TypeEditInfo) => {
       const data = [...dataSource];
-      data[rowId][columnId] = value;
-
+      data[parseInt(rowId)][columnId] = value;
       setDataSource(data);
     },
     [dataSource]
@@ -216,10 +224,7 @@ const BulkEntityImportPage = () => {
       // Call the validate API
       const csvData = getCSVStringFromColumnsAndDataSource(columns, dataSource);
 
-      const api =
-        entityType === EntityType.DATABASE_SERVICE
-          ? importServiceInCSVFormat
-          : importEntityInCSVFormat;
+      const api = getImportValidateAPIEntityType(entityType);
 
       const response = await api({
         entityType,
@@ -351,11 +356,11 @@ const BulkEntityImportPage = () => {
         } else {
           showSuccessToast(
             t('message.entity-details-updated', {
-              entityType,
+              entityType: capitalize(entityType),
               fqn,
             })
           );
-          history.push(entityUtilClassBase.getEntityLink(entityType, fqn));
+          navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
           handleResetImportJob();
           setIsValidating(false);
         }
@@ -494,7 +499,7 @@ const BulkEntityImportPage = () => {
             activeAsyncImportJob={activeAsyncImportJob}
             activeStep={activeStep}
             breadcrumbList={breadcrumbList}
-            columns={columns}
+            columns={filterColumns}
             dataSource={dataSource}
             handleBack={handleBack}
             handleValidate={handleValidate}
@@ -572,7 +577,7 @@ const BulkEntityImportPage = () => {
               {activeStep === 1 && (
                 <ReactDataGrid
                   editable
-                  columns={columns}
+                  columns={filterColumns}
                   dataSource={dataSource}
                   defaultActiveCell={[0, 0]}
                   handle={setGridRef}

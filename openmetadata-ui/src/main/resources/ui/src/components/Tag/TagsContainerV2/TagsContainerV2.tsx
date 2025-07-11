@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Form, Row, Space, Typography } from 'antd';
+import { Col, Form, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { LIST_SIZE } from '../../../constants/constants';
 import {
   GLOSSARY_CONSTANT,
@@ -39,9 +39,11 @@ import {
   getUpdateTagsPath,
 } from '../../../utils/TasksUtils';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {
   CommentIconButton,
   EditIconButton,
+  PlusIconButton,
   RequestIconButton,
 } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -64,7 +66,6 @@ const TagsContainerV2 = ({
   tagType,
   displayType,
   layoutType,
-  showHeader = true,
   showBottomEditButton,
   showInlineEditButton,
   columnData,
@@ -74,15 +75,52 @@ const TagsContainerV2 = ({
   defaultState,
   newLook = false,
   sizeCap = LIST_SIZE,
+  useGenericControls,
 }: TagsContainerV2Props) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = Form.useForm();
   const { t } = useTranslation();
-  const { onThreadLinkSelect } = useGenericContext();
+  const {
+    onThreadLinkSelect,
+    activeTagDropdownKey,
+    updateActiveTagDropdownKey,
+  } = useGenericContext();
   const { selectedUserSuggestions } = useSuggestionsContext();
-
-  const [isEditTags, setIsEditTags] = useState(false);
   const [tags, setTags] = useState<TableTagsProps>();
+  const [internalIsEditTags, setInternalIsEditTags] = useState(false);
+
+  const { isEditTags, dropdownKey } = useMemo(() => {
+    const dropdownKey = `${columnData?.fqn ?? entityFqn}-${tagType}`;
+
+    return {
+      dropdownKey,
+      isEditTags: useGenericControls
+        ? activeTagDropdownKey === dropdownKey
+        : internalIsEditTags,
+    };
+  }, [
+    tagType,
+    entityFqn,
+    columnData?.fqn,
+    activeTagDropdownKey,
+    updateActiveTagDropdownKey,
+    internalIsEditTags,
+    useGenericControls,
+  ]);
+
+  // Helper function to handle external/internal control
+  const handleExternalControl = useCallback(
+    (isOpen: boolean) => {
+      if (useGenericControls) {
+        isOpen
+          ? updateActiveTagDropdownKey(dropdownKey)
+          : updateActiveTagDropdownKey(null);
+      } else {
+        setInternalIsEditTags(isOpen);
+      }
+    },
+    [useGenericControls, dropdownKey]
+  );
 
   const {
     isGlossaryType,
@@ -157,44 +195,49 @@ const TagsContainerV2 = ({
     }
 
     form.resetFields();
-    setIsEditTags(false);
+    handleExternalControl(false);
   };
 
   const handleCancel = useCallback(() => {
-    setIsEditTags(false);
+    handleExternalControl(false);
     form.resetFields();
-  }, [form]);
+  }, [form, handleExternalControl]);
 
   const handleAddClick = useCallback(() => {
-    setIsEditTags(true);
-  }, [isGlossaryType]);
+    handleExternalControl(true);
+  }, [handleExternalControl]);
 
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <Col className="m-t-xss" onClick={handleAddClick}>
-          <TagsV1
-            startWith={TAG_START_WITH.PLUS}
-            tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
-            tagType={tagType}
-          />
-        </Col>
+        <PlusIconButton
+          className="m-t-xss"
+          data-testid="add-tag"
+          size="small"
+          title={t('label.add-entity', {
+            entity: isGlossaryType
+              ? t('label.glossary-term')
+              : t('label.tag-plural'),
+          })}
+          onClick={handleAddClick}
+        />
       ) : null,
-    [showAddTagButton]
+    [showAddTagButton, handleAddClick, t, isGlossaryType]
   );
 
   const renderTags = useMemo(
-    () => (
-      <Col span={24}>
-        <TagsViewer
-          displayType={displayType}
-          showNoDataPlaceholder={showNoDataPlaceholder}
-          sizeCap={sizeCap}
-          tagType={tagType}
-          tags={tags?.[tagType] ?? []}
-        />
-      </Col>
-    ),
+    () =>
+      isEmpty(tags?.[tagType]) && !showNoDataPlaceholder ? null : (
+        <Col span={24}>
+          <TagsViewer
+            displayType={displayType}
+            showNoDataPlaceholder={showNoDataPlaceholder}
+            sizeCap={sizeCap}
+            tagType={tagType}
+            tags={tags?.[tagType] ?? []}
+          />
+        </Col>
+      ),
     [displayType, showNoDataPlaceholder, tags?.[tagType], layoutType]
   );
 
@@ -221,7 +264,7 @@ const TagsContainerV2 = ({
   ]);
 
   const handleTagsTask = (hasTags: boolean) => {
-    history.push(
+    navigate(
       (hasTags ? getUpdateTagsPath : getRequestTagsPath)(
         entityType as string,
         entityFqn as string
@@ -266,46 +309,43 @@ const TagsContainerV2 = ({
 
   const header = useMemo(() => {
     return (
-      showHeader && (
-        <Space>
-          <Typography.Text
-            className={classNames({
-              'text-sm font-medium': newLook,
-              'right-panel-label': !newLook,
-            })}>
-            {isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}
-          </Typography.Text>
-          {permission && (
-            <>
-              {!isEmpty(tags?.[tagType]) && !isEditTags && (
-                <EditIconButton
-                  data-testid="edit-button"
-                  newLook={newLook}
-                  size="small"
-                  title={t('label.edit-entity', {
-                    entity:
-                      tagType === TagSource.Classification
-                        ? t('label.tag-plural')
-                        : t('label.glossary-term'),
-                  })}
-                  onClick={handleAddClick}
-                />
-              )}
-              {showTaskHandler && (
-                <>
-                  {tagType === TagSource.Classification && requestTagElement}
-                  {conversationThreadElement}
-                </>
-              )}
-            </>
-          )}
-        </Space>
-      )
+      <Space>
+        <Typography.Text
+          className={classNames({
+            'text-sm font-medium': newLook,
+            'right-panel-label': !newLook,
+          })}>
+          {isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}
+        </Typography.Text>
+        {permission && (
+          <>
+            {addTagButton ?? (
+              <EditIconButton
+                data-testid="edit-button"
+                newLook={newLook}
+                size="small"
+                title={t('label.edit-entity', {
+                  entity:
+                    tagType === TagSource.Classification
+                      ? t('label.tag-plural')
+                      : t('label.glossary-term'),
+                })}
+                onClick={handleAddClick}
+              />
+            )}
+            {showTaskHandler && (
+              <>
+                {tagType === TagSource.Classification && requestTagElement}
+                {conversationThreadElement}
+              </>
+            )}
+          </>
+        )}
+      </Space>
     );
   }, [
     tags,
     tagType,
-    showHeader,
     isEditTags,
     permission,
     showTaskHandler,
@@ -371,13 +411,21 @@ const TagsContainerV2 = ({
     } else {
       return isHoriZontalLayout ? (
         horizontalLayout
-      ) : (
+      ) : showInlineEditButton || !isEmpty(renderTags) || !newLook ? (
         <Row data-testid="entity-tags">
-          {addTagButton}
+          {showAddTagButton && (
+            <Col className="m-t-xss" onClick={handleAddClick}>
+              <TagsV1
+                startWith={TAG_START_WITH.PLUS}
+                tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
+                tagType={tagType}
+              />
+            </Col>
+          )}
           {renderTags}
-          {showInlineEditButton && <Col>{editTagButton}</Col>}
+          {showInlineEditButton ? <Col>{editTagButton}</Col> : null}
         </Row>
-      );
+      ) : null;
     }
   }, [
     isEditTags,
@@ -422,24 +470,14 @@ const TagsContainerV2 = ({
 
   if (newLook) {
     return (
-      <Card
-        className={classNames('w-full', {
-          'new-header-border-card': newLook,
-        })}
-        data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}
-        title={header}>
-        {suggestionDataRender ?? (
-          <>
-            {tagBody}
-            {(children || showBottomEditButton) && (
-              <Space align="baseline" className="m-t-xs w-full" size="middle">
-                {showBottomEditButton && !showInlineEditButton && editTagButton}
-                {children}
-              </Space>
-            )}
-          </>
-        )}
-      </Card>
+      <ExpandableCard
+        cardProps={{
+          title: header,
+        }}
+        dataTestId={isGlossaryType ? 'glossary-container' : 'tags-container'}
+        isExpandDisabled={isEmpty(tags?.[tagType])}>
+        {suggestionDataRender ?? tagBody}
+      </ExpandableCard>
     );
   }
 
@@ -447,8 +485,6 @@ const TagsContainerV2 = ({
     <div
       className="w-full tags-container"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
-      {header}
-
       {suggestionDataRender ?? (
         <>
           {tagBody}

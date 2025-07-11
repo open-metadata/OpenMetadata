@@ -60,7 +60,8 @@
         "SapErp",
         "Synapse",
         "Exasol",
-        "Cockroach"
+        "Cockroach",
+        "SSAS"
       ],
       "javaEnums": [
         {
@@ -200,6 +201,9 @@
         },
         {
           "name": "Cockroach"
+        },
+        {
+          "name": "SSAS"
         }
       ]
     },
@@ -344,6 +348,9 @@
             },
             {
               "$ref": "./connections/database/cockroachConnection.json"
+            },
+            {
+              "$ref": "./connections/database/ssasConnection.json"
             }
           ]
         }
@@ -414,6 +421,10 @@
     "href": {
       "description": "Link to the resource corresponding to this database service.",
       "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",

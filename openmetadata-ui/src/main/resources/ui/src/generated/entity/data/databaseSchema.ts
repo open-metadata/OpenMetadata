@@ -54,6 +54,10 @@ export interface DatabaseSchema {
      */
     extension?: any;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * Name that uniquely identifies a schema in the format
      * 'ServiceName.DatabaseName.SchemaName'.
      */
@@ -201,6 +205,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -574,6 +579,7 @@ export enum DatabaseServiceType {
     SapHana = "SapHana",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
+    Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Trino = "Trino",

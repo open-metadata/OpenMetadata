@@ -211,11 +211,11 @@ export const hardDeleteUserProfilePage = async (
 export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="edit-displayname"]');
-  await page.fill('[data-testid="displayName"]', '');
-  await page.getByTestId('displayName').fill(editedUserName);
+  await page.fill('[data-testid="displayName-input"]', '');
+  await page.getByTestId('displayName-input').fill(editedUserName);
 
   const saveResponse = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="save-display-name"]');
+  await page.getByText('Save').click();
   await saveResponse;
 
   // Verify the updated display name
@@ -468,7 +468,7 @@ export const generateToken = async (page: Page) => {
 
   await page.click('[data-testid="token-expiry"]');
 
-  await page.locator('[title="1 hr"] div').click();
+  await page.locator('[title="1 hour"] div').click();
 
   await expect(page.locator('[data-testid="token-expiry"]')).toBeVisible();
 
@@ -491,9 +491,9 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
   await expect(page.locator('[data-testid="revoke-button"]')).not.toBeVisible();
 };
 
-export const updateExpiration = async (page: Page, expiry: number | string) => {
+export const updateExpiration = async (page: Page, expiry: number) => {
   await page.click('[data-testid="token-expiry"]');
-  await page.click(`text=${expiry} days`);
+  await page.click(`text=${expiry} day${expiry > 1 ? 's' : ''}`);
 
   const expiryDate = customFormatDateTime(
     getEpochMillisForFutureDays(expiry as number),
@@ -532,14 +532,14 @@ export const checkDataConsumerPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
@@ -573,10 +573,16 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   }
 
   // Click on the sidebar item for Explore again
+  const queryResponse = page.waitForResponse('/api/v1/search/query?q=*');
   await sidebarClick(page, SidebarItem.EXPLORE);
-
+  await queryResponse;
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
+
+  await page.getByTestId('drop-down-menu').getByTestId('loader').waitFor({
+    state: 'detached',
+  });
+
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
   await page.click('[data-testid="table-checkbox"]');
 
@@ -589,6 +595,8 @@ export const checkStewardServicesPermissions = async (page: Page) => {
 
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');
+
+  await page.waitForLoadState('networkidle');
 
   // Check if the edit tier button is visible
   await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();
@@ -616,14 +624,14 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
@@ -673,6 +681,45 @@ export const addUser = async (
   await saveResponse;
 
   expect((await saveResponse).status()).toBe(201);
+};
+
+export const checkForUserExistError = async (
+  page: Page,
+  {
+    name,
+    email,
+    password,
+  }: {
+    name: string;
+    email: string;
+    password: string;
+  }
+) => {
+  await page.click('[data-testid="add-user"]');
+
+  await page.fill('[data-testid="email"]', email);
+
+  await page.fill('[data-testid="displayName"]', name);
+
+  await page.locator(descriptionBox).fill('Adding new user');
+
+  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
+  await page.fill('#password', password);
+  await page.fill('#confirmPassword', password);
+
+  const saveResponse = page.waitForResponse('/api/v1/users');
+  await page.click('[data-testid="save-user"]');
+  await saveResponse;
+
+  expect((await saveResponse).status()).toBe(409);
+
+  await expect(page.getByRole('alert')).toBeVisible();
+
+  await expect(page.getByTestId('inline-alert-description')).toContainText(
+    `A user with the name "${name}" already exists. Please choose another email.`
+  );
+
+  await page.click('[data-testid="cancel-user"]');
 };
 
 const resetPasswordModal = async (

@@ -14,12 +14,12 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import MlModelDetailComponent from '../../components/MlModel/MlModelDetail/MlModelDetail.component';
 import { ROUTES } from '../../constants/constants';
@@ -51,7 +51,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const MlModelPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn: mlModelFqn } = useFqn();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
@@ -71,7 +71,7 @@ const MlModelPage = () => {
         entityFqn
       );
       setPipelinePermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -107,7 +107,7 @@ const MlModelPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsDetailLoading(false);
@@ -194,7 +194,7 @@ const MlModelPage = () => {
   };
 
   const versionHandler = () => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.MLMODEL,
         mlModelFqn,
@@ -229,14 +229,17 @@ const MlModelPage = () => {
     }
   };
 
-  const updateMlModelDetailsState = useCallback((data) => {
-    const updatedData = data as Mlmodel;
+  const updateMlModelDetailsState = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as Mlmodel;
 
-    setMlModelDetail((data) => ({
-      ...(data ?? updatedData),
-      version: updatedData.version,
-    }));
-  }, []);
+      setMlModelDetail((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+    },
+    []
+  );
 
   const handleMlModelUpdate = useCallback(
     async (data: Mlmodel) => {
@@ -257,6 +260,23 @@ const MlModelPage = () => {
     },
     [saveUpdatedMlModelData]
   );
+  const onMlModelUpdateCertification = async (
+    updatedMlModel: Mlmodel,
+    key?: keyof Mlmodel
+  ) => {
+    try {
+      const response = await saveUpdatedMlModelData(updatedMlModel);
+      setMlModelDetail((previous) => {
+        return {
+          ...previous,
+          version: response.version,
+          ...(key ? { [key]: response[key] } : response),
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   useEffect(() => {
     fetchResourcePermission(mlModelFqn);
@@ -275,7 +295,15 @@ const MlModelPage = () => {
   }
 
   if (!mlModelPermissions.ViewAll && !mlModelPermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.ml-model'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
@@ -289,6 +317,7 @@ const MlModelPage = () => {
       updateMlModelDetailsState={updateMlModelDetailsState}
       versionHandler={versionHandler}
       onMlModelUpdate={handleMlModelUpdate}
+      onMlModelUpdateCertification={onMlModelUpdateCertification}
       onUpdateVote={updateVote}
     />
   );

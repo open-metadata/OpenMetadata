@@ -1,5 +1,6 @@
 ---
 title: Run the SQLite Connector Externally
+description: Configure SQLite database connections in OpenMetadata with YAML. Step-by-step setup guide, configuration examples, and best practices for metadata extraction.
 slug: /connectors/database/sqlite/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/sqlite/yaml
 name="SQLite"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 

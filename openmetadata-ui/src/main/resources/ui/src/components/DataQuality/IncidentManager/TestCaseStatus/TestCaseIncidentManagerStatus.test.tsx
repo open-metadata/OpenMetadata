@@ -17,7 +17,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 import { checkPermission } from '../../../../utils/PermissionsUtils';

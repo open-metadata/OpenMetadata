@@ -51,7 +51,7 @@ export interface Classification {
     /**
      * Unique identifier of this entity instance.
      */
-    id?: string;
+    id: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -66,7 +66,11 @@ export interface Classification {
      */
     mutuallyExclusive?: boolean;
     name:               string;
-    provider?:          ProviderType;
+    /**
+     * Owners of this Classification.
+     */
+    owners?:   EntityReference[];
+    provider?: ProviderType;
     /**
      * Total number of children tag terms under this classification. This includes all the
      * children in the hierarchy.
@@ -164,6 +168,13 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Owners of this Classification.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
     /**
@@ -211,9 +222,11 @@ export interface EntityReference {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }

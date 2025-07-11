@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 @import (reference) '../../../styles/variables.less';
+.domain-label-container {
+  max-width: 100%;
+}
 .domain-link.ant-typography {
   color: @primary-heading-color;
 }
@@ -21,7 +24,7 @@
 }
 
 .domain-link-container {
-  max-width: 148px;
+  max-width: 100%;
   .domain-link-text {
     text-overflow: ellipsis;
     overflow: hidden;
@@ -38,11 +41,15 @@
 }
 
 .domain-count-button {
-  background-color: @background-tertiary;
+  background-color: @primary-button-background;
   height: 32px;
   width: 32px;
   border-radius: 200px;
   text-align: center;
   text-decoration: none;
+  span {
+    color: @blue-24;
+  }
+  border: 1px solid @blue-24;
   margin-left: -4px;
 }

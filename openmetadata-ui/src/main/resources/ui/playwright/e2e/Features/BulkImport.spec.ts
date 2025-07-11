@@ -117,7 +117,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database service', async ({ page }) => {
-    test.slow(true);
+    // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
+    test.setTimeout(300_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -208,7 +209,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -237,7 +238,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // Fill table and columns details
         await fillRowDetails(
@@ -267,7 +268,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         await fillRecursiveColumnDetails(
           {
@@ -286,7 +287,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 16, 'ArrowLeft');
+        await pressKeyXTimes(page, 19, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -319,7 +320,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 18, 'ArrowLeft');
+        await pressKeyXTimes(page, 19, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -366,15 +367,17 @@ test.describe('Bulk Import Export', () => {
           rowStatus
         );
 
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
         await page.getByRole('button', { name: 'Update' }).click();
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
 
-        await page.waitForSelector('.message-banner-wrapper', {
-          state: 'detached',
-        });
-
+        await updateButtonResponse;
+        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -475,7 +478,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // Fill table and columns details
         await fillRowDetails(
@@ -505,7 +508,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         await fillRecursiveColumnDetails(
           {
@@ -524,7 +527,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 16, 'ArrowLeft');
+        await pressKeyXTimes(page, 17, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -579,15 +582,17 @@ test.describe('Bulk Import Export', () => {
           rowStatus
         );
 
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
         await page.getByRole('button', { name: 'Update' }).click();
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
 
-        await page.waitForSelector('.message-banner-wrapper', {
-          state: 'detached',
-        });
-
+        await updateButtonResponse;
+        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -597,7 +602,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database Schema', async ({ page }) => {
-    test.slow(true);
+    // 4 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
+    test.setTimeout(240_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -689,7 +695,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // Fill table columns details
         await fillRecursiveColumnDetails(
@@ -709,7 +715,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 16, 'ArrowLeft');
+        await pressKeyXTimes(page, 17, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -739,7 +745,7 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // fill second table columns details
         await fillRecursiveColumnDetails(
@@ -769,12 +775,17 @@ test.describe('Bulk Import Export', () => {
           rowStatus
         );
 
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
         await page.getByRole('button', { name: 'Update' }).click();
+        await page
+          .locator('.inovua-react-toolkit-load-mask__background-layer')
+          .waitFor({ state: 'detached' });
 
-        await page.waitForSelector('.message-banner-wrapper', {
-          state: 'detached',
-        });
-
+        await updateButtonResponse;
+        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -784,6 +795,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Table', async ({ page }) => {
+    test.slow(true);
+
     const tableEntity = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
@@ -847,11 +860,11 @@ test.describe('Bulk Import Export', () => {
           .locator('.InovuaReactDataGrid__cell--cell-active')
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 8, 'ArrowLeft');
+        await pressKeyXTimes(page, 9, 'ArrowLeft');
 
         await fillColumnDetails(columnDetails2, page);
 
-        await page.click('[type="button"] >> text="Next"', { force: true });
+        await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
           passed: '9',
@@ -874,15 +887,15 @@ test.describe('Bulk Import Export', () => {
           rowStatus
         );
 
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
         await page.click('[type="button"] >> text="Update"', { force: true });
+        await updateButtonResponse;
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
-
-        await page.waitForSelector('.message-banner-wrapper', {
-          state: 'detached',
-        });
-
         await toastNotification(page, /details updated successfully/);
       }
     );

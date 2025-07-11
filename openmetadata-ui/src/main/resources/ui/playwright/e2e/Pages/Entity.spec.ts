@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -26,9 +26,9 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
   assignDomain,
-  createNewPage,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
@@ -59,8 +59,23 @@ const entities = [
   MetricClass,
 ] as const;
 
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+const adminUser = new UserClass();
+
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
+
+test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.create(apiContext);
+  await adminUser.setAdminRole(apiContext);
+  await afterAction();
+});
 
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
@@ -68,8 +83,11 @@ entities.forEach((EntityClass) => {
   const entityName = entity.getType();
 
   test.describe(entityName, () => {
+    const rowSelector =
+      entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
+
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
@@ -85,7 +103,10 @@ entities.forEach((EntityClass) => {
       await entity.domain(
         page,
         EntityDataClass.domain1.responseData,
-        EntityDataClass.domain2.responseData
+        EntityDataClass.domain2.responseData,
+        EntityDataClass.dataProduct1.responseData,
+        EntityDataClass.dataProduct2.responseData,
+        EntityDataClass.dataProduct3.responseData
       );
     });
 
@@ -189,7 +210,18 @@ entities.forEach((EntityClass) => {
       await entity.tier(
         page,
         'Tier1',
-        EntityDataClass.tierTag1.data.displayName
+        EntityDataClass.tierTag1.responseData.displayName,
+        EntityDataClass.tierTag1.responseData.fullyQualifiedName,
+        entity
+      );
+    });
+
+    test('Certification Add Remove', async ({ page }) => {
+      await entity.certification(
+        page,
+        EntityDataClass.certificationTag1,
+        EntityDataClass.certificationTag2,
+        entity
       );
     });
 
@@ -208,22 +240,86 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None');
+      test.slow(true);
+
+      await entity.tag(
+        page,
+        'PersonalData.Personal',
+        EntityDataClass.tag1.responseData.displayName,
+        entity,
+        EntityDataClass.tag1.responseData.fullyQualifiedName
+      );
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.glossaryTerm(
         page,
         EntityDataClass.glossaryTerm1.responseData,
-        EntityDataClass.glossaryTerm2.responseData
+        EntityDataClass.glossaryTerm2.responseData,
+        entity
       );
     });
+
+    if (!['Store Procedure', 'Metric'].includes(entity.type)) {
+      test('Tag and Glossary Selector should close vice versa', async ({
+        page,
+      }) => {
+        test.slow(true);
+
+        const isMlModel = entity.type === 'MlModel';
+        // Tag Selector
+        await page
+          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+          .getByTestId('tags-container')
+          .getByTestId('add-tag')
+          .click();
+
+        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeHidden();
+
+        // Glossary Selector
+        await page
+          .locator(
+            `[${rowSelector}="${
+              isMlModel
+                ? entity.childrenSelectorId2
+                : entity.childrenSelectorId ?? ''
+            }"]`
+          )
+          .getByTestId('glossary-container')
+          .getByTestId('add-tag')
+          .click();
+
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeVisible();
+        await expect(page.locator('.async-select-list-dropdown')).toBeHidden();
+
+        // Re-check Tag Selector
+        await page
+          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+          .getByTestId('tags-container')
+          .getByTestId('add-tag')
+          .click();
+
+        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeHidden();
+      });
+    }
 
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
       test('Tag Add, Update and Remove for child entities', async ({
         page,
       }) => {
+        test.slow(true);
+
         await page.getByTestId(entity.childrenTabId ?? '').click();
 
         await entity.tagChildren({
@@ -231,8 +327,8 @@ entities.forEach((EntityClass) => {
           tag1: 'PersonalData.Personal',
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
+          entityEndpoint: entity.endpoint,
         });
       });
     }
@@ -249,9 +345,36 @@ entities.forEach((EntityClass) => {
           glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
           glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
+          entityEndpoint: entity.endpoint,
         });
+      });
+
+      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+        test('DisplayName Add, Update and Remove for child entities', async ({
+          page,
+        }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await entity.displayNameChildren({
+            page: page,
+            columnName: entity.childrenSelectorId ?? '',
+            rowSelector,
+          });
+        });
+      }
+
+      test('Description Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.descriptionUpdateChildren(
+          page,
+          entity.childrenSelectorId ?? '',
+          rowSelector,
+          entity.endpoint
+        );
       });
     }
 
@@ -269,6 +392,8 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Follow & Un-follow entity`, async ({ page }) => {
+      test.slow(true);
+
       const entityName = entity.entityResponseData?.['displayName'];
       await entity.followUnfollowEntity(page, entityName);
     });
@@ -317,7 +442,7 @@ entities.forEach((EntityClass) => {
     test.afterAll('Cleanup', async ({ browser }) => {
       test.slow();
 
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
@@ -354,4 +479,10 @@ entities.forEach((EntityClass) => {
       );
     });
   });
+});
+
+test.afterAll('Cleanup', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.delete(apiContext);
+  await afterAction();
 });

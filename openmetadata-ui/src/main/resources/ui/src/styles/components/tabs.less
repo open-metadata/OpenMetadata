@@ -59,7 +59,7 @@
     height: 48px;
     background: @white;
     border-radius: 12px;
-    border: 1px solid @blue-15;
+    border: 1px solid @grey-15;
 
     &::before {
       border-bottom: none;
@@ -96,5 +96,15 @@
     bottom: 6px;
     height: 2px;
     background-color: @primary-color;
+  }
+}
+
+.glossary-details,
+.entity-details-page-tabs {
+  .ant-tabs.tabs-new {
+    .ant-tabs-tabpane {
+      background-color: @grey-9;
+      margin-bottom: @margin-md;
+    }
   }
 }

@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page } from '@playwright/test';
+import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
+import { PolicyClass } from '../support/access-control/PoliciesClass';
+import { RolesClass } from '../support/access-control/RolesClass';
 import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
 import { SubDomain } from '../support/domain/SubDomain';
@@ -21,6 +23,8 @@ import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
+import { TeamClass } from '../support/team/TeamClass';
+import { UserClass } from '../support/user/UserClass';
 import {
   closeFirstPopupAlert,
   descriptionBox,
@@ -29,6 +33,7 @@ import {
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
+  uuid,
 } from './common';
 import { addOwner } from './entity';
 import { sidebarClick } from './sidebar';
@@ -109,6 +114,7 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     .getByRole('menuitem', { name: domain.displayName })
     .locator('span')
     .click();
+  await page.waitForLoadState('networkidle');
 };
 
 export const selectSubDomain = async (
@@ -122,19 +128,13 @@ export const selectSubDomain = async (
   });
 
   if (!isSelected) {
-    const subDomainRes = page.waitForResponse(
-      '/api/v1/search/query?*&from=0&size=50&index=domain_search_index'
-    );
     await menuItem.click();
-    await subDomainRes;
+    await page.waitForLoadState('networkidle');
   }
 
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
-  const res = page.waitForResponse(
-    '/api/v1/search/query?*&index=data_product_search_index'
-  );
   await page.getByTestId(subDomain.name).click();
-  await res;
+  await page.waitForLoadState('networkidle');
 };
 
 export const selectDataProductFromTab = async (
@@ -142,9 +142,12 @@ export const selectDataProductFromTab = async (
   dataProduct: DataProduct['data']
 ) => {
   const dpRes = page.waitForResponse(
-    '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index'
+    '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index*'
   );
-  await page.getByText('Data Products').click();
+  await page
+    .locator('.domain-details-page-tabs')
+    .getByText('Data Products')
+    .click();
 
   await dpRes;
 
@@ -172,7 +175,6 @@ export const selectDataProduct = async (
 
 const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await selectDomain(page, domain);
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await checkDomainDisplayName(page, domain.displayName);
   await page.getByTestId('assets').click();
 };
@@ -196,7 +198,7 @@ const fillCommonFormItems = async (
   }
 };
 
-const fillDomainForm = async (
+export const fillDomainForm = async (
   page: Page,
   entity: Domain['data'] | SubDomain['data'],
   isDomain = true
@@ -331,17 +333,25 @@ export const addAssetsToDomain = async (
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const entityDisplayName = get(asset, 'entityResponseData.displayName');
+    const visibleName = entityDisplayName ?? name;
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+      `/api/v1/search/query?q=${visibleName}&index=all&from=0&size=25&*`
     );
     await page
       .getByTestId('asset-selection-modal')
       .getByTestId('searchbar')
-      .fill(name);
+      .fill(visibleName);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+    await expect(
+      page.locator(
+        `[data-testid="table-data-card_${fqn}"] [data-testid="entity-header-name"]`
+      )
+    ).toContainText(visibleName);
   }
 
   const assetsAddRes = page.waitForResponse(`/api/v1/domains/*/assets/add`);
@@ -438,6 +448,28 @@ export const addAssetsToDataProduct = async (
   await assetsAddRes;
 
   await checkAssetsCount(page, assets.length);
+
+  for (const asset of assets) {
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+
+    await page
+      .locator(
+        `[data-testid="table-data-card_${fqn}"] a[data-testid="entity-link"]`
+      )
+      .click();
+
+    await page.waitForLoadState('networkidle');
+
+    await expect(
+      page
+        .getByTestId('KnowledgePanel.DataProducts')
+        .getByTestId('data-products-list')
+        .getByTestId(`data-product-${dataProductFqn}`)
+    ).toBeVisible();
+
+    await page.goBack();
+    await page.waitForLoadState('networkidle');
+  }
 };
 
 export const removeAssetsFromDataProduct = async (
@@ -617,7 +649,13 @@ export const addTagsAndGlossaryToDomain = async (
     const input = page.locator(`${container} #tagsForm_tags`);
     await input.click();
     await input.fill(value);
-    await page.getByTestId(`tag-${value}`).click();
+    const tag = page.getByTestId(`tag-${value}`);
+    if (containerType === 'glossary') {
+      // To avoid clicking on white space between checkbox and text
+      await tag.locator('.ant-select-tree-checkbox').click();
+    } else {
+      await tag.click();
+    }
 
     // Save and wait for response
     const updateResponse = page.waitForResponse(
@@ -645,4 +683,99 @@ export const verifyActiveDomainIsDefault = async (page: Page) => {
   await expect(page.getByTestId('domain-dropdown')).toContainText(
     'All Domains'
   );
+};
+
+/**
+ * Sets up a complete environment for domain ownership testing
+ * Creates user, policy, role, domain, data product and assigns ownership
+ * Returns all created objects and a cleanup function
+ */
+export const setupDomainOwnershipTest = async (apiContext: any) => {
+  // Create all necessary resources
+  const dataConsumerUser = new UserClass();
+  const id = uuid();
+  const domainForTest = new Domain({
+    name: `PW_Domain_Owner_Rule_Testing-${id}`,
+    displayName: `PW_Domain_Owner_Rule_Testing-${id}`,
+    description: 'playwright domain description',
+    domainType: 'Aggregate',
+    fullyQualifiedName: `PW_Domain_Owner_Rule_Testing-${id}`,
+  });
+  const dataProductForTest = new DataProduct(
+    domainForTest,
+    `PW_DataProduct_Owner_Rule-${id}`
+  );
+
+  await dataConsumerUser.create(apiContext);
+  await domainForTest.create(apiContext);
+
+  // Setup permissions
+  const dataConsumerPolicy = new PolicyClass();
+  const dataConsumerRole = new RolesClass();
+
+  // Create domain access policy
+  const domainRule = [
+    {
+      name: 'DomainRule',
+      description: '',
+      resources: ['dataProduct', 'domain'],
+      operations: ['All'],
+      effect: 'allow',
+      condition: 'isOwner()',
+    },
+  ];
+
+  await dataConsumerPolicy.create(apiContext, domainRule);
+  await dataConsumerRole.create(apiContext, [
+    dataConsumerPolicy.responseData.name,
+  ]);
+
+  await dataProductForTest.create(apiContext);
+
+  // Create team for the user
+  const dataConsumerTeam = new TeamClass({
+    name: `PW_data_consumer_team-${id}`,
+    displayName: `PW Data Consumer Team ${id}`,
+    description: 'playwright data consumer team description',
+    teamType: 'Group',
+    users: [dataConsumerUser.responseData.id ?? ''],
+    defaultRoles: [dataConsumerRole.responseData.id ?? ''],
+  });
+
+  await dataConsumerTeam.create(apiContext);
+
+  // Set domain ownership
+  await domainForTest.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/owners/0',
+        value: {
+          id: dataConsumerUser.responseData.id,
+          type: 'user',
+        },
+      },
+    ],
+  });
+
+  // Return cleanup function and all created resources
+  const cleanup = async (apiContext1: APIRequestContext) => {
+    await dataProductForTest.delete(apiContext1);
+    await domainForTest.delete(apiContext1);
+    await dataConsumerUser.delete(apiContext1);
+    await dataConsumerTeam.delete(apiContext1);
+    await dataConsumerPolicy.delete(apiContext1);
+    await dataConsumerRole.delete(apiContext1);
+  };
+
+  return {
+    dataConsumerUser,
+    domainForTest,
+    dataProductForTest,
+    dataConsumerTeam,
+    dataConsumerPolicy,
+    dataConsumerRole,
+    cleanup,
+  };
 };

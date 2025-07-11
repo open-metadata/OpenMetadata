@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import {
   Suggestion,
   SuggestionType,
@@ -53,15 +52,6 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
 );
 
 describe('SuggestionsAlert', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
-  });
-
   const mockSuggestion: Suggestion = {
     id: '1',
     description: 'Test suggestion',
@@ -76,8 +66,6 @@ describe('SuggestionsAlert', () => {
         <SuggestionsAlert hasEditAccess={false} suggestion={mockSuggestion} />
       </SuggestionsProvider>
     );
-    // Fast-forward until all timers have been executed
-    jest.runAllTimers();
 
     expect(screen.getByText(/Test suggestion/i)).toBeInTheDocument();
     expect(screen.getByText(/Test User/i)).toBeInTheDocument();
@@ -89,9 +77,6 @@ describe('SuggestionsAlert', () => {
         <SuggestionsAlert hasEditAccess suggestion={mockSuggestion} />
       </SuggestionsProvider>
     );
-
-    // Fast-forward until all timers have been executed
-    jest.runAllTimers();
 
     expect(screen.getByText(/Test suggestion/i)).toBeInTheDocument();
     expect(screen.getByText(/Test User/i)).toBeInTheDocument();

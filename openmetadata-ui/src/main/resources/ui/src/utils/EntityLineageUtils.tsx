@@ -15,10 +15,17 @@ import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
-import { t } from 'i18next';
-import { get, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
+import {
+  get,
+  isEmpty,
+  isEqual,
+  isNil,
+  isUndefined,
+  uniqueId,
+  uniqWith,
+} from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
-import React, { MouseEvent as ReactMouseEvent } from 'react';
+import { MouseEvent as ReactMouseEvent } from 'react';
 import {
   Connection,
   Edge,
@@ -87,6 +94,7 @@ import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
+import { t } from './i18next/LocalUtil';
 import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -114,7 +122,6 @@ export const getColumnSourceTargetHandles = (obj: {
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
-  reactFlowInstance.zoomTo(ZOOM_VALUE);
 };
 
 export const centerNodePosition = (
@@ -271,12 +278,15 @@ export const getELKLayoutedElements = async (
       return {
         ...node,
         position: { x: layoutedNode?.x ?? 0, y: layoutedNode?.y ?? 0 },
+        // layoutedNode contains the total height of the node including the children height
+        // Needed to calculate the bounds height of the nodes in the export
+        height: layoutedNode?.height ?? node.height,
         hidden: false,
       };
     });
 
     return { nodes: updatedNodes, edges: edges ?? [] };
-  } catch (error) {
+  } catch {
     return { nodes: [], edges: [] };
   }
 };
@@ -376,26 +386,23 @@ const getTracedNode = (
     return [];
   }
 
-  const tracedEdgeIds = edges
-    .filter((e) => {
-      const id = isIncomer ? e.target : e.source;
+  // Create a Set for O(1) lookups
+  const tracedEdgeIds = new Set<string>();
 
-      return id === node.id;
-    })
-    .map((e) => (isIncomer ? e.source : e.target));
+  // Process edges in a single pass
+  for (const e of edges) {
+    const id = isIncomer ? e.target : e.source;
+    if (id === node.id) {
+      const targetId = isIncomer ? e.source : e.target;
 
-  return nodes.filter((n) =>
-    tracedEdgeIds
-      .map((id) => {
-        const matches = /([\w-^]+)__([\w-]+)/.exec(id);
-        if (matches === null) {
-          return id;
-        }
+      // Handle compound IDs (extracting the base node ID)
+      const matches = /([\w-^]+)__([\w-]+)/.exec(targetId);
+      tracedEdgeIds.add(matches ? matches[1] : targetId);
+    }
+  }
 
-        return matches[1];
-      })
-      .includes(n.id)
-  );
+  // Filter nodes only once
+  return nodes.filter((n) => tracedEdgeIds.has(n.id));
 };
 
 export const getAllTracedNodes = (
@@ -405,31 +412,44 @@ export const getAllTracedNodes = (
   prevTraced = [] as Node[],
   isIncomer: boolean
 ) => {
-  const tracedNodes = getTracedNode(node, nodes, edges, isIncomer);
+  // Create a set to track visited node IDs for O(1) lookups
+  const visitedNodeIds = new Set<string>(prevTraced.map((n) => n.id));
+  const result: Node[] = [];
 
-  return tracedNodes.reduce((memo, tracedNode) => {
-    memo.push(tracedNode);
+  // Use a queue for breadth-first traversal (more efficient than recursion)
+  const queue: Node[] = [node];
 
-    if (prevTraced.findIndex((n) => n.id === tracedNode.id) === -1) {
-      prevTraced.push(tracedNode);
+  while (queue.length > 0) {
+    const currentNode = queue.shift()!;
 
-      getAllTracedNodes(
-        tracedNode,
-        nodes,
-        edges,
-        prevTraced,
-        isIncomer
-      ).forEach((foundNode) => {
-        memo.push(foundNode);
-
-        if (prevTraced.findIndex((n) => n.id === foundNode.id) === -1) {
-          prevTraced.push(foundNode);
-        }
-      });
+    // Skip the initial node as we only want connected nodes
+    if (currentNode !== node) {
+      result.push(currentNode);
     }
 
-    return memo;
-  }, [] as Node[]);
+    // Get all connected nodes in the specified direction
+    const connectedNodes = getTracedNode(currentNode, nodes, edges, isIncomer);
+
+    for (const connectedNode of connectedNodes) {
+      // Only process nodes we haven't visited yet
+      if (!visitedNodeIds.has(connectedNode.id)) {
+        visitedNodeIds.add(connectedNode.id);
+        queue.push(connectedNode);
+      }
+    }
+  }
+
+  // Update prevTraced by reference (to maintain original API behavior)
+  for (const nodeId of visitedNodeIds) {
+    if (!prevTraced.some((n) => n.id === nodeId)) {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (node) {
+        prevTraced.push(node);
+      }
+    }
+  }
+
+  return result;
 };
 
 export const getClassifiedEdge = (edges: Edge[]) => {
@@ -481,27 +501,40 @@ export const getAllTracedEdges = (
   prevTraced = [] as string[],
   isIncomer: boolean
 ) => {
-  const tracedNodes = getTracedEdge(selectedColumn, edges, isIncomer);
+  // Use a Set for O(1) lookups and uniqueness
+  const visitedEdgeIds = new Set<string>(prevTraced);
+  const result: string[] = [];
 
-  return tracedNodes.reduce((memo, tracedNode) => {
-    memo.push(tracedNode);
+  // Use a queue for breadth-first traversal
+  const queue: string[] = [selectedColumn];
 
-    if (prevTraced.findIndex((n) => n === tracedNode) === -1) {
-      prevTraced.push(tracedNode);
+  while (queue.length > 0) {
+    const currentColumn = queue.shift()!;
 
-      getAllTracedEdges(tracedNode, edges, prevTraced, isIncomer).forEach(
-        (foundNode) => {
-          memo.push(foundNode);
-
-          if (prevTraced.findIndex((n) => n === foundNode) === -1) {
-            prevTraced.push(foundNode);
-          }
-        }
-      );
+    // Skip the initial column
+    if (currentColumn !== selectedColumn) {
+      result.push(currentColumn);
     }
 
-    return memo;
-  }, [] as string[]);
+    // Get directly connected edges
+    const connectedEdges = getTracedEdge(currentColumn, edges, isIncomer);
+
+    for (const connectedEdge of connectedEdges) {
+      if (!visitedEdgeIds.has(connectedEdge) && connectedEdge) {
+        visitedEdgeIds.add(connectedEdge);
+        queue.push(connectedEdge);
+      }
+    }
+  }
+
+  // Update prevTraced by reference to maintain API compatibility
+  for (const edgeId of visitedEdgeIds) {
+    if (!prevTraced.includes(edgeId)) {
+      prevTraced.push(edgeId);
+    }
+  }
+
+  return result;
 };
 
 export const getAllTracedColumnEdge = (column: string, columnEdge: Edge[]) => {
@@ -707,20 +740,6 @@ export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {
   return { hasUpstream, hasDownstream };
 };
 
-const removeDuplicateNodes = (nodesData: EntityReference[]) => {
-  const uniqueNodesMap = new Map<string, EntityReference>();
-  nodesData.forEach((node) => {
-    // Check if the node is not null before adding it to the map
-    if (node?.fullyQualifiedName) {
-      uniqueNodesMap.set(node.fullyQualifiedName, node);
-    }
-  });
-
-  const uniqueNodesArray = Array.from(uniqueNodesMap.values());
-
-  return uniqueNodesArray;
-};
-
 const getNodeType = (
   edgesData: EdgeDetails[],
   id: string
@@ -766,91 +785,124 @@ export const createNodes = (
   nodesData: LineageEntityReference[],
   edgesData: EdgeDetails[],
   entityFqn: string,
+  incomingMap: Map<string, number>,
+  outgoingMap: Map<string, number>,
   isExpanded = false,
   hidden?: boolean
 ) => {
-  const uniqueNodesData = removeDuplicateNodes(nodesData).sort((a, b) =>
+  const uniqueNodesMap = new Map<string, LineageEntityReference>();
+  nodesData.forEach((node) => {
+    if (node?.fullyQualifiedName) {
+      uniqueNodesMap.set(node.fullyQualifiedName, node);
+    }
+  });
+
+  // Convert to array and sort once
+  const uniqueNodesData = Array.from(uniqueNodesMap.values()).sort((a, b) =>
     getEntityName(a).localeCompare(getEntityName(b))
   );
 
+  const { upstreamNodes, downstreamNodes } = getUpstreamDownstreamNodesEdges(
+    edgesData ?? [],
+    uniqueNodesData,
+    entityFqn
+  );
+
+  const upstreamNodeIds = new Set(upstreamNodes.map((node) => node.id));
+  const downstreamNodeIds = new Set(downstreamNodes.map((node) => node.id));
+
   return uniqueNodesData.map((node) => {
-    const { childrenHeight } = getEntityChildrenAndLabel(node as SourceType);
+    // Mark deleted nodes
+    node.deleted = isDeleted(node.deleted);
+
     const type =
       node.type === EntityLineageNodeType.LOAD_MORE
         ? node.type
         : getNodeType(edgesData, node.id);
 
-    // we are getting deleted as a string instead of boolean from API so need to handle it like this
-    node.deleted = isDeleted(node.deleted);
+    const nodeHeight = isExpanded
+      ? getEntityChildrenAndLabel(node as SourceType).childrenHeight + 220
+      : NODE_HEIGHT;
 
     return {
       id: `${node.id}`,
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
-      type: type,
+      type,
       className: '',
       data: {
         node,
         isRootNode: entityFqn === node.fullyQualifiedName,
+        hasIncomers: incomingMap.has(node.id),
+        hasOutgoers: outgoingMap.has(node.id),
+        isUpstreamNode: upstreamNodeIds.has(node.id),
+        isDownstreamNode: downstreamNodeIds.has(node.id),
       },
       width: NODE_WIDTH,
-      height: isExpanded ? childrenHeight + 220 : NODE_HEIGHT,
-      position: {
-        x: 0,
-        y: 0,
-      },
+      height: nodeHeight,
+      position: { x: 0, y: 0 },
       ...(hidden && { hidden }),
     };
   });
 };
 
-export const createEdges = (
+export const createEdgesAndEdgeMaps = (
   nodes: EntityReference[],
   edges: EdgeDetails[],
   entityFqn: string,
+  isColumnLayerActive: boolean,
   hidden?: boolean
 ) => {
   const lineageEdgesV1: Edge[] = [];
   const edgeIds = new Set<string>();
   const columnsHavingLineage = new Set<string>();
+  const incomingMap = new Map<string, number>();
+  const outgoingMap = new Map<string, number>();
 
   edges.forEach((edge) => {
-    const sourceType = nodes.find((n) => edge.fromEntity.id === n.id);
-    const targetType = nodes.find((n) => edge.toEntity.id === n.id);
+    const sourceId = edge.fromEntity.id;
+    const targetId = edge.toEntity.id;
+
+    const sourceType = nodes.find((n) => sourceId === n.id);
+    const targetType = nodes.find((n) => targetId === n.id);
 
     if (isUndefined(sourceType) || isUndefined(targetType)) {
       return;
     }
 
-    if (!isUndefined(edge.columns)) {
+    // Update edge maps for fast lookup
+    outgoingMap.set(sourceId, (outgoingMap.get(sourceId) ?? 0) + 1);
+    incomingMap.set(targetId, (incomingMap.get(targetId) ?? 0) + 1);
+
+    if (!isUndefined(edge.columns) && isColumnLayerActive) {
       edge.columns?.forEach((e) => {
         const toColumn = e.toColumn ?? '';
-        if (toColumn && e.fromColumns && e.fromColumns.length > 0) {
+        if (toColumn && e.fromColumns?.length) {
           e.fromColumns.forEach((fromColumn) => {
             columnsHavingLineage.add(fromColumn);
             columnsHavingLineage.add(toColumn);
-            const encodedFromColumn = encodeLineageHandles(fromColumn);
-            const encodedToColumn = encodeLineageHandles(toColumn);
-            const edgeId = `column-${encodedFromColumn}-${encodedToColumn}-edge-${edge.fromEntity.id}-${edge.toEntity.id}`;
+
+            const encodedFrom = encodeLineageHandles(fromColumn);
+            const encodedTo = encodeLineageHandles(toColumn);
+            const edgeId = `column-${encodedFrom}-${encodedTo}-edge-${sourceId}-${targetId}`;
 
             if (!edgeIds.has(edgeId)) {
               edgeIds.add(edgeId);
               lineageEdgesV1.push({
                 id: edgeId,
-                source: edge.fromEntity.id,
-                target: edge.toEntity.id,
-                targetHandle: encodedToColumn,
-                sourceHandle: encodedFromColumn,
+                source: sourceId,
+                target: targetId,
+                targetHandle: encodedTo,
+                sourceHandle: encodedFrom,
                 style: { strokeWidth: '2px' },
                 type: 'buttonedge',
-                markerEnd: {
-                  type: MarkerType.ArrowClosed,
-                },
+                markerEnd: { type: MarkerType.ArrowClosed },
                 data: {
                   edge,
                   isColumnLineage: true,
-                  targetHandle: encodedToColumn,
-                  sourceHandle: encodedFromColumn,
+                  targetHandle: encodedTo,
+                  sourceHandle: encodedFrom,
+                  dataTestId: `column-edge-${encodedFrom}-${encodedTo}`,
                 },
                 ...(hidden && { hidden }),
               });
@@ -860,25 +912,24 @@ export const createEdges = (
       });
     }
 
-    const edgeId = `edge-${edge.fromEntity.id}-${edge.toEntity.id}`;
+    const edgeId = `edge-${sourceId}-${targetId}`;
     if (!edgeIds.has(edgeId)) {
       edgeIds.add(edgeId);
       lineageEdgesV1.push({
         id: edgeId,
-        source: `${edge.fromEntity.id}`,
-        target: `${edge.toEntity.id}`,
+        source: sourceId,
+        target: targetId,
         type: 'buttonedge',
         animated: !isNil(edge.pipeline),
         style: { strokeWidth: '2px' },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-        },
+        markerEnd: { type: MarkerType.ArrowClosed },
         data: {
           edge,
           isColumnLineage: false,
           isPipelineRootNode: !isNil(edge.pipeline)
             ? entityFqn === edge.pipeline?.fullyQualifiedName
             : false,
+          dataTestId: `edge-${edge.fromEntity.fullyQualifiedName}-${edge.toEntity.fullyQualifiedName}`,
         },
       });
     }
@@ -887,6 +938,8 @@ export const createEdges = (
   return {
     edges: lineageEdgesV1,
     columnsHavingLineage: Array.from(columnsHavingLineage),
+    incomingMap,
+    outgoingMap,
   };
 };
 
@@ -1092,7 +1145,7 @@ export const getConnectedNodesEdges = (
 
   return {
     nodes: outgoers,
-    edges: connectedEdges,
+    edges: uniqWith(connectedEdges, isEqual),
     nodeFqn: childNodeFqn,
   };
 };
@@ -1364,10 +1417,20 @@ const processNodeArray = (
   return Object.values(nodes)
     .map((node: NodeData) => ({
       ...node.entity,
-      paging: node.paging,
-      expandPerformed:
-        (node.entity as LineageEntityReference).expandPerformed ||
-        node.entity.fullyQualifiedName === entityFqn,
+      paging: {
+        entityUpstreamCount: node.paging?.entityUpstreamCount ?? 0,
+        entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,
+      },
+      upstreamExpandPerformed:
+        (node.entity as LineageEntityReference).upstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).upstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
+      downstreamExpandPerformed:
+        (node.entity as LineageEntityReference).downstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).downstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
     }))
     .flat();
 };
@@ -1468,7 +1531,8 @@ const processPagination = (
 
 export const parseLineageData = (
   data: LineageData,
-  entityFqn: string
+  entityFqn: string, // This contains fqn of node or entity that is being viewed in lineage page
+  rootFqn: string // This contains the fqn of the entity that is being viewed in lineage page
 ): {
   nodes: LineageEntityReference[];
   edges: EdgeDetails[];
@@ -1477,7 +1541,8 @@ export const parseLineageData = (
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
   // Process nodes
-  const nodesArray = processNodeArray(nodes, entityFqn);
+  const nodesArray = uniqWith(processNodeArray(nodes, rootFqn), isEqual);
+
   const processedNodes: LineageEntityReference[] = [...nodesArray];
 
   // Process edges
@@ -1577,7 +1642,6 @@ const getEdgePath = (
 export const getEdgePathData = (
   source: string,
   target: string,
-  offset: number,
   edgePathData: EdgeAlignmentPathDataProps
 ) => {
   const { sourceX, sourceY, targetX, targetY } = getEdgePathAlignmentData(
@@ -1596,29 +1660,10 @@ export const getEdgePathData = (
     targetPosition,
   });
 
-  const [invisibleEdgePath] = getBezierPath({
-    sourceX: sourceX + offset,
-    sourceY: sourceY + offset,
-    sourcePosition,
-    targetX: targetX + offset,
-    targetY: targetY + offset,
-    targetPosition,
-  });
-  const [invisibleEdgePath1] = getBezierPath({
-    sourceX: sourceX - offset,
-    sourceY: sourceY - offset,
-    sourcePosition,
-    targetX: targetX - offset,
-    targetY: targetY - offset,
-    targetPosition,
-  });
-
   return {
     edgePath: getEdgePath(edgePath, source, target, edgePathData), // pass the initial data edgePathData, as edge modification will be done based on the initial data
     edgeCenterX,
     edgeCenterY,
-    invisibleEdgePath,
-    invisibleEdgePath1,
   };
 };
 
@@ -1687,10 +1732,16 @@ export const getNodesBoundsReactFlow = (nodes: Node[]) => {
 
   nodes.forEach((node) => {
     const { x, y } = node.position;
-    bounds.xMin = Math.min(bounds.xMin, x);
-    bounds.yMin = Math.min(bounds.yMin, y);
-    bounds.xMax = Math.max(bounds.xMax, x + (node.width ?? 0));
-    bounds.yMax = Math.max(bounds.yMax, y + (node.height ?? 0));
+    const width = node.width ?? 0;
+    const height = node.height ?? 0;
+
+    // Add padding to ensure nodes are fully visible
+    const padding = 20;
+
+    bounds.xMin = Math.min(bounds.xMin, x - padding);
+    bounds.yMin = Math.min(bounds.yMin, y - padding);
+    bounds.xMax = Math.max(bounds.xMax, x + width + padding);
+    bounds.yMax = Math.max(bounds.yMax, y + height + padding);
   });
 
   return bounds;
@@ -1706,13 +1757,23 @@ export const getViewportForBoundsReactFlow = (
   const width = bounds.xMax - bounds.xMin;
   const height = bounds.yMax - bounds.yMin;
 
-  // Scale the image to fit the container
+  // Add extra padding to ensure content is fully visible
+  const padding = 20;
+  const paddedWidth = width + padding * 2;
+  const paddedHeight = height + padding * 2;
+
+  // Scale the image to fit the container while maintaining aspect ratio
   const scale =
-    Math.min(imageWidth / width, imageHeight / height) * scaleFactor;
+    Math.min(
+      (imageWidth - padding * 2) / paddedWidth,
+      (imageHeight - padding * 2) / paddedHeight
+    ) * scaleFactor;
 
   // Calculate translation to center the flow
-  const translateX = (imageWidth - width * scale) / 2 - bounds.xMin * scale;
-  const translateY = (imageHeight - height * scale) / 2 - bounds.yMin * scale;
+  const translateX =
+    (imageWidth - paddedWidth * scale) / 2 - bounds.xMin * scale;
+  const translateY =
+    (imageHeight - paddedHeight * scale) / 2 - bounds.yMin * scale;
 
   return { x: translateX, y: translateY, zoom: scale };
 };
@@ -1728,8 +1789,13 @@ export const getViewportForLineageExport = (
 
   const nodesBounds = getNodesBoundsReactFlow(nodes);
 
-  // Calculate the viewport to fit all nodes
-  return getViewportForBoundsReactFlow(nodesBounds, imageWidth, imageHeight);
+  // Calculate the viewport to fit all nodes with padding
+  return getViewportForBoundsReactFlow(
+    nodesBounds,
+    imageWidth,
+    imageHeight,
+    0.9
+  ); // Scale down slightly to ensure padding
 };
 
 export const getLineageEntityExclusionFilter = () => {
@@ -1769,4 +1835,41 @@ export const getEntityTypeFromPlatformView = (
     default:
       return 'service';
   }
+};
+
+/**
+ * Recursively finds all downstream edges from a given node in a graph.
+ * This function traverses the graph depth-first, collecting all edges that flow downstream
+ * from the specified node while avoiding cycles by tracking visited nodes.
+ *
+ * @param {string} nodeId - The ID of the starting node
+ * @param {Edge[]} edges - Array of all edges in the graph
+ * @param {Set<string>} [visitedNodes=new Set()] - Set of already visited node IDs to prevent cycles
+ * @returns {Edge[]} Array of all downstream edges from the starting node
+ */
+export const getAllDownstreamEdges = (
+  nodeId: string,
+  edges: Edge[],
+  visitedNodes: Set<string> = new Set()
+): Edge[] => {
+  // If we've already visited this node, return empty array to avoid cycles
+  if (visitedNodes.has(nodeId)) {
+    return [];
+  }
+
+  visitedNodes.add(nodeId);
+
+  // Get direct downstream edges
+  const directDownstreamEdges = edges.filter((edge) => edge.source === nodeId);
+
+  // Get target nodes from direct downstream edges
+  const targetNodes = directDownstreamEdges.map((edge) => edge.target);
+
+  // Recursively get downstream edges for each target node
+  const nestedDownstreamEdges = targetNodes.flatMap((targetNodeId) =>
+    getAllDownstreamEdges(targetNodeId, edges, visitedNodes)
+  );
+
+  // Combine direct and nested downstream edges
+  return [...directDownstreamEdges, ...nestedDownstreamEdges];
 };

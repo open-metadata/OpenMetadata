@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Steps, Typography } from 'antd';
+import { Col, Row, Skeleton, Steps, Typography } from 'antd';
 import { last, toLower } from 'lodash';
-import React, { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as FailureCommentIcon } from '../../../../assets/svg/ic-failure-comment.svg';
@@ -36,7 +36,8 @@ import './task-tab-incident-manager-header.style.less';
 
 const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
   const { t } = useTranslation();
-  const { testCaseResolutionStatus } = useActivityFeedProvider();
+  const { testCaseResolutionStatus, isTestCaseResolutionLoading } =
+    useActivityFeedProvider();
   const testCaseResolutionStepper = useMemo(() => {
     const updatedData = [...testCaseResolutionStatus];
     const lastStatusType = last(
@@ -145,17 +146,16 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         <Col className="flex items-center gap-2" span={16}>
           {thread?.task?.assignees?.length === 1 ? (
             <div className="d-flex items-center gap-2">
-              <UserPopOverCard
-                userName={thread?.task?.assignees[0].displayName ?? ''}>
+              <UserPopOverCard userName={thread?.task?.assignees[0].name ?? ''}>
                 <div className="d-flex items-center">
                   <ProfilePicture
-                    name={thread?.task?.assignees[0].displayName ?? ''}
+                    name={thread?.task?.assignees[0].name ?? ''}
                     width="24"
                   />
                 </div>
               </UserPopOverCard>
               <Typography.Text className="text-grey-body">
-                {thread?.task?.assignees[0].displayName}
+                {getEntityName(thread?.task?.assignees[0])}
               </Typography.Text>
             </div>
           ) : (
@@ -216,14 +216,18 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         )}
         <Col className="p-l-0" span={24}>
           <div className="task-resolution-steps-container-new">
-            <Steps
-              className="task-resolution-steps w-full"
-              current={testCaseResolutionStatus.length}
-              data-testid="task-resolution-steps"
-              items={testCaseResolutionStepper}
-              labelPlacement="vertical"
-              size="small"
-            />
+            {isTestCaseResolutionLoading ? (
+              <Skeleton active />
+            ) : (
+              <Steps
+                className="task-resolution-steps w-full"
+                current={testCaseResolutionStatus.length}
+                data-testid="task-resolution-steps"
+                items={testCaseResolutionStepper}
+                labelPlacement="vertical"
+                size="small"
+              />
+            )}
           </div>
         </Col>
       </Row>

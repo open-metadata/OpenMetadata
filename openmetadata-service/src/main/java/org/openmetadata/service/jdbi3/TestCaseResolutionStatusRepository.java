@@ -1,8 +1,11 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
@@ -13,8 +16,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -36,12 +37,12 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.IncidentManagerException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -334,8 +335,9 @@ public class TestCaseResolutionStatusRepository
 
   private void patchTaskAssignee(Thread originalTask, EntityReference newAssignee, String user) {
     Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-    updatedTask.setTask(
-        updatedTask.getTask().withAssignees(Collections.singletonList(newAssignee)));
+    List<EntityReference> updatedAssignees =
+        nullOrEmpty(newAssignee) ? new ArrayList<>() : Collections.singletonList(newAssignee);
+    updatedTask.setTask(updatedTask.getTask().withAssignees(updatedAssignees));
 
     JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
 
@@ -374,10 +376,11 @@ public class TestCaseResolutionStatusRepository
 
   public static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
     // if originEntityFQN is present, we need to join with test_case table
-    if (filter.getQueryParam("originEntityFQN") != null) {
+    if ((filter.getQueryParam("originEntityFQN") != null)
+        || (filter.getQueryParam("include") != null)) {
       condition =
           """
-              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash FROM test_case) tc \
+              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
               ON entityFQNHash = testCaseHash
               """
               + condition;

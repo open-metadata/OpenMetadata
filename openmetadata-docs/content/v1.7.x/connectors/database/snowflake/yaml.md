@@ -1,5 +1,6 @@
 ---
 title: Run the Snowflake Connector Externally
+description: Set up Snowflake database connector with OpenMetadata using YAML configuration. Complete setup guide with examples, authentication, and best practices.
 slug: /connectors/database/snowflake/yaml
 ---
 
@@ -7,8 +8,8 @@ slug: /connectors/database/snowflake/yaml
 name="Snowflake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data", "Reverse Metadata (Collate Only)"]
-unavailableFeatures=["Owners"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
+unavailableFeatures=[]
 / %}
 
 In this section, we provide guides and references to use the Snowflake connector.

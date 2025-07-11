@@ -13,17 +13,11 @@
 import Icon from '@ant-design/icons';
 import { Button, Divider, Input, Popover, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { debounce, isString } from 'lodash';
+import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../assets/svg/ic-suggestions-active.svg';
@@ -59,9 +53,9 @@ export const GlobalSearchBar = () => {
   const location = useCustomLocation();
   const pathname = location.pathname;
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState<boolean>(false);
-  const history = useHistory();
+  const navigate = useNavigate();
   const { isTourOpen, updateTourPage, updateTourSearch } = useTourProvider();
-
+  const { currentUser } = useApplicationStore();
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')
       ? location.search.substring(1)
@@ -99,9 +93,14 @@ export const GlobalSearchBar = () => {
   );
 
   const handleSelectOption = useCallback((text: string) => {
-    history.replace({
-      search: `?withinPageSearch=${text}`,
-    });
+    navigate(
+      {
+        search: `?withinPageSearch=${text}`,
+      },
+      {
+        replace: true,
+      }
+    );
   }, []);
 
   const debouncedOnChange = useCallback(
@@ -123,7 +122,7 @@ export const GlobalSearchBar = () => {
       const defaultTab: string =
         searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
 
-      history.push(
+      navigate(
         getExplorePath({
           tab: defaultTab,
           search: value,
@@ -166,14 +165,16 @@ export const GlobalSearchBar = () => {
   };
 
   const fetchNLPEnabledStatus = useCallback(() => {
-    getNLPEnabledStatus().then((enabled) => {
-      setNLPEnabled(enabled);
-    });
-  }, [setNLPEnabled]);
+    if (!isEmpty(currentUser)) {
+      getNLPEnabledStatus().then((enabled) => {
+        setNLPEnabled(enabled);
+      });
+    }
+  }, [setNLPEnabled, currentUser]);
 
   useEffect(() => {
     fetchNLPEnabledStatus();
-  }, []);
+  }, [fetchNLPEnabledStatus]);
 
   return (
     <div

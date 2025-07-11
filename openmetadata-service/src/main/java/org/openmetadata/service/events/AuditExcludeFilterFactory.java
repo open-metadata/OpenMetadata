@@ -4,7 +4,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.filter.Filter;
 import ch.qos.logback.core.spi.FilterReply;
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import io.dropwizard.logging.filter.FilterFactory;
+import io.dropwizard.logging.common.filter.FilterFactory;
 import org.slf4j.Marker;
 
 @JsonTypeName("audit-exclude-filter-factory")

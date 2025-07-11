@@ -31,13 +31,3 @@ global:
 ```
 
 {% partial file="/v1.7/deployment/configure-ingestion.md" /%}
-
-### Troubleshooting
-
-* If you are seeing the below trace in the logs, you need to add the discovery URL
-
-```
-org.pac4j.core.exception.TechnicalException: You must define either the discovery URL or directly the provider metadata
-```
-
-To resolve the error regarding the discovery URL, you need to set the `AUTHENTICATION_DISCOVERY_URI` in your configuration. This URI is used to discover the OpenID Connect provider's configuration.

@@ -17,9 +17,9 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { EntityTags, ServiceTypes } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -31,6 +31,7 @@ import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRig
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS,
@@ -38,6 +39,7 @@ import {
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { ServicesType } from '../../interface/service.interface';
@@ -51,6 +53,7 @@ import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServicePageData } from './ServiceDetailsPage.interface';
 
 interface ServiceMainTabContentProps {
@@ -68,6 +71,7 @@ interface ServiceMainTabContentProps {
   saveUpdatedServiceData: (updatedData: ServicesType) => Promise<void>;
   pagingInfo: UsePagingInterface;
   isVersionPage?: boolean;
+  onDataProductUpdate: (dataProducts: DataProduct[]) => Promise<void>;
 }
 
 function ServiceMainTabContent({
@@ -85,13 +89,13 @@ function ServiceMainTabContent({
   saveUpdatedServiceData,
   pagingInfo,
   isVersionPage = false,
+  onDataProductUpdate,
 }: Readonly<ServiceMainTabContentProps>) {
   const { t } = useTranslation();
-  const { serviceCategory } = useParams<{
-    serviceCategory: ServiceTypes;
-  }>();
+  const { serviceCategory } =
+    useRequiredParams<{ serviceCategory: ServiceTypes }>();
   const { permissions } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [pageData, setPageData] = useState<ServicePageData[]>([]);
 
   const tier = getTierTags(serviceDetails?.tags ?? []);
@@ -204,7 +208,7 @@ function ServiceMainTabContent({
   );
 
   const handleEditTable = () => {
-    history.push({
+    navigate({
       pathname: getEntityBulkEditPath(
         EntityType.DATABASE_SERVICE,
         serviceDetails.fullyQualifiedName ?? ''
@@ -216,6 +220,7 @@ function ServiceMainTabContent({
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
+    editDataProductPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -227,6 +232,8 @@ function ServiceMainTabContent({
       editDescriptionPermission:
         (servicePermission.EditDescription || servicePermission.EditAll) &&
         !serviceDetails.deleted,
+      editDataProductPermission:
+        servicePermission.EditAll && !serviceDetails.deleted,
     }),
     [servicePermission, serviceDetails]
   );
@@ -308,6 +315,7 @@ function ServiceMainTabContent({
                         }}
                         pagination={false}
                         rowKey="id"
+                        scroll={TABLE_SCROLL_VALUE}
                         size="small"
                         staticVisibleColumns={
                           COMMON_STATIC_TABLE_VISIBLE_COLUMNS
@@ -329,6 +337,7 @@ function ServiceMainTabContent({
                 onUpdate={saveUpdatedServiceData}>
                 <div data-testid="entity-right-panel">
                   <EntityRightPanel
+                    editDataProductPermission={editDataProductPermission}
                     editGlossaryTermsPermission={editGlossaryTermsPermission}
                     editTagPermission={editTagsPermission}
                     entityType={entityType}
@@ -337,6 +346,7 @@ function ServiceMainTabContent({
                       entityType !== EntityType.METADATA_SERVICE
                     }
                     showTaskHandler={false}
+                    onDataProductUpdate={onDataProductUpdate}
                     onTagSelectionChange={handleTagSelection}
                   />
                 </div>

@@ -19,7 +19,7 @@ import classNames from 'classnames';
 import { isArray, isUndefined, sortBy } from 'lodash';
 import { PagingResponse } from 'Models';
 import QueryString from 'qs';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
@@ -50,7 +50,7 @@ import {
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import {
   getEntityDetailsPath,
-  getIncidentManagerDetailPagePath,
+  getTestCaseDetailPagePath,
 } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -152,7 +152,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (name: string, record) => {
           const status = record.testCaseResult?.testCaseStatus;
           const urlData = {
-            pathname: getIncidentManagerDetailPagePath(
+            pathname: getTestCaseDetailPagePath(
               record.fullyQualifiedName ?? ''
             ),
             state: { breadcrumbData },
@@ -422,7 +422,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         return acc;
       }, [] as TestCaseResolutionStatus[]);
       setTestCaseStatus(data);
-    } catch (error) {
+    } catch {
       // do nothing
     } finally {
       setIsStatusLoading(false);
@@ -454,7 +454,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       }, [] as TestCasePermission[]);
 
       setTestCasePermissions(data);
-    } catch (error) {
+    } catch {
       // do nothing
     } finally {
       setIsPermissionLoading(false);

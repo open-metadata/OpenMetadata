@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { isEmpty } from 'lodash';
-import React, {
+import {
   createContext,
   ReactNode,
   useCallback,
@@ -21,16 +21,16 @@ import React, {
   useState,
 } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { App } from '../../../../generated/entity/applications/app';
+import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getApplicationList } from '../../../../rest/applicationAPI';
+import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
 import Loader from '../../../common/Loader/Loader';
 import { ApplicationsContextType } from './ApplicationsProvider.interface';
 
 export const ApplicationsContext = createContext({} as ApplicationsContextType);
 
 export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
-  const [applications, setApplications] = useState<App[]>([]);
+  const [applications, setApplications] = useState<EntityReference[]>([]);
   const [loading, setLoading] = useState(true);
   const { permissions } = usePermissionProvider();
   const { setApplicationsName } = useApplicationStore();
@@ -38,12 +38,12 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const fetchApplicationList = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await getApplicationList({
-        limit: 100,
-      });
+      const data = await getInstalledApplicationList();
 
       setApplications(data);
-      const applicationsNameList = data.map((app) => app.name);
+      const applicationsNameList = data.map(
+        (app) => app.name ?? app.fullyQualifiedName ?? ''
+      );
       setApplicationsName(applicationsNameList);
     } catch (err) {
       // do not handle error

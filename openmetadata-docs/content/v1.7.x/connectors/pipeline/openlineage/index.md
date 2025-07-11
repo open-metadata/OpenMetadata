@@ -1,5 +1,6 @@
 ---
-title: OpenLineage
+title: OpenLineage | OpenMetadata Data Lineage Pipeline
+description: Connect your data pipelines with OpenMetadata's OpenLineage connector. Track data lineage, monitor pipeline metadata, and gain end-to-end visibility.
 slug: /connectors/pipeline/openlineage
 ---
 

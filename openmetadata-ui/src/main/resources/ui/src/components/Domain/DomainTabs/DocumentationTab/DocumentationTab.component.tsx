@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import DescriptionV1 from '../../../../components/common/EntityDescription/DescriptionV1';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
@@ -134,7 +134,6 @@ const DocumentationTab = ({
         className: 'domain-resizable-panel-container',
         children: (
           <DescriptionV1
-            newLook
             removeBlur
             wrapInCard
             description={description}
@@ -150,7 +149,7 @@ const DocumentationTab = ({
       secondPanel={{
         wrapInCard: true,
         children: (
-          <div className="d-flex flex-column gap-5 p-md">
+          <div className="d-flex flex-column gap-5">
             <OwnerLabelV2 dataTestId="domain-owner-name" />
 
             <TagsContainerV2
@@ -181,16 +180,13 @@ const DocumentationTab = ({
               }
             />
 
-            <DomainExpertWidget newLook />
+            <DomainExpertWidget />
 
-            {type === DocumentationEntity.DOMAIN && (
-              <DomainTypeWidget newLook />
-            )}
+            {type === DocumentationEntity.DOMAIN && <DomainTypeWidget />}
 
             {domain && type === DocumentationEntity.DATA_PRODUCT && (
               <CustomPropertyTable<EntityType.DATA_PRODUCT>
                 isRenderedInRightPanel
-                newLook
                 entityType={EntityType.DATA_PRODUCT}
                 hasEditAccess={Boolean(editCustomAttributePermission)}
                 hasPermission={Boolean(viewAllPermission)}

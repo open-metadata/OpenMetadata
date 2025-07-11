@@ -33,7 +33,6 @@ export const sidebarClick = async (page: Page, id: string) => {
     await page.waitForTimeout(300);
     await page.click(`[data-testid="${items[0]}"]`);
     await page.click(`[data-testid="app-bar-item-${items[1]}"]`);
-    await page.click(`[data-testid="${items[0]}"]`);
   } else {
     await page.click(`[data-testid="app-bar-item-${id}"]`);
   }
@@ -61,4 +60,6 @@ export const settingClick = async (
   for (const path of paths ?? []) {
     await page.click(`[data-testid="${path}"]`);
   }
+
+  await page.waitForLoadState('networkidle');
 };

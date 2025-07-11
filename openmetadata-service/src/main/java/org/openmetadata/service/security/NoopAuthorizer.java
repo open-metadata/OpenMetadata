@@ -15,8 +15,8 @@ package org.openmetadata.service.security;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
-import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.User;

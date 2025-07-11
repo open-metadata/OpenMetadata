@@ -70,7 +70,8 @@ public interface NodeInterface {
     endEvent.getExecutionListeners().add(listener);
   }
 
-  default BoundaryEvent getRuntimeExceptionBoundaryEvent(Activity activity) {
+  default BoundaryEvent getRuntimeExceptionBoundaryEvent(
+      Activity activity, Boolean storeStageStatus) {
     ErrorEventDefinition runtimeExceptionDefinition = new ErrorEventDefinition();
     runtimeExceptionDefinition.setErrorCode(WORKFLOW_RUNTIME_EXCEPTION);
 
@@ -80,8 +81,10 @@ public interface NodeInterface {
     runtimeExceptionBoundaryEvent.addEventDefinition(runtimeExceptionDefinition);
 
     runtimeExceptionBoundaryEvent.setAttachedToRef(activity);
-    for (FlowableListener listener : getWorkflowInstanceStageListeners(List.of("end"))) {
-      runtimeExceptionBoundaryEvent.getExecutionListeners().add(listener);
+    if (storeStageStatus) {
+      for (FlowableListener listener : getWorkflowInstanceStageListeners(List.of("end"))) {
+        runtimeExceptionBoundaryEvent.getExecutionListeners().add(listener);
+      }
     }
     return runtimeExceptionBoundaryEvent;
   }

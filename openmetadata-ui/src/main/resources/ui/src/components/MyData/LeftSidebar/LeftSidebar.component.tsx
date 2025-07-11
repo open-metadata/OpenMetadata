@@ -15,7 +15,7 @@ import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { noop } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -24,26 +24,25 @@ import {
   SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
 import { SidebarItem } from '../../../enums/sidebar.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { filterHiddenNavigationItems } from '../../../utils/CustomizaNavigation/CustomizeNavigation';
+import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
 import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
 import LeftSidebarItem from './LeftSidebarItem.component';
-
 const { Sider } = Layout;
 
-const LeftSidebar = ({
-  isSidebarCollapsed,
-}: {
-  isSidebarCollapsed: boolean;
-}) => {
+const LeftSidebar = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const { onLogoutHandler } = useApplicationStore();
+  const { onLogoutHandler } = useAuthProvider();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
+  const {
+    preferences: { isSidebarCollapsed },
+  } = useCurrentUserPreferences();
 
   const { i18n } = useTranslation();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);

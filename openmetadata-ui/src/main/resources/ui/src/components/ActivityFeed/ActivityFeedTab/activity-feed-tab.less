@@ -19,9 +19,8 @@
 .activity-feed-tab {
   display: flex;
   width: 100%;
-  width: 100%;
   overflow-x: hidden;
-  border: 1px solid @blue-15;
+  border: 1px solid @grey-15;
   border-radius: @border-radius-sm;
 
   .custom-menu.ant-menu-root.ant-menu-inline {
@@ -90,7 +89,7 @@
       line-height: 14.52px;
 
       &::placeholder {
-        color: @grey-14;
+        color: @grey-400;
         font-size: 12px;
         font-style: normal;
         font-weight: 400;
@@ -140,8 +139,8 @@
   }
 
   .activity-feed-card-new.is-active {
-    background: #eff8ff;
-    border: 1px solid #84caff;
+    background: @primary-50;
+    border: 1px solid @primary-3;
   }
 
   .activity-feed-card-message {
@@ -222,23 +221,23 @@
     &.ant-typography a,
     & a.ant-typography,
     & .ant-typography a {
-      color: @blue-9;
+      color: @primary-heading-color;
 
       &:hover {
-        color: @blue-9;
+        color: @primary-heading-color;
       }
     }
   }
 
   .feed-card-header-v2-timestamp {
-    color: @grey-8;
+    color: @grey-500;
   }
 
   .seperator {
     vertical-align: middle;
     font-size: 18px;
     font-weight: 800;
-    color: @grey-8;
+    color: @grey-500;
     padding-bottom: 2px;
   }
 }
@@ -253,27 +252,27 @@
 
 .activity-feed-editor-container-new {
   background-color: @grey-9;
-  border: 0.5px solid @blue-15;
+  border: 0.5px solid @grey-15;
   border-radius: 10px;
   width: 100%;
 
   .ql-container {
     background-color: @grey-9;
-    border: 1px solid @blue-15;
+    border: 1px solid @grey-15;
     width: 100%;
 
     &:focus-within {
-      border: 0.5px solid @blue-15;
+      border: 0.5px solid @grey-15;
     }
   }
 
   .ql-toolbar {
     background-color: @grey-9;
-    border: 1px solid @blue-15;
+    border: 1px solid @grey-15;
     flex-wrap: wrap;
 
     &:focus-within {
-      border: 0.5px solid @blue-15;
+      border: 0.5px solid @grey-15;
     }
   }
 
@@ -334,7 +333,7 @@
     line-height: 20px;
 
     &.selected {
-      color: #2e90fa;
+      color: @primary-5;
     }
   }
 
@@ -353,7 +352,7 @@
     align-items: center;
 
     &.active {
-      background-color: #2e90fa !important;
+      background-color: @primary-5 !important;
     }
 
     .task-count-text {
@@ -376,10 +375,10 @@
 
     .active {
       box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
-      background-color: #f5faff;
+      background-color: @primary-25;
 
       svg path {
-        fill: #2e90fa;
+        fill: @primary-5;
       }
     }
   }
@@ -397,15 +396,15 @@
 
     &-selected {
       background: @blue-23;
-      color: @blue-9;
+      color: @primary-heading-color;
       text-align: center;
       border-radius: @size-xs;
       .ant-segmented-item-label {
-        color: @blue-9;
+        color: @primary-heading-color;
       }
 
       svg path {
-        fill: @blue-9;
+        fill: @primary-heading-color;
       }
     }
   }
@@ -537,7 +536,7 @@
 }
 
 .view-more-less-button {
-  color: @blue-9;
+  color: @primary-heading-color;
   font-size: 14px;
   font-style: normal;
   font-family: 'Inter', sans-serif;
@@ -549,7 +548,7 @@
   box-shadow: none;
 
   &.ant-btn {
-    color: @blue-9;
+    color: @primary-heading-color;
     border: none;
     background: none;
     box-shadow: none;
@@ -557,7 +556,7 @@
     &:hover,
     &:focus,
     &:active {
-      color: @blue-9;
+      color: @primary-heading-color;
       border: none;
       background: none;
       box-shadow: none;
@@ -614,9 +613,9 @@
     justify-content: center;
     &.disabled {
       cursor: not-allowed;
-      stroke: @grey-300;
+      stroke: border-color-2;
       border-radius: @size-xs;
-      border: 1px solid @grey-10;
+      border: 1px solid @grey-100;
       background: @white;
     }
     &:not(.disabled):hover {
@@ -631,7 +630,7 @@
     &.ant-dropdown-open,
     &.ant-popover-open {
       border: 1px solid @blue-12;
-      background: @blue-11;
+      background: @primary-button-background;
       svg {
         stroke: @blue-12;
         stroke-width: 0.2px;

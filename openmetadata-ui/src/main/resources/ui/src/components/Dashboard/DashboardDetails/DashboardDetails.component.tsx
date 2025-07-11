@@ -13,9 +13,9 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -38,8 +38,12 @@ import {
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -62,9 +66,9 @@ const DashboardDetails = ({
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab = EntityTabs.DETAILS } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.Dashboard);
   const { fqn: decodedDashboardFQN } = useFqn();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -130,12 +134,15 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.DASHBOARD,
           decodedDashboardFQN,
           activeKey
-        )
+        ),
+        {
+          replace: true,
+        }
       );
     }
   };
@@ -182,8 +189,7 @@ const DashboardDetails = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.dashboard'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -203,8 +209,8 @@ const DashboardDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
-    []
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    [navigate]
   );
 
   const {
@@ -261,6 +267,21 @@ const DashboardDetails = ({
     viewAllPermission,
     onExtensionUpdate,
   ]);
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (dashboardDetails) {
+        const certificationTag: Dashboard['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedDashboardDetails = {
+          ...dashboardDetails,
+          certification: certificationTag,
+        };
+
+        await onDashboardUpdate(updatedDashboardDetails, 'certification');
+      }
+    },
+    [dashboardDetails, onDashboardUpdate]
+  );
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -292,6 +313,7 @@ const DashboardDetails = ({
             entityType={EntityType.DASHBOARD}
             openTaskCount={feedCount.openTaskCount}
             permissions={dashboardPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={onUpdateDisplayName}
             onFollowClick={followDashboard}
             onOwnerUpdate={onOwnerUpdate}
@@ -308,7 +330,7 @@ const DashboardDetails = ({
           permissions={dashboardPermissions}
           type={EntityType.DASHBOARD}
           onUpdate={onDashboardUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

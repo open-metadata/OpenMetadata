@@ -28,7 +28,7 @@ import {
 import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DAY_IN_MONTH_OPTIONS,
@@ -98,12 +98,11 @@ const ScheduleInterval = <T,>({
     ...getStateValue(initialCron, initialDefaultSchedule),
   };
   const [state, setState] = useState<StateValue>(initialValues);
-  const [selectedSchedular, setSelectedSchedular] =
-    React.useState<SchedularOptions>(
-      isEmpty(initialCron)
-        ? SchedularOptions.ON_DEMAND
-        : SchedularOptions.SCHEDULE
-    );
+  const [selectedSchedular, setSelectedSchedular] = useState<SchedularOptions>(
+    isEmpty(initialCron)
+      ? SchedularOptions.ON_DEMAND
+      : SchedularOptions.SCHEDULE
+  );
   const [form] = Form.useForm<StateValue>();
   const { cron: cronString, selectedPeriod, dow, dom } = state;
 
@@ -394,7 +393,7 @@ const ScheduleInterval = <T,>({
           <Col span={24}>{generateFormFields(formFields)}</Col>
         )}
 
-        {children && <Col span={24}>{children}</Col>}
+        {children}
 
         {showActionButtons && (
           <Col className="d-flex justify-end" span={24}>

@@ -1,5 +1,5 @@
 ---
-title: Azure SSO for Docker
+title: Azure SSO for Docker | OpenMetadata Deployment Guide
 slug: /deployment/security/azure/docker
 collate: false
 ---
@@ -45,10 +45,11 @@ AUTHENTICATION_CLIENT_TYPE=confidential
 
 OIDC_CLIENT_ID={Client ID}                      # Update with your Client ID
 OIDC_TYPE= azure
+OIDC_TENANT=https://login.microsoftonline.com/{Tenant ID}                                                          
 OIDC_CLIENT_SECRET={Client Secret}              # Update with your Client Secret
-// OIDC_DISCOVERY_URI: https://login.microsoftonline.com/.well-known/openid-configuration  
-OIDC_DISCOVERY_URI: ""      
-OIDC_CALLBACK: ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
+OIDC_DISCOVERY_URI= https://login.microsoftonline.com/.well-known/openid-configuration  
+OIDC_DISCOVERY_URI= ""      
+OIDC_CALLBACK= ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
 
 ```
 

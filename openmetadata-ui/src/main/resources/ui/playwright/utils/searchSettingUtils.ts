@@ -34,6 +34,7 @@ export const mockEntitySearchConfig = {
     { field: 'columns.name.keyword', boost: 2 },
     { field: 'columns.displayName.keyword', boost: 2 },
     { field: 'columns.children.name.keyword', boost: 1 },
+    { field: 'columnNamesFuzzy', boost: 1.5 },
     { field: 'tags.tagFQN.text', boost: 5 },
   ],
   highlightFields: ['name', 'description', 'displayName'],
@@ -65,7 +66,7 @@ export const mockEntitySearchConfig = {
     },
   ],
   scoreMode: 'sum',
-  boostMode: 'multiply',
+  boostMode: 'sum',
 };
 
 export async function setSliderValue(

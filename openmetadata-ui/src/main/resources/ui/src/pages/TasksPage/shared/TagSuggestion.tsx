@@ -12,12 +12,14 @@
  */
 
 import { DefaultOptionType, SelectProps } from 'antd/lib/select';
-import { t } from 'i18next';
+
 import { isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
+import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -30,6 +32,10 @@ export interface TagSuggestionProps {
   initialOptions?: SelectOption[];
   onChange?: (newTags: TagLabel[]) => void;
   selectProps?: SelectProps;
+  isTreeSelect?: boolean;
+  hasNoActionButtons?: boolean;
+  open?: boolean;
+  autoFocus?: boolean;
 }
 
 const TagSuggestion: React.FC<TagSuggestionProps> = ({
@@ -39,11 +45,17 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
   initialOptions,
   tagType = TagSource.Classification,
   selectProps,
+  isTreeSelect = false,
+  hasNoActionButtons = false,
+  open = true,
+  autoFocus = false,
 }) => {
   const isGlossaryType = useMemo(
     () => tagType === TagSource.Glossary,
     [tagType]
   );
+
+  const { t } = useTranslation();
 
   const handleTagSelection = (
     newValue: DefaultOptionType | DefaultOptionType[]
@@ -81,21 +93,29 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
     }
   };
 
-  return (
-    <AsyncSelectList
-      fetchOptions={isGlossaryType ? fetchGlossaryList : tagClassBase.getTags}
-      initialOptions={initialOptions}
-      {...selectProps}
-      mode="multiple"
-      placeholder={
-        placeholder ??
-        t('label.select-field', {
-          field: t('label.tag-plural'),
-        })
-      }
-      value={value?.map((item) => item.tagFQN) ?? []}
-      onChange={handleTagSelection}
+  const commonProps = {
+    fetchOptions: isGlossaryType ? fetchGlossaryList : tagClassBase.getTags,
+    initialOptions,
+    ...selectProps,
+    mode: 'multiple' as const,
+    placeholder:
+      placeholder ??
+      t('label.select-field', {
+        field: t('label.tag-plural'),
+      }),
+    value: value?.map((item) => item.tagFQN) ?? [],
+    onChange: handleTagSelection,
+    autoFocus,
+  };
+
+  return isTreeSelect ? (
+    <TreeAsyncSelectList
+      {...commonProps}
+      hasNoActionButtons={hasNoActionButtons}
+      open={open}
     />
+  ) : (
+    <AsyncSelectList {...commonProps} />
   );
 };
 

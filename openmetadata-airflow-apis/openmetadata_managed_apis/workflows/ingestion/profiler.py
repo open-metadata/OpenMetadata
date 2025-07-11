@@ -15,7 +15,11 @@ import json
 
 from airflow import DAG
 from openmetadata_managed_apis.utils.logger import set_operator_logger
-from openmetadata_managed_apis.workflows.ingestion.common import build_dag, build_source
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    build_dag,
+    build_source,
+    execute_workflow,
+)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -30,7 +34,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.workflow.profiler import ProfilerWorkflow
 
 
-def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
+def profiler_workflow(
+    workflow_config: OpenMetadataWorkflowConfig,
+):
     """
     Task that creates and runs the profiler workflow.
 
@@ -46,11 +52,7 @@ def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
     workflow = ProfilerWorkflow.create(config)
-
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+    execute_workflow(workflow, workflow_config)
 
 
 def build_profiler_workflow_config(

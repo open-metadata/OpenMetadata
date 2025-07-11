@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables.component';
 
@@ -26,17 +25,15 @@ jest.mock('../../../utils/TableUtils', () => ({
 }));
 
 describe('FrequentlyJoinedTables component', () => {
-  it('should render the component', async () => {
+  it('should render header the component', async () => {
     render(<FrequentlyJoinedTables />, {
       wrapper: MemoryRouter,
     });
 
     expect(
-      await screen.findByTestId('frequently-joint-table-container')
-    ).toBeInTheDocument();
-    expect(
       await screen.findByTestId('frequently-joint-data-container')
     ).toBeInTheDocument();
+
     expect(
       await screen.findByText('label.frequently-joined-table-plural')
     ).toBeInTheDocument();

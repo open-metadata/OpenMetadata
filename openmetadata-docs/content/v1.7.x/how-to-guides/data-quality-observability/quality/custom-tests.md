@@ -1,5 +1,5 @@
 ---
-title: Custom Tests
+title: Custom Tests | OpenMetadata Quality Testing Guide
 slug: /how-to-guides/data-quality-observability/quality/custom-tests
 ---
 
@@ -80,11 +80,11 @@ Once you have your Test Definition created you can create a Test Case -- which i
     "entityLink": "<#E::table::fqn> or <#E::table::fqn::columns::column name>",
     "name": "<test_case_name>",
     "testDefinition": {
-        "id": "<test definition UUID>",
+        "FQN": "<test definition FQN>",
         "type": "testDefinition"
     },
     "testSuite": {
-        "id": "<test suite UUID>",
+        "FQN": "<test suite FQN>",
         "type": "testSuite"
     }
 }

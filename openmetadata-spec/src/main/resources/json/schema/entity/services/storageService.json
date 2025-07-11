@@ -147,6 +147,10 @@
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "domain" : {
       "description": "Domain the Storage service belongs to.",
       "$ref": "../../type/entityReference.json"

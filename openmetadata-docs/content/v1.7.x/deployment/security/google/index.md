@@ -1,5 +1,5 @@
 ---
-title: Google SSO
+title: Google SSO | OpenMetadata Authentication Integration
 slug: /deployment/security/google
 collate: false
 ---

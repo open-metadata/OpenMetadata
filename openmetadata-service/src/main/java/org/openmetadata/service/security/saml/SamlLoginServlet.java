@@ -13,38 +13,47 @@
 
 package org.openmetadata.service.security.saml;
 
-import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.checkAndStoreRedirectUriInSession;
+import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.SESSION_REDIRECT_URI;
 
 import com.onelogin.saml2.Auth;
+import com.onelogin.saml2.exception.SAMLException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
+import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 
 /**
  * This Servlet initiates a login and sends a login request to the IDP. After a successful processing it redirects user
  * to the relayState which is the callback setup in the config.
  */
-@WebServlet("/api/v1/saml/login")
 @Slf4j
+@WebServlet("/api/v1/saml/login")
 public class SamlLoginServlet extends HttpServlet {
   @Override
-  protected void doGet(final HttpServletRequest req, final HttpServletResponse resp)
-      throws IOException {
-    Auth auth;
+  protected void doGet(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
     try {
-      checkAndStoreRedirectUriInSession(req);
-      auth = new Auth(SamlSettingsHolder.getInstance().getSaml2Settings(), req, resp);
-      auth.login(SamlSettingsHolder.getInstance().getRelayState());
-    } catch (Exception e) {
-      resp.setContentType("text/html; charset=UTF-8");
-      LOG.error("[SamlLoginServlet] Failed in Auth Login : {}", e.getMessage());
-      resp.getOutputStream()
-          .println(
-              String.format(
-                  "<p> [SamlLoginServlet] Failed in Auth Login : %s </p>", e.getMessage()));
+      checkAndStoreRedirectUriInSession(request);
+      javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(request);
+      javax.servlet.http.HttpServletResponse wrappedResponse =
+          new HttpServletResponseWrapper(response);
+      Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
+      auth.login();
+    } catch (SAMLException ex) {
+      LOG.error("Error initiating SAML login", ex);
+      throw new ServletException("Error initiating SAML login", ex);
+    }
+  }
+
+  private void checkAndStoreRedirectUriInSession(HttpServletRequest request) {
+    String redirectUri = request.getParameter("callback");
+    if (redirectUri != null) {
+      request.getSession().setAttribute(SESSION_REDIRECT_URI, redirectUri);
     }
   }
 }

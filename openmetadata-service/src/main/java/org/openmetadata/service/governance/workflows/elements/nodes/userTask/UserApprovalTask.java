@@ -20,6 +20,7 @@ import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.flowable.bpmn.model.UserTask;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateApprovalTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
@@ -31,7 +32,6 @@ import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTa
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.UserTaskBuilder;
-import org.openmetadata.service.util.JsonUtils;
 
 public class UserApprovalTask implements NodeInterface {
   private final SubProcess subProcess;
@@ -103,7 +103,8 @@ public class UserApprovalTask implements NodeInterface {
       attachWorkflowInstanceStageListeners(subProcess);
     }
 
-    this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
+    this.runtimeExceptionBoundaryEvent =
+        getRuntimeExceptionBoundaryEvent(subProcess, config.getStoreStageStatus());
     this.subProcess = subProcess;
   }
 

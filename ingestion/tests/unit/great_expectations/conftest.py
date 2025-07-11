@@ -17,7 +17,6 @@ from unittest import mock
 
 from pytest import fixture
 
-from metadata.great_expectations.action import OpenMetadataValidationAction
 from metadata.great_expectations.utils.ometa_config_handler import (
     create_jinja_environment,
 )
@@ -51,6 +50,8 @@ def mocked_ometa_object():
 @fixture(scope="module")
 def mocked_ometa():
     """Mocks OMeta obkect"""
+    from metadata.great_expectations.action import OpenMetadataValidationAction
+
     with mock.patch.object(
         OpenMetadataValidationAction,
         "_create_ometa_connection",

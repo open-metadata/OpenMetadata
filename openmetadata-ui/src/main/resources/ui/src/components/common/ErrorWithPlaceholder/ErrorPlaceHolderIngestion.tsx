@@ -13,12 +13,13 @@
 
 import { Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import React, { useMemo } from 'react';
+
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 import Loader from '../Loader/Loader';
@@ -28,6 +29,7 @@ const ErrorPlaceHolderIngestion = ({
   cardClassName,
 }: ErrorPlaceHolderIngestionProps) => {
   const { platform, isFetchingStatus } = useAirflowStatus();
+  const { t } = useTranslation();
 
   const isAirflowPlatform = platform === PIPELINE_SERVICE_PLATFORM;
 

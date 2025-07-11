@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
@@ -58,6 +57,10 @@ jest.mock('../ReviewerLabelV2/ReviewerLabelV2', () => ({
 
 jest.mock('../../../utils/CommonWidget/CommonWidgetClassBase', () => ({
   getCommonWidgetsFromConfig: jest.fn(),
+}));
+
+jest.mock('../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
 }));
 
 const mockGenericContext = {

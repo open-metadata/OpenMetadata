@@ -28,26 +28,9 @@ import ptBR from '../../locale/languages/pt-br.json';
 import ptPT from '../../locale/languages/pt-pt.json';
 import ruRU from '../../locale/languages/ru-ru.json';
 import thTH from '../../locale/languages/th-th.json';
+import trTR from '../../locale/languages/tr-tr.json';
 import zhCN from '../../locale/languages/zh-cn.json';
-
-export enum SupportedLocales {
-  English = 'en-US',
-  한국어 = 'ko-KR',
-  Français = 'fr-FR',
-  简体中文 = 'zh-CN',
-  日本語 = 'ja-JP',
-  'Português (Brasil)' = 'pt-BR',
-  'Português (Portugal)' = 'pt-PT',
-  Español = 'es-ES',
-  Galego = 'gl-ES',
-  Русский = 'ru-RU',
-  Deutsch = 'de-DE',
-  Hebrew = 'he-HE',
-  Nederlands = 'nl-NL',
-  Persian = 'pr-PR',
-  Thai = 'th-TH',
-  मराठी = 'mr-IN',
-}
+import { SupportedLocales } from './LocalUtil.interface';
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
   label: `${key} - ${upperCase(value.split('-')[0])}`,
@@ -75,6 +58,7 @@ export const getInitOptions = (): InitOptions => {
       'pr-PR': { translation: prPR },
       'th-TH': { translation: thTH },
       'mr-IN': { translation: mrIN },
+      'tr-TR': { translation: trTR },
     },
     fallbackLng: ['en-US'],
     detection: {
@@ -106,4 +90,24 @@ export const getCurrentLocaleForConstrue = () => {
   }
 
   return i18next.resolvedLanguage.split('-')[0];
+};
+
+// Map common language codes to supported locales
+export const languageMap: Record<string, SupportedLocales> = {
+  mr: SupportedLocales.मराठी, // Marathi
+  en: SupportedLocales.English,
+  ko: SupportedLocales.한국어,
+  fr: SupportedLocales.Français,
+  zh: SupportedLocales.简体中文,
+  ja: SupportedLocales.日本語,
+  pt: SupportedLocales['Português (Brasil)'], // Default to Brazilian Portuguese
+  es: SupportedLocales.Español,
+  gl: SupportedLocales.Galego,
+  ru: SupportedLocales.Русский,
+  de: SupportedLocales.Deutsch,
+  he: SupportedLocales.Hebrew,
+  nl: SupportedLocales.Nederlands,
+  pr: SupportedLocales.Persian,
+  th: SupportedLocales.Thai,
+  tr: SupportedLocales.Türkçe,
 };

@@ -41,6 +41,8 @@
 }
 
 .lineage-node {
+  width: 100%;
+  max-width: 320px; //  Max width of Lineage Node, in case of long columns names
   border: 1px solid @lineage-border;
   border-radius: 10px;
   overflow: hidden;
@@ -86,14 +88,11 @@
       border-radius: 0;
 
       .ant-collapse-header {
-        padding: 0;
+        padding: 4px;
         font-size: 12px;
+        display: inherit; // to fix the overflow issue of parent column node, which has children.
 
         .custom-node-column-container {
-          background-color: @lineage-collapse-header;
-        }
-
-        .lineage-column-node-handle {
           background-color: @lineage-collapse-header;
         }
       }
@@ -288,16 +287,17 @@
 }
 
 .custom-node-column-container {
-  padding: 6px;
+  padding: 6px 8px;
   background: @white;
   position: relative;
   font-size: 12px;
   font-weight: 400;
 
   .custom-node-name-container {
+    min-width: 0;
     display: flex;
     align-items: center;
-    padding-left: 12px;
+    text-align: left;
     gap: 4px;
 
     .custom-node-name-icon {
@@ -306,13 +306,20 @@
     }
 
     .custom-node-column-label {
-      max-width: 140px;
+      width: 100%;
+      display: block;
     }
   }
 
   .custom-node-constraint {
     padding-left: 4px;
     padding-right: 12px;
+  }
+
+  .ant-skeleton-element {
+    .ant-skeleton-button-sm {
+      height: 32px; // Height of the skeleton button, to match the height of the column name
+    }
   }
 }
 

@@ -14,17 +14,26 @@ clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
 swagger:
   resourcePackage: org.openmetadata.service.resources
 
+assets:
+  resourcePath: /assets/
+  uriPath: ${BASE_PATH:-/}
+
+basePath: ${BASE_PATH:-/}
 
 server:
-  rootPath: '/api/*'
+  applicationContextPath: ${BASE_PATH:-/}
+  rootPath: ${BASE_PATH:-/}api/*
   applicationConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
+      maxRequestHeaderSize: ${MAX_REQUEST_HEADER_SIZE:-8KiB}
   adminConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
+  gzip:
+    syncFlush: true
 
   maxThreads: ${SERVER_MAX_THREADS:-50}
   minThreads: ${SERVER_MIN_THREADS:-10}
@@ -215,6 +224,8 @@ authenticationConfiguration:
     tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # in seconds
     customParams: ${OIDC_CUSTOM_PARAMS:-}
     maxAge: ${OIDC_MAX_AGE:-"0"}
+    prompt: ${OIDC_PROMPT_TYPE:-"consent"}
+    sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} #7 days
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -426,4 +437,10 @@ web:
     option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
   cache-control: ${WEB_CONF_CACHE_CONTROL:-""}
   pragma: ${WEB_CONF_PRAGMA:-""}
+
+operationalConfig:
+  enable: ${OPERATIONAL_CONFIG_ENABLED:-true}
+  operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}  
+    
+    
   

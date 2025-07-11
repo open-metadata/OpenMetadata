@@ -23,7 +23,7 @@ import {
 } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import QueryString from 'qs';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
@@ -127,7 +127,6 @@ import {
   getEntityDetailsPath,
   getGlossaryPath,
   getGlossaryTermDetailsPath,
-  getIncidentManagerDetailPagePath,
   getKpiPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
@@ -138,6 +137,7 @@ import {
   getSettingPath,
   getTagsDetailsPath,
   getTeamsWithFqnPath,
+  getTestCaseDetailPagePath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { bytesToSize, getEncodedFqn, stringToHTML } from './StringsUtils';
@@ -188,8 +188,8 @@ export const getEntityTags = (
   switch (type) {
     case EntityType.TABLE: {
       const tableTags: Array<TagLabel> = [
-        ...getTableTags((entityDetail as Table).columns || []),
-        ...(entityDetail.tags || []),
+        ...getTableTags((entityDetail as Table).columns ?? []),
+        ...(entityDetail.tags ?? []),
       ];
 
       return tableTags;
@@ -197,13 +197,13 @@ export const getEntityTags = (
     case EntityType.DASHBOARD:
     case EntityType.SEARCH_INDEX:
     case EntityType.PIPELINE:
-      return getTagsWithoutTier(entityDetail.tags || []);
+      return getTagsWithoutTier(entityDetail.tags ?? []);
 
     case EntityType.TOPIC:
     case EntityType.MLMODEL:
     case EntityType.STORED_PROCEDURE:
     case EntityType.DASHBOARD_DATA_MODEL: {
-      return entityDetail.tags || [];
+      return entityDetail.tags ?? [];
     }
 
     default:
@@ -1581,7 +1581,7 @@ export const getEntityLinkFromType = (
     case EntityType.APPLICATION:
       return getApplicationDetailsPath(fullyQualifiedName);
     case EntityType.TEST_CASE:
-      return getIncidentManagerDetailPagePath(fullyQualifiedName);
+      return getTestCaseDetailPagePath(fullyQualifiedName);
     case EntityType.TEST_SUITE:
       return getEntityDetailsPath(
         EntityType.TABLE,
@@ -1792,11 +1792,11 @@ export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
   },
   {
     name: entity.name,
-    url: {
-      pathname: getEntityLinkFromType(
-        entity.fullyQualifiedName ?? '',
-        (entity as SourceType)?.entityType as EntityType
-      ),
+    url: getEntityLinkFromType(
+      entity.fullyQualifiedName ?? '',
+      (entity as SourceType)?.entityType as EntityType
+    ),
+    options: {
       state: {
         breadcrumbData: [
           {
@@ -2504,7 +2504,7 @@ export const getEntityImportPath = (entityType: EntityType, fqn: string) => {
   return ROUTES.ENTITY_IMPORT.replace(
     PLACEHOLDER_ROUTE_ENTITY_TYPE,
     entityType
-  ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
+  ).replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 };
 
 export const getEntityBulkEditPath = (entityType: EntityType, fqn: string) => {
@@ -2540,4 +2540,80 @@ export const updateNodeType = (
   }
 
   return node;
+};
+
+export const EntityTypeName: Record<EntityType, string> = {
+  [EntityType.API_SERVICE]: t('label.api-service'),
+  [EntityType.DATABASE_SERVICE]: t('label.database-service'),
+  [EntityType.MESSAGING_SERVICE]: t('label.messaging-service'),
+  [EntityType.PIPELINE_SERVICE]: t('label.pipeline-service'),
+  [EntityType.MLMODEL_SERVICE]: t('label.mlmodel-service'),
+  [EntityType.DASHBOARD_SERVICE]: t('label.dashboard-service'),
+  [EntityType.STORAGE_SERVICE]: t('label.storage-service'),
+  [EntityType.SEARCH_SERVICE]: t('label.search-service'),
+  [EntityType.METRIC]: t('label.metric'),
+  [EntityType.CONTAINER]: t('label.container'),
+  [EntityType.DASHBOARD_DATA_MODEL]: t('label.dashboard-data-model'),
+  [EntityType.TABLE]: t('label.table'),
+  [EntityType.GLOSSARY_TERM]: t('label.glossary-term'),
+  [EntityType.PAGE]: t('label.page'),
+  [EntityType.DATABASE_SCHEMA]: t('label.database-schema'),
+  [EntityType.CHART]: t('label.chart'),
+  [EntityType.STORED_PROCEDURE]: t('label.stored-procedure'),
+  [EntityType.DATABASE]: t('label.database'),
+  [EntityType.PIPELINE]: t('label.pipeline'),
+  [EntityType.TAG]: t('label.tag'),
+  [EntityType.DASHBOARD]: t('label.dashboard'),
+  [EntityType.API_ENDPOINT]: t('label.api-endpoint'),
+  [EntityType.TOPIC]: t('label.topic'),
+  [EntityType.DATA_PRODUCT]: t('label.data-product'),
+  [EntityType.MLMODEL]: t('label.ml-model'),
+  [EntityType.SEARCH_INDEX]: t('label.search-index'),
+  [EntityType.API_COLLECTION]: t('label.api-collection'),
+  [EntityType.TEST_SUITE]: t('label.test-suite'),
+  [EntityType.TEAM]: t('label.team'),
+  [EntityType.TEST_CASE]: t('label.test-case'),
+  [EntityType.DOMAIN]: t('label.domain'),
+  [EntityType.PERSONA]: t('label.persona'),
+  [EntityType.POLICY]: t('label.policy'),
+  [EntityType.ROLE]: t('label.role'),
+  [EntityType.APPLICATION]: t('label.application'),
+  [EntityType.CLASSIFICATION]: t('label.classification'),
+  [EntityType.GLOSSARY]: t('label.glossary'),
+  [EntityType.METADATA_SERVICE]: t('label.metadata-service'),
+  [EntityType.WEBHOOK]: t('label.webhook'),
+  [EntityType.TYPE]: t('label.type'),
+  [EntityType.USER]: t('label.user'),
+  [EntityType.BOT]: t('label.bot'),
+  [EntityType.DATA_INSIGHT_CHART]: t('label.data-insight-chart'),
+  [EntityType.KPI]: t('label.kpi'),
+  [EntityType.ALERT]: t('label.alert'),
+  [EntityType.SUBSCRIPTION]: t('label.subscription'),
+  [EntityType.SAMPLE_DATA]: t('label.sample-data'),
+  [EntityType.APP_MARKET_PLACE_DEFINITION]: t(
+    'label.app-market-place-definition'
+  ),
+  [EntityType.DOC_STORE]: t('label.doc-store'),
+  [EntityType.KNOWLEDGE_PAGE]: t('label.knowledge-page'),
+  [EntityType.knowledgePanels]: t('label.knowledge-panels'),
+  [EntityType.GOVERN]: t('label.govern'),
+  [EntityType.ALL]: t('label.all'),
+  [EntityType.CUSTOM_METRIC]: t('label.custom-metric'),
+  [EntityType.INGESTION_PIPELINE]: t('label.ingestion-pipeline'),
+  [EntityType.QUERY]: t('label.query'),
+  [EntityType.ENTITY_REPORT_DATA]: t('label.entity-report-data'),
+  [EntityType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA]: t(
+    'label.web-analytic-entity-view-report-data'
+  ),
+  [EntityType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA]: t(
+    'label.web-analytic-user-activity-report-data'
+  ),
+  [EntityType.TEST_CASE_RESOLUTION_STATUS]: t(
+    'label.test-case-resolution-status'
+  ),
+  [EntityType.TEST_CASE_RESULT]: t('label.test-case-result'),
+  [EntityType.EVENT_SUBSCRIPTION]: t('label.event-subscription'),
+  [EntityType.LINEAGE_EDGE]: t('label.lineage-edge'),
+  [EntityType.WORKFLOW_DEFINITION]: t('label.workflow-definition'),
+  [EntityType.SERVICE]: t('label.service'),
 };

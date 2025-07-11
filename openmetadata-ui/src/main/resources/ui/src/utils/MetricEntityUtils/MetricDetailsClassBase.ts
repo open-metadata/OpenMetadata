@@ -61,7 +61,7 @@ class MetricDetailsClassBase {
   constructor() {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 4,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.RELATED_METRICS]: 1.5,

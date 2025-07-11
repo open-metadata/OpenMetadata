@@ -13,7 +13,10 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PAGE_SIZE } from '../constants/constants';
+import {
+  APPLICATION_JSON_CONTENT_TYPE_HEADER,
+  PAGE_SIZE,
+} from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
 import {
@@ -85,6 +88,7 @@ export const getDataProductVersionData = async (
 
 export const fetchDataProductsElasticSearch = async (
   searchText: string,
+  domainFQN: string,
   page: number
 ): Promise<{
   data: {
@@ -98,7 +102,19 @@ export const fetchDataProductsElasticSearch = async (
     filters: '',
     pageNumber: page,
     pageSize: PAGE_SIZE,
-    queryFilter: {},
+    queryFilter: {
+      query: {
+        bool: {
+          should: [
+            {
+              term: {
+                'domain.fullyQualifiedName': domainFQN,
+              },
+            },
+          ],
+        },
+      },
+    },
     searchIndex: SearchIndex.DATA_PRODUCT,
   });
 
@@ -141,6 +157,29 @@ export const removeAssetsFromDataProduct = async (
     { assets: EntityReference[] },
     AxiosResponse<DataProduct>
   >(`/dataProducts/${getEncodedFqn(dataProductFqn)}/assets/remove`, data);
+
+  return response.data;
+};
+
+export const addFollower = async (dataProductID: string, userId: string) => {
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(
+    `${BASE_URL}/${dataProductID}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
+};
+
+export const removeFollower = async (dataProductID: string, userId: string) => {
+  const response = await APIClient.delete<{
+    changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+  }>(`${BASE_URL}/${dataProductID}/followers/${userId}`);
 
   return response.data;
 };

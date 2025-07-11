@@ -12,11 +12,10 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Select, Space, Typography } from 'antd';
-import { t } from 'i18next';
+import { Button, Select, Space, Typography } from 'antd';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
@@ -26,7 +25,11 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
+import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../../common/IconButtons/EditIconButton';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 
@@ -40,33 +43,24 @@ const GlossaryTermSynonyms = () => {
     isVersionView,
     permissions,
   } = useGenericContext<GlossaryTerm>();
+  const { t } = useTranslation();
 
-  const getSynonyms = () => (
-    <div className="d-flex flex-wrap">
-      {synonyms.map((synonym) => (
-        <TagButton
-          className="glossary-synonym-tag"
-          key={synonym}
-          label={synonym}
-        />
-      ))}
-      {permissions.EditAll && synonyms.length === 0 && (
-        <TagButton
-          className="text-primary cursor-pointer"
-          dataTestId="synonym-add-button"
-          icon={<PlusIcon height={16} name="plus" width={16} />}
-          label={t('label.add')}
-          tooltip=""
-          onClick={() => {
-            setIsViewMode(false);
-          }}
-        />
-      )}
-      {!permissions.EditAll && synonyms.length === 0 && (
-        <div>{NO_DATA_PLACEHOLDER}</div>
-      )}
-    </div>
-  );
+  const getSynonyms = () =>
+    !permissions.EditAll || !isEmpty(synonyms) ? (
+      <div className="d-flex flex-wrap">
+        {synonyms.map((synonym) => (
+          <TagButton
+            className="glossary-synonym-tag"
+            key={synonym}
+            label={synonym}
+          />
+        ))}
+
+        {!permissions.EditAll && synonyms.length === 0 && (
+          <div>{NO_DATA_PLACEHOLDER}</div>
+        )}
+      </div>
+    ) : null;
 
   const getSynonymsContainer = useCallback(() => {
     if (!isVersionView) {
@@ -173,25 +167,40 @@ const GlossaryTermSynonyms = () => {
       <Typography.Text className="text-sm font-medium">
         {t('label.synonym-plural')}
       </Typography.Text>
-      {permissions.EditAll && synonyms.length > 0 && isViewMode && (
-        <EditIconButton
-          newLook
-          data-testid="edit-button"
-          size="small"
-          title={t('label.edit-entity', {
-            entity: t('label.synonym-plural'),
-          })}
-          onClick={() => setIsViewMode(false)}
-        />
-      )}
+      {permissions.EditAll &&
+        isViewMode &&
+        (isEmpty(synonyms) ? (
+          <PlusIconButton
+            data-testid="synonym-add-button"
+            size="small"
+            title={t('label.add-entity', {
+              entity: t('label.synonym-plural'),
+            })}
+            onClick={() => {
+              setIsViewMode(false);
+            }}
+          />
+        ) : (
+          <EditIconButton
+            newLook
+            data-testid="edit-button"
+            size="small"
+            title={t('label.edit-entity', {
+              entity: t('label.synonym-plural'),
+            })}
+            onClick={() => setIsViewMode(false)}
+          />
+        ))}
     </div>
   );
 
   return (
-    <Card
-      className="new-header-border-card"
-      data-testid="synonyms-container"
-      title={header}>
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      dataTestId="synonyms-container"
+      isExpandDisabled={isEmpty(synonyms)}>
       {isViewMode ? (
         getSynonymsContainer()
       ) : (
@@ -228,7 +237,7 @@ const GlossaryTermSynonyms = () => {
           />
         </>
       )}
-    </Card>
+    </ExpandableCard>
   );
 };
 

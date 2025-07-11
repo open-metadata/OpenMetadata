@@ -8,12 +8,12 @@ name="Iceberg"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Owners"]
-unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Tags", "Stored Procedures", "Sample Data"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Tags", "Stored Procedures", "Sample Data", "Auto-Classification"]
 / %}
 
 In this section, we provide guides and references to use the Iceberg connector.
 
-Configure and schedule Greenplum metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Iceberg metadata from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -53,7 +53,7 @@ pip3 install "openmetadata-ingestion[iceberg]"
 
 All connectors are defined as JSON Schemas.
 [Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/icebergConnection.json)
-you can find the structure to create a connection to Greenplum.
+you can find the structure to create a connection to Iceberg.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,

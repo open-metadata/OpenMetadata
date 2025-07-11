@@ -35,7 +35,8 @@
         "Matillion",
         "Stitch",
         "DataFactory",
-        "Wherescape"
+        "Wherescape",
+        "SSIS"
       ],
       "javaEnums": [
         {
@@ -94,6 +95,9 @@
         },
         {
           "name": "Wherescape"
+        },
+        {
+          "name": "SSIS"
         }
       ]
     },
@@ -113,6 +117,9 @@
             },
             {
               "$ref": "./connections/pipeline/wherescapeConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/ssisConnection.json"
             },
             {
               "$ref": "./connections/pipeline/gluePipelineConnection.json"
@@ -251,6 +258,10 @@
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "domain" : {
       "description": "Domain the Pipeline service belongs to.",

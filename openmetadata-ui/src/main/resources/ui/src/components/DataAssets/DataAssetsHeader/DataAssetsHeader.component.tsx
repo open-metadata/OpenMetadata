@@ -15,12 +15,12 @@ import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get, isEmpty } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
+import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -32,7 +32,6 @@ import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.com
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
-import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -70,6 +69,8 @@ import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
+import Certification from '../../Certification/Certification.component';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
@@ -90,89 +91,6 @@ import {
   DataAssetsWithFollowersField,
   EntitiesWithDomainField,
 } from './DataAssetsHeader.interface';
-
-export const ExtraInfoLabel = ({
-  label,
-  value,
-  dataTestId,
-  inlineLayout = false,
-}: {
-  label: string;
-  value: string | number | React.ReactNode;
-  dataTestId?: string;
-  inlineLayout?: boolean;
-}) => {
-  if (inlineLayout) {
-    return (
-      <>
-        <Divider className="self-center" type="vertical" />
-        <Typography.Text
-          className="self-center text-xs whitespace-nowrap"
-          data-testid={dataTestId}>
-          {!isEmpty(label) && (
-            <span className="text-grey-muted">{`${label}: `}</span>
-          )}
-          <span className="font-medium">{value}</span>
-        </Typography.Text>
-      </>
-    );
-  }
-
-  return (
-    <div className="d-flex align-start extra-info-container">
-      <Typography.Text
-        className="whitespace-nowrap text-sm d-flex flex-col gap-2"
-        data-testid={dataTestId}>
-        {!isEmpty(label) && (
-          <span className="extra-info-label-heading">{label}</span>
-        )}
-        <div className={classNames('font-medium extra-info-value')}>
-          {value}
-        </div>
-      </Typography.Text>
-    </div>
-  );
-};
-
-export const ExtraInfoLink = ({
-  label,
-  value,
-  href,
-  newTab = false,
-  ellipsis = false,
-}: {
-  label: string;
-  value: string | number;
-  href: string;
-  newTab?: boolean;
-  ellipsis?: boolean;
-}) => (
-  <div
-    className={classNames('d-flex  text-sm  flex-col gap-2', {
-      'w-48': ellipsis,
-    })}>
-    {!isEmpty(label) && (
-      <span className="extra-info-label-heading  m-r-xss">{label}</span>
-    )}
-    <div className="d-flex items-center gap-1">
-      <Tooltip title={value}>
-        <Typography.Link
-          ellipsis
-          className="extra-info-link"
-          href={href}
-          rel={newTab ? 'noopener noreferrer' : undefined}
-          target={newTab ? '_blank' : undefined}>
-          {value}
-        </Typography.Link>
-      </Tooltip>
-      <Icon
-        className="m-l-xs"
-        component={IconExternalLink}
-        style={DATA_ASSET_ICON_DIMENSION}
-      />
-    </div>
-  </div>
-);
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
@@ -201,8 +119,10 @@ export const DataAssetsHeader = ({
   disableRunAgentsButton = true,
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
+  onCertificationUpdate,
 }: DataAssetsHeaderProps) => {
-  const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
+  const { serviceCategory } =
+    useRequiredParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser } = useApplicationStore();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
@@ -212,8 +132,9 @@ export const DataAssetsHeader = ({
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
+
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
 
@@ -228,16 +149,15 @@ export const DataAssetsHeader = ({
     ) : null;
   }, [dataAsset]);
 
-  const excludeEntityService = useMemo(
-    () =>
-      [
-        EntityType.DATABASE,
-        EntityType.DATABASE_SCHEMA,
-        EntityType.API_COLLECTION,
-        ...SERVICE_TYPES,
-      ].includes(entityType),
-    [entityType]
-  );
+  const excludeEntityService = useMemo(() => {
+    const filteredServiceTypes = SERVICE_TYPES.filter(
+      (type) => type !== EntityType.DATABASE_SERVICE
+    );
+
+    return [EntityType.API_COLLECTION, ...filteredServiceTypes].includes(
+      entityType
+    );
+  }, [entityType]);
 
   const hasFollowers = 'followers' in dataAsset;
 
@@ -298,9 +218,7 @@ export const DataAssetsHeader = ({
   };
 
   const alertBadge = useMemo(() => {
-    return tableClassBase.getAlertEnableStatus() &&
-      dqFailureCount > 0 &&
-      isDqAlertSupported ? (
+    const renderAlertBadgeWithDq = () => (
       <Space size={8}>
         {badge}
         <Tooltip placement="right" title={t('label.check-upstream-failure')}>
@@ -320,9 +238,16 @@ export const DataAssetsHeader = ({
           </Link>
         </Tooltip>
       </Space>
-    ) : (
-      badge
     );
+    if (
+      isDqAlertSupported &&
+      tableClassBase.getAlertEnableStatus() &&
+      dqFailureCount > 0
+    ) {
+      return renderAlertBadgeWithDq();
+    }
+
+    return badge;
   }, [dqFailureCount, dataAsset?.fullyQualifiedName, entityType, badge]);
 
   const fetchActiveAnnouncement = async () => {
@@ -390,8 +315,11 @@ export const DataAssetsHeader = ({
   );
 
   const showCompressedExtraInfoItems = useMemo(
-    () => getEntityExtraInfoLength(extraInfo) <= 1,
-    [extraInfo]
+    () =>
+      entityType === EntityType.METRIC
+        ? false
+        : getEntityExtraInfoLength(extraInfo) <= 1,
+    [extraInfo, entityType]
   );
 
   const handleOpenTaskClick = () => {
@@ -399,7 +327,7 @@ export const DataAssetsHeader = ({
       return;
     }
 
-    history.push(
+    navigate(
       entityUtilClassBase.getEntityLink(
         entityType,
         dataAsset.fullyQualifiedName,
@@ -436,17 +364,24 @@ export const DataAssetsHeader = ({
     setIsFollowingLoading(false);
   }, [onFollowClick]);
 
-  const { editDomainPermission, editOwnerPermission, editTierPermission } =
-    useMemo(
-      () => ({
-        editDomainPermission: permissions.EditAll && !dataAsset.deleted,
-        editOwnerPermission:
-          (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
-        editTierPermission:
-          (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
-      }),
-      [permissions, dataAsset]
-    );
+  const {
+    editDomainPermission,
+    editOwnerPermission,
+    editTierPermission,
+    editCertificationPermission,
+  } = useMemo(
+    () => ({
+      editDomainPermission: permissions.EditAll && !dataAsset.deleted,
+      editOwnerPermission:
+        (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
+      editTierPermission:
+        (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
+      editCertificationPermission:
+        (permissions.EditAll || permissions.EditCertification) &&
+        !dataAsset.deleted,
+    }),
+    [permissions, dataAsset]
+  );
 
   const tierSuggestionRender = useMemo(() => {
     if (entityType === EntityType.TABLE) {
@@ -485,7 +420,9 @@ export const DataAssetsHeader = ({
   const triggerTheAutoPilotApplication = useCallback(async () => {
     try {
       setIsAutoPilotTriggering(true);
-      const entityType = getEntityTypeFromServiceCategory(serviceCategory);
+      const entityType = getEntityTypeFromServiceCategory(
+        serviceCategory as ServiceTypes
+      );
       const entityLink = getEntityFeedLink(
         entityType,
         dataAsset.fullyQualifiedName ?? ''
@@ -550,8 +487,8 @@ export const DataAssetsHeader = ({
               isCustomizedView ? { ...link, url: '', noLink: true } : link
             )}
           />
-          <Row>
-            <Col flex="auto">
+          <Row gutter={[20, 0]}>
+            <Col className="w-min-0" flex="1">
               <EntityHeaderTitle
                 badge={alertBadge}
                 deleted={dataAsset?.deleted}
@@ -569,7 +506,7 @@ export const DataAssetsHeader = ({
               />
             </Col>
             <Col className="flex items-center">
-              <Space className="">
+              <Space>
                 <ButtonGroup
                   className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
@@ -651,6 +588,13 @@ export const DataAssetsHeader = ({
                     onRestoreEntity={onRestoreDataAsset}
                   />
                 </ButtonGroup>
+
+                {activeAnnouncement && (
+                  <AnnouncementCard
+                    announcement={activeAnnouncement}
+                    onClick={handleOpenAnnouncementDrawer}
+                  />
+                )}
               </Space>
             </Col>
           </Row>
@@ -771,32 +715,59 @@ export const DataAssetsHeader = ({
               />
             )}
 
-            {(dataAsset as Table)?.certification && (
+            {isUndefined(serviceCategory) && (
               <>
                 <Divider
                   className="self-center vertical-divider"
                   type="vertical"
                 />
-                <ExtraInfoLabel
-                  label={t('label.certification')}
-                  value={
-                    <CertificationTag
-                      showName
-                      certification={(dataAsset as Table).certification!}
-                    />
+                <Certification
+                  currentCertificate={
+                    'certification' in dataAsset
+                      ? dataAsset.certification?.tagLabel?.tagFQN
+                      : undefined
                   }
-                />
+                  permission={false}
+                  onCertificationUpdate={onCertificationUpdate}>
+                  <div className="d-flex align-start extra-info-container">
+                    <Typography.Text
+                      className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+                      data-testid="certification-label">
+                      <div className="flex gap-2">
+                        <span className="extra-info-label-heading">
+                          {t('label.certification')}
+                        </span>
+
+                        {editCertificationPermission && (
+                          <EditIconButton
+                            newLook
+                            data-testid="edit-certification"
+                            size="small"
+                            title={t('label.edit-entity', {
+                              entity: t('label.certification'),
+                            })}
+                          />
+                        )}
+                      </div>
+                      <div className="font-medium certification-value">
+                        {(dataAsset as Table).certification ? (
+                          <CertificationTag
+                            showName
+                            certification={(dataAsset as Table).certification!}
+                          />
+                        ) : (
+                          t('label.no-entity', {
+                            entity: t('label.certification'),
+                          })
+                        )}
+                      </div>
+                    </Typography.Text>
+                  </div>
+                </Certification>
               </>
             )}
+
             {extraInfo}
-          </div>
-          <div className="mt-2">
-            {activeAnnouncement && (
-              <AnnouncementCard
-                announcement={activeAnnouncement}
-                onClick={handleOpenAnnouncementDrawer}
-              />
-            )}
           </div>
         </Col>
       </Row>

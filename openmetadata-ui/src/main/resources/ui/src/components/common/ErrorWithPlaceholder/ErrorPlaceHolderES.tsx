@@ -13,9 +13,9 @@
 
 import { Col, Row, Space, Typography } from 'antd';
 import Qs from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import {
   CONNECTORS_DOCS,
@@ -35,6 +35,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { Transi18next } from '../../../utils/CommonUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 type Props = {
@@ -73,9 +74,9 @@ const stepsData = [
 
 const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
   const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
-  const { tab } = useParams<{ tab: string }>();
+  const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { activeDomain } = useDomainStore();
   const { theme } = useApplicationStore();
 
@@ -86,15 +87,21 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
   );
 
   const noRecordForES = useMemo(() => {
-    return (
-      <div className="text-center" data-testid="no-search-results">
-        {isQuery ? (
+    if (isQuery) {
+      return (
+        <div className="text-center" data-testid="no-search-results">
           <ErrorPlaceHolder
             className="border-none"
             size={size}
             type={ERROR_PLACEHOLDER_TYPE.FILTER}
           />
-        ) : ['glossaries', 'tags'].includes(tab) ? (
+        </div>
+      );
+    }
+
+    if (['glossaries', 'tags'].includes(tab)) {
+      return (
+        <div className="text-center" data-testid="no-search-results">
           <ErrorPlaceHolder
             permission
             className="border-none"
@@ -105,45 +112,57 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
             size={size}
             type={ERROR_PLACEHOLDER_TYPE.CREATE}
             onClick={() =>
-              history.push(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
+              navigate(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
             }
           />
-        ) : (
-          <ErrorPlaceHolder
-            className="border-none"
-            size={size}
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph style={{ marginBottom: '0' }}>
-              {t('message.no-data-available-entity', {
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-center" data-testid="no-search-results">
+        <ErrorPlaceHolder
+          className="border-none"
+          size={size}
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <Typography.Paragraph style={{ marginBottom: '0' }}>
+            <Transi18next
+              i18nKey="message.no-data-available-entity"
+              renderElement={<b />}
+              values={{
                 entity: activeDomain,
-              })}
-            </Typography.Paragraph>
-            <Typography.Paragraph style={{ marginBottom: '0' }}>
-              {t('message.add-data-asset-domain', {
+              }}
+            />
+          </Typography.Paragraph>
+          <Typography.Paragraph style={{ marginBottom: '0' }}>
+            <Transi18next
+              i18nKey="message.add-data-asset-domain"
+              renderElement={<b />}
+              values={{
                 domain: activeDomain,
-              })}
-            </Typography.Paragraph>
-            <Typography.Paragraph>
-              <Transi18next
-                i18nKey="message.refer-to-our-doc"
-                renderElement={
-                  <a
-                    href={DATA_DISCOVERY_DOCS}
-                    rel="noreferrer"
-                    style={{ color: theme.primaryColor }}
-                    target="_blank"
-                  />
-                }
-                values={{
-                  doc: t('label.doc-plural-lowercase'),
-                }}
-              />
-            </Typography.Paragraph>
-          </ErrorPlaceHolder>
-        )}
+              }}
+            />
+          </Typography.Paragraph>
+          <Typography.Paragraph>
+            <Transi18next
+              i18nKey="message.refer-to-our-doc"
+              renderElement={
+                <a
+                  href={DATA_DISCOVERY_DOCS}
+                  rel="noreferrer"
+                  style={{ color: theme.primaryColor }}
+                  target="_blank"
+                />
+              }
+              values={{
+                doc: t('label.doc-plural-lowercase'),
+              }}
+            />
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
       </div>
     );
-  }, [isQuery]);
+  }, [isQuery, tab, activeDomain]);
 
   const elasticSearchError = useMemo(() => {
     const index = errorMessage?.split('[')[3]?.split(']')[0];
