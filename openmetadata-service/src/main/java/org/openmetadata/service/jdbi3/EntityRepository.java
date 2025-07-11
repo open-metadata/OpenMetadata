@@ -1509,9 +1509,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
 
     if (childrenRecords.isEmpty()) {
-      LOG.debug("No children to delete");
+      LOG.debug("No children to delete for {} {}", entityType, id);
       return;
     }
+
+    LOG.info(
+        "Found {} children for {} {} (recursive={}, hardDelete={})",
+        childrenRecords.size(),
+        entityType,
+        id,
+        recursive,
+        hardDelete);
+
     // Entity being deleted contains children entities
     if (!recursive) {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));

@@ -40,10 +40,15 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
+from metadata.generated.schema.api.data.createFile import CreateFileRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
+)
+from metadata.generated.schema.api.data.createSpreadsheet import (
+    CreateSpreadsheetRequest,
 )
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -53,10 +58,14 @@ from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.data.createWorksheet import CreateWorksheetRequest
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.api.services.createDriveService import (
+    CreateDriveServiceRequest,
 )
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
@@ -109,6 +118,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.driveService import DriveService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
@@ -666,6 +676,78 @@ class SampleDataSource(
             )
         )
 
+        # Load drive sample data
+        try:
+            logger.info(f"Loading drive sample data from {sample_data_folder}/drives/")
+            self.drive_service_json = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/service.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            logger.info(f"Drive service JSON: {self.drive_service_json}")
+            logger.info("Creating drive service...")
+
+            # Check if service already exists
+            try:
+                self.drive_service = self.metadata.get_by_name(
+                    entity=DriveService, fqn=self.drive_service_json["name"]
+                )
+                logger.info(f"Drive service already exists: {self.drive_service.name}")
+            except Exception:
+                # Create the service using direct API call
+                drive_service_request = CreateDriveServiceRequest(
+                    **self.drive_service_json
+                )
+
+                # Use the direct API endpoint
+                resp = self.metadata.client.put(
+                    path="/services/driveServices",
+                    data=drive_service_request.model_dump_json(),
+                )
+
+                self.drive_service = DriveService(**resp)
+                logger.info(f"Created drive service: {self.drive_service.name}")
+            self.directories = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/directories.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.files = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/files.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.spreadsheets = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/spreadsheets.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.worksheets = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/worksheets.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.has_drive_data = True
+            logger.info(
+                f"Successfully loaded drive data: {len(self.directories)} directories, {len(self.files)} files, {len(self.spreadsheets)} spreadsheets, {len(self.worksheets)} worksheets"
+            )
+        except Exception as exc:
+            import traceback
+
+            logger.warning(f"Drive sample data not found: {exc}")
+            logger.debug(f"Traceback: {traceback.format_exc()}")
+            self.has_drive_data = False
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -686,6 +768,7 @@ class SampleDataSource(
         yield from self.ingest_domains()
         yield from self.ingest_teams()
         yield from self.ingest_users()
+        yield from self.ingest_drives()
         yield from self.ingest_tables()
         yield from self.ingest_glue()
         yield from self.ingest_mysql()
@@ -781,6 +864,178 @@ class SampleDataSource(
                 team_to_ingest.parents = parent_list_id
 
             yield Either(right=team_to_ingest)
+
+    def ingest_drives(self) -> Iterable[Either[Entity]]:
+        """Ingest Sample Drive data"""
+        logger.info(
+            f"Starting drive ingestion, has_drive_data: {getattr(self, 'has_drive_data', False)}"
+        )
+        if not getattr(self, "has_drive_data", False):
+            logger.warning("No drive data to ingest")
+            return
+            yield  # Make this a generator that yields nothing
+
+        # Create directories first, building references as we go
+        directory_refs = {}
+
+        for directory_data in self.directories:
+            directory_request = CreateDirectoryRequest(
+                name=directory_data["name"],
+                displayName=directory_data.get("displayName"),
+                description=directory_data.get("description"),
+                service=self.drive_service.fullyQualifiedName.root,
+                path=directory_data.get("path"),
+                directoryType=directory_data.get("directoryType"),
+                isShared=directory_data.get("isShared", False),
+                numberOfFiles=directory_data.get("numberOfFiles"),
+                numberOfSubDirectories=directory_data.get("numberOfSubDirectories"),
+                totalSize=directory_data.get("totalSize"),
+                tags=directory_data.get("tags", []),
+                owners=directory_data.get("owners", []),
+            )
+
+            # Handle parent directory reference
+            if directory_data.get("parent"):
+                parent_name = directory_data["parent"]
+                if parent_name in directory_refs:
+                    directory_request.parent = directory_refs[parent_name]
+                else:
+                    # For nested references like "Marketing.Campaigns_2024"
+                    # Build parent FQN manually
+                    parent_path = parent_name.replace(".", "/")
+                    directory_request.parent = (
+                        f"{self.drive_service.fullyQualifiedName.root}.{parent_path}"
+                    )
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/directories", data=directory_request.model_dump_json()
+                )
+                logger.debug(f"Created directory: {directory_data['name']}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to create directory {directory_data['name']}: {e}"
+                )
+
+            # Store the FQN for later reference
+            # Build FQN manually since Directory FQN builder is not implemented
+            if directory_data.get("parent"):
+                parent_path = directory_data["parent"].replace(".", "/")
+                directory_fqn = f"{self.drive_service.fullyQualifiedName.root}.{parent_path}.{directory_data['name']}"
+            else:
+                directory_fqn = f"{self.drive_service.fullyQualifiedName.root}.{directory_data['name']}"
+            directory_refs[directory_data["name"]] = directory_fqn
+
+        # Create files
+        for file_data in self.files:
+            file_request = CreateFileRequest(
+                name=file_data["name"],
+                displayName=file_data.get("displayName"),
+                description=file_data.get("description"),
+                service=self.drive_service.fullyQualifiedName.root,
+                directory=directory_refs.get(file_data["directory"])
+                if file_data.get("directory")
+                else None,
+                fileType=file_data.get("fileType"),
+                mimeType=file_data.get("mimeType"),
+                fileExtension=file_data.get("fileExtension"),
+                path=file_data.get("path"),
+                size=file_data.get("size"),
+                checksum=file_data.get("checksum"),
+                webViewLink=file_data.get("webViewLink"),
+                downloadLink=file_data.get("downloadLink"),
+                isShared=file_data.get("isShared", False),
+                fileVersion=file_data.get("fileVersion"),
+                sourceUrl=file_data.get("webViewLink"),
+                tags=file_data.get("tags", []),
+                owners=file_data.get("owners", []),
+            )
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/files", data=file_request.model_dump_json()
+                )
+                logger.debug(f"Created file: {file_data['name']}")
+            except Exception as e:
+                logger.warning(f"Failed to create file {file_data['name']}: {e}")
+
+        # Create spreadsheets
+        spreadsheet_refs = {}
+
+        for spreadsheet_data in self.spreadsheets:
+            # Build the request without parent first
+            spreadsheet_request_dict = {
+                "name": spreadsheet_data["name"],
+                "displayName": spreadsheet_data.get("displayName"),
+                "description": spreadsheet_data.get("description"),
+                "service": self.drive_service.fullyQualifiedName,
+                "path": spreadsheet_data.get("path"),
+                "size": spreadsheet_data.get("size"),
+                "sourceUrl": spreadsheet_data.get("sourceUrl"),
+                "tags": spreadsheet_data.get("tags", []),
+                "owners": spreadsheet_data.get("owners", []),
+            }
+
+            # Skip parent for now as it requires entity reference
+            # TODO: Add parent reference once directories are created and we can get their IDs
+
+            spreadsheet_request = CreateSpreadsheetRequest(**spreadsheet_request_dict)
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/spreadsheets",
+                    data=spreadsheet_request.model_dump_json(),
+                )
+                logger.debug(f"Created spreadsheet: {spreadsheet_data['name']}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to create spreadsheet {spreadsheet_data['name']}: {e}"
+                )
+
+            # Store FQN for worksheet references
+            # Build FQN manually - spreadsheets use simple FQN without directory path
+            spreadsheet_fqn = f"{self.drive_service.fullyQualifiedName.root}.{spreadsheet_data['name']}"
+            spreadsheet_refs[spreadsheet_data["name"]] = spreadsheet_fqn
+            logger.debug(
+                f"Stored spreadsheet ref: {spreadsheet_data['name']} -> {spreadsheet_fqn}"
+            )
+
+        # Create worksheets
+        for worksheet_data in self.worksheets:
+            spreadsheet_fqn = spreadsheet_refs.get(worksheet_data["spreadsheet"])
+            logger.debug(
+                f"Creating worksheet {worksheet_data['name']} for spreadsheet {worksheet_data['spreadsheet']} -> {spreadsheet_fqn}"
+            )
+
+            if not spreadsheet_fqn:
+                logger.warning(
+                    f"Spreadsheet {worksheet_data['spreadsheet']} not found in refs"
+                )
+                continue
+
+            worksheet_request = CreateWorksheetRequest(
+                name=worksheet_data["name"],
+                displayName=worksheet_data.get("displayName"),
+                description=worksheet_data.get("description"),
+                spreadsheet=spreadsheet_fqn,
+                columns=worksheet_data.get("columns", []),
+                isHidden=worksheet_data.get("isHidden", False),
+                tags=worksheet_data.get("tags", []),
+            )
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/worksheets", data=worksheet_request.model_dump_json()
+                )
+                logger.debug(f"Created worksheet: {worksheet_data['name']}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to create worksheet {worksheet_data['name']}: {e}"
+                )
 
     def ingest_mysql(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Data for mysql database source including ER diagrams metadata"""
