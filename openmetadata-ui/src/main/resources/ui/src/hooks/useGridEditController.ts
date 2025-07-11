@@ -65,25 +65,15 @@ export function useGridEditController<RowType extends { [key: string]: any }>(
     [rows, setRows, pushToUndoStack]
   );
 
-  const focusCell = useCallback(() => {
-    const cell = containerRef?.current?.querySelector(
-      '[aria-selected="true"].rdg-cell'
-    );
-    if (cell) {
-      (cell as HTMLElement).focus();
-    }
-  }, [containerRef]);
-
   const undo = useCallback(() => {
     if (undoStack.current.length > 0) {
       const previous = undoStack.current.pop()!;
       if (previous) {
         redoStack.current.push(rows.map((r) => ({ ...r })));
         setRows(previous.map((r) => ({ ...r })));
-        setTimeout(focusCell, 0);
       }
     }
-  }, [rows, setRows, undoStack.current, redoStack.current, focusCell]);
+  }, [rows, setRows, undoStack.current, redoStack.current]);
 
   const redo = useCallback(() => {
     if (redoStack.current.length > 0) {
@@ -91,10 +81,9 @@ export function useGridEditController<RowType extends { [key: string]: any }>(
       if (next) {
         undoStack.current.push(rows.map((r) => ({ ...r })));
         setRows(next.map((r) => ({ ...r })));
-        setTimeout(focusCell, 0);
       }
     }
-  }, [rows, setRows, undoStack.current, redoStack.current, focusCell]);
+  }, [rows, setRows, undoStack.current, redoStack.current]);
 
   useEffect(() => {
     const container = containerRef?.current ?? document;

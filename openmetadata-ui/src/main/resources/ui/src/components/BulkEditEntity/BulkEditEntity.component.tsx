@@ -120,7 +120,7 @@ const BulkEditEntity = ({
         <>
           <Col span={24}>
             {activeStep === 1 && (
-              <div ref={gridContainerRef}>
+              <div className="om-rdg" ref={gridContainerRef}>
                 <DataGrid
                   className="rdg-light"
                   columns={columns}
@@ -143,11 +143,13 @@ const BulkEditEntity = ({
 
                 <Col span={24}>
                   {validateCSVData && (
-                    <DataGrid
-                      className="rdg-light"
-                      columns={validateCSVData.columns}
-                      rows={validateCSVData.dataSource}
-                    />
+                    <div className="om-rdg">
+                      <DataGrid
+                        className="rdg-light"
+                        columns={validateCSVData.columns}
+                        rows={validateCSVData.dataSource}
+                      />
+                    </div>
                   )}
                 </Col>
               </Row>

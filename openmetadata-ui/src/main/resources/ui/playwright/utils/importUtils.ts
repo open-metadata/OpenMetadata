@@ -67,7 +67,7 @@ export const fillDescriptionDetails = async (
   page: Page,
   description: string
 ) => {
-  await page.locator('.InovuaReactDataGrid__cell--cell-active').press('Enter');
+  await page.locator('.rdg-cell[aria-selected="true"]').press('Enter');
   await page.click(descriptionBox);
 
   await page.fill(descriptionBox, description);
@@ -75,13 +75,13 @@ export const fillDescriptionDetails = async (
   await page.click('[data-testid="save"]');
 
   await expect(
-    page.locator('.InovuaReactDataGrid__cell--cell-active')
+    page.locator('.rdg-cell[aria-selected="true"]')
   ).not.toContainText('<p>');
 };
 
 export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('Enter', { delay: 100 });
 
   await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
@@ -111,23 +111,23 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 
   await page.getByTestId('selectable-list-update-btn').click();
 
-  await page.click('.InovuaReactDataGrid__cell--cell-active');
+  await page.click('.rdg-cell[aria-selected="true"]');
 };
 
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('Enter', { delay: 100 });
 
   await page.getByTestId('entity-type-select').click();
-  await page.getByTitle(entityType, { exact: true }).click();
+  await page.getByTitle(entityType, { exact: true }).nth(0).click();
   await page.getByTestId('inline-save-btn').click();
-  await page.click('.InovuaReactDataGrid__cell--cell-active');
+  await page.click('.rdg-cell[aria-selected="true"]');
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('Enter', { delay: 100 });
 
   await page.click('[data-testid="tag-selector"]');
@@ -138,7 +138,7 @@ export const fillTagDetails = async (page: Page, tag: string) => {
   await waitForQueryResponse;
   await page.click(`[data-testid="tag-${tag}"]`);
   await page.click('[data-testid="inline-save-btn"]');
-  await page.click('.InovuaReactDataGrid__cell--cell-active');
+  await page.click('.rdg-cell[aria-selected="true"]');
 };
 
 export const fillGlossaryTermDetails = async (
@@ -146,7 +146,7 @@ export const fillGlossaryTermDetails = async (
   glossary: { parent: string; name: string }
 ) => {
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('Enter', { delay: 100 });
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -160,14 +160,14 @@ export const fillGlossaryTermDetails = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId(`tag-"${glossary.parent}"."${glossary.name}"`).click();
   await page.click('[data-testid="saveAssociatedTag"]');
-  await page.click('.InovuaReactDataGrid__cell--cell-active');
+  await page.click('.rdg-cell[aria-selected="true"]');
 };
 
 export const fillDomainDetails = async (
   page: Page,
   domains: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
-  await page.locator('.InovuaReactDataGrid__cell--cell-active').press('Enter');
+  await page.locator('.rdg-cell[aria-selected="true"]').press('Enter');
 
   await page.click(
     '[data-testid="domain-selectable-tree"] [data-testid="searchbar"]'
@@ -190,7 +190,7 @@ export const fillDomainDetails = async (
 
 export const fillStoredProcedureCode = async (page: Page) => {
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('Enter', { delay: 100 });
 
   // Wait for the loader to disappear
@@ -285,8 +285,9 @@ export const fillCustomPropertyDetails = async (
   page: Page,
   propertyListName: Record<string, string>
 ) => {
+  await page.click('.rdg-cell-extension');
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('Enter', { delay: 100 });
 
   // Wait for the loader to disappear
@@ -304,7 +305,7 @@ export const fillCustomPropertyDetails = async (
 
   await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
 
-  await page.click('.InovuaReactDataGrid__cell--cell-active');
+  await page.click('.rdg-cell[aria-selected="true"]');
 };
 
 export const fillGlossaryRowDetails = async (
@@ -326,62 +327,60 @@ export const fillGlossaryRowDetails = async (
   propertyListName?: Record<string, string>
 ) => {
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('ArrowRight');
+    .locator('.rdg-cell[aria-selected="true"]')
+    .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.name);
 
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('ArrowRight');
+  await page.locator('.rdg-cell[aria-selected="true"]').press('ArrowRight');
 
   await fillTextInputDetails(page, row.displayName);
 
   // Navigate to next cell and make cell editable
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillDescriptionDetails(page, row.description);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.synonyms);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillGlossaryTermDetails(page, row.relatedTerm);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.references);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTagDetails(page, row.tag);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillOwnerDetails(page, row.reviewers);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillOwnerDetails(page, row.owners);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   if (propertyListName) {
@@ -415,7 +414,7 @@ export const validateImportStatus = async (
 
   expect(failedRow).toBe(status.failed);
 
-  await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
+  await page.waitForSelector('.rdg-header-row', {
     state: 'visible',
   });
 };
@@ -579,92 +578,88 @@ export const fillRowDetails = async (
   page: Page,
   customPropertyRecord?: Record<string, string>
 ) => {
-  await page.locator('[data-props-id="name*"]').last().click();
+  await page.locator('[class*="rdg-cell-name"]').last().click();
 
-  const activeCell = page.locator('.InovuaReactDataGrid__cell--cell-active');
+  const activeCell = page.locator('.rdg-cell[aria-selected="true"]');
   const isActive = await activeCell.isVisible();
 
   if (isActive) {
     await fillTextInputDetails(page, row.name);
   } else {
     // Click the name cell again
-    await page.locator('[data-props-id="name*"]').last().click();
+    await page.locator('[class*="rdg-cell-name"]').last().click();
     await fillTextInputDetails(page, row.name);
   }
 
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('ArrowRight');
+  await page.locator('.rdg-cell[aria-selected="true"]').press('ArrowRight');
 
   await fillTextInputDetails(page, row.displayName);
 
   // Navigate to next cell and make cell editable
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillDescriptionDetails(page, row.description);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillOwnerDetails(page, row.owners);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTagDetails(page, row.tag);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillGlossaryTermDetails(page, row.glossary);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('Enter', { delay: 100 });
 
   await page.click(`[data-testid="radio-btn-${row.tier}"]`);
   await page.click(`[data-testid="update-tier-card"]`);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('Enter', { delay: 100 });
 
   await page.click(`[data-testid="radio-btn-${row.certification}"]`);
   await page.getByTestId('update-certification').click();
 
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('ArrowRight');
+  await page.locator('.rdg-cell[aria-selected="true"]').press('ArrowRight');
 
   if (row.retentionPeriod) {
     await fillTextInputDetails(page, row.retentionPeriod);
 
     await page
-      .locator('.InovuaReactDataGrid__cell--cell-active')
+      .locator('.rdg-cell[aria-selected="true"]')
       .press('ArrowRight', { delay: 100 });
   }
   if (row.sourceUrl) {
     await fillTextInputDetails(page, row.sourceUrl);
     await page
-      .locator('.InovuaReactDataGrid__cell--cell-active')
+      .locator('.rdg-cell[aria-selected="true"]')
       .press('ArrowRight', { delay: 100 });
   }
 
   await fillDomainDetails(page, row.domains);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   if (customPropertyRecord) {
@@ -692,49 +687,49 @@ export const fillColumnDetails = async (
   await fillTextInputDetails(page, row.name);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.displayName);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillDescriptionDetails(page, row.description);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.dataTypeDisplay);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.dataType);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.arrayDataType);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.dataLength);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTagDetails(page, row.tag);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
   await fillGlossaryTermDetails(page, row.glossary);
 };
@@ -754,9 +749,7 @@ export const pressKeyXTimes = async (
     while (!success && retryCount < maxRetries) {
       try {
         // Wait for the active cell to be visible
-        const activeCell = page.locator(
-          '.InovuaReactDataGrid__cell--cell-active'
-        );
+        const activeCell = page.locator('.rdg-cell[aria-selected="true"]');
         await activeCell.waitFor({ state: 'visible', timeout: 5000 });
 
         // Ensure the cell is focused
@@ -843,13 +836,13 @@ export const fillRecursiveEntityTypeFQNDetails = async (
   page: Page
 ) => {
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillEntityTypeDetails(page, entityType);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, fullyQualifiedName);
@@ -874,27 +867,25 @@ export const fillRecursiveColumnDetails = async (
   },
   page: Page
 ) => {
-  await page.locator('[data-props-id="name*"]').last().click();
+  await page.locator('[class*="rdg-cell-name"]').last().click();
 
-  const activeCell = page.locator('.InovuaReactDataGrid__cell--cell-active');
+  const activeCell = page.locator('.rdg-cell[aria-selected="true"]');
   const isActive = await activeCell.isVisible();
 
   if (isActive) {
     await fillTextInputDetails(page, row.name);
   } else {
     // Click the name cell again
-    await page.locator('[data-props-id="name*"]').last().click();
+    await page.locator('[class*="rdg-cell-name"]').last().click();
     await fillTextInputDetails(page, row.name);
   }
 
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('ArrowRight');
+  await page.locator('.rdg-cell[aria-selected="true"]').press('ArrowRight');
 
   await fillTextInputDetails(page, row.displayName);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillDescriptionDetails(page, row.description);
@@ -904,7 +895,7 @@ export const fillRecursiveColumnDetails = async (
   await fillTagDetails(page, row.tag);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
   await fillGlossaryTermDetails(page, row.glossary);
 
@@ -913,31 +904,31 @@ export const fillRecursiveColumnDetails = async (
   await fillEntityTypeDetails(page, row.entityType);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.fullyQualifiedName);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.dataTypeDisplay);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.dataType);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.arrayDataType);
 
   await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .locator('.rdg-cell[aria-selected="true"]')
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.dataLength);

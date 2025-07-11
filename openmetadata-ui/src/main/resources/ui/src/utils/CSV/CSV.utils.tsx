@@ -116,11 +116,12 @@ export const getColumnConfig = (
     name: startCase(column),
     sortable: false,
     resizable: true,
+    cellClass: () => `rdg-cell-${column.replace(/[^a-zA-Z0-9-_]/g, '')}`,
     editable,
     renderEditCell: csvUtilsClassBase.getEditor(colType, entityType),
     renderCell: (data: any) =>
       renderColumnDataEditor(colType, {
-        value: data.row[colType],
+        value: data.row[column],
         data: { details: '' },
       }),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
@@ -161,10 +162,10 @@ export const getCSVStringFromColumnsAndDataSource = (
   columns: Column<any>[],
   dataSource: Record<string, string>[]
 ) => {
-  const header = columns.map((col) => col.name).join(',');
+  const header = columns.map((col) => col.key).join(',');
   const rows = dataSource.map((row) => {
     const compactValues = compact(
-      columns.map((col) => row[(col.name as string) ?? ''])
+      columns.map((col) => row[(col.key as string) ?? ''])
     );
 
     if (compactValues.length === 0) {
@@ -173,8 +174,8 @@ export const getCSVStringFromColumnsAndDataSource = (
 
     return columns
       .map((col) => {
-        const value = get(row, (col.name as string) ?? '', '');
-        const colName = (col.name as string) ?? '';
+        const value = get(row, (col.key as string) ?? '', '');
+        const colName = (col.key as string) ?? '';
         if (
           csvUtilsClassBase
             .columnsWithMultipleValuesEscapeNeeded()
@@ -192,7 +193,7 @@ export const getCSVStringFromColumnsAndDataSource = (
           return isEmpty(value) ? '' : `"${value}"`;
         }
 
-        return get(row, (col.name as string) ?? '', '');
+        return get(row, (col.key as string) ?? '', '');
       })
       .join(',');
   });

@@ -10,18 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TypeComputedProps } from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
-import {
-  MutableRefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DataGrid, { Column } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { useTranslation } from 'react-i18next';
@@ -100,9 +92,7 @@ const BulkEntityImportPage = () => {
     columns: Column<any>[];
     dataSource: Record<string, string>[];
   }>();
-  const [gridRef, setGridRef] = useState<
-    MutableRefObject<TypeComputedProps | null>
-  >({ current: null });
+
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
 
@@ -159,12 +149,11 @@ const BulkEntityImportPage = () => {
   }, [setActiveAsyncImportJob, activeAsyncImportJobRef]);
 
   const focusToGrid = useCallback(() => {
-    setGridRef((ref) => {
-      ref.current?.focus();
-
-      return ref;
-    });
-  }, [setGridRef]);
+    const firstCell = document.querySelector('.rdg-cell[role="gridcell"]');
+    if (firstCell) {
+      (firstCell as HTMLElement).click();
+    }
+  }, []);
 
   const onCSVReadComplete = useCallback(
     (results: { data: string[][] }) => {
@@ -258,13 +247,16 @@ const BulkEntityImportPage = () => {
   const handleAddRow = useCallback(() => {
     setDataSource((data) => {
       setTimeout(() => {
-        gridRef.current?.scrollToId(data.length + '');
-        gridRef.current?.focus();
+        // Select first cell of last newly added row
+        const rows = document.querySelectorAll('.rdg-row');
+        const lastRow = rows[rows.length - 1];
+        const firstCell = lastRow?.querySelector('.rdg-cell');
+        (firstCell as HTMLElement).click();
       }, 1);
 
       return [...data, { id: data.length + '' }];
     });
-  }, [gridRef]);
+  }, [gridContainerRef]);
 
   const handleRetryCsvUpload = () => {
     setValidationData(undefined);
@@ -559,14 +551,19 @@ const BulkEntityImportPage = () => {
                 </>
               )}
               {activeStep === 1 && (
-                <DataGrid
-                  className="rdg-light"
-                  columns={columns as Column<any>[]}
-                  rows={dataSource}
-                  onRowsChange={(updatedRows) => {
-                    onEditComplete(updatedRows);
-                  }}
-                />
+                <div className="om-rdg" ref={gridContainerRef}>
+                  <DataGrid
+                    className="rdg-light"
+                    columns={columns as Column<any>[]}
+                    rows={dataSource}
+                    onCopy={handleCopy}
+                    onPaste={handlePaste}
+                    onRowsChange={(updatedRows) => {
+                      onEditComplete(updatedRows);
+                      pushToUndoStack(dataSource);
+                    }}
+                  />
+                </div>
               )}
               {activeStep === 2 && validationData && (
                 <Row gutter={[16, 16]}>
@@ -576,11 +573,13 @@ const BulkEntityImportPage = () => {
 
                   <Col span={24}>
                     {validateCSVData && (
-                      <DataGrid
-                        className="rdg-light"
-                        columns={validateCSVData.columns}
-                        rows={validateCSVData.dataSource}
-                      />
+                      <div className="om-rdg">
+                        <DataGrid
+                          className="rdg-light"
+                          columns={validateCSVData.columns}
+                          rows={validateCSVData.dataSource}
+                        />
+                      </div>
                     )}
                   </Col>
                 </Row>

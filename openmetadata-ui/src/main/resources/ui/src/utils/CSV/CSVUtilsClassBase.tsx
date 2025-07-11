@@ -437,6 +437,8 @@ class CSVUtilsClassBase {
                 onCancel={() => onClose(false)}
                 onSave={() => onClose(true)}>
                 <Select
+                  autoFocus
+                  open
                   data-testid="entity-type-select"
                   options={ENTITY_TYPE_OPTIONS}
                   size="small"
