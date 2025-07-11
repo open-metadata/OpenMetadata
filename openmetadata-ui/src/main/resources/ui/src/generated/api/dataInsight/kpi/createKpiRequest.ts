@@ -27,9 +27,9 @@ export interface CreateKpiRequest {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the KPI belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * End Date for the KPIs
      */

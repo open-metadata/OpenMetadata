@@ -61,9 +61,9 @@ export interface CreateAppMarketPlaceDefinitionReq {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Application belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * The app will be installable only if this flag is set to true.
      */
@@ -880,9 +880,9 @@ export interface CreateEventSubscription {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Event Subscription belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Is the alert enabled.
      */
