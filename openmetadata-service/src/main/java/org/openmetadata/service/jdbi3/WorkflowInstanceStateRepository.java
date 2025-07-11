@@ -168,4 +168,51 @@ public class WorkflowInstanceStateRepository
       String workflowDefinitionName, String workflowInstanceId) {
     return FullyQualifiedName.build(workflowDefinitionName, workflowInstanceId);
   }
+
+  // Smart method to fetch stages from the right place based on config
+  public ResultList<WorkflowInstanceState> listWorkflowInstanceStatesForInstance(
+      String workflowDefinitionName,
+      UUID workflowInstanceId,
+      String offset,
+      long startTs,
+      long endTs,
+      int limitParam,
+      boolean latest) {
+    // Fetch workflow definition to check config
+    WorkflowDefinitionRepository workflowDefinitionRepository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    org.openmetadata.schema.governance.workflows.WorkflowDefinition workflowDefinition =
+        workflowDefinitionRepository.getByName(
+            null,
+            workflowDefinitionName,
+            org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS);
+    boolean storeStageStatus = workflowDefinition.getConfig().getStoreStageStatus();
+
+    if (storeStageStatus) {
+      // Use the existing logic (state table)
+      return listWorkflowInstanceStateForInstance(
+          workflowDefinitionName, workflowInstanceId, offset, startTs, endTs, limitParam, latest);
+    } else {
+      // Fetch the instance and return its stages array
+      WorkflowInstanceRepository workflowInstanceRepository =
+          (WorkflowInstanceRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+      org.openmetadata.schema.governance.workflows.WorkflowInstance instance =
+          workflowInstanceRepository.getById(workflowInstanceId);
+      java.util.List<WorkflowInstanceState> stages =
+          instance.getStages() != null ? instance.getStages() : new java.util.ArrayList<>();
+      // Optionally filter by startTs/endTs if needed
+      java.util.List<WorkflowInstanceState> filtered = new java.util.ArrayList<>();
+      for (WorkflowInstanceState s : stages) {
+        long ts = s.getTimestamp() != null ? s.getTimestamp() : 0L;
+        if (ts >= startTs && ts <= endTs) {
+          filtered.add(s);
+        }
+      }
+      // Pagination (offset/limit) - for now, just limit
+      int toIndex = Math.min(limitParam, filtered.size());
+      java.util.List<WorkflowInstanceState> paged = filtered.subList(0, toIndex);
+      return getResultList(paged, null, null, filtered.size());
+    }
+  }
 }

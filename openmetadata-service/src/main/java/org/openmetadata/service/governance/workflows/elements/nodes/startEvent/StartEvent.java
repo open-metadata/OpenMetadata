@@ -14,9 +14,7 @@ public class StartEvent implements NodeInterface {
     this.startEvent = new StartEventBuilder().id(nodeDefinition.getName()).build();
     attachWorkflowInstanceExecutionIdSetterListener(startEvent);
 
-    if (config.getStoreStageStatus()) {
-      attachWorkflowInstanceStageListeners(startEvent);
-    }
+    attachWorkflowInstanceStageListeners(startEvent);
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {

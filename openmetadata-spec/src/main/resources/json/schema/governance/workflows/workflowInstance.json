@@ -47,6 +47,14 @@
     },
     "exception": {
       "type": "string"
+    },
+    "stages": {
+      "type": "array",
+      "description": "List of stage records for this workflow instance (used when storeStageStatus is false)",
+      "items": {
+        "$ref": "workflowInstanceState.json"
+      },
+      "default": []
     }
   },
   "required": [],
