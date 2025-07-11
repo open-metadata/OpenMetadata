@@ -79,7 +79,6 @@ import {
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
 import {
-  getOidcToken,
   getRefreshToken,
   setOidcToken,
   setRefreshToken,
@@ -297,10 +296,10 @@ export const AuthProvider = ({
    * It will also ensure that we have time left for token expiry
    * This method will be call upon successful signIn
    */
-  const startTokenExpiryTimer = () => {
+  const startTokenExpiryTimer = async () => {
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken(
-      getOidcToken()
+      (await authenticatorRef.current?.userManager?.getUser?.())?.id_token || ''
     );
     const refreshToken = getRefreshToken();
 
@@ -500,7 +499,7 @@ export const AuthProvider = ({
    * Initialize Axios interceptors to intercept every request and response
    * to handle appropriately. This should be called only when security is enabled.
    */
-  const initializeAxiosInterceptors = () => {
+  const initializeAxiosInterceptors = async () => {
     // Axios Request interceptor to add Bearer tokens in Header
     if (requestInterceptor != null) {
       axiosClient.interceptors.request.eject(requestInterceptor);
@@ -515,7 +514,9 @@ export const AuthProvider = ({
       config: InternalAxiosRequestConfig<any>
     ) {
       // Need to read token from local storage as it might have been updated with refresh
-      const token: string = getOidcToken() || '';
+      const token: string =
+        (await authenticatorRef.current?.userManager?.getUser?.())?.id_token ||
+        '';
       if (token) {
         if (config.headers) {
           config.headers['Authorization'] = `Bearer ${token}`;
@@ -620,7 +621,10 @@ export const AuthProvider = ({
           setAuthConfig(configJson);
           setAuthorizerConfig(authorizerConfig);
           updateAuthInstance(configJson);
-          if (!getOidcToken()) {
+          if (
+            !(await authenticatorRef.current?.userManager?.getUser?.())
+              ?.id_token
+          ) {
             handleStoreProtectedRedirectPath();
             setApplicationLoading(false);
           } else {

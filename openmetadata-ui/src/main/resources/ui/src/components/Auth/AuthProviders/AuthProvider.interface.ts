@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Profile } from 'oidc-client';
+import { Profile, UserManager } from 'oidc-client';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
@@ -37,6 +37,7 @@ export interface AuthenticatorRef {
     | Promise<string>
     | Promise<AccessTokenResponse>
     | Promise<void>;
+  userManager?: UserManager;
 }
 
 export interface IAuthContext {

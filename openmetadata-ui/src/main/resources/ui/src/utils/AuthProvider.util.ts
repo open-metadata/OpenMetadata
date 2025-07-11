@@ -20,7 +20,7 @@ import {
 import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
-import { WebStorageStateStore } from 'oidc-client';
+import { StateStore } from 'oidc-client';
 import {
   AuthenticationConfigurationWithScope,
   OidcUser,
@@ -36,6 +36,7 @@ import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
 import { getBasePath } from './HistoryUtils';
 import { setOidcToken } from './LocalStorageUtils';
+import { swTokenStorage } from './SwTokenStorage';
 
 const cookieStorage = new CookieStorage();
 
@@ -60,7 +61,7 @@ export const getSilentRedirectUri = () => {
 
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
-): Record<string, string | boolean | WebStorageStateStore> => {
+): Record<string, string | boolean | StateStore> => {
   const { authority, clientId, callbackUrl, scope } = authClient;
 
   return {
@@ -69,7 +70,8 @@ export const getUserManagerConfig = (
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
-    userStore: new WebStorageStateStore({ store: localStorage }),
+    userStore: swTokenStorage,
+    stateStore: swTokenStorage,
   };
 };
 
