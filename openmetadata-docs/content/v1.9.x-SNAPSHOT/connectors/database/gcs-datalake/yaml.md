@@ -7,7 +7,7 @@ slug: /connectors/database/gcs-datalake/yaml
 name="GCS Datalake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "dbt", "Tags", "Stored Procedures"]
 / %}
 

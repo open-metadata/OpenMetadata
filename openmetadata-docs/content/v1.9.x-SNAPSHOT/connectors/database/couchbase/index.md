@@ -9,7 +9,7 @@ name="Couchbase"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Owners", "Tags", "Stored Procedures", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
+unavailableFeatures=["Owners", "Tags", "Stored Procedures", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data", "Auto-Classification"]
 / %}
 
 
