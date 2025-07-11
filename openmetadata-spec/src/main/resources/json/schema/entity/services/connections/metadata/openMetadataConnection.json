@@ -213,6 +213,10 @@
     "extraHeaders": {
       "title": "Extra Headers",
       "$ref": "#/definitions/extraHeaders"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false,
