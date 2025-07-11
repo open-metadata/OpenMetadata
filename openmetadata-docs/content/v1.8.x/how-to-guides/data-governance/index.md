@@ -1,5 +1,6 @@
 ---
 title: Data Governance | OpenMetadata Governance Guide
+description: Step-by-step guidance for data governance using Collate. Learn key actions, features, and best practices.
 slug: /how-to-guides/data-governance
 ---
 

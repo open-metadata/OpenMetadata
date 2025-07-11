@@ -1,5 +1,6 @@
 ---
 title: Data Insights | OpenMetadata Reporting & Insights
+description: Step-by-step guidance for data insights using GetCollate. Learn key actions, features, and best practices.
 slug: /how-to-guides/data-insights
 ---
 

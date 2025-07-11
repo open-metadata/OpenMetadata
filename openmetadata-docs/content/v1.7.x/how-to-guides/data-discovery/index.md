@@ -1,5 +1,6 @@
 ---
 title: Data Discovery | OpenMetadata How-To Guide
+description: Step-by-step guidance for data discovery using Collate. Learn key actions, features, and best practices.q
 slug: /how-to-guides/data-discovery
 ---
 

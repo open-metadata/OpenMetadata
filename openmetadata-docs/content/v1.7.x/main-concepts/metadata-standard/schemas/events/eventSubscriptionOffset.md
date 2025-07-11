@@ -1,5 +1,6 @@
 ---
-title: eventSubscriptionOffset
+title: Eventsubscriptionoffset | Official Docs
+description: Get started with eventsubscriptionoffset. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/events/eventsubscriptionoffset
 ---
 
