@@ -246,7 +246,7 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
     recentlyViewed = [];
   } else {
     const { preferences } = usePersistentStorage.getState();
-    recentlyViewed = preferences[currentUser.name]['recentlyViewed'];
+    recentlyViewed = get(preferences, [currentUser.name, 'recentlyViewed'], []);
   }
 
   let newData = [...recentlyViewed];
@@ -286,7 +286,11 @@ export const addToRecentSearched = (searchTerm: string): void => {
       recentlySearched = [];
     } else {
       const { preferences } = usePersistentStorage.getState();
-      recentlySearched = preferences[currentUser.name]['recentlySearched'];
+      recentlySearched = get(
+        preferences,
+        [currentUser.name, 'recentlySearched'],
+        []
+      );
     }
 
     let arrSearchedData: RecentlySearched['data'] = [];

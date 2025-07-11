@@ -126,8 +126,7 @@ const GithubStarCard = () => {
           ? 'github-star-popup-card-with-alert'
           : 'github-star-popup-card-without-alert'
       }
-      `}
-    >
+      `}>
       <Card data-testid="github-star-popup-card">
         <Space align="center" className="d-flex justify-between">
           <Space>
@@ -155,12 +154,10 @@ const GithubStarCard = () => {
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,
-            }}
-          >
+            }}>
             <Button
               className="github-star-button github-modal-action-button"
-              icon={<Icon component={StarGithubIcon} size={12} />}
-            >
+              icon={<Icon component={StarGithubIcon} size={12} />}>
               {t('label.star')}
             </Button>
           </Link>
@@ -169,8 +166,7 @@ const GithubStarCard = () => {
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,
-            }}
-          >
+            }}>
             <Button className="github-modal-action-button">
               {isLoading ? (
                 <div data-testid="skeleton-loader">
