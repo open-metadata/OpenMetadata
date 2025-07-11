@@ -1325,6 +1325,7 @@
     "selected-lowercase": "seleccionado",
     "selected-user": "Usuario seleccionado: {{username}}",
     "send": "Enviar",
+    "send-login-link": "Enviar enlace de inicio de sesión",
     "send-now": "Enviar agora",
     "send-to": "Enviar a",
     "sender-email": "Correo electrónico do remitente",

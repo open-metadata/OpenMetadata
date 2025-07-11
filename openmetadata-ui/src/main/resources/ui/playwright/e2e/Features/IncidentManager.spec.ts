@@ -154,7 +154,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const updateAssignee = page.waitForResponse(
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
       );
-      await page.getByRole('button', { name: 'Submit' }).click();
+      await page.getByRole('button', { name: 'Save' }).click();
 
       await updateAssignee;
     });
@@ -216,7 +216,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const updateIncident = page.waitForResponse(
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
       );
-      await page.click('.ant-modal-footer >> text=Submit');
+      await page.click('.ant-modal-footer >> text=Save');
       await updateIncident;
     });
   });
@@ -277,7 +277,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const updateTestCaseIncidentStatus = page.waitForResponse(
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
       );
-      await page.click('.ant-modal-footer >> text=Submit');
+      await page.click('.ant-modal-footer >> text=Save');
       await updateTestCaseIncidentStatus;
     });
 

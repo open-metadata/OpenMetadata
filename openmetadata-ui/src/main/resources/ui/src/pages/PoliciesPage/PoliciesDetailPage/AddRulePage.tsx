@@ -170,7 +170,7 @@ const AddRulePage = () => {
               form="rule-form"
               htmlType="submit"
               type="primary">
-              {t('label.submit')}
+              {t('label.create')}
             </Button>
           </Space>
         </Form>

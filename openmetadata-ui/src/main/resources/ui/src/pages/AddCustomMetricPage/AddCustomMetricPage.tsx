@@ -247,7 +247,7 @@ const AddCustomMetricPage = () => {
                     loading={isActionLoading}
                     type="primary"
                     onClick={() => form.submit()}>
-                    {t('label.submit')}
+                    {t('label.create')}
                   </Button>
                 </Space>
               </Col>

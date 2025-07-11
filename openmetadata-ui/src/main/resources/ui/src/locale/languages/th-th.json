@@ -1325,6 +1325,7 @@
     "selected-lowercase": "ถูกเลือก",
     "selected-user": "ผู้ใช้ที่เลือก: {{username}}",
     "send": "ส่ง",
+    "send-login-link": "ส่งลิงค์ล็อกอิน",
     "send-now": "ส่งตอนนี้",
     "send-to": "ส่งไปยัง",
     "sender-email": "อีเมลผู้ส่ง",

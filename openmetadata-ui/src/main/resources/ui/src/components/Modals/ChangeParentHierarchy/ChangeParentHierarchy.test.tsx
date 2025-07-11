@@ -106,7 +106,7 @@ describe('Test ChangeParentHierarchy modal component', () => {
       render(<ChangeParent {...mockProps} />);
     });
 
-    const submitButton = await screen.findByText('label.submit');
+    const submitButton = await screen.findByText('label.save');
 
     expect(submitButton).toBeInTheDocument();
 

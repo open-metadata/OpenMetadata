@@ -44,7 +44,7 @@ const SeverityModal = ({
       closable={false}
       confirmLoading={isLoading}
       maskClosable={false}
-      okText={t('label.submit')}
+      okText={t('label.save')}
       title={`${t('label.edit-entity', {
         entity: t('label.severity'),
       })}`}

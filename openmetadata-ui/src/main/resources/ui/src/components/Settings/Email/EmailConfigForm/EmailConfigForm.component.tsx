@@ -123,7 +123,7 @@ function EmailConfigForm({
         </Col>
         <Col>
           <Button htmlType="submit" loading={isLoading} type="primary">
-            {t('label.submit')}
+            {t('label.save')}
           </Button>
         </Col>
       </Row>

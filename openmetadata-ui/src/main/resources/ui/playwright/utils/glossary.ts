@@ -845,7 +845,7 @@ export const changeTermHierarchyFromModal = async (
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
   await page
     .locator('[data-testid="change-parent-hierarchy-modal"]')
-    .getByRole('button', { name: 'Submit' })
+    .getByRole('button', { name: 'Save' })
     .click();
   await saveRes;
 

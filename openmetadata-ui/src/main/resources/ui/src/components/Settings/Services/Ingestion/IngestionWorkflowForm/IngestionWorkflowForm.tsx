@@ -190,7 +190,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
           </Button>
 
           <Button data-testid="submit-btn" htmlType="submit" type="primary">
-            {okText ?? t('label.submit')}
+            {okText ?? t('label.save')}
           </Button>
         </Space>
       </div>

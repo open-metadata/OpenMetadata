@@ -163,7 +163,7 @@ const ResetPassword = () => {
                 data-testid="submit-button"
                 htmlType="submit"
                 type="primary">
-                {t('label.submit')}
+                {t('label.save')}
               </Button>
             </Form>
           </Col>

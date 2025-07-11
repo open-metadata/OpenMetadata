@@ -198,7 +198,7 @@ const EditRulePage = () => {
               form="rule-form"
               htmlType="submit"
               type="primary">
-              {t('label.submit')}
+              {t('label.save')}
             </Button>
           </Space>
         </Form>

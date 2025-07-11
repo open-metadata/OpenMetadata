@@ -175,7 +175,7 @@ export const TestCaseStatusModal = ({
         EntityType.USER
       );
       setUsersList(filterData);
-    } catch (error) {
+    } catch {
       setUsersList([]);
     }
   }, []);
@@ -210,7 +210,7 @@ export const TestCaseStatusModal = ({
         htmlType: 'submit',
         loading: isLoading,
       }}
-      okText={t('label.submit')}
+      okText={t('label.save')}
       open={open}
       title={t('label.update-entity', { entity: t('label.status') })}
       width={750}

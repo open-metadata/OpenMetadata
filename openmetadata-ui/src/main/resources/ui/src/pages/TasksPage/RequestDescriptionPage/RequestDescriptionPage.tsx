@@ -287,7 +287,7 @@ const RequestDescription = () => {
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">
-                      {suggestion ? t('label.suggest') : t('label.submit')}
+                      {suggestion ? t('label.suggest') : t('label.save')}
                     </Button>
                   </Space>
                 </Form.Item>
