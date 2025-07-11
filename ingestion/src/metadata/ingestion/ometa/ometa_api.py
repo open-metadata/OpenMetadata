@@ -381,6 +381,96 @@ class OpenMetadata(
             )
             raise err
 
+    def get_by_id_with_etag(
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        fields: Optional[List[str]] = None,
+        nullable: bool = True,
+    ) -> Optional[EntityResponse[T]]:
+        """
+        Return entity by ID with ETag information or None
+        
+        Returns:
+            EntityResponse containing both entity data and ETag
+        """
+        return self._get_with_etag(
+            entity=entity,
+            path=model_str(entity_id),
+            fields=fields,
+            nullable=nullable,
+        )
+
+    def get_by_name_with_etag(
+        self,
+        entity: Type[T],
+        fqn: Union[str, FullyQualifiedEntityName],
+        fields: Optional[List[str]] = None,
+        nullable: bool = True,
+    ) -> Optional[EntityResponse[T]]:
+        """
+        Return entity by FQN with ETag information or None
+        
+        Returns:
+            EntityResponse containing both entity data and ETag
+        """
+        return self._get_with_etag(
+            entity=entity,
+            path=quote(fqn, safe=""),
+            fields=fields,
+            nullable=nullable,
+        )
+
+    def _get_with_etag(
+        self,
+        entity: Type[T],
+        path: str,
+        fields: Optional[List[str]] = None,
+        nullable: bool = True,
+    ) -> Optional[EntityResponse[T]]:
+        """
+        Generic GET operation for an entity with ETag support
+        
+        :param entity: Entity Class
+        :param path: URL suffix by FQN or ID
+        :param fields: List of fields to return
+        
+        Returns:
+            EntityResponse containing both entity data and ETag
+        """
+        fields_str = "?fields=" + ",".join(fields) if fields else ""
+        try:
+            resp = self.client.get_with_etag(f"{self.get_suffix(entity)}/{path}{fields_str}")
+            if not resp or not resp.get("data"):
+                if nullable:
+                    return None
+                raise EmptyPayloadException(
+                    f"Got an empty response when trying to GET from {self.get_suffix(entity)}/{path}{fields_str}"
+                )
+            
+            from metadata.ingestion.ometa.models import EntityResponse
+            return EntityResponse(
+                entity=entity(**resp["data"]),
+                etag=resp.get("etag")
+            )
+            
+        except APIError as err:
+            # We can expect some GET calls to return us a None and manage it in following steps.
+            # No need to pollute the logs in these cases.
+            if err.code == 404 and nullable:
+                return None
+
+            # Any other API errors will be passed to the client
+            logger.debug(traceback.format_exc())
+            logger.debug(
+                "GET %s for %s. Error %s - %s",
+                entity.__name__,
+                path,
+                err.status_code,
+                err,
+            )
+            raise err
+
     def get_entity_reference(
         self, entity: Type[T], fqn: str
     ) -> Optional[EntityReference]:

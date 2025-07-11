@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Pydantic models for ometa client API"""
 
-from typing import Generic, List, Optional, TypeVar
+from typing import Generic, List, Optional, TypeVar, Union
 
 from pydantic import BaseModel
 
@@ -31,3 +31,16 @@ class EntityList(BaseModel, Generic[T]):
     total: int
     after: Optional[str] = None
     before: Optional[str] = None
+
+
+class EntityResponse(BaseModel, Generic[T]):
+    """
+    Response wrapper that includes entity data and ETag for optimistic concurrency control
+    
+    Attributes
+        entity (T): the entity data
+        etag (str, optional): ETag header value for optimistic locking
+    """
+    
+    entity: T
+    etag: Optional[str] = None

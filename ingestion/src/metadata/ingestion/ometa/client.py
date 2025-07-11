@@ -52,6 +52,17 @@ class APIError(Exception):
         self._error = error
         self._http_error = http_error
 
+
+class ETagMismatchError(Exception):
+    """
+    Exception raised when a PATCH request fails due to ETag mismatch (HTTP 412).
+    This indicates that the entity was modified by another process since the ETag was obtained.
+    """
+
+    def __init__(self, message="ETag mismatch - entity was modified by another process"):
+        super().__init__(message)
+        self.status_code = 412
+
     @property
     def code(self):
         """
@@ -247,6 +258,100 @@ class REST:
                     traceback.format_exc()
         return None
 
+    def _request_with_etag(  # pylint: disable=too-many-arguments,too-many-branches
+        self,
+        method,
+        path,
+        data=None,
+        json=None,
+        base_url: URL = None,
+        api_version: str = None,
+        headers: dict = None,
+    ):
+        """
+        Similar to _request but returns both response data and ETag header.
+        Used for GET and PATCH operations that need ETag support.
+        """
+        # pylint: disable=too-many-locals
+        if path in self._limits_reached:
+            raise LimitsException(f"Skipping request - limits reached for {path}")
+
+        if not headers:
+            headers = {"Content-type": "application/json"}
+        base_url = base_url or self._base_url
+        version = api_version if api_version else self._api_version
+        url: URL = URL(base_url + "/" + version + path)
+        cookies = self._cookies
+        if (
+            self.config.expires_in
+            and datetime.now(timezone.utc).timestamp() >= self.config.expires_in
+            or not self.config.access_token
+            and self._auth_token
+        ):
+            self.config.access_token, expiry = self._auth_token()
+            if not self.config.access_token == "no_token":
+                if isinstance(expiry, datetime):
+                    self.config.expires_in = expiry.timestamp() - 120
+                else:
+                    self.config.expires_in = (
+                        datetime.now(timezone.utc).timestamp() + expiry - 120
+                    )
+
+        if self.config.auth_header:
+            headers[self.config.auth_header] = (
+                f"{self._auth_token_mode} {self.config.access_token}"
+                if self._auth_token_mode
+                else self.config.access_token
+            )
+
+        # Merge extra headers if provided.
+        if self.config.extra_headers:
+            extra_headers: Dict[str, str] = self.config.extra_headers
+            extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
+            headers = {**headers, **extra_headers}
+
+        opts = {
+            "headers": headers,
+            "allow_redirects": self.config.allow_redirects,
+            "verify": self._verify,
+            "cookies": cookies,
+        }
+
+        method_key = "params" if method.upper() == "GET" else "data"
+        opts[method_key] = data
+        if json:
+            opts["json"] = json
+
+        if self._cert:
+            opts["cert"] = self._cert
+
+        if self._timeout:
+            opts["timeout"] = self._timeout
+
+        total_retries = self._retry if self._retry > 0 else 0
+        retry = total_retries
+        while retry >= 0:
+            try:
+                return self._one_request_with_etag(method, url, opts, retry)
+            except LimitsException as exc:
+                logger.error(f"Feature limit exceeded for {url}")
+                self._limits_reached.add(path)
+                raise exc
+            except RetryException:
+                retry_wait = self._retry_wait * (total_retries - retry + 1)
+                logger.warning(
+                    "sleep %s seconds and retrying %s %s more time(s)...",
+                    retry_wait,
+                    url,
+                    retry,
+                )
+                time.sleep(retry_wait)
+                retry -= 1
+                if retry == 0:
+                    logger.error(f"No more retries left for {url}")
+                    traceback.format_exc()
+        return {"data": None, "etag": None}
+
     def _one_request(self, method: str, url: URL, opts: dict, retry: int):
         """
         Perform one request, possibly raising RetryException in the case
@@ -276,6 +381,9 @@ class REST:
                     )
 
         except HTTPError as http_error:
+            # Check for ETag mismatch (412 Precondition Failed)
+            if resp.status_code == 412:
+                raise ETagMismatchError("ETag mismatch - entity was modified by another process") from http_error
             # retry if we hit Rate Limit
             if resp.status_code in retry_codes and retry > 0:
                 raise RetryException() from http_error
@@ -304,6 +412,73 @@ class REST:
             )
 
         return None
+
+    def _one_request_with_etag(self, method: str, url: URL, opts: dict, retry: int):
+        """
+        Perform one request that can return both response data and ETag header.
+        This is used for GET and PATCH requests that need ETag support.
+        """
+        retry_codes = self._retry_codes
+        limit_codes = self._limit_codes
+        try:
+            resp = self._session.request(method, url, **opts)
+            resp.raise_for_status()
+
+            # Extract ETag from response headers
+            etag = resp.headers.get('ETag')
+            
+            if resp.text != "":
+                try:
+                    data = resp.json()
+                    return {"data": data, "etag": etag}
+                except JSONDecodeError as json_decode_error:
+                    logger.error(
+                        f"Json decoding error while returning response {resp} in json format - {json_decode_error}."
+                        f"The Response still returned to be handled by client..."
+                    )
+                    return {"data": resp, "etag": etag}
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Unexpected error while returning response {resp} in json format - {exc}"
+                    )
+            
+            return {"data": None, "etag": etag}
+
+        except HTTPError as http_error:
+            # Check for ETag mismatch (412 Precondition Failed)
+            if resp.status_code == 412:
+                raise ETagMismatchError("ETag mismatch - entity was modified by another process") from http_error
+            # retry if we hit Rate Limit
+            if resp.status_code in retry_codes and retry > 0:
+                raise RetryException() from http_error
+            if resp.status_code in limit_codes:
+                raise LimitsException() from http_error
+            if "code" in resp.text:
+                error = resp.json()
+                if "code" in error:
+                    raise APIError(error, http_error) from http_error
+            else:
+                raise
+        except requests.ConnectionError as conn:
+            # Trying to solve https://github.com/psf/requests/issues/4664
+            try:
+                resp_retry = self._session.request(method, url, **opts)
+                etag = resp_retry.headers.get('ETag')
+                return {"data": resp_retry.json(), "etag": etag}
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected error while retrying after a connection error - {exc}"
+                )
+                raise conn
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unexpected error calling [{url}] with method [{method}]: {exc}"
+            )
+
+        return {"data": None, "etag": None}
 
     @calculate_execution_time(context="GET")
     def get(self, path, data=None):
@@ -380,6 +555,44 @@ class REST:
             Response
         """
         return self._request("DELETE", path, data)
+
+    @calculate_execution_time(context="GET_WITH_ETAG")
+    def get_with_etag(self, path, data=None):
+        """
+        GET method that returns both response data and ETag header
+        
+        Parameters:
+            path (str): API path
+            data (): Request data
+            
+        Returns:
+            dict: {"data": response_data, "etag": etag_header}
+        """
+        return self._request_with_etag("GET", path, data)
+
+    @calculate_execution_time(context="PATCH_WITH_ETAG") 
+    def patch_with_etag(self, path, data=None, etag=None):
+        """
+        PATCH method with ETag support for optimistic concurrency control
+        
+        Parameters:
+            path (str): API path
+            data (): Request data
+            etag (str, optional): ETag value for If-Match header
+            
+        Returns:
+            dict: {"data": response_data, "etag": etag_header}
+        """
+        headers = {"Content-type": "application/json-patch+json"}
+        if etag:
+            headers["If-Match"] = etag
+            
+        return self._request_with_etag(
+            method="PATCH",
+            path=path,
+            data=data,
+            headers=headers,
+        )
 
     def __enter__(self):
         return self

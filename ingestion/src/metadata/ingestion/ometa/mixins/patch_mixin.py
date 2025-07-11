@@ -41,7 +41,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Entity
 from metadata.ingestion.models.patch_request import build_patch
 from metadata.ingestion.models.table_metadata import ColumnDescription, ColumnTag
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.client import REST, ETagMismatchError
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,
     PatchField,
@@ -161,6 +161,66 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error trying to PATCH {get_log_name(source)}: {exc}")
+
+        return None
+
+    def patch_with_etag(  # pylint: disable=too-many-arguments
+        self,
+        entity: Type[T],
+        source: T,
+        destination: T,
+        etag: Optional[str] = None,
+        allowed_fields: Optional[Dict] = None,
+        restrict_update_fields: Optional[List] = None,
+        array_entity_fields: Optional[List] = None,
+        override_metadata: Optional[bool] = False,
+    ) -> Optional[T]:
+        """
+        Given an Entity type and Source entity and Destination entity,
+        generate a JSON Patch and apply it with ETag support for optimistic concurrency control.
+
+        Args
+            entity (T): Entity Type
+            source: Source payload which is current state of the source in OpenMetadata
+            destination: payload with changes applied to the source.
+            etag: ETag value for optimistic locking. If provided, will be sent as If-Match header.
+            allowed_fields: List of field names to filter from source and destination models
+            restrict_update_fields: List of field names which will only support add operation
+
+        Returns
+            Updated Entity
+            
+        Raises
+            ETagMismatchError: If the entity was modified by another process (HTTP 412)
+        """
+        try:
+            patch = build_patch(
+                source=source,
+                destination=destination,
+                allowed_fields=allowed_fields,
+                restrict_update_fields=restrict_update_fields,
+                array_entity_fields=array_entity_fields,
+                override_metadata=override_metadata,
+            )
+
+            if not patch:
+                return None
+
+            res_data = self.client.patch_with_etag(
+                path=f"{self.get_suffix(entity)}/{model_str(source.id)}",
+                data=str(patch),
+                etag=etag,
+            )
+            
+            # Extract the actual response data from the ETag wrapper
+            if res_data and "data" in res_data:
+                return entity(**res_data["data"])
+            
+            return None
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error trying to PATCH with ETag {get_log_name(source)}: {exc}")
 
         return None
 
