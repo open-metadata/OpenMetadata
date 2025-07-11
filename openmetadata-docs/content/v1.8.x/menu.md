@@ -1142,6 +1142,10 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.8.2 Release
+    url: /releases/all-releases/#1.8.2-releases
+  - category: Releases / All Releases / 1.8.1 Release
+    url: /releases/all-releases/#1.8.1-releases
   - category: Releases / All Releases / 1.8.0 Release
     url: /releases/all-releases/#1.8.0-release
   - category: Releases / All Releases / 1.7.5 Release
