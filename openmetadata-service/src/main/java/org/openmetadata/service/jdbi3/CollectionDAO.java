@@ -4088,6 +4088,87 @@ public interface CollectionDAO {
         return tagLabel;
       }
     }
+
+    /**
+     * Apply multiple tags in batch to improve performance
+     */
+    default void applyTagsBatch(List<TagLabel> tagLabels, String targetFQN) {
+      if (tagLabels == null || tagLabels.isEmpty()) {
+        return;
+      }
+
+      String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
+      List<Integer> sources = new ArrayList<>();
+      List<String> tagFQNs = new ArrayList<>();
+      List<String> tagFQNHashes = new ArrayList<>();
+      List<String> targetFQNHashes = new ArrayList<>();
+      List<Integer> labelTypes = new ArrayList<>();
+      List<Integer> states = new ArrayList<>();
+
+      for (TagLabel tagLabel : tagLabels) {
+        sources.add(tagLabel.getSource().ordinal());
+        tagFQNs.add(tagLabel.getTagFQN());
+        tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
+        targetFQNHashes.add(targetFQNHash);
+        labelTypes.add(tagLabel.getLabelType().ordinal());
+        states.add(tagLabel.getState().ordinal());
+      }
+
+      applyTagsBatchInternal(sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states);
+    }
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+        connectionType = POSTGRES)
+    void applyTagsBatchInternal(
+        @Bind("source") List<Integer> sources,
+        @Bind("tagFQN") List<String> tagFQNs,
+        @Bind("tagFQNHash") List<String> tagFQNHashes,
+        @Bind("targetFQNHash") List<String> targetFQNHashes,
+        @Bind("labelType") List<Integer> labelTypes,
+        @Bind("state") List<Integer> states);
+
+    /**
+     * Delete multiple tags in batch to improve performance
+     */
+    default void deleteTagsBatch(List<TagLabel> tagLabels, String targetFQN) {
+      if (tagLabels == null || tagLabels.isEmpty()) {
+        return;
+      }
+
+      String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
+      List<Integer> sources = new ArrayList<>();
+      List<String> tagFQNHashes = new ArrayList<>();
+      List<String> targetFQNHashes = new ArrayList<>();
+
+      for (TagLabel tagLabel : tagLabels) {
+        sources.add(tagLabel.getSource().ordinal());
+        tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
+        targetFQNHashes.add(targetFQNHash);
+      }
+
+      deleteTagsBatchInternal(sources, tagFQNHashes, targetFQNHashes);
+    }
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND targetFQNHash = :targetFQNHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND targetFQNHash = :targetFQNHash",
+        connectionType = POSTGRES)
+    void deleteTagsBatchInternal(
+        @Bind("source") List<Integer> sources,
+        @Bind("tagFQNHash") List<String> tagFQNHashes,
+        @Bind("targetFQNHash") List<String> targetFQNHashes);
   }
 
   interface RoleDAO extends EntityDAO<Role> {

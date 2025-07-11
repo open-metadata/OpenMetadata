@@ -2088,6 +2088,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Apply multiple tags in batch to improve performance
+   */
+  @Transaction
+  public final void applyTagsAdd(List<TagLabel> tagLabels, String targetFQN) {
+    if (nullOrEmpty(tagLabels)) {
+      return;
+    }
+    // Filter out DERIVED tags as they are system-generated
+    List<TagLabel> nonDerivedTags =
+        tagLabels.stream()
+            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .collect(Collectors.toList());
+
+    if (!nonDerivedTags.isEmpty()) {
+      daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFQN);
+    }
+  }
+
+  /**
+   * Delete multiple tags in batch to improve performance
+   */
+  @Transaction
+  public final void applyTagsDelete(List<TagLabel> tagLabels, String targetFQN) {
+    if (nullOrEmpty(tagLabels)) {
+      return;
+    }
+    // Filter out DERIVED tags as they are system-generated
+    List<TagLabel> nonDerivedTags =
+        tagLabels.stream()
+            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .collect(Collectors.toList());
+
+    if (!nonDerivedTags.isEmpty()) {
+      daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFQN);
+    }
+  }
+
   protected AssetCertification getCertification(T entity) {
     return !supportsCertification ? null : getCertification(entity.getCertification());
   }
@@ -3392,8 +3430,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     protected void updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
       origTags = listOrEmpty(origTags);
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
@@ -3402,21 +3438,49 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return; // Nothing to update
       }
 
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
+      List<TagLabel> addedTags = new ArrayList<>();
+      List<TagLabel> deletedTags = new ArrayList<>();
 
       if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists
+        // Calculate what needs to be added (tags in updatedTags but not in origTags)
+        for (TagLabel updatedTag : updatedTags) {
+          if (!origTags.stream().anyMatch(tag -> tagLabelMatch.test(tag, updatedTag))) {
+            addedTags.add(updatedTag);
+          }
+        }
+        // For PUT, we don't delete any existing tags
+        // Merge the tags for validation and recording purposes
         EntityUtil.mergeTags(updatedTags, origTags);
+        checkMutuallyExclusive(updatedTags);
+      } else {
+        // PATCH operation replaces tags
+        // Calculate what needs to be deleted (tags in origTags but not in updatedTags)
+        for (TagLabel origTag : origTags) {
+          if (!updatedTags.stream().anyMatch(tag -> tagLabelMatch.test(tag, origTag))) {
+            deletedTags.add(origTag);
+          }
+        }
+        // Calculate what needs to be added (tags in updatedTags but not in origTags)
+        for (TagLabel updatedTag : updatedTags) {
+          if (!origTags.stream().anyMatch(tag -> tagLabelMatch.test(tag, updatedTag))) {
+            addedTags.add(updatedTag);
+          }
+        }
         checkMutuallyExclusive(updatedTags);
       }
 
-      List<TagLabel> addedTags = new ArrayList<>();
-      List<TagLabel> deletedTags = new ArrayList<>();
+      // Apply differential updates - only modify what changed
+      if (!deletedTags.isEmpty()) {
+        applyTagsDelete(deletedTags, fqn);
+      }
+      if (!addedTags.isEmpty()) {
+        applyTagsAdd(addedTags, fqn);
+      }
+
+      // Record changes for audit trail
       recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
       updatedTags.sort(compareTagLabel);
-      applyTags(updatedTags, fqn);
     }
 
     protected void updateTagsForImport(
