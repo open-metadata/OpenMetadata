@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Select } from 'antd';
+import { Button, Col, Row, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, debounce, get } from 'lodash';
 import {
@@ -159,27 +159,35 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   const Icon = getEntityNodeIcon(entityType);
 
   return (
-    <div className="p-md items-center d-flex " data-testid="suggestion-node">
-      <Icon className="m-r-xs" height={16} name="entity-icon" width={16} />
-      <Select
-        autoFocus
-        showSearch
-        className="w-76 lineage-node-searchbox"
-        data-testid="node-search-box"
-        filterOption={false}
-        open={isOpen}
-        options={nodeSelectOptions}
-        placeholder={`${t('label.search-for-type', {
-          type: capitalize(entityType),
-        })}s...`}
-        popupClassName="lineage-suggestion-select-menu"
-        ref={selectRef}
-        onBlur={() => setIsOpen(false)}
-        onClick={(e) => e.stopPropagation()}
-        onFocus={() => setIsOpen(true)}
-        onSearch={handleChange}
-      />
-    </div>
+    <Row
+      className="p-md items-center"
+      data-testid="suggestion-node"
+      gutter={8}
+      wrap={false}>
+      <Col>
+        <Icon height={16} name="entity-icon" width={16} />
+      </Col>
+      <Col flex="1">
+        <Select
+          autoFocus
+          showSearch
+          className="lineage-node-searchbox"
+          data-testid="node-search-box"
+          filterOption={false}
+          open={isOpen}
+          options={nodeSelectOptions}
+          placeholder={`${t('label.search-for-type', {
+            type: capitalize(entityType),
+          })}s...`}
+          popupClassName="lineage-suggestion-select-menu"
+          ref={selectRef}
+          onBlur={() => setIsOpen(false)}
+          onClick={(e) => e.stopPropagation()}
+          onFocus={() => setIsOpen(true)}
+          onSearch={handleChange}
+        />
+      </Col>
+    </Row>
   );
 };
 
