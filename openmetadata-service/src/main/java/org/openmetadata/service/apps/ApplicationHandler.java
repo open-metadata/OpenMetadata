@@ -73,7 +73,11 @@ public class ApplicationHandler {
     try {
       AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
       app.setPreview(appPrivateConfig.getPreview());
-      app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
+
+      if (appPrivateConfig.getParameters() != null
+          && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
+        app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
+      }
     } catch (IOException e) {
       LOG.debug("Config file for app {} not found: ", app.getName(), e);
     } catch (ConfigurationException e) {
