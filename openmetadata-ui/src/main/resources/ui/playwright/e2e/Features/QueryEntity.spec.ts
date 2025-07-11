@@ -277,11 +277,3 @@ test('Verify query duration', async ({ page }) => {
 
   expect(durationText).toContain('6.199 sec');
 });
-
-test.afterAll(async ({ browser }) => {
-  const { afterAction, apiContext } = await createNewPage(browser);
-  for (const entity of entityData) {
-    await entity.delete(apiContext);
-  }
-  await afterAction();
-});

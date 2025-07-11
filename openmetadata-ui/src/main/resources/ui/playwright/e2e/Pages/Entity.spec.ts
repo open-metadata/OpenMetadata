@@ -438,15 +438,6 @@ entities.forEach((EntityClass) => {
     test(`Update displayName`, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);
     });
-
-    test.afterAll('Cleanup', async ({ browser }) => {
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
-      await afterAction();
-    });
   });
 
   test(`Delete ${deleteEntity.getType()}`, async ({ page }) => {
@@ -479,10 +470,4 @@ entities.forEach((EntityClass) => {
       );
     });
   });
-});
-
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await afterAction();
 });

@@ -24,7 +24,6 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  commonCleanup,
   commonPrerequisites,
   createAlert,
   deleteAlert,
@@ -117,21 +116,6 @@ test.beforeAll(async ({ browser }) => {
   await table1.createTestCase(apiContext, { name: TEST_CASE_NAME });
   await pipeline.create(apiContext);
   await pipeline.createIngestionPipeline(apiContext, INGESTION_PIPELINE_NAME);
-
-  await afterAction();
-});
-
-test.afterAll(async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await commonCleanup({
-    apiContext,
-    table: table2,
-    user1,
-    user2,
-    domain,
-  });
-  await table1.delete(apiContext);
-  await pipeline.delete(apiContext);
 
   await afterAction();
 });

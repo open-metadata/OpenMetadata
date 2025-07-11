@@ -141,19 +141,6 @@ test.describe('Entity Version pages', () => {
     await redirectToHomePage(page);
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow();
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-
-    await EntityDataClass.postRequisitesForTests(
-      apiContext,
-      entityCreationConfig
-    );
-    await afterAction();
-  });
-
   entities.forEach((entity) => {
     test(`${entity.getType()}`, async ({ page }) => {
       test.slow();

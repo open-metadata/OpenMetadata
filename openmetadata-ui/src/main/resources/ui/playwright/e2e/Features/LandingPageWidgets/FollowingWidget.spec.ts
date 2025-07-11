@@ -68,12 +68,6 @@ entities.forEach((EntityClass) => {
       await afterAction();
     });
 
-    test.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await entity.delete(apiContext);
-      await afterAction();
-    });
-
     test('Check followed entity present in following widget', async ({
       adminPage,
     }) => {

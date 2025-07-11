@@ -39,12 +39,6 @@ test.describe('Advanced Search Custom Property', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await table.delete(apiContext);
-    await afterAction();
-  });
-
   test('Create, Assign and Test Advance Search for Duration', async ({
     page,
   }) => {

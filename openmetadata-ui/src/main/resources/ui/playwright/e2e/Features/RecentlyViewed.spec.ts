@@ -55,14 +55,6 @@ test.describe('Recently viewed data assets', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
-    for await (const entity of entities) {
-      await entity.delete(apiContext);
-    }
-    await afterAction();
-  });
-
   test('Recently viewed widget should be visible on the home page', async ({
     page,
   }) => {

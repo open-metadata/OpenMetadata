@@ -33,13 +33,6 @@ test.describe('Dashboards', () => {
     await afterAction();
   });
 
-  test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
-
-    await dashboardEntity.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
   });

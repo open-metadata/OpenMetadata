@@ -29,13 +29,6 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
     await afterAction();
   });
 
-  test.afterAll('cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await table.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
   });

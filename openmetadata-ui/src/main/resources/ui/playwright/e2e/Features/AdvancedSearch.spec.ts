@@ -243,17 +243,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
-    await glossaryEntity.delete(apiContext);
-    await user.delete(apiContext);
-    await table.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.EXPLORE);

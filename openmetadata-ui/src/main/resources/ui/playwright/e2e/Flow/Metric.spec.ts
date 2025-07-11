@@ -69,19 +69,6 @@ test.describe('Metric Entity Special Test Cases', () => {
     await metric1.visitEntityPage(page);
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-
-    await Promise.all([
-      metric1.delete(apiContext),
-      metric2.delete(apiContext),
-      metric3.delete(apiContext),
-    ]);
-
-    await afterAction();
-  });
-
   test('Verify Metric Type Update', async ({ page }) => {
     await updateMetricType(page, 'Count');
     await removeMetricType(page);
@@ -124,15 +111,6 @@ test.describe('Listing page and add Metric flow should work', () => {
 
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-
-    await Promise.all([metric4.delete(apiContext), metric5.delete(apiContext)]);
-
-    await afterAction();
   });
 
   test('Metric listing page and add metric from the "Add button"', async ({

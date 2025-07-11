@@ -159,10 +159,3 @@ test.describe('Profiler Configuration Page', () => {
     ).not.toBeVisible();
   });
 });
-
-// Delete new user with admin login
-base.afterAll(async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await user.delete(apiContext);
-  await afterAction();
-});

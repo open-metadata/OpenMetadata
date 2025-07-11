@@ -33,14 +33,6 @@ test.describe('TestCase Version Page', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await table1.delete(apiContext);
-
-    await afterAction();
-  });
-
   test('should show the test case version page', async ({ page }) => {
     const testCase = table1.testCasesResponseData[0];
 

@@ -87,22 +87,6 @@ test.describe('Activity feed', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await entity.delete(apiContext);
-    await entity2.delete(apiContext);
-    await entity3.delete(apiContext);
-    await entity4.delete(apiContext);
-    await entity5.delete(apiContext);
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-    await user3.delete(apiContext);
-    await user4.delete(apiContext);
-    await adminUser.delete(apiContext);
-
-    await afterAction();
-  });
-
   test('Feed widget should be visible', async ({ page }) => {
     await removeLandingBanner(page);
     // Locate the feed widget
@@ -788,17 +772,6 @@ base.describe('Activity feed with Data Consumer User', () => {
     await entity3.create(apiContext);
     await user1.create(apiContext);
     await user2.create(apiContext);
-
-    await afterAction();
-  });
-
-  base.afterAll('Cleanup', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-    await entity.delete(apiContext);
-    await entity2.delete(apiContext);
-    await entity3.delete(apiContext);
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
 
     await afterAction();
   });

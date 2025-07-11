@@ -25,12 +25,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-  await table.delete(apiContext);
-  await afterAction();
-});
-
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
   await table.visitEntityPage(page);

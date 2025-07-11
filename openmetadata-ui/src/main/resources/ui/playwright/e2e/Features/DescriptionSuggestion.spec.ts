@@ -49,16 +49,6 @@ test.describe('Description Suggestions Table Entity', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-    await table.delete(apiContext);
-    await table2.delete(apiContext);
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-    await user3.delete(apiContext);
-    await afterAction();
-  });
-
   test('View, Close, Reject and Accept the Suggestions', async ({
     browser,
   }) => {

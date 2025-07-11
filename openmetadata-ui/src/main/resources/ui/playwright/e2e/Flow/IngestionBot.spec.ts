@@ -84,16 +84,6 @@ test.describe('Ingestion Bot ', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await Promise.all([
-      domain1.delete(apiContext),
-      domain2.delete(apiContext),
-      domain3.delete(apiContext),
-    ]);
-    await afterAction();
-  });
-
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await redirectToHomePage(page);
   });

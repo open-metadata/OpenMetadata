@@ -19,7 +19,6 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  commonCleanup,
   commonPrerequisites,
   createAlert,
   deleteAlert,
@@ -112,22 +111,6 @@ test.beforeAll(async ({ browser }) => {
     domain,
   });
   await dashboard.create(apiContext);
-
-  await afterAction();
-});
-
-test.afterAll('Cleanup', async ({ browser }) => {
-  test.slow();
-
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await commonCleanup({
-    apiContext,
-    table,
-    user1,
-    user2,
-    domain,
-  });
-  await dashboard.delete(apiContext);
 
   await afterAction();
 });

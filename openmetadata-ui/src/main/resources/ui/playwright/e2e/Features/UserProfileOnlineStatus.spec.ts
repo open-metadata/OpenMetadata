@@ -176,13 +176,4 @@ test.describe('User Profile Online Status', () => {
     await expect(onlineStatusBadge).toBeVisible();
     await expect(onlineStatusBadge).toContainText(/Online now|Active recently/);
   });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
-
-    // Delete test users
-    await activeUser.delete(apiContext);
-    await inactiveUser.delete(apiContext);
-    await afterAction();
-  });
 });

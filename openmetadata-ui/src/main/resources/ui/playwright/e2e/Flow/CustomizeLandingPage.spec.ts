@@ -46,14 +46,6 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-base.afterAll('Cleanup', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await persona.delete(apiContext);
-  await persona2.delete(apiContext);
-  await afterAction();
-});
-
 test.describe('Customize Landing Page Flow', () => {
   test('Check all default widget present', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);

@@ -110,21 +110,6 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-base.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-  await dataStewardUser.delete(apiContext);
-  await limitedAccessUser.delete(apiContext);
-  await classification.delete(apiContext);
-  await classification1.delete(apiContext);
-  await tag.delete(apiContext);
-  await tag1.delete(apiContext);
-  await user1.delete(apiContext);
-  await domain.delete?.(apiContext);
-  await afterAction();
-});
-
 test.describe('Tag Page with Admin Roles', () => {
   test.slow(true);
 

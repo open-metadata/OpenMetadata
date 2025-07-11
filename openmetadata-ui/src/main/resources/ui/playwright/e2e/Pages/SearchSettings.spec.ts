@@ -140,13 +140,6 @@ test.describe('Search Preview test', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await table1.delete(apiContext);
-    await table2.delete(apiContext);
-    await afterAction();
-  });
-
   test('Search preview for searchable table', async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);

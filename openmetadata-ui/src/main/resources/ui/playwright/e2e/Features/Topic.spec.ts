@@ -30,14 +30,6 @@ test.describe('Topic entity specific tests ', () => {
     await afterAction();
   });
 
-  test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
-
-    await topic.delete(apiContext);
-
-    await afterAction();
-  });
-
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
   });

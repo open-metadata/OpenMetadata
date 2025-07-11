@@ -55,12 +55,6 @@ test.describe('Markdown', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await glossary.visitPage(page);
