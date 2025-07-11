@@ -39,6 +39,7 @@ public class DataContractMapper {
             .withSemantics(create.getSemantics())
             .withQualityExpectations(create.getQualityExpectations())
             .withOwners(create.getOwners())
+            .withReviewers(create.getReviewers())
             .withEffectiveFrom(create.getEffectiveFrom())
             .withEffectiveUntil(create.getEffectiveUntil())
             .withSourceUrl(create.getSourceUrl())
@@ -50,6 +51,7 @@ public class DataContractMapper {
 
   public static DataContract trimFields(DataContract dataContract, Include include) {
     dataContract.setOwners(EntityUtil.getEntityReferences(dataContract.getOwners(), include));
+    dataContract.setReviewers(EntityUtil.getEntityReferences(dataContract.getReviewers(), include));
 
     if (include.value().equals("entity") || include.value().equals("all")) {
       dataContract.setEntity(Entity.getEntityReference(dataContract.getEntity(), include));

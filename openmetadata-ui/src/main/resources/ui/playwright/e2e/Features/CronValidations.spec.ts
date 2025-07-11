@@ -34,6 +34,15 @@ test.use({
 });
 
 test.describe('Cron Validations', () => {
+  const cronInvlidMessage =
+    'Cron expression must have exactly 5 fields (minute hour day-of-month month day-of-week)';
+
+  const cronInvalidMinuteMessage =
+    'Invalid minute field. Must be 0-59, *, */n, or comma-separated values';
+
+  const cronInvalidDayOfWeekMessage =
+    'Invalid day-of-week field. Must be 0-6, *, */n, or comma-separated values';
+
   test('Validate different cron expressions', async ({ page }) => {
     await redirectToHomePage(page);
 
@@ -83,13 +92,8 @@ test.describe('Cron Validations', () => {
     await inputCronExpression(page, '0 0 1/3 * * 1');
 
     await expect(
-      page
-        .getByTestId('cron-container')
-        .getByText(
-          'At 0 minutes past the hour, every 3 hours, starting at 01:00 AM, only on Monday'
-        )
+      page.getByTestId('cron-container').getByText(cronInvlidMessage)
     ).toBeAttached();
-    await expect(page.locator('#schedular-form_cron_help')).not.toBeAttached();
 
     // Check '0 0 * * 1-6' to be valid
     await inputCronExpression(page, '0 0 * * 1-6');
@@ -131,25 +135,21 @@ test.describe('Cron Validations', () => {
     await expect(
       page
         .locator('#schedular-form_cron_help')
-        .getByText('DOW part must be >= 0 and <= 6')
+        .getByText(cronInvalidDayOfWeekMessage)
     ).toBeAttached();
 
     // Check '0 0 * * 1 7' to be invalid
     await inputCronExpression(page, '0 0 * * 1 7');
 
     await expect(
-      page
-        .locator('#schedular-form_cron_help')
-        .getByText('DOW part must be >= 0 and <= 6')
+      page.locator('#schedular-form_cron_help').getByText(cronInvlidMessage)
     ).toBeAttached();
 
     // Check '0 0 * * 1 7 67' to be invalid
     await inputCronExpression(page, '0 0 * * 1 7 67');
 
     await expect(
-      page
-        .locator('#schedular-form_cron_help')
-        .getByText('DOW part must be >= 0 and <= 6')
+      page.locator('#schedular-form_cron_help').getByText(cronInvlidMessage)
     ).toBeAttached();
 
     // Check '0 0 * * 0-7' to be invalid
@@ -158,7 +158,7 @@ test.describe('Cron Validations', () => {
     await expect(
       page
         .locator('#schedular-form_cron_help')
-        .getByText('DOW part must be >= 0 and <= 6')
+        .getByText(cronInvalidDayOfWeekMessage)
     ).toBeAttached();
 
     // Check '0 0 * * 7-9' to be invalid
@@ -167,7 +167,7 @@ test.describe('Cron Validations', () => {
     await expect(
       page
         .locator('#schedular-form_cron_help')
-        .getByText('DOW part must be >= 0 and <= 6')
+        .getByText(cronInvalidDayOfWeekMessage)
     ).toBeAttached();
 
     // Check '0 0 * * -1-9' to be invalid
@@ -176,7 +176,16 @@ test.describe('Cron Validations', () => {
     await expect(
       page
         .locator('#schedular-form_cron_help')
-        .getByText('Error: DOW part must be >= 0 and <= 6')
+        .getByText(cronInvalidDayOfWeekMessage)
     ).toBeAttached();
+
+    await inputCronExpression(page, '0 18 * * Fri	');
+
+    await expect(
+      page
+        .getByTestId('cron-container')
+        .getByText('At 06:00 PM, only on Friday')
+    ).toBeAttached();
+    await expect(page.locator('#schedular-form_cron_help')).not.toBeAttached();
   });
 });

@@ -1,5 +1,6 @@
 ---
 title: Databricks Connector | OpenMetadata Integration Guide
+description: Connect Databricks to OpenMetadata effortlessly. Complete setup guide, configuration steps, and metadata extraction for your data lakehouse platform.
 slug: /connectors/database/databricks
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/databricks
 name="Databricks"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data", "Owners", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data", "Owners", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Stored Procedures"]
 / %}
 

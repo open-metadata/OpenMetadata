@@ -3,8 +3,13 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_SERVICE;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -101,6 +106,55 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   @Override
   public void clearFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
     /* Nothing to do */
+  }
+
+  @Override
+  public void setFieldsInBulk(EntityUtil.Fields fields, List<StoredProcedure> storedProcedures) {
+    if (storedProcedures.isEmpty()) {
+      return;
+    }
+
+    // For stored procedures, we need to handle the service field specially
+    // because it comes through DatabaseSchema
+    if (fields.contains(FIELD_SERVICE)
+        || fields.contains("databaseSchema")
+        || fields.contains("database")
+        || fields.contains("service")) {
+
+      // First, collect all unique schema IDs
+      Map<UUID, EntityReference> schemaMap = new HashMap<>();
+      for (StoredProcedure sp : storedProcedures) {
+        EntityReference schemaRef = getContainer(sp.getId());
+        if (schemaRef != null) {
+          schemaMap.put(schemaRef.getId(), schemaRef);
+        }
+      }
+
+      // Batch fetch all database schemas with their service info
+      Map<UUID, DatabaseSchema> schemas = new HashMap<>();
+      for (UUID schemaId : schemaMap.keySet()) {
+        DatabaseSchema schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "", ALL);
+        schemas.put(schemaId, schema);
+      }
+
+      // Apply all the fetched data to stored procedures
+      for (StoredProcedure sp : storedProcedures) {
+        EntityReference schemaRef = getContainer(sp.getId());
+        if (schemaRef != null && schemas.containsKey(schemaRef.getId())) {
+          DatabaseSchema schema = schemas.get(schemaRef.getId());
+          sp.withDatabaseSchema(schemaRef)
+              .withDatabase(schema.getDatabase())
+              .withService(schema.getService());
+        }
+      }
+    }
+
+    // Bulk fetch followers if needed
+    if (fields.contains(FIELD_FOLLOWERS)) {
+      for (StoredProcedure sp : storedProcedures) {
+        sp.setFollowers(getFollowers(sp));
+      }
+    }
   }
 
   private void setDefaultFields(StoredProcedure storedProcedure) {

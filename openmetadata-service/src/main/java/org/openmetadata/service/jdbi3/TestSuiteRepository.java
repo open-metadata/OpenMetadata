@@ -43,6 +43,7 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -131,6 +132,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         fields.contains("summary")
             ? getTestSummary(entity.getTestCaseResultSummary())
             : entity.getSummary());
+
+    // Ensure tests is never null, default to empty list
+    if (entity.getTests() == null) {
+      entity.setTests(new ArrayList<>());
+    }
   }
 
   @Override
@@ -142,6 +148,49 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       inheritOwners(testSuite, fields, table);
       inheritDomains(testSuite, fields, table);
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(EntityUtil.Fields fields, List<TestSuite> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    var testsMap = batchFetchTestCases(entities);
+    entities.forEach(
+        entity -> entity.setTests(testsMap.getOrDefault(entity.getId(), new ArrayList<>())));
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchTestCases(List<TestSuite> testSuites) {
+    if (testSuites == null || testSuites.isEmpty()) {
+      return Map.of();
+    }
+    var testSuiteIds = testSuites.stream().map(ts -> ts.getId().toString()).toList();
+    var records =
+        daoCollection.relationshipDAO().findFromBatch(testSuiteIds, Relationship.HAS.ordinal());
+    if (records.isEmpty()) {
+      return Map.of();
+    }
+    var testCaseIds =
+        records.stream()
+            .filter(r -> TEST_CASE.equals(r.getToEntity()))
+            .map(r -> UUID.fromString(r.getToId()))
+            .distinct()
+            .toList();
+
+    var testCaseRefs = Entity.getEntityReferencesByIds(TEST_CASE, testCaseIds, Include.ALL);
+    var idToRefMap =
+        testCaseRefs.stream().collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
+
+    return records.stream()
+        .filter(r -> TEST_CASE.equals(r.getToEntity()))
+        .map(rel -> Map.entry(UUID.fromString(rel.getFromId()), idToRefMap.get(rel.getToId())))
+        .filter(entry -> entry.getValue() != null)
+        .collect(
+            Collectors.groupingBy(
+                Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
   }
 
   @Override

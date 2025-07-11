@@ -44,24 +44,35 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.CreateDataContract;
+import org.openmetadata.schema.api.data.CreateDataContractResult;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
 
+@Slf4j
 @Path("/v1/dataContracts")
 @Tag(
     name = "Data Contracts",
@@ -71,12 +82,13 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "dataContracts")
 public class DataContractResource extends EntityResource<DataContract, DataContractRepository> {
   public static final String COLLECTION_PATH = "v1/dataContracts/";
-  static final String FIELDS = "owners";
+  static final String FIELDS = "owners,reviewers";
 
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
     super.addHref(uriInfo, dataContract);
     Entity.withHref(uriInfo, dataContract.getOwners());
+    Entity.withHref(uriInfo, dataContract.getReviewers());
     Entity.withHref(uriInfo, dataContract.getEntity());
     return dataContract;
   }
@@ -568,6 +580,314 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
 
   private DataContract getDataContract(CreateDataContract create, String user) {
     return DataContractMapper.createEntity(create, user);
+  }
+
+  // Data Contract Results APIs
+
+  @GET
+  @Path("/{id}/results")
+  @Operation(
+      operationId = "listDataContractResults",
+      summary = "List data contract results",
+      description = "Get a list of all data contract execution results for a given contract.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of data contract results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class)))
+      })
+  public ResultList<DataContractResult> listResults(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of results (1 to 10000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(10000)
+          int limitParam,
+      @Parameter(
+              description = "Returns results after this timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Returns results before this timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs) {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    List<String> jsonResults =
+        timeSeriesDAO.listBetweenTimestampsByOrder(
+            dataContract.getFullyQualifiedName(),
+            "dataContract.dataContractResult",
+            startTs != null ? startTs : 0L,
+            endTs != null ? endTs : System.currentTimeMillis(),
+            EntityTimeSeriesDAO.OrderBy.DESC);
+
+    List<DataContractResult> results = JsonUtils.readObjects(jsonResults, DataContractResult.class);
+
+    // Apply limit
+    if (limitParam > 0 && results.size() > limitParam) {
+      results = results.subList(0, limitParam);
+    }
+
+    return new ResultList<>(
+        results, String.valueOf(startTs), String.valueOf(endTs), results.size());
+  }
+
+  @GET
+  @Path("/{id}/results/latest")
+  @Operation(
+      operationId = "getLatestDataContractResult",
+      summary = "Get latest data contract result",
+      description = "Get the latest execution result for a data contract.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Latest data contract result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContractResult.class))),
+        @ApiResponse(responseCode = "404", description = "Data contract or result not found")
+      })
+  public DataContractResult getLatestResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id)
+      throws Exception {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    String jsonRecord =
+        timeSeriesDAO.getLatestExtension(
+            dataContract.getFullyQualifiedName(), "dataContract.dataContractResult");
+
+    return jsonRecord != null ? JsonUtils.readValue(jsonRecord, DataContractResult.class) : null;
+  }
+
+  @GET
+  @Path("/{id}/results/{resultId}")
+  @Operation(
+      operationId = "getDataContractResult",
+      summary = "Get a data contract result by ID",
+      description = "Get a specific data contract execution result by its ID.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Data contract result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContractResult.class))),
+        @ApiResponse(responseCode = "404", description = "Data contract result not found")
+      })
+  public DataContractResult getResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Id of the data contract result", schema = @Schema(type = "UUID"))
+          @PathParam("resultId")
+          UUID resultId)
+      throws Exception {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    String jsonRecord = timeSeriesDAO.getById(resultId);
+    return JsonUtils.readValue(jsonRecord, DataContractResult.class);
+  }
+
+  @POST
+  @Path("/{id}/results")
+  @Operation(
+      operationId = "createDataContractResult",
+      summary = "Create or update data contract result",
+      description = "Create a new data contract execution result.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully created or updated the result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContractResult.class)))
+      })
+  public Response createResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid CreateDataContractResult create) {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.EDIT_ALL);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    DataContractResult result = getContractResult(dataContract, create);
+
+    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    timeSeriesDAO.insert(
+        dataContract.getFullyQualifiedName(),
+        "dataContract.dataContractResult",
+        "dataContractResult",
+        JsonUtils.pojoToJson(result));
+
+    // Update latest result in data contract
+    updateLatestResult(dataContract, result);
+
+    return Response.ok(result).build();
+  }
+
+  @DELETE
+  @Path("/{id}/results/{timestamp}")
+  @Operation(
+      operationId = "deleteDataContractResult",
+      summary = "Delete data contract result",
+      description = "Delete a data contract result at a specific timestamp.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Successfully deleted the result")
+      })
+  public Response deleteResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Timestamp of the result to delete",
+              schema = @Schema(type = "number"))
+          @PathParam("timestamp")
+          Long timestamp)
+      throws Exception {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.DELETE);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    timeSeriesDAO.deleteAtTimestamp(
+        dataContract.getFullyQualifiedName(), "dataContract.dataContractResult", timestamp);
+    return Response.ok().build();
+  }
+
+  @DELETE
+  @Path("/{id}/results/before/{timestamp}")
+  @Operation(
+      operationId = "deleteDataContractResultsBefore",
+      summary = "Delete data contract results before timestamp",
+      description = "Delete all data contract results before a specific timestamp.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Successfully deleted the results")
+      })
+  public Response deleteResultsBefore(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Delete results before this timestamp",
+              schema = @Schema(type = "number"))
+          @PathParam("timestamp")
+          Long timestamp) {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.DELETE);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    timeSeriesDAO.deleteBeforeTimestamp(
+        dataContract.getFullyQualifiedName(), "dataContract.dataContractResult", timestamp);
+    return Response.ok().build();
+  }
+
+  private DataContractResult getContractResult(
+      DataContract dataContract, CreateDataContractResult create) {
+    DataContractResult result =
+        new DataContractResult()
+            .withId(UUID.randomUUID())
+            .withDataContractFQN(dataContract.getFullyQualifiedName())
+            .withTimestamp(create.getTimestamp())
+            .withContractExecutionStatus(create.getContractExecutionStatus())
+            .withResult(create.getResult())
+            .withExecutionTime(create.getExecutionTime());
+
+    if (create.getSchemaValidation() != null) {
+      result.withSchemaValidation(create.getSchemaValidation());
+    }
+
+    if (create.getSemanticsValidation() != null) {
+      result.withSemanticsValidation(create.getSemanticsValidation());
+    }
+
+    if (create.getQualityValidation() != null) {
+      result.withQualityValidation(create.getQualityValidation());
+    }
+
+    if (create.getSlaValidation() != null) {
+      result.withSlaValidation(create.getSlaValidation());
+    }
+
+    if (create.getIncidentId() != null) {
+      result.withIncidentId(create.getIncidentId());
+    }
+
+    return result;
+  }
+
+  private void updateLatestResult(DataContract dataContract, DataContractResult result) {
+    try {
+      jakarta.json.JsonPatchBuilder patchBuilder = jakarta.json.Json.createPatchBuilder();
+
+      jakarta.json.JsonObjectBuilder latestResultBuilder =
+          jakarta.json.Json.createObjectBuilder()
+              .add("timestamp", result.getTimestamp())
+              .add("status", result.getContractExecutionStatus().value())
+              .add("message", result.getResult() != null ? result.getResult() : "")
+              .add("resultId", result.getId().toString());
+      patchBuilder.add("/latestResult", latestResultBuilder.build());
+      JsonPatch patch = patchBuilder.build();
+      repository.patch(null, dataContract.getId(), null, patch);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to update latest result for data contract {}",
+          dataContract.getFullyQualifiedName(),
+          e);
+    }
   }
 
   public static class DataContractList extends ResultList<DataContract> {

@@ -64,6 +64,9 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         "",
         "");
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetSchemaFieldTags);
   }
 
   @Override
@@ -85,11 +88,21 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
 
   @Override
   public void setInheritedFields(APIEndpoint endpoint, Fields fields) {
-    APICollection apiCollection =
-        Entity.getEntity(
-            API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domains", ALL);
-    inheritOwners(endpoint, fields, apiCollection);
-    inheritDomains(endpoint, fields, apiCollection);
+    // Ensure apiCollection is populated before accessing it
+    if (endpoint.getApiCollection() == null) {
+      EntityReference apiCollectionRef = getContainer(endpoint.getId());
+      if (apiCollectionRef != null) {
+        endpoint.withApiCollection(apiCollectionRef);
+      }
+    }
+
+    if (endpoint.getApiCollection() != null) {
+      APICollection apiCollection =
+          Entity.getEntity(
+              API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domains", ALL);
+      inheritOwners(endpoint, fields, apiCollection);
+      inheritDomains(endpoint, fields, apiCollection);
+    }
   }
 
   @Override
@@ -163,6 +176,41 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   @Override
   public void clearFields(APIEndpoint apiEndpoint, Fields fields) {
     /* Nothing to do */
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetSchemaFieldTags(List<APIEndpoint> apiEndpoints, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || apiEndpoints == null || apiEndpoints.isEmpty()) {
+      return;
+    }
+
+    // Bulk fetch tags for request schemas
+    List<APIEndpoint> endpointsWithRequestSchema =
+        apiEndpoints.stream()
+            .filter(e -> e.getRequestSchema() != null)
+            .collect(java.util.stream.Collectors.toList());
+
+    if (!endpointsWithRequestSchema.isEmpty()) {
+      bulkPopulateEntityFieldTags(
+          endpointsWithRequestSchema,
+          entityType,
+          e -> e.getRequestSchema().getSchemaFields(),
+          e -> e.getFullyQualifiedName() + ".requestSchema");
+    }
+
+    // Bulk fetch tags for response schemas
+    List<APIEndpoint> endpointsWithResponseSchema =
+        apiEndpoints.stream()
+            .filter(e -> e.getResponseSchema() != null)
+            .collect(java.util.stream.Collectors.toList());
+
+    if (!endpointsWithResponseSchema.isEmpty()) {
+      bulkPopulateEntityFieldTags(
+          endpointsWithResponseSchema,
+          entityType,
+          e -> e.getResponseSchema().getSchemaFields(),
+          e -> e.getFullyQualifiedName() + ".responseSchema");
+    }
   }
 
   @Override

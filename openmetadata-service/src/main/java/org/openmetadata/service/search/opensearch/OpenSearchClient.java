@@ -480,11 +480,22 @@ public class OpenSearchClient implements SearchClient {
     try {
       RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
       builder.addHeader("Content-Type", "application/json");
+
+      // Start search operation timing using Micrometer
+      io.micrometer.core.instrument.Timer.Sample searchTimerSample =
+          org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
+
       SearchResponse searchResponse =
           client.search(
               new os.org.opensearch.action.search.SearchRequest(request.getIndex())
                   .source(searchSourceBuilder),
               RequestOptions.DEFAULT);
+
+      // End search operation timing
+      if (searchTimerSample != null) {
+        org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
+            searchTimerSample);
+      }
       if (Boolean.FALSE.equals(request.getIsHierarchy())) {
         return Response.status(OK).entity(searchResponse.toString()).build();
       } else {
@@ -523,8 +534,18 @@ public class OpenSearchClient implements SearchClient {
           // Use DFS Query Then Fetch for consistent scoring across shards
           searchRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
 
+          // Start search operation timing using Micrometer
+          io.micrometer.core.instrument.Timer.Sample searchTimerSample =
+              org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
+
           os.org.opensearch.action.search.SearchResponse response =
               client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
+
+          // End search operation timing
+          if (searchTimerSample != null) {
+            org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
+                searchTimerSample);
+          }
           if (response.getHits() != null
               && response.getHits().getTotalHits() != null
               && response.getHits().getTotalHits().value > 0) {
@@ -2748,6 +2769,52 @@ public class OpenSearchClient implements SearchClient {
         LOG.info("Successfully Updated FQN for Glossary Term: {}", oldParentFQN);
       } catch (Exception e) {
         LOG.error("Error while updating Glossary Term tag FQN: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
+
+    Map<String, Object> params = new HashMap<>();
+
+    params.put("columnUpdates", originalUpdatedColumnFqnMap);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, UPDATE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateOpenSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while updating Column Lineage: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("deletedFQNs", deletedColumns);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, DELETE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateOpenSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while deleting Column Lineage: {}", e.getMessage(), e);
       }
     }
   }

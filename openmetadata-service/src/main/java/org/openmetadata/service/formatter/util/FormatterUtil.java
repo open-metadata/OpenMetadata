@@ -320,7 +320,11 @@ public class FormatterUtil {
               TEST_CASE_RESULT + ",testSuites",
               Include.ALL);
       ChangeEvent changeEvent =
-          getChangeEvent(updateBy, eventType, testCase.getEntityReference().getType(), testCase);
+          getChangeEvent(
+              updateBy,
+              eventType,
+              testCase.getEntityReference().getType(),
+              testCase.withUpdatedAt(testCaseResult.getTimestamp()));
       return changeEvent
           .withChangeDescription(
               new ChangeDescription()

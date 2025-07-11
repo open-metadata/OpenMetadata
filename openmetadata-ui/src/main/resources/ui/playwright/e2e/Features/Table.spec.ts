@@ -79,11 +79,29 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table filter with sorting should works', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
+    await page.waitForLoadState('networkidle');
     await page.click('[data-testid="by-test-cases"]');
+
+    const listTestCaseResponse = page.waitForResponse(
+      `/api/v1/dataQuality/testCases/search/list?**`
+    );
+
     await page.getByText('Name', { exact: true }).click();
 
+    await listTestCaseResponse;
+
     await page.getByTestId('status-select-filter').locator('div').click();
+
+    const response = page.waitForResponse(
+      '/api/v1/dataQuality/testSuites/dataQualityReport?q=*'
+    );
+
     await page.getByTitle('Queued').locator('div').click();
+
+    await response;
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
   });
@@ -91,7 +109,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table page should show schema tab with count', async ({ page }) => {
     await table1.visitEntityPage(page);
 
-    await expect(page.getByRole('tab', { name: 'Schema' })).toContainText('4');
+    await expect(page.getByRole('tab', { name: 'Columns' })).toContainText('4');
   });
 
   test('should persist current page', async ({ page }) => {

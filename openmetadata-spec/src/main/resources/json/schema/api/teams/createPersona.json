@@ -33,6 +33,11 @@
       "items": {
         "type": "string"
       }
+    },
+    "default": {
+      "description": "When true, this persona is the system-wide default persona that will be applied to users who don't have any persona assigned or no default persona set.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name"],

@@ -1,5 +1,6 @@
 ---
 title: Domo Database Connector | OpenMetadata Integration Guide
+description: Connect Domo Database to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration steps, and metadata extraction tips.
 slug: /connectors/database/domo-database
 ---
 
@@ -8,7 +9,7 @@ name="Domo"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "dbt", "Sample Data"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "dbt", "Sample Data", "Auto-Classification"]
 / %}
 
 In this section, we provide guides and references to use the DomoDatabase connector.

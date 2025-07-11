@@ -1,5 +1,6 @@
 ---
 title: Exasol Connector | OpenMetadata High-Performance Database
+description: Connect Exasol database to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/database/exasol
 ---
 
@@ -8,7 +9,7 @@ name="Exasol"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Owners", "dbt", "Tags", "Stored Procedures", "Sample Data"]
+unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Owners", "dbt", "Tags", "Stored Procedures", "Sample Data", "Auto-Classification"]
 / %}
 
 

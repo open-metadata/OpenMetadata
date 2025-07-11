@@ -234,6 +234,7 @@ public final class CsvUtil {
             ? null
             : refs.stream()
                 .map(EntityReference::getFullyQualifiedName)
+                .sorted()
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
     return csvRecord;
   }

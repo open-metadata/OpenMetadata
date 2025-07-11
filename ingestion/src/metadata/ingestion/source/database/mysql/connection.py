@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
     BasicAuth,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
+    MysqlConnection as MySQLConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -49,7 +49,7 @@ from metadata.ingestion.source.database.mysql.queries import (
 from metadata.utils.constants import THREE_MIN
 
 
-class MySQLConnection(BaseConnection[MysqlConnection, Engine]):
+class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
         """
         Return the SQLAlchemy Engine for MySQL.
