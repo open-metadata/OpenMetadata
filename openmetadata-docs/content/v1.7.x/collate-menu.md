@@ -747,6 +747,8 @@ site_menu:
     url: /applications/autopilot
   - category: Applications / Data Retention Application
     url: /applications/data-retention
+  - category: Applications / Slack Application
+    url: /applications/slack
 
   - category: How-to Guides
     url: /how-to-guides
