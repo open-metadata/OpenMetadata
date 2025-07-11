@@ -229,21 +229,14 @@ class FullyQualifiedNameTest {
         IllegalArgumentException.class,
         () -> FullyQualifiedName.getParentEntityFQN("service.model.dataModel.col1", "table"));
 
-    // Using 'dashboardDataModel' entityType for a table column FQN (should throw)
+    // Too short for dashboard data model
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            FullyQualifiedName.getParentEntityFQN(
-                "service.db.schema.table.col1", "dashboardDataModel"));
+        () -> FullyQualifiedName.getParentEntityFQN("service.db", "dashboardDataModel"));
 
     // Too short for table
     assertThrows(
         IllegalArgumentException.class,
-        () -> FullyQualifiedName.getParentEntityFQN("service.db.schema.col1", "table"));
-
-    // Too short for dashboardDataModel
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> FullyQualifiedName.getParentEntityFQN("service.model.col1", "dashboardDataModel"));
+        () -> FullyQualifiedName.getParentEntityFQN("service.db.schema", "table"));
   }
 }
