@@ -784,7 +784,7 @@ export const editCreatedProperty = async (
       page.locator(
         `[data-row-key="${propertyName}"] [data-testid="${propertyName}-config"]`
       )
-    ).toContainText('["user","team","table"]');
+    ).toContainText('["user","team","metric","table"]');
   }
 };
 
