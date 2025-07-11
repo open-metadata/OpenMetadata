@@ -30,6 +30,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
+import { MAX_NAME_LENGTH } from '../../../constants/constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../constants/Schedular.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
@@ -56,7 +57,6 @@ import {
 import {
   getNameFromFQN,
   replaceAllSpacialCharWith_,
-  Transi18next,
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields } from '../../../utils/formUtils';
@@ -93,6 +93,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
   const { config } = useLimitStore();
   const { currentUser } = useApplicationStore();
   const { isAirflowAvailable } = useAirflowStatus();
+  const enableScheduler = Form.useWatch('enableScheduler', form);
 
   // =============================================
   // HOOKS - State
@@ -133,10 +134,10 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         id: 'root/name',
         rules: [
           {
-            max: 256,
+            max: MAX_NAME_LENGTH,
             message: t('message.entity-maximum-size', {
               entity: t('label.name'),
-              max: 256,
+              max: MAX_NAME_LENGTH,
             }),
           },
         ],
@@ -266,7 +267,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
       testSuiteId: testSuite.id ?? '',
     });
 
-    if (formData.cron) {
+    if (formData.enableScheduler) {
       await createAndDeployPipeline(testSuite, formData);
     }
 
@@ -368,6 +369,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         form={form}
         id="bundle-suite-form"
         initialValues={{
+          enableScheduler: false,
           raiseOnError: true,
           cron: DEFAULT_SCHEDULE_CRON_DAILY,
           enableDebugLog: false,
@@ -414,39 +416,33 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
           </Form.Item>
         </Card>
 
-        <Row gutter={[20, 20]}>
-          <Col span={24}>
-            <AlertBar
-              defafultExpand
-              className="h-full custom-alert-description"
-              message={
-                <Transi18next
-                  i18nKey="message.entity-pipeline-information"
-                  renderElement={<strong />}
-                  values={{
-                    entity: t('label.test-suite-lowercase'),
-                  }}
-                />
-              }
-              type="grey-info"
-            />
-          </Col>
-          <Col span={24}>
-            {/* Scheduler - Always Visible */}
-            <Card className="form-card-section" data-testid="scheduler-card">
-              <div className="card-title-container">
-                <Typography.Paragraph className="card-title-text">
-                  {t('label.create-entity', {
-                    entity: t('label.pipeline'),
-                  })}
-                </Typography.Paragraph>
-                <Typography.Paragraph className="card-title-description">
-                  {t('message.pipeline-entity-description', {
-                    entity: t('label.test-suite'),
-                  })}
-                </Typography.Paragraph>
-              </div>
+        {/* Scheduler with Toggle */}
+        <Card className="form-card-section" data-testid="scheduler-card">
+          <div className="card-title-container d-flex items-center gap-3 m-b-lg">
+            <Form.Item
+              noStyle
+              className="m-b-0"
+              name="enableScheduler"
+              valuePropName="checked">
+              <Switch data-testid="scheduler-toggle" />
+            </Form.Item>
+            <div>
+              <Typography.Paragraph className="card-title-text m-0">
+                {t('label.create-entity', {
+                  entity: t('label.pipeline'),
+                })}
+              </Typography.Paragraph>
+              <Typography.Paragraph className="card-title-description m-0">
+                {`${t('message.pipeline-entity-description', {
+                  entity: t('label.bundle-suite'),
+                })} (${t('label.optional')})`}
+              </Typography.Paragraph>
+            </div>
+          </div>
 
+          {/* Scheduler form fields - only show when toggle is enabled */}
+          {enableScheduler && (
+            <>
               {generateFormFields(schedulerFormFields)}
 
               <Form.Item label={t('label.schedule-interval')} name="cron">
@@ -487,9 +483,9 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
                   </Col>
                 </Row>
               </div>
-            </Card>
-          </Col>
-        </Row>
+            </>
+          )}
+        </Card>
       </Form>
 
       {!isDrawer && (

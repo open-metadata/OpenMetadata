@@ -32,6 +32,7 @@ export type BundleSuiteFormData = {
   name: string;
   description?: string;
   testCases: TestCase[] | string[];
+  enableScheduler?: boolean;
   cron?: string;
   enableDebugLog?: boolean;
   raiseOnError?: boolean;

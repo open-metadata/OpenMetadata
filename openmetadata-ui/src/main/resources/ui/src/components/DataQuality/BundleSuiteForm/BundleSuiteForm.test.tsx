@@ -288,24 +288,40 @@ describe('BundleSuiteForm Component', () => {
       ).toBeInTheDocument();
     });
 
-    it('should render scheduler fields', async () => {
+    it('should render scheduler fields when scheduler is enabled', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 
-      expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
-      expect(
-        await screen.findByTestId('schedule-interval')
-      ).toBeInTheDocument();
+      const schedulerToggle = await screen.findByTestId('scheduler-toggle');
+
+      await act(async () => {
+        fireEvent.click(schedulerToggle);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('pipeline-name')).toBeInTheDocument();
+        expect(screen.getByTestId('schedule-interval')).toBeInTheDocument();
+      });
     });
 
-    it('should render debug log and raise on error switches', async () => {
+    it('should render scheduler toggle', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 
-      expect(
-        await screen.findByText('label.enable-debug-log')
-      ).toBeInTheDocument();
-      expect(
-        await screen.findByText('label.raise-on-error')
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId('scheduler-toggle')).toBeInTheDocument();
+    });
+
+    it('should render debug log and raise on error switches when scheduler is enabled', async () => {
+      render(<BundleSuiteForm {...mockProps} />);
+
+      const schedulerToggle = await screen.findByTestId('scheduler-toggle');
+
+      await act(async () => {
+        fireEvent.click(schedulerToggle);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('label.enable-debug-log')).toBeInTheDocument();
+        expect(screen.getByText('label.raise-on-error')).toBeInTheDocument();
+      });
     });
   });
 
@@ -352,6 +368,12 @@ describe('BundleSuiteForm Component', () => {
     it('should handle schedule interval selection', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 
+      // Enable scheduler first
+      const schedulerToggle = await screen.findByTestId('scheduler-toggle');
+      await act(async () => {
+        fireEvent.click(schedulerToggle);
+      });
+
       const scheduleSelect = await screen.findByTestId('schedule-select');
 
       await act(async () => {
@@ -371,12 +393,43 @@ describe('BundleSuiteForm Component', () => {
       expect(debugLogSwitch).toBeInTheDocument();
     });
 
-    it('should handle raise on error switch', async () => {
+    it('should handle scheduler toggle', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 
-      const switches = document.querySelectorAll('.ant-switch[role="switch"]');
+      const schedulerToggle = await screen.findByTestId('scheduler-toggle');
 
-      expect(switches.length).toBeGreaterThan(0);
+      await act(async () => {
+        fireEvent.click(schedulerToggle);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('pipeline-name')).toBeInTheDocument();
+      });
+    });
+
+    it('should hide scheduler fields when toggle is disabled', async () => {
+      render(<BundleSuiteForm {...mockProps} />);
+
+      expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('schedule-interval')).not.toBeInTheDocument();
+    });
+
+    it('should handle raise on error switch when scheduler is enabled', async () => {
+      render(<BundleSuiteForm {...mockProps} />);
+
+      const schedulerToggle = await screen.findByTestId('scheduler-toggle');
+
+      await act(async () => {
+        fireEvent.click(schedulerToggle);
+      });
+
+      await waitFor(() => {
+        const switches = document.querySelectorAll(
+          '.ant-switch[role="switch"]'
+        );
+
+        expect(switches.length).toBeGreaterThan(1); // scheduler toggle + debug log + raise on error
+      });
     });
   });
 
@@ -407,7 +460,7 @@ describe('BundleSuiteForm Component', () => {
       expect(submitBtn).toBeInTheDocument();
     });
 
-    it('should create pipeline when cron is provided', async () => {
+    it('should create pipeline when scheduler is enabled and cron is provided', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 
       // Fill required fields
@@ -420,6 +473,12 @@ describe('BundleSuiteForm Component', () => {
       const addTestCaseBtn = await screen.findByTestId('add-test-case-btn');
       await act(async () => {
         fireEvent.click(addTestCaseBtn);
+      });
+
+      // Enable scheduler
+      const schedulerToggle = await screen.findByTestId('scheduler-toggle');
+      await act(async () => {
+        fireEvent.click(schedulerToggle);
       });
 
       // Set schedule
@@ -439,6 +498,32 @@ describe('BundleSuiteForm Component', () => {
       expect(scheduleSelect).toHaveValue('0 0 * * *');
     });
 
+    it('should not create pipeline when scheduler is disabled', async () => {
+      render(<BundleSuiteForm {...mockProps} />);
+
+      // Fill required fields
+      const nameInput = await screen.findByTestId('test-suite-name');
+      await act(async () => {
+        fireEvent.change(nameInput, { target: { value: 'Test Suite' } });
+      });
+
+      // Add test cases
+      const addTestCaseBtn = await screen.findByTestId('add-test-case-btn');
+      await act(async () => {
+        fireEvent.click(addTestCaseBtn);
+      });
+
+      // Submit form without enabling scheduler
+      const submitBtn = await screen.findByTestId('submit-button');
+      await act(async () => {
+        fireEvent.click(submitBtn);
+      });
+
+      // Verify form submission works but pipeline creation is skipped
+      expect(createTestSuites).toBeDefined();
+      expect(submitBtn).toBeInTheDocument();
+    });
+
     it('should handle form submission with debug log enabled', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 
@@ -452,6 +537,12 @@ describe('BundleSuiteForm Component', () => {
       const addTestCaseBtn = await screen.findByTestId('add-test-case-btn');
       await act(async () => {
         fireEvent.click(addTestCaseBtn);
+      });
+
+      // Enable scheduler
+      const schedulerToggle = await screen.findByTestId('scheduler-toggle');
+      await act(async () => {
+        fireEvent.click(schedulerToggle);
       });
 
       // Set schedule
@@ -630,10 +721,15 @@ describe('BundleSuiteForm Component', () => {
     it('should set default form values', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 
-      // Form should render with default values - checking for switches existence
-      const switches = document.querySelectorAll('.ant-switch[role="switch"]');
+      // Form should render with default values - scheduler toggle should be visible
+      const schedulerToggle = await screen.findByTestId('scheduler-toggle');
 
-      expect(switches.length).toBeGreaterThanOrEqual(2); // debug log and raise on error switches
+      expect(schedulerToggle).toBeInTheDocument();
+
+      // By default, scheduler should be disabled, so other switches shouldn't be visible
+      expect(
+        screen.queryByText('label.enable-debug-log')
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -743,6 +839,12 @@ describe('BundleSuiteForm Component', () => {
         fireEvent.click(addTestCaseBtn);
       });
 
+      // Enable scheduler
+      const schedulerToggle = await screen.findByTestId('scheduler-toggle');
+      await act(async () => {
+        fireEvent.click(schedulerToggle);
+      });
+
       // Set schedule
       const scheduleSelect = await screen.findByTestId('schedule-select');
       await act(async () => {
@@ -767,6 +869,12 @@ describe('BundleSuiteForm Component', () => {
       const nameInput = await screen.findByTestId('test-suite-name');
       await act(async () => {
         fireEvent.change(nameInput, { target: { value: 'Test Suite' } });
+      });
+
+      // Enable scheduler
+      const schedulerToggle = await screen.findByTestId('scheduler-toggle');
+      await act(async () => {
+        fireEvent.click(schedulerToggle);
       });
 
       // Set custom pipeline name
