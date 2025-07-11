@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { uuid } from '../../utils/common';
+import { fullUuid } from '../../utils/common';
 import {
   visitEntityPage,
   visitEntityPageWithCustomSearchBox,
@@ -20,7 +20,7 @@ import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class MetricClass extends EntityClass {
-  private metricName = `pw-metric-${uuid()}`;
+  private metricName = `pw-metric-${fullUuid()}`;
 
   entity = {
     name: this.metricName,
