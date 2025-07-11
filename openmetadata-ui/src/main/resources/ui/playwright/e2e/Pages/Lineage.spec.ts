@@ -249,19 +249,12 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await redirectToHomePage(page);
   await table.visitEntityPageWithCustomSearchBox(page);
   await visitLineageTab(page);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="lineage-export"]');
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
   // Verify relation in platform lineage
   await sidebarClick(page, SidebarItem.LINEAGE);
-  const searchRes = page.waitForResponse('/api/v1/search/query?*');
-
-  await page.click('[data-testid="search-entity-select"]');
-  await page.keyboard.type(topicServiceFqn);
-  await searchRes;
-
-  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-  await page.click(`[data-testid="node-suggestion-${topicServiceFqn}"]`);
-  await lineageRes;
 
   const tableServiceNode = page.locator(
     `[data-testid="lineage-node-${tableServiceFqn}"]`

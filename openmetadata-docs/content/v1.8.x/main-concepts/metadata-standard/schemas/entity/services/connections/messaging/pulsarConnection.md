@@ -1,5 +1,6 @@
 ---
 title: Pulsar Connection | OpenMetadata Pulsar Messaging Connection
+description: Learn how to configure Pulsar messaging connections in OpenMetadata. Complete schema reference, connection parameters, and setup guide for Apache Pulsar integration.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/pulsarconnection
 ---
 
