@@ -316,7 +316,6 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     TestSuite testSuite = getEntity(executableTestSuite.getId(), "domains", ADMIN_AUTH_HEADERS);
     assertEquals(DOMAIN1.getId(), testSuite.getDomains().get(0).getId());
-    // TODO CHECK ME?
     ResultList<TestSuite> testSuites =
         listEntitiesFromSearch(
             Map.of("domain", DOMAIN1.getFullyQualifiedName(), "fields", "domains"),
