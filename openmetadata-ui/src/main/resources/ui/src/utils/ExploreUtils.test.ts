@@ -16,7 +16,6 @@ import { EntityType } from '../enums/entity.enum';
 import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   extractTermKeys,
-  generateTabItems,
   getExploreQueryFilterMust,
   getQuickFilterObjectForEntities,
   getQuickFilterQuery,
@@ -689,87 +688,6 @@ describe('Explore Utils', () => {
           { key: 'storedProcedure', label: 'storedProcedure' },
         ],
       });
-    });
-  });
-
-  describe('generateTabItems', () => {
-    const mockTabsInfo = {
-      table_search_index: {
-        label: 'Tables',
-        icon: () => null,
-        path: 'tables',
-        sortField: 'last_updated_timestamp',
-        sortOrder: 'desc',
-      },
-      topic_search_index: {
-        label: 'Topics',
-        icon: () => null,
-        path: 'topics',
-        sortField: 'last_updated_timestamp', 
-        sortOrder: 'desc',
-      },
-    };
-
-    const mockSearchHitCounts = {
-      table_search_index: 10,
-      topic_search_index: 5,
-    };
-
-    it('should use aggregated count when no actual results count provided', () => {
-      const result = generateTabItems(
-        mockTabsInfo,
-        mockSearchHitCounts,
-        'table_search_index'
-      );
-
-      expect(result).toHaveLength(2);
-      expect(result[0].count).toBe(10); // table count from aggregated
-      expect(result[1].count).toBe(5);  // topic count from aggregated
-    });
-
-    it('should use actual results count for active tab when provided', () => {
-      const actualResultsCount = 7; // Different from aggregated count of 10
-
-      const result = generateTabItems(
-        mockTabsInfo,
-        mockSearchHitCounts,
-        'table_search_index',
-        actualResultsCount
-      );
-
-      expect(result).toHaveLength(2);
-      expect(result[0].count).toBe(7);  // table count from actual results (active tab)
-      expect(result[1].count).toBe(5);  // topic count still from aggregated (not active)
-    });
-
-    it('should use actual results count when aggregated count is undefined for active tab', () => {
-      const actualResultsCount = 7;
-
-      const result = generateTabItems(
-        mockTabsInfo,
-        undefined,
-        'table_search_index',
-        actualResultsCount
-      );
-
-      expect(result).toHaveLength(2);
-      expect(result[0].count).toBe(7);  // table count from actual results
-      expect(result[1].count).toBe(0);  // topic count defaults to 0
-    });
-
-    it('should properly identify active tab and apply correct count', () => {
-      const actualResultsCount = 3;
-
-      const result = generateTabItems(
-        mockTabsInfo,
-        mockSearchHitCounts,
-        'topic_search_index', // Topics is active tab
-        actualResultsCount
-      );
-
-      expect(result).toHaveLength(2);
-      expect(result[0].count).toBe(10); // table count from aggregated (not active)
-      expect(result[1].count).toBe(3);  // topic count from actual results (active tab)
     });
   });
 });

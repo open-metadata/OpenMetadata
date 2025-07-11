@@ -473,17 +473,10 @@ export const parseSearchParams = (
 export const generateTabItems = (
   tabsInfo: Record<string, TabsInfoData>,
   searchHitCounts: SearchHitCounts | undefined,
-  searchIndex: ExploreSearchIndex,
-  actualResultsCount?: number
+  searchIndex: ExploreSearchIndex
 ) => {
   return Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => {
     const Icon = tabDetail.icon as React.FC;
-    
-    // Use actual results count for the current active tab to ensure accuracy
-    const isActiveTab = tabSearchIndex === searchIndex;
-    const displayCount = isActiveTab && actualResultsCount !== undefined 
-      ? actualResultsCount 
-      : searchHitCounts?.[tabSearchIndex as ExploreSearchIndex] ?? 0;
 
     return {
       key: tabSearchIndex,
@@ -502,9 +495,9 @@ export const generateTabItems = (
             </Typography.Text>
           </div>
           <span>
-            {!isNil(searchHitCounts) || (isActiveTab && actualResultsCount !== undefined)
+            {!isNil(searchHitCounts)
               ? getCountBadge(
-                  displayCount,
+                  searchHitCounts[tabSearchIndex as ExploreSearchIndex],
                   '',
                   tabSearchIndex === searchIndex
                 )
@@ -512,7 +505,9 @@ export const generateTabItems = (
           </span>
         </div>
       ),
-      count: displayCount,
+      count: searchHitCounts
+        ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
+        : 0,
     };
   });
 };
