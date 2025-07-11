@@ -38,6 +38,11 @@ export interface Persona {
      */
     domain?: EntityReference;
     /**
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
+     * it belongs to.
+     */
+    domains?: EntityReference[];
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;
@@ -151,14 +156,15 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Reference to the UI customization configuration.
- *
- * Users that are assigned a persona.
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
+ * it belongs to.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Reference to the UI customization configuration.
  */
 export interface EntityReference {
     /**

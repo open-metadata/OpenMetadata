@@ -1334,6 +1334,7 @@
     "selected-user": "Selected user: {{username}}",
     "semantic-plural": "Semantics",
     "send": "Enviar",
+    "send-login-link": "Enviar enlace de inicio de sesión",
     "send-now": "Enviar agora",
     "send-to": "Enviar a",
     "sender-email": "Correo electrónico do remitente",
