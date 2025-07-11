@@ -3286,7 +3286,7 @@ export interface ConfigClass {
     /**
      * ThoughtSpot authentication configuration
      */
-    authentication?: Authentication;
+    authentication?: Authenticationation;
     /**
      * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
      * only.
@@ -4162,6 +4162,8 @@ export enum AuthMechanismEnum {
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  *
+ * ThoughtSpot authentication configuration
+ *
  * Types of methods used to authenticate to the alation instance
  *
  * API Access Token Auth Credentials
@@ -4377,29 +4379,25 @@ export enum NoConfigAuthenticationTypes {
 /**
  * ThoughtSpot authentication configuration
  *
- * Username and password authentication
+ * Types of methods used to authenticate to the alation instance
  *
- * API Token authentication
+ * Basic Auth Credentials
  *
- * Bearer token authentication for custom authentication flows
+ * API Access Token Auth Credentials
  */
-export interface Authentication {
+export interface Authenticationation {
     /**
-     * Password for ThoughtSpot
+     * Password to access the service.
      */
     password?: string;
     /**
-     * Username for ThoughtSpot
+     * Username to access the service.
      */
     username?: string;
     /**
-     * ThoughtSpot API Token for authentication
+     * Access Token for the API
      */
-    apiToken?: string;
-    /**
-     * Bearer token for authentication
-     */
-    bearerToken?: string;
+    accessToken?: string;
 }
 
 export interface AuthenticationModeObject {
@@ -4408,7 +4406,7 @@ export interface AuthenticationModeObject {
      *
      * Authentication from Connection String for Azure Synapse.
      */
-    authentication?: AuthenticationEnum;
+    authentication?: Authentication;
     /**
      * Connection Timeout from Connection String for AzureSQL.
      *
@@ -4435,7 +4433,7 @@ export interface AuthenticationModeObject {
  *
  * Authentication from Connection String for Azure Synapse.
  */
-export enum AuthenticationEnum {
+export enum Authentication {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
 }

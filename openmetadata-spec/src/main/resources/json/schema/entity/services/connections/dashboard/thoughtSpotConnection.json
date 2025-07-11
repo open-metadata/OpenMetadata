@@ -1,116 +1,63 @@
 {
-    "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/thoughtSpotConnection.json",
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "ThoughtSpotConnection",
-    "description": "ThoughtSpot Connection Config",
-    "type": "object",
-    "javaType": "org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection",
-    "definitions": {
-      "thoughtSpotType": {
-        "description": "ThoughtSpot service type",
-        "type": "string",
-        "enum": ["ThoughtSpot"],
-        "default": "ThoughtSpot"
-      },
-      "basicAuthentication": {
-        "title": "Username/Password Authentication",
-        "description": "Username and password authentication",
-        "type": "object",
-        "properties": {
-          "username": {
-            "title": "Username",
-            "description": "Username for ThoughtSpot",
-            "type": "string"
-          },
-          "password": {
-            "title": "Password",
-            "description": "Password for ThoughtSpot",
-            "type": "string",
-            "format": "password"
-          }
-        },
-        "additionalProperties": false,
-        "required": ["username", "password"]
-      },
-      "apiTokenAuthentication": {
-        "title": "API Token Authentication",
-        "description": "API Token authentication",
-        "type": "object",
-        "properties": {
-          "apiToken": {
-            "title": "API Token",
-            "description": "ThoughtSpot API Token for authentication",
-            "type": "string",
-            "format": "password"
-          }
-        },
-        "additionalProperties": false,
-        "required": ["apiToken"]
-      },
-      "bearerTokenAuthentication": {
-        "title": "Bearer Token Authentication",
-        "description": "Bearer token authentication for custom authentication flows",
-        "type": "object",
-        "properties": {
-          "bearerToken": {
-            "title": "Bearer Token",
-            "description": "Bearer token for authentication",
-            "type": "string",
-            "format": "password"
-          }
-        },
-        "additionalProperties": false,
-        "required": ["bearerToken"]
-      }
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/thoughtSpotConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThoughtSpotConnection",
+  "description": "ThoughtSpot Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection",
+  "definitions": {
+    "thoughtSpotType": {
+      "description": "ThoughtSpot service type",
+      "type": "string",
+      "enum": ["ThoughtSpot"],
+      "default": "ThoughtSpot"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/thoughtSpotType",
+      "default": "ThoughtSpot"
     },
-    "properties": {
-      "type": {
-        "title": "Service Type",
-        "description": "Service Type",
-        "$ref": "#/definitions/thoughtSpotType",
-        "default": "ThoughtSpot"
-      },
-      "hostPort": {
-        "expose": true,
-        "title": "Host and Port",
-        "description": "ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud",
-        "type": "string",
-        "format": "uri"
-      },
-      "authentication": {
-        "title": "Authentication",
-        "description": "ThoughtSpot authentication configuration",
-        "oneOf": [
-          {
-            "$ref": "#/definitions/basicAuthentication"
-          },
-          {
-            "$ref": "#/definitions/apiTokenAuthentication"
-          },
-          {
-            "$ref": "#/definitions/bearerTokenAuthentication"
-          }
-        ]
-      },
-      "apiVersion": {
-        "title": "API Version",
-        "description": "ThoughtSpot API version to use",
-        "type": "string",
-        "enum": ["v1", "v2"],
-        "default": "v2"
-      },
-      "orgId": {
-        "title": "Organization ID",
-        "description": "Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud only.",
-        "type": "string",
-        "default": null
-      },
-      "supportsMetadataExtraction": {
-        "title": "Supports Metadata Extraction",
-        "description": "Supports Metadata Extraction.",
-        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-      }
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud",
+      "type": "string",
+      "format": "uri"
     },
-    "additionalProperties": false,
-    "required": ["hostPort", "authentication"]
-  }
+    "authentication": {
+      "title": "Authentication",
+      "description": "ThoughtSpot authentication configuration",
+      "oneOf": [
+        {
+          "$ref": "../../../../security/credentials/basicAuth.json"
+        },
+        {
+          "$ref": "../../../../security/credentials/apiAccessTokenAuth.json"
+        }
+      ]
+    },
+    "apiVersion": {
+      "title": "API Version",
+      "description": "ThoughtSpot API version to use",
+      "type": "string",
+      "enum": ["v1", "v2"],
+      "default": "v2"
+    },
+    "orgId": {
+      "title": "Organization ID",
+      "description": "Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud only.",
+      "type": "string",
+      "default": null
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "authentication"]
+}

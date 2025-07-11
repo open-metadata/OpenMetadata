@@ -520,29 +520,23 @@ export interface AuthenticationTypeForTableau {
 /**
  * ThoughtSpot authentication configuration
  *
- * Username and password authentication
+ * Basic Auth Credentials
  *
- * API Token authentication
- *
- * Bearer token authentication for custom authentication flows
+ * API Access Token Auth Credentials
  */
 export interface Authentication {
     /**
-     * Password for ThoughtSpot
+     * Password to access the service.
      */
     password?: string;
     /**
-     * Username for ThoughtSpot
+     * Username to access the service.
      */
     username?: string;
     /**
-     * ThoughtSpot API Token for authentication
+     * Access Token for the API
      */
-    apiToken?: string;
-    /**
-     * Bearer token for authentication
-     */
-    bearerToken?: string;
+    accessToken?: string;
 }
 
 /**
