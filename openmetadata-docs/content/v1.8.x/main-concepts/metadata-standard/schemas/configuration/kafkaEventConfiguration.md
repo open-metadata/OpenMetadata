@@ -1,6 +1,6 @@
 ---
 title: kafkaEventConfiguration
-description: Get started with Collate's kafkaeventconfiguration. Setup instructions, features, and configuration details inside.
+description: Get started with kafkaeventconfiguration. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/configuration/kafkaeventconfiguration
 ---
 

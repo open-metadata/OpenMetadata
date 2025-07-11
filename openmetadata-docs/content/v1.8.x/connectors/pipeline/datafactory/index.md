@@ -1,6 +1,6 @@
 ---
-title: Datafactory | Collate Docs
-description: Get started with Collate's datafactory. Setup instructions, features, and configuration details inside.
+title: Datafactory |Official Documentation
+description: Get started with datafactory. Setup instructions, features, and configuration details inside.
 slug: /connectors/pipeline/datafactory
 collate: true
 ---

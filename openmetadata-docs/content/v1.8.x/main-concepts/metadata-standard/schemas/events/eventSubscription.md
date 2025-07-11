@@ -1,6 +1,6 @@
 ---
 title: eventSubscription | OpenMetadata Event Subscription
-description: Get started with Collate's eventsubscription. Setup instructions, features, and configuration details inside.
+description: Get started with eventsubscription. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/events/eventsubscription
 ---
 
