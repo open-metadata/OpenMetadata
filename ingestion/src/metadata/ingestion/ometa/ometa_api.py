@@ -57,7 +57,7 @@ from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
-from metadata.ingestion.ometa.models import EntityList
+from metadata.ingestion.ometa.models import EntityList, EntityResponse
 from metadata.ingestion.ometa.routes import ROUTES
 from metadata.ingestion.ometa.utils import get_entity_type, model_str, quote
 from metadata.utils.logger import ometa_logger
@@ -448,7 +448,6 @@ class OpenMetadata(
                     f"Got an empty response when trying to GET from {self.get_suffix(entity)}/{path}{fields_str}"
                 )
             
-            from metadata.ingestion.ometa.models import EntityResponse
             return EntityResponse(
                 entity=entity(**resp["data"]),
                 etag=resp.get("etag")
