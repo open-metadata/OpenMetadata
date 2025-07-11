@@ -54,14 +54,22 @@ public abstract class ServiceResourceTest<T extends EntityInterface, K extends C
         domainTest
             .createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS)
             .getFullyQualifiedName();
-    T s1 =
-        createEntity(createRequest(test, 1).withDomainsList(List.of(domain1)), ADMIN_AUTH_HEADERS);
-    T s2 =
-        createEntity(createRequest(test, 2).withDomainsList(List.of(domain1)), ADMIN_AUTH_HEADERS);
-    T s3 =
-        createEntity(createRequest(test, 3).withDomainsList(List.of(domain2)), ADMIN_AUTH_HEADERS);
-    T s4 =
-        createEntity(createRequest(test, 4).withDomainsList(List.of(domain2)), ADMIN_AUTH_HEADERS);
+
+    K c1 = createRequest(test, 1);
+    c1.setDomains(List.of(domain1, domain2));
+    T s1 = createEntity(c1, ADMIN_AUTH_HEADERS);
+
+    K c2 = createRequest(test, 2);
+    c2.setDomains(List.of(domain1));
+    T s2 = createEntity(c2, ADMIN_AUTH_HEADERS);
+
+    K c3 = createRequest(test, 3);
+    c3.setDomains(List.of(domain2));
+    T s3 = createEntity(c3, ADMIN_AUTH_HEADERS);
+
+    K c4 = createRequest(test, 4);
+    c4.setDomains(List.of(domain2));
+    T s4 = createEntity(c4, ADMIN_AUTH_HEADERS);
 
     Map<String, String> params = new HashMap<>();
     params.put("domain", domain1);
@@ -72,7 +80,7 @@ public abstract class ServiceResourceTest<T extends EntityInterface, K extends C
 
     params.put("domain", domain2);
     list = listEntities(params, ADMIN_AUTH_HEADERS).getData();
-    assertEquals(2, list.size());
+    assertEquals(3, list.size()); // appears in c1, c3 and c4
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(s3.getName())));
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(s4.getName())));
   }

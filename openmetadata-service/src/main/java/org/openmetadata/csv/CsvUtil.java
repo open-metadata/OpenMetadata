@@ -304,7 +304,7 @@ public final class CsvUtil {
         nullOrEmpty(domains)
             ? null
             : domains.stream()
-                .map(EntityReference::getName)
+                .map(EntityReference::getFullyQualifiedName)
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
   }
 

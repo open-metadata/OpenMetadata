@@ -210,9 +210,9 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
 
     // Create subdomain with no owners and experts
     CreateDomain subDomainReq =
-        domainResourceTest
-            .createRequestWithoutOwnersExperts(getEntityName(test, 2))
-            .withDomainsList(List.of(parentDomain.getFullyQualifiedName()));
+        domainResourceTest.createRequestWithoutOwnersExperts(getEntityName(test, 2));
+    subDomainReq.setDomains(List.of(parentDomain.getFullyQualifiedName()));
+
     Domain subDomain = domainResourceTest.createEntity(subDomainReq, ADMIN_AUTH_HEADERS);
     subDomain = domainResourceTest.getEntity(subDomain.getId(), "*", ADMIN_AUTH_HEADERS);
 

@@ -62,6 +62,8 @@ public interface CreateEntity {
 
   default void setOwners(List<EntityReference> owners) {}
 
+  default void setDomains(List<String> domains) {}
+
   default void setTags(List<TagLabel> tags) {
     /* no-op implementation to be overridden */
   }
@@ -69,11 +71,6 @@ public interface CreateEntity {
   default void setReviewers(List<EntityReference> reviewers) {}
 
   default <K extends CreateEntity> K withExtension(Object extension) {
-    return (K) this;
-  }
-
-  // TODO: IS THIS OK?
-  default <K extends CreateEntity> K withDomainsList(List<String> domains) {
     return (K) this;
   }
 
