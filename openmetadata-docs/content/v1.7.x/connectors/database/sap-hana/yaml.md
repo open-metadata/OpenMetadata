@@ -1,5 +1,6 @@
 ---
 title: Run the SAP HANA Connector Externally
+description: Configure SAP HANA database connector in OpenMetadata using YAML. Step-by-step setup guide with configuration examples and troubleshooting tips.
 slug: /connectors/database/sap-hana/yaml
 ---
 
