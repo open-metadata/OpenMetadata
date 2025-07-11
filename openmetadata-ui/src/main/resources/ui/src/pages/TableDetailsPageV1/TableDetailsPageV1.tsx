@@ -56,6 +56,7 @@ import {
   Suggestion,
   SuggestionType,
 } from '../../generated/entity/feed/suggestion';
+import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { TestSummary } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -115,6 +116,8 @@ const TableDetailsPageV1: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const USERId = currentUser?.id ?? '';
+  const { getPrioritizedPermission, getEntityPermissionByFqn } =
+    usePermissionProvider();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -173,12 +176,18 @@ const TableDetailsPageV1: React.FC = () => {
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
     () => ({
-      viewUsagePermission:
-        tablePermissions.ViewAll || tablePermissions.ViewUsage,
-      viewTestCasePermission:
-        tablePermissions.ViewAll || tablePermissions.ViewTests,
+      viewUsagePermission: getPrioritizedPermission(
+        tablePermissions,
+        Operation.ViewUsage,
+        Operation.ViewAll
+      ),
+      viewTestCasePermission: getPrioritizedPermission(
+        tablePermissions,
+        Operation.ViewTests,
+        Operation.ViewAll
+      ),
     }),
-    [tablePermissions]
+    [tablePermissions, getPrioritizedPermission]
   );
 
   const isViewTableType = useMemo(
@@ -316,8 +325,6 @@ const TableDetailsPageV1: React.FC = () => {
       }>;
     };
   }, [tableDetails, tableDetails?.tags]);
-
-  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const fetchResourcePermission = useCallback(
     async (tableFqn: string) => {
@@ -466,32 +473,65 @@ const TableDetailsPageV1: React.FC = () => {
   } = useMemo(
     () => ({
       editTagsPermission:
-        (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
+        getPrioritizedPermission(
+          tablePermissions,
+          Operation.EditTags,
+          Operation.EditAll
+        ) && !deleted,
       editGlossaryTermsPermission:
-        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedPermission(
+          tablePermissions,
+          Operation.EditGlossaryTerms,
+          Operation.EditAll
+        ) && !deleted,
       editDescriptionPermission:
-        (tablePermissions.EditDescription || tablePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedPermission(
+          tablePermissions,
+          Operation.EditDescription,
+          Operation.EditAll
+        ) && !deleted,
       editCustomAttributePermission:
-        (tablePermissions.EditAll || tablePermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedPermission(
+          tablePermissions,
+          Operation.EditCustomFields,
+          Operation.EditAll
+        ) && !deleted,
       editAllPermission: tablePermissions.EditAll && !deleted,
       editLineagePermission:
-        (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewSampleData,
-      viewQueriesPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewQueries,
+        getPrioritizedPermission(
+          tablePermissions,
+          Operation.EditLineage,
+          Operation.EditAll
+        ) && !deleted,
+      viewSampleDataPermission: getPrioritizedPermission(
+        tablePermissions,
+        Operation.ViewSampleData,
+        Operation.ViewAll
+      ),
+      viewQueriesPermission: getPrioritizedPermission(
+        tablePermissions,
+        Operation.ViewQueries,
+        Operation.ViewAll
+      ),
       viewProfilerPermission:
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewDataProfile ||
-        tablePermissions.ViewTests,
+        getPrioritizedPermission(
+          tablePermissions,
+          Operation.ViewDataProfile,
+          Operation.ViewAll
+        ) ||
+        getPrioritizedPermission(
+          tablePermissions,
+          Operation.ViewTests,
+          Operation.ViewAll
+        ),
       viewAllPermission: tablePermissions.ViewAll,
-      viewBasicPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewBasic,
+      viewBasicPermission: getPrioritizedPermission(
+        tablePermissions,
+        Operation.ViewBasic,
+        Operation.ViewAll
+      ),
     }),
-    [tablePermissions, deleted]
+    [tablePermissions, deleted, getPrioritizedPermission]
   );
 
   const tabs = useMemo(() => {

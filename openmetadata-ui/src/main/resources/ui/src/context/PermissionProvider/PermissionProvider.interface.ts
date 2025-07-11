@@ -98,6 +98,11 @@ export interface PermissionContextType {
   getResourcePermission: (
     resource: ResourceEntity
   ) => Promise<OperationPermission>;
+  getPrioritizedPermission: (
+    permissions: OperationPermission,
+    fieldPermission: Operation,
+    fallbackPermission: Operation
+  ) => boolean;
 }
 
 export interface EntityPermissionMap {

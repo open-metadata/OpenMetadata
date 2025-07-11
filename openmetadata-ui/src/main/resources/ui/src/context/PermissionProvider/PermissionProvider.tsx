@@ -12,7 +12,7 @@
  */
 
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty } from 'lodash';
+import { has, isEmpty } from 'lodash';
 import {
   createContext,
   FC,
@@ -25,6 +25,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/constants';
+import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
@@ -40,6 +41,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { setUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   EntityPermissionMap,
+  OperationPermission,
   PermissionContextType,
   PermissionProviderProps,
   ResourceEntity,
@@ -166,6 +168,22 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     setResourcesPermission({} as UIPermission);
   }, [setEntitiesPermission, setPermissions, setResourcesPermission]);
 
+  // Generic function to prioritize field-level permissions over ViewAll/EditAll
+  const getPrioritizedPermission = useCallback(
+    (
+      permissions: OperationPermission,
+      fieldPermission: Operation,
+      fallbackPermission: Operation
+    ): boolean => {
+      if (has(permissions, fieldPermission)) {
+        return permissions[fieldPermission];
+      }
+
+      return permissions[fallbackPermission];
+    },
+    []
+  );
+
   useEffect(() => {
     /**
      * Only fetch permissions if current user is present
@@ -186,6 +204,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       getEntityPermission: fetchEntityPermission,
       getResourcePermission: fetchResourcePermission,
       getEntityPermissionByFqn: fetchEntityPermissionByFqn,
+      getPrioritizedPermission,
     }),
     [
       permissions,
