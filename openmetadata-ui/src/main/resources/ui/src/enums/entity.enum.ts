@@ -121,7 +121,6 @@ export enum TabSpecificField {
   SCHEMA_DEFINITION = 'schemaDefinition',
   FIELDS = 'fields',
   VOTES = 'votes',
-  DOMAIN = 'domain',
   DOMAINS = 'domains',
   DATA_PRODUCTS = 'dataProducts',
   REVIEWERS = 'reviewers',
