@@ -166,6 +166,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         showSearch
         className="w-76 lineage-node-searchbox"
         data-testid="node-search-box"
+        filterOption={false}
         open={isOpen}
         options={nodeSelectOptions}
         placeholder={`${t('label.search-for-type', {
