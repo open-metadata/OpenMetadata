@@ -1328,6 +1328,7 @@
     "selected-lowercase": "selecionado",
     "selected-user": "Utilizador selecionado: {{username}}",
     "send": "Enviar",
+    "send-login-link": "Enviar link de login",
     "send-now": "Enviar agora",
     "send-to": "Enviar para",
     "sender-email": "E-mail do Remetente",

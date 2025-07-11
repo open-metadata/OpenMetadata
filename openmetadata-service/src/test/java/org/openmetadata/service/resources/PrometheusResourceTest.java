@@ -100,7 +100,7 @@ class PrometheusResourceTest extends OpenMetadataApplicationTest {
 
   private void verifySpecificMetrics(String response) {
     assertTrue(
-        response.matches("(?s).*jvm_memory_used_bytes\\{area=\"heap\".*"),
+        response.contains("jvm_memory_used_bytes{") && response.contains("area=\"heap\""),
         "JVM memory metrics should have area labels");
     boolean hasGcLabels =
         response.matches("(?s).*jvm_gc_pause_seconds\\{action=\".*")
@@ -108,7 +108,7 @@ class PrometheusResourceTest extends OpenMetadataApplicationTest {
             || response.matches("(?s).*jvm_gc_live_data_size_bytes.*");
     assertTrue(hasGcLabels, "Should have some GC metrics with labels");
     assertTrue(
-        response.matches("(?s).*system_cpu_count\\s+[0-9.]+.*"),
+        response.matches("(?s).*system_cpu_count\\{[^}]*\\}\\s+[0-9.]+.*"),
         "CPU count should have a numeric value");
     boolean hasJdbiHistogram =
         response.contains("jdbi_requests_seconds_bucket")

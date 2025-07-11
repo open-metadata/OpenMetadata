@@ -1328,6 +1328,7 @@
     "selected-lowercase": "выбрано",
     "selected-user": "Выбранный пользователь: {{username}}",
     "send": "Отправить",
+    "send-login-link": "Отправить ссылку для входа",
     "send-now": "Отправить сейчас",
     "send-to": "Отправить",
     "sender-email": "Email отправителя",

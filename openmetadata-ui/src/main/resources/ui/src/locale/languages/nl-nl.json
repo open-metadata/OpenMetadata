@@ -1328,6 +1328,7 @@
     "selected-lowercase": "geselecteerd",
     "selected-user": "Geselecteerde gebruiker: {{username}}",
     "send": "Verzenden",
+    "send-login-link": "Login-link verzenden",
     "send-now": "Nu verzenden",
     "send-to": "Verzenden naar",
     "sender-email": "Afzender E-mail",
