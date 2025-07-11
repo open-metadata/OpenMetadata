@@ -37,6 +37,7 @@ import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
 import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
 import {
+  MAX_NAME_LENGTH,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
@@ -107,27 +108,6 @@ import {
 } from './TestCaseFormV1.interface';
 import './TestCaseFormV1.less';
 
-// =============================================
-// CONSTANTS
-// =============================================
-const MAX_TEST_NAME_LENGTH = 256;
-const RANDOM_STRING_LENGTH = 4;
-
-const TEST_LEVEL_OPTIONS: SelectionOption[] = [
-  {
-    value: TestLevel.TABLE,
-    label: 'Table Level',
-    description: 'Test applied on table',
-    icon: <TableIcon />,
-  },
-  {
-    value: TestLevel.COLUMN,
-    label: 'Column Level',
-    description: 'Test applied on column',
-    icon: <ColumnIcon />,
-  },
-];
-
 const TABLE_SEARCH_FIELDS: (keyof TableSearchSource)[] = [
   'name',
   'fullyQualifiedName',
@@ -166,6 +146,25 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const { config } = useLimitStore();
   const [form] = useForm<FormValues>();
   const { isAirflowAvailable } = useAirflowStatus();
+
+  const TEST_LEVEL_OPTIONS: SelectionOption[] = [
+    {
+      value: TestLevel.TABLE,
+      label: t('label.table-level'),
+      description: t('label.test-applied-on-entity', {
+        entity: t('label.table-lowercase'),
+      }),
+      icon: <TableIcon />,
+    },
+    {
+      value: TestLevel.COLUMN,
+      label: t('label.column-level'),
+      description: t('label.test-applied-on-entity', {
+        entity: t('label.column-lowercase'),
+      }),
+      icon: <ColumnIcon />,
+    },
+  ];
 
   // =============================================
   // HOOKS - State (grouped by functionality)
@@ -310,7 +309,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     }
 
     const randomString = cryptoRandomString({
-      length: RANDOM_STRING_LENGTH,
+      length: 4,
       type: 'alphanumeric',
     });
 
@@ -329,7 +328,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     let finalName = snakeCase(dynamicName);
 
     // Check length limit
-    if (finalName.length > MAX_TEST_NAME_LENGTH) {
+    if (finalName.length > MAX_NAME_LENGTH) {
       // Fallback to testType_randomString if too long
       finalName = snakeCase(`${testType}_${randomString}`);
     }
@@ -359,10 +358,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             message: t('message.entity-name-validation'),
           },
           {
-            max: 256,
+            max: MAX_NAME_LENGTH,
             message: t('message.entity-maximum-size', {
               entity: t('label.name'),
-              max: 256,
+              max: MAX_NAME_LENGTH,
             }),
           },
           {
@@ -445,6 +444,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         props: { 'data-testid': 'compute-passed-failed-row-count' },
         id: 'root/computePassedFailedRowCount',
         formItemLayout: FormItemLayout.HORIZONTAL,
+        newLook: true,
       },
     ],
     []
@@ -1021,36 +1021,65 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         onValuesChange={handleValuesChange}>
         <Card className="form-card-section" data-testid="select-table-card">
           <Form.Item
-            label="Select on which element your test should be performed"
+            label={t('message.select-test-level')}
             name="testLevel"
-            rules={[{ required: true, message: 'Please select test level' }]}>
+            rules={[
+              {
+                required: true,
+                message: t('label.please-select-entity', {
+                  entity: t('label.test-level-lowercase'),
+                }),
+              },
+            ]}>
             <SelectionCardGroup options={TEST_LEVEL_OPTIONS} />
           </Form.Item>
           <Form.Item
-            label="Select Table"
+            label={t('label.select-entity', {
+              entity: t('label.table-lowercase'),
+            })}
             name="selectedTable"
-            rules={[{ required: true, message: 'Please select a table' }]}>
+            rules={[
+              {
+                required: true,
+                message: t('label.please-select-entity', {
+                  entity: t('label.table-lowercase'),
+                }),
+              },
+            ]}>
             <AsyncSelect
               allowClear
               enableInfiniteScroll
               showSearch
               api={fetchTables}
-              placeholder="Select a table"
+              placeholder={t('label.select-entity', {
+                entity: t('label.table-lowercase'),
+              })}
             />
           </Form.Item>
 
           {selectedTestLevel === TestLevel.COLUMN && selectedTable && (
             <Form.Item
-              label="Select Column"
+              label={t('label.select-entity', {
+                entity: t('label.column-lowercase'),
+              })}
               name="selectedColumn"
-              rules={[{ required: true, message: 'Please select a column' }]}>
+              rules={[
+                {
+                  required: true,
+                  message: t('label.please-select-entity', {
+                    entity: t('label.column-lowercase'),
+                  }),
+                },
+              ]}>
               <Select
                 allowClear
                 showSearch
                 filterOption={filterSelectOptions}
                 loading={!selectedTableData}
                 options={columnOptions}
-                placeholder="Select a column"
+                placeholder={t('label.select-entity', {
+                  entity: t('label.column-lowercase'),
+                })}
               />
             </Form.Item>
           )}
@@ -1058,22 +1087,30 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
 
         <Card className="form-card-section" data-testid="test-details-card">
           {generateFormFields(testDetailsFormFields)}
-
-          {isComputeRowCountFieldVisible &&
-            generateFormFields(computeRowCountField)}
         </Card>
 
         <Card className="form-card-section" data-testid="test-type-card">
           <Form.Item
-            label="Type"
+            label={t('label.select-entity', {
+              entity: t('label.test-type-lowercase'),
+            })}
             name="testTypeId"
-            rules={[{ required: true, message: 'Please select a test type' }]}
+            rules={[
+              {
+                required: true,
+                message: t('label.please-select-entity', {
+                  entity: t('label.test-type-lowercase'),
+                }),
+              },
+            ]}
             tooltip={selectedTestDefinition?.description}>
             <Select
               showSearch
               filterOption={filterSelectOptions}
               options={testTypeOptions}
-              placeholder="Select a test type"
+              placeholder={t('label.select-entity', {
+                entity: t('label.test-type-lowercase'),
+              })}
               popupClassName="no-wrap-option"
               onChange={handleTestDefinitionChange}
             />
@@ -1097,6 +1134,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               getFieldValue('useDynamicAssertion') ? null : generateParamsField
             }
           </Form.Item>
+
+          {isComputeRowCountFieldVisible &&
+            generateFormFields(computeRowCountField)}
         </Card>
 
         {shouldShowScheduler && (
@@ -1136,11 +1176,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 {!selectAllTestCases && isSelectAllTestCasesEnabled && (
                   <Row className="m-b-md" gutter={[16, 16]}>
                     <Col span={12}>
-                      <div className="d-flex gap-2">
+                      <div className="d-flex gap-2 form-switch-container">
                         <Form.Item
-                          className="form-switch-container"
+                          className="m-b-0"
                           name="selectAllTestCases"
-                          style={{ marginBottom: 0 }}
                           valuePropName="checked">
                           <Switch disabled={!isSelectAllTestCasesEnabled} />
                         </Form.Item>
@@ -1191,9 +1230,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 <div className="m-t-md">
                   <Row gutter={[24, 16]}>
                     <Col span={12}>
-                      <div className="d-flex gap-2">
+                      <div className="d-flex gap-2 form-switch-container">
                         <Form.Item
-                          className="form-switch-container m-b-0"
+                          className="m-b-0"
                           name="enableDebugLog"
                           valuePropName="checked">
                           <Switch />
@@ -1204,9 +1243,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                       </div>
                     </Col>
                     <Col span={12}>
-                      <div className="d-flex gap-2">
+                      <div className="d-flex gap-2 form-switch-container">
                         <Form.Item
-                          className="form-switch-container m-b-0"
+                          className="m-b-0"
                           name="raiseOnError"
                           valuePropName="checked">
                           <Switch />

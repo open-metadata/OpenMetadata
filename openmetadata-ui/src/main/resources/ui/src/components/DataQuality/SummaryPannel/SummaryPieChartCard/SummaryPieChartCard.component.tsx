@@ -25,14 +25,20 @@ const SummaryPieChartCard = ({
   isLoading = false,
   showLegends = false,
   paddingAngle = 0,
+  iconData,
 }: SummaryPieChartCardProps) => {
   return (
     <Card className="pie-chart-summary-panel h-full" loading={isLoading}>
       <div className="d-flex justify-between items-center">
         <div>
-          <Typography.Paragraph className="summary-title">
-            {title}
-          </Typography.Paragraph>
+          <div className="d-flex items-center gap-2">
+            <div className={classNames('icon-container', iconData?.className)}>
+              {iconData?.icon}
+            </div>
+            <Typography.Paragraph className="summary-title">
+              {title}
+            </Typography.Paragraph>
+          </div>
 
           <Typography.Paragraph className="summary-value m-b-0">
             {formatNumberWithComma(value)}

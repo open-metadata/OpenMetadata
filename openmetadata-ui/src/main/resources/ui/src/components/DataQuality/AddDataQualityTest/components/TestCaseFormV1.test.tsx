@@ -25,6 +25,7 @@ import {
 } from '../../../../generated/type/tagLabel';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
+import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import {
   createTestCase,
   getListTestDefinitions,
@@ -249,6 +250,33 @@ jest.mock('react-i18next', () => ({
       return key;
     },
   })),
+  Trans: jest.fn(({ children, i18nKey }) => {
+    // Simple mock for Trans component that renders children
+    if (typeof children === 'string') {
+      return children;
+    }
+
+    return children || i18nKey;
+  }),
+}));
+
+// Mock AlertBar component
+jest.mock('../../../AlertBar/AlertBar', () => ({
+  __esModule: true,
+  default: ({ message }: { message: string }) => (
+    <div role="alert">{message}</div>
+  ),
+}));
+
+// Mock ToastUtils and getIconAndClassName function
+jest.mock('../../../../utils/ToastUtils', () => ({
+  getIconAndClassName: jest.fn().mockReturnValue({
+    icon: null,
+    className: 'error',
+    type: 'error',
+  }),
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 describe('TestCaseFormV1 Component', () => {
@@ -279,7 +307,7 @@ describe('TestCaseFormV1 Component', () => {
 
       expect(document.querySelector('.ant-drawer')).toBeInTheDocument();
       expect(
-        document.querySelector('.custom-gradient-drawer')
+        document.querySelector('.custom-drawer-style')
       ).toBeInTheDocument();
       expect(document.querySelector('.drawer-mode')).toBeInTheDocument();
     });
@@ -289,11 +317,7 @@ describe('TestCaseFormV1 Component', () => {
 
       await waitFor(() => {
         expect(
-          document.querySelector('.select-table-card')
-        ).toBeInTheDocument();
-        expect(document.querySelector('.test-type-card')).toBeInTheDocument();
-        expect(
-          document.querySelector('.test-details-card')
+          document.querySelector('.form-card-section')
         ).toBeInTheDocument();
       });
     });
@@ -504,9 +528,20 @@ describe('TestCaseFormV1 Component', () => {
 
   describe('Scheduler Section', () => {
     it('should show scheduler section when conditions are met', async () => {
+      // Ensure getIngestionPipelines returns 0 pipelines for canCreatePipeline to be true
+
+      (getIngestionPipelines as jest.Mock).mockResolvedValue({
+        paging: { total: 0 },
+      });
+
       render(<TestCaseFormV1 {...mockProps} />);
 
-      // Select table first
+      // Wait for form to initialize
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      // Select table first - use the AsyncSelect mock properly
       const tableSelect = await screen.findByTestId('async-select');
       await act(async () => {
         fireEvent.change(tableSelect, {
@@ -514,9 +549,17 @@ describe('TestCaseFormV1 Component', () => {
         });
       });
 
-      await waitFor(() => {
-        expect(document.querySelector('.scheduler-card')).toBeInTheDocument();
-      });
+      // Wait for any async operations to complete
+      await waitFor(
+        () => {
+          const schedulerCard = document.querySelector(
+            '[data-testid="scheduler-card"]'
+          );
+
+          expect(schedulerCard).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
     });
 
     it('should render pipeline name field in scheduler', async () => {
@@ -550,7 +593,18 @@ describe('TestCaseFormV1 Component', () => {
     });
 
     it('should render debug log and raise on error switches', async () => {
+      // Ensure getIngestionPipelines returns 0 pipelines for canCreatePipeline to be true
+
+      (getIngestionPipelines as jest.Mock).mockResolvedValue({
+        paging: { total: 0 },
+      });
+
       render(<TestCaseFormV1 {...mockProps} />);
+
+      // Wait for form to initialize
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
 
       // Select table to enable scheduler
       const tableSelect = await screen.findByTestId('async-select');
@@ -560,8 +614,23 @@ describe('TestCaseFormV1 Component', () => {
         });
       });
 
+      // Wait for scheduler card to appear
+      await waitFor(
+        () => {
+          const schedulerCard = document.querySelector(
+            '[data-testid="scheduler-card"]'
+          );
+
+          expect(schedulerCard).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Now check for the debug log and raise on error switches
+      // These are rendered as Typography.Paragraph elements, not labels
       await waitFor(() => {
-        expect(document.querySelector('.scheduler-card')).toBeInTheDocument();
+        expect(screen.getByText('label.enable-debug-log')).toBeInTheDocument();
+        expect(screen.getByText('label.raise-on-error')).toBeInTheDocument();
       });
     });
   });

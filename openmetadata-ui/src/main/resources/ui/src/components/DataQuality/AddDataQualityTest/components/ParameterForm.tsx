@@ -287,10 +287,8 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     };
 
     return data.dataType === TestDataType.Boolean ? (
-      <div className="d-flex gap-2">
-        <Form.Item
-          {...commonFormItemProps}
-          className="form-switch-container m-b-0">
+      <div className="d-flex gap-2 form-switch-container">
+        <Form.Item {...commonFormItemProps} className="m-b-0">
           {Field}
         </Form.Item>
         <Typography.Text className="font-medium">{label}</Typography.Text>

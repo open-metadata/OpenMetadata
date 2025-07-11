@@ -32,4 +32,8 @@ export interface SummaryPieChartCardProps {
   isLoading?: boolean;
   showLegends?: boolean;
   paddingAngle?: number;
+  iconData?: {
+    icon: React.ReactNode;
+    className?: string;
+  };
 }

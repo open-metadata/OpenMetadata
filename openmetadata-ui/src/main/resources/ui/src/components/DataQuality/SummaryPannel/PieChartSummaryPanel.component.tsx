@@ -13,6 +13,9 @@
 import { Col, Row } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as AllTestsIcon } from '../../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as DataAssetsCoverageIcon } from '../../../assets/svg/ic-data-assets-coverage.svg';
+import { ReactComponent as HealthCheckIcon } from '../../../assets/svg/ic-green-heart-border.svg';
 import {
   BLUE_2,
   GREEN_3,
@@ -94,6 +97,10 @@ const PieChartSummaryPanel = ({
         <SummaryPieChartCard
           showLegends
           chartData={testData}
+          iconData={{
+            icon: <AllTestsIcon />,
+            className: 'all-tests-icon',
+          }}
           isLoading={isLoading}
           paddingAngle={2}
           percentage={percentages.testSuccess}
@@ -109,6 +116,10 @@ const PieChartSummaryPanel = ({
           <Col md={8} sm={24} xs={24}>
             <SummaryPieChartCard
               chartData={healthyData}
+              iconData={{
+                icon: <HealthCheckIcon />,
+                className: 'health-check-icon',
+              }}
               isLoading={isLoading}
               percentage={percentages.healthy}
               title={t('label.healthy-data-asset-plural')}
@@ -119,6 +130,10 @@ const PieChartSummaryPanel = ({
           <Col md={8} sm={24} xs={24}>
             <SummaryPieChartCard
               chartData={coverageData}
+              iconData={{
+                icon: <DataAssetsCoverageIcon />,
+                className: 'data-assets-coverage-icon',
+              }}
               isLoading={isLoading}
               percentage={percentages.coverage}
               title={t('label.data-asset-plural-coverage')}

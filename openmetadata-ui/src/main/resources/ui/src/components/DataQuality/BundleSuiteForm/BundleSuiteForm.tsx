@@ -460,9 +460,9 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
               <div className="m-t-md">
                 <Row gutter={[24, 16]}>
                   <Col span={12}>
-                    <div className="d-flex gap-2">
+                    <div className="d-flex gap-2 form-switch-container">
                       <Form.Item
-                        className="form-switch-container m-b-0"
+                        className="m-b-0"
                         name="enableDebugLog"
                         valuePropName="checked">
                         <Switch />
@@ -473,9 +473,9 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
                     </div>
                   </Col>
                   <Col span={12}>
-                    <div className="d-flex gap-2">
+                    <div className="d-flex gap-2 form-switch-container">
                       <Form.Item
-                        className="form-switch-container m-b-0"
+                        className="m-b-0"
                         name="raiseOnError"
                         valuePropName="checked">
                         <Switch />

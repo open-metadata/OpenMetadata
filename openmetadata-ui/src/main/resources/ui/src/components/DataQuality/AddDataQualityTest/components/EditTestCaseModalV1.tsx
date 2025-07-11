@@ -151,6 +151,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
         },
         id: 'root/computePassedFailedRowCount',
         formItemLayout: FormItemLayout.HORIZONTAL,
+        newLook: true,
       },
     ],
     [t]
@@ -461,9 +462,6 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
                 </Form.Item>
 
                 {generateFormFields(formFields)}
-
-                {isComputeRowCountFieldVisible &&
-                  generateFormFields(computeRowCountField)}
               </Card>
             )}
 
@@ -499,6 +497,9 @@ const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
                     getFieldValue('useDynamicAssertion') ? null : paramsField
                   }
                 </Form.Item>
+
+                {isComputeRowCountFieldVisible &&
+                  generateFormFields(computeRowCountField)}
               </Card>
             )}
 

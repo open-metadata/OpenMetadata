@@ -56,6 +56,7 @@ export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
+export const MAX_NAME_LENGTH = 256;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;

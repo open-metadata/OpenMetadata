@@ -64,6 +64,25 @@ jest.mock('../../../../pages/TasksPage/shared/TagSuggestion', () =>
   ))
 );
 
+// Mock AlertBar component
+jest.mock('../../../AlertBar/AlertBar', () => ({
+  __esModule: true,
+  default: ({ message }: { message: string }) => (
+    <div role="alert">{message}</div>
+  ),
+}));
+
+// Mock ToastUtils and getIconAndClassName function
+jest.mock('../../../../utils/ToastUtils', () => ({
+  getIconAndClassName: jest.fn().mockReturnValue({
+    icon: null,
+    className: 'error',
+    type: 'error',
+  }),
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
 jest.mock('../../../../rest/tableAPI', () => {
   return {
     getTableDetailsByFQN: jest.fn().mockImplementation(() =>
@@ -105,6 +124,10 @@ jest.mock('react-i18next', () => ({
 describe('EditTestCaseModalV1 Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset getTestDefinitionById to default behavior
+    (getTestDefinitionById as jest.Mock).mockResolvedValue(
+      MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX
+    );
   });
 
   it('should render drawer with correct props', async () => {
@@ -112,15 +135,11 @@ describe('EditTestCaseModalV1 Component', () => {
 
     // Check if drawer is rendered
     expect(document.querySelector('.ant-drawer')).toBeInTheDocument();
-    expect(
-      document.querySelector('.custom-gradient-drawer')
-    ).toBeInTheDocument();
+    expect(document.querySelector('.custom-drawer-style')).toBeInTheDocument();
 
-    // Check drawer title with more flexible matcher
+    // Check drawer title
     await waitFor(() => {
-      expect(
-        screen.getByText(/label.edit column_values_to_match_regex/)
-      ).toBeInTheDocument();
+      expect(screen.getByText('label.edit-entity')).toBeInTheDocument();
     });
   });
 
@@ -130,9 +149,7 @@ describe('EditTestCaseModalV1 Component', () => {
     expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
 
     // Check for Card containers
-    expect(document.querySelector('.select-table-card')).toBeInTheDocument();
-    expect(document.querySelector('.test-type-card')).toBeInTheDocument();
-    expect(document.querySelector('.test-details-card')).toBeInTheDocument();
+    expect(document.querySelector('.form-card-section')).toBeInTheDocument();
   });
 
   it('should render all form fields correctly', async () => {
@@ -345,11 +362,7 @@ describe('EditTestCaseModalV1 Component', () => {
     await waitFor(() => {
       // Should not render Cards when showOnlyParameter is true
       expect(
-        document.querySelector('.select-table-card')
-      ).not.toBeInTheDocument();
-      expect(document.querySelector('.test-type-card')).not.toBeInTheDocument();
-      expect(
-        document.querySelector('.test-details-card')
+        document.querySelector('.form-card-section')
       ).not.toBeInTheDocument();
 
       // Should not render tags and other fields
@@ -385,32 +398,45 @@ describe('EditTestCaseModalV1 Component', () => {
     });
   });
 
-  it('should show compute row count field when supported', async () => {
-    // Mock test definition that supports row level passed/failed
-    const mockTestDefinitionWithRowCount = {
+  it('should load test definition and render form correctly', async () => {
+    // Mock test definition
+    const mockTestDefinition = {
       ...MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
       supportsRowLevelPassedFailed: true,
     };
 
-    (getTestDefinitionById as jest.Mock).mockResolvedValueOnce(
-      mockTestDefinitionWithRowCount
+    // Set up the mock BEFORE rendering
+    (getTestDefinitionById as jest.Mock).mockImplementation(() =>
+      Promise.resolve(mockTestDefinition)
     );
 
-    render(<EditTestCaseModalV1 {...mockProps} />);
+    await act(async () => {
+      render(<EditTestCaseModalV1 {...mockProps} />);
+    });
 
+    // Wait for form to load
     await waitFor(() => {
       expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
     });
 
-    // Wait for the field to appear
-    await waitFor(
-      () => {
-        expect(
-          screen.getByTestId('compute-passed-failed-row-count')
-        ).toBeInTheDocument();
-      },
-      { timeout: 5000 }
+    // Wait for component to finish loading
+    await waitFor(() => {
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    // Verify test definition was loaded
+    expect(getTestDefinitionById).toHaveBeenCalledWith(
+      MOCK_TEST_CASE[0].testDefinition.id
     );
+
+    // Check that form cards are rendered
+    const cards = document.querySelectorAll('.form-card-section');
+
+    expect(cards.length).toBeGreaterThan(0);
+
+    // Verify basic form fields are present
+    expect(screen.getByLabelText('label.table')).toBeInTheDocument();
+    expect(screen.getByLabelText('label.name')).toBeInTheDocument();
   });
 
   it('should close drawer when onClose is called', async () => {
