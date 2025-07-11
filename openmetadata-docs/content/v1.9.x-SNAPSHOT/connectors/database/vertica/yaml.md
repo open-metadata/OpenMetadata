@@ -7,7 +7,7 @@ slug: /connectors/database/vertica/yaml
 name="Vertica"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
