@@ -150,6 +150,8 @@ site_menu:
     url: /deployment/security/keycloak/bare-metal
   - category: Deployment / Enable Security / Keycloak SSO / Kubernetes
     url: /deployment/security/keycloak/kubernetes
+  - category: Deployment / Enable Security / Keycloak SSO / Troubleshooting
+    url: /deployment/security/keycloak/troubleshooting
   - category: Deployment / Enable Security / Saml
     url: /deployment/security/saml
   - category: Deployment / Enable Security / Saml / AWS
