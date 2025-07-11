@@ -1334,6 +1334,7 @@
     "selected-user": "Selected user: {{username}}",
     "semantic-plural": "Semantics",
     "send": "보내기",
+    "send-login-link": "로그인 링크 전송",
     "send-now": "지금 보내기",
     "send-to": "보내기 대상",
     "sender-email": "발신자 이메일",
