@@ -39,4 +39,4 @@ public class ThoughtSpotConnectionClassConverter extends ClassConverter {
 
     return thoughtSpotConnection;
   }
-} 
+}

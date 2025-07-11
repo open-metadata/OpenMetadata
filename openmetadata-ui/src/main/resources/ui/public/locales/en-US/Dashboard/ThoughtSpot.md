@@ -16,13 +16,9 @@ ThoughtSpot supports multiple authentication methods:
 - Username and password authentication
 - The user should have appropriate permissions to read metadata from ThoughtSpot
 
-**API Token Authentication:**
-- Use ThoughtSpot API tokens for authentication
-- Generate API tokens from your ThoughtSpot instance
-
-**Bearer Token Authentication:**
-- Use bearer tokens for custom authentication flows
-- Useful for SSO or custom authentication scenarios
+**API Access Token Authentication:**
+- Use ThoughtSpot API access tokens for authentication
+- Generate API access tokens from your ThoughtSpot instance
 
 ### Step 2: API Permissions
 
@@ -64,11 +60,8 @@ Choose the authentication method for connecting to ThoughtSpot:
 - **Username**: Your ThoughtSpot username
 - **Password**: Your ThoughtSpot password
 
-**API Token Authentication:**
-- **API Token**: Your ThoughtSpot API token
-
-**Bearer Token Authentication:**
-- **Bearer Token**: Your bearer token for authentication
+**API Access Token Authentication:**
+- **Access Token**: Your ThoughtSpot API access token
 $$
 
 $$section
