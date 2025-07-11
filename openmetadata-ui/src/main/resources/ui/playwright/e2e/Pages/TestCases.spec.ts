@@ -151,7 +151,7 @@ test('Table difference test case', async ({ page }) => {
       await page
         .getByTitle(table1.entity?.columns[2].name, { exact: true })
         .click();
-      await page.getByRole('button', { name: 'Submit' }).click();
+      await page.getByRole('button', { name: 'Save' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
     });
@@ -247,7 +247,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTitle('COUNT').click();
       await page.getByPlaceholder('Enter a Threshold').clear();
       await page.getByPlaceholder('Enter a Threshold').fill('244');
-      await page.getByRole('button', { name: 'Submit' }).click();
+      await page.getByRole('button', { name: 'Save' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
     });
@@ -343,7 +343,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
       );
       await page.getByText('New table test case for').first().click();
       await page.keyboard.type(' update');
-      await page.getByRole('button', { name: 'Submit' }).click();
+      await page.getByRole('button', { name: 'Save' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
     });

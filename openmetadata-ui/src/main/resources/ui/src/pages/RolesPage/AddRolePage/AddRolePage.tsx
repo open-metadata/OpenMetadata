@@ -190,7 +190,7 @@ const AddRolePage = () => {
                     htmlType="submit"
                     loading={isSaveLoading}
                     type="primary">
-                    {t('label.submit')}
+                    {t('label.create')}
                   </Button>
                 </Space>
               </Form>

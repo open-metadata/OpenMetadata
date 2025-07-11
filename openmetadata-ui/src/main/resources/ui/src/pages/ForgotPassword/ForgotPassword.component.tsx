@@ -135,7 +135,7 @@ const ForgotPassword = () => {
                 loading={loading}
                 size="large"
                 type="primary">
-                {t('label.submit')}
+                {t('label.send-login-link')}
               </Button>
             </Col>
           </Form>

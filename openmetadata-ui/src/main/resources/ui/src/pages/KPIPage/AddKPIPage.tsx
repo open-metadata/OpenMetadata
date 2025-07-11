@@ -78,7 +78,7 @@ const AddKPIPage = () => {
       });
 
       setKpiList(response.data);
-    } catch (err) {
+    } catch {
       setKpiList([]);
     }
   };
@@ -375,7 +375,7 @@ const AddKPIPage = () => {
                   htmlType="submit"
                   loading={isCreatingKPI}
                   type="primary">
-                  {t('label.submit')}
+                  {t('label.create')}
                 </Button>
               </Space>
             </Form>

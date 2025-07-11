@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React, { forwardRef } from 'react';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import {
@@ -84,7 +85,7 @@ describe('EditTestCaseModal Component', () => {
       await screen.findByText('ParameterForm.component')
     ).toBeInTheDocument();
     expect(await screen.findByText('label.cancel')).toBeInTheDocument();
-    expect(await screen.findByText('label.submit')).toBeInTheDocument();
+    expect(await screen.findByText('label.save')).toBeInTheDocument();
   });
 
   it('table, name, test definition, should be disabled', async () => {
@@ -128,10 +129,8 @@ describe('EditTestCaseModal Component', () => {
   it('should call onUpdate function, on click of submit button', async () => {
     render(<EditTestCaseModal {...mockProps} />);
 
-    const submitBtn = await screen.findByText('label.submit');
-
     await act(async () => {
-      fireEvent.click(submitBtn);
+      userEvent.click(await screen.findByText('label.save'));
     });
 
     expect(mockProps.onUpdate).toHaveBeenCalled();
@@ -272,7 +271,7 @@ describe('EditTestCaseModal Component', () => {
     expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
 
     // Submit the form
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -361,7 +360,7 @@ describe('EditTestCaseModal Component', () => {
     expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
 
     // Submit the form
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -437,7 +436,7 @@ describe('EditTestCaseModal Component', () => {
     expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
 
     // Submit the form
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
 
     await act(async () => {
       fireEvent.click(submitBtn);

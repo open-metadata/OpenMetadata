@@ -1253,6 +1253,7 @@
     "selected-entity": "已选择{{entity}}",
     "selected-lowercase": "已选择",
     "send": "发送",
+    "send-login-link": "发送登录链接",
     "send-now": "现在发送",
     "send-to": "发送到",
     "sender-email": "发件者邮箱地址",

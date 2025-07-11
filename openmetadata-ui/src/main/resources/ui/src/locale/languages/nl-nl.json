@@ -1253,6 +1253,7 @@
     "selected-entity": "Selected {{entity}}",
     "selected-lowercase": "geselecteerd",
     "send": "Verzenden",
+    "send-login-link": "Login-link verzenden",
     "send-now": "Nu verzenden",
     "send-to": "Verzenden naar",
     "sender-email": "Afzender E-mail",

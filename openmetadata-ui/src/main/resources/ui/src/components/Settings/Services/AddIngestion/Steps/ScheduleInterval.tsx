@@ -420,7 +420,7 @@ const ScheduleInterval = <T,>({
                 htmlType="submit"
                 loading={status === LOADING_STATE.WAITING}
                 type="primary">
-                {buttonProps?.okText ?? t('label.submit')}
+                {buttonProps?.okText ?? t('label.create')}
               </Button>
             )}
           </Col>

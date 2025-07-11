@@ -831,7 +831,7 @@ export const changeTermHierarchyFromModal = async (
     .click();
   await page.getByTitle(dropElement).click();
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-  await page.getByRole('button', { name: 'Submit' }).click();
+  await page.getByRole('button', { name: 'Save' }).click();
   await saveRes;
 };
 

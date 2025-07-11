@@ -138,7 +138,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       });
 
       setTestCases(data);
-    } catch (error) {
+    } catch {
       setTestCases([]);
     }
   };
@@ -472,7 +472,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             htmlType="submit"
             loading={loading}
             type="primary">
-            {t('label.submit')}
+            {t('label.create')}
           </Button>
         </Space>
       </Form.Item>

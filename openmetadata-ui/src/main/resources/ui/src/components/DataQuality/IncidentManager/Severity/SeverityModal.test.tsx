@@ -48,7 +48,7 @@ describe('SeverityModal', () => {
 
   it('onSubmit should work', async () => {
     render(<SeverityModal {...mockProps} />);
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
     await act(async () => {
       fireEvent.click(submitBtn);
     });

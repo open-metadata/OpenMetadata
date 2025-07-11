@@ -103,7 +103,7 @@ describe('ApplicationConfiguration', () => {
       />
     );
 
-    expect(screen.getByText('label.submit')).toBeInTheDocument();
+    expect(screen.getByText('label.save')).toBeInTheDocument();
     expect(screen.getByText('label.back')).toBeInTheDocument();
   });
 

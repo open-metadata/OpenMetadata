@@ -102,7 +102,7 @@ describe('Test ChangeParentHierarchy modal component', () => {
       fireEvent.click(screen.getByText(mockedGlossaryTerms[1].name));
     });
 
-    const submitButton = await screen.findByText('label.submit');
+    const submitButton = await screen.findByText('label.save');
 
     expect(submitButton).toBeInTheDocument();
 

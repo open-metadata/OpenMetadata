@@ -73,7 +73,7 @@ describe('Email Config Form Component', () => {
       screen.getByText('label.transportation-strategy')
     ).toBeInTheDocument();
     expect(screen.getByText('label.cancel')).toBeInTheDocument();
-    expect(screen.getByText('label.submit')).toBeInTheDocument();
+    expect(screen.getByText('label.save')).toBeInTheDocument();
     // Inputs and other form elements
     expect(screen.getByTestId('username-input')).toBeInTheDocument();
     expect(screen.getByTestId('password-input')).toBeInTheDocument();
@@ -114,7 +114,7 @@ describe('Email Config Form Component', () => {
     render(<EmailConfigForm {...mockProps} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.submit'));
+      fireEvent.click(screen.getByText('label.save'));
     });
 
     expect(mockOnSubmit).toHaveBeenCalledWith(emailConfigValues);
@@ -135,7 +135,7 @@ describe('Email Config Form Component', () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.submit'));
+      fireEvent.click(screen.getByText('label.save'));
     });
 
     expect(mockOnSubmit).not.toHaveBeenCalled();
@@ -154,7 +154,7 @@ describe('Email Config Form Component', () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.submit'));
+      fireEvent.click(screen.getByText('label.save'));
     });
 
     expect(mockOnSubmit).toHaveBeenCalledWith({

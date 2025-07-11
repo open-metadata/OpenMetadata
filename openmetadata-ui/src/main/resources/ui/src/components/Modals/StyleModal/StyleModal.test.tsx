@@ -48,7 +48,7 @@ describe('StyleModal component', () => {
 
   it('Should call onSubmit function, onClick of submit', async () => {
     render(<StyleModal {...mockProps} />);
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
     const url = await screen.findByTestId('icon-url');
 
     expect(submitBtn).toBeInTheDocument();

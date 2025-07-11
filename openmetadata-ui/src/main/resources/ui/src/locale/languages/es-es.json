@@ -1253,6 +1253,7 @@
     "selected-entity": "Selected {{entity}}",
     "selected-lowercase": "seleccionado",
     "send": "Engiado",
+    "send-login-link": "Enviar enlace de inicio de sesión",
     "send-now": "Enviar ahora",
     "send-to": "Enviar a",
     "sender-email": "Correo del remitente",
