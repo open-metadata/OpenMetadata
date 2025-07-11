@@ -175,10 +175,8 @@ const TableDetailsPageV1: React.FC = () => {
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
     () => ({
-      viewUsagePermission: tablePermissions.ViewUsage
-        ? tablePermissions.ViewUsage
-        : tablePermissions.ViewBasic || tablePermissions.ViewAll,
-      // tablePermissions.ViewAll || tablePermissions.ViewUsage,
+      viewUsagePermission:
+        tablePermissions.ViewAll || tablePermissions.ViewUsage,
       viewTestCasePermission:
         tablePermissions.ViewAll || tablePermissions.ViewTests,
     }),

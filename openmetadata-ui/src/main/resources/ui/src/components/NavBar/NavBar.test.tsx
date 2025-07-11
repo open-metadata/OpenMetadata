@@ -147,9 +147,9 @@ jest.mock('../../rest/miscAPI', () => ({
 
 jest.mock('../../utils/ApplicationRoutesClassBase', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
+  default: {
     isProtectedRoute: jest.fn().mockReturnValue(false),
-  })),
+  },
 }));
 
 jest.mock('../../utils/BrandData/BrandClassBase', () => ({
