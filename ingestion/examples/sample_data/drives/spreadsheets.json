@@ -1,0 +1,162 @@
+[
+  {
+    "name": "annual_budget_2024",
+    "displayName": "Annual Budget 2024",
+    "description": "Company-wide annual budget spreadsheet with department breakdowns",
+    "directory": "Finance",
+    "path": "/Finance/annual_budget_2024.xlsx",
+    "size": 2097152,
+    "numberOfWorksheets": 12,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": [
+      {
+        "tagFQN": "PersonalData.SpecialCategory",
+        "description": "Contains salary and budget allocations",
+        "source": "Classification",
+        "labelType": "Manual",
+        "state": "Confirmed"
+      }
+    ],
+    "owners": []
+  },
+  {
+    "name": "employee_compensation_q4",
+    "displayName": "Employee Compensation Q4",
+    "description": "Q4 compensation tracking including bonuses and adjustments",
+    "directory": "Finance.Q4_Reports",
+    "path": "/Finance/Q4_Reports/employee_compensation_q4.xlsx",
+    "size": 1048576,
+    "numberOfWorksheets": 5,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/2CxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": [
+      {
+        "tagFQN": "PII.Sensitive",
+        "description": "Contains employee personal and compensation data",
+        "source": "Classification",
+        "labelType": "Manual",
+        "state": "Confirmed"
+      }
+    ]
+  },
+  {
+    "name": "campaign_performance_tracker",
+    "displayName": "Campaign Performance Tracker",
+    "description": "Real-time tracking of marketing campaign metrics and ROI",
+    "directory": "Marketing.Campaigns_2024",
+    "path": "/Marketing/Campaigns_2024/campaign_performance_tracker.xlsx",
+    "size": 3145728,
+    "numberOfWorksheets": 8,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/3DxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": []
+  },
+  {
+    "name": "sales_forecast_2024",
+    "displayName": "Sales Forecast 2024",
+    "description": "Annual sales projections and forecasting models",
+    "directory": "Finance",
+    "path": "/Finance/sales_forecast_2024.xlsx",
+    "size": 4194304,
+    "numberOfWorksheets": 15,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/4ExiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": []
+  },
+  {
+    "name": "hr_headcount_tracker",
+    "displayName": "HR Headcount Tracker",
+    "description": "Real-time employee headcount and organizational structure",
+    "directory": "HR",
+    "path": "/HR/hr_headcount_tracker.xlsx",
+    "size": 2621440,
+    "numberOfWorksheets": 10,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/5FxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": []
+  },
+  {
+    "name": "product_roadmap_2024",
+    "displayName": "Product Roadmap 2024",
+    "description": "Product development timeline and feature planning",
+    "directory": "Product",
+    "path": "/Product/product_roadmap_2024.xlsx",
+    "size": 3670016,
+    "numberOfWorksheets": 12,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/6GxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": []
+  },
+  {
+    "name": "customer_analytics_dashboard",
+    "displayName": "Customer Analytics Dashboard",
+    "description": "Customer behavior analysis and segmentation data",
+    "directory": "Marketing",
+    "path": "/Marketing/customer_analytics_dashboard.xlsx",
+    "size": 5242880,
+    "numberOfWorksheets": 18,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/7HxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": []
+  },
+  {
+    "name": "inventory_management",
+    "displayName": "Inventory Management System",
+    "description": "Real-time inventory tracking and supply chain management",
+    "directory": "Operations",
+    "path": "/Operations/inventory_management.xlsx",
+    "size": 4718592,
+    "numberOfWorksheets": 20,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/8IxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": []
+  },
+  {
+    "name": "financial_statements_q4",
+    "displayName": "Financial Statements Q4 2024",
+    "description": "Quarterly financial statements including P&L, Balance Sheet, Cash Flow",
+    "directory": "Finance.Q4_Reports",
+    "path": "/Finance/Q4_Reports/financial_statements_q4.xlsx",
+    "size": 3932160,
+    "numberOfWorksheets": 14,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/9JxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": []
+  },
+  {
+    "name": "vendor_contracts_tracker",
+    "displayName": "Vendor Contracts Tracker",
+    "description": "Active vendor contracts and renewal schedules",
+    "directory": "Finance",
+    "path": "/Finance/vendor_contracts_tracker.xlsx",
+    "size": 2359296,
+    "numberOfWorksheets": 8,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/AKxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": []
+  },
+  {
+    "name": "social_media_calendar_2024",
+    "displayName": "Social Media Calendar 2024",
+    "description": "Content calendar for all social media platforms",
+    "directory": "Marketing.Campaigns_2024.Social_Media",
+    "path": "/Marketing/Campaigns_2024/Social_Media/social_media_calendar_2024.xlsx",
+    "size": 1835008,
+    "numberOfWorksheets": 6,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/BLxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": []
+  },
+  {
+    "name": "project_portfolio_tracker",
+    "displayName": "Project Portfolio Tracker",
+    "description": "Enterprise project portfolio management dashboard",
+    "directory": "PMO",
+    "path": "/PMO/project_portfolio_tracker.xlsx",
+    "size": 4456448,
+    "numberOfWorksheets": 16,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/CMxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": []
+  },
+  {
+    "name": "kpi_dashboard_2024",
+    "displayName": "KPI Dashboard 2024",
+    "description": "Company-wide key performance indicators tracking",
+    "directory": "Executive",
+    "path": "/Executive/kpi_dashboard_2024.xlsx",
+    "size": 3407872,
+    "numberOfWorksheets": 22,
+    "sourceUrl": "https://docs.google.com/spreadsheets/d/DNxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+    "tags": []
+  }
+]

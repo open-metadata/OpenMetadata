@@ -1,0 +1,71 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/drive/sharePointConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SharePointConnection",
+  "description": "SharePoint Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.drive.SharePointConnection",
+  "definitions": {
+    "sharePointType": {
+      "description": "SharePoint service type",
+      "type": "string",
+      "enum": ["SharePoint"],
+      "default": "SharePoint"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/sharePointType",
+      "default": "SharePoint"
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "Application (client) ID from Azure Active Directory",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "Application (client) secret from Azure Active Directory",
+      "type": "string",
+      "format": "password"
+    },
+    "tenantId": {
+      "title": "Tenant ID",
+      "description": "Directory (tenant) ID from Azure Active Directory",
+      "type": "string"
+    },
+    "siteUrl": {
+      "title": "Site URL",
+      "description": "SharePoint site URL",
+      "type": "string",
+      "format": "uri",
+      "default": "https://yourorg.sharepoint.com/sites/yoursite"
+    },
+    "siteName": {
+      "title": "Site Name",
+      "description": "SharePoint site name",
+      "type": "string"
+    },
+    "driveId": {
+      "title": "Drive ID",
+      "description": "SharePoint drive ID. If not provided, default document library will be used",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "required": ["clientId", "clientSecret", "tenantId", "siteUrl"],
+  "additionalProperties": false
+}

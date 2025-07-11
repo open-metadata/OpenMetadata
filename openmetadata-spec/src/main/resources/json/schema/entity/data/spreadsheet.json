@@ -1,0 +1,192 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/spreadsheet.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Spreadsheet",
+  "$comment": "@om-entity-type",
+  "description": "This schema defines the Spreadsheet entity. A Spreadsheet is a file containing multiple worksheets/tabs, such as Google Sheets or Excel files.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.Spreadsheet",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "definitions": {
+    "spreadsheetMimeType": {
+      "description": "MIME type for spreadsheet files",
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "type": "string",
+      "enum": [
+        "application/vnd.google-apps.spreadsheet",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "application/vnd.oasis.opendocument.spreadsheet",
+        "text/csv",
+        "text/tab-separated-values",
+        "Other"
+      ],
+      "javaEnums": [
+        {"name": "GoogleSheets"},
+        {"name": "ExcelXlsx"},
+        {"name": "ExcelXls"},
+        {"name": "OpenDocument"},
+        {"name": "Csv"},
+        {"name": "Tsv"},
+        {"name": "Other"}
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this spreadsheet instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies the spreadsheet.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a spreadsheet in the format 'ServiceName.DirectoryPath.SpreadsheetName'.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this spreadsheet.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the spreadsheet instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "service": {
+      "description": "Link to the drive service where this spreadsheet is hosted.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type where this spreadsheet is hosted.",
+      "$ref": "../../entity/services/driveService.json#/definitions/driveServiceType"
+    },
+    "directory": {
+      "description": "Reference to Directory that contains this spreadsheet.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "worksheets": {
+      "description": "References to worksheets/tabs in the spreadsheet.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "mimeType": {
+      "description": "MIME type of the spreadsheet file",
+      "$ref": "#/definitions/spreadsheetMimeType"
+    },
+    "path": {
+      "description": "Full path to the spreadsheet file",
+      "type": "string"
+    },
+    "driveFileId": {
+      "description": "Native file ID in the source system",
+      "type": "string"
+    },
+    "size": {
+      "description": "File size in bytes (may be null for cloud-native files like Google Sheets)",
+      "type": "integer"
+    },
+    "fileVersion": {
+      "description": "File version information",
+      "type": "string"
+    },
+    "createdTime": {
+      "description": "Spreadsheet creation timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "modifiedTime": {
+      "description": "Last modification timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "lastModifiedBy": {
+      "description": "User who last modified the spreadsheet",
+      "$ref": "../../type/entityReference.json"
+    },
+    "usageSummary": {
+      "description": "Latest usage information for this spreadsheet.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
+    "sourceUrl": {
+      "description": "Link to view/edit this spreadsheet in the source system (e.g., Google Sheets URL, SharePoint URL).",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this spreadsheet.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owners": {
+      "description": "Owners of this spreadsheet.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "description": "Tags associated with this spreadsheet.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "domain": {
+      "description": "Domain the spreadsheet belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts": {
+      "description": "List of data products this entity is part of.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "votes": {
+      "description": "Votes on the entity.",
+      "$ref": "../../type/votes.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    }
+  },
+  "required": ["id", "name", "spreadsheet"],
+  "additionalProperties": false
+}

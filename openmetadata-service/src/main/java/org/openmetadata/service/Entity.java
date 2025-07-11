@@ -157,6 +157,7 @@ public final class Entity {
   public static final String SEARCH_SERVICE = "searchService";
 
   public static final String API_SERVICE = "apiService";
+  public static final String DRIVE_SERVICE = "driveService";
   //
   // Data asset entities
   //
@@ -184,6 +185,10 @@ public final class Entity {
   public static final String CONTAINER = "container";
   public static final String QUERY = "query";
   public static final String QUERY_COST_RECORD = "queryCostRecord";
+  public static final String DIRECTORY = "directory";
+  public static final String FILE = "file";
+  public static final String SPREADSHEET = "spreadsheet";
+  public static final String WORKSHEET = "worksheet";
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
@@ -277,6 +282,7 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DRIVE, DRIVE_SERVICE);
 
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE, DATABASE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE_SCHEMA, DATABASE_SERVICE);
@@ -294,6 +300,10 @@ public final class Entity {
     ENTITY_SERVICE_TYPE_MAP.put(API_ENDPOINT, API_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(CONTAINER, STORAGE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(SEARCH_INDEX, SEARCH_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(DIRECTORY, DRIVE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(FILE, DRIVE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(SPREADSHEET, DRIVE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(WORKSHEET, DRIVE_SERVICE);
 
     PARENT_ENTITY_TYPES.addAll(
         listOf(
@@ -307,13 +317,16 @@ public final class Entity {
             STORAGE_SERVICE,
             METADATA_SERVICE,
             SEARCH_SERVICE,
+            DRIVE_SERVICE,
             DATABASE,
             DATABASE_SCHEMA,
             CLASSIFICATION,
             GLOSSARY,
             DOMAIN,
             TEST_SUITE,
-            TEAM));
+            TEAM,
+            DIRECTORY,
+            SPREADSHEET));
   }
 
   private Entity() {}

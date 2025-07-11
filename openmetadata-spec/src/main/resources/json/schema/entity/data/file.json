@@ -1,0 +1,222 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/file.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "File",
+  "$comment": "@om-entity-type",
+  "description": "This schema defines the File entity. A File is a document or resource stored in a Drive Service.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.File",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "definitions": {
+    "fileType": {
+      "javaType": "org.openmetadata.schema.type.FileType",
+      "description": "Type of file based on content",
+      "type": "string",
+      "enum": [
+        "Document",
+        "Spreadsheet",
+        "Presentation",
+        "Image",
+        "Video",
+        "Audio",
+        "PDF",
+        "Archive",
+        "Code",
+        "Data",
+        "CSV",
+        "Text",
+        "Other"
+      ],
+      "javaEnums": [
+        {"name": "Document"},
+        {"name": "Spreadsheet"},
+        {"name": "Presentation"},
+        {"name": "Image"},
+        {"name": "Video"},
+        {"name": "Audio"},
+        {"name": "PDF"},
+        {"name": "Archive"},
+        {"name": "Code"},
+        {"name": "Data"},
+        {"name":  "CSV"},
+        {"name":  "Text"},
+        {"name": "Other"}
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this file instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the file.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the file.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this file.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the file.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "service": {
+      "description": "Link to the drive service",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Type of drive service",
+      "$ref": "../../entity/services/driveService.json#/definitions/driveServiceType"
+    },
+    "directory": {
+      "description": "Parent directory containing this file",
+      "$ref": "../../type/entityReference.json"
+    },
+    "fileType": {
+      "$ref": "#/definitions/fileType"
+    },
+    "mimeType": {
+      "description": "MIME type of the file",
+      "type": "string"
+    },
+    "fileExtension": {
+      "description": "File extension",
+      "type": "string"
+    },
+    "path": {
+      "description": "Full path to the file",
+      "type": "string"
+    },
+    "size": {
+      "description": "File size in bytes",
+      "type": "integer"
+    },
+    "checksum": {
+      "description": "File checksum/hash",
+      "type": "string"
+    },
+    "webViewLink": {
+      "description": "Web link to view the file",
+      "type": "string",
+      "format": "uri"
+    },
+    "downloadLink": {
+      "description": "Direct download link",
+      "type": "string",
+      "format": "uri"
+    },
+    "isShared": {
+      "description": "Whether this file is shared",
+      "type": "boolean",
+      "default": false
+    },
+    "fileVersion": {
+      "description": "File version information",
+      "type": "string"
+    },
+    "createdTime": {
+      "description": "File creation timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "modifiedTime": {
+      "description": "Last modification timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "lastModifiedBy": {
+      "description": "User who last modified the file",
+      "$ref": "../../type/entityReference.json"
+    },
+    "sourceUrl": {
+      "description": "Link to this file in the source system.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this file.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owners": {
+      "description": "Owners of this file.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "description": "Tags associated with this file.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "domain": {
+      "description": "Domain the file belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts": {
+      "description": "List of data products this entity is part of.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "votes": {
+      "description": "Votes on the entity.",
+      "$ref": "../../type/votes.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
+    "usageSummary": {
+      "description": "Latest usage information for this file.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    }
+  },
+  "required": ["id", "name", "service"],
+  "additionalProperties": false
+}

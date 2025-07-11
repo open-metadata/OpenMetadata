@@ -1210,6 +1210,323 @@
         "displayName",
         "description"
       ]
+    },
+    {
+      "assetType": "driveService",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        }
+      ],
+      "aggregations": [],
+      "scoreMode": "sum",
+      "boostMode": "sum",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description"
+      ]
+    },
+    {
+      "assetType": "directory",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "path",
+          "boost": 3.0
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "service.displayName.keyword",
+          "type": "terms",
+          "field": "service.displayName.keyword"
+        },
+        {
+          "name": "parent.displayName.keyword",
+          "type": "terms",
+          "field": "parent.displayName.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "sum",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "path"
+      ]
+    },
+    {
+      "assetType": "file",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "path",
+          "boost": 3.0
+        },
+        {
+          "field": "extension",
+          "boost": 2.0
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "fileType",
+          "type": "terms",
+          "field": "fileType"
+        },
+        {
+          "name": "extension",
+          "type": "terms",
+          "field": "extension"
+        },
+        {
+          "name": "directory.displayName.keyword",
+          "type": "terms",
+          "field": "directory.displayName.keyword"
+        },
+        {
+          "name": "service.displayName.keyword",
+          "type": "terms",
+          "field": "service.displayName.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "sum",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "path"
+      ]
+    },
+    {
+      "assetType": "spreadsheet",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "path",
+          "boost": 3.0
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "directory.displayName.keyword",
+          "type": "terms",
+          "field": "directory.displayName.keyword"
+        },
+        {
+          "name": "service.displayName.keyword",
+          "type": "terms",
+          "field": "service.displayName.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "sum",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "path"
+      ]
+    },
+    {
+      "assetType": "worksheet",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "columns.name.keyword",
+          "boost": 2.0
+        },
+        {
+          "field": "columns.displayName.keyword",
+          "boost": 2.0
+        },
+        {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "spreadsheet.displayName.keyword",
+          "type": "terms",
+          "field": "spreadsheet.displayName.keyword"
+        },
+        {
+          "name": "service.displayName.keyword",
+          "type": "terms",
+          "field": "service.displayName.keyword"
+        },
+        {
+          "name": "columnNames",
+          "type": "terms",
+          "field": "columnNames"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "sum",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "columns.name",
+        "columns.description"
+      ]
     }
   ],
   "defaultConfiguration": {
@@ -2322,6 +2639,339 @@
         {
           "name": "domain.displayName.keyword",
           "description": "Exact match on domain associated with glossary term."
+        }
+      ]
+    },
+    {
+      "entityType": "driveService",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on drive service name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on drive service name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on drive service name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable drive service name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on drive service descriptions to find by purpose or functionality."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the drive service."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "serviceType",
+          "description": "Exact match on the type of drive service (e.g., Google Drive, SharePoint, Box)."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with drive service."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with drive service."
+        }
+      ]
+    },
+    {
+      "entityType": "directory",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on directory name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on directory name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on directory name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable directory name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on directory descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the directory including parent path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "path",
+          "description": "Exact match on the directory path within the drive service."
+        },
+        {
+          "name": "parent.displayName.keyword",
+          "description": "Exact match on parent directory display name to find subdirectories."
+        },
+        {
+          "name": "service.displayName.keyword",
+          "description": "Exact match on the drive service that contains this directory."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find directories with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for directories."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with directory."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with directory."
+        }
+      ]
+    },
+    {
+      "entityType": "file",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on file name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on file name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on file name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable file name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on file descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the file including directory path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "fileType",
+          "description": "Exact match on the type of file (e.g., DOCUMENT, SPREADSHEET, PRESENTATION)."
+        },
+        {
+          "name": "mimeType",
+          "description": "Exact match on the MIME type of the file."
+        },
+        {
+          "name": "extension",
+          "description": "Exact match on the file extension (e.g., pdf, docx, xlsx)."
+        },
+        {
+          "name": "path",
+          "description": "Exact match on the file path within the drive service."
+        },
+        {
+          "name": "directory.displayName.keyword",
+          "description": "Exact match on the directory that contains this file."
+        },
+        {
+          "name": "service.displayName.keyword",
+          "description": "Exact match on the drive service that contains this file."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find files with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for files."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with file."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with file."
+        }
+      ]
+    },
+    {
+      "entityType": "spreadsheet",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on spreadsheet name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on spreadsheet name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on spreadsheet name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable spreadsheet name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on spreadsheet descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the spreadsheet including directory path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "mimeType",
+          "description": "Exact match on the MIME type of the spreadsheet file."
+        },
+        {
+          "name": "path",
+          "description": "Exact match on the spreadsheet path within the drive service."
+        },
+        {
+          "name": "directory.displayName.keyword",
+          "description": "Exact match on the directory that contains this spreadsheet."
+        },
+        {
+          "name": "service.displayName.keyword",
+          "description": "Exact match on the drive service that contains this spreadsheet."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find spreadsheets with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for spreadsheets."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with spreadsheet."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with spreadsheet."
+        }
+      ]
+    },
+    {
+      "entityType": "worksheet",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on worksheet name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on worksheet name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on worksheet name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable worksheet name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on worksheet descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the worksheet including spreadsheet and directory path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "columns.name.keyword",
+          "description": "Exact match on column names within the worksheet."
+        },
+        {
+          "name": "columns.displayName.keyword",
+          "description": "Exact match on column display names within the worksheet."
+        },
+        {
+          "name": "columnNames",
+          "description": "Search on indexed column names for finding worksheets with specific columns."
+        },
+        {
+          "name": "spreadsheet.displayName.keyword",
+          "description": "Exact match on the spreadsheet that contains this worksheet."
+        },
+        {
+          "name": "service.displayName.keyword",
+          "description": "Exact match on the drive service that contains this worksheet."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find worksheets with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for worksheets."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with worksheet."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with worksheet."
         }
       ]
     },

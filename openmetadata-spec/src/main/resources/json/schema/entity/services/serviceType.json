@@ -8,6 +8,7 @@
   "enum": [
     "Dashboard",
     "Database",
+    "Drive",
     "Messaging",
     "Metadata",
     "MlModel",

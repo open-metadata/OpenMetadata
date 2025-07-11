@@ -1,0 +1,65 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/drive/googleDriveConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GoogleDriveConnection",
+  "description": "Google Drive Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.drive.GoogleDriveConnection",
+  "definitions": {
+    "googleDriveType": {
+      "description": "Google Drive service type",
+      "type": "string",
+      "enum": ["GoogleDrive"],
+      "default": "GoogleDrive"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/googleDriveType",
+      "default": "GoogleDrive"
+    },
+    "credentials": {
+      "title": "GCP Credentials",
+      "description": "GCP Credentials for Google Drive API",
+      "$ref": "../../../../security/credentials/gcpCredentials.json"
+    },
+    "delegatedEmail": {
+      "title": "Delegated Email",
+      "description": "Email to impersonate using domain-wide delegation",
+      "type": "string"
+    },
+    "driveId": {
+      "title": "Drive ID",
+      "description": "Specific shared drive ID to connect to",
+      "type": "string"
+    },
+    "includeTeamDrives": {
+      "title": "Include Team Drives",
+      "description": "Include shared/team drives in metadata extraction",
+      "type": "boolean",
+      "default": true
+    },
+    "includeGoogleSheets": {
+      "title": "Include Google Sheets",
+      "description": "Extract metadata only for Google Sheets files",
+      "type": "boolean",
+      "default": false
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["credentials"]
+}
