@@ -60,7 +60,6 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
         </span>
         <span className="d-flex m-l-xs">
           <Icon
-            className="drag-icon "
             component={DragIconDotted}
             rotate={90}
             style={{

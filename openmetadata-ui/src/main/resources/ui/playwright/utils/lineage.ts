@@ -15,6 +15,7 @@ import { get } from 'lodash';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { MetricClass } from '../support/entity/MetricClass';
@@ -285,6 +286,7 @@ export const setupEntitiesForLineage = async (
     | SearchIndexClass
     | ApiEndpointClass
     | MetricClass
+    | DashboardDataModelClass
 ) => {
   const entities = [
     new TableClass(),
@@ -295,6 +297,7 @@ export const setupEntitiesForLineage = async (
     new SearchIndexClass(),
     new ApiEndpointClass(),
     new MetricClass(),
+    new DashboardDataModelClass(),
   ] as const;
 
   const { apiContext, afterAction } = await getApiContext(page);
@@ -617,7 +620,8 @@ export const verifyExportLineageCSV = async (
     ContainerClass,
     SearchIndexClass,
     ApiEndpointClass,
-    MetricClass
+    MetricClass,
+    DashboardDataModelClass
   ],
   pipeline: PipelineClass
 ) => {

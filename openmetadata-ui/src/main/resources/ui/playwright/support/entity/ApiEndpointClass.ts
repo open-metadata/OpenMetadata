@@ -28,6 +28,7 @@ export class ApiEndpointClass extends EntityClass {
   private apiCollectionName = `pw-api-collection-${uuid()}`;
   service = {
     name: this.serviceName,
+    displayName: this.serviceName,
     serviceType: 'Rest',
     connection: {
       config: {
@@ -39,6 +40,7 @@ export class ApiEndpointClass extends EntityClass {
 
   apiCollection = {
     name: this.apiCollectionName,
+    displayName: this.apiCollectionName,
     service: this.service.name,
   };
 
@@ -91,6 +93,7 @@ export class ApiEndpointClass extends EntityClass {
 
   entity = {
     name: this.apiEndpointName,
+    displayName: this.apiEndpointName,
     apiCollection: `${this.service.name}.${this.apiCollection.name}`,
     endpointURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
     requestSchema: {
