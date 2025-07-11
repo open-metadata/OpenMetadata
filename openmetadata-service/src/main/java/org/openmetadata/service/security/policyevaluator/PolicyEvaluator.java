@@ -158,7 +158,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
-    return PolicyEvaluator.trimResourcePermissions(new ArrayList<>(resourcePermissionMap.values()));
+    return new ArrayList<>(resourcePermissionMap.values());
   }
 
   /** Returns a list of operations that a user can perform on all the resources. */
@@ -176,7 +176,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
-    return PolicyEvaluator.trimResourcePermissions(new ArrayList<>(resourcePermissionMap.values()));
+    return new ArrayList<>(resourcePermissionMap.values());
   }
 
   /** Returns a list of operations that a user can perform on the given resource/entity type */
@@ -199,7 +199,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourceType, resourcePermission, policyContext);
       }
     }
-    return PolicyEvaluator.trimResourcePermission(resourcePermission);
+    return resourcePermission;
   }
 
   public static ResourcePermission getPermission(
@@ -237,7 +237,7 @@ public class PolicyEvaluator {
           new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
       resourcePermissions.add(resourcePermission);
     }
-    return PolicyEvaluator.trimResourcePermissions(resourcePermissions);
+    return resourcePermissions;
   }
 
   /** Get list of resources with all their permissions set to given Access */
@@ -247,8 +247,7 @@ public class PolicyEvaluator {
     for (MetadataOperation operation : rd.getOperations()) {
       permissions.add(new Permission().withOperation(operation).withAccess(access));
     }
-    return PolicyEvaluator.trimResourcePermission(
-        new ResourcePermission().withResource(rd.getName()).withPermissions(permissions));
+    return new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
   }
 
   /**
@@ -290,17 +289,5 @@ public class PolicyEvaluator {
       }
     }
     return permissions;
-  }
-
-  public static ResourcePermission trimResourcePermission(ResourcePermission resourcePermission) {
-    return resourcePermission.withPermissions(trimPermissions(resourcePermission.getPermissions()));
-  }
-
-  public static List<ResourcePermission> trimResourcePermissions(
-      List<ResourcePermission> resourcePermissions) {
-    for (ResourcePermission resourcePermission : resourcePermissions) {
-      trimResourcePermission(resourcePermission);
-    }
-    return resourcePermissions;
   }
 }
