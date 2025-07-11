@@ -26,7 +26,7 @@ from presidio_analyzer.nlp_engine import SpacyNlpEngine
 from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
 from metadata.pii.constants import PRESIDIO_LOGGER, SPACY_EN_MODEL, SUPPORTED_LANG
-from metadata.utils.logger import METADATA_LOGGER, pii_logger
+from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
 
@@ -64,17 +64,10 @@ def build_analyzer_engine(
     return analyzer_engine
 
 
-def set_presidio_logger_level(log_level: Optional[int] = None) -> None:
+def set_presidio_logger_level(log_level: Optional[int] = logging.ERROR) -> None:
     """
     Set the presidio logger to talk less about internal entities unless we are debugging.
     """
-    if log_level is None:
-        log_level = (
-            logging.INFO
-            if logging.getLogger(METADATA_LOGGER).level == logging.DEBUG
-            else logging.ERROR
-        )
-
     logging.getLogger(PRESIDIO_LOGGER).setLevel(log_level)
 
 
@@ -87,7 +80,6 @@ def _load_spacy_model(model_name: str) -> None:
     try:
         _ = spacy.load(model_name)
     except OSError:
-
         logger.warning(f"Downloading {model_name} language model for the spaCy")
         download(model_name)
         _ = spacy.load(model_name)
