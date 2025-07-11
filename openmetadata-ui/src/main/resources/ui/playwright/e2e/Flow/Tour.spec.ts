@@ -134,6 +134,10 @@ test.describe('Tour should work properly', () => {
   });
 
   test('Tour should work from welcome screen', async ({ page }) => {
+    await page
+      .getByTestId('whats-new-alert-card')
+      .locator('.whats-new-alert-close')
+      .click();
     await page.getByText('Take a product tour to get started!').click();
     await page.waitForURL('**/tour');
 

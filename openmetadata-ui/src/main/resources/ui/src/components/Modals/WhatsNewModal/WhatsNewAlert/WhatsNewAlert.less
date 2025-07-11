@@ -1,0 +1,65 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../../styles/variables.less';
+@import (reference) '../../../../styles/fonts.less';
+
+.whats-new-alert-card {
+  border-radius: 20px !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  min-width: 420px;
+  max-width: 560px;
+  padding: 0 !important;
+}
+
+.whats-new-alert-left {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  color: #fff !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 140px;
+  padding: 24px 16px;
+  text-align: center;
+  height: 100%;
+}
+.whats-new-alert-right {
+  padding: 16px 16px 16px 20px;
+}
+
+.whats-new-alert-close {
+  padding: 16px;
+  color: @grey-400;
+  font-size: 12px;
+}
+
+.whats-new-alert-version {
+  .text-lg();
+  font-weight: 600;
+  margin-top: 8px;
+  color: @white !important;
+}
+
+.whats-new-alert-links {
+  display: flex;
+  gap: 32px;
+  margin-top: 54px;
+  a.ant-btn {
+    height: 28px;
+    line-height: 28px;
+    color: #004eeb;
+    font-weight: 600;
+  }
+}

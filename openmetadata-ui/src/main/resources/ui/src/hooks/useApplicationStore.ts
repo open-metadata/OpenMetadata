@@ -45,6 +45,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   inlineAlertDetails: undefined,
   applications: [],
   appPreferences: {},
+  appVersion: undefined,
 
   setInlineAlertDetails: (inlineAlertDetails) => {
     set({ inlineAlertDetails });
@@ -148,5 +149,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setApplicationsName: (applications: string[]) => {
     set({ applications: applications });
+  },
+  setAppVersion: (version: string) => {
+    set({ appVersion: version });
   },
 }));

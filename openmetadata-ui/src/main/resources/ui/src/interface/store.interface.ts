@@ -40,6 +40,7 @@ export interface ApplicationStore
   extends IAuthContext,
     LogoConfiguration,
     LoginConfiguration {
+  appVersion?: string;
   isApplicationLoading: boolean;
   setApplicationLoading: (loading: boolean) => void;
   userProfilePics: Record<string, User>;
@@ -72,6 +73,7 @@ export interface ApplicationStore
   }) => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
   setApplicationsName: (applications: string[]) => void;
+  setAppVersion: (version: string) => void;
 }
 
 export interface DomainStore {
