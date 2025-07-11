@@ -310,15 +310,16 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     private void updateAssets() {
       List<EntityReference> origToRefs = listOrEmpty(original.getAssets());
       List<EntityReference> updatedToRefs = listOrEmpty(updated.getAssets());
-      origToRefs.sort(EntityUtil.compareEntityReference);
-      updatedToRefs.sort(EntityUtil.compareEntityReference);
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
 
+      // Remove the premature sorting that was causing comparison issues
+      // recordListChange should work on the original order to properly detect changes
       if (!recordListChange(
           FIELD_ASSETS, origToRefs, updatedToRefs, added, deleted, entityReferenceMatch)) {
         return; // No changes between original and updated.
       }
+      
       // Remove assets that were deleted
       for (EntityReference asset : deleted) {
         deleteRelationship(

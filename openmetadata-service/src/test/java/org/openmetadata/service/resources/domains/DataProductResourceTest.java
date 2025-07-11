@@ -105,6 +105,58 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   }
 
   @Test
+  void testDataProductAssetsPatchBug(TestInfo test) throws IOException {
+    // Reproduce and fix the bug where only first and last assets are persisted when patching 4 assets
+    
+    // Create additional test tables for this test
+    TableResourceTest tableTest = new TableResourceTest();
+    org.openmetadata.schema.entity.data.Table table2 = 
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 2)), ADMIN_AUTH_HEADERS);
+    org.openmetadata.schema.entity.data.Table table3 = 
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
+    org.openmetadata.schema.entity.data.Table table4 = 
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 4)), ADMIN_AUTH_HEADERS);
+    
+    // Create a data product with one asset initially
+    CreateDataProduct create = createRequest(getEntityName(test))
+        .withAssets(List.of(TEST_TABLE1.getEntityReference()));
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    
+    // Patch to replace with 4 assets - this should preserve all assets after the fix
+    String json = JsonUtils.pojoToJson(product);
+    List<EntityReference> fourAssets = List.of(
+        TEST_TABLE1.getEntityReference(),
+        table2.getEntityReference(),
+        table3.getEntityReference(),
+        table4.getEntityReference()
+    );
+    product.withAssets(fourAssets);
+    
+    // Apply the patch operation
+    ChangeDescription change = getChangeDescription(product, MINOR_UPDATE);
+    fieldAdded(change, FIELD_ASSETS, listOf(table2.getEntityReference(), table3.getEntityReference(), table4.getEntityReference()));
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    
+    // Verify all 4 assets are present (this should pass after the fix)
+    assertEquals(4, product.getAssets().size(), "Expected 4 assets but got " + product.getAssets().size());
+    
+    // Verify each specific asset is present by checking their IDs
+    List<UUID> assetIds = product.getAssets().stream()
+        .map(EntityReference::getId)
+        .collect(java.util.stream.Collectors.toList());
+    assertTrue(assetIds.contains(TEST_TABLE1.getId()), "Missing TEST_TABLE1");
+    assertTrue(assetIds.contains(table2.getId()), "Missing table2");
+    assertTrue(assetIds.contains(table3.getId()), "Missing table3"); 
+    assertTrue(assetIds.contains(table4.getId()), "Missing table4");
+    
+    // Verify that all assets show this data product in their dataProducts field
+    entityInDataProduct(TEST_TABLE1, product, true);
+    entityInDataProduct(table2, product, true);
+    entityInDataProduct(table3, product, true);
+    entityInDataProduct(table4, product, true);
+  }
+
+  @Test
   void testDataProductExperts(TestInfo test) throws IOException {
     CreateDataProduct create =
         createRequest(getEntityName(test)).withExperts(listOf(USER1.getFullyQualifiedName()));
