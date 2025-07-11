@@ -253,7 +253,8 @@ const ExplorePageV1: FC<unknown> = () => {
 
   // Use the utility function to generate tab items
   const tabItems = useMemo(() => {
-    const items = generateTabItems(tabsInfo, searchHitCounts, searchIndex);
+    const actualResultsCount = searchResults?.hits.total.value;
+    const items = generateTabItems(tabsInfo, searchHitCounts, searchIndex, actualResultsCount);
 
     return searchQueryParam
       ? items.filter((tabItem) => {
@@ -266,6 +267,7 @@ const ExplorePageV1: FC<unknown> = () => {
     searchIndex,
     searchQueryParam,
     searchCriteria,
+    searchResults?.hits.total.value,
   ]);
 
   useEffect(() => {
