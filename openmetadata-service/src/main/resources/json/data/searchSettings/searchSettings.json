@@ -256,6 +256,14 @@
         {
           "field": "tags.tagFQN.text",
           "boost": 5.0
+        },
+        {
+          "field": "columns.description",
+          "boost": 2.0
+        },
+        {
+          "field": "columns.children.description",
+          "boost": 1.0
         }
       ],
       "aggregations": [
@@ -275,7 +283,8 @@
       "highlightFields": [
         "name",
         "description",
-        "displayName"
+        "displayName",
+        "columns.description"
       ],
       "fieldValueBoosts": [
         {
@@ -1408,6 +1417,14 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with table."
+        },
+        {
+          "name": "columns.description",
+          "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents."
+        },
+        {
+          "name": "columns.children.description",
+          "description": "Search on descriptions of nested columns within complex data types. Helps find tables with nested fields serving specific purposes."
         }
       ]
     },
