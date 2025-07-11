@@ -134,7 +134,7 @@ for (const EntityClass of entities) {
 
       await test.step('Verify Lineage Export CSV', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
       });
@@ -150,7 +150,7 @@ for (const EntityClass of entities) {
         'Remove lineage between nodes for the entity',
         async () => {
           await redirectToHomePage(page);
-          await currentEntity.visitEntityPage(page);
+          await currentEntity.visitEntityPageWithCustomSearchBox(page);
           await visitLineageTab(page);
           await editLineage(page);
           await performZoomOut(page);
