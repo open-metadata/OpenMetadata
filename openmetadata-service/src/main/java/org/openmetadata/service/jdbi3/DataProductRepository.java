@@ -20,6 +20,8 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 
@@ -148,7 +150,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     // If dataProduct does not have owners and experts, inherit them from the domains
     List<EntityReference> domains =
         !nullOrEmpty(dataProduct.getDomains()) ? getDomains(dataProduct) : Collections.emptyList();
-    if (!nullOrEmpty(domains)) {
+    if (!nullOrEmpty(domains)
+        && (fields.contains(FIELD_EXPERTS) || fields.contains(FIELD_OWNERS))
+        && (nullOrEmpty(dataProduct.getOwners()) || nullOrEmpty(dataProduct.getExperts()))) {
       List<EntityReference> owners = new ArrayList<>();
       List<EntityReference> experts = new ArrayList<>();
 
@@ -157,8 +161,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         owners = mergedInheritedEntityRefs(owners, domain.getOwners());
         experts = mergedInheritedEntityRefs(experts, domain.getExperts());
       }
-      dataProduct.setOwners(owners);
-      dataProduct.setExperts(experts);
+      // inherit only if applicable and empty
+      if (fields.contains(FIELD_OWNERS) && nullOrEmpty(dataProduct.getOwners())) {
+        dataProduct.setOwners(owners);
+      }
+      if (fields.contains(FIELD_EXPERTS) && nullOrEmpty(dataProduct.getExperts())) {
+        dataProduct.setExperts(experts);
+      }
     }
   }
 

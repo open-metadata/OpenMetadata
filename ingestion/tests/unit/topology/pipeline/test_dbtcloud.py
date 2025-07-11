@@ -451,7 +451,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     service=FullyQualifiedEntityName(root="dbtcloud_pipeline_test"),
     extension=None,
     scheduleInterval="6 */12 * * 0,1,2,3,4,5,6",
-    domain=None,
+    domains=None,
     lifeCycle=None,
     sourceHash=None,
 )
@@ -518,7 +518,7 @@ MOCK_PIPELINE = Pipeline(
     ),
     extension=None,
     scheduleInterval="6 */12 * * 0,1,2,3,4,5,6",
-    domain=None,
+    domains=None,
     lifeCycle=None,
     sourceHash=None,
 )

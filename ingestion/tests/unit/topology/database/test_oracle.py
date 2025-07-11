@@ -126,7 +126,7 @@ EXPECTED_DATABASE = [
         retentionPeriod=None,
         extension=None,
         sourceUrl=None,
-        domain=None,
+        domains=None,
         lifeCycle=None,
         sourceHash=None,
     )
@@ -144,7 +144,7 @@ EXPECTED_DATABASE_SCHEMA = [
         retentionPeriod=None,
         extension=None,
         sourceUrl=None,
-        domain=None,
+        domains=None,
         lifeCycle=None,
         sourceHash=None,
     )
@@ -165,7 +165,7 @@ EXPECTED_STORED_PROCEDURE = [
         extension=None,
         dataProducts=None,
         sourceUrl=None,
-        domain=None,
+        domains=None,
         lifeCycle=None,
         sourceHash=None,
     )
@@ -186,7 +186,7 @@ EXPECTED_STORED_PACKAGE = [
         extension=None,
         dataProducts=None,
         sourceUrl=None,
-        domain=None,
+        domains=None,
         lifeCycle=None,
         sourceHash=None,
     )

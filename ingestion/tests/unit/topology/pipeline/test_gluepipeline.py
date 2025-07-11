@@ -233,7 +233,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     service=FullyQualifiedEntityName(root="gluepipeline_test"),
     extension=None,
     scheduleInterval=None,
-    domain=None,
+    domains=None,
     lifeCycle=None,
     sourceHash=None,
 )
@@ -300,7 +300,7 @@ MOCK_PIPELINE = Pipeline(
     ),
     extension=None,
     scheduleInterval="6 */12 * * 0,1,2,3,4,5,6",
-    domain=None,
+    domains=None,
     lifeCycle=None,
     sourceHash=None,
 )

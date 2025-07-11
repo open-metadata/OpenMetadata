@@ -240,7 +240,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           Entity.<TestSuite>getEntity(
                   TEST_SUITE,
                   UUID.fromString(record.getFromId()),
-                  "owners,domain",
+                  "owners,domains",
                   Include.ALL,
                   false)
               .withInherited(true)

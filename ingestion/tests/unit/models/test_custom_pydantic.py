@@ -112,7 +112,7 @@ class CustomPydanticValidationTest(TestCase):
             }
         ),
         sourceUrl=None,
-        domain=None,
+        domains=None,
         dataProducts=None,
         fileFormat=None,
         lifeCycle=None,

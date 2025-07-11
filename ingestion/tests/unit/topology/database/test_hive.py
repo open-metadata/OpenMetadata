@@ -149,7 +149,7 @@ EXPECTED_DATABASE = [
         retentionPeriod=None,
         extension=None,
         sourceUrl=None,
-        domain=None,
+        domains=None,
         lifeCycle=None,
         sourceHash=None,
     )
@@ -167,7 +167,7 @@ EXPECTED_DATABASE_SCHEMA = [
         retentionPeriod=None,
         extension=None,
         sourceUrl=None,
-        domain=None,
+        domains=None,
         lifeCycle=None,
         sourceHash=None,
     )
@@ -269,7 +269,7 @@ EXPECTED_TABLE = [
         retentionPeriod=None,
         extension=None,
         sourceUrl=None,
-        domain=None,
+        domains=None,
         dataProducts=None,
         fileFormat=None,
         lifeCycle=None,

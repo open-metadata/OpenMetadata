@@ -195,7 +195,7 @@ MOCK_TABLE = Table(
     sourceUrl=SourceUrl(
         "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
     ),
-    domain=None,
+    domains=None,
     dataProducts=None,
     fileFormat=None,
     lifeCycle=None,
@@ -217,7 +217,7 @@ EXPECTED_DATABASE = [
         sourceUrl=SourceUrl(
             "https://console.cloud.google.com/bigquery?project=random-project-id"
         ),
-        domain=None,
+        domains=None,
         lifeCycle=None,
         sourceHash=None,
     )
@@ -236,7 +236,7 @@ EXPTECTED_DATABASE_SCHEMA = [
         sourceUrl=SourceUrl(
             "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m4!1m3!3m2!1srandom-project-id!2ssample_schema"
         ),
-        domain=None,
+        domains=None,
         lifeCycle=None,
         sourceHash=None,
     )
@@ -429,7 +429,7 @@ EXPECTED_TABLE = [
             sourceUrl=SourceUrl(
                 "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
             ),
-            domain=None,
+            domains=None,
             dataProducts=None,
             fileFormat=None,
             lifeCycle=None,
@@ -525,7 +525,7 @@ EXPECTED_TABLE = [
             sourceUrl=SourceUrl(
                 "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
             ),
-            domain=None,
+            domains=None,
             dataProducts=None,
             fileFormat=None,
             lifeCycle=None,

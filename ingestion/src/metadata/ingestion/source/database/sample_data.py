@@ -831,7 +831,7 @@ class SampleDataSource(
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
                 sourceUrl=table.get("sourceUrl"),
-                domain="TestDomain",
+                domains=["TestDomain"],
             )
             yield Either(right=table_request)
 

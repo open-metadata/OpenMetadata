@@ -87,7 +87,7 @@ class OMetaDomainTest(TestCase):
     create_data_product = CreateDataProductRequest(
         name="TestDataProduct",
         description="random",
-        domain="TestDomain",
+        domains=["TestDomain"],
     )
 
     @classmethod
@@ -143,7 +143,7 @@ class OMetaDomainTest(TestCase):
         res: DataProduct = self.metadata.create_or_update(data=self.create_data_product)
         self.assertEqual(res.name, self.create_data_product.name)
         self.assertEqual(res.description, self.create_data_product.description)
-        self.assertEqual(res.domain.name, self.create_data_product.domain.root)
+        self.assertEqual(res.domains[0].name, self.create_data_product.domains[0])
 
     def test_get_name(self):
         """We can fetch Domains & Data Products by name"""
@@ -187,10 +187,10 @@ class OMetaDomainTest(TestCase):
         self.metadata.patch_domain(entity=self.dashboard, domain=domain)
 
         updated_dashboard: Dashboard = self.metadata.get_by_name(
-            entity=Dashboard, fqn=self.dashboard.fullyQualifiedName, fields=["domain"]
+            entity=Dashboard, fqn=self.dashboard.fullyQualifiedName, fields=["domains"]
         )
 
-        self.assertEqual(updated_dashboard.domain.name, domain.name.root)
+        self.assertEqual(updated_dashboard.domains[0].name, domain.name.root)
 
     def test_add_remove_assets_to_data_product(self):
         """We can add assets to a data product"""

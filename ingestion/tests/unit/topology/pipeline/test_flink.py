@@ -109,7 +109,7 @@ EXPECTED_PIPELINE = [
         service=FullyQualifiedEntityName(root="flink_test"),
         extension=None,
         scheduleInterval=None,
-        domain=None,
+        domains=None,
         lifeCycle=None,
         sourceHash=None,
     )
