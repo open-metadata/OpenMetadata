@@ -1244,8 +1244,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setOwners(validatedOwners);
 
     // Validate and populate domain
-    // TODO: SORT DOMAINS PROPERLY TO PATCH
     List<EntityReference> validatedDomains = getValidatedDomains(updated.getDomains());
+    updated.setDomains(validatedDomains);
 
     restorePatchAttributes(original, updated);
 
@@ -3623,7 +3623,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               domain.getFullyQualifiedName(),
               entity.getId());
           removeDomainLineage(updated.getId(), entityType, domain);
-          deleteRelationship(entity.getId(), entityType, domain.getId(), DOMAIN, Relationship.HAS);
+          deleteRelationship(domain.getId(), DOMAIN, entity.getId(), entityType, Relationship.HAS);
         }
       }
     }

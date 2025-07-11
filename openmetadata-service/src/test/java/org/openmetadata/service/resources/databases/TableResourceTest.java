@@ -2584,8 +2584,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // patch domain w/ bot auth and check update is applied
     patchEntity(
         table.getId(),
-        JsonUtils.pojoToJson(createTable),
-        createdTable.withDomains(List.of(DOMAIN1.getEntityReference())),
+        JsonUtils.pojoToJson(updatedTable),
+        updatedTable.withDomains(List.of(DOMAIN1.getEntityReference())),
         INGESTION_BOT_AUTH_HEADERS);
     Table patchedTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
     assertEquals(
