@@ -30,8 +30,8 @@ const validateTourSteps = async (page: Page) => {
 
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('3');
 
-  await page.getByTestId('searchBox').fill('dim_a');
-  await page.getByTestId('searchBox').press('Enter');
+  await page.getByTestId('customise-searchbox').fill('dim_a');
+  await page.getByTestId('customise-searchbox').press('Enter');
 
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('4');
 

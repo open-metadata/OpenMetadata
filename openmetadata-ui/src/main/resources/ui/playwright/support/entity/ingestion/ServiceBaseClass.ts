@@ -28,7 +28,7 @@ import {
   NAME_VALIDATION_ERROR,
   toastNotification,
 } from '../../../utils/common';
-import { visitEntityPage } from '../../../utils/entity';
+import { visitEntityPageWithCustomSearchBox } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   deleteService,
@@ -555,7 +555,7 @@ class ServiceBaseClass {
     const description = `${this.entityName} description`;
 
     // Navigate to ingested table
-    await visitEntityPage({
+    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: this.entityFQN ?? this.entityName,
       dataTestId: entityDataTestId ?? `${this.serviceName}-${this.entityName}`,
@@ -610,7 +610,7 @@ class ServiceBaseClass {
     await this.handleIngestionRetry('metadata', page);
 
     // Navigate to table name
-    await visitEntityPage({
+    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: this.entityFQN ?? this.entityName,
       dataTestId: entityDataTestId ?? `${this.serviceName}-${this.entityName}`,

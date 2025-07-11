@@ -347,7 +347,7 @@ test.describe('Domains', () => {
     const domain = new Domain();
     await domain.create(apiContext);
     await page.reload();
-    await page.getByTestId('domain-dropdown').click();
+    await page.getByTestId('domain-selector').click();
 
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
@@ -365,7 +365,12 @@ test.describe('Domains', () => {
     const url = new URL(response.url());
     const queryParams = new URLSearchParams(url.search);
     const qParam = queryParams.get('q');
-    const fqn = (domain.data.fullyQualifiedName ?? '').replace(/"/g, '\\"');
+
+    // The domain FQN should be properly escaped in the query
+    // The actual format uses escaped hyphens, not URL encoding
+    const fqn = (domain.data.fullyQualifiedName ?? '')
+      .replace(/"/g, '\\"')
+      .replace(/-/g, '\\-');
 
     expect(qParam).toContain(`(domain.fullyQualifiedName:"${fqn}")`);
 

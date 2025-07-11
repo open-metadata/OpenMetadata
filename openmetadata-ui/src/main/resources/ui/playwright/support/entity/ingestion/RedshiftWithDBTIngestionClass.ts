@@ -25,7 +25,7 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../../utils/common';
-import { visitEntityPage } from '../../../utils/entity';
+import { visitEntityPageWithCustomSearchBox } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -218,7 +218,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await expect(page.getByRole('cell', { name: DBT.tagName })).toBeVisible();
 
       // Verify DBT in table entity
-      await visitEntityPage({
+      await visitEntityPageWithCustomSearchBox({
         page,
         searchTerm: this.dbtEntityFqn,
         dataTestId: `${REDSHIFT.serviceName}-${REDSHIFT.DBTTable}`,

@@ -30,7 +30,7 @@ export const deleteTestCase = async (page: Page, testCaseName: string) => {
 };
 
 export const visitDataQualityTab = async (page: Page, table: TableClass) => {
-  await table.visitEntityPage(page);
+  await table.visitEntityPageWithCustomSearchBox(page);
   await page.getByTestId('profiler').click();
   const testCaseResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'

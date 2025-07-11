@@ -275,7 +275,7 @@ export const addTeamOwnerToEntity = async (
   table: TableClass,
   team: TeamClass
 ) => {
-  await table.visitEntityPage(page);
+  await table.visitEntityPageWithCustomSearchBox(page);
   await addOwner({
     page,
     owner: team.data.displayName,
@@ -292,7 +292,7 @@ export const verifyAssetsInTeamsPage = async (
   assetCount: number
 ) => {
   const fullyQualifiedName = table.entityResponseData?.['fullyQualifiedName'];
-  await table.visitEntityPage(page);
+  await table.visitEntityPageWithCustomSearchBox(page);
 
   await expect(
     page.getByTestId('data-assets-header').getByTestId('owner-link')
