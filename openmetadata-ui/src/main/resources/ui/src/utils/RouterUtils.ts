@@ -384,6 +384,17 @@ export const getAddCustomMetricPath = (
   return path;
 };
 
+export const getChartDetailsPath = (fqn: string, tab?: string) => {
+  let path = tab ? ROUTES.CHART_DETAILS_WITH_TAB : ROUTES.CHART_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
 export const getTestSuitePath = (testSuiteFqn: string) => {
   let path = ROUTES.TEST_SUITES_WITH_FQN;
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(testSuiteFqn));

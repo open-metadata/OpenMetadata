@@ -287,6 +287,12 @@ const AddMetricPage = withSuspenseFallback(
   )
 );
 
+const ChartDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/ChartDetailsPage/ChartDetailsPage.component')
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
@@ -717,6 +723,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           />
         }
         path={ROUTES.ADD_METRIC}
+      />
+      <Route element={<ChartDetailsPage />} path={ROUTES.CHART_DETAILS} />
+      <Route
+        element={<ChartDetailsPage />}
+        path={ROUTES.CHART_DETAILS_WITH_TAB}
       />
       <Route
         element={<EntityRouter />}

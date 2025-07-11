@@ -14,6 +14,7 @@ import { expect, Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
@@ -57,6 +58,7 @@ const entities = [
   SearchIndexClass,
   DashboardDataModelClass,
   MetricClass,
+  ChartClass,
 ] as const;
 
 const adminUser = new UserClass();
