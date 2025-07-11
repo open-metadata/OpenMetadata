@@ -37,7 +37,7 @@ const WhatsNewAlert = () => {
     alert: false,
     modal: false,
   });
-  const cookieKey = getVersionedStorageKey(VERSION);
+  const cookieKey = getVersionedStorageKey(VERSION, appVersion);
 
   const { releaseLink, blogLink, isMajorRelease } = useMemo(() => {
     return {
@@ -67,26 +67,24 @@ const WhatsNewAlert = () => {
       expires: getReleaseVersionExpiry(),
     });
     onModalCancel();
-  }, [cookieStorage, onModalCancel, getReleaseVersionExpiry]);
+  }, [cookieStorage, onModalCancel, getReleaseVersionExpiry, cookieKey]);
 
   useEffect(() => {
     setShowWhatsNew({
       alert: cookieStorage.getItem(cookieKey) !== 'true',
       modal: false,
     });
-  }, [isFirstTimeUser]);
+  }, [isFirstTimeUser, cookieKey]);
 
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
         <Affix
-          style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 2000 }}
-        >
+          style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 2000 }}>
           <Card
             bodyStyle={{ padding: 0 }}
             className="whats-new-alert-card"
-            data-testid="whats-new-alert-card"
-          >
+            data-testid="whats-new-alert-card">
             <Row gutter={0} wrap={false}>
               <Col className="whats-new-alert-left" flex="160px">
                 <RocketIcon
@@ -108,8 +106,7 @@ const WhatsNewAlert = () => {
                     href={releaseLink}
                     rel="noopener noreferrer"
                     target="_blank"
-                    type="link"
-                  >
+                    type="link">
                     {t('label.release-notes')}
                   </Button>
                   {/* Only show the blog link for major releases */}
@@ -119,8 +116,7 @@ const WhatsNewAlert = () => {
                       href={blogLink}
                       rel="noopener noreferrer"
                       target="_blank"
-                      type="link"
-                    >
+                      type="link">
                       {t('label.blog')}
                     </Button>
                   )}
