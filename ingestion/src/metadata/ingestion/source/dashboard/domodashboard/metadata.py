@@ -127,9 +127,11 @@ class DomodashboardSource(DashboardServiceSource):
                 name=EntityName(dashboard_details.id),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -228,9 +230,11 @@ class DomodashboardSource(DashboardServiceSource):
                     yield Either(
                         right=CreateChartRequest(
                             name=EntityName(str(chart_id)),
-                            description=Markdown(chart.description)
-                            if chart.description
-                            else None,
+                            description=(
+                                Markdown(chart.description)
+                                if chart.description
+                                else None
+                            ),
                             displayName=chart.name,
                             sourceUrl=SourceUrl(chart_url),
                             service=self.context.get().dashboard_service,
@@ -250,6 +254,6 @@ class DomodashboardSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: dict,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """No lineage implemented"""
