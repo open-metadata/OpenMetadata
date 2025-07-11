@@ -27,7 +27,6 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
-import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
@@ -144,7 +143,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const handleSilentSignInSuccess = (user: User) => {
       // On success update token in store and update axios interceptors
-      setOidcToken(user.id_token);
       updateAxiosInterceptors();
       // Clear the refresh token in progress flag
       // Since refresh token request completes with a callback
@@ -167,6 +165,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: signInSilently,
+      userManager: userManager,
     }));
 
     const AppWithAuth = getAuthenticator(
@@ -205,7 +204,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                   handleFailedLogin();
                 }}
                 onSuccess={(user: User) => {
-                  setOidcToken(user.id_token);
                   handleSuccessfulLogin(user as OidcUser);
                 }}
               />
