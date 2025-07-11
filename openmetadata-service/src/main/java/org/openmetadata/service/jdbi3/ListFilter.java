@@ -45,6 +45,9 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getDomainCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
+    conditions.add(getDirectoryCondition(tableName));
+    conditions.add(getSpreadsheetCondition(tableName));
+    conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
     conditions.add(getEventSubscriptionAlertType());
@@ -218,6 +221,30 @@ public class ListFilter extends Filter<ListFilter> {
   public String getParentCondition(String tableName) {
     String parentFqn = queryParams.get("parent");
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn, "parent");
+  }
+
+  public String getDirectoryCondition(String tableName) {
+    String directoryFqn = queryParams.get("directory");
+    if (directoryFqn == null) {
+      return "";
+    }
+    return String.format("directoryFqn = '%s'", directoryFqn);
+  }
+
+  public String getSpreadsheetCondition(String tableName) {
+    String spreadsheetFqn = queryParams.get("spreadsheet");
+    if (spreadsheetFqn == null) {
+      return "";
+    }
+    return String.format("spreadsheetFqn = '%s'", spreadsheetFqn);
+  }
+
+  public String getFileTypeCondition(String tableName) {
+    String fileType = queryParams.get("fileType");
+    if (fileType == null) {
+      return "";
+    }
+    return String.format("fileType = '%s'", fileType);
   }
 
   public String getDisabledCondition() {
