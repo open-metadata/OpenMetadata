@@ -200,6 +200,7 @@ import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
+import org.openmetadata.service.resources.drives.WorksheetResourceTest;
 import org.openmetadata.service.resources.events.EventResource.EventList;
 import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
@@ -212,6 +213,7 @@ import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.APIServiceResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
+import org.openmetadata.service.resources.services.DriveServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
@@ -349,6 +351,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference SAMPLE_API_COLLECTION_REFERENCE;
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
+
+  public static EntityReference GOOGLE_DRIVE_SERVICE_REFERENCE;
+  public static EntityReference SHAREPOINT_DRIVE_SERVICE_REFERENCE;
 
   public static Classification USER_CLASSIFICATION;
   public static Tag ADDRESS_TAG;
@@ -506,6 +511,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new SearchServiceResourceTest().setupSearchService(test);
     new APIServiceResourceTest().setupAPIService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
+    new DriveServiceResourceTest().setupDriveServices(test);
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions();
@@ -515,6 +521,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new BotResourceTest().setupBots();
     new QueryResourceTest().setupQuery(test);
     new APICollectionResourceTest().setupAPICollection(test);
+    new WorksheetResourceTest().setupSpreadsheet(test);
 
     if (EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
       switch (SELECTED_TEST_CATEGORY) {
@@ -1176,11 +1183,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Finally, delete the container that contains the entities created for this test
     EntityReference container = getContainer();
     if (container != null) {
+      LOG.info(
+          "delete_recursiveTest: Testing with container: {} (id: {}, type: {})",
+          container.getName(),
+          container.getId(),
+          container.getType());
+
       // List both deleted and non deleted entities
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", Include.ALL.value());
       ResultList<T> listBeforeDeletion =
           listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+      LOG.info(
+          "delete_recursiveTest: Entities before deletion: {}",
+          listBeforeDeletion.getData().size());
 
       // Delete non-empty container entity and ensure deletion is not allowed
       EntityResourceTest<? extends EntityInterface, ? extends CreateEntity> containerTest =
@@ -1191,6 +1207,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           entityIsNotEmpty(container.getType()));
 
       // Now soft-delete the container with recursive flag on
+      LOG.info(
+          "delete_recursiveTest: Soft-deleting container {} with recursive flag",
+          container.getName());
       containerTest.deleteEntity(container.getId(), true, false, ADMIN_AUTH_HEADERS);
 
       // Make sure entities that belonged to the container are deleted and the new list operation
@@ -1200,6 +1219,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           .getData()
           .forEach(e -> assertNotEquals(getContainer(e).getId(), container.getId()));
       assertTrue(listAfterDeletion.getData().size() < listBeforeDeletion.getData().size());
+      LOG.info(
+          "delete_recursiveTest: Entities after deletion: {}", listAfterDeletion.getData().size());
 
       // Restore the soft-deleted container by PUT operation and make sure it is restored
       String containerName = container.getName();
@@ -1209,6 +1230,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         String parentOfContainer = containerTest.getContainer().getName();
         containerName = container.getName().replace(parentOfContainer + Entity.SEPARATOR, "");
       }
+      LOG.info(
+          "delete_recursiveTest: Attempting to restore container with name: {}", containerName);
       CreateEntity request = containerTest.createRequest(containerName, "", "", null);
       containerTest.updateEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS);
 
@@ -2696,6 +2719,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // create entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
+
+    // Wait for entity to be indexed in Elasticsearch
+    waitForSyncAndGetFromSearchIndex(
+        entity.getUpdatedAt(), entity.getId(), entityReference.getType());
+
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     // search api method internally appends clusterAlias name
@@ -2716,6 +2744,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // create entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
+
+    // Wait for entity to be indexed in Elasticsearch
+    waitForSyncAndGetFromSearchIndex(
+        entity.getUpdatedAt(), entity.getId(), entityReference.getType());
+
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     // search api method internally appends clusterAlias name
@@ -2732,17 +2765,22 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // delete entity
     WebTarget target = getResource(entity.getId());
     TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
-    // search again in search after deleting
 
-    // search api method internally appends clusterAlias name
-    response = getResponseFormSearch(indexMapping.getIndexName(null));
-    hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
-      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-      entityIds.add(sourceAsMap.get("id").toString());
-    }
-    // verify if it is deleted from the search as well
-    assertFalse(entityIds.contains(entity.getId().toString()));
+    // Wait for deletion to be reflected in Elasticsearch and verify
+    // Use Awaitility to wait for the entity to be removed from search
+    Awaitility.await("Wait for entity to be deleted from search index")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .until(
+            () -> {
+              SearchResponse deleteCheckResponse =
+                  getResponseFormSearch(indexMapping.getIndexName(null));
+              List<String> currentIds = new ArrayList<>();
+              for (SearchHit hit : deleteCheckResponse.getHits().getHits()) {
+                currentIds.add(hit.getSourceAsMap().get("id").toString());
+              }
+              return !currentIds.contains(entity.getId().toString());
+            });
   }
 
   @Test
