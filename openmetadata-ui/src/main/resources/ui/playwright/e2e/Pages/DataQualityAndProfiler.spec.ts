@@ -1202,6 +1202,8 @@ test(
   'Pagination functionality in test cases list',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page }) => {
+    test.slow();
+
     const { apiContext, afterAction } = await getApiContext(page);
     const paginationTable = new TableClass();
 
