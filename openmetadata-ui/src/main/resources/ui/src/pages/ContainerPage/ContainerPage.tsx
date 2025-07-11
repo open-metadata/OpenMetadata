@@ -113,7 +113,7 @@ const ContainerPage = () => {
           TabSpecificField.TAGS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.EXTENSION,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
           TabSpecificField.DATA_PRODUCTS,
           TabSpecificField.VOTES,
         ],

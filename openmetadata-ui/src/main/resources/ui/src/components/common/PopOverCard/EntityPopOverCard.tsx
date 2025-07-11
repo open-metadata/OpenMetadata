@@ -176,7 +176,7 @@ export const PopoverContent: React.FC<{
 
       case EntityType.DATA_PRODUCT:
         promise = getDataProductByName(entityFQN, {
-          fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAIN],
+          fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
         });
 
         break;
@@ -200,7 +200,7 @@ export const PopoverContent: React.FC<{
           fields: [
             TabSpecificField.OWNERS,
             TabSpecificField.TAGS,
-            TabSpecificField.DOMAIN,
+            TabSpecificField.DOMAINS,
           ],
         });
 
