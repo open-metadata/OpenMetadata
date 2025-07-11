@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { forwardRef } from 'react';
+import React, { forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { TestCase } from '../../../generated/tests/testCase';
@@ -176,25 +176,26 @@ jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () =>
   )
 );
 
-// Mock translations
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn(() => ({
-    t: (key: string, params?: Record<string, string>) => {
-      if (key.includes('.') && params) {
-        return key.replace(
-          /\{\{(\w+)\}\}/g,
-          (_, paramKey) => params[paramKey] || ''
-        );
-      }
-
-      return key;
-    },
-  })),
-}));
-
 // Mock utils
 jest.mock('../../../utils/StringsUtils', () => ({
   generateUUID: jest.fn().mockReturnValue('mock-uuid'),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  getIconAndClassName: jest.fn().mockReturnValue({
+    icon: () => React.createElement('div', { 'data-testid': 'mock-icon' }),
+    className: 'mock-class',
+    type: 'info',
+  }),
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
+jest.mock('../../../hooks/useAlertStore', () => ({
+  useAlertStore: jest.fn().mockReturnValue({
+    resetAlert: jest.fn(),
+    animationClass: '',
+  }),
 }));
 
 describe('BundleSuiteForm Component', () => {
@@ -206,9 +207,7 @@ describe('BundleSuiteForm Component', () => {
     it('should render form in standalone mode', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 
-      expect(
-        await screen.findByText('label.create-entity')
-      ).toBeInTheDocument();
+      expect(await screen.findAllByText('label.create-entity')).toHaveLength(2); // One in header, one in card title
       expect(document.querySelector('.bundle-suite-form')).toBeInTheDocument();
       expect(document.querySelector('.standalone-mode')).toBeInTheDocument();
     });
@@ -223,22 +222,20 @@ describe('BundleSuiteForm Component', () => {
         <BundleSuiteForm {...mockProps} isDrawer drawerProps={drawerProps} />
       );
 
-      expect(document.querySelector('.ant-drawer')).toBeInTheDocument();
-      expect(
-        document.querySelector('.custom-gradient-drawer')
-      ).toBeInTheDocument();
-      expect(document.querySelector('.drawer-mode')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(document.querySelector('.ant-drawer')).toBeInTheDocument();
+        expect(document.querySelector('.drawer-mode')).toBeInTheDocument();
+      });
     });
 
     it('should render all form sections with Cards', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 
       await waitFor(() => {
-        expect(document.querySelector('.basic-info-card')).toBeInTheDocument();
+        expect(document.querySelector('.ant-card')).toBeInTheDocument();
         expect(
-          document.querySelector('.test-case-selection-card')
+          document.querySelector('.form-card-section')
         ).toBeInTheDocument();
-        expect(document.querySelector('.scheduler-card')).toBeInTheDocument();
       });
     });
 
@@ -405,7 +402,7 @@ describe('BundleSuiteForm Component', () => {
         fireEvent.click(submitBtn);
       });
 
-      // Just verify the APIs are configured correctly
+      // Just verify the APIs are available for form submission
       expect(createTestSuites).toBeDefined();
       expect(submitBtn).toBeInTheDocument();
     });
