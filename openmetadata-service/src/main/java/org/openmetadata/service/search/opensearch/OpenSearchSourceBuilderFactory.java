@@ -17,6 +17,7 @@ import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.*;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
@@ -47,6 +48,11 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public QueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
+    // Handle empty queries with match_all
+    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
+      return QueryBuilders.matchAllQuery();
+    }
+
     Map<String, Float> fuzzyFields =
         fields.entrySet().stream()
             .filter(entry -> isFuzzyField(entry.getKey()))
@@ -57,8 +63,10 @@ public class OpenSearchSourceBuilderFactory
             .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
+    String queryStringInput =
+        containsQuerySyntax(query) ? query : SearchUtils.escapeSpecialCharactersForQuery(query);
     QueryStringQueryBuilder fuzzyQueryBuilder =
-        QueryBuilders.queryStringQuery(query)
+        QueryBuilders.queryStringQuery(queryStringInput)
             .fields(fuzzyFields)
             .type(MOST_FIELDS)
             .defaultOperator(Operator.AND)
@@ -68,7 +76,7 @@ public class OpenSearchSourceBuilderFactory
             .tieBreaker(0.5f);
 
     MultiMatchQueryBuilder nonFuzzyQueryBuilder =
-        QueryBuilders.multiMatchQuery(query)
+        QueryBuilders.multiMatchQuery(SearchUtils.escapeSpecialCharactersForQuery(query))
             .fields(nonFuzzyFields)
             .type(MOST_FIELDS)
             .operator(Operator.AND)
@@ -122,7 +130,8 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildCostAnalysisReportDataSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query);
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(SearchUtils.escapeSpecialCharactersForQuery(query));
     return searchBuilder(queryBuilder, null, from, size);
   }
 
@@ -150,11 +159,8 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(SearchIndex.getAllFields())
-            .fuzziness(Fuzziness.AUTO)
-            .fuzzyMaxExpansions(10);
+    // Use the same search logic as buildSearchQueryBuilder for consistency
+    QueryBuilder queryBuilder = buildSearchQueryBuilder(query, SearchIndex.getAllFields());
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }
