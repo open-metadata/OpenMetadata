@@ -121,6 +121,8 @@ for (const EntityClass of entities) {
 
         // Check the Entity Drawer
         await performZoomOut(page);
+        await page.getByTestId('full-screen').click();
+
         for (const entity of entities) {
           const toNodeFqn = get(
             entity,
@@ -128,7 +130,7 @@ for (const EntityClass of entities) {
           );
           await page
             .locator(
-              `[data-testid="lineage-node-${toNodeFqn}"] .lineage-node-content`
+              `[data-testid="lineage-node-${toNodeFqn}"] .entity-button-icon`
             )
             .click();
 
