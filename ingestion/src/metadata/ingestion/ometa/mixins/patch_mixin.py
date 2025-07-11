@@ -23,7 +23,9 @@ from pydantic import BaseModel
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
+from metadata.generated.schema.entity.automations.workflow import (
+    WorkflowStatus,
+)
 from metadata.generated.schema.entity.data.table import Column, Table, TableConstraint
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
@@ -174,6 +176,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         restrict_update_fields: Optional[List] = None,
         array_entity_fields: Optional[List] = None,
         override_metadata: Optional[bool] = False,
+        retry_on_conflict: Optional[bool] = True,
     ) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
@@ -186,12 +189,13 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             etag: ETag value for optimistic locking. If provided, will be sent as If-Match header.
             allowed_fields: List of field names to filter from source and destination models
             restrict_update_fields: List of field names which will only support add operation
+            retry_on_conflict: If True, automatically retry on ETag conflicts by fetching latest entity
 
         Returns
             Updated Entity
-            
+
         Raises
-            ETagMismatchError: If the entity was modified by another process (HTTP 412)
+            ETagMismatchError: If the entity was modified by another process (HTTP 412) and retries are disabled or exhausted
         """
         try:
             patch = build_patch(
@@ -206,21 +210,64 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             if not patch:
                 return None
 
-            res_data = self.client.patch_with_etag(
-                path=f"{self.get_suffix(entity)}/{model_str(source.id)}",
-                data=str(patch),
-                etag=etag,
-            )
-            
+            path = f"{self.get_suffix(entity)}/{model_str(source.id)}"
+
+            if retry_on_conflict and hasattr(self.client, "patch_with_etag_retry"):
+                # Use retry-enabled PATCH method
+                def get_latest_callback():
+                    """Callback to fetch latest entity and regenerate patch data"""
+                    # Fetch the latest entity with ETag
+                    latest_response = self.get_by_id_with_etag(entity, source.id)
+                    if not latest_response:
+                        raise Exception(
+                            f"Could not fetch latest entity {entity.__name__} with ID {source.id}"
+                        )
+
+                    latest_entity = latest_response.entity
+                    latest_etag = latest_response.etag
+
+                    # Re-generate patch using the latest entity as source and same destination
+                    new_patch = build_patch(
+                        source=latest_entity,
+                        destination=destination,
+                        allowed_fields=allowed_fields,
+                        restrict_update_fields=restrict_update_fields,
+                        array_entity_fields=array_entity_fields,
+                        override_metadata=override_metadata,
+                    )
+
+                    if not new_patch:
+                        raise Exception(
+                            "No patch could be generated with refreshed entity"
+                        )
+
+                    return str(new_patch), latest_etag
+
+                res_data = self.client.patch_with_etag_retry(
+                    path=path,
+                    data=str(patch),
+                    etag=etag,
+                    get_latest_callback=get_latest_callback,
+                )
+            else:
+                # Use regular PATCH method without retries
+                res_data = self.client.patch_with_etag(
+                    path=path,
+                    data=str(patch),
+                    etag=etag,
+                )
+
             # Extract the actual response data from the ETag wrapper
             if res_data and "data" in res_data:
                 return entity(**res_data["data"])
-            
+
             return None
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to PATCH with ETag {get_log_name(source)}: {exc}")
+            logger.warning(
+                f"Error trying to PATCH with ETag {get_log_name(source)}: {exc}"
+            )
 
         return None
 

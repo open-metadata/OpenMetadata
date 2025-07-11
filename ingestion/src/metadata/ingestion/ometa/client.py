@@ -59,7 +59,9 @@ class ETagMismatchError(Exception):
     This indicates that the entity was modified by another process since the ETag was obtained.
     """
 
-    def __init__(self, message="ETag mismatch - entity was modified by another process"):
+    def __init__(
+        self, message="ETag mismatch - entity was modified by another process"
+    ):
         super().__init__(message)
         self.status_code = 412
 
@@ -131,6 +133,8 @@ class ClientConfig(ConfigModel):
     ttl_cache: int = 60
     timeout: Optional[int] = None
     cert: Optional[Union[str, tuple]] = None
+    etag_retry: Optional[int] = 3
+    etag_retry_wait: Optional[int] = 1
 
 
 # pylint: disable=too-many-instance-attributes
@@ -156,6 +160,8 @@ class REST:
         self._cookies = self.config.cookies
         self._cert = self.config.cert
         self._timeout = self.config.timeout
+        self._etag_retry = self.config.etag_retry
+        self._etag_retry_wait = self.config.etag_retry_wait
 
         self._limits_reached = TTLCache(config.ttl_cache)
 
@@ -383,7 +389,9 @@ class REST:
         except HTTPError as http_error:
             # Check for ETag mismatch (412 Precondition Failed)
             if resp.status_code == 412:
-                raise ETagMismatchError("ETag mismatch - entity was modified by another process") from http_error
+                raise ETagMismatchError(
+                    "ETag mismatch - entity was modified by another process"
+                ) from http_error
             # retry if we hit Rate Limit
             if resp.status_code in retry_codes and retry > 0:
                 raise RetryException() from http_error
@@ -425,8 +433,8 @@ class REST:
             resp.raise_for_status()
 
             # Extract ETag from response headers
-            etag = resp.headers.get('ETag')
-            
+            etag = resp.headers.get("ETag")
+
             if resp.text != "":
                 try:
                     data = resp.json()
@@ -442,13 +450,15 @@ class REST:
                     logger.warning(
                         f"Unexpected error while returning response {resp} in json format - {exc}"
                     )
-            
+
             return {"data": None, "etag": etag}
 
         except HTTPError as http_error:
             # Check for ETag mismatch (412 Precondition Failed)
             if resp.status_code == 412:
-                raise ETagMismatchError("ETag mismatch - entity was modified by another process") from http_error
+                raise ETagMismatchError(
+                    "ETag mismatch - entity was modified by another process"
+                ) from http_error
             # retry if we hit Rate Limit
             if resp.status_code in retry_codes and retry > 0:
                 raise RetryException() from http_error
@@ -464,7 +474,7 @@ class REST:
             # Trying to solve https://github.com/psf/requests/issues/4664
             try:
                 resp_retry = self._session.request(method, url, **opts)
-                etag = resp_retry.headers.get('ETag')
+                etag = resp_retry.headers.get("ETag")
                 return {"data": resp_retry.json(), "etag": etag}
             except Exception as exc:
                 logger.debug(traceback.format_exc())
@@ -560,39 +570,112 @@ class REST:
     def get_with_etag(self, path, data=None):
         """
         GET method that returns both response data and ETag header
-        
+
         Parameters:
             path (str): API path
             data (): Request data
-            
+
         Returns:
             dict: {"data": response_data, "etag": etag_header}
         """
         return self._request_with_etag("GET", path, data)
 
-    @calculate_execution_time(context="PATCH_WITH_ETAG") 
+    @calculate_execution_time(context="PATCH_WITH_ETAG")
     def patch_with_etag(self, path, data=None, etag=None):
         """
         PATCH method with ETag support for optimistic concurrency control
-        
+
         Parameters:
             path (str): API path
             data (): Request data
             etag (str, optional): ETag value for If-Match header
-            
+
         Returns:
             dict: {"data": response_data, "etag": etag_header}
         """
         headers = {"Content-type": "application/json-patch+json"}
         if etag:
             headers["If-Match"] = etag
-            
+
         return self._request_with_etag(
             method="PATCH",
             path=path,
             data=data,
             headers=headers,
         )
+
+    @calculate_execution_time(context="PATCH_WITH_ETAG_RETRY")
+    def patch_with_etag_retry(
+        self, path, data=None, etag=None, get_latest_callback=None
+    ):
+        """
+        PATCH method with ETag support and automatic retry on conflicts.
+        When a 412 (Precondition Failed) occurs, it will:
+        1. Use the get_latest_callback to fetch the latest entity and ETag
+        2. Re-generate the patch data using the callback
+        3. Retry the PATCH operation
+
+        Parameters:
+            path (str): API path
+            data (): Request data
+            etag (str, optional): ETag value for If-Match header
+            get_latest_callback (callable, optional): Function that returns (updated_data, new_etag)
+                                                    when called to refresh entity state
+
+        Returns:
+            dict: {"data": response_data, "etag": etag_header}
+        """
+        total_retries = self._etag_retry if self._etag_retry > 0 else 0
+        retry_count = 0
+
+        current_data = data
+        current_etag = etag
+
+        while retry_count <= total_retries:
+            try:
+                headers = {"Content-type": "application/json-patch+json"}
+                if current_etag:
+                    headers["If-Match"] = current_etag
+
+                return self._request_with_etag(
+                    method="PATCH",
+                    path=path,
+                    data=current_data,
+                    headers=headers,
+                )
+
+            except ETagMismatchError as exc:
+                if retry_count >= total_retries:
+                    logger.warning(
+                        f"ETag retry limit ({total_retries}) reached for {path}"
+                    )
+                    raise exc
+
+                if not get_latest_callback:
+                    logger.warning(
+                        f"No get_latest_callback provided for ETag retry on {path}"
+                    )
+                    raise exc
+
+                logger.info(
+                    f"ETag conflict detected, retrying {path} (attempt {retry_count + 1}/{total_retries + 1})"
+                )
+
+                # Wait before retrying
+                if self._etag_retry_wait > 0:
+                    time.sleep(self._etag_retry_wait)
+
+                try:
+                    # Get the latest entity state and regenerate patch data
+                    current_data, current_etag = get_latest_callback()
+                    retry_count += 1
+                except Exception as callback_exc:
+                    logger.error(
+                        f"Error in get_latest_callback during ETag retry: {callback_exc}"
+                    )
+                    raise exc from callback_exc
+
+        return {"data": None, "etag": None}
 
     def __enter__(self):
         return self
