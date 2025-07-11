@@ -826,7 +826,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Build a combination with domain, tags, and owners if supported
     StringBuilder complexFields = new StringBuilder();
     if (supportsDomain) {
-      complexFields.append("domain");
+      complexFields.append("domains");
     }
     if (supportsTags) {
       if (complexFields.length() > 0) complexFields.append(",");

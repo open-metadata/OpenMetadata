@@ -4605,9 +4605,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities == null || entities.isEmpty()) {
       return domainsMap;
     }
-    // Use Include.ALL to get all relationships including those for soft-deleted entities
-    // Also filter by DOMAIN entity type to avoid fetching unnecessary relationships
-    var records =
+    List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(entityListToStrings(entities), Relationship.HAS.ordinal(), DOMAIN, ALL);
@@ -4621,25 +4619,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     var domainRefMap =
         domainRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
 
-    // Map entities to their domains
-    records.forEach(
-        rec -> {
-          var toId = UUID.fromString(rec.getToId());
-          var fromId = UUID.fromString(rec.getFromId());
-          var domainRef = domainRefMap.get(fromId);
-
-          if (domainRef != null) {
-            // Since each entity can have only one domain, we can directly put it in the map
-            if (domainsMap.containsKey(toId)) {
-              // Handle the case where an entity has multiple domains (which shouldn't happen)
-              throw new IllegalStateException(
-                  String.format("Entity with ID %s has multiple domains", toId));
-            } else {
-              domainsMap.put(toId, domainRef);
-            }
-          }
-        });
-      EntityReference domainRef = getEntityReferenceById(fromEntity, fromId, ALL);
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID toId = UUID.fromString(rec.getToId());
+      UUID fromId = UUID.fromString(rec.getFromId());
+      EntityReference domainRef = domainRefMap.get(fromId);
       domainsMap.computeIfAbsent(toId, k -> new ArrayList<>()).add(domainRef);
     }
 

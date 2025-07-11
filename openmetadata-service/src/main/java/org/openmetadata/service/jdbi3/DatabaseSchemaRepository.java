@@ -404,7 +404,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       Database database = databaseMap.get(schema.getDatabase().getId());
       if (database != null) {
         inheritOwners(schema, fields, database);
-        inheritDomain(schema, fields, database);
+        inheritDomains(schema, fields, database);
         schema.withRetentionPeriod(
             schema.getRetentionPeriod() == null
                 ? database.getRetentionPeriod()
