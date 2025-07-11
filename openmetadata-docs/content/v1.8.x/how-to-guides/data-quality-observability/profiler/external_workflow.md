@@ -42,7 +42,7 @@ pip install "openmetadata-ingestion[athena,datalake,trino]~=1.2.1"
 ```
 
 - The `athena` plugin will bring all the requirements to connect to the Athena Service
-- The `datalake` plugin helps us connect to S3 to manage the [sample data](/how-to-guides/data-quality-observability/profiler/external-sample-data)
+- The `datalake` plugin helps us connect to S3 to manage the sample data.
 - The `trino` plugin will only be needed temporarily
 
 ## 1. Define the YAML Config
