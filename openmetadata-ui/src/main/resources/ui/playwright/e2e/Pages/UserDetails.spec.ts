@@ -179,8 +179,15 @@ test.describe('User with different Roles', () => {
       adminPage.locator('[data-testid="header-domain-container"]')
     ).toContainText(domain.responseData.displayName);
 
+    const teamsListResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/teams/hierarchy') &&
+        response.request().method() === 'GET'
+    );
+
     await adminPage.getByTestId('edit-teams-button').click();
 
+    await teamsListResponse;
     await adminPage.getByTestId('team-select').click();
 
     await adminPage.waitForSelector('.ant-tree-select-dropdown', {
@@ -189,7 +196,7 @@ test.describe('User with different Roles', () => {
 
     await adminPage
       .locator('[title="' + team.responseData.displayName + '"]')
-      .first()
+      .nth(1)
       .click();
 
     const userProfileResponse = adminPage.waitForResponse((response) =>
