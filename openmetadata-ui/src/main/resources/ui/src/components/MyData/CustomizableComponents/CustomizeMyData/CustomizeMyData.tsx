@@ -59,7 +59,9 @@ const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
 function CustomizeMyData({
   personaDetails,
   initialPageData,
+  backgroundColor,
   onSaveLayout,
+  onBackgroundColorUpdate,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -160,8 +162,8 @@ function CustomizeMyData({
     );
 
     const jsonPatch = compare(
-      cloneDeep(initialPageData?.layout as WidgetConfig[]),
-      cloneDeep(filteredLayout)
+      cloneDeep((initialPageData?.layout || []) as WidgetConfig[]),
+      cloneDeep(filteredLayout || [])
     );
 
     return jsonPatch.length === 0;
@@ -221,14 +223,7 @@ function CustomizeMyData({
   };
 
   const handleBackgroundColorUpdate = async (color: string) => {
-    await onSaveLayout({
-      ...(initialPageData ??
-        ({
-          pageType: PageType.LandingPage,
-        } as Page)),
-      layout: getUniqueFilteredLayout(layout),
-      homePageBannerBackgroundColor: color,
-    } as Page);
+    await onBackgroundColorUpdate?.(color);
   };
 
   // call the hook to set the direction of the grid layout
@@ -251,8 +246,9 @@ function CustomizeMyData({
           <CustomiseLandingPageHeader
             overlappedContainer
             addedWidgetsList={addedWidgetsList}
+            backgroundColor={backgroundColor}
             handleAddWidget={handleMainPanelAddWidget}
-            onBackgroundColorUpdate={handleBackgroundColorUpdate} // TODO: We need to update this background color updation api call when we get the api
+            onBackgroundColorUpdate={handleBackgroundColorUpdate}
           />
           <ReactGridLayout
             className="grid-container"

@@ -25,13 +25,10 @@ import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
 import { EntityReference } from '../../../../generated/entity/type';
-import { Page } from '../../../../generated/system/ui/page';
-import { PageType } from '../../../../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
-import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { isCommandKeyPress, Keys } from '../../../../utils/KeyboardUtil';
@@ -57,21 +54,11 @@ const CustomiseLandingPageHeader = ({
   const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
     useDomainStore();
   const { isNLPEnabled, isNLPActive, setNLPActive } = useSearchStore();
-  const { document } = useCustomizeStore();
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const searchRef = useRef<any>(null);
 
-  const defaultBackgroundColor = useMemo(
-    () =>
-      document?.data?.pages?.find(
-        (item: Page) => item.pageType === PageType.LandingPage
-      )?.homePageBannerBackgroundColor,
-    [document]
-  );
-
-  const bgColor =
-    backgroundColor ?? defaultBackgroundColor ?? DEFAULT_HEADER_BG_COLOR;
+  const bgColor = backgroundColor ?? DEFAULT_HEADER_BG_COLOR;
 
   const recentlyViewData = useMemo(() => {
     const entities = getRecentlyViewedData();
