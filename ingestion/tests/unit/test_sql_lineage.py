@@ -16,6 +16,7 @@ import uuid
 from unittest import TestCase
 
 import pytest
+from collate_sqllineage.runner import SQLPARSE_DIALECT
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.masker import mask_query
@@ -261,7 +262,18 @@ class SqlLineageTest(TestCase):
                 """select * from users where id > 2 and name <> 'pere';""",
                 Dialect.ANSI.value,
             ),
-            ("""select * from users where id > 2 and name <> 'pere';""", "random"),
+            (
+                """select * from users where id > 2 and name <> 'pere';""",
+                "random",
+            ),
+            (
+                """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > 18 AND name = 'John';""",
+                SQLPARSE_DIALECT,  # test with sqlparse
+            ),
+            (
+                """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > 18 AND name = 'John';""",
+                Dialect.ANSI.value,  # test with sqlfluff
+            ),
         ]
 
         expected_query_list = [
@@ -274,6 +286,8 @@ class SqlLineageTest(TestCase):
             """select * from (select * from (SELECT CASE address WHEN ? THEN ? ELSE ? END AS person FROM user));""",
             """select * from users where id > ? and name <> ?;""",
             """select * from users where id > ? and name <> ?;""",
+            """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > ? AND name = ?;""",
+            """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > ? AND name = ?;""",
         ]
 
         for i, query in enumerate(query_list):
