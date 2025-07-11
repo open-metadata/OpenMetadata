@@ -29,6 +29,7 @@ import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -44,7 +45,10 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { defaultFields } from '../../utils/MlModelDetailsUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -83,8 +87,12 @@ const MlModelPage = () => {
   };
 
   const viewUsagePermission = useMemo(
-    () => mlModelPermissions.ViewAll || mlModelPermissions.ViewUsage,
-    [mlModelPermissions]
+    () =>
+      getPrioritizedViewPermission(
+        mlModelPermissions,
+        PermissionOperation.ViewUsage
+      ),
+    [mlModelPermissions, getPrioritizedViewPermission]
   );
 
   const fetchMlModelDetails = async (name: string) => {
@@ -115,7 +123,12 @@ const MlModelPage = () => {
   };
 
   useEffect(() => {
-    if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
+    if (
+      getPrioritizedViewPermission(
+        mlModelPermissions,
+        PermissionOperation.ViewBasic
+      )
+    ) {
       fetchMlModelDetails(mlModelFqn);
     }
   }, [mlModelPermissions, mlModelFqn]);

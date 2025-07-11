@@ -23,6 +23,7 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Pipeline, TagLabel } from '../../../generated/entity/data/pipeline';
+import { Operation as PermissionOperation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -36,7 +37,10 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+} from '../../../utils/PermissionsUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
@@ -216,24 +220,33 @@ const PipelineDetails = ({
   } = useMemo(
     () => ({
       editTagsPermission:
-        (pipelinePermissions.EditTags || pipelinePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          pipelinePermissions,
+          PermissionOperation.EditTags
+        ) && !deleted,
       editGlossaryTermsPermission:
-        (pipelinePermissions.EditGlossaryTerms ||
-          pipelinePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          pipelinePermissions,
+          PermissionOperation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (pipelinePermissions.EditDescription || pipelinePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          pipelinePermissions,
+          PermissionOperation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (pipelinePermissions.EditAll || pipelinePermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          pipelinePermissions,
+          PermissionOperation.EditCustomFields
+        ) && !deleted,
       editLineagePermission:
-        (pipelinePermissions.EditAll || pipelinePermissions.EditLineage) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          pipelinePermissions,
+          PermissionOperation.EditLineage
+        ) && !deleted,
       viewAllPermission: pipelinePermissions.ViewAll,
     }),
-    [pipelinePermissions, deleted]
+    [pipelinePermissions, deleted, getPrioritizedEditPermission]
   );
 
   const handleTabChange = (tabValue: string) => {

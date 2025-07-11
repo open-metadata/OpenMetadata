@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -23,6 +24,8 @@ public class ResourceRegistry {
       new HashMap<>();
   protected static final Map<MetadataOperation, String> EDIT_OPERATION_TO_OPERATION_MAP =
       new EnumMap<>(MetadataOperation.class);
+  protected static final Map<String, Map<String, MetadataOperation>>
+      ENTITY_FIELD_TO_VIEW_OPERATION_MAP = new ConcurrentHashMap<>();
 
   // Operations common to all the entities
   protected static final List<MetadataOperation> COMMON_OPERATIONS =
@@ -122,6 +125,15 @@ public class ResourceRegistry {
     return rd;
   }
 
+  public static Map<String, MetadataOperation> getResourceFieldViewOperations(String resourceType) {
+    Map<String, MetadataOperation> rd = ENTITY_FIELD_TO_VIEW_OPERATION_MAP.get(resourceType);
+    if (rd == null) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.resourceTypeNotFound(resourceType));
+    }
+    return rd;
+  }
+
   /** Given an entity field name get the corresponding entity edit operation */
   public static MetadataOperation getEditOperation(String field) {
     return FIELD_TO_EDIT_OPERATION_MAP.get(field);
@@ -143,5 +155,10 @@ public class ResourceRegistry {
   private static void mapFieldOperation(MetadataOperation operation, String field) {
     FIELD_TO_EDIT_OPERATION_MAP.put(field, operation);
     EDIT_OPERATION_TO_OPERATION_MAP.put(operation, field);
+  }
+
+  public static void entityFieldToViewOperation(
+      String entityType, Map<String, MetadataOperation> operations) {
+    ENTITY_FIELD_TO_VIEW_OPERATION_MAP.put(entityType, operations);
   }
 }

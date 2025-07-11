@@ -172,9 +172,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   void get_admin_permissions_for_role() throws HttpResponseException {
     // Ensure an admin has all the permissions
     List<ResourcePermission> actualPermissions = getPermissions(ADMIN_AUTH_HEADERS);
-    assertEquals(
-        PolicyEvaluator.trimResourcePermissions(PolicyEvaluator.getResourcePermissions(ALLOW)),
-        actualPermissions);
+    assertEquals(PolicyEvaluator.getResourcePermissions(ALLOW), actualPermissions);
   }
 
   @Test
@@ -234,18 +232,14 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     permissionsBuilder.setPermission(
         DATA_CONSUMER_ALLOWED, ALLOW, null, DATA_CONSUMER_POLICY_NAME, DATA_CONSUMER_RULES.get(0));
 
-    assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
-        actual);
+    assertResourcePermissions(permissionsBuilder.getResourcePermissions(), actual);
 
     // Get permissions for DATA_CONSUMER and DATA_STEWARD policies together and assert it is correct
     policies.add(DATA_STEWARD_POLICY.getId());
     actual = getPermissionsForPolicies(policies, ADMIN_AUTH_HEADERS);
     permissionsBuilder.setPermission(
         DATA_STEWARD_ALLOWED, ALLOW, null, DATA_STEWARD_POLICY_NAME, DATA_STEWARD_RULES.get(0));
-    assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
-        actual);
+    assertResourcePermissions(permissionsBuilder.getResourcePermissions(), actual);
   }
 
   @Test
@@ -282,9 +276,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     // Note that conditional list is empty. All the required context to resolve is met when
     // requesting permission of a specific resource (both subject and resource context).
     // Only Deny, Allow, NotAllow permissions are expected.
-    assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
-        actualPermission);
+    assertResourcePermission(permissionsBuilder.getPermission(Entity.TABLE), actualPermission);
   }
 
   @Test
@@ -318,23 +310,17 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
         ORG_IS_OWNER_RULE_OPERATIONS, ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_IS_OWNER_RULE);
     ResourcePermission actualPermission =
         getPermission(Entity.TABLE, table.getId(), null, authHeaders);
-    assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
-        actualPermission);
+    assertResourcePermission(permissionsBuilder.getPermission(Entity.TABLE), actualPermission);
 
     // get permissions by resource entity name
     actualPermission =
         getPermissionByName(Entity.TABLE, table.getFullyQualifiedName(), null, authHeaders);
-    assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
-        actualPermission);
+    assertResourcePermission(permissionsBuilder.getPermission(Entity.TABLE), actualPermission);
 
     // Admin getting permissions for a specific resource on for Data consumer
     actualPermission =
         getPermission(Entity.TABLE, table.getId(), DATA_CONSUMER_USER_NAME, ADMIN_AUTH_HEADERS);
-    assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
-        actualPermission);
+    assertResourcePermission(permissionsBuilder.getPermission(Entity.TABLE), actualPermission);
 
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();
     Policy orgPolicy =
@@ -370,9 +356,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
           allowedOperations, ALLOW, null, ORGANIZATION_POLICY_NAME, orgPolicy.getRules().get(1));
       actualPermission =
           getPermissionByName(Entity.TABLE, table.getFullyQualifiedName(), null, authHeaders);
-      assertResourcePermission(
-          PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
-          actualPermission);
+      assertResourcePermission(permissionsBuilder.getPermission(Entity.TABLE), actualPermission);
 
       // Finally, try to patch the field that can't be edited and expect permission denied
       String field = ResourceRegistry.getField(editOperation);

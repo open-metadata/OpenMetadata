@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { has } from 'lodash';
 import {
   OperationPermission,
   ResourceEntity,
@@ -120,6 +121,40 @@ export const userPermissions = {
   ) =>
     checkPermission(Operation.ViewBasic, resourceEntityType, permissions) ||
     checkPermission(Operation.ViewAll, resourceEntityType, permissions),
+};
+
+/**
+ * Prioritizes field-level edit permissions over EditAll permission
+ * @param permissions - The operation permissions object
+ * @param fieldEditPermission - The specific field edit permission to check first
+ * @returns boolean - true if user has field-specific edit permission or EditAll permission
+ */
+export const getPrioritizedEditPermission = (
+  permissions: OperationPermission,
+  fieldEditPermission: Operation
+): boolean => {
+  if (has(permissions, fieldEditPermission)) {
+    return permissions[fieldEditPermission];
+  }
+
+  return permissions[Operation.EditAll];
+};
+
+/**
+ * Prioritizes field-level view permissions over ViewAll permission
+ * @param permissions - The operation permissions object
+ * @param fieldViewPermission - The specific field view permission to check first
+ * @returns boolean - true if user has field-specific view permission or ViewAll permission
+ */
+export const getPrioritizedViewPermission = (
+  permissions: OperationPermission,
+  fieldViewPermission: Operation
+): boolean => {
+  if (has(permissions, fieldViewPermission)) {
+    return permissions[fieldViewPermission];
+  }
+
+  return permissions[Operation.ViewAll];
 };
 
 export const DEFAULT_ENTITY_PERMISSION = {

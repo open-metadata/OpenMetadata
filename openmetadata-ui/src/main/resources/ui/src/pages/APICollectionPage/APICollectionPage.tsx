@@ -50,6 +50,7 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { useCustomPages } from '../../hooks/useCustomPages';
@@ -72,7 +73,11 @@ import {
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -138,8 +143,12 @@ const APICollectionPage: FunctionComponent = () => {
   }, [decodedAPICollectionFQN]);
 
   const viewAPICollectionPermission = useMemo(
-    () => apiCollectionPermission.ViewAll || apiCollectionPermission.ViewBasic,
-    [apiCollectionPermission?.ViewAll, apiCollectionPermission?.ViewBasic]
+    () =>
+      getPrioritizedViewPermission(
+        apiCollectionPermission,
+        PermissionOperation.ViewBasic
+      ),
+    [apiCollectionPermission, getPrioritizedViewPermission]
   );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -375,23 +384,28 @@ const APICollectionPage: FunctionComponent = () => {
   const { editCustomAttributePermission, viewAllPermission } = useMemo(
     () => ({
       editTagsPermission:
-        (apiCollectionPermission.EditTags || apiCollectionPermission.EditAll) &&
-        !apiCollection.deleted,
+        getPrioritizedEditPermission(
+          apiCollectionPermission,
+          PermissionOperation.EditTags
+        ) && !apiCollection.deleted,
       editGlossaryTermsPermission:
-        (apiCollectionPermission.EditGlossaryTerms ||
-          apiCollectionPermission.EditAll) &&
-        !apiCollection.deleted,
+        getPrioritizedEditPermission(
+          apiCollectionPermission,
+          PermissionOperation.EditGlossaryTerms
+        ) && !apiCollection.deleted,
       editDescriptionPermission:
-        (apiCollectionPermission.EditDescription ||
-          apiCollectionPermission.EditAll) &&
-        !apiCollection.deleted,
+        getPrioritizedEditPermission(
+          apiCollectionPermission,
+          PermissionOperation.EditDescription
+        ) && !apiCollection.deleted,
       editCustomAttributePermission:
-        (apiCollectionPermission.EditAll ||
-          apiCollectionPermission.EditCustomFields) &&
-        !apiCollection.deleted,
+        getPrioritizedEditPermission(
+          apiCollectionPermission,
+          PermissionOperation.EditCustomFields
+        ) && !apiCollection.deleted,
       viewAllPermission: apiCollectionPermission.ViewAll,
     }),
-    [apiCollectionPermission, apiCollection]
+    [apiCollectionPermission, apiCollection, getPrioritizedEditPermission]
   );
 
   const handleAPICollectionUpdate = async (updatedData: APICollection) => {
