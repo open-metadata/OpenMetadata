@@ -1,5 +1,6 @@
 ---
 title: Java SDK | OpenMetadata Java SDK Documentation
+description: Learn to integrate OpenMetadata's Java SDK into your applications. Complete documentation, code examples, and API reference for seamless metadata management.
 slug: /sdk/java
 ---
 

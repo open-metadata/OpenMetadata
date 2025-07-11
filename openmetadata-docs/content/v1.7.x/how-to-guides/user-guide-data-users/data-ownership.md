@@ -1,5 +1,6 @@
 ---
 title: How to Assign or Change Data Ownership
+description: Learn how to establish and manage data ownership in OpenMetadata. Complete guide for data users on assigning owners, tracking responsibility, and governance.
 slug: /how-to-guides/guide-for-data-users/data-ownership
 ---
 

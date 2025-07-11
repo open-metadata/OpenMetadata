@@ -1,5 +1,6 @@
 ---
 title: Metadata Ingestion - Multithreading (Beta)
+description: Optimize OpenMetadata ingestion with multithreading workflows. Learn to configure parallel processing for faster metadata extraction and improved performance.
 slug: /connectors/ingestion/workflows/metadata/multithreading
 ---
 

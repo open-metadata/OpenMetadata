@@ -1,5 +1,6 @@
 ---
 title: ML Model | OpenMetadata Machine Learning Model SDK
+description: Learn to manage ML models with OpenMetadata Python SDK. Complete guide with code examples, entity operations, and API integration for machine learning workflows.
 slug: /sdk/python/entities/ml-model
 ---
 

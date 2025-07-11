@@ -1,5 +1,6 @@
 ---
 title: Sink
+description: Learn to build custom sink connectors for OpenMetadata using Python SDK. Step-by-step guide with code examples to integrate and stream metadata efficiently.
 slug: /sdk/python/build-connector/sink
 ---
 

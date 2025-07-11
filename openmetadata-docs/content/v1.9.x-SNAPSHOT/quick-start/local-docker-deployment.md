@@ -1,5 +1,6 @@
 ---
 title: Try OpenMetadata in Docker
+description: Get OpenMetadata running locally in minutes with Docker. Step-by-step setup guide, configuration tips, and troubleshooting for your metadata platform.
 slug: /quick-start/local-docker-deployment
 ---
 
