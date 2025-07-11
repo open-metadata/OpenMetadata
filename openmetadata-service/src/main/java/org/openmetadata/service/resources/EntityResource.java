@@ -22,6 +22,7 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
 import jakarta.json.JsonPatch;
+import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -70,6 +72,7 @@ import org.openmetadata.service.util.BulkAssetsOperationResponse;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.DeleteEntityResponse;
+import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -434,6 +437,48 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch, changeSource);
     addHref(uriInfo, response.entity());
     return response.toResponse();
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      ContainerRequestContext requestContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource) {
+    validateETag(requestContext, id);
+    return patchInternal(uriInfo, securityContext, id, patch, changeSource);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      ContainerRequestContext requestContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource) {
+    validateETag(requestContext, fqn);
+    return patchInternal(uriInfo, securityContext, fqn, patch, changeSource);
+  }
+
+  private void validateETag(ContainerRequestContext requestContext, UUID id) {
+    String ifMatch = (String) requestContext.getProperty("X-OpenMetadata-If-Match");
+    if (ifMatch != null && !ifMatch.isEmpty()) {
+      T entity = repository.find(id, Include.NON_DELETED, false);
+      if (!EntityETag.matches(ifMatch, entity)) {
+        throw new PreconditionFailedException(entityType, entity.getFullyQualifiedName());
+      }
+    }
+  }
+
+  private void validateETag(ContainerRequestContext requestContext, String fqn) {
+    String ifMatch = (String) requestContext.getProperty("X-OpenMetadata-If-Match");
+    if (ifMatch != null && !ifMatch.isEmpty()) {
+      T entity = repository.findByName(fqn, Include.NON_DELETED, false);
+      if (!EntityETag.matches(ifMatch, entity)) {
+        throw new PreconditionFailedException(entityType, entity.getFullyQualifiedName());
+      }
+    }
   }
 
   public Response delete(

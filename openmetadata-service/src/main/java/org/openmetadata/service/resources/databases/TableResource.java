@@ -41,6 +41,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -416,6 +417,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext requestContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @RequestBody(
@@ -433,7 +435,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = ChangeSource.class))
           @QueryParam("changeSource")
           ChangeSource changeSource) {
-    return patchInternal(uriInfo, securityContext, id, patch, changeSource);
+    return patchInternal(uriInfo, securityContext, requestContext, id, patch, changeSource);
   }
 
   @PATCH
@@ -450,6 +452,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext requestContext,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
@@ -467,7 +470,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = ChangeSource.class))
           @QueryParam("changeSource")
           ChangeSource changeSource) {
-    return patchInternal(uriInfo, securityContext, fqn, patch, changeSource);
+    return patchInternal(uriInfo, securityContext, requestContext, fqn, patch, changeSource);
   }
 
   @GET
