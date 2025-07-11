@@ -11,8 +11,9 @@
 """
 Generic Workflow entrypoint to execute Applications
 """
+import json
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -25,6 +26,8 @@ from metadata.ingestion.api.step import Step
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.importer import import_from_module
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.secrets.external_secrets_manager import ExternalSecretsManager
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.workflow.base import BaseWorkflow
 
 logger = ingestion_logger()
@@ -51,7 +54,97 @@ class AppRunner(Step, ABC):
         )
         self.metadata = metadata
 
+        # If private_config is None/empty and we have ingestion pipeline FQN,
+        # try to retrieve it from secrets manager (for external apps)
+        if (
+            not self.private_config
+            and config.ingestionPipelineFQN
+            and self._is_external_secrets_manager_available()
+        ):
+            self.private_config = self._retrieve_external_app_private_config(
+                config.ingestionPipelineFQN
+            )
+
         super().__init__()
+
+    def _is_external_secrets_manager_available(self) -> bool:
+        """Check if external secrets manager is available and configured"""
+        try:
+            secrets_manager = SecretsManagerFactory().get_secrets_manager()
+            return isinstance(secrets_manager, ExternalSecretsManager)
+        except Exception:
+            return False
+
+    def _retrieve_external_app_private_config(
+        self, pipeline_fqn: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve private config from external secrets manager for external apps.
+
+        Args:
+            pipeline_fqn: Fully qualified name of the ingestion pipeline (e.g., "OpenMetadata.appName")
+
+        Returns:
+            Dictionary containing the private config or None if not found
+        """
+        try:
+            # Extract app name from FQN (format: "OpenMetadata.{appName}")
+            app_name = self._extract_app_name_from_fqn(pipeline_fqn)
+            if not app_name:
+                logger.debug(f"Could not extract app name from FQN: {pipeline_fqn}")
+                return None
+
+            # Construct secret ID following the Java pattern
+            secret_id = f"external-app-{app_name.lower()}-private-config"
+
+            # Retrieve from secrets manager
+            secrets_manager = SecretsManagerFactory().get_secrets_manager()
+            if isinstance(secrets_manager, ExternalSecretsManager):
+                private_config_json = secrets_manager.get_string_value(secret_id)
+                if private_config_json:
+                    private_config = json.loads(private_config_json)
+                    logger.info(
+                        f"Successfully retrieved private config from secrets manager for external app: {app_name}"
+                    )
+                    return private_config
+                else:
+                    logger.debug(
+                        f"No private config found in secrets manager for app: {app_name}"
+                    )
+                    return None
+            else:
+                logger.debug("External secrets manager not available")
+                return None
+
+        except Exception as exc:
+            logger.error(
+                f"Failed to retrieve private config from secrets manager for FQN {pipeline_fqn}: {exc}"
+            )
+            logger.debug(f"External app will run without private config")
+            return None
+
+    def _extract_app_name_from_fqn(self, pipeline_fqn: str) -> Optional[str]:
+        """
+        Extract app name from ingestion pipeline FQN.
+
+        Args:
+            pipeline_fqn: Fully qualified name like "OpenMetadata.appName"
+
+        Returns:
+            App name or None if extraction fails
+        """
+        try:
+            # FQN format is "OpenMetadata.{appName}" based on Java implementation
+            parts = pipeline_fqn.split(".")
+            if len(parts) >= 2 and parts[0] == "OpenMetadata":
+                # Return the app name (second part)
+                return parts[1]
+            else:
+                logger.debug(f"Unexpected FQN format: {pipeline_fqn}")
+                return None
+        except Exception as exc:
+            logger.error(f"Error extracting app name from FQN {pipeline_fqn}: {exc}")
+            return None
 
     @property
     def name(self) -> str:
