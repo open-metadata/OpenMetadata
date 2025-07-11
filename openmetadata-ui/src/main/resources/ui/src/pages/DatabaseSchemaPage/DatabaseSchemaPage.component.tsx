@@ -56,6 +56,7 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -82,7 +83,11 @@ import {
 import databaseSchemaClassBase from '../../utils/DatabaseSchemaClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -166,8 +171,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const viewDatabaseSchemaPermission = useMemo(
     () =>
-      databaseSchemaPermission.ViewAll || databaseSchemaPermission.ViewBasic,
-    [databaseSchemaPermission?.ViewAll, databaseSchemaPermission?.ViewBasic]
+      getPrioritizedViewPermission(
+        databaseSchemaPermission,
+        PermissionOperation.ViewBasic
+      ),
+    [databaseSchemaPermission, getPrioritizedViewPermission]
   );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -426,13 +434,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { editCustomAttributePermission, viewAllPermission } = useMemo(
     () => ({
       editCustomAttributePermission:
-        (databaseSchemaPermission.EditAll ||
-          databaseSchemaPermission.EditCustomFields) &&
-        !databaseSchema.deleted,
+        getPrioritizedEditPermission(
+          databaseSchemaPermission,
+          PermissionOperation.EditCustomFields
+        ) && !databaseSchema.deleted,
       viewAllPermission: databaseSchemaPermission.ViewAll,
     }),
 
-    [databaseSchemaPermission, databaseSchema]
+    [databaseSchemaPermission, databaseSchema, getPrioritizedEditPermission]
   );
 
   const handleExtensionUpdate = async (schema: DatabaseSchema) => {

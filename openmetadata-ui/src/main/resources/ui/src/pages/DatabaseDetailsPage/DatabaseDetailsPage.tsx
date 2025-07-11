@@ -53,6 +53,7 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
@@ -79,7 +80,11 @@ import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import databaseClassBase from '../../utils/Database/DatabaseClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import {
   getEntityDetailsPath,
   getExplorePath,
@@ -290,7 +295,12 @@ const DatabaseDetails: FunctionComponent = () => {
   }, [withinPageSearch]);
 
   useEffect(() => {
-    if (databasePermission.ViewAll || databasePermission.ViewBasic) {
+    if (
+      getPrioritizedViewPermission(
+        databasePermission,
+        PermissionOperation.ViewBasic
+      )
+    ) {
       getDetailsByFQN();
       fetchDatabaseSchemaCount();
     } else {
@@ -390,11 +400,13 @@ const DatabaseDetails: FunctionComponent = () => {
   const { editCustomAttributePermission, viewAllPermission } = useMemo(
     () => ({
       editCustomAttributePermission:
-        (databasePermission.EditAll || databasePermission.EditCustomFields) &&
-        !database.deleted,
+        getPrioritizedEditPermission(
+          databasePermission,
+          PermissionOperation.EditCustomFields
+        ) && !database.deleted,
       viewAllPermission: databasePermission.ViewAll,
     }),
-    [databasePermission, database]
+    [databasePermission, database, getPrioritizedEditPermission]
   );
 
   const afterDeleteAction = useCallback(
@@ -553,7 +565,12 @@ const DatabaseDetails: FunctionComponent = () => {
     return <Loader />;
   }
 
-  if (!(databasePermission.ViewAll || databasePermission.ViewBasic)) {
+  if (
+    !getPrioritizedViewPermission(
+      databasePermission,
+      PermissionOperation.ViewBasic
+    )
+  ) {
     return (
       <ErrorPlaceHolder
         className="border-none"

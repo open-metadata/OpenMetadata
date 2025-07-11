@@ -40,6 +40,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
+import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
@@ -53,6 +54,10 @@ import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBulkEditPath } from '../../utils/EntityUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import {
   dataProductTableObject,
   domainTableObject,
@@ -96,16 +101,18 @@ function SchemaTablesTab({
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
       !isVersionView &&
-      (permissions.table.EditAll || permissions.table.EditDisplayName)
+      getPrioritizedEditPermission(permissions.table, Operation.EditDisplayName)
     );
-  }, [permissions, isVersionView]);
+  }, [permissions, isVersionView, getPrioritizedEditPermission]);
 
   const { viewDatabaseSchemaPermission } = useMemo(
     () => ({
-      viewDatabaseSchemaPermission:
-        databaseSchemaPermission.ViewAll || databaseSchemaPermission.ViewBasic,
+      viewDatabaseSchemaPermission: getPrioritizedViewPermission(
+        databaseSchemaPermission,
+        Operation.ViewBasic
+      ),
     }),
-    [databaseSchemaPermission?.ViewAll, databaseSchemaPermission?.ViewBasic]
+    [databaseSchemaPermission, getPrioritizedViewPermission]
   );
 
   const handleDisplayNameUpdate = useCallback(
