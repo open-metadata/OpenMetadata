@@ -714,7 +714,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<SettingsRouter />} path="/settings/*" />
       <Route element={<DomainRouter />} path="/domain/*" />
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />
-      <Route element={<AddMetricPage />} path={ROUTES.ADD_METRIC} />
+      <Route
+        element={
+          <AddMetricPage
+            pageTitle={t('label.add-new-entity', {
+              entity: t('label.metric'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_METRIC}
+      />
       <Route element={<ChartDetailsPage />} path={ROUTES.CHART_DETAILS} />
       <Route
         element={<ChartDetailsPage />}

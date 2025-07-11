@@ -13,6 +13,7 @@
 
 import { Chart } from '../../../generated/entity/data/chart';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface ChartDetailsProps {
   chartDetails: Chart;
@@ -20,7 +21,7 @@ export interface ChartDetailsProps {
   followChartHandler: () => Promise<void>;
   unFollowChartHandler: () => Promise<void>;
   versionHandler: () => void;
-  onChartUpdate: (updatedChart: Chart, key: keyof Chart) => Promise<void>;
+  onChartUpdate: (updatedChart: Chart, key?: keyof Chart) => Promise<void>;
   handleToggleDelete: (version?: number) => void;
   updateChartDetailsState: (data: DataAssetWithDomains) => void;
   onUpdateVote: (data: QueryVote, id: string) => Promise<void>;

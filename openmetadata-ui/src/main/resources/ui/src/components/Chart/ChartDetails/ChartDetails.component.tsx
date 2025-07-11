@@ -22,7 +22,7 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Chart } from '../../../generated/entity/data/chart';
-import { PageType } from '../../../generated/system/ui/uiCustomization';
+import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -67,8 +67,9 @@ const ChartDetails = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
-  const { tab: activeTab = EntityTabs.DETAILS } =
-    useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.DETAILS } = useRequiredParams<{
+    tab: EntityTabs;
+  }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.Chart);
   const { fqn: decodedChartFQN } = useFqn();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -79,11 +80,7 @@ const ChartDetails = ({
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const {
-    owners,
-    followers = [],
-    deleted,
-  } = useMemo(() => {
+  const { followers = [], deleted } = useMemo(() => {
     return chartDetails;
   }, [chartDetails.owners, chartDetails.followers, chartDetails.deleted]);
 
@@ -145,9 +142,9 @@ const ChartDetails = ({
         ...chartDetails,
         owners: newOwners,
       };
-      await onChartUpdate(updatedChart);
+      await onChartUpdate(updatedChart, 'owners');
     },
-    [owners]
+    [chartDetails, onChartUpdate]
   );
 
   const onTierUpdate = async (newTier?: Tag) => {
@@ -156,7 +153,7 @@ const ChartDetails = ({
       ...chartDetails,
       tags: tierTag,
     };
-    await onChartUpdate(updatedChart);
+    await onChartUpdate(updatedChart, 'tags');
   };
 
   const onUpdateDisplayName = async (data: EntityName) => {
@@ -164,13 +161,7 @@ const ChartDetails = ({
       ...chartDetails,
       displayName: data.displayName,
     };
-    await onChartUpdate(updatedData);
-  };
-  const onExtensionUpdate = async (updatedData: Chart) => {
-    await onChartUpdate({
-      ...chartDetails,
-      extension: updatedData.extension,
-    });
+    await onChartUpdate(updatedData, 'displayName');
   };
 
   const handleRestoreChart = async () => {
@@ -201,30 +192,23 @@ const ChartDetails = ({
     [navigate]
   );
 
-  const {
-    editCustomAttributePermission,
-    editAllPermission,
-    editLineagePermission,
-    viewAllPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        (chartPermissions.EditAll || chartPermissions.EditCustomFields) &&
-        !deleted,
-      editAllPermission: chartPermissions.EditAll && !deleted,
-      editLineagePermission:
-        (chartPermissions.EditAll || chartPermissions.EditLineage) && !deleted,
-      viewAllPermission: chartPermissions.ViewAll,
-    }),
-    [chartPermissions, deleted]
-  );
+  const { editAllPermission, editLineagePermission, viewAllPermission } =
+    useMemo(
+      () => ({
+        editAllPermission: chartPermissions.EditAll && !deleted,
+        editLineagePermission:
+          (chartPermissions.EditAll || chartPermissions.EditLineage) &&
+          !deleted,
+        viewAllPermission: chartPermissions.ViewAll,
+      }),
+      [chartPermissions, deleted]
+    );
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = chartDetailsClassBase.getChartDetailPageTabs({
       editLineagePermission,
-      editCustomAttributePermission,
       viewAllPermission,
       chartDetails,
       deleted: deleted ?? false,
@@ -248,10 +232,8 @@ const ChartDetails = ({
     deleted,
     handleFeedCount,
     editLineagePermission,
-    editCustomAttributePermission,
     editAllPermission,
     viewAllPermission,
-    onExtensionUpdate,
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {

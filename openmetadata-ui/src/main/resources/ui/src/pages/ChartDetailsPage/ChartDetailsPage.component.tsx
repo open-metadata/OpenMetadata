@@ -259,7 +259,7 @@ const ChartDetailsPage = () => {
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.chart-detail-plural-lowercase'),
+          entity: t('label.chart-plural'),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />

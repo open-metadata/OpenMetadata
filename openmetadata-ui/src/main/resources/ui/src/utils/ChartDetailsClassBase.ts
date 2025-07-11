@@ -13,7 +13,6 @@
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { CHART_DUMMY_DATA } from '../constants/Chart.constants';
 import {
-  CUSTOM_PROPERTIES_WIDGET,
   DATA_PRODUCTS_WIDGET,
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
@@ -28,13 +27,12 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import {
   getChartDetailPageTabs,
   getChartWidgetsFromKey,
-} from './ChartDetailsUtils.tsx';
+} from './ChartDetailsUtils';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 
 export interface ChartDetailsTabsProps {
   chartDetails: Chart;
   editLineagePermission: boolean;
-  editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
   handleFeedCount: (data: FeedCounts) => void;
   feedCount: FeedCounts;
@@ -49,8 +47,7 @@ type ChartDetailsWidgetKeys =
   | DetailPageWidgetKeys.DESCRIPTION
   | DetailPageWidgetKeys.DATA_PRODUCTS
   | DetailPageWidgetKeys.TAGS
-  | DetailPageWidgetKeys.GLOSSARY_TERMS
-  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+  | DetailPageWidgetKeys.GLOSSARY_TERMS;
 
 class ChartDetailsClassBase {
   defaultWidgetHeight: Record<ChartDetailsWidgetKeys, number>;
@@ -61,7 +58,6 @@ class ChartDetailsClassBase {
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
-      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
 
@@ -74,7 +70,6 @@ class ChartDetailsClassBase {
       EntityTabs.DETAILS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
-      EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
@@ -132,14 +127,6 @@ class ChartDetailsClassBase {
         y: 3,
         static: false,
       },
-      {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
-        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-        w: 2,
-        x: 6,
-        y: 6,
-        static: false,
-      },
     ];
   }
 
@@ -153,7 +140,6 @@ class ChartDetailsClassBase {
       DATA_PRODUCTS_WIDGET,
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
-      CUSTOM_PROPERTIES_WIDGET,
     ];
   }
 
@@ -171,8 +157,7 @@ class ChartDetailsClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
-      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
+
       default:
         return 1;
     }

@@ -280,7 +280,7 @@ export const DashboardChartTable = ({
 
           return (
             <div className="d-flex items-center">
-              <Link to={getChartDetailsPath(record.fullyQualifiedName)}>
+              <Link to={getChartDetailsPath(record?.fullyQualifiedName ?? '')}>
                 <span className="break-all">{chartName}</span>
               </Link>
 

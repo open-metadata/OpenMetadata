@@ -13,7 +13,6 @@
 
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -28,13 +27,11 @@ import { ChartDetailsTabsProps } from './ChartDetailsClassBase';
 import { t } from './i18next/LocalUtil';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const getChartDetailPageTabs = ({
   chartDetails,
   editLineagePermission,
-  editCustomAttributePermission,
-  viewAllPermission,
   handleFeedCount,
   feedCount,
   activeTab,
@@ -85,22 +82,6 @@ export const getChartDetailPageTabs = ({
             hasEditAccess={editLineagePermission}
           />
         </LineageProvider>
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
-        />
-      ),
-      key: EntityTabs.CUSTOM_PROPERTIES,
-      children: (
-        <CustomPropertyTable<EntityType.CHART>
-          entityType={EntityType.CHART}
-          hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
-        />
       ),
     },
   ];
