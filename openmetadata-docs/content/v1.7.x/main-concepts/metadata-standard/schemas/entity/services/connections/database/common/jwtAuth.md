@@ -1,5 +1,6 @@
 ---
 title: JWT Auth | OpenMetadata JSON Web Token Authentication
+description: Get started with jwtauth. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/jwtauth
 ---
 
