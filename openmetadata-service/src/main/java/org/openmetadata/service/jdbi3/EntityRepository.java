@@ -3506,7 +3506,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
         Set<String> updatedTagKeys = createTagKeySet(updatedTags);
         Set<String> origTagKeys = createTagKeySet(origTags);
-        
+
         // Calculate what needs to be deleted (tags in origTags but not in updatedTags)
         for (TagLabel origTag : origTags) {
           if (!updatedTagKeys.contains(createTagKey(origTag))) {
@@ -4678,7 +4678,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return ownersMap;
   }
 
-  /** 
+  /**
    * Creates a unique key for a TagLabel combining TagFQN and Source for fast Set-based lookups.
    * This replaces O(n) stream().anyMatch() operations with O(1) Set.contains() operations.
    */
@@ -4690,9 +4690,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Creates a Set of tag keys from a list of TagLabels for efficient O(1) lookups.
    */
   private Set<String> createTagKeySet(List<TagLabel> tags) {
-    return tags.stream()
-        .map(this::createTagKey)
-        .collect(Collectors.toSet());
+    return tags.stream().map(this::createTagKey).collect(Collectors.toSet());
   }
 
   private Map<String, List<TagLabel>> batchFetchTags(List<String> entityFQNs) {
