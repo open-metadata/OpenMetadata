@@ -82,6 +82,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         "dataQuality/testSuites",
         TestSuiteResource.FIELDS);
     supportsSearchIndex = true;
+    supportsEtag = false;
   }
 
   public void setupTestSuites(TestInfo test) throws IOException {

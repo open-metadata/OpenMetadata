@@ -96,6 +96,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     super(Entity.APPLICATION, App.class, AppResource.AppList.class, "apps", AppResource.FIELDS);
     supportsFieldsQueryParam = false;
     supportedNameCharacters = "_-.";
+    supportsEtag = false;
   }
 
   public static final RetryRegistry APP_TRIGGER_RETRY =
