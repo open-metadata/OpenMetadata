@@ -225,9 +225,10 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     // desc about the event
     List<String> thread_messages = outgoingMessage.getMessages();
     thread_messages.forEach(
-        (message) -> blocks.add(
-            Blocks.section(
-                section -> section.text(BlockCompositions.markdownText("> " + message)))));
+        (message) ->
+            blocks.add(
+                Blocks.section(
+                    section -> section.text(BlockCompositions.markdownText("> " + message)))));
 
     // Divider
     blocks.add(Blocks.divider());
@@ -310,9 +311,10 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     // desc about the event
     List<String> thread_messages = outgoingMessage.getMessages();
     thread_messages.forEach(
-        (message) -> blocks.add(
-            Blocks.section(
-                section -> section.text(BlockCompositions.markdownText("> " + message)))));
+        (message) ->
+            blocks.add(
+                Blocks.section(
+                    section -> section.text(BlockCompositions.markdownText("> " + message)))));
 
     // Divider
     blocks.add(Blocks.divider());

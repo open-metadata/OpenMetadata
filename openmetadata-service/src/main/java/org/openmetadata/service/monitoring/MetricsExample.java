@@ -137,7 +137,7 @@ public class MetricsExample {
     // Example: Using gauges for current state
     metrics.registerGauge(
         "example.active_connections",
-            this::getActiveConnectionCount,
+        this::getActiveConnectionCount,
         "Number of active connections");
 
     // Example: Distribution summary for response sizes

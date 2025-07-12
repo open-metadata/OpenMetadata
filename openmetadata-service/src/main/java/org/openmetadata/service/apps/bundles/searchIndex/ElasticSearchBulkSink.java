@@ -15,7 +15,6 @@ import es.org.elasticsearch.common.unit.ByteSizeUnit;
 import es.org.elasticsearch.common.unit.ByteSizeValue;
 import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.xcontent.XContentType;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;

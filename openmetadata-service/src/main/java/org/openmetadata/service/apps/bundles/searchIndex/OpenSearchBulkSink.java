@@ -2,7 +2,6 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;

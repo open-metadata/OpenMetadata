@@ -28,7 +28,6 @@ import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

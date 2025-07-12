@@ -171,8 +171,7 @@ public class CacheDisabledCompatibilityTest extends OpenMetadataApplicationTest 
         "get() should handle disabled cache gracefully");
 
     assertDoesNotThrow(
-        () -> RelationshipCache.evict(entityId),
-        "evict() should handle disabled cache gracefully");
+        () -> RelationshipCache.evict(entityId), "evict() should handle disabled cache gracefully");
 
     assertDoesNotThrow(
         () -> RelationshipCache.bumpTag("test-tag", 1),
@@ -300,7 +299,9 @@ public class CacheDisabledCompatibilityTest extends OpenMetadataApplicationTest 
         relationships.stream().map(CollectionDAO.EntityRelationshipObject::getToId).toList();
 
     assertDoesNotThrow(
-        () -> entityRelationshipDAO.bulkRemoveTo(testTable.getId(), toIds, Entity.TABLE, Entity.TAG, 2),
+        () ->
+            entityRelationshipDAO.bulkRemoveTo(
+                testTable.getId(), toIds, Entity.TABLE, Entity.TAG, 2),
         "Bulk remove should work without cache");
 
     LOG.info("Bulk operations without cache test passed");

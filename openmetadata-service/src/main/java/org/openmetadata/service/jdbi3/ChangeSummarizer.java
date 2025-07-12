@@ -142,8 +142,9 @@ public class ChangeSummarizer<T extends EntityInterface> {
               .map(map -> (Map<String, Object>) map)
               .map(map -> (String) map.get("name"))
               .forEach(
-                  name -> keysToDelete.add(
-                      FullyQualifiedName.build(fieldChange.getName(), name, nestedField)));
+                  name ->
+                      keysToDelete.add(
+                          FullyQualifiedName.build(fieldChange.getName(), name, nestedField)));
         } catch (JsonParsingException e) {
           LOG.warn("Error processing deleted fields", e);
         }

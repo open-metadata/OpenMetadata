@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.nlq;
 
-import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.NLQConfiguration;
 import org.openmetadata.schema.search.SearchRequest;

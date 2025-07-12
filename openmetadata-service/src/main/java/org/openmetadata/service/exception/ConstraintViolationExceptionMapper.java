@@ -37,10 +37,11 @@ public class ConstraintViolationExceptionMapper
     List<String> errorMessages =
         constraintViolations.stream()
             .map(
-                constraintViolation -> "query param "
-                    + getLeafNodeName(constraintViolation.getPropertyPath())
-                    + " "
-                    + constraintViolation.getMessage())
+                constraintViolation ->
+                    "query param "
+                        + getLeafNodeName(constraintViolation.getPropertyPath())
+                        + " "
+                        + constraintViolation.getMessage())
             .toList();
     return Response.status(Response.Status.BAD_REQUEST)
         .entity(

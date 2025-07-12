@@ -72,7 +72,8 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
   /**
    * Get the appropriate search source builder based on the index name.
    */
-  default S getSearchSourceBuilder(String indexName, String searchQuery, int fromOffset, int size, boolean includeExplain) {
+  default S getSearchSourceBuilder(
+      String indexName, String searchQuery, int fromOffset, int size, boolean includeExplain) {
     indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
 
     if (isTimeSeriesIndex(indexName)) {

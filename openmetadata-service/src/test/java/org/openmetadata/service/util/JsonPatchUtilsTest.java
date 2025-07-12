@@ -5,12 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
-import com.github.fge.jsonpatch.JsonPatchException;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonReader;
-import java.io.IOException;
 import java.io.StringReader;
 import java.util.Set;
 import java.util.UUID;

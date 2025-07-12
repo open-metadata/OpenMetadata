@@ -42,7 +42,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
-import org.quartz.UnableToInterruptJobException;
 
 @Getter
 @Slf4j

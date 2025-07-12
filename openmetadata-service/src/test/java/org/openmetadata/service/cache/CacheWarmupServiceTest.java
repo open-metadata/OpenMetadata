@@ -293,8 +293,7 @@ class CacheWarmupServiceTest extends CachedOpenMetadataApplicationResourceTest {
 
     // Test that cache connectivity works
     assertDoesNotThrow(
-        () -> lazyCacheService.testCacheConnectivity(),
-        "Cache connectivity test should pass");
+        () -> lazyCacheService.testCacheConnectivity(), "Cache connectivity test should pass");
   }
 
   @Test
@@ -398,8 +397,8 @@ class CacheWarmupServiceTest extends CachedOpenMetadataApplicationResourceTest {
     CompletableFuture<Void> initFuture = lifecycleService.initializeLazyCache();
     Thread.sleep(50);
 
-    assertDoesNotThrow(lifecycleService::shutdown,
-        "Shutdown during initialization should not throw exceptions");
+    assertDoesNotThrow(
+        lifecycleService::shutdown, "Shutdown during initialization should not throw exceptions");
 
     try {
       initFuture.get(5, TimeUnit.SECONDS);

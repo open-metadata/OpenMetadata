@@ -23,7 +23,6 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

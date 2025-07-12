@@ -983,11 +983,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     allEntities
         .getData()
         .forEach(
-            tc -> assertTrue(
-                tc.getOwners().stream().anyMatch(owner -> owner.getId().equals(user2Ref.getId())),
-                String.format(
-                    "Test case %s does not contain the expected owner %s",
-                    tc.getName(), user2Ref.getName())));
+            tc ->
+                assertTrue(
+                    tc.getOwners().stream()
+                        .anyMatch(owner -> owner.getId().equals(user2Ref.getId())),
+                    String.format(
+                        "Test case %s does not contain the expected owner %s",
+                        tc.getName(), user2Ref.getName())));
 
     queryParams.put("owner", team.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);

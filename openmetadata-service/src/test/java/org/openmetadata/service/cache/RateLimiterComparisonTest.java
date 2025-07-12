@@ -172,7 +172,7 @@ class RateLimiterComparisonTest {
         executor,
         threadCount,
         operationsPerThread,
-            resilience4jLimiter::acquirePermission);
+        resilience4jLimiter::acquirePermission);
 
     // Test production Resilience4j configuration under concurrency
     RateLimiterConfig prodConfig =
@@ -188,7 +188,7 @@ class RateLimiterComparisonTest {
         executor,
         threadCount,
         operationsPerThread,
-            prodLimiter::acquirePermission);
+        prodLimiter::acquirePermission);
 
     executor.shutdown();
     assertTrue(
