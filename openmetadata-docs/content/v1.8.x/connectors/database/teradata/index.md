@@ -1,6 +1,6 @@
 ---
 title: Teradata Connector | OpenMetadata Data Warehouse Guide
-description: Connect Teradata to OpenMetadata seamlessly with our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction.
+description: Connect Teradata databases to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/database/teradata
 ---
 
