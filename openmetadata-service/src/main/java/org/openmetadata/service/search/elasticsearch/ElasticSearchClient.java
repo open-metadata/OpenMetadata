@@ -183,6 +183,7 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.QueryCostRecordsAggregator;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
@@ -1308,7 +1309,13 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+
+    // Build the query using the search builder factory
+    ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+    QueryBuilder queryBuilder =
+        searchBuilderFactory.buildSearchQueryBuilder(
+            request.getQuery(), SearchIndex.getAllFields());
+    searchSourceBuilder.query(queryBuilder);
 
     String aggregationField = request.getFieldName();
     if (aggregationField == null || aggregationField.isBlank()) {
