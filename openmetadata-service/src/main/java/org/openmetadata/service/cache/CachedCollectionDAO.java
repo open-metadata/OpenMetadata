@@ -435,4 +435,29 @@ public class CachedCollectionDAO implements CollectionDAO {
   public WorkflowInstanceStateTimeSeriesDAO workflowInstanceStateTimeSeriesDAO() {
     return delegate.workflowInstanceStateTimeSeriesDAO();
   }
+
+  @Override
+  public DriveServiceDAO driveServiceDAO() {
+    return delegate.driveServiceDAO();
+  }
+
+  @Override
+  public DirectoryDAO directoryDAO() {
+    return delegate.directoryDAO();
+  }
+
+  @Override
+  public FileDAO fileDAO() {
+    return delegate.fileDAO();
+  }
+
+  @Override
+  public SpreadsheetDAO spreadsheetDAO() {
+    return delegate.spreadsheetDAO();
+  }
+
+  @Override
+  public WorksheetDAO worksheetDAO() {
+    return delegate.worksheetDAO();
+  }
 }
