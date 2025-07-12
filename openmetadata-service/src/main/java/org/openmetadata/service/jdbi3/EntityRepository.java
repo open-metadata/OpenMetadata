@@ -2671,22 +2671,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void storeOwners(T entity, List<EntityReference> owners) {
     if (supportsOwners && !nullOrEmpty(owners)) {
       // Batch add all owner relationships in a single operation
-      LOG.info(
-          "Adding {} owners for entity {}:{}",
-          owners.size(),
-          entityType,
-          entity.getId());
-      
-      List<CollectionDAO.EntityRelationshipObject> ownerRelationships = owners.stream()
-          .map(owner -> CollectionDAO.EntityRelationshipObject.builder()
-              .fromId(owner.getId().toString())
-              .toId(entity.getId().toString())
-              .fromEntity(owner.getType())
-              .toEntity(entityType)
-              .relation(Relationship.OWNS.ordinal())
-              .build())
-          .collect(Collectors.toList());
-      
+      LOG.info("Adding {} owners for entity {}:{}", owners.size(), entityType, entity.getId());
+
+      List<CollectionDAO.EntityRelationshipObject> ownerRelationships =
+          owners.stream()
+              .map(
+                  owner ->
+                      CollectionDAO.EntityRelationshipObject.builder()
+                          .fromId(owner.getId().toString())
+                          .toId(entity.getId().toString())
+                          .fromEntity(owner.getType())
+                          .toEntity(entityType)
+                          .relation(Relationship.OWNS.ordinal())
+                          .build())
+              .collect(Collectors.toList());
+
       daoCollection.relationshipDAO().bulkInsertTo(ownerRelationships);
     }
   }
@@ -2708,16 +2707,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void storeReviewers(T entity, List<EntityReference> reviewers) {
     if (supportsReviewers && !nullOrEmpty(reviewers)) {
       // Batch add all reviewer relationships in a single operation
-      List<CollectionDAO.EntityRelationshipObject> reviewerRelationships = reviewers.stream()
-          .map(reviewer -> CollectionDAO.EntityRelationshipObject.builder()
-              .fromId(reviewer.getId().toString())
-              .toId(entity.getId().toString())
-              .fromEntity(reviewer.getType())
-              .toEntity(entityType)
-              .relation(Relationship.REVIEWS.ordinal())
-              .build())
-          .collect(Collectors.toList());
-      
+      List<CollectionDAO.EntityRelationshipObject> reviewerRelationships =
+          reviewers.stream()
+              .map(
+                  reviewer ->
+                      CollectionDAO.EntityRelationshipObject.builder()
+                          .fromId(reviewer.getId().toString())
+                          .toId(entity.getId().toString())
+                          .fromEntity(reviewer.getType())
+                          .toEntity(entityType)
+                          .relation(Relationship.REVIEWS.ordinal())
+                          .build())
+              .collect(Collectors.toList());
+
       daoCollection.relationshipDAO().bulkInsertTo(reviewerRelationships);
     }
   }
@@ -2731,17 +2733,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
           dataProducts.size(),
           entityType,
           entity.getId());
-      
-      List<CollectionDAO.EntityRelationshipObject> dataProductRelationships = dataProducts.stream()
-          .map(dataProduct -> CollectionDAO.EntityRelationshipObject.builder()
-              .fromId(dataProduct.getId().toString())
-              .toId(entity.getId().toString())
-              .fromEntity(DATA_PRODUCT)
-              .toEntity(entityType)
-              .relation(Relationship.HAS.ordinal())
-              .build())
-          .collect(Collectors.toList());
-      
+
+      List<CollectionDAO.EntityRelationshipObject> dataProductRelationships =
+          dataProducts.stream()
+              .map(
+                  dataProduct ->
+                      CollectionDAO.EntityRelationshipObject.builder()
+                          .fromId(dataProduct.getId().toString())
+                          .toId(entity.getId().toString())
+                          .fromEntity(DATA_PRODUCT)
+                          .toEntity(entityType)
+                          .relation(Relationship.HAS.ordinal())
+                          .build())
+              .collect(Collectors.toList());
+
       daoCollection.relationshipDAO().bulkInsertTo(dataProductRelationships);
     }
   }
@@ -2855,24 +2860,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void removeOwners(T entity, List<EntityReference> owners) {
     if (!nullOrEmpty(owners)) {
       // Batch remove all owner relationships
-      LOG.info(
-          "Removing {} owners for entity {}",
-          owners.size(),
-          entity.getId());
-      
+      LOG.info("Removing {} owners for entity {}", owners.size(), entity.getId());
+
       // Group by type for bulk removal
-      Map<String, List<EntityReference>> ownersByType = owners.stream()
-          .collect(Collectors.groupingBy(EntityReference::getType));
-      
+      Map<String, List<EntityReference>> ownersByType =
+          owners.stream().collect(Collectors.groupingBy(EntityReference::getType));
+
       for (Map.Entry<String, List<EntityReference>> entry : ownersByType.entrySet()) {
         String ownerType = entry.getKey();
-        List<UUID> ownerIds = entry.getValue().stream()
-            .map(EntityReference::getId)
-            .collect(Collectors.toList());
-        
+        List<UUID> ownerIds =
+            entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+
         if (!ownerIds.isEmpty()) {
-          daoCollection.relationshipDAO().bulkRemoveFromRelationship(
-              ownerIds, entity.getId(), ownerType, entityType, Relationship.OWNS.ordinal());
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveFromRelationship(
+                  ownerIds, entity.getId(), ownerType, entityType, Relationship.OWNS.ordinal());
         }
       }
     }
@@ -4037,45 +4040,54 @@ public abstract class EntityRepository<T extends EntityInterface> {
           field, origToRefs, updatedToRefs, added, deleted, entityReferenceMatch)) {
         return; // No changes between original and updated.
       }
-      
+
       // Batch delete removed relationships
       if (!deleted.isEmpty()) {
         // Group by entity type for bulk removal
-        Map<String, List<EntityReference>> deletedByType = deleted.stream()
-            .collect(Collectors.groupingBy(EntityReference::getType));
-        
+        Map<String, List<EntityReference>> deletedByType =
+            deleted.stream().collect(Collectors.groupingBy(EntityReference::getType));
+
         for (Map.Entry<String, List<EntityReference>> entry : deletedByType.entrySet()) {
-          List<UUID> typeIds = entry.getValue().stream()
-              .map(EntityReference::getId)
-              .collect(Collectors.toList());
-          daoCollection.relationshipDAO().bulkRemoveToRelationship(
-              fromId, typeIds, fromEntityType, entry.getKey(), relationshipType.ordinal());
+          List<UUID> typeIds =
+              entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveToRelationship(
+                  fromId, typeIds, fromEntityType, entry.getKey(), relationshipType.ordinal());
           if (bidirectional) {
-            daoCollection.relationshipDAO().bulkRemoveFromRelationship(
-                typeIds, fromId, entry.getKey(), fromEntityType, relationshipType.ordinal());
+            daoCollection
+                .relationshipDAO()
+                .bulkRemoveFromRelationship(
+                    typeIds, fromId, entry.getKey(), fromEntityType, relationshipType.ordinal());
           }
         }
       }
-      
+
       // Batch add new relationships
       if (!added.isEmpty()) {
         // Create forward relationships
-        List<UUID> addedIds = added.stream().map(EntityReference::getId).collect(Collectors.toList());
-        daoCollection.relationshipDAO().bulkInsertToRelationship(
-            fromId, addedIds, fromEntityType, toEntityType, relationshipType.ordinal());
-        
+        List<UUID> addedIds =
+            added.stream().map(EntityReference::getId).collect(Collectors.toList());
+        daoCollection
+            .relationshipDAO()
+            .bulkInsertToRelationship(
+                fromId, addedIds, fromEntityType, toEntityType, relationshipType.ordinal());
+
         if (bidirectional) {
           // Create reverse relationships using bulkInsertTo for true batch operation
-          List<CollectionDAO.EntityRelationshipObject> reverseRelationships = added.stream()
-              .map(ref -> CollectionDAO.EntityRelationshipObject.builder()
-                  .fromId(ref.getId().toString())
-                  .toId(fromId.toString())
-                  .fromEntity(ref.getType())
-                  .toEntity(fromEntityType)
-                  .relation(relationshipType.ordinal())
-                  .build())
-              .collect(Collectors.toList());
-          
+          List<CollectionDAO.EntityRelationshipObject> reverseRelationships =
+              added.stream()
+                  .map(
+                      ref ->
+                          CollectionDAO.EntityRelationshipObject.builder()
+                              .fromId(ref.getId().toString())
+                              .toId(fromId.toString())
+                              .fromEntity(ref.getType())
+                              .toEntity(fromEntityType)
+                              .relation(relationshipType.ordinal())
+                              .build())
+                  .collect(Collectors.toList());
+
           daoCollection.relationshipDAO().bulkInsertTo(reverseRelationships);
         }
       }
@@ -4136,31 +4148,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Batch delete removed relationships
       if (!deleted.isEmpty()) {
         // Group by entity type for bulk removal
-        Map<String, List<EntityReference>> deletedByType = deleted.stream()
-            .collect(Collectors.groupingBy(EntityReference::getType));
-        
+        Map<String, List<EntityReference>> deletedByType =
+            deleted.stream().collect(Collectors.groupingBy(EntityReference::getType));
+
         for (Map.Entry<String, List<EntityReference>> entry : deletedByType.entrySet()) {
-          List<UUID> typeIds = entry.getValue().stream()
-              .map(EntityReference::getId)
-              .collect(Collectors.toList());
-          daoCollection.relationshipDAO().bulkRemoveFromRelationship(
-              typeIds, toId, entry.getKey(), toEntityType, relationshipType.ordinal());
+          List<UUID> typeIds =
+              entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveFromRelationship(
+                  typeIds, toId, entry.getKey(), toEntityType, relationshipType.ordinal());
         }
       }
 
       // Batch add new relationships
       if (!added.isEmpty()) {
         // Use bulkInsertTo for true batch operation
-        List<CollectionDAO.EntityRelationshipObject> relationships = added.stream()
-            .map(ref -> CollectionDAO.EntityRelationshipObject.builder()
-                .fromId(ref.getId().toString())
-                .toId(toId.toString())
-                .fromEntity(ref.getType())
-                .toEntity(toEntityType)
-                .relation(relationshipType.ordinal())
-                .build())
-            .collect(Collectors.toList());
-        
+        List<CollectionDAO.EntityRelationshipObject> relationships =
+            added.stream()
+                .map(
+                    ref ->
+                        CollectionDAO.EntityRelationshipObject.builder()
+                            .fromId(ref.getId().toString())
+                            .toId(toId.toString())
+                            .fromEntity(ref.getType())
+                            .toEntity(toEntityType)
+                            .relation(relationshipType.ordinal())
+                            .build())
+                .collect(Collectors.toList());
+
         daoCollection.relationshipDAO().bulkInsertTo(relationships);
       }
       updatedFromRefs.sort(EntityUtil.compareEntityReference);
