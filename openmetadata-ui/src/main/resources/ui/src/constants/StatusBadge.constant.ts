@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactComponent as AbortedIcon } from '../assets/svg/aborted-status.svg';
 import { ReactComponent as DeprecatedIcon } from '../assets/svg/arrow-down-colored.svg';
 import { ReactComponent as ApprovedIcon } from '../assets/svg/check-colored.svg';
 import { ReactComponent as DraftIcon } from '../assets/svg/clipboard-colored.svg';
@@ -23,10 +24,11 @@ import { ReactComponent as StoppedIcon } from '../assets/svg/ic-stop-circle.svg'
 import { ReactComponent as RejectedIcon } from '../assets/svg/x-colored.svg';
 import { Status as AppStatus } from '../generated/entity/applications/appRunRecord';
 import { Status } from '../generated/entity/data/glossaryTerm';
+import { TestCaseStatus } from '../generated/tests/testCase';
 
 export type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
-export type AllStatusTypes = Status | AppStatus;
+export type AllStatusTypes = Status | AppStatus | TestCaseStatus;
 
 export const icons: Partial<Record<AllStatusTypes, IconComponent>> = {
   [Status.Approved]: ApprovedIcon,
@@ -43,4 +45,5 @@ export const icons: Partial<Record<AllStatusTypes, IconComponent>> = {
   [AppStatus.Success]: ApprovedIcon,
   [AppStatus.Pending]: PendingIcon,
   [AppStatus.ActiveError]: ActiveErrorIcon,
+  [TestCaseStatus.Aborted]: AbortedIcon,
 };

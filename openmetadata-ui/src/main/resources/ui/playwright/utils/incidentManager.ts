@@ -35,7 +35,11 @@ export const acknowledgeTask = async (data: {
     .getByTestId('profiler-tab-left-panel')
     .getByText('Data Quality')
     .click();
-  await page.click(`[data-testid="${testCase}"] >> .last-run-box.failed`);
+
+  await expect(
+    page.locator(`[data-testid="status-badge-${testCase}"]`)
+  ).toContainText('Failed');
+
   await page.waitForSelector(`[data-testid="${testCase}-status"] >> text=New`);
   await page.click(`[data-testid="${testCase}"] >> text=${testCase}`);
   await page.click('[data-testid="edit-resolution-icon"]');
@@ -101,6 +105,8 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
           `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
         );
       }
+
+      return res;
     });
 
   // Wait for the run to complete

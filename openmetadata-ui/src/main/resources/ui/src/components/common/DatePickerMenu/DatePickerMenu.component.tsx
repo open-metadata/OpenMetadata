@@ -13,6 +13,7 @@
 
 import { CloseCircleOutlined } from '@ant-design/icons';
 import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType, DateRangeObject } from 'Models';
@@ -42,6 +43,7 @@ interface DatePickerMenuProps {
   options?: DateFilterType;
   allowCustomRange?: boolean;
   handleSelectedTimeRange?: (value: string) => void;
+  size?: SizeType;
 }
 
 const DatePickerMenu = ({
@@ -51,6 +53,7 @@ const DatePickerMenu = ({
   handleSelectedTimeRange,
   options,
   allowCustomRange = true,
+  size,
 }: DatePickerMenuProps) => {
   const { menuOptions, defaultOptions } = useMemo(() => {
     const defaultOptions = pick(DEFAULT_SELECTED_RANGE, ['title', 'key']);
@@ -194,7 +197,7 @@ const DatePickerMenu = ({
       open={isMenuOpen}
       trigger={['click']}
       onOpenChange={(value) => setIsMenuOpen(value)}>
-      <Button data-testid="date-picker-menu">
+      <Button data-testid="date-picker-menu" size={size}>
         <Space align="center" size={8}>
           {selectedTimeRange}
           <DropdownIcon className="align-middle" height={14} width={14} />

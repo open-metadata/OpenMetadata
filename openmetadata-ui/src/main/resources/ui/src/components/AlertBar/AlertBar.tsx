@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert } from 'antd';
+import { Alert, AlertProps } from 'antd';
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
@@ -23,11 +23,16 @@ const AlertBar = ({
   type,
   message,
   defafultExpand,
+  className: alertClassName,
 }: AlertBarProps): JSX.Element => {
   const { resetAlert, animationClass } = useAlertStore();
   const [expanded, setExpanded] = useState(defafultExpand);
 
-  const { icon: AlertIcon, className } = useMemo(() => {
+  const {
+    icon: AlertIcon,
+    className,
+    type: alertType,
+  } = useMemo(() => {
     return getIconAndClassName(type);
   }, [type]);
 
@@ -36,7 +41,12 @@ const AlertBar = ({
       closable
       showIcon
       afterClose={resetAlert}
-      className={classNames('alert-container', className, animationClass)}
+      className={classNames(
+        'alert-container',
+        className,
+        animationClass,
+        alertClassName
+      )}
       closeIcon={
         <CrossIcon
           className="alert-close-icon"
@@ -70,7 +80,7 @@ const AlertBar = ({
           />
         )
       }
-      type={type}
+      type={alertType as AlertProps['type']}
     />
   );
 };

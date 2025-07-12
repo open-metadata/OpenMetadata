@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,20 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.chart-total-count-value-link {
-  &.ant-typography a {
-    font-size: 1.25rem /* 20px */;
-    line-height: 1.75rem /* 28px */;
-    font-weight: 500;
-  }
+import { ReactNode } from 'react';
+
+export interface SelectionOption {
+  value: string;
+  label: string;
+  description: string;
+  icon: ReactNode;
 }
 
-.chart-widget-link-no-underline {
-  a:hover {
-    text-decoration: none;
-  }
+export interface SelectionCardGroupProps {
+  options: SelectionOption[];
+  value?: string;
+  onChange?: (value: string) => void;
+  className?: string;
+  disabled?: boolean;
+}
 
-  &:hover .chart-widget-link-underline {
-    text-decoration: underline;
-  }
+export interface SelectionCardProps {
+  option: SelectionOption;
+  isSelected: boolean;
+  onClick: () => void;
+  disabled?: boolean;
 }

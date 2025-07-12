@@ -39,6 +39,7 @@ export interface CustomPieChartProps {
   name: string;
   data: CustomPieChartData[];
   label?: React.ReactNode;
+  showLegends?: boolean;
 }
 export type CustomAreaChartData = {
   timestamp: number;

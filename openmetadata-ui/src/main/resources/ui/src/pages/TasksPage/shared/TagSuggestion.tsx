@@ -35,6 +35,7 @@ export interface TagSuggestionProps {
   isTreeSelect?: boolean;
   hasNoActionButtons?: boolean;
   open?: boolean;
+  newLook?: boolean;
   autoFocus?: boolean;
 }
 
@@ -48,6 +49,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
   isTreeSelect = false,
   hasNoActionButtons = false,
   open = true,
+  newLook,
   autoFocus = false,
 }) => {
   const isGlossaryType = useMemo(
@@ -105,6 +107,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
       }),
     value: value?.map((item) => item.tagFQN) ?? [],
     onChange: handleTagSelection,
+    newLook,
     autoFocus,
   };
 

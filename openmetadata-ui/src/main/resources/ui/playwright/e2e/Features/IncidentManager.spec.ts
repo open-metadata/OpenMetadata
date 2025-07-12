@@ -247,8 +247,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await testCaseResponse;
 
       await expect(
-        page.locator(`[data-testid="${testCaseName}"] .last-run-box.failed`)
-      ).toBeVisible();
+        page.locator(`[data-testid="status-badge-${testCaseName}"]`)
+      ).toContainText('Failed');
       await expect(page.getByTestId(`${testCaseName}-status`)).toContainText(
         'Ack'
       );
@@ -293,8 +293,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await testCaseResponse;
 
       await expect(
-        page.locator(`[data-testid="${testCaseName}"] .last-run-box.failed`)
-      ).toBeVisible();
+        page.locator(`[data-testid="status-badge-${testCaseName}"]`)
+      ).toContainText('Failed');
 
       await page.click(
         `[data-testid="${testCaseName}"] >> text=${testCaseName}`
@@ -389,8 +389,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await testCaseResponse;
 
       await expect(
-        page.locator(`[data-testid="${testCaseName}"] .last-run-box.failed`)
-      ).toBeVisible();
+        page.locator(`[data-testid="status-badge-${testCaseName}"]`)
+      ).toContainText('Failed');
       await expect(page.getByTestId(`${testCaseName}-status`)).toContainText(
         'Assigned'
       );
