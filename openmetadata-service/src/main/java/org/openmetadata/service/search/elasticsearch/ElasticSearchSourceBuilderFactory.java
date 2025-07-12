@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
@@ -37,7 +36,6 @@ import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.*;
 
-@Slf4j
 public class ElasticSearchSourceBuilderFactory
     implements SearchSourceBuilderFactory<
         SearchSourceBuilder, QueryBuilder, HighlightBuilder, FunctionScoreQueryBuilder> {
@@ -55,14 +53,9 @@ public class ElasticSearchSourceBuilderFactory
             .filter(entry -> isFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-    Map<String, Float> ngramFields =
-        fields.entrySet().stream()
-            .filter(entry -> isNonFuzzyField(entry.getKey()) && entry.getKey().endsWith(".ngram"))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
     Map<String, Float> nonFuzzyFields =
         fields.entrySet().stream()
-            .filter(entry -> isNonFuzzyField(entry.getKey()) && !entry.getKey().endsWith(".ngram"))
+            .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     // Always use MultiMatch for consistency with table searches
@@ -79,17 +72,6 @@ public class ElasticSearchSourceBuilderFactory
               .operator(Operator.AND)
               .tieBreaker(0.3f);
       combinedQuery.should(fuzzyQueryBuilder);
-    }
-
-    // Handle ngram fields separately - they need OR operator for substring matching
-    if (!ngramFields.isEmpty()) {
-      MultiMatchQueryBuilder ngramQueryBuilder =
-          QueryBuilders.multiMatchQuery(query)
-              .fields(ngramFields)
-              .type(MOST_FIELDS)
-              .operator(Operator.OR)
-              .tieBreaker(0.3f);
-      combinedQuery.should(ngramQueryBuilder);
     }
 
     if (!nonFuzzyFields.isEmpty()) {
@@ -193,12 +175,7 @@ public class ElasticSearchSourceBuilderFactory
   @Override
   public SearchSourceBuilder buildDataAssetSearchBuilder(
       String indexName, String query, int from, int size, boolean explain) {
-    LOG.info("Building data asset search for index: {}, query: {}", indexName, query);
     AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
-    LOG.info(
-        "Asset config for {}: searchFields={}",
-        indexName,
-        assetConfig.getSearchFields() != null ? assetConfig.getSearchFields().size() : "null");
     Map<String, Float> fuzzyFields;
     Map<String, Float> nonFuzzyFields;
 
@@ -211,10 +188,6 @@ public class ElasticSearchSourceBuilderFactory
           assetConfig.getSearchFields().stream()
               .filter(fieldBoost -> isNonFuzzyField(fieldBoost.getField()))
               .collect(Collectors.toMap(FieldBoost::getField, fb -> fb.getBoost().floatValue()));
-      LOG.info(
-          "Using asset config fields - fuzzy: {}, non-fuzzy: {}",
-          fuzzyFields.keySet(),
-          nonFuzzyFields.keySet());
     } else {
       Map<String, Float> defaultFields = SearchIndex.getDefaultFields();
       fuzzyFields =
@@ -246,39 +219,14 @@ public class ElasticSearchSourceBuilderFactory
         combinedQuery.should(fuzzyQueryBuilder);
       }
 
-      // Separate ngram fields from other non-fuzzy fields
-      Map<String, Float> ngramFields = new HashMap<>();
-      Map<String, Float> otherNonFuzzyFields = new HashMap<>();
-
-      nonFuzzyFields.forEach(
-          (field, boost) -> {
-            if (field.endsWith(".ngram")) {
-              ngramFields.put(field, boost);
-            } else {
-              otherNonFuzzyFields.put(field, boost);
-            }
-          });
-
-      // Handle ngram fields separately - they need OR operator for substring matching
-      if (!ngramFields.isEmpty()) {
-        LOG.info("Adding ngram fields to query: {}", ngramFields);
-        MultiMatchQueryBuilder ngramQueryBuilder =
-            QueryBuilders.multiMatchQuery(query)
-                .type(MOST_FIELDS)
-                .operator(Operator.OR)
-                .tieBreaker(0.3f);
-        ngramFields.forEach(ngramQueryBuilder::field);
-        combinedQuery.should(ngramQueryBuilder);
-      }
-
-      if (!otherNonFuzzyFields.isEmpty()) {
+      if (!nonFuzzyFields.isEmpty()) {
         MultiMatchQueryBuilder nonFuzzyQueryBuilder =
             QueryBuilders.multiMatchQuery(query)
                 .type(MOST_FIELDS)
                 .operator(Operator.AND)
                 .tieBreaker(0.3f)
                 .fuzziness(Fuzziness.ZERO);
-        otherNonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
+        nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
         combinedQuery.should(nonFuzzyQueryBuilder);
       }
 
@@ -351,9 +299,6 @@ public class ElasticSearchSourceBuilderFactory
 
     addConfiguredAggregations(searchSourceBuilder, assetConfig);
     searchSourceBuilder.explain(explain);
-
-    LOG.info("Final SearchSourceBuilder query: {}", searchSourceBuilder.query());
-    LOG.info("Final SearchSourceBuilder: {}", searchSourceBuilder.toString());
 
     return searchSourceBuilder;
   }
@@ -526,34 +471,10 @@ public class ElasticSearchSourceBuilderFactory
         combinedQuery.should(fuzzyQueryBuilder);
       }
 
-      // Separate ngram fields from other non-fuzzy fields
-      Map<String, Float> ngramFields = new HashMap<>();
-      Map<String, Float> otherNonFuzzyFields = new HashMap<>();
-
-      nonFuzzyFields.forEach(
-          (field, boost) -> {
-            if (field.endsWith(".ngram")) {
-              ngramFields.put(field, boost);
-            } else {
-              otherNonFuzzyFields.put(field, boost);
-            }
-          });
-
-      // Handle ngram fields separately - they need OR operator for substring matching
-      if (!ngramFields.isEmpty()) {
-        MultiMatchQueryBuilder ngramQueryBuilder =
-            QueryBuilders.multiMatchQuery(query)
-                .fields(ngramFields)
-                .type(MOST_FIELDS)
-                .operator(Operator.OR)
-                .tieBreaker(0.3f);
-        combinedQuery.should(ngramQueryBuilder);
-      }
-
-      if (!otherNonFuzzyFields.isEmpty()) {
+      if (!nonFuzzyFields.isEmpty()) {
         MultiMatchQueryBuilder nonFuzzyQueryBuilder =
             QueryBuilders.multiMatchQuery(query)
-                .fields(otherNonFuzzyFields)
+                .fields(nonFuzzyFields)
                 .type(MOST_FIELDS)
                 .operator(Operator.AND)
                 .tieBreaker(0.3f)
