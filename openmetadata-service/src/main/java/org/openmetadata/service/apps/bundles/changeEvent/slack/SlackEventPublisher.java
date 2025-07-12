@@ -14,13 +14,11 @@
 package org.openmetadata.service.apps.bundles.changeEvent.slack;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.SLACK;
-import static org.openmetadata.service.util.SubscriptionUtil.appendHeadersToTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
-import static org.openmetadata.service.util.SubscriptionUtil.prepareWebhookHeaders;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -31,7 +29,6 @@ import java.util.List;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -47,7 +44,6 @@ import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
 public class SlackEventPublisher implements Destination<ChangeEvent> {
   private final MessageDecorator<SlackMessage> slackMessageFormatter = new SlackMessageDecorator();
   private final Webhook webhook;
-  private Invocation.Builder target;
   private final Client client;
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -61,14 +57,6 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
 
       // Build Client
       client = getClient(subscriptionDest.getTimeout(), subscriptionDest.getReadTimeout());
-
-      // Build Target
-      if (webhook != null && webhook.getEndpoint() != null) {
-        String slackWebhookURL = webhook.getEndpoint().toString();
-        if (!CommonUtil.nullOrEmpty(slackWebhookURL)) {
-          target = appendHeadersToTarget(client, slackWebhookURL);
-        }
-      }
     } else {
       throw new IllegalArgumentException("Slack Alert Invoked with Illegal Type and Settings.");
     }
@@ -86,11 +74,8 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       List<Invocation.Builder> targets =
           getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), SLACK, client, event);
-      if (target != null) {
-        targets.add(getTarget(client, webhook, eventJson));
-      }
+      targets.add(getTarget(client, webhook, eventJson));
       for (Invocation.Builder actionTarget : targets) {
-        prepareWebhookHeaders(actionTarget, webhook, json);
         postWebhookMessage(this, actionTarget, json);
       }
     } catch (Exception e) {
@@ -110,10 +95,7 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
 
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
       json = convertCamelCaseToSnakeCase(json);
-      if (target != null) {
-        prepareWebhookHeaders(target, webhook, json);
-        deliverTestWebhookMessage(this, target, json);
-      }
+      deliverTestWebhookMessage(this, getTarget(client, webhook, json), json);
     } catch (Exception e) {
       String message = CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, e.getMessage());
       LOG.error(message);

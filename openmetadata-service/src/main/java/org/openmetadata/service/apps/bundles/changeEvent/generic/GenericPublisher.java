@@ -135,15 +135,6 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     }
   }
 
-  //  private Invocation.Builder getTarget(String json) {
-  //    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
-  //    WebTarget target = client.target(webhook.getEndpoint());
-  //    target = addQueryParams(target, webhook.getQueryParams());
-  //    Invocation.Builder result = SecurityUtil.addHeaders(target, authHeaders);
-  //    prepareWebhookHeaders(result, webhook, json);
-  //    return result;
-  //  }
-
   @Override
   public EventSubscription getEventSubscriptionForDestination() {
     return eventSubscription;
