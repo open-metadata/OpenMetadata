@@ -3490,8 +3490,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists
         // Calculate what needs to be added (tags in updatedTags but not in origTags)
+        // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
+        Set<String> origTagKeys = createTagKeySet(origTags);
         for (TagLabel updatedTag : updatedTags) {
-          if (!origTags.stream().anyMatch(tag -> tagLabelMatch.test(tag, updatedTag))) {
+          if (!origTagKeys.contains(createTagKey(updatedTag))) {
             addedTags.add(updatedTag);
           }
         }
@@ -3501,15 +3503,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
         checkMutuallyExclusive(updatedTags);
       } else {
         // PATCH operation replaces tags
+        // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
+        Set<String> updatedTagKeys = createTagKeySet(updatedTags);
+        Set<String> origTagKeys = createTagKeySet(origTags);
+        
         // Calculate what needs to be deleted (tags in origTags but not in updatedTags)
         for (TagLabel origTag : origTags) {
-          if (!updatedTags.stream().anyMatch(tag -> tagLabelMatch.test(tag, origTag))) {
+          if (!updatedTagKeys.contains(createTagKey(origTag))) {
             deletedTags.add(origTag);
           }
         }
         // Calculate what needs to be added (tags in updatedTags but not in origTags)
         for (TagLabel updatedTag : updatedTags) {
-          if (!origTags.stream().anyMatch(tag -> tagLabelMatch.test(tag, updatedTag))) {
+          if (!origTagKeys.contains(createTagKey(updatedTag))) {
             addedTags.add(updatedTag);
           }
         }
@@ -4670,6 +4676,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
         });
 
     return ownersMap;
+  }
+
+  /** 
+   * Creates a unique key for a TagLabel combining TagFQN and Source for fast Set-based lookups.
+   * This replaces O(n) stream().anyMatch() operations with O(1) Set.contains() operations.
+   */
+  private String createTagKey(TagLabel tag) {
+    return tag.getTagFQN() + ":" + tag.getSource();
+  }
+
+  /**
+   * Creates a Set of tag keys from a list of TagLabels for efficient O(1) lookups.
+   */
+  private Set<String> createTagKeySet(List<TagLabel> tags) {
+    return tags.stream()
+        .map(this::createTagKey)
+        .collect(Collectors.toSet());
   }
 
   private Map<String, List<TagLabel>> batchFetchTags(List<String> entityFQNs) {
