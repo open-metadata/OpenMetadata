@@ -178,21 +178,16 @@ const BulkEntityImportPage = () => {
     async (e: ProgressEvent<FileReader>) => {
       try {
         const result = e.target?.result as string;
-        const validationResponse = await validateCsvString(
-          result,
-          entityType,
-          fqn,
-          isBulkEdit
-        );
 
-        const jobData: CSVImportJobType = {
-          ...validationResponse,
+        const initialLoadJobData: CSVImportJobType = {
           type: 'initialLoad',
           initialResult: result,
         };
 
-        setActiveAsyncImportJob(jobData);
-        activeAsyncImportJobRef.current = jobData;
+        setActiveAsyncImportJob(initialLoadJobData);
+        activeAsyncImportJobRef.current = initialLoadJobData;
+
+        await validateCsvString(result, entityType, fqn, isBulkEdit);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -226,21 +221,20 @@ const BulkEntityImportPage = () => {
 
       const api = getImportValidateAPIEntityType(entityType);
 
-      const response = await api({
+      const validateLoadData: CSVImportJobType = {
+        type: 'onValidate',
+      };
+
+      setActiveAsyncImportJob(validateLoadData);
+      activeAsyncImportJobRef.current = validateLoadData;
+
+      await api({
         entityType,
         name: fqn,
         data: csvData,
         dryRun: activeStep === VALIDATION_STEP.EDIT_VALIDATE,
         recursive: !isBulkEdit,
       });
-
-      const jobData: CSVImportJobType = {
-        ...response,
-        type: 'onValidate',
-      };
-
-      setActiveAsyncImportJob(jobData);
-      activeAsyncImportJobRef.current = jobData;
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsValidating(false);
@@ -401,8 +395,34 @@ const BulkEntityImportPage = () => {
         return;
       }
 
-      const activeImportJob = activeAsyncImportJobRef.current;
+      // If the job is started, then save the job data and message to the active job.
+      // This will help in case of restAPI response, didn't come in time.
+      if (websocketResponse.status === 'STARTED') {
+        const processedStartedResponse = {
+          ...websocketResponse,
+          message: t('message.import-data-in-progress'),
+        };
 
+        setActiveAsyncImportJob((job) => {
+          if (!job) {
+            return;
+          }
+
+          return {
+            ...job,
+            ...processedStartedResponse,
+          };
+        });
+
+        activeAsyncImportJobRef.current = {
+          ...(activeAsyncImportJobRef.current as CSVImportJobType),
+          ...processedStartedResponse,
+        };
+
+        return;
+      }
+
+      const activeImportJob = activeAsyncImportJobRef.current;
       if (websocketResponse.jobId === activeImportJob?.jobId) {
         setActiveAsyncImportJob((job) => {
           if (!job) {
@@ -457,12 +477,12 @@ const BulkEntityImportPage = () => {
       }
     },
     [
-      activeStepRef,
       activeAsyncImportJobRef,
       onCSVReadComplete,
       setActiveAsyncImportJob,
       handleResetImportJob,
       handleActiveStepChange,
+      handleImportWebsocketResponseWithActiveStep,
     ]
   );
 
