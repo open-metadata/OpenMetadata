@@ -152,57 +152,6 @@ const Table = <T extends Record<string, unknown>>(
     entityKey,
   ]);
 
-  const menu = useMemo(
-    () => ({
-      items: [
-        {
-          key: 'header',
-          label: (
-            <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
-              <Typography.Text
-                className="text-sm text-grey-muted font-medium"
-                data-testid="column-dropdown-title">
-                {t('label.column')}
-              </Typography.Text>
-              <Button
-                className="text-primary text-sm p-0"
-                data-testid="column-dropdown-action-button"
-                type="text"
-                onClick={handleBulkColumnAction}>
-                {dropdownColumnList.length === columnDropdownSelections.length
-                  ? t('label.hide-all')
-                  : t('label.view-all')}
-              </Button>
-            </div>
-          ),
-        },
-        {
-          key: 'columns',
-          label: dropdownColumnList.map(
-            (item: TableColumnDropdownList, index: number) => (
-              <DraggableMenuItem
-                currentItem={item}
-                index={index}
-                itemList={dropdownColumnList}
-                key={item.value}
-                selectedOptions={columnDropdownSelections}
-                onMoveItem={handleMoveItem}
-                onSelect={handleColumnItemSelect}
-              />
-            )
-          ),
-        },
-      ],
-    }),
-    [
-      dropdownColumnList,
-      columnDropdownSelections,
-      handleMoveItem,
-      handleColumnItemSelect,
-      handleBulkColumnAction,
-    ]
-  );
-
   const resizingTableProps = rest.resizableColumns
     ? {
         columns: resizableColumns,
@@ -294,7 +243,40 @@ const Table = <T extends Record<string, unknown>>(
                 <DndProvider backend={HTML5Backend}>
                   <Dropdown
                     className="custom-column-dropdown-menu text-primary"
-                    menu={menu}
+                    dropdownRender={() => (
+                      <div className="ant-dropdown-menu p-sm">
+                        <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
+                          <Typography.Text
+                            className="text-sm text-grey-muted font-medium"
+                            data-testid="column-dropdown-title">
+                            {t('label.column')}
+                          </Typography.Text>
+                          <Button
+                            className="text-primary text-sm p-0"
+                            data-testid="column-dropdown-action-button"
+                            type="text"
+                            onClick={handleBulkColumnAction}>
+                            {dropdownColumnList.length ===
+                            columnDropdownSelections.length
+                              ? t('label.hide-all')
+                              : t('label.view-all')}
+                          </Button>
+                        </div>
+                        <div className="draggable-list m-t-xss">
+                          {dropdownColumnList.map((item, index) => (
+                            <DraggableMenuItem
+                              currentItem={item}
+                              index={index}
+                              itemList={dropdownColumnList}
+                              key={item.value}
+                              selectedOptions={columnDropdownSelections}
+                              onMoveItem={handleMoveItem}
+                              onSelect={handleColumnItemSelect}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     open={isDropdownVisible}
                     placement="bottomRight"
                     trigger={['click']}
