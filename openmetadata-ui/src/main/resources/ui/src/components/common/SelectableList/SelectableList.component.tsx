@@ -299,7 +299,7 @@ export const SelectableList = ({
       }}
       size="small">
       {uniqueOptions.length > 0 && (
-        <div ref={containerRef} role="listbox" tabIndex={0}>
+        <div ref={containerRef}>
           <VirtualList
             className="selectable-list-virtual-list"
             data={uniqueOptions}

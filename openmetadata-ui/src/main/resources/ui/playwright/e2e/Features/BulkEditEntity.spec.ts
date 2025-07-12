@@ -127,9 +127,7 @@ test.describe('Bulk Edit Entity', () => {
       });
 
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(
-        page.locator('.InovuaReactDataGrid__header-layout')
-      ).toBeVisible();
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
@@ -140,9 +138,7 @@ test.describe('Bulk Edit Entity', () => {
 
       // Click on first cell and edit
 
-      await page.click(
-        '.InovuaReactDataGrid__row--first > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-      );
+      await page.click('.rdg-cell[role="gridcell"]');
       await fillRowDetails(
         {
           ...databaseDetails,
@@ -265,9 +261,7 @@ test.describe('Bulk Edit Entity', () => {
       });
 
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(
-        page.locator('.InovuaReactDataGrid__header-layout')
-      ).toBeVisible();
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
@@ -277,9 +271,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.waitForTimeout(500);
 
       // click on last row first cell
-      await page.click(
-        '.InovuaReactDataGrid__row--first > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-      );
+      await page.click('.rdg-cell[role="gridcell"]');
 
       // Click on first cell and edit
       await fillRowDetails(
@@ -309,7 +301,7 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
-      await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
+      await page.waitForSelector('.rdg-header-row', {
         state: 'visible',
       });
       const updateButtonResponse = page.waitForResponse(
@@ -411,9 +403,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.click('[data-testid="bulk-edit-table"]');
 
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(
-        page.locator('.InovuaReactDataGrid__header-layout')
-      ).toBeVisible();
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
@@ -423,9 +413,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.waitForTimeout(500);
 
       // Click on first cell and edit
-      await page.click(
-        '.InovuaReactDataGrid__row--first > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-      );
+      await page.click('.rdg-cell[role="gridcell"]');
       await fillRowDetails(
         {
           ...tableDetails1,
@@ -525,9 +513,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.click('[data-testid="bulk-edit-table"]');
 
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(
-        page.locator('.InovuaReactDataGrid__header-layout')
-      ).toBeVisible();
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
@@ -537,11 +523,9 @@ test.describe('Bulk Edit Entity', () => {
       await page.waitForTimeout(500);
 
       // click on row first cell
-      await page.click(
-        '.InovuaReactDataGrid__row--first > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-      );
+      await page.click('.rdg-cell[role="gridcell"]');
 
-      await page.click('.InovuaReactDataGrid__cell--cell-active');
+      await page.click('.rdg-cell[aria-selected="true"]');
 
       await pressKeyXTimes(page, 2, 'ArrowRight');
 
@@ -552,14 +536,14 @@ test.describe('Bulk Edit Entity', () => {
       await fillTagDetails(page, columnDetails1.tag);
 
       await page
-        .locator('.InovuaReactDataGrid__cell--cell-active')
+        .locator('.rdg-cell[aria-selected="true"]')
         .press('ArrowRight', { delay: 100 });
       await fillGlossaryTermDetails(page, columnDetails1.glossary);
 
       // Reverse traves to first cell to fill the details
-      await page.click('.InovuaReactDataGrid__cell--cell-active');
+      await page.click('.rdg-cell[aria-selected="true"]');
       await page
-        .locator('.InovuaReactDataGrid__cell--cell-active')
+        .locator('.rdg-cell[aria-selected="true"]')
         .press('ArrowDown', { delay: 100 });
 
       await page.click('[type="button"] >> text="Next"', { force: true });
@@ -624,9 +608,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.click('[data-testid="bulk-edit-table"]');
 
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(
-        page.locator('.InovuaReactDataGrid__header-layout')
-      ).toBeVisible();
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
@@ -636,9 +618,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.waitForTimeout(500);
 
       // Click on first cell and edit
-      await page.click(
-        '.InovuaReactDataGrid__row--first > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-      );
+      await page.click('.rdg-cell[role="gridcell"]');
 
       // Click on first cell and edit
       await fillGlossaryRowDetails(
@@ -668,15 +648,13 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
-      await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
+      await page.waitForSelector('.rdg-header-row', {
         state: 'visible',
       });
 
       const rowStatus = ['Entity updated'];
 
-      await expect(page.locator('[data-props-id="details"]')).toHaveText(
-        rowStatus
-      );
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page

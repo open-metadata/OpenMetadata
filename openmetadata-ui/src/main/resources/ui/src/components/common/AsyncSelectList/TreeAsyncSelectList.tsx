@@ -61,6 +61,8 @@ import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
+import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
+import { KeyDownStopPropagationWrapper } from '../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
@@ -72,6 +74,7 @@ interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
   isMultiSelect?: boolean;
   isParentSelectable?: boolean;
+  onSubmit?: () => void;
 }
 
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
@@ -85,7 +88,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   hasNoActionButtons,
   isMultiSelect = true, // default to true for backward compatibility
   isParentSelectable = false, // by default, only leaf nodes can be selected
-
+  onSubmit,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -98,6 +101,12 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   const [open, setOpen] = useState(openProp); // state for controlling dropdown visibility
 
   const form = Form.useFormInstance();
+  const handleSubmit = () => {
+    onSubmit?.();
+    // Avoiding antd > Form on Bulk edit because Form onFinish is triggered immediately when mounted.
+    // Root cause: No Form.Item fields, or all fields are valid → triggers submit.
+    form?.submit?.();
+  };
 
   const handleDropdownVisibleChange = (visible: boolean) => {
     setOpen(visible);
@@ -125,28 +134,32 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   }, []);
 
   const dropdownRender = (menu: React.ReactElement) => (
-    <>
-      {isLoading ? <Loader size="small" /> : menu}
-      <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
-        <Button
-          className="update-btn"
-          data-testid="saveAssociatedTag"
-          disabled={isEmpty(glossaries)}
-          htmlType="submit"
-          loading={isSubmitLoading}
-          size="small"
-          type="default"
-          onClick={() => form.submit()}>
-          {t('label.update')}
-        </Button>
-        <Button
-          data-testid="cancelAssociatedTag"
-          size="small"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-      </Space>
-    </>
+    <KeyDownStopPropagationWrapper>
+      <FocusTrapWithContainer>
+        {isLoading ? <Loader size="small" /> : menu}
+        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+          <Button
+            className="update-btn"
+            data-testid="saveAssociatedTag"
+            disabled={isEmpty(glossaries)}
+            htmlType="button"
+            loading={isSubmitLoading}
+            size="small"
+            tabIndex={0}
+            type="default"
+            onClick={() => handleSubmit()}>
+            {t('label.update')}
+          </Button>
+          <Button
+            data-testid="cancelAssociatedTag"
+            size="small"
+            tabIndex={0}
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Space>
+      </FocusTrapWithContainer>
+    </KeyDownStopPropagationWrapper>
   );
 
   const customTagRender = (data: CustomTagProps) => {
@@ -364,7 +377,6 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       case 'Tab':
         e.preventDefault();
         e.stopPropagation();
-        form.submit();
 
         break;
       case 'Enter': {
@@ -375,8 +387,6 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         );
         if (active) {
           (active as HTMLElement).click();
-        } else {
-          form.submit();
         }
 
         break;
