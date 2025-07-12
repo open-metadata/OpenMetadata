@@ -17,7 +17,8 @@ export interface SparkConnection {
     /**
      * Regex exclude pipelines.
      */
-    pipelineFilterPattern?: FilterPattern;
+    pipelineFilterPattern?:      FilterPattern;
+    supportsMetadataExtraction?: boolean;
     /**
      * Service Type
      */

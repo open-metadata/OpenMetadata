@@ -49,6 +49,10 @@
       "description": "Regex to exclude or include projects that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "title": "Default Project Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false,

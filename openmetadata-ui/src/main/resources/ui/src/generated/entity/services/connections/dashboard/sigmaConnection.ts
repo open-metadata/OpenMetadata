@@ -45,7 +45,8 @@ export interface SigmaConnection {
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
-    projectFilterPattern?: FilterPattern;
+    projectFilterPattern?:       FilterPattern;
+    supportsMetadataExtraction?: boolean;
     /**
      * Service Type
      */

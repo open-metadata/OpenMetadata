@@ -41,7 +41,8 @@ export interface DbtCloudConnection {
     /**
      * List of IDs of your DBT cloud projects seperated by comma `,`
      */
-    projectIds?: string[];
+    projectIds?:                 string[];
+    supportsMetadataExtraction?: boolean;
     /**
      * Generated Token to connect to DBTCloud.
      */

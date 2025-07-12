@@ -44,6 +44,10 @@
       "title": "Default Database Filter Pattern",
       "description": "Regex to only include/exclude databases that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false,

@@ -53,7 +53,8 @@ export interface SASConnection {
     /**
      * Hostname of SAS Viya deployment.
      */
-    serverHost: string;
+    serverHost:                  string;
+    supportsMetadataExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
