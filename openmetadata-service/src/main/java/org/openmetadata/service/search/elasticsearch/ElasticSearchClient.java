@@ -1308,7 +1308,13 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+
+    // Build the query using the search builder factory
+    ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+    QueryBuilder queryBuilder =
+        searchBuilderFactory.buildSearchQueryBuilder(
+            request.getQuery(), SearchIndex.getAllFields());
+    searchSourceBuilder.query(queryBuilder);
 
     String aggregationField = request.getFieldName();
     if (aggregationField == null || aggregationField.isBlank()) {
