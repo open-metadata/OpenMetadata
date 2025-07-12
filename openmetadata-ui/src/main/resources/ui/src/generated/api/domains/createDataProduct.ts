@@ -11,156 +11,61 @@
  *  limitations under the License.
  */
 /**
- * Create Directory entity request
+ * Create DataProduct API request
  */
-export interface CreateDirectory {
+export interface CreateDataProduct {
     /**
-     * List of fully qualified names of data products this entity is part of.
+     * Data assets collection that is part of this data product.
      */
-    dataProducts?: string[];
+    assets?: EntityReference[];
     /**
-     * Description of the directory.
+     * Description of the DataProduct.
      */
-    description?: string;
+    description: string;
     /**
-     * Type of directory
-     */
-    directoryType?: DirectoryType;
-    /**
-     * Display Name that identifies this directory.
+     * Name used for display purposes. Example 'Customer Churn', 'Sentiment Analysis', etc.
      */
     displayName?: string;
     /**
-     * Fully qualified names of the domains the Directory belongs to.
+     * Fully qualified names of the Domains the DataProduct belongs to.
      */
-    domains?: string[];
+    domains: string[];
+    /**
+     * List of user/login names of users who are experts in this DataProduct.
+     */
+    experts?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
     /**
-     * Whether this directory is shared
+     * FullyQualifiedName of the Domain.
      */
-    isShared?: boolean;
+    fullyQualifiedName?: string;
     /**
-     * Life Cycle of the entity
-     */
-    lifeCycle?: LifeCycle;
-    /**
-     * Name that identifies this directory.
+     * A unique name of the DataProduct
      */
     name: string;
     /**
-     * Number of files in this directory
-     */
-    numberOfFiles?: number;
-    /**
-     * Number of subdirectories
-     */
-    numberOfSubDirectories?: number;
-    /**
-     * Owners of this directory
+     * Owners of this DataProduct.
      */
     owners?: EntityReference[];
+    style?:  Style;
     /**
-     * Link to the parent directory fully qualified name. If not provided, this is a root
-     * directory.
-     */
-    parent?: string;
-    /**
-     * Full path to the directory
-     */
-    path?: string;
-    /**
-     * Link to the drive service fully qualified name where this directory is hosted in
-     */
-    service: string;
-    /**
-     * Source hash of the entity
-     */
-    sourceHash?: string;
-    /**
-     * Source URL of directory.
-     */
-    sourceUrl?: string;
-    /**
-     * Tags for this Directory.
+     * Tags for this Data Product.
      */
     tags?: TagLabel[];
-    /**
-     * Total size of all files in bytes
-     */
-    totalSize?: number;
 }
 
 /**
- * Type of directory
- */
-export enum DirectoryType {
-    Folder = "Folder",
-    MyDrive = "MyDrive",
-    Root = "Root",
-    SharePointLibrary = "SharePointLibrary",
-    SharePointSite = "SharePointSite",
-    SharedDrive = "SharedDrive",
-    TeamDrive = "TeamDrive",
-}
-
-/**
- * Life Cycle of the entity
+ * Data assets collection that is part of this data product.
  *
- * This schema defines Life Cycle Properties.
- */
-export interface LifeCycle {
-    /**
-     * Access Details about accessed aspect of the data asset
-     */
-    accessed?: AccessDetails;
-    /**
-     * Access Details about created aspect of the data asset
-     */
-    created?: AccessDetails;
-    /**
-     * Access Details about updated aspect of the data asset
-     */
-    updated?: AccessDetails;
-}
-
-/**
- * Access Details about accessed aspect of the data asset
- *
- * Access details of an entity
- *
- * Access Details about created aspect of the data asset
- *
- * Access Details about updated aspect of the data asset
- */
-export interface AccessDetails {
-    /**
-     * User, Pipeline, Query that created,updated or accessed the data asset
-     */
-    accessedBy?: EntityReference;
-    /**
-     * Any process that accessed the data asset that is not captured in OpenMetadata.
-     */
-    accessedByAProcess?: string;
-    /**
-     * Timestamp of data asset accessed for creation, update, read.
-     */
-    timestamp: number;
-}
-
-/**
- * User, Pipeline, Query that created,updated or accessed the data asset
- *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owners of this directory
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -206,6 +111,21 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
 }
 
 /**
@@ -279,19 +199,4 @@ export enum TagSource {
 export enum State {
     Confirmed = "Confirmed",
     Suggested = "Suggested",
-}
-
-/**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
 }
