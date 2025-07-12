@@ -112,6 +112,7 @@ jest.mock('react-router-dom', () => ({
     pageFqn: PageType.LandingPage,
   })),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('react-grid-layout', () => ({
@@ -149,6 +150,17 @@ jest.mock(
             Save
           </button>
         </div>
+      )),
+  })
+);
+
+jest.mock(
+  '../../../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
+  () => ({
+    AdvanceSearchProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => (
+        <div data-testid="advance-search-provider">{children}</div>
       )),
   })
 );

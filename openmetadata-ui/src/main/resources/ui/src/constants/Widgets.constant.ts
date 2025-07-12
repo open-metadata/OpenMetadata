@@ -49,3 +49,26 @@ export const ACTIVITY_FEED_FILTER_LIST = [
     description: i18n.t('message.feed-filter-following'),
   },
 ];
+
+export const WIDGETS_MORE_MENU_KEYS = {
+  HALF_SIZE: 'half-size',
+  FULL_SIZE: 'full-size',
+  REMOVE_WIDGET: 'remove-widget',
+};
+
+export const WIDGETS_MORE_MENU_OPTIONS = [
+  {
+    key: WIDGETS_MORE_MENU_KEYS.HALF_SIZE,
+    label: i18n.t('label.half-size'),
+  },
+  {
+    key: WIDGETS_MORE_MENU_KEYS.FULL_SIZE,
+    label: i18n.t('label.full-size'),
+  },
+  {
+    key: WIDGETS_MORE_MENU_KEYS.REMOVE_WIDGET,
+    label: i18n.t('label.remove-entity', {
+      entity: i18n.t('label.widget'),
+    }),
+  },
+];

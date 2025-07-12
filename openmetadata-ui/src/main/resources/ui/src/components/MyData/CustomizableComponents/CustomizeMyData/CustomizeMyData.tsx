@@ -12,7 +12,8 @@
  */
 
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { cloneDeep, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, {
   Layout,
@@ -20,7 +21,6 @@ import RGL, {
   WidthProvider,
 } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import gridBgImg from '../../../../assets/img/grid-bg-img.png';
 import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -47,6 +47,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
+import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
@@ -58,7 +59,9 @@ const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
 function CustomizeMyData({
   personaDetails,
   initialPageData,
+  backgroundColor,
   onSaveLayout,
+  onBackgroundColorUpdate,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -78,7 +81,6 @@ function CustomizeMyData({
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
 
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
-  const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
@@ -86,7 +88,7 @@ function CustomizeMyData({
   }, []);
 
   const handleRemoveWidget = useCallback((widgetKey: string) => {
-    setLayout(getRemoveWidgetHandler(widgetKey, 3, 3.5));
+    setLayout(getRemoveWidgetHandler(widgetKey));
   }, []);
 
   const handleMainPanelAddWidget = useCallback(
@@ -138,7 +140,6 @@ function CustomizeMyData({
         filters: `followers:${currentUser.id}`,
       });
 
-      setFollowedDataCount(res?.hits?.total.value ?? 0);
       setFollowedData(res.hits.hits.map((hit) => hit._source));
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -155,30 +156,44 @@ function CustomizeMyData({
     [layout]
   );
 
+  const disableSave = useMemo(() => {
+    const filteredLayout = layout.filter((widget) =>
+      widget.i.startsWith('KnowledgePanel')
+    );
+
+    const jsonPatch = compare(
+      cloneDeep((initialPageData?.layout || []) as WidgetConfig[]),
+      cloneDeep(filteredLayout || [])
+    );
+
+    return jsonPatch.length === 0;
+  }, [initialPageData?.layout, layout]);
+
   const widgets = useMemo(
     () =>
       layout.map((widget) => (
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
             followedData,
-            followedDataCount,
             isLoadingOwnedData: isLoadingOwnedData,
             widgetConfig: widget,
             handleOpenAddWidgetModal: handleOpenAddWidgetModal,
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
             handleRemoveWidget: handleRemoveWidget,
             isEditView: true,
+            handleLayoutUpdate: handleLayoutUpdate,
+            currentLayout: layout,
           })}
         </div>
       )),
     [
       layout,
       followedData,
-      followedDataCount,
       isLoadingOwnedData,
       handleOpenAddWidgetModal,
       handlePlaceholderWidgetKey,
       handleRemoveWidget,
+      handleLayoutUpdate,
     ]
   );
 
@@ -207,37 +222,49 @@ function CustomizeMyData({
     });
   };
 
+  const handleBackgroundColorUpdate = async (color: string) => {
+    await onBackgroundColorUpdate?.(color);
+  };
+
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
   return (
     <>
       <PageLayoutV1
-        mainContainerClassName="p-t-0"
-        pageContainerStyle={{
-          backgroundImage: `url(${gridBgImg})`,
-        }}
+        className="p-t-box customise-my-data"
         pageTitle={t('label.customize-entity', {
           entity: t('label.landing-page'),
         })}>
         <CustomizablePageHeader
+          disableSave={disableSave}
           personaName={getEntityName(personaDetails)}
           onReset={handleReset}
           onSave={handleSave}
         />
-        <ReactGridLayout
-          className="grid-container"
-          cols={4}
-          draggableHandle=".drag-widget-icon"
-          isResizable={false}
-          margin={[
-            customizeMyDataPageClassBase.landingPageWidgetMargin,
-            customizeMyDataPageClassBase.landingPageWidgetMargin,
-          ]}
-          rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
-          onLayoutChange={handleLayoutUpdate}>
-          {widgets}
-        </ReactGridLayout>
+        <div className="grid-wrapper">
+          <CustomiseLandingPageHeader
+            overlappedContainer
+            addedWidgetsList={addedWidgetsList}
+            backgroundColor={backgroundColor}
+            handleAddWidget={handleMainPanelAddWidget}
+            onBackgroundColorUpdate={handleBackgroundColorUpdate}
+          />
+          <ReactGridLayout
+            className="grid-container"
+            cols={customizeMyDataPageClassBase.landingPageMaxGridSize}
+            draggableHandle=".drag-widget-icon"
+            isResizable={false}
+            key={JSON.stringify(layout)}
+            margin={[
+              customizeMyDataPageClassBase.landingPageWidgetMargin,
+              customizeMyDataPageClassBase.landingPageWidgetMargin,
+            ]}
+            rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
+            onLayoutChange={handleLayoutUpdate}>
+            {widgets}
+          </ReactGridLayout>
+        </div>
       </PageLayoutV1>
 
       {isWidgetModalOpen && (
@@ -245,6 +272,7 @@ function CustomizeMyData({
           addedWidgetsList={addedWidgetsList}
           handleAddWidget={handleMainPanelAddWidget}
           handleCloseAddWidgetModal={handleCloseAddWidgetModal}
+          handleLayoutUpdate={handleLayoutUpdate}
           maxGridSizeSupport={
             customizeMyDataPageClassBase.landingPageMaxGridSize
           }
