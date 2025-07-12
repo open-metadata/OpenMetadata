@@ -99,9 +99,7 @@ public class UserApprovalTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(userTask.getId(), endEvent.getId()));
     subProcess.addFlowElement(new SequenceFlow(terminationEvent.getId(), terminatedEvent.getId()));
 
-    if (config.getStoreStageStatus()) {
-      attachWorkflowInstanceStageListeners(subProcess);
-    }
+    attachWorkflowInstanceStageListeners(subProcess);
 
     this.runtimeExceptionBoundaryEvent =
         getRuntimeExceptionBoundaryEvent(subProcess, config.getStoreStageStatus());
