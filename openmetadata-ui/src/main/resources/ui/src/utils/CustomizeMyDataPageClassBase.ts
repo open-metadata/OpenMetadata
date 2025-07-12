@@ -16,6 +16,7 @@ import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
 import AnnouncementImg from '../assets/img/announcement.png';
 import CuratedAssetsImg from '../assets/img/curated-assets.png';
 import DataAssetsImg from '../assets/img/data-assets-widget.png';
+import DomainsImg from '../assets/img/domains-widget.png';
 import FollowingImg from '../assets/img/following-widget.png';
 import KPISmallImg from '../assets/img/kpi-widget.png';
 import KPIImg from '../assets/img/kpi.png';
@@ -25,10 +26,13 @@ import RecentViewsImg from '../assets/img/recent-views.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets-widget.png';
 import { ReactComponent as ActivityFeedIcon } from '../assets/svg/ic-activity-feed.svg';
+import { ReactComponent as CuratedAssetsIcon } from '../assets/svg/ic-curated-assets.svg';
 import { ReactComponent as DataAssetsIcon } from '../assets/svg/ic-data-assets.svg';
+import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as FollowingIcon } from '../assets/svg/ic-following-assets.svg';
 import { ReactComponent as KPIIcon } from '../assets/svg/ic-kpi-widget.svg';
 import { ReactComponent as MyDataIcon } from '../assets/svg/ic-my-data.svg';
+import { ReactComponent as MyTaskIcon } from '../assets/svg/ic-my-task.svg';
 import { ReactComponent as TotalAssetsIcon } from '../assets/svg/ic-total-data-assets.svg';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
 import AnnouncementsWidget, {
@@ -39,6 +43,7 @@ import FollowingWidget, {
 } from '../components/MyData/RightSidebar/FollowingWidget';
 import CuratedAssetsWidget from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget';
 import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
+import DomainsWidget from '../components/MyData/Widgets/DomainsWidget/DomainsWidget';
 import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
 import MyTaskWidget from '../components/MyData/Widgets/MyTaskWidget/MyTaskWidget';
 import RecentlyViewed from '../components/MyData/Widgets/RecentlyViewed/RecentlyViewed';
@@ -69,6 +74,7 @@ class CustomizeMyDataPageClassBase {
     DataAssets: 4,
     curatedAssets: 4,
     myTask: 4,
+    domains: 4,
   };
 
   curatedAssetsWidgetDefaultValues: WidgetConfig = {
@@ -86,6 +92,15 @@ class CustomizeMyDataPageClassBase {
   myTaskWidgetDefaultValues: WidgetConfig = {
     h: this.landingPageWidgetDefaultHeights.myTask,
     i: LandingPageWidgetKeys.MY_TASK,
+    static: false,
+    w: 1,
+    x: 2,
+    y: 12,
+  };
+
+  domainsWidgetDefaultValues: WidgetConfig = {
+    h: this.landingPageWidgetDefaultHeights.domains,
+    i: LandingPageWidgetKeys.DOMAINS,
     static: false,
     w: 1,
     x: 2,
@@ -212,6 +227,9 @@ class CustomizeMyDataPageClassBase {
     if (widgetKey.startsWith(LandingPageWidgetKeys.MY_TASK)) {
       return MyTaskWidget;
     }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.DOMAINS)) {
+      return DomainsWidget;
+    }
 
     return (() => null) as React.FC;
   }
@@ -256,6 +274,9 @@ class CustomizeMyDataPageClassBase {
       case LandingPageWidgetKeys.MY_TASK: {
         return MyTaskImg;
       }
+      case LandingPageWidgetKeys.DOMAINS: {
+        return DomainsImg;
+      }
       default: {
         return '';
       }
@@ -283,10 +304,13 @@ class CustomizeMyDataPageClassBase {
         return FollowingIcon;
       }
       case LandingPageWidgetKeys.CURATED_ASSETS: {
-        return FollowingIcon;
+        return CuratedAssetsIcon;
       }
       case LandingPageWidgetKeys.MY_TASK: {
-        return FollowingIcon;
+        return MyTaskIcon;
+      }
+      case LandingPageWidgetKeys.DOMAINS: {
+        return DomainsIcon;
       }
       default: {
         return null;
@@ -316,6 +340,8 @@ class CustomizeMyDataPageClassBase {
         return this.landingPageWidgetDefaultHeights.curatedAssets;
       case 'MyTask':
         return this.landingPageWidgetDefaultHeights.myTask;
+      case 'Domains':
+        return this.landingPageWidgetDefaultHeights.domains;
       default:
         return this.defaultWidgetHeight;
     }

@@ -1,0 +1,218 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Typography } from 'antd';
+import { isEmpty, orderBy, toLower } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
+import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
+import { Domain } from '../../../../generated/entity/domains/domain';
+import {
+  WidgetCommonProps,
+  WidgetConfig,
+} from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { getDomainList } from '../../../../rest/domainAPI';
+import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
+import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
+import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
+import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
+import './domains-widget.less';
+import { DOMAIN_SORT_BY_OPTIONS } from './DomainsWidget.constants';
+
+const getDomainIcon = (iconURL?: string) => {
+  if (iconURL) {
+    return <img alt="domain icon" className="domain-icon-url" src={iconURL} />;
+  }
+
+  return <DomainIcon />;
+};
+
+const DomainsWidget = ({
+  isEditView = false,
+  handleRemoveWidget,
+  widgetKey = 'domains-widget',
+  handleLayoutUpdate,
+  currentLayout,
+}: WidgetCommonProps) => {
+  const { t } = useTranslation();
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [selectedSortBy, setSelectedSortBy] = useState<string>('DEFAULT');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const domainsWidget = useMemo(() => {
+    const widget = currentLayout?.find(
+      (widget: WidgetConfig) => widget.i === widgetKey
+    );
+
+    return widget;
+  }, [currentLayout, widgetKey]);
+
+  const isFullSize = useMemo(() => {
+    return domainsWidget?.w === 2;
+  }, [domainsWidget]);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    getDomainList({ limit: 100, fields: ['assets'] })
+      .then((res) => {
+        setDomains(res.data || []);
+      })
+      .catch(() => setError(t('message.fetch-domain-list-error')))
+      .finally(() => setLoading(false));
+  }, [t]);
+
+  // Memoize sorted domains to avoid unnecessary sorting on every render
+  const sortedDomains = useMemo(() => {
+    if (selectedSortBy === 'A_TO_Z') {
+      return orderBy(
+        domains,
+        [(item) => toLower(item.displayName || item.name)],
+        ['asc']
+      );
+    } else if (selectedSortBy === 'Z_TO_A') {
+      return orderBy(
+        domains,
+        [(item) => toLower(item.displayName || item.name)],
+        ['desc']
+      );
+    }
+
+    return domains;
+  }, [domains, selectedSortBy]);
+
+  useEffect(() => {
+    // handleSortData(domains, selectedSortBy); // This line is removed as per the edit hint
+  }, [domains, selectedSortBy]); // This line is updated to reflect the removal of handleSortData
+
+  const handleSortByClick = useCallback((key: string) => {
+    setSelectedSortBy(key);
+  }, []);
+
+  const widgetContent = (
+    <div className="domains-widget-container">
+      <div className="widget-content flex-1">
+        {loading ? (
+          <div className="domains-widget-loading">
+            <span className="ant-spin ant-spin-spinning" />
+          </div>
+        ) : error ? (
+          <div className="domains-widget-error">{error}</div>
+        ) : isEmpty(sortedDomains) ? (
+          <WidgetEmptyState
+            actionButtonLink="/domain"
+            actionButtonText="Explore Domain"
+            description={t('message.domains-no-data-message')}
+            icon={<DomainNoDataPlaceholder />}
+            title={t('label.no-domains-yet')}
+          />
+        ) : (
+          <>
+            <div className="entity-list-body">
+              <div className="domains-widget-grid">
+                {sortedDomains.map((domain) => (
+                  <div
+                    className={`domain-card${
+                      isFullSize ? ' domain-card-full' : ''
+                    }`}
+                    key={domain.id}>
+                    {isFullSize ? (
+                      <>
+                        <div
+                          className="domain-card-full-icon"
+                          style={{ background: domain.style?.color }}>
+                          {getDomainIcon(domain.style?.iconURL)}
+                        </div>
+                        <div className="domain-card-full-content">
+                          <div className="domain-card-full-title-row">
+                            <Typography.Text
+                              className="text-md"
+                              ellipsis={{
+                                tooltip: true,
+                              }}
+                              style={{ fontWeight: 600 }}>
+                              {domain.displayName || domain.name}
+                            </Typography.Text>
+                            <span className="domain-card-full-count">
+                              {domain.assets?.length || 0}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div
+                          className="domain-card-bar"
+                          style={{ background: domain.style?.color }}
+                        />
+                        <div className="domain-card-content">
+                          <span className="domain-card-title">
+                            <div className="domain-card-icon">
+                              {getDomainIcon(domain.style?.iconURL)}
+                            </div>
+                            <span className="domain-card-name">
+                              <Typography.Paragraph
+                                ellipsis={{ tooltip: true }}
+                                style={{ marginBottom: 0 }}>
+                                {domain.displayName || domain.name}
+                              </Typography.Paragraph>
+                            </span>
+                          </span>
+                          <span className="domain-card-count">
+                            {domain.assets?.length || 0}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <WidgetWrapper dataLength={sortedDomains.length || 5} loading={loading}>
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<DomainIcon className="domains-widget-globe" />}
+        isEditView={isEditView}
+        selectedSortBy={selectedSortBy}
+        sortOptions={DOMAIN_SORT_BY_OPTIONS}
+        title={t('label.domain-plural')}
+        widgetKey={widgetKey}
+        widgetWidth={2}
+        onSortChange={handleSortByClick}
+      />
+      {widgetContent}
+      {!isEmpty(sortedDomains) && (
+        <WidgetFooter
+          moreButtonLink="/domain"
+          moreButtonText={t('label.view-more-count', {
+            count:
+              sortedDomains.length > 10 ? sortedDomains.length - 10 : undefined,
+          })}
+          showMoreButton={Boolean(!loading)}
+        />
+      )}
+    </WidgetWrapper>
+  );
+};
+
+export default DomainsWidget;

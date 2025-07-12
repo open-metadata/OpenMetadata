@@ -160,8 +160,8 @@ function CustomizeMyData({
     );
 
     const jsonPatch = compare(
-      cloneDeep(initialPageData?.layout as WidgetConfig[]),
-      cloneDeep(filteredLayout)
+      cloneDeep((initialPageData?.layout || []) as WidgetConfig[]),
+      cloneDeep(filteredLayout || [])
     );
 
     return jsonPatch.length === 0;

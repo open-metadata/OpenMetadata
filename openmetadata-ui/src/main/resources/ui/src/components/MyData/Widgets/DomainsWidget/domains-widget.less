@@ -1,0 +1,213 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../../styles/variables.less';
+
+.domains-widget-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  .ant-card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 0px;
+    overflow: hidden;
+  }
+
+  .widget-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .entity-list-body {
+    flex: 1;
+    padding: 20px 20px 0 20px;
+    margin: 0;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .widget-footer {
+    flex-shrink: 0;
+    width: 100%;
+    background-color: @white;
+    border-bottom-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+  }
+}
+
+.domains-widget-container:hover {
+  .drag-widget-icon {
+    display: block;
+    cursor: grabbing;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+}
+
+.domains-widget-loading,
+.domains-widget-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  color: @grey-15;
+}
+
+.domains-widget-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.domain-card {
+  display: flex;
+  align-items: center;
+  background: @white;
+  //   min-width: 220px;
+  //   max-width: 260px;
+  //   flex: 1 1 220px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
+  height: 48px;
+  border: 1px solid #dbe0e7;
+  border-radius: 8px;
+}
+
+.domain-card-bar {
+  width: 6px;
+  height: 100%;
+  border-radius: 6px 0 0 6px;
+  flex-shrink: 0;
+}
+
+.domain-card-content {
+  display: flex;
+  align-items: center;
+  //   justify-content: space-between;
+  width: 100%;
+  padding: 0 16px;
+  min-width: 0;
+}
+
+.domain-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: @text-color;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.domain-icon {
+  font-size: 18px;
+  margin-right: 2px;
+}
+
+.domain-card-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.domain-card-count {
+  background: #f4f6fb;
+  color: #3d3dd6;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 2px 12px;
+  margin-left: 10px;
+  min-width: 40px;
+  text-align: center;
+  display: inline-block;
+}
+
+.domain-card-full {
+  display: flex;
+  align-items: center;
+  background: @white;
+  border: 1px solid #dbe0e7;
+  border-radius: 12px;
+  width: 340px;
+  height: 80px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  padding: 0 12px;
+  gap: 18px;
+}
+
+.domain-card-full-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: #fff;
+  padding: 8px;
+}
+
+.domain-card-full-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.domain-card-full-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.domain-card-full-count {
+  background: #f1f3fc;
+  color: #4d6585;
+  font-size: 12px;
+  font-weight: 400;
+  border-radius: 8px;
+  padding: 2px 8px;
+  text-align: center;
+  display: inline-block;
+  margin-left: 6px;
+}
+
+.domain-card-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.domain-icon-url {
+  max-width: 48px;
+  max-height: 48px;
+}
