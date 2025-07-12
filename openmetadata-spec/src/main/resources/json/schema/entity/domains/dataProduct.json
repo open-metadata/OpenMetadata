@@ -56,9 +56,9 @@
       "$ref": "../../type/entityReferenceList.json",
       "default" : null
     },
-    "domain": {
-      "description": "Domain or sub-domain to which this Data Product belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains or sub-domains to which this Data Product belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "assets": {
       "description": "Data assets collection that is part of this data product.",

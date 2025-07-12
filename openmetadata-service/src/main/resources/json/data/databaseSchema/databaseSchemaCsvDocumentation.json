@@ -88,11 +88,11 @@
       ]
     },
     {
-      "name": "domain",
+      "name": "domains",
       "required": false,
-      "description": "Domain to which the database schema belongs to",
+      "description": "Domains to which the database schema belongs to, separated by ';'",
       "examples": [
-        "Marketing", "Sales"
+        "Marketing", "Sales;Operations"
       ]
     },
     {

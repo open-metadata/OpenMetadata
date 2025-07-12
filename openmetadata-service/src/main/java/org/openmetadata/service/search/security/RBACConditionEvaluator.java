@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.security;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.*;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
@@ -323,13 +325,15 @@ public class RBACConditionEvaluator {
 
   public void hasDomain(ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
-    if (user.getDomain() == null) {
-      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domain.id");
+    if (user == null || nullOrEmpty(user.getDomains())) {
+      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
       collector.addMustNot(existsQuery); // Wrap existsQuery in a List
     } else {
-      String userDomainId = user.getDomain().getId().toString();
-      OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domain.id", userDomainId);
-      collector.addMust(domainQuery);
+      for (EntityReference domain : user.getDomains()) {
+        String domainId = domain.getId().toString();
+        OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domains.id", domainId);
+        collector.addMust(domainQuery);
+      }
     }
   }
 

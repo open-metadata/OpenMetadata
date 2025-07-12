@@ -13,6 +13,7 @@
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
+  Checkbox,
   Divider,
   Form,
   FormItemProps,
@@ -138,6 +139,14 @@ export const getField = (field: FieldProp) => {
 
     case FieldTypes.SWITCH:
       fieldElement = <Switch {...props} id={id} />;
+      internalFormItemProps = {
+        ...internalFormItemProps,
+        valuePropName: 'checked',
+      };
+
+      break;
+    case FieldTypes.CHECK_BOX:
+      fieldElement = <Checkbox {...props} id={id} />;
       internalFormItemProps = {
         ...internalFormItemProps,
         valuePropName: 'checked',

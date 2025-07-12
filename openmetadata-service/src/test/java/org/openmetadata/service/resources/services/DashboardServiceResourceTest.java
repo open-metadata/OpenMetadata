@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -317,7 +318,7 @@ public class DashboardServiceResourceTest
                     .withUsername("admin"));
     createDashboardService
         .withConnection(dashboardConnection)
-        .withDomain(DOMAIN.getFullyQualifiedName());
+        .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     DashboardService dashboardService =
         new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
     METABASE_REFERENCE = dashboardService.getEntityReference();
@@ -351,7 +352,7 @@ public class DashboardServiceResourceTest
           dashboardResourceTest
               .createRequest("dashboard" + i, "", "", null)
               .withService(METABASE_REFERENCE.getName());
-      createDashboard1.withDomain(DOMAIN.getFullyQualifiedName());
+      createDashboard1.withDomains(List.of(DOMAIN.getFullyQualifiedName()));
       Dashboard dashboard1 =
           new DashboardResourceTest().createEntity(createDashboard1, ADMIN_AUTH_HEADERS);
       DASHBOARD_REFERENCES.add(dashboard1.getFullyQualifiedName());

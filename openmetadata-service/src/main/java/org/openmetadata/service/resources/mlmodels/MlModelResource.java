@@ -75,7 +75,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public static final String COLLECTION_PATH = "v1/mlmodels/";
   private final MlModelMapper mapper = new MlModelMapper();
   static final String FIELDS =
-      "owners,dashboard,followers,tags,usageSummary,extension,domain,sourceHash";
+      "owners,dashboard,followers,tags,usageSummary,extension,domains,sourceHash";
 
   @Override
   public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {

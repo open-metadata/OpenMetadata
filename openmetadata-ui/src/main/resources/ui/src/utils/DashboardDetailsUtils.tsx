@@ -34,7 +34,7 @@ import { DashboardDetailsTabsProps } from './DashboardDetailsClassBase';
 import { t } from './i18next/LocalUtil';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.DOMAINS},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
 
 export const fetchCharts = async (charts: Dashboard['charts']) => {
   let chartsData: ChartType[] = [];

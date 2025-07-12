@@ -55,9 +55,9 @@
       "description": "Persona this page belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "domain": {
-      "description": "Domain this page belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains this page belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "knowledgePanels": {
       "description": "KnowledgePanels that are part of this Page.",

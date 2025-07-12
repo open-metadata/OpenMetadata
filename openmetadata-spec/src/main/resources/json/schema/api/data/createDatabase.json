@@ -61,9 +61,12 @@
       "description": "Source URL of database.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Database belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Fully qualified names of the domains the Database belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "lifeCycle": {
       "description": "Life Cycle of the entity",

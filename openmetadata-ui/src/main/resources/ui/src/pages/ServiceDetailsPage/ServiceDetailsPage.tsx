@@ -758,7 +758,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${
             TabSpecificField.FOLLOWERS
           },${isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS},${
-            isMetadataService ? '' : TabSpecificField.DOMAIN
+            isMetadataService ? '' : TabSpecificField.DOMAINS
           }`,
           include: Include.All,
         }

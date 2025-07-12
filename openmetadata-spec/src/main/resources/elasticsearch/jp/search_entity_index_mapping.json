@@ -357,7 +357,7 @@
       "deleted": {
         "type": "boolean"
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",

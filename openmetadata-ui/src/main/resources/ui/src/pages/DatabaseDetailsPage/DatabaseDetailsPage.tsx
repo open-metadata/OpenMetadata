@@ -190,7 +190,7 @@ const DatabaseDetails: FunctionComponent = () => {
       fields: [
         TabSpecificField.OWNERS,
         TabSpecificField.TAGS,
-        TabSpecificField.DOMAIN,
+        TabSpecificField.DOMAINS,
         TabSpecificField.VOTES,
         TabSpecificField.EXTENSION,
         TabSpecificField.DATA_PRODUCTS,

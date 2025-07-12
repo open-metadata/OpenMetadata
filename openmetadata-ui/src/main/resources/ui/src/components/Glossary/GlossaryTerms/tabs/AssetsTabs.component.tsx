@@ -289,7 +289,7 @@ const AssetsTabs = forwardRef(
           break;
         case AssetsOfEntity.DATA_PRODUCT:
           data = await getDataProductByName(fqn, {
-            fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
+            fields: [TabSpecificField.DOMAINS, TabSpecificField.ASSETS],
           });
 
           break;

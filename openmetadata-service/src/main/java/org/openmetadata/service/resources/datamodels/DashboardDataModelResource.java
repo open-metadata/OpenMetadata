@@ -74,7 +74,7 @@ public class DashboardDataModelResource
     extends EntityResource<DashboardDataModel, DashboardDataModelRepository> {
   private final DashboardDataModelMapper mapper = new DashboardDataModelMapper();
   public static final String COLLECTION_PATH = "/v1/dashboard/datamodels";
-  protected static final String FIELDS = "owners,tags,followers,domain,sourceHash,extension";
+  protected static final String FIELDS = "owners,tags,followers,domains,sourceHash,extension";
 
   @Override
   public DashboardDataModel addHref(UriInfo uriInfo, DashboardDataModel dashboardDataModel) {

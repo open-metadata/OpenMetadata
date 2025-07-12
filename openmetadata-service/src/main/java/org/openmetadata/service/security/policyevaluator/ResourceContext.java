@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -82,31 +83,44 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       return List.of(entity.getEntityReference()); // Owner for a user is same as the user
     }
 
-    // Check for parent owners
+    // Check for parents owners'
     List<EntityReference> owners = entity.getOwners();
-    EntityInterface parentEntity = resolveParentEntity(entity);
-    if (parentEntity != null && parentEntity.getOwners() != null) {
-      if (owners == null) owners = new ArrayList<>();
-      owners.addAll(parentEntity.getOwners());
+    List<EntityInterface> parentEntities = resolveParentEntities(entity);
+    if (!nullOrEmpty(parentEntities)) {
+      for (EntityInterface parentEntity : parentEntities) {
+        if (parentEntity.getOwners() != null) {
+          if (owners == null) owners = new ArrayList<>();
+          owners.addAll(parentEntity.getOwners());
+        }
+      }
     }
 
     return owners;
   }
 
-  private EntityInterface resolveParentEntity(T entity) {
+  private List<EntityInterface> resolveParentEntities(T entity) {
     Fields fields = new Fields(new HashSet<>(Collections.singleton(FIELD_OWNERS)));
     try {
-      EntityReference parentReference =
+      List<EntityReference> parentReferences =
           switch (entityRepository.getEntityType()) {
-            case Entity.GLOSSARY_TERM -> ((GlossaryTerm) entity).getGlossary();
-            case Entity.TAG -> ((Tag) entity).getClassification();
-            case Entity.DATA_PRODUCT -> entity.getDomain();
+            case Entity.GLOSSARY_TERM -> List.of(((GlossaryTerm) entity).getGlossary());
+            case Entity.TAG -> List.of(((Tag) entity).getClassification());
+            case Entity.DATA_PRODUCT -> entity.getDomains();
             default -> null;
           };
 
-      if (parentReference == null || parentReference.getId() == null) return null;
-      EntityRepository<?> rootRepository = Entity.getEntityRepository(parentReference.getType());
-      return rootRepository.get(null, parentReference.getId(), fields);
+      if (nullOrEmpty(parentReferences)) return null;
+      List<EntityInterface> parentEntities = new ArrayList<>();
+
+      for (EntityReference parentReference : parentReferences) {
+        if (parentReference == null || parentReference.getId() == null) {
+          LOG.warn("Parent reference is null or does not have an ID: {}", parentReference);
+          continue;
+        }
+        EntityRepository<?> rootRepository = Entity.getEntityRepository(parentReference.getType());
+        parentEntities.add(rootRepository.get(null, parentReference.getId(), fields));
+      }
+      return parentEntities;
     } catch (Exception e) {
       LOG.error("Failed to resolve parent entity: {}", e.getMessage(), e);
       return null;
@@ -125,14 +139,14 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   @Override
-  public EntityReference getDomain() {
+  public List<EntityReference> getDomains() {
     resolveEntity();
     if (entity == null) {
       return null;
     } else if (Entity.DOMAIN.equals(entityRepository.getEntityType())) {
-      return entity.getEntityReference(); // Domain for a domain is same as the domain
+      return List.of(entity.getEntityReference()); // Domain for a domain is same as the domain
     }
-    return entity.getDomain();
+    return entity.getDomains();
   }
 
   private EntityInterface resolveEntity() {
@@ -150,14 +164,11 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
         if (entityRepository.isSupportsTags()) {
           fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
         }
-        if (entityRepository.isSupportsDomain()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
+        if (entityRepository.isSupportsDomains()) {
+          fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
         }
         if (entityRepository.isSupportsReviewers()) {
           fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
-        }
-        if (entityRepository.isSupportsDomain()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
         }
         fieldList = entityRepository.getFields(fields);
       }

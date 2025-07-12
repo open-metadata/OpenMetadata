@@ -42,9 +42,9 @@ export interface Directory {
      */
     displayName?: string;
     /**
-     * Domain the directory belongs to.
+     * Domains the Directory belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -328,8 +328,6 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the directory belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *

@@ -83,7 +83,7 @@ public class DatabaseServiceResource
     extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
   private final DatabaseServiceMapper mapper = new DatabaseServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domain,followers";
+  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {

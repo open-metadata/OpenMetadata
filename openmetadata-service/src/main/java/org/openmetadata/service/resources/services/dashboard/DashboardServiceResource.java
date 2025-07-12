@@ -75,7 +75,7 @@ public class DashboardServiceResource
         DashboardService, DashboardServiceRepository, DashboardConnection> {
   private final DashboardServiceMapper mapper = new DashboardServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
-  public static final String FIELDS = "owners,domain,followers";
+  public static final String FIELDS = "owners,domains,followers";
 
   public DashboardServiceResource(Authorizer authorizer, Limits limits) {
     super(Entity.DASHBOARD_SERVICE, authorizer, limits, ServiceType.DASHBOARD);

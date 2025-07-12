@@ -120,7 +120,7 @@ const MetricDetailsPage = () => {
           TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
           TabSpecificField.DATA_PRODUCTS,
           TabSpecificField.VOTES,
           TabSpecificField.EXTENSION,

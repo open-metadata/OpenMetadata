@@ -94,7 +94,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private final TestCaseMapper mapper = new TestCaseMapper();
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
-  static final String FIELDS = "owners,testSuite,testDefinition,testSuites,incidentId,domain,tags";
+  static final String FIELDS = "owners,testSuite,testDefinition,testSuites,incidentId,domains,tags";
   static final String SEARCH_FIELDS_EXCLUDE =
       "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN";
 
@@ -433,7 +433,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
     searchListFilter.addQueryParam("includeFields", includeFields);
-    searchListFilter.addQueryParam("domain", domain);
+    searchListFilter.addQueryParam("domains", domain);
     searchListFilter.addQueryParam("tags", tags);
     searchListFilter.addQueryParam("tier", tier);
     searchListFilter.addQueryParam("serviceName", serviceName);

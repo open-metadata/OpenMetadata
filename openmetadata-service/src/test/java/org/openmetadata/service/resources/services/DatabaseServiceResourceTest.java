@@ -437,7 +437,8 @@ public class DatabaseServiceResourceTest
     assertEquals("new-dsc2", updatedDb.getDescription());
     assertTrue(listOrEmpty(updatedDb.getOwners()).isEmpty(), "Owner should be cleared");
     assertTrue(listOrEmpty(updatedDb.getTags()).isEmpty(), "Tags should be empty after clearing");
-    assertNull(updatedDb.getDomain(), "Domain should be null after clearing");
+    assertTrue(
+        listOrEmpty(updatedDb.getDomains()).isEmpty(), "Domain should be null after clearing");
   }
 
   @Test
