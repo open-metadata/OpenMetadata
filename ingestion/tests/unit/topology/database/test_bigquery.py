@@ -125,25 +125,25 @@ MOCK_TABLE = Table(
     columns=[
         Column(
             name="customer_id",
-                dataType="INT",
-                dataLength=1,
-                    dataTypeDisplay="INTEGER",
-                        constraint="PRIMARY_KEY",
-                            ),
+            dataType="INT",
+            dataLength=1,
+            dataTypeDisplay="INTEGER",
+            constraint="PRIMARY_KEY",
+        ),
         Column(
             name="first_name",
-                dataType="STRING",
-                dataLength=1,
-                    dataTypeDisplay="VARCHAR",
-                        constraint="NULL",
-                            ),
+            dataType="STRING",
+            dataLength=1,
+            dataTypeDisplay="VARCHAR",
+            constraint="NULL",
+        ),
         Column(
             name="last_name",
-                dataType="STRING",
-                dataLength=1,
-                    dataTypeDisplay="VARCHAR",
-                        constraint="NULL",
-                            ),
+            dataType="STRING",
+            dataLength=1,
+            dataTypeDisplay="VARCHAR",
+            constraint="NULL",
+        ),
     ],
     tableConstraints=[],
     databaseSchema=EntityReference(
@@ -159,22 +159,22 @@ EXPECTED_DATABASE = [
     CreateDatabaseRequest(
         name=EntityName("random-project-id"),
         tags=[],
-            service=FullyQualifiedEntityName("bigquery_source_test"),
-            default=False,
-                sourceUrl=SourceUrl(
+        service=FullyQualifiedEntityName("bigquery_source_test"),
+        default=False,
+        sourceUrl=SourceUrl(
             "https://console.cloud.google.com/bigquery?project=random-project-id"
         ),
-                )
+    )
 ]
 EXPTECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
         name=EntityName("sample_schema"),
         description="Some description with it's own\nnew line",
-            database=FullyQualifiedEntityName("bigquery_source_test.random-project-id"),
-                    sourceUrl=SourceUrl(
+        database=FullyQualifiedEntityName("bigquery_source_test.random-project-id"),
+        sourceUrl=SourceUrl(
             "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m4!1m3!3m2!1srandom-project-id!2ssample_schema"
         ),
-                )
+    )
 ]
 
 MOCK_TABLE_NAMES = [
@@ -289,67 +289,67 @@ EXPECTED_TABLE = [
     [
         CreateTableRequest(
             name=EntityName("customers"),
-                tableType="Regular",
+            tableType="Regular",
             columns=[
                 Column(
                     name="customer_id",
-                                dataType="INT",
-                                dataLength=1,
-                                            dataTypeDisplay="INTEGER",
-                                                        constraint="PRIMARY_KEY",
-                                                                            ),
+                    dataType="INT",
+                    dataLength=1,
+                    dataTypeDisplay="INTEGER",
+                    constraint="PRIMARY_KEY",
+                ),
                 Column(
                     name="first_name",
-                                dataType="STRING",
-                                dataLength=1,
-                                            dataTypeDisplay="VARCHAR",
-                                                        constraint="NULL",
-                                                                            ),
+                    dataType="STRING",
+                    dataLength=1,
+                    dataTypeDisplay="VARCHAR",
+                    constraint="NULL",
+                ),
                 Column(
                     name="last_name",
-                                dataType="STRING",
-                                dataLength=1,
-                                            dataTypeDisplay="VARCHAR",
-                                                        constraint="NULL",
-                                                                            ),
+                    dataType="STRING",
+                    dataLength=1,
+                    dataTypeDisplay="VARCHAR",
+                    constraint="NULL",
+                ),
             ],
             tableConstraints=[],
-                                    databaseSchema=FullyQualifiedEntityName(
+            databaseSchema=FullyQualifiedEntityName(
                 root="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-                                    sourceUrl=SourceUrl(
+            sourceUrl=SourceUrl(
                 "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
             ),
-                                                )
+        )
     ],
     [
         CreateTableRequest(
             name=EntityName("orders"),
-                description="description\nwith new line",
+            description="description\nwith new line",
             tableType="Regular",
             columns=[
                 Column(
                     name="order_id",
-                                dataType="INT",
-                                dataLength=1,
-                                            dataTypeDisplay="INTEGER",
-                                                        constraint="NULL",
-                                                                            ),
+                    dataType="INT",
+                    dataLength=1,
+                    dataTypeDisplay="INTEGER",
+                    constraint="NULL",
+                ),
                 Column(
                     name="customer_id",
-                                dataType="INT",
-                                dataLength=1,
-                                            dataTypeDisplay="INTEGER",
-                                                        constraint="NULL",
-                                                                            ),
+                    dataType="INT",
+                    dataLength=1,
+                    dataTypeDisplay="INTEGER",
+                    constraint="NULL",
+                ),
                 Column(
                     name="status",
-                                dataType="STRING",
-                                dataLength=1,
-                                            dataTypeDisplay="VARCHAR",
-                                                        constraint="NULL",
-                                                                            ),
+                    dataType="STRING",
+                    dataLength=1,
+                    dataTypeDisplay="VARCHAR",
+                    constraint="NULL",
+                ),
             ],
             tableConstraints=[
                 TableConstraint(
@@ -362,14 +362,14 @@ EXPECTED_TABLE = [
                     ],
                 )
             ],
-                                    databaseSchema=FullyQualifiedEntityName(
+            databaseSchema=FullyQualifiedEntityName(
                 root="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-                                    sourceUrl=SourceUrl(
+            sourceUrl=SourceUrl(
                 "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
             ),
-                                                )
+        )
     ],
 ]
 
