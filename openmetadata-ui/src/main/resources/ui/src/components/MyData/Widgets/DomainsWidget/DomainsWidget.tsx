@@ -22,20 +22,13 @@ import {
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getDomainList } from '../../../../rest/domainAPI';
+import { getDomainIcon } from '../../../../utils/DomainUtils';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './domains-widget.less';
 import { DOMAIN_SORT_BY_OPTIONS } from './DomainsWidget.constants';
-
-const getDomainIcon = (iconURL?: string) => {
-  if (iconURL) {
-    return <img alt="domain icon" className="domain-icon-url" src={iconURL} />;
-  }
-
-  return <DomainIcon />;
-};
 
 const DomainsWidget = ({
   isEditView = false,
@@ -73,7 +66,6 @@ const DomainsWidget = ({
       .finally(() => setLoading(false));
   }, [t]);
 
-  // Memoize sorted domains to avoid unnecessary sorting on every render
   const sortedDomains = useMemo(() => {
     if (selectedSortBy === 'A_TO_Z') {
       return orderBy(
@@ -91,10 +83,6 @@ const DomainsWidget = ({
 
     return domains;
   }, [domains, selectedSortBy]);
-
-  useEffect(() => {
-    // handleSortData(domains, selectedSortBy); // This line is removed as per the edit hint
-  }, [domains, selectedSortBy]); // This line is updated to reflect the removal of handleSortData
 
   const handleSortByClick = useCallback((key: string) => {
     setSelectedSortBy(key);

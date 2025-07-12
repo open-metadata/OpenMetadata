@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../styles/variables.less';
+@import (reference) url('../../../../styles/variables.less');
 
 .domains-widget-container {
   display: flex;
@@ -80,14 +80,11 @@
   display: flex;
   align-items: center;
   background: @white;
-  //   min-width: 220px;
-  //   max-width: 260px;
-  //   flex: 1 1 220px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   position: relative;
   overflow: hidden;
   height: 48px;
-  border: 1px solid #dbe0e7;
+  border: 1px solid @grey-25;
   border-radius: 8px;
 }
 
@@ -101,7 +98,6 @@
 .domain-card-content {
   display: flex;
   align-items: center;
-  //   justify-content: space-between;
   width: 100%;
   padding: 0 16px;
   min-width: 0;
@@ -134,8 +130,8 @@
 }
 
 .domain-card-count {
-  background: #f4f6fb;
-  color: #3d3dd6;
+  background: @grey-30;
+  color: @blue-35;
   font-size: 13px;
   font-weight: 600;
   border-radius: 8px;
@@ -150,7 +146,7 @@
   display: flex;
   align-items: center;
   background: @white;
-  border: 1px solid #dbe0e7;
+  border: 1px solid @grey-25;
   border-radius: 12px;
   width: 340px;
   height: 80px;
@@ -167,7 +163,7 @@
   align-items: center;
   justify-content: center;
   font-size: 32px;
-  color: #fff;
+  color: @white;
   padding: 8px;
 }
 
@@ -187,8 +183,8 @@
 }
 
 .domain-card-full-count {
-  background: #f1f3fc;
-  color: #4d6585;
+  background: @grey-30;
+  color: @blue-35;
   font-size: 12px;
   font-weight: 400;
   border-radius: 8px;
