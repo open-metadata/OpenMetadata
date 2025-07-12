@@ -1143,6 +1143,7 @@
     "query-log-duration": "Query Log Duration",
     "query-lowercase": "query",
     "query-lowercase-plural": "queries",
+    "query-parameter-plural": "Query Params",
     "query-plural": "Queries",
     "query-used-in": "Query Used In",
     "queued": "Queued",

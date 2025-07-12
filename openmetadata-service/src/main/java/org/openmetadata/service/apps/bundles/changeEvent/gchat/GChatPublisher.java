@@ -16,8 +16,10 @@ package org.openmetadata.service.apps.bundles.changeEvent.gchat;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.G_CHAT;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
+import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
+import static org.openmetadata.service.util.SubscriptionUtil.prepareWebhookHeaders;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
@@ -76,6 +78,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
 
     try {
+      String eventJson = JsonUtils.pojoToJson(event);
       GChatMessage gchatMessage =
           gChatMessageMessageDecorator.buildOutgoingMessage(
               getDisplayNameOrFqn(eventSubscription), event);
@@ -83,9 +86,10 @@ public class GChatPublisher implements Destination<ChangeEvent> {
           getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), G_CHAT, client, event);
       if (target != null) {
-        targets.add(target);
+        targets.add(getTarget(client, webhook, eventJson));
       }
       for (Invocation.Builder actionTarget : targets) {
+        prepareWebhookHeaders(actionTarget, webhook, JsonUtils.pojoToJson(gchatMessage));
         postWebhookMessage(this, actionTarget, gchatMessage);
       }
     } catch (Exception e) {
@@ -104,6 +108,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
       GChatMessage gchatMessage = gChatMessageMessageDecorator.buildOutgoingTestMessage();
 
       if (target != null) {
+        prepareWebhookHeaders(target, webhook, JsonUtils.pojoToJson(gchatMessage));
         deliverTestWebhookMessage(this, target, gchatMessage);
       }
     } catch (Exception e) {

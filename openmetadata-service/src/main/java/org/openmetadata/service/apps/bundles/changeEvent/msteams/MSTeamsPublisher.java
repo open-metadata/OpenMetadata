@@ -17,8 +17,10 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.service.util.SubscriptionUtil.appendHeadersToTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
+import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
+import static org.openmetadata.service.util.SubscriptionUtil.prepareWebhookHeaders;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
@@ -37,7 +39,6 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.MSTeamsMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class MSTeamsPublisher implements Destination<ChangeEvent> {
@@ -76,25 +77,18 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
+      String eventJson = JsonUtils.pojoToJson(event);
       TeamsMessage teamsMessage =
           teamsMessageFormatter.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
       List<Invocation.Builder> targets =
           getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), MS_TEAMS, client, event);
       if (target != null) {
-        targets.add(target);
+        targets.add(getTarget(client, webhook, eventJson));
       }
       for (Invocation.Builder actionTarget : targets) {
-        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-          String hmac =
-              "sha256="
-                  + CommonUtil.calculateHMAC(
-                      webhook.getSecretKey(), JsonUtils.pojoToJson(teamsMessage));
-          postWebhookMessage(
-              this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), teamsMessage);
-        } else {
-          postWebhookMessage(this, actionTarget, teamsMessage);
-        }
+        prepareWebhookHeaders(actionTarget, webhook, JsonUtils.pojoToJson(teamsMessage));
+        postWebhookMessage(this, actionTarget, teamsMessage);
       }
     } catch (Exception e) {
       String message =
@@ -112,16 +106,8 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
       TeamsMessage teamsMessage = teamsMessageFormatter.buildOutgoingTestMessage();
 
       if (target != null) {
-        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-          String hmac =
-              "sha256="
-                  + CommonUtil.calculateHMAC(
-                      webhook.getSecretKey(), JsonUtils.pojoToJson(teamsMessage));
-          deliverTestWebhookMessage(
-              this, target.header(RestUtil.SIGNATURE_HEADER, hmac), teamsMessage);
-        } else {
-          deliverTestWebhookMessage(this, target, teamsMessage);
-        }
+        prepareWebhookHeaders(target, webhook, JsonUtils.pojoToJson(teamsMessage));
+        deliverTestWebhookMessage(this, target, teamsMessage);
       }
     } catch (Exception e) {
       String message =

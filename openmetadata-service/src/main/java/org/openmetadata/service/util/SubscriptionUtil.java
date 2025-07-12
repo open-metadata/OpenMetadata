@@ -23,6 +23,7 @@ import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.g
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -54,9 +55,11 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -437,12 +440,68 @@ public class SubscriptionUtil {
     return targets;
   }
 
+  public static List<Invocation.Builder> getTargetsForWebhookAlert(
+      Webhook webhook,
+      SubscriptionDestination.SubscriptionCategory category,
+      SubscriptionDestination.SubscriptionType type,
+      Client client,
+      ChangeEvent event) {
+    List<Invocation.Builder> targets = new ArrayList<>();
+    for (String url : getTargetsForAlert(webhook, category, type, event)) {
+      targets.add(
+          appendHeadersAndQueryParamsToTarget(client, url, webhook, JsonUtils.pojoToJson(event)));
+    }
+    return targets;
+  }
+
   public static Invocation.Builder appendHeadersToTarget(Client client, String uri) {
     // Validate the URI to prevent SSRF attacks
     URLValidator.validateURL(uri);
 
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
     return SecurityUtil.addHeaders(client.target(uri), authHeaders);
+  }
+
+  public static Invocation.Builder appendHeadersAndQueryParamsToTarget(
+      Client client, String uri, Webhook webhook, String json) {
+    // Validate the URI to prevent SSRF attacks
+    URLValidator.validateURL(uri);
+
+    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+    WebTarget target = client.target(uri);
+
+    // Add query parameters if they exist
+    if (webhook.getQueryParams() != null && !webhook.getQueryParams().isEmpty()) {
+      for (Map.Entry<String, String> entry : webhook.getQueryParams().entrySet()) {
+        target = target.queryParam(entry.getKey(), entry.getValue());
+      }
+    }
+
+    Invocation.Builder result = SecurityUtil.addHeaders(target, authHeaders);
+    // Prepare webhook headers, including HMAC signature if secret key is provided
+    prepareWebhookHeaders(result, webhook, json);
+    return SecurityUtil.addHeaders(target, authHeaders);
+  }
+
+  public static void prepareWebhookHeaders(
+      Invocation.Builder target, Webhook webhook, String json) {
+    if (!nullOrEmpty(webhook.getSecretKey())) {
+      String hmac =
+          "sha256="
+              + CommonUtil.calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
+      target.header("X-OM-Signature", hmac);
+    }
+
+    if (webhook.getHeaders() != null && !webhook.getHeaders().isEmpty()) {
+      webhook.getHeaders().forEach(target::header);
+    }
+  }
+
+  public static String decryptWebhookSecretKey(String encryptedSecretkey) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      encryptedSecretkey = Fernet.getInstance().decryptIfApplies(encryptedSecretkey);
+    }
+    return encryptedSecretkey;
   }
 
   public static void postWebhookMessage(
@@ -540,5 +599,23 @@ public class SubscriptionUtil {
     clientBuilder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
     clientBuilder.readTimeout(readTimeout, TimeUnit.SECONDS);
     return clientBuilder.build();
+  }
+
+  public static Invocation.Builder getTarget(Client client, Webhook webhook, String json) {
+    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+    WebTarget target = client.target(webhook.getEndpoint());
+    target = addQueryParams(target, webhook.getQueryParams());
+    Invocation.Builder result = SecurityUtil.addHeaders(target, authHeaders);
+    prepareWebhookHeaders(result, webhook, json);
+    return result;
+  }
+
+  public static WebTarget addQueryParams(WebTarget target, Map<String, String> queryParams) {
+    if (!CommonUtil.nullOrEmpty(queryParams)) {
+      for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+        target = target.queryParam(entry.getKey(), entry.getValue());
+      }
+    }
+    return target;
   }
 }

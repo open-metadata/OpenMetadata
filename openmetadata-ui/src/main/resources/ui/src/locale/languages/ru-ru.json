@@ -1143,6 +1143,7 @@
     "query-log-duration": "Длительность лога запроса",
     "query-lowercase": "запрос",
     "query-lowercase-plural": "запросы",
+    "query-parameter-plural": "Параметры Запроса",
     "query-plural": "Запросы",
     "query-used-in": "Запрос, используемый в",
     "queued": "Queued",

@@ -17,8 +17,10 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.service.util.SubscriptionUtil.appendHeadersToTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
+import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
+import static org.openmetadata.service.util.SubscriptionUtil.prepareWebhookHeaders;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -40,7 +42,6 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class SlackEventPublisher implements Destination<ChangeEvent> {
@@ -76,6 +77,7 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
+      String eventJson = JsonUtils.pojoToJson(event);
       SlackMessage slackMessage =
           slackMessageFormatter.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
 
@@ -85,15 +87,11 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
           getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), SLACK, client, event);
       if (target != null) {
-        targets.add(target);
+        targets.add(getTarget(client, webhook, eventJson));
       }
       for (Invocation.Builder actionTarget : targets) {
-        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
-          postWebhookMessage(this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), json);
-        } else {
-          postWebhookMessage(this, actionTarget, json);
-        }
+        prepareWebhookHeaders(actionTarget, webhook, json);
+        postWebhookMessage(this, actionTarget, json);
       }
     } catch (Exception e) {
       String message =
@@ -113,12 +111,8 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
       json = convertCamelCaseToSnakeCase(json);
       if (target != null) {
-        if (!CommonUtil.nullOrEmpty(webhook.getSecretKey())) {
-          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
-          deliverTestWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), json);
-        } else {
-          deliverTestWebhookMessage(this, target, json);
-        }
+        prepareWebhookHeaders(target, webhook, json);
+        deliverTestWebhookMessage(this, target, json);
       }
     } catch (Exception e) {
       String message = CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, e.getMessage());
