@@ -382,6 +382,13 @@ public class ElasticSearchClient implements SearchClient {
     // Add Filter
     buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
 
+    // Log the actual query being sent to Elasticsearch
+    LOG.info(
+        "Elasticsearch query for index '{}' with query '{}': {}",
+        request.getIndex(),
+        request.getQuery(),
+        searchSourceBuilder.toString());
+
     if (!nullOrEmpty(request.getPostFilter())) {
       try {
         XContentParser filterParser =
@@ -456,6 +463,11 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    // Log the search query for debugging
+    LOG.info("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
+    LOG.info("SearchSourceBuilder query: {}", searchSourceBuilder.query());
+    LOG.info("Full SearchSourceBuilder: {}", searchSourceBuilder.toString());
 
     try {
       // Start search operation timing using Micrometer

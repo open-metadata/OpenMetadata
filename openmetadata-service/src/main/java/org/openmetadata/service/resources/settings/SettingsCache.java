@@ -270,7 +270,9 @@ public class SettingsCache {
   public static Map<String, Float> getAggregatedSearchFields() {
     try {
       Settings aggregatedFields = CACHE.get(SEARCH_SETTINGS_AGGREGATED_FIELDS);
-      return (Map<String, Float>) aggregatedFields.getConfigValue();
+      Map<String, Float> fields = (Map<String, Float>) aggregatedFields.getConfigValue();
+      LOG.info("Aggregated search fields retrieved: {}", fields.keySet());
+      return fields;
     } catch (Exception ex) {
       LOG.error("Failed to fetch aggregated search fields", ex);
       // Return default fields as fallback

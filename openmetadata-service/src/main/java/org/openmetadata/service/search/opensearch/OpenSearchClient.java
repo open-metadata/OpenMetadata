@@ -402,6 +402,13 @@ public class OpenSearchClient implements SearchClient {
     // Add Query Filter
     buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
 
+    // Log the actual query being sent to OpenSearch
+    LOG.info(
+        "OpenSearch query for index '{}' with query '{}': {}",
+        request.getIndex(),
+        request.getQuery(),
+        searchSourceBuilder.toString());
+
     if (!nullOrEmpty(request.getPostFilter())) {
       try {
         XContentParser filterParser =
