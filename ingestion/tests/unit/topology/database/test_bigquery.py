@@ -526,6 +526,11 @@ class BigqueryUnitTest(TestCase):
             self.bq_source.inspector.get_table_comment = lambda table_name, schema: {
                 "text": table[2]
             }  # pylint: disable=cell-var-from-loop
+            
+            # Mock the BigQuery client get_table method for clustering fields
+            mock_table = Mock()
+            mock_table.clustering_fields = []  # Empty list to avoid constraint creation
+            self.bq_source.client.get_table = lambda fqn: mock_table
             assert EXPECTED_TABLE[i] == [
                 either.right
                 for either in self.bq_source.yield_table((table[0], table[1]))

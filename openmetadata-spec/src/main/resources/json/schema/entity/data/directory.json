@@ -145,7 +145,7 @@
       "default": false
     },
     "domains" : {
-      "description": "Domains the Database service belongs to.",
+      "description": "Domains the Directory belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts": {
