@@ -50,8 +50,6 @@ public class ConfigurationReaderTest {
     ConfigurationReader reader = new ConfigurationReader();
     assertThrows(
         IOException.class,
-        () -> {
-          reader.readConfigFromResource("missing");
-        });
+        () -> reader.readConfigFromResource("missing"));
   }
 }

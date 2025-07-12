@@ -59,19 +59,15 @@ public class UserActivityTracker {
 
   private final ScheduledExecutorService scheduler =
       Executors.newSingleThreadScheduledExecutor(
-          r -> {
-            return Thread.ofPlatform()
-                .name("UserActivityTracker-Scheduler")
-                .daemon(true)
-                .unstarted(r);
-          });
+          r -> Thread.ofPlatform()
+              .name("UserActivityTracker-Scheduler")
+              .daemon(true)
+              .unstarted(r));
 
   private final ScheduledExecutorService virtualThreadExecutor =
       Executors.newScheduledThreadPool(
           0,
-          r -> {
-            return Thread.ofVirtual().name("UserActivityTracker-VirtualThread-", 0).unstarted(r);
-          });
+          r -> Thread.ofVirtual().name("UserActivityTracker-VirtualThread-", 0).unstarted(r));
 
   private volatile UserRepository userRepository;
 
@@ -191,9 +187,7 @@ public class UserActivityTracker {
       // Convert to a simple map of userName -> lastActivityTime
       userActivityMap = new HashMap<>();
       localActivityCache.forEach(
-          (userName, activity) -> {
-            userActivityMap.put(userName, activity.lastActivityTime);
-          });
+          (userName, activity) -> userActivityMap.put(userName, activity.lastActivityTime));
       localActivityCache.clear();
     } finally {
       cacheLock.writeLock().unlock();
@@ -241,10 +235,8 @@ public class UserActivityTracker {
     cacheLock.writeLock().lock();
     try {
       userActivityMap.forEach(
-          (userName, lastActivityTime) -> {
-            localActivityCache.putIfAbsent(
-                userName, new UserActivity(userName, lastActivityTime, System.currentTimeMillis()));
-          });
+          (userName, lastActivityTime) -> localActivityCache.putIfAbsent(
+              userName, new UserActivity(userName, lastActivityTime, System.currentTimeMillis())));
     } finally {
       cacheLock.writeLock().unlock();
     }
@@ -310,9 +302,7 @@ public class UserActivityTracker {
       // Convert to a simple map of userName -> lastActivityTime
       userActivityMap = new HashMap<>();
       localActivityCache.forEach(
-          (userName, activity) -> {
-            userActivityMap.put(userName, activity.lastActivityTime);
-          });
+          (userName, activity) -> userActivityMap.put(userName, activity.lastActivityTime));
       localActivityCache.clear();
     } finally {
       cacheLock.writeLock().unlock();

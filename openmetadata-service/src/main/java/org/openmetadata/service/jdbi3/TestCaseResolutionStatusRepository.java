@@ -95,8 +95,7 @@ public class TestCaseResolutionStatusRepository
   }
 
   public RestUtil.PatchResponse<TestCaseResolutionStatus> patch(
-      UUID id, JsonPatch patch, String user)
-      throws IntrospectionException, InvocationTargetException, IllegalAccessException {
+      UUID id, JsonPatch patch, String user) {
     String originalJson = timeSeriesDao.getById(id);
     if (originalJson == null) {
       throw new EntityNotFoundException(String.format("Entity with id %s not found", id));

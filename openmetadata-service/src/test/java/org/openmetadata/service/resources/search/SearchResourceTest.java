@@ -59,7 +59,7 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
   private TopicResourceTest topicResourceTest;
 
   @BeforeAll
-  public void setup(TestInfo test) throws IOException, URISyntaxException {
+  public void setup(TestInfo test) {
     tableResourceTest = new TableResourceTest();
     topicResourceTest = new TopicResourceTest();
 
@@ -72,8 +72,7 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  public void testLongTableNameWithManyColumnsDoesNotCauseClauseExplosion()
-      throws IOException, InterruptedException {
+  public void testLongTableNameWithManyColumnsDoesNotCauseClauseExplosion() throws IOException {
     String longTableName = "int_snowplow_experiment_evaluation_detailed_analytics_processing";
     List<Column> manyColumns = createManyTableColumns();
 

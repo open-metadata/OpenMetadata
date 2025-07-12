@@ -103,7 +103,7 @@ public final class RestUtil {
     return getHref(uriInfo, collectionPath, id.toString());
   }
 
-  public static int compareDates(String date1, String date2) throws ParseException {
+  public static int compareDates(String date1, String date2) {
     return LocalDateTime.parse(date1, DATE_FORMAT)
         .compareTo(LocalDateTime.parse(date2, DATE_FORMAT));
   }

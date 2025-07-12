@@ -21,8 +21,7 @@ public class NoOpNLQService implements NLQService {
   }
 
   @Override
-  public String transformNaturalLanguageQuery(SearchRequest request, String additionalContext)
-      throws IOException {
+  public String transformNaturalLanguageQuery(SearchRequest request, String additionalContext) {
     return null;
   }
 

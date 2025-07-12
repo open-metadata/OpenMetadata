@@ -160,9 +160,7 @@ public class CacheDisabledCompatibilityTest extends OpenMetadataApplicationTest 
 
     // These operations should not throw exceptions when cache is disabled
     assertDoesNotThrow(
-        () -> {
-          RelationshipCache.put(entityId, testData);
-        },
+        () -> RelationshipCache.put(entityId, testData),
         "put() should handle disabled cache gracefully");
 
     assertDoesNotThrow(
@@ -173,15 +171,11 @@ public class CacheDisabledCompatibilityTest extends OpenMetadataApplicationTest 
         "get() should handle disabled cache gracefully");
 
     assertDoesNotThrow(
-        () -> {
-          RelationshipCache.evict(entityId);
-        },
+        () -> RelationshipCache.evict(entityId),
         "evict() should handle disabled cache gracefully");
 
     assertDoesNotThrow(
-        () -> {
-          RelationshipCache.bumpTag("test-tag", 1);
-        },
+        () -> RelationshipCache.bumpTag("test-tag", 1),
         "bumpTag() should handle disabled cache gracefully");
 
     assertDoesNotThrow(
@@ -254,9 +248,7 @@ public class CacheDisabledCompatibilityTest extends OpenMetadataApplicationTest 
 
     // Test insert
     assertDoesNotThrow(
-        () -> {
-          entityRelationshipDAO.insert(fromId, toId, fromEntity, toEntity, relation, jsonData);
-        },
+        () -> entityRelationshipDAO.insert(fromId, toId, fromEntity, toEntity, relation, jsonData),
         "Insert should work without cache");
 
     // Test read
@@ -300,9 +292,7 @@ public class CacheDisabledCompatibilityTest extends OpenMetadataApplicationTest 
 
     // Test bulk insert
     assertDoesNotThrow(
-        () -> {
-          entityRelationshipDAO.bulkInsertTo(relationships);
-        },
+        () -> entityRelationshipDAO.bulkInsertTo(relationships),
         "Bulk insert should work without cache");
 
     // Test bulk remove
@@ -310,9 +300,7 @@ public class CacheDisabledCompatibilityTest extends OpenMetadataApplicationTest 
         relationships.stream().map(CollectionDAO.EntityRelationshipObject::getToId).toList();
 
     assertDoesNotThrow(
-        () -> {
-          entityRelationshipDAO.bulkRemoveTo(testTable.getId(), toIds, Entity.TABLE, Entity.TAG, 2);
-        },
+        () -> entityRelationshipDAO.bulkRemoveTo(testTable.getId(), toIds, Entity.TABLE, Entity.TAG, 2),
         "Bulk remove should work without cache");
 
     LOG.info("Bulk operations without cache test passed");

@@ -279,7 +279,7 @@ class CacheWarmupServiceTest extends CachedOpenMetadataApplicationResourceTest {
   @Test
   @Order(3)
   @DisplayName("Test lazy cache initialization and validation")
-  void testLazyCacheInitialization() throws Exception {
+  void testLazyCacheInitialization() {
     assertTrue(isCacheAvailable(), "Cache should be available for lazy loading testing");
 
     CompletableFuture<Void> initFuture = lazyCacheService.initializeLazyCache();
@@ -293,16 +293,14 @@ class CacheWarmupServiceTest extends CachedOpenMetadataApplicationResourceTest {
 
     // Test that cache connectivity works
     assertDoesNotThrow(
-        () -> {
-          lazyCacheService.testCacheConnectivity();
-        },
+        () -> lazyCacheService.testCacheConnectivity(),
         "Cache connectivity test should pass");
   }
 
   @Test
   @Order(4)
   @DisplayName("Test cache statistics and monitoring")
-  void testCacheStatisticsAndMonitoring() throws Exception {
+  void testCacheStatisticsAndMonitoring() {
     LazyCacheService.CacheStats initialStats = lazyCacheService.getCacheStats();
     assertEquals(0, initialStats.cacheHits, "Initial cache hits should be 0");
     assertEquals(0, initialStats.cacheMisses, "Initial cache misses should be 0");
@@ -329,7 +327,7 @@ class CacheWarmupServiceTest extends CachedOpenMetadataApplicationResourceTest {
   @Test
   @Order(5)
   @DisplayName("Test lazy cache population")
-  void testLazyCachePopulation() throws Exception {
+  void testLazyCachePopulation() {
     if (!isCacheAvailable()) {
       LOG.warn("Cache not available, skipping lazy cache population test");
       return;
@@ -352,7 +350,7 @@ class CacheWarmupServiceTest extends CachedOpenMetadataApplicationResourceTest {
   @Test
   @Order(6)
   @DisplayName("Test lazy loading with real entity queries")
-  void testLazyLoadingWithRealQueries() throws Exception {
+  void testLazyLoadingWithRealQueries() {
     if (!isCacheAvailable()) {
       LOG.warn("Cache not available, skipping real query test");
       return;
@@ -400,8 +398,7 @@ class CacheWarmupServiceTest extends CachedOpenMetadataApplicationResourceTest {
     CompletableFuture<Void> initFuture = lifecycleService.initializeLazyCache();
     Thread.sleep(50);
 
-    assertDoesNotThrow(
-        () -> lifecycleService.shutdown(),
+    assertDoesNotThrow(lifecycleService::shutdown,
         "Shutdown during initialization should not throw exceptions");
 
     try {
@@ -416,7 +413,7 @@ class CacheWarmupServiceTest extends CachedOpenMetadataApplicationResourceTest {
   @Test
   @Order(8)
   @DisplayName("Test lazy cache error handling and resilience")
-  void testLazyCacheErrorHandlingAndResilience() throws Exception {
+  void testLazyCacheErrorHandlingAndResilience() {
     CacheConfiguration minimalConfig = new CacheConfiguration();
     minimalConfig.setEnabled(true);
     minimalConfig.setWarmupEnabled(true);
@@ -444,7 +441,7 @@ class CacheWarmupServiceTest extends CachedOpenMetadataApplicationResourceTest {
   @Test
   @Order(9)
   @DisplayName("Test simple background prefetching")
-  void testSimpleBackgroundPrefetching() throws Exception {
+  void testSimpleBackgroundPrefetching() {
     if (!isCacheAvailable()) {
       LOG.warn("Cache not available, skipping prefetching test");
       return;
@@ -483,7 +480,7 @@ class CacheWarmupServiceTest extends CachedOpenMetadataApplicationResourceTest {
   @Test
   @Order(10)
   @DisplayName("Test lazy cache thread configuration")
-  void testLazyCacheThreadConfiguration() throws Exception {
+  void testLazyCacheThreadConfiguration() {
     // Test single thread configuration
     CacheConfiguration singleThreadConfig = new CacheConfiguration();
     singleThreadConfig.setEnabled(true);

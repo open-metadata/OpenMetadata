@@ -61,8 +61,7 @@ public class SamlLogoutServlet extends HttpServlet {
 
   @Override
   protected void doGet(
-      final HttpServletRequest httpServletRequest, final HttpServletResponse httpServletResponse)
-      throws IOException {
+      final HttpServletRequest httpServletRequest, final HttpServletResponse httpServletResponse) {
     try {
       LOG.debug("Performing application logout");
       HttpSession session = httpServletRequest.getSession(false);

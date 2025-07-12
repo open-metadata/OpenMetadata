@@ -33,7 +33,7 @@ public class MetricsRequestFilter implements ContainerRequestFilter, ContainerRe
   }
 
   @Override
-  public void filter(ContainerRequestContext requestContext) throws IOException {
+  public void filter(ContainerRequestContext requestContext) {
     // Start timing the request
     Timer.Sample sample = metrics.startHttpRequestTimer();
     requestContext.setProperty(TIMER_SAMPLE_PROPERTY, sample);
@@ -46,8 +46,7 @@ public class MetricsRequestFilter implements ContainerRequestFilter, ContainerRe
 
   @Override
   public void filter(
-      ContainerRequestContext requestContext, ContainerResponseContext responseContext)
-      throws IOException {
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     try {
       // Get timing information
       Timer.Sample sample = (Timer.Sample) requestContext.getProperty(TIMER_SAMPLE_PROPERTY);

@@ -42,7 +42,7 @@ class RateLimiterComparisonTest {
     LOG.info("Testing Guava RateLimiter (version: 33.4.8-jre, marked @Beta)");
 
     RateLimiter rateLimiter = RateLimiter.create(TEST_RATE);
-    RateLimiterTestResult result = performRateLimiterTest("Guava", () -> rateLimiter.acquire());
+    RateLimiterTestResult result = performRateLimiterTest("Guava", rateLimiter::acquire);
 
     validateRateLimiterResult(result, "Guava RateLimiter");
 
@@ -156,7 +156,7 @@ class RateLimiterComparisonTest {
     // Test Guava RateLimiter under concurrency
     RateLimiter guavaLimiter = RateLimiter.create(TEST_RATE);
     testConcurrentRateLimiter(
-        "Guava", executor, threadCount, operationsPerThread, () -> guavaLimiter.acquire());
+        "Guava", executor, threadCount, operationsPerThread, guavaLimiter::acquire);
 
     // Test Resilience4j RateLimiter under concurrency
     RateLimiterConfig config =
@@ -172,7 +172,7 @@ class RateLimiterComparisonTest {
         executor,
         threadCount,
         operationsPerThread,
-        () -> resilience4jLimiter.acquirePermission());
+            resilience4jLimiter::acquirePermission);
 
     // Test production Resilience4j configuration under concurrency
     RateLimiterConfig prodConfig =
@@ -188,7 +188,7 @@ class RateLimiterComparisonTest {
         executor,
         threadCount,
         operationsPerThread,
-        () -> prodLimiter.acquirePermission());
+            prodLimiter::acquirePermission);
 
     executor.shutdown();
     assertTrue(
@@ -373,9 +373,7 @@ class RateLimiterComparisonTest {
         actualRate <= TEST_RATE * 1.2, name + " should respect rate limits under concurrent load");
   }
 
-  private RateLimiterTestResult performRateLimiterTest(String name, Runnable acquireOperation)
-      throws Exception {
-
+  private RateLimiterTestResult performRateLimiterTest(String name, Runnable acquireOperation) {
     LOG.info("Starting rate limiter test for: {}", name);
 
     long startTime = System.currentTimeMillis();

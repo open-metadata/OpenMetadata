@@ -19,10 +19,10 @@ import org.openmetadata.service.Entity;
  * Interface for creating search source builders for different entity types.
  * This interface provides a common contract for both ElasticSearch and OpenSearch implementations.
  *
- * @param <S> The SearchSourceBuilder type (different for ElasticSearch and OpenSearch)
- * @param <Q> The QueryBuilder type
- * @param <H> The HighlightBuilder type
- * @param <F> The FunctionScoreQueryBuilder type
+ * <S> The SearchSourceBuilder type (different for ElasticSearch and OpenSearch)
+ * <Q> The QueryBuilder type
+ * <H> The HighlightBuilder type
+ * <F> The FunctionScoreQueryBuilder type
  */
 public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
@@ -64,54 +64,41 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   /**
    * Get the appropriate search source builder based on the index name.
-   *
-   * @param index the index name
-   * @param q the search query
-   * @param from the starting offset
-   * @param size the number of results to return
-   * @return a search source builder configured for the specific entity type
    */
-  default S getSearchSourceBuilder(String index, String q, int from, int size) {
-    return getSearchSourceBuilder(index, q, from, size, false);
+  default S getSearchSourceBuilder(String indexName, String searchQuery, int fromOffset, int size) {
+    return getSearchSourceBuilder(indexName, searchQuery, fromOffset, size, false);
   }
 
   /**
    * Get the appropriate search source builder based on the index name.
-   *
-   * @param index the index name
-   * @param q the search query
-   * @param from the starting offset
-   * @param size the number of results to return
-   * @param explain whether to include explanation of the search results
-   * @return a search source builder configured for the specific entity type
    */
-  default S getSearchSourceBuilder(String index, String q, int from, int size, boolean explain) {
-    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
+  default S getSearchSourceBuilder(String indexName, String searchQuery, int fromOffset, int size, boolean includeExplain) {
+    indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
 
     if (isTimeSeriesIndex(indexName)) {
-      return buildTimeSeriesSearchBuilder(indexName, q, from, size);
+      return buildTimeSeriesSearchBuilder(indexName, searchQuery, fromOffset, size);
     }
 
     if (isServiceIndex(indexName)) {
-      return buildServiceSearchBuilder(q, from, size);
+      return buildServiceSearchBuilder(searchQuery, fromOffset, size);
     }
 
     if (isDataQualityIndex(indexName)) {
-      return buildDataQualitySearchBuilder(indexName, q, from, size);
+      return buildDataQualitySearchBuilder(indexName, searchQuery, fromOffset, size);
     }
 
     if (isDataAssetIndex(indexName)) {
-      return buildDataAssetSearchBuilder(indexName, q, from, size, explain);
+      return buildDataAssetSearchBuilder(indexName, searchQuery, fromOffset, size, includeExplain);
     }
 
     if (indexName.equals("all") || indexName.equals("dataAsset")) {
-      return buildCommonSearchBuilder(q, from, size);
+      return buildCommonSearchBuilder(searchQuery, fromOffset, size);
     }
 
     return switch (indexName) {
       case "user_search_index", "user", "team_search_index", "team" -> buildUserOrTeamSearchBuilder(
-          q, from, size);
-      default -> buildAggregateSearchBuilder(q, from, size);
+          searchQuery, fromOffset, size);
+      default -> buildAggregateSearchBuilder(searchQuery, fromOffset, size);
     };
   }
 
@@ -214,31 +201,18 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   /**
    * Build a search query builder with the specified fields and weights.
-   *
-   * @param query the search query
-   * @param fields map of field names to their boost weights
-   * @return a query string query builder
    */
   Q buildSearchQueryBuilder(String query, Map<String, Float> fields);
 
   /**
    * Build highlights for the specified fields.
-   *
-   * @param fields list of field names to highlight
-   * @return a highlight builder
    */
   H buildHighlights(List<String> fields);
 
   /**
    * Create a search source builder with the specified query builder, highlights, and pagination.
-   *
-   * @param queryBuilder the query builder
-   * @param highlightBuilder the highlight builder
-   * @param from the starting offset
-   * @param size the number of results to return
-   * @return a search source builder
    */
-  S searchBuilder(Q queryBuilder, H highlightBuilder, int from, int size);
+  S searchBuilder(Q queryBuilder, H highlightBuilder, int fromOffset, int size);
 
   S addAggregationsToNLQQuery(S searchSourceBuilder, String indexName);
 

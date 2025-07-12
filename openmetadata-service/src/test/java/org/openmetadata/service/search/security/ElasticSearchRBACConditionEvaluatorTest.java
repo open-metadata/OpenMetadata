@@ -446,15 +446,11 @@ class ElasticSearchRBACConditionEvaluatorTest {
       } else {
         node.fields()
             .forEachRemaining(
-                entry -> {
-                  countBoolQueries(entry.getValue(), count);
-                });
+                entry -> countBoolQueries(entry.getValue(), count));
       }
     } else if (node.isArray()) {
       node.forEach(
-          element -> {
-            countBoolQueries(element, count);
-          });
+          element -> countBoolQueries(element, count));
     }
   }
 

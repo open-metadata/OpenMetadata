@@ -30,7 +30,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class UserActivityFilter implements ContainerRequestFilter {
 
   @Override
-  public void filter(ContainerRequestContext requestContext) throws IOException {
+  public void filter(ContainerRequestContext requestContext) {
     // Only track authenticated users
     SecurityContext securityContext = requestContext.getSecurityContext();
     if (securityContext == null || securityContext.getUserPrincipal() == null) {

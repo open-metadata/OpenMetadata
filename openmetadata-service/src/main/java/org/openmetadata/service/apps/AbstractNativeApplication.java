@@ -124,7 +124,6 @@ public class AbstractNativeApplication implements NativeApplication {
   /**
    * Validate the configuration of the application. This method is called before the application is
    * triggered.
-   * @param config
    */
   protected void validateConfig(Map<String, Object> config) {
     LOG.warn("validateConfig is not implemented for this application. Skipping validation.");
@@ -334,7 +333,7 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void interrupt() throws UnableToInterruptJobException {
+  public void interrupt() {
     LOG.info("Interrupting the job for app: {}", this.app.getName());
     stop();
   }

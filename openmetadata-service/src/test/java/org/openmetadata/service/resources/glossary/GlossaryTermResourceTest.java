@@ -2115,9 +2115,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             })
         .on(
             Socket.EVENT_DISCONNECT,
-            args -> {
-              LOG.info("Disconnected from Socket.IO server");
-            });
+            args -> LOG.info("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {

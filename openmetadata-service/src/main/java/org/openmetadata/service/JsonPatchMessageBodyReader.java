@@ -49,7 +49,7 @@ public class JsonPatchMessageBodyReader implements MessageBodyReader<JsonPatch> 
       MediaType mediaType,
       MultivaluedMap<String, String> httpHeaders,
       InputStream entityStream)
-      throws IOException, WebApplicationException {
+      throws WebApplicationException {
     try {
       // Use Jackson to read the JSON content first to avoid JsonStructure deserialization issues
       ObjectMapper mapper = new ObjectMapper();
