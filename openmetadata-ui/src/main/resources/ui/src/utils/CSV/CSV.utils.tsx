@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { TypeColumn } from '@inovua/reactdatagrid-community/types';
+import { Typography } from 'antd';
 import {
   compact,
   get,
@@ -82,14 +83,18 @@ const renderColumnDataEditor = (
   column: string,
   recordData: {
     value: string;
-    data: { details: string };
+    data: { details: string; glossaryStatus: string };
   }
 ) => {
-  const { value } = recordData;
+  const {
+    value,
+    data: { glossaryStatus },
+  } = recordData;
   switch (column) {
     case 'status':
-    case 'glossaryStatus':
       return statusRenderer(value as Status);
+    case 'glossaryStatus':
+      return <Typography.Text>{glossaryStatus}</Typography.Text>;
     case 'description':
       return (
         <RichTextEditorPreviewerV1
