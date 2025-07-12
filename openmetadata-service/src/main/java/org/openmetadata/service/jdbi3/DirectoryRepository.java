@@ -133,7 +133,8 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     // Inherit domain from parent or service if needed
     if (nullOrEmpty(directory.getDomains())) {
       if (directory.getParent() != null) {
-        Directory parent = Entity.getEntity(directory.getParent(), FIELD_DOMAINS, Include.NON_DELETED);
+        Directory parent =
+            Entity.getEntity(directory.getParent(), FIELD_DOMAINS, Include.NON_DELETED);
         inheritDomains(directory, fields, parent);
       } else {
         DriveService service =
