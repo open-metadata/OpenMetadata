@@ -1,0 +1,149 @@
+{
+  "summary": "File CSV file is used for importing and exporting file metadata. The CSV file can be used to create new files or update existing ones within directories.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "Name of the file.",
+      "examples": [
+        "report.pdf", "data.csv"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name of the file.",
+      "examples": [
+        "Monthly Report", "Customer Data"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the file in Markdown format.",
+      "examples": [
+        "Monthly sales report for Q4 2023"
+      ]
+    },
+    {
+      "name": "directory",
+      "required": true,
+      "description": "Fully qualified name of the parent directory.",
+      "examples": [
+        "googleDrive.Documents", "sharepoint.Reports"
+      ]
+    },
+    {
+      "name": "fileType",
+      "required": false,
+      "description": "Type of file based on content (Document, Image, Video, Audio, Archive, Code, Data, Other).",
+      "examples": [
+        "Document", "Image", "Data"
+      ]
+    },
+    {
+      "name": "mimeType",
+      "required": false,
+      "description": "MIME type of the file.",
+      "examples": [
+        "application/pdf", "text/csv"
+      ]
+    },
+    {
+      "name": "extension",
+      "required": false,
+      "description": "File extension.",
+      "examples": [
+        "pdf", "csv", "xlsx"
+      ]
+    },
+    {
+      "name": "path",
+      "required": false,
+      "description": "Full path to the file.",
+      "examples": [
+        "/Documents/Reports/monthly.pdf"
+      ]
+    },
+    {
+      "name": "size",
+      "required": false,
+      "description": "File size in bytes.",
+      "examples": [
+        "1048576", "2097152"
+      ]
+    },
+    {
+      "name": "checksum",
+      "required": false,
+      "description": "File checksum/hash.",
+      "examples": [
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ]
+    },
+    {
+      "name": "isShared",
+      "required": false,
+      "description": "Whether this file is shared (true/false).",
+      "examples": [
+        "true", "false"
+      ]
+    },
+    {
+      "name": "owners",
+      "required": false,
+      "description": "Owners of the file. Multiple owners are separated by ';'. Each owner is specified as 'type:name' format.",
+      "examples": [
+        "user:john.doe", "team:data-team;user:jane.smith"
+      ]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the file separated by ';'.",
+      "examples": [
+        "PII.Sensitive", "Confidential"
+      ]
+    },
+    {
+      "name": "glossaryTerms",
+      "required": false,
+      "description": "Fully qualified glossary term names associated with the file separated by ';'.",
+      "examples": [
+        "Glossary.Finance", "Glossary.Reports"
+      ]
+    },
+    {
+      "name": "domain",
+      "required": false,
+      "description": "Fully qualified name of the domain the file belongs to.",
+      "examples": [
+        "Engineering", "Finance"
+      ]
+    },
+    {
+      "name": "dataProducts",
+      "required": false,
+      "description": "List of fully qualified names of data products this file is part of, separated by ';'.",
+      "examples": [
+        "DataProduct1", "DataProduct1;DataProduct2"
+      ]
+    },
+    {
+      "name": "experts",
+      "required": false,
+      "description": "Subject matter experts for this file. Multiple experts are separated by ';'.",
+      "examples": [
+        "user:expert1", "user:expert1;user:expert2"
+      ]
+    },
+    {
+      "name": "reviewers",
+      "required": false,
+      "description": "Reviewers for this file. Multiple reviewers are separated by ';'.",
+      "examples": [
+        "user:reviewer1", "user:reviewer1;team:review-team"
+      ]
+    }
+  ]
+}

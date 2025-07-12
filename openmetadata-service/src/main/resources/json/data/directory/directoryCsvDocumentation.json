@@ -1,0 +1,117 @@
+{
+  "summary": "Directory CSV file is used for importing and exporting directory metadata. The CSV file can be used to create new directories or update existing ones within a drive service.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "Name of the directory.",
+      "examples": [
+        "Documents", "Projects"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name of the directory.",
+      "examples": [
+        "My Documents", "Active Projects"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the directory in Markdown format.",
+      "examples": [
+        "This directory contains all project documents"
+      ]
+    },
+    {
+      "name": "parent",
+      "required": false,
+      "description": "Fully qualified name of the parent directory. If not provided, this is a root directory.",
+      "examples": [
+        "googleDrive.Documents", "sharepoint.Projects"
+      ]
+    },
+    {
+      "name": "directoryType",
+      "required": false,
+      "description": "Type of directory (Folder, SharedFolder, MyDrive, TeamDrive).",
+      "examples": [
+        "Folder", "SharedFolder"
+      ]
+    },
+    {
+      "name": "path",
+      "required": false,
+      "description": "Full path to the directory.",
+      "examples": [
+        "/Documents/Projects", "/Shared/TeamFiles"
+      ]
+    },
+    {
+      "name": "isShared",
+      "required": false,
+      "description": "Whether this directory is shared (true/false).",
+      "examples": [
+        "true", "false"
+      ]
+    },
+    {
+      "name": "owners",
+      "required": false,
+      "description": "Owners of the directory. Multiple owners are separated by ';'. Each owner is specified as 'type:name' format.",
+      "examples": [
+        "user:john.doe", "team:data-team;user:jane.smith"
+      ]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the directory separated by ';'.",
+      "examples": [
+        "PII.Sensitive", "Confidential"
+      ]
+    },
+    {
+      "name": "glossaryTerms",
+      "required": false,
+      "description": "Fully qualified glossary term names associated with the directory separated by ';'.",
+      "examples": [
+        "Glossary.Finance", "Glossary.HR"
+      ]
+    },
+    {
+      "name": "domain",
+      "required": false,
+      "description": "Fully qualified name of the domain the directory belongs to.",
+      "examples": [
+        "Engineering", "Finance"
+      ]
+    },
+    {
+      "name": "dataProducts",
+      "required": false,
+      "description": "List of fully qualified names of data products this directory is part of, separated by ';'.",
+      "examples": [
+        "DataProduct1", "DataProduct1;DataProduct2"
+      ]
+    },
+    {
+      "name": "experts",
+      "required": false,
+      "description": "Subject matter experts for this directory. Multiple experts are separated by ';'.",
+      "examples": [
+        "user:expert1", "user:expert1;user:expert2"
+      ]
+    },
+    {
+      "name": "reviewers",
+      "required": false,
+      "description": "Reviewers for this directory. Multiple reviewers are separated by ';'.",
+      "examples": [
+        "user:reviewer1", "user:reviewer1;team:review-team"
+      ]
+    }
+  ]
+}
