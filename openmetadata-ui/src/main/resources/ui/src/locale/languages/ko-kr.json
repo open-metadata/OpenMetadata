@@ -1920,6 +1920,7 @@
     "hex-color-validation": "입력이 유효한 HEX 코드가 아닙니다.",
     "hi-user-welcome-to": "안녕하세요 {{user}}님, 환영합니다",
     "image-upload-error": "이미지 업로드가 지원되지 않습니다. URL을 통해 사용 가능한 이미지에 대해 Markdown 구문을 사용하세요.",
+    "import-data-in-progress": "가져오기가 진행 중입니다.",
     "import-entity-help": "CSV 파일을 업로드하여 한 번에 여러 {{entity}}을(를) 추가하여 시간과 노력을 절약하세요.",
     "in-this-database": "이 데이터베이스에서",
     "include-assets-message": "데이터 소스에서 {{assets}} 추출을 활성화합니다.",

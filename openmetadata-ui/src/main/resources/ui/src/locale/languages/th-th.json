@@ -1920,6 +1920,7 @@
     "hex-color-validation": "ข้อมูลนำเข้าคือรหัส HEX ที่ไม่ถูกต้อง",
     "hi-user-welcome-to": "สวัสดี {{user}}, ยินดีต้อนรับสู่",
     "image-upload-error": "ไม่สนับสนุนการอัปโหลดภาพ โปรดใช้ไวยากรณ์ Markdown สำหรับรูปภาพที่มีอยู่ผ่าน URL",
+    "import-data-in-progress": "กำลังนำเข้าข้อมูล",
     "import-entity-help": "ประหยัดเวลาและความพยายามโดยการอัปโหลดไฟล์ CSV ที่มีหลาย {{entity}} ในครั้งเดียว",
     "in-this-database": "ในฐานข้อมูลนี้",
     "include-assets-message": "เปิดใช้งานการดึง {{assets}} จากแหล่งข้อมูล",

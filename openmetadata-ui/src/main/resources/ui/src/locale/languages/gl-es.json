@@ -1920,6 +1920,7 @@
     "hex-color-validation": "A entrada non é un código HEX válido.",
     "hi-user-welcome-to": "Ola {{user}}, benvido a",
     "image-upload-error": "A carga de imaxes non está soportada. Usa a sintaxe Markdown para imaxes dispoñibles a través de URL.",
+    "import-data-in-progress": "L'importazione è in corso.",
     "import-entity-help": "Aforra tempo e esforzo cargando un ficheiro CSV con varios {{entity}} á vez.",
     "in-this-database": "Nesta base de datos",
     "include-assets-message": "Activar a extracción de {{assets}} desde a fonte de datos.",

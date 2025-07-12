@@ -1920,6 +1920,7 @@
     "hex-color-validation": "Input is not valid HEX code.",
     "hi-user-welcome-to": "Hi {{user}}, Welcome to",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
+    "import-data-in-progress": "インポートが進行中です。",
     "import-entity-help": "Save time & effort by uploading a CSV file with several {{entity}} in one go.",
     "in-this-database": "In this Database",
     "include-assets-message": "データソースから{{assets}}の抽出を有効にする。",

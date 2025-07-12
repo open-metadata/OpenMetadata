@@ -187,20 +187,7 @@ const BulkEntityImportPage = () => {
         setActiveAsyncImportJob(initialLoadJobData);
         activeAsyncImportJobRef.current = initialLoadJobData;
 
-        const validationResponse = await validateCsvString(
-          result,
-          entityType,
-          fqn,
-          isBulkEdit
-        );
-
-        const jobData: CSVImportJobType = {
-          ...validationResponse,
-          ...initialLoadJobData,
-        };
-
-        setActiveAsyncImportJob(jobData);
-        activeAsyncImportJobRef.current = jobData;
+        await validateCsvString(result, entityType, fqn, isBulkEdit);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -241,21 +228,13 @@ const BulkEntityImportPage = () => {
       setActiveAsyncImportJob(validateLoadData);
       activeAsyncImportJobRef.current = validateLoadData;
 
-      const response = await api({
+      await api({
         entityType,
         name: fqn,
         data: csvData,
         dryRun: activeStep === VALIDATION_STEP.EDIT_VALIDATE,
         recursive: !isBulkEdit,
       });
-
-      const jobData: CSVImportJobType = {
-        ...response,
-        ...validateLoadData,
-      };
-
-      setActiveAsyncImportJob(jobData);
-      activeAsyncImportJobRef.current = jobData;
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsValidating(false);
