@@ -94,24 +94,11 @@ EXPECTED_PIPELINE_NAME = "alphabet"
 EXPECTED_PIPELINE = [
     CreatePipelineRequest(
         name=EntityName(root="alphabet"),
-        displayName=None,
-        description=None,
-        dataProducts=None,
         sourceUrl=SourceUrl(
             root="<MagicMock name='get_connection().config.hostPort' id='4883082864'>/#/job/running/None/overview"
         ),
-        concurrency=None,
-        pipelineLocation=None,
-        startDate=None,
         tasks=[],
-        tags=None,
-        owners=None,
         service=FullyQualifiedEntityName(root="flink_test"),
-        extension=None,
-        scheduleInterval=None,
-        domains=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 

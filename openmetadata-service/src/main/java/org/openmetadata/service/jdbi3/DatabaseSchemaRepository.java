@@ -393,7 +393,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         databaseRepository.getDao().findEntitiesByIds(new ArrayList<>(databaseIds), ALL);
 
     // Set owners and domain fields on all databases
-    databaseRepository.setFieldsInBulk(new Fields(Set.of("owners", "domain")), databases);
+    databaseRepository.setFieldsInBulk(new Fields(Set.of("owners", "domains")), databases);
 
     // Create a map for O(1) lookup
     Map<UUID, Database> databaseMap =

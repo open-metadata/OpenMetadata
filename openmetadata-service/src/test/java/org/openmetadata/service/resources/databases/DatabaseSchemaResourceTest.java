@@ -411,7 +411,7 @@ public class DatabaseSchemaResourceTest
     // Test 1: Fetch schemas with pagination including inherited fields
     ResultList<DatabaseSchema> resultList =
         listEntities(
-            Map.of("database", database.getFullyQualifiedName(), "fields", "owners,domain"),
+            Map.of("database", database.getFullyQualifiedName(), "fields", "owners,domains"),
             ADMIN_AUTH_HEADERS);
 
     // Verify inheritance behavior
@@ -473,7 +473,7 @@ public class DatabaseSchemaResourceTest
       Table table =
           tableResourceTest.getEntityByName(
               schemas.getFirst().getFullyQualifiedName() + ".inherit_test_table",
-              "owners,domain",
+              "owners,domains",
               ADMIN_AUTH_HEADERS);
 
       // Table should inherit domain from database (schema 0 doesn't have its own domain)

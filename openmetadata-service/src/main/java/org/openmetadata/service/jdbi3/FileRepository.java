@@ -15,11 +15,13 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.service.Entity.DIRECTORY;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FILE;
 
 import java.io.IOException;
@@ -132,14 +134,14 @@ public class FileRepository extends EntityRepository<File> {
   @Override
   public void setInheritedFields(File file, EntityUtil.Fields fields) {
     // Inherit domain from directory if available, otherwise from service
-    if (file.getDomain() == null) {
+    if (nullOrEmpty(file.getDomains())) {
       if (file.getDirectory() != null) {
         Directory directory =
-            Entity.getEntity(file.getDirectory(), "domain,service", Include.NON_DELETED);
-        file.withDomain(directory.getDomain());
+            Entity.getEntity(file.getDirectory(), "domains,service", Include.NON_DELETED);
+        inheritDomains(file, fields, directory);
       } else {
-        DriveService service = Entity.getEntity(file.getService(), "domain", Include.NON_DELETED);
-        file.withDomain(service.getDomain());
+        DriveService service = Entity.getEntity(file.getService(), FIELD_DOMAINS, Include.NON_DELETED);
+        inheritDomains(file, fields, service);
       }
     }
   }
@@ -275,7 +277,7 @@ public class FileRepository extends EntityRepository<File> {
                   List.of(
                       Pair.of(12, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(13, TagLabel.TagSource.GLOSSARY))))
-          .withDomain(getEntityReference(printer, csvRecord, 14, Entity.DOMAIN))
+          .withDomains(getDomains(printer, csvRecord, 14))
           .withDataProducts(getDataProducts(printer, csvRecord, 15));
       if (processRecord) {
         createEntity(printer, csvRecord, newFile, FILE);
@@ -301,11 +303,7 @@ public class FileRepository extends EntityRepository<File> {
       addOwners(recordList, entity.getOwners());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
-      addField(
-          recordList,
-          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
-              ? ""
-              : entity.getDomain().getFullyQualifiedName());
+      addDomains(recordList, entity.getDomains());
       addField(
           recordList,
           entity.getDataProducts() != null

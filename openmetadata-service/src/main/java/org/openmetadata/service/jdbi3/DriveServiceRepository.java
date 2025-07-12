@@ -178,7 +178,7 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
                   List.of(
                       Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(5, TagLabel.TagSource.GLOSSARY))))
-          .withDomain(getEntityReference(printer, csvRecord, 6, Entity.DOMAIN))
+          .withDomains(getDomains(printer, csvRecord, 6))
           .withExtension(getExtension(printer, csvRecord, 7));
 
       if (processRecord) {
