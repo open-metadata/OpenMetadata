@@ -1,6 +1,6 @@
 ---
 title: Snowflake Connector | OpenMetadata Cloud Data Warehouse
-description: Connect Snowflake to OpenMetadata seamlessly with our database connector. Extract metadata, lineage, and profiling data from your Snowflake warehouse effortlessly.
+description: Connect Snowflake to OpenMetadata with our comprehensive database connector guide. Easy setup, metadata extraction, and data lineage tracking.
 slug: /connectors/database/snowflake
 ---
 
@@ -8,7 +8,7 @@ slug: /connectors/database/snowflake
 name="Snowflake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=[]
 / %}
 

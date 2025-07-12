@@ -7,7 +7,7 @@ slug: /connectors/database/mongodb/yaml
 name="MongoDB"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures"]
 / %}
 
