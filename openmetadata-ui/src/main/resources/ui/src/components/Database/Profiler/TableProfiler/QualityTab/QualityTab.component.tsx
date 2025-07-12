@@ -38,6 +38,7 @@ import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constan
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import { PipelineType } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
@@ -52,6 +53,7 @@ import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
   getAddDataQualityTableTestPath,
   getEntityDetailsPath,
@@ -93,10 +95,14 @@ export const QualityTab = () => {
 
   const { editTest, editDataProfile } = useMemo(() => {
     return {
-      editTest: permissions?.EditAll || permissions?.EditTests,
-      editDataProfile: permissions?.EditAll || permissions?.EditDataProfile,
+      editTest:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditTests),
+      editDataProfile:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
     };
-  }, [permissions]);
+  }, [permissions, getPrioritizedEditPermission]);
   const { fqn: datasetFQN } = useFqn();
   const navigate = useNavigate();
   const location = useCustomLocation();

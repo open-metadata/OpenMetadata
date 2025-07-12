@@ -41,6 +41,7 @@ import {
   ColumnProfile,
   Table as TableType,
 } from '../../../../../generated/entity/data/table';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import {
   TestCase,
   TestCaseStatus,
@@ -57,6 +58,7 @@ import { getListTestCaseBySearch } from '../../../../../rest/testAPI';
 import { formatNumberWithComma } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../../../utils/FeedUtils';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
@@ -143,10 +145,14 @@ const ColumnProfileTable = () => {
 
   const { editTest, editDataProfile } = useMemo(() => {
     return {
-      editTest: permissions?.EditAll || permissions?.EditTests,
-      editDataProfile: permissions?.EditAll || permissions?.EditDataProfile,
+      editTest:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditTests),
+      editDataProfile:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
     };
-  }, [permissions]);
+  }, [permissions, getPrioritizedEditPermission]);
 
   const updateActiveColumnFqn = (key: string) =>
     navigate({

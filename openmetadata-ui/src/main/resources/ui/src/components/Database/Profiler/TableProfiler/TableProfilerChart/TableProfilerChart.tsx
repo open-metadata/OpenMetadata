@@ -29,6 +29,7 @@ import {
 } from '../../../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { TableProfile } from '../../../../../generated/entity/data/table';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
@@ -37,6 +38,7 @@ import {
 } from '../../../../../rest/tableAPI';
 import { Transi18next } from '../../../../../utils/CommonUtils';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
@@ -86,7 +88,9 @@ const TableProfilerChart = ({
     [tableCustomMetric, tableDetails]
   );
 
-  const editDataProfile = permissions?.EditAll || permissions?.EditDataProfile;
+  const editDataProfile =
+    permissions &&
+    getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
     INITIAL_ROW_METRIC_VALUE
   );

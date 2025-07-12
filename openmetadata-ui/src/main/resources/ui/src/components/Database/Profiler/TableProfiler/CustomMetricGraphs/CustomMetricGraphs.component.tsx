@@ -39,6 +39,7 @@ import { GRAPH_BACKGROUND_COLOR } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import {
   deleteCustomMetric,
   putCustomMetric,
@@ -53,6 +54,7 @@ import {
   getRandomHexColor,
 } from '../../../../../utils/DataInsightUtils';
 import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -82,7 +84,9 @@ const CustomMetricGraphs = ({
     onCustomMetricUpdate,
   } = useTableProfiler();
   const editPermission =
-    permissions?.EditAll || permissions?.EditDataProfile || false;
+    (permissions &&
+      getPrioritizedEditPermission(permissions, Operation.EditDataProfile)) ||
+    false;
   const deletePermission = permissions?.Delete || false;
 
   const [selectedMetrics, setSelectedMetrics] = useState<CustomMetric>();
