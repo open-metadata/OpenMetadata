@@ -42,7 +42,7 @@ export interface Directory {
      */
     displayName?: string;
     /**
-     * Domains the Database service belongs to.
+     * Domains the Directory belongs to.
      */
     domains?: EntityReference[];
     /**
