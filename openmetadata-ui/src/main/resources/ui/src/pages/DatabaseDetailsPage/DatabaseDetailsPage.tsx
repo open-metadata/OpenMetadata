@@ -406,7 +406,7 @@ const DatabaseDetails: FunctionComponent = () => {
         ) && !database.deleted,
       viewAllPermission: databasePermission.ViewAll,
     }),
-    [databasePermission, database, getPrioritizedEditPermission]
+    [databasePermission, database]
   );
 
   const afterDeleteAction = useCallback(

@@ -96,7 +96,7 @@ function SearchIndexDetailsPage() {
   const viewPermission = useMemo(
     () =>
       getPrioritizedViewPermission(searchIndexPermissions, Operation.ViewBasic),
-    [searchIndexPermissions, getPrioritizedViewPermission]
+    [searchIndexPermissions]
   );
 
   const fetchSearchIndexDetails = async () => {

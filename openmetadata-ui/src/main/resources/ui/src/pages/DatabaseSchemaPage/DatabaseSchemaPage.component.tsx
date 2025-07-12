@@ -175,7 +175,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         databaseSchemaPermission,
         PermissionOperation.ViewBasic
       ),
-    [databaseSchemaPermission, getPrioritizedViewPermission]
+    [databaseSchemaPermission]
   );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -441,7 +441,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       viewAllPermission: databaseSchemaPermission.ViewAll,
     }),
 
-    [databaseSchemaPermission, databaseSchema, getPrioritizedEditPermission]
+    [databaseSchemaPermission, databaseSchema]
   );
 
   const handleExtensionUpdate = async (schema: DatabaseSchema) => {

@@ -110,7 +110,7 @@ const DashboardDetailsPage = () => {
         dashboardPermissions,
         PermissionOperation.ViewUsage
       ),
-    [dashboardPermissions, getPrioritizedViewPermission]
+    [dashboardPermissions]
   );
 
   const fetchDashboardDetail = async (dashboardFQN: string) => {

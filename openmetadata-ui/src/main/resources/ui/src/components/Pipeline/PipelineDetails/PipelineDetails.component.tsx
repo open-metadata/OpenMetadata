@@ -246,7 +246,7 @@ const PipelineDetails = ({
         ) && !deleted,
       viewAllPermission: pipelinePermissions.ViewAll,
     }),
-    [pipelinePermissions, deleted, getPrioritizedEditPermission]
+    [pipelinePermissions, deleted]
   );
 
   const handleTabChange = (tabValue: string) => {

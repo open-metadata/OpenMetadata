@@ -103,7 +103,7 @@ function SchemaTablesTab({
       !isVersionView &&
       getPrioritizedEditPermission(permissions.table, Operation.EditDisplayName)
     );
-  }, [permissions, isVersionView, getPrioritizedEditPermission]);
+  }, [permissions, isVersionView]);
 
   const { viewDatabaseSchemaPermission } = useMemo(
     () => ({
@@ -112,7 +112,7 @@ function SchemaTablesTab({
         Operation.ViewBasic
       ),
     }),
-    [databaseSchemaPermission, getPrioritizedViewPermission]
+    [databaseSchemaPermission]
   );
 
   const handleDisplayNameUpdate = useCallback(

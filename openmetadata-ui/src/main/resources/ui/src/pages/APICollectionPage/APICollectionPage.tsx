@@ -148,7 +148,7 @@ const APICollectionPage: FunctionComponent = () => {
         apiCollectionPermission,
         PermissionOperation.ViewBasic
       ),
-    [apiCollectionPermission, getPrioritizedViewPermission]
+    [apiCollectionPermission]
   );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {

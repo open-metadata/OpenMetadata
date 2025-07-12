@@ -92,7 +92,7 @@ const MlModelPage = () => {
         mlModelPermissions,
         PermissionOperation.ViewUsage
       ),
-    [mlModelPermissions, getPrioritizedViewPermission]
+    [mlModelPermissions]
   );
 
   const fetchMlModelDetails = async (name: string) => {

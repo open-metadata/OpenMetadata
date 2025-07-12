@@ -318,7 +318,7 @@ const PipelineDetailsPage = () => {
     ) {
       fetchPipelineDetail(decodedPipelineFQN);
     }
-  }, [pipelinePermissions, decodedPipelineFQN, getPrioritizedViewPermission]);
+  }, [pipelinePermissions, decodedPipelineFQN]);
 
   useEffect(() => {
     fetchResourcePermission(decodedPipelineFQN);

@@ -294,12 +294,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ),
       viewAllPermission: topicPermissions.ViewAll,
     }),
-    [
-      topicPermissions,
-      deleted,
-      getPrioritizedEditPermission,
-      getPrioritizedViewPermission,
-    ]
+    [topicPermissions, deleted]
   );
 
   useEffect(() => {

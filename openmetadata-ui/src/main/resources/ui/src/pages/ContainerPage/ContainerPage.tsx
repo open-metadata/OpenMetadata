@@ -243,12 +243,7 @@ const ContainerPage = () => {
       ),
       viewAllPermission: containerPermissions.ViewAll,
     }),
-    [
-      containerPermissions,
-      deleted,
-      getPrioritizedEditPermission,
-      getPrioritizedViewPermission,
-    ]
+    [containerPermissions, deleted]
   );
 
   const isDataModelEmpty = useMemo(
