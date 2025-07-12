@@ -4712,6 +4712,42 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return entity;
   }
 
+  public T assertMultipleDomainInheritance(K createRequest, List<EntityReference> expectedDomains)
+      throws IOException {
+    createRequest.setDomains(null);
+    T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    // Verify all expected domains are inherited
+    assertEquals(expectedDomains.size(), entity.getDomains().size());
+    for (int i = 0; i < expectedDomains.size(); i++) {
+      assertReference(expectedDomains.get(i), entity.getDomains().get(i));
+      assertTrue(entity.getDomains().get(i).getInherited());
+    }
+
+    // Test entity retrieval by ID
+    entity = getEntity(entity.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(expectedDomains.size(), entity.getDomains().size());
+    for (int i = 0; i < expectedDomains.size(); i++) {
+      assertReference(expectedDomains.get(i), entity.getDomains().get(i));
+      assertTrue(entity.getDomains().get(i).getInherited());
+    }
+
+    // Test entity retrieval by name
+    entity = getEntityByName(entity.getFullyQualifiedName(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(expectedDomains.size(), entity.getDomains().size());
+    for (int i = 0; i < expectedDomains.size(); i++) {
+      assertReference(expectedDomains.get(i), entity.getDomains().get(i));
+      assertTrue(entity.getDomains().get(i).getInherited());
+    }
+
+    // Verify each domain is properly indexed in search
+    for (EntityReference expectedDomain : expectedDomains) {
+      assertEntityReferenceFromSearch(entity, expectedDomain, Entity.FIELD_DOMAINS);
+    }
+
+    return entity;
+  }
+
   public void assertSingleDomainInheritanceOverride(
       T entity, K updateRequest, EntityReference newDomain) throws IOException {
     // When an entity has domain set, it does not inherit domain from the parent

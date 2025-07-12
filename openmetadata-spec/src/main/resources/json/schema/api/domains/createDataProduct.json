@@ -70,7 +70,7 @@
   "required": [
     "name",
     "description",
-    "domain"
+    "domains"
   ],
   "additionalProperties": false
 }

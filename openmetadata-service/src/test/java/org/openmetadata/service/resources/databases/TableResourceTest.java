@@ -2547,7 +2547,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             change);
 
     // Check domain properly updated in search
-    // TODO: THIS NEEDS TO BE FIXED IN SEARCH??
     verifyDomainInSearch(db.getEntityReference(), DOMAIN1.getEntityReference());
     verifyDomainInSearch(schema.getEntityReference(), DOMAIN1.getEntityReference());
     verifyDomainInSearch(table.getEntityReference(), DOMAIN1.getEntityReference());
@@ -2561,6 +2560,45 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // ownership
     schemaTest.assertSingleDomainInheritanceOverride(
         schema, createSchema.withDomains(null), SUB_DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void test_multipleDomainInheritance(TestInfo test) throws IOException {
+    // Test inheritance of multiple domains from databaseService > database > databaseSchema > table
+    CreateDatabaseService createDbService =
+        dbServiceTest
+            .createRequest(test)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName(), DOMAIN1.getFullyQualifiedName()));
+    DatabaseService dbService = dbServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
+
+    // Ensure database domains are inherited from database service
+    CreateDatabase createDb =
+        dbTest.createRequest(test).withService(dbService.getFullyQualifiedName());
+    Database db =
+        dbTest.assertMultipleDomainInheritance(
+            createDb, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Ensure databaseSchema domains are inherited from database
+    CreateDatabaseSchema createSchema =
+        schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema =
+        schemaTest.assertMultipleDomainInheritance(
+            createSchema, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Ensure table domains are inherited from databaseSchema
+    CreateTable createTable =
+        createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table =
+        assertMultipleDomainInheritance(
+            createTable, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Verify multiple domains are properly updated in search
+    verifyDomainInSearch(db.getEntityReference(), DOMAIN.getEntityReference());
+    verifyDomainInSearch(db.getEntityReference(), DOMAIN1.getEntityReference());
+    verifyDomainInSearch(schema.getEntityReference(), DOMAIN.getEntityReference());
+    verifyDomainInSearch(schema.getEntityReference(), DOMAIN1.getEntityReference());
+    verifyDomainInSearch(table.getEntityReference(), DOMAIN.getEntityReference());
+    verifyDomainInSearch(table.getEntityReference(), DOMAIN1.getEntityReference());
   }
 
   @Test
