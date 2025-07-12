@@ -27,7 +27,6 @@ import {
 } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
-import { PAGE_SIZE } from '../constants/constants';
 import {
   ES_EXCEPTION_SHARDS_FAILED,
   FAILED_TO_FIND_INDEX_ERROR,
@@ -415,6 +414,7 @@ export const isElasticsearchError = (error: unknown): boolean => {
  */
 export const parseSearchParams = (
   search: string,
+  globalPageSize: number,
   queryFilter?: Record<string, unknown>
 ) => {
   const parsedSearch = Qs.parse(
@@ -441,7 +441,7 @@ export const parseSearchParams = (
   const size =
     isString(parsedSearch.size) && !isNaN(Number.parseInt(parsedSearch.size))
       ? Number.parseInt(parsedSearch.size)
-      : PAGE_SIZE;
+      : globalPageSize;
 
   const stringifiedQueryFilter = isEmpty(queryFilter)
     ? ''

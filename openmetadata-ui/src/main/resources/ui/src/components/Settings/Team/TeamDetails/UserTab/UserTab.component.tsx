@@ -22,10 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remove.svg';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { ExportTypes } from '../../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
@@ -87,7 +84,7 @@ export const UserTab = ({
     handlePageSizeChange,
     handlePagingChange,
     showPagination,
-  } = usePaging(PAGE_SIZE_MEDIUM);
+  } = usePaging();
 
   const usersList = useMemo(() => {
     return users.map((item) =>

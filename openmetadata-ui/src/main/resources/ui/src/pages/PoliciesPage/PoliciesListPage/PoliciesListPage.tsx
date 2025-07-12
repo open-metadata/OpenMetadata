@@ -28,11 +28,7 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import {
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_MEDIUM,
-  ROUTES,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER, ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
@@ -75,7 +71,7 @@ const PoliciesListPage = () => {
     pageSize,
     handlePageSizeChange,
     showPagination,
-  } = usePaging(PAGE_SIZE_MEDIUM);
+  } = usePaging();
 
   const { permissions } = usePermissionProvider();
 

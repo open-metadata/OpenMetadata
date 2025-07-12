@@ -114,7 +114,7 @@ const ModelTab = () => {
         setPaginatedColumns([]);
         handlePagingChange({
           offset: 1,
-          limit: PAGE_SIZE_LARGE,
+          limit: pageSize,
           total: 0,
         });
       }
