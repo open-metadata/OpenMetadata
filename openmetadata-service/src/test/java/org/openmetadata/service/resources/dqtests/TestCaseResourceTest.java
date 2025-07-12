@@ -183,6 +183,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         TestCaseResource.FIELDS);
     supportsTags = false; // Test cases do not support setting tags directly (inherits from Entity)
     testCaseResultsCollectionName = "dataQuality/testCases/testCaseResults";
+    supportsEtag = false;
   }
 
   public void setupTestCase(TestInfo test) throws IOException {

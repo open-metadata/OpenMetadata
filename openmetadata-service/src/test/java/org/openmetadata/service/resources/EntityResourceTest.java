@@ -260,6 +260,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsOwners;
   protected boolean supportsTags;
   protected boolean supportsPatch = true;
+  protected boolean supportsEtag = true;
   protected final boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected final boolean supportsEmptyDescription;
@@ -2274,7 +2275,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void patch_etag_in_get_response(TestInfo test) throws IOException {
-    if (!supportsPatch) {
+    if (!supportsPatch || !supportsEtag) {
       return;
     }
 
@@ -2307,7 +2308,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void patch_with_valid_etag(TestInfo test) throws IOException {
-    if (!supportsPatch) {
+    if (!supportsPatch || !supportsEtag) {
       return;
     }
 
@@ -2353,7 +2354,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void patch_with_stale_etag(TestInfo test) throws IOException {
-    if (!supportsPatch) {
+    if (!supportsPatch || !supportsEtag) {
       return;
     }
 
@@ -2402,7 +2403,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void patch_concurrent_updates_with_etag(TestInfo test) throws Exception {
-    if (!supportsPatch) {
+    if (!supportsPatch || !supportsEtag) {
       return;
     }
 
@@ -2524,7 +2525,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void patch_concurrentUpdates_dataLossTest(TestInfo test) throws Exception {
-    if (!supportsPatch) {
+    if (!supportsPatch || !supportsEtag) {
       return;
     }
 
