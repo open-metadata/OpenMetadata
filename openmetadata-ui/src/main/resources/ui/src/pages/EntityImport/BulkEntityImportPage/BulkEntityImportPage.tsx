@@ -99,7 +99,6 @@ const BulkEntityImportPage = () => {
     MutableRefObject<TypeComputedProps | null>
   >({ current: null });
   const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
-  const [loading, setLoading] = useState(false);
 
   const filterColumns = useMemo(
     () =>
@@ -177,9 +176,17 @@ const BulkEntityImportPage = () => {
 
   const handleLoadData = useCallback(
     async (e: ProgressEvent<FileReader>) => {
-      setLoading(true);
       try {
         const result = e.target?.result as string;
+
+        const initialLoadJobData: CSVImportJobType = {
+          type: 'initialLoad',
+          initialResult: result,
+        };
+
+        setActiveAsyncImportJob(initialLoadJobData);
+        activeAsyncImportJobRef.current = initialLoadJobData;
+
         const validationResponse = await validateCsvString(
           result,
           entityType,
@@ -189,16 +196,13 @@ const BulkEntityImportPage = () => {
 
         const jobData: CSVImportJobType = {
           ...validationResponse,
-          type: 'initialLoad',
-          initialResult: result,
+          ...initialLoadJobData,
         };
 
         setActiveAsyncImportJob(jobData);
         activeAsyncImportJobRef.current = jobData;
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setLoading(false);
       }
     },
     [onCSVReadComplete, entityType, fqn]
@@ -230,6 +234,13 @@ const BulkEntityImportPage = () => {
 
       const api = getImportValidateAPIEntityType(entityType);
 
+      const validateLoadData: CSVImportJobType = {
+        type: 'onValidate',
+      };
+
+      setActiveAsyncImportJob(validateLoadData);
+      activeAsyncImportJobRef.current = validateLoadData;
+
       const response = await api({
         entityType,
         name: fqn,
@@ -240,7 +251,7 @@ const BulkEntityImportPage = () => {
 
       const jobData: CSVImportJobType = {
         ...response,
-        type: 'onValidate',
+        ...validateLoadData,
       };
 
       setActiveAsyncImportJob(jobData);
@@ -405,6 +416,33 @@ const BulkEntityImportPage = () => {
         return;
       }
 
+      // If the job is started, then save the job data and message to the active job.
+      // This will help in case of restAPI response, didn't come in time.
+      if (websocketResponse.status === 'STARTED') {
+        const processedStartedResponse = {
+          ...websocketResponse,
+          message: t('message.import-data-in-progress'),
+        };
+
+        setActiveAsyncImportJob((job) => {
+          if (!job) {
+            return;
+          }
+
+          return {
+            ...job,
+            ...processedStartedResponse,
+          };
+        });
+
+        activeAsyncImportJobRef.current = {
+          ...(activeAsyncImportJobRef.current as CSVImportJobType),
+          ...processedStartedResponse,
+        };
+
+        return;
+      }
+
       const activeImportJob = activeAsyncImportJobRef.current;
       if (websocketResponse.jobId === activeImportJob?.jobId) {
         setActiveAsyncImportJob((job) => {
@@ -460,7 +498,6 @@ const BulkEntityImportPage = () => {
       }
     },
     [
-      activeStepRef,
       activeAsyncImportJobRef,
       onCSVReadComplete,
       setActiveAsyncImportJob,
@@ -526,18 +563,17 @@ const BulkEntityImportPage = () => {
               <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
             </Col>
             <Col span={24}>
-              {(loading || activeAsyncImportJob?.jobId) && (
+              {activeAsyncImportJob?.jobId && (
                 <Banner
                   className="border-radius"
-                  isLoading={isEmpty(activeAsyncImportJob?.error)}
+                  isLoading={isEmpty(activeAsyncImportJob.error)}
                   message={
-                    activeAsyncImportJob?.error ??
-                    activeAsyncImportJob?.message ??
-                    t('message.import-data-in-progress') ??
+                    activeAsyncImportJob.error ??
+                    activeAsyncImportJob.message ??
                     ''
                   }
                   type={
-                    !isEmpty(activeAsyncImportJob?.error) ? 'error' : 'success'
+                    !isEmpty(activeAsyncImportJob.error) ? 'error' : 'success'
                   }
                 />
               )}
