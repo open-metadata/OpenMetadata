@@ -363,97 +363,100 @@ const LogsViewerPage = () => {
       </Space>
 
       {!isEmpty(logs) ? (
-        <Row className="border-top">
-          <Col className="p-md border-right" span={18}>
-            <Row className="relative" gutter={[16, 16]}>
-              <Col span={24}>
-                <Row justify="end">
-                  <Col>
-                    <Button
-                      ghost
-                      data-testid="jump-to-end-button"
-                      type="primary"
-                      onClick={handleJumpToEnd}>
-                      {t('label.jump-to-end')}
-                    </Button>
-                  </Col>
-                  <Col>
-                    <CopyToClipboardButton copyText={logs} />
-                  </Col>
-                  <Col>
-                    {progress ? (
-                      <Tooltip title={`${progress}%`}>
-                        <Progress
-                          className="h-8 m-l-md relative flex-center"
-                          percent={progress}
-                          strokeWidth={5}
-                          type="circle"
-                          width={32}
-                        />
-                      </Tooltip>
-                    ) : (
+        <>
+          {/* Summary section moved to header */}
+          <Space
+            className="p-md w-full border-top border-bottom"
+            data-testid="summary-card"
+            direction="vertical">
+            <Typography.Title level={5}>
+              {t('label.summary')}
+            </Typography.Title>
+
+            <div>
+              <Typography.Text type="secondary">
+                {t('label.basic-configuration')}
+              </Typography.Text>
+
+              <Row className="m-t-xs" gutter={[16, 8]}>
+                {Object.entries(logSummaries).map(([key, value]) => {
+                  return (
+                    <Fragment key={key}>
+                      <Col className="summary-key" xs={24} sm={12} md={8} lg={6}>
+                        <strong>{key}:</strong>
+                      </Col>
+                      <Col className="flex" xs={24} sm={12} md={16} lg={18}>
+                        {value}
+                      </Col>
+                    </Fragment>
+                  );
+                })}
+              </Row>
+            </div>
+          </Space>
+
+          {/* Logs section now takes full width */}
+          <Row>
+            <Col className="p-md" span={24}>
+              <Row className="relative" gutter={[16, 16]}>
+                <Col span={24}>
+                  <Row justify="end">
+                    <Col>
                       <Button
-                        className="h-8 m-l-md relative flex-center"
-                        data-testid="download"
-                        icon={
-                          <DownloadOutlined
-                            data-testid="download-icon"
-                            width="16"
+                        ghost
+                        data-testid="jump-to-end-button"
+                        type="primary"
+                        onClick={handleJumpToEnd}>
+                        {t('label.jump-to-end')}
+                      </Button>
+                    </Col>
+                    <Col>
+                      <CopyToClipboardButton copyText={logs} />
+                    </Col>
+                    <Col>
+                      {progress ? (
+                        <Tooltip title={`${progress}%`}>
+                          <Progress
+                            className="h-8 m-l-md relative flex-center"
+                            percent={progress}
+                            strokeWidth={5}
+                            type="circle"
+                            width={32}
                           />
-                        }
-                        type="text"
-                        onClick={handleIngestionDownloadClick}
-                      />
-                    )}
-                  </Col>
-                </Row>
-              </Col>
-              <Col
-                className="h-min-80 lazy-log-container"
-                data-testid="lazy-log"
-                span={24}>
-                <LazyLog
-                  caseInsensitive
-                  enableSearch
-                  selectableLines
-                  extraLines={1} // 1 is to be add so that linux users can see last line of the log
-                  text={logs}
-                />
-              </Col>
-            </Row>
-          </Col>
-          <Col span={6}>
-            <Space
-              className="p-md w-full"
-              data-testid="summary-card"
-              direction="vertical">
-              <Typography.Title level={5}>
-                {t('label.summary')}
-              </Typography.Title>
-
-              <div>
-                <Typography.Text type="secondary">
-                  {t('label.basic-configuration')}
-                </Typography.Text>
-
-                <Row className="m-t-xs" gutter={[8, 8]}>
-                  {Object.entries(logSummaries).map(([key, value]) => {
-                    return (
-                      <Fragment key={key}>
-                        <Col className="summary-key" span={12}>
-                          {key}
-                        </Col>
-                        <Col className="flex" span={12}>
-                          {value}
-                        </Col>
-                      </Fragment>
-                    );
-                  })}
-                </Row>
-              </div>
-            </Space>
-          </Col>
-        </Row>
+                        </Tooltip>
+                      ) : (
+                        <Button
+                          className="h-8 m-l-md relative flex-center"
+                          data-testid="download"
+                          icon={
+                            <DownloadOutlined
+                              data-testid="download-icon"
+                              width="16"
+                            />
+                          }
+                          type="text"
+                          onClick={handleIngestionDownloadClick}
+                        />
+                      )}
+                    </Col>
+                  </Row>
+                </Col>
+                <Col
+                  className="h-min-80 lazy-log-container"
+                  data-testid="lazy-log"
+                  span={24}>
+                  <LazyLog
+                    caseInsensitive
+                    enableSearch
+                    selectableLines
+                    extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                    text={logs}
+                  />
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        </>
       ) : (
         <LogViewerPageSkeleton />
       )}
