@@ -104,14 +104,6 @@ test.describe('Bulk Import Export', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }, testInfo) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    testInfo.setTimeout(90000);
-    await EntityDataClass.postRequisitesForTests(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

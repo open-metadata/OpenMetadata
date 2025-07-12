@@ -115,12 +115,6 @@ test.describe('Tour should work properly', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await user.login(page);
     await redirectToHomePage(page);

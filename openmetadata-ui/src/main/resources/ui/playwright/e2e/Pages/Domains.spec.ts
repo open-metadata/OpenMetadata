@@ -119,18 +119,6 @@ test.describe('Domains', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-    await classification.delete(apiContext);
-    await tag.delete(apiContext);
-    await glossary.delete(apiContext);
-    await glossaryTerm.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -923,17 +911,6 @@ test.describe('Data Consumer Domain Ownership', () => {
     await glossaryTerm.create(apiContext);
 
     testResources = await setupDomainOwnershipTest(apiContext);
-
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await tag.delete(apiContext);
-    await glossary.delete(apiContext);
-    await glossaryTerm.delete(apiContext);
-    await classification.delete(apiContext);
-    await testResources.cleanup(apiContext);
 
     await afterAction();
   });

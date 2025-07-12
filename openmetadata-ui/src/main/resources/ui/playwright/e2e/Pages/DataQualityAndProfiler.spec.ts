@@ -76,22 +76,6 @@ test.beforeAll(async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-  await table1.delete(apiContext);
-  await table2.delete(apiContext);
-
-  // Clean up test tags and glossary terms
-  await testGlossaryTerm1.delete(apiContext);
-  await testGlossaryTerm2.delete(apiContext);
-  await testGlossary.delete(apiContext);
-  await testTag1.delete(apiContext);
-  await testTag2.delete(apiContext);
-  await testClassification.delete(apiContext);
-
-  await afterAction();
-});
-
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });

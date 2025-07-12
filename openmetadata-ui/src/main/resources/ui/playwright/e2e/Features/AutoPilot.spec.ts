@@ -65,14 +65,6 @@ test.beforeAll(async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll(async ({ browser }) => {
-  const { afterAction, apiContext } = await createNewPage(browser);
-
-  await user.delete(apiContext);
-
-  await afterAction();
-});
-
 services.forEach((ServiceClass) => {
   const service = new ServiceClass({
     shouldAddIngestion: false,
@@ -85,14 +77,6 @@ services.forEach((ServiceClass) => {
     () => {
       test.beforeEach('Visit entity details page', async ({ page }) => {
         await redirectToHomePage(page);
-      });
-
-      test.afterAll('Delete service by API', async ({ browser }) => {
-        const { afterAction, apiContext } = await createNewPage(browser);
-
-        await service.deleteServiceByAPI(apiContext);
-
-        await afterAction();
       });
 
       test('Create Service and check the AutoPilot status', async ({

@@ -30,14 +30,6 @@ test.describe('Explore Assets Discovery', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await table.delete(apiContext);
-
-    await afterAction();
-  });
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

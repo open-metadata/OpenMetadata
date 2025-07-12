@@ -70,18 +70,6 @@ test.describe('User with different Roles', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-
-    await team.delete(apiContext);
-    await domain.delete(apiContext);
-
-    await afterAction();
-  });
-
   test('Admin user can get all the teams hierarchy and edit teams', async ({
     adminPage,
   }) => {

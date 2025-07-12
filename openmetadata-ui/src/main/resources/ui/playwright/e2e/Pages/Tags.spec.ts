@@ -86,17 +86,6 @@ test.beforeAll(async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-  await table.delete(apiContext);
-  await classification.delete(apiContext);
-  await classification1.delete(apiContext);
-  await tag.delete(apiContext);
-  await tag1.delete(apiContext);
-  await user1.delete(apiContext);
-  await afterAction();
-});
-
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });

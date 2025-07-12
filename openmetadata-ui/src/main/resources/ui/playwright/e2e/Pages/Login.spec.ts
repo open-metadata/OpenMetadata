@@ -30,20 +30,6 @@ test.describe.configure({
 });
 
 test.describe('Login flow should work properly', () => {
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
-    const response = await page.request.get(
-      `/api/v1/users/name/${user.getUserName()}`
-    );
-
-    // reset token expiry to 4 hours
-    await updateJWTTokenExpiryTime(apiContext, JWT_EXPIRY_TIME_MAP['4 hours']);
-
-    user.responseData = await response.json();
-    await user.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeAll(
     'Update token timer to be 3 minutes for new token created',
     async ({ browser }) => {

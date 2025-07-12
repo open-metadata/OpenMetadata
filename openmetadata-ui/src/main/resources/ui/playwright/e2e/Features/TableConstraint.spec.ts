@@ -49,12 +49,6 @@ test.describe('Table Constraints', {}, () => {
     await afterAction();
   });
 
-  test.afterAll('cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await table.delete(apiContext);
-    await afterAction();
-  });
-
   test('Table Constraint', async ({ page }) => {
     await redirectToHomePage(page);
 

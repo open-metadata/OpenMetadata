@@ -74,12 +74,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-  await pipeline.delete(apiContext);
-  await afterAction();
-});
-
 for (const EntityClass of entities) {
   const defaultEntity = new EntityClass();
 

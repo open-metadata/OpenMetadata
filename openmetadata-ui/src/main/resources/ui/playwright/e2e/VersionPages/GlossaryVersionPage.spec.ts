@@ -244,11 +244,3 @@ test('GlossaryTerm', async ({ page }) => {
 
   await cleanup();
 });
-
-test.afterAll(async ({ browser }) => {
-  const { afterAction, apiContext } = await createNewPage(browser);
-
-  await user.delete(apiContext);
-  await reviewer.delete(apiContext);
-  await afterAction();
-});

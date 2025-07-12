@@ -216,15 +216,5 @@ entities.forEach((EntityClass) => {
     test(`Update displayName`, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);
     });
-
-    test.afterAll('Cleanup', async ({ browser }) => {
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await user.delete(apiContext);
-      await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
-      await afterAction();
-    });
   });
 });

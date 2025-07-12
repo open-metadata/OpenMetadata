@@ -15,7 +15,6 @@ import test, { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
   clickOutside,
-  createNewPage,
   descriptionBox,
   generateRandomUsername,
   redirectToHomePage,
@@ -35,15 +34,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe.serial('Add role and assign it to the user', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
-  });
-
-  test.afterAll('cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await apiContext.delete(`/api/v1/roles/name/${roleName}`);
-    await apiContext.delete(`/api/v1/users/name/${userName}`);
-
-    await afterAction();
   });
 
   test('Create role', async ({ page }) => {

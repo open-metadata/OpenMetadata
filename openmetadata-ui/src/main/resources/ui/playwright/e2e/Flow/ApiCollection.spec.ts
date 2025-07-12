@@ -40,13 +40,6 @@ test.describe('API Collection Entity Special Test Cases', () => {
     await entity.visitEntityPage(page);
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await entity.delete(apiContext);
-    await EntityDataClass.postRequisitesForTests(apiContext);
-    await afterAction();
-  });
-
   test("Verify Owner Propagation: owner should be propagated to the API Collection's API Endpoint", async ({
     page,
   }) => {

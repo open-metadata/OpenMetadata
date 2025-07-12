@@ -36,12 +36,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-  await dashboardEntity.delete(apiContext);
-  await afterAction();
-});
-
 test('CustomProperty Dashboard Filter', async ({ page }) => {
   test.slow(true);
 
