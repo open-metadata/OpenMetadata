@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
+import { SORT_ORDER } from '../../../../enums/common.enum';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import {
   WidgetCommonProps,
@@ -28,7 +29,10 @@ import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './domains-widget.less';
-import { DOMAIN_SORT_BY_OPTIONS } from './DomainsWidget.constants';
+import {
+  DOMAIN_SORT_BY_KEYS,
+  DOMAIN_SORT_BY_OPTIONS,
+} from './DomainsWidget.constants';
 
 const DomainsWidget = ({
   isEditView = false,
@@ -39,7 +43,9 @@ const DomainsWidget = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const [domains, setDomains] = useState<Domain[]>([]);
-  const [selectedSortBy, setSelectedSortBy] = useState<string>('DEFAULT');
+  const [selectedSortBy, setSelectedSortBy] = useState<string>(
+    DOMAIN_SORT_BY_KEYS.LATEST
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,17 +73,19 @@ const DomainsWidget = ({
   }, [t]);
 
   const sortedDomains = useMemo(() => {
-    if (selectedSortBy === 'A_TO_Z') {
+    if (selectedSortBy === DOMAIN_SORT_BY_KEYS.LATEST) {
+      return orderBy(domains, [(item) => item.updatedAt], [SORT_ORDER.DESC]);
+    } else if (selectedSortBy === DOMAIN_SORT_BY_KEYS.A_TO_Z) {
       return orderBy(
         domains,
         [(item) => toLower(item.displayName || item.name)],
-        ['asc']
+        [SORT_ORDER.ASC]
       );
-    } else if (selectedSortBy === 'Z_TO_A') {
+    } else if (selectedSortBy === DOMAIN_SORT_BY_KEYS.Z_TO_A) {
       return orderBy(
         domains,
         [(item) => toLower(item.displayName || item.name)],
-        ['desc']
+        [SORT_ORDER.DESC]
       );
     }
 
