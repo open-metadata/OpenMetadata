@@ -65,6 +65,9 @@ const MyDataPage = () => {
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
     useState<boolean>(true);
   const [announcements, setAnnouncements] = useState<Thread[]>([]);
+  const [personaPreferences, setPersonaPreferences] = useState<
+    PersonaPreferences[]
+  >([]);
   const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
   const loggedInUserName = useMemo(() => {
@@ -77,11 +80,21 @@ const MyDataPage = () => {
       : false;
   }, [storageData, loggedInUserName]);
 
-  const backgroundColor = useMemo(() => {
+  const userPersonaBackgroundColor = useMemo(() => {
     return currentUser?.personaPreferences?.find(
       (persona) => persona.personaId === selectedPersona?.id
     )?.landingPageSettings?.headerColor;
   }, [currentUser, selectedPersona]);
+
+  const adminPersonaBackgroundColor = useMemo(() => {
+    return personaPreferences?.find(
+      (persona) => persona.personaId === selectedPersona?.id
+    )?.landingPageSettings?.headerColor;
+  }, [personaPreferences, selectedPersona]);
+
+  const backgroundColor = useMemo(() => {
+    return userPersonaBackgroundColor ?? adminPersonaBackgroundColor;
+  }, [userPersonaBackgroundColor, adminPersonaBackgroundColor]);
 
   const fetchDocument = async () => {
     try {
@@ -89,6 +102,8 @@ const MyDataPage = () => {
       if (selectedPersona) {
         const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
         const docData = await getDocumentByFQN(pageFQN);
+
+        setPersonaPreferences(docData.data?.personPreferences ?? []);
 
         const pageData = docData.data?.pages?.find(
           (p: Page) => p.pageType === PageType.LandingPage
@@ -287,6 +302,7 @@ const MyDataPage = () => {
         <CustomiseLandingPageHeader
           overlappedContainer
           backgroundColor={backgroundColor}
+          hideCustomiseButton={!selectedPersona}
           onHomePage
           onBackgroundColorUpdate={handleBackgroundColorUpdate}
         />
