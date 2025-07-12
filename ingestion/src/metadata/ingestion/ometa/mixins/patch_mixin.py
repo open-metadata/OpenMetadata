@@ -617,7 +617,11 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                     return entity(**data)
             elif response:
                 # Fallback if headers not returned
-                return entity(**response)
+                try:
+                    return entity(**response)
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Error creating entity from response: {exc}")
                 
         except Exception as exc:
             logger.debug(traceback.format_exc())

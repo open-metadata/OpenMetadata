@@ -14,6 +14,8 @@ Helper functions to handle OpenMetadata Entities' properties
 
 import re
 import string
+import threading
+from functools import lru_cache
 from typing import Any, Dict, Optional, Tuple, Type, TypeVar, Union
 
 from pydantic import BaseModel
@@ -24,8 +26,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 
 T = TypeVar("T", bound=BaseModel)
 
-# In-memory cache for storing ETags by entity ID
+# Thread-safe LRU cache for storing ETags by entity ID
+# Limited to 1000 entries to prevent memory leaks
 _etag_cache: Dict[str, str] = {}
+_cache_lock = threading.RLock()
+_MAX_CACHE_SIZE = 1000
 
 
 def format_name(name: str) -> str:
@@ -104,14 +109,22 @@ def build_entity_reference(entity: T) -> EntityReference:
 
 
 def store_etag(entity_id: str, etag: str) -> None:
-    """Store ETag for an entity ID in the cache"""
+    """Store ETag for an entity ID in the cache with thread safety and size limits"""
     if entity_id and etag:
-        _etag_cache[str(entity_id)] = etag
+        with _cache_lock:
+            # Implement simple LRU eviction if cache is full
+            if len(_etag_cache) >= _MAX_CACHE_SIZE:
+                # Remove oldest entry (first key in dict)
+                oldest_key = next(iter(_etag_cache))
+                del _etag_cache[oldest_key]
+            
+            _etag_cache[str(entity_id)] = etag
 
 
 def get_stored_etag(entity_id: str) -> Optional[str]:
-    """Retrieve stored ETag for an entity ID"""
-    return _etag_cache.get(str(entity_id))
+    """Retrieve stored ETag for an entity ID with thread safety"""
+    with _cache_lock:
+        return _etag_cache.get(str(entity_id))
 
 
 def extract_etag_from_headers(headers: Dict[str, str]) -> Optional[str]:
@@ -131,7 +144,7 @@ def handle_response_with_headers(response_data: Tuple[Any, Dict[str, str]], enti
         The data portion of the response
     """
     data, headers = response_data
-    if entity_id:
+    if entity_id is not None:
         etag = extract_etag_from_headers(headers)
         if etag:
             store_etag(entity_id, etag)
