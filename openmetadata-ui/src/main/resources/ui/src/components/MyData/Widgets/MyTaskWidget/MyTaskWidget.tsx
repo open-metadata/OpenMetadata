@@ -18,7 +18,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TaskIcon } from '../../../../assets/svg/ic-task.svg';
 import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/my-task-no-data-placeholder.svg';
 import { SIZE, SORT_ORDER } from '../../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { FeedFilter } from '../../../../enums/mydata.enum';
 import {
   Thread,
@@ -27,10 +26,8 @@ import {
 } from '../../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import FeedPanelBodyV1New from '../../../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTabs } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
@@ -85,17 +82,6 @@ const MyTaskWidget = ({
   const handleSortByClick = useCallback((key: string) => {
     setSelectedSortBy(key);
   }, []);
-
-  const redirectToUserPage = useCallback(() => {
-    navigate(
-      entityUtilClassBase.getEntityLink(
-        EntityType.USER,
-        currentUser?.name as string,
-        EntityTabs.ACTIVITY_FEED,
-        ActivityFeedTabs.TASKS
-      )
-    );
-  }, [currentUser, navigate]);
 
   useEffect(() => {
     getFeedData(
@@ -187,9 +173,9 @@ const MyTaskWidget = ({
 
             {/* Widget Footer */}
             <WidgetFooter
+              moreButtonLink={`users/${currentUser?.name}/task`}
               moreButtonText={t('label.view-more')}
               showMoreButton={Boolean(!loading)}
-              onMoreClick={redirectToUserPage}
             />
           </>
         )}

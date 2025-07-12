@@ -14,13 +14,13 @@
 import { ArrowRightOutlined } from '@ant-design/icons';
 import { Button, Divider, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import './widget-footer.less';
 
 export interface WidgetFooterProps {
   showMoreButton?: boolean;
   moreButtonText?: string;
   onMoreClick?: () => void;
+  moreButtonLink?: string;
   className?: string;
 }
 
@@ -28,23 +28,22 @@ const WidgetFooter = ({
   showMoreButton = false,
   moreButtonText,
   onMoreClick,
+  moreButtonLink,
   className = '',
 }: WidgetFooterProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   if (!showMoreButton) {
     return null;
   }
 
   return (
     <div className={`widget-footer ${className}`} data-testid="widget-footer">
-      {showMoreButton && onMoreClick && (
+      {showMoreButton && (onMoreClick || moreButtonLink) && (
         <Row className="widget-footer">
           <Divider className="mb-0 mt-0" />
           <Button
             className="text-primary hover:underline w-full footer-view-more-button"
-            href={`users/${currentUser?.name}/task`}
-            target="_blank"
+            href={moreButtonLink}
             type="link">
             {moreButtonText || t('label.view-more')}
             <ArrowRightOutlined data-testid="arrow-right-icon" />
