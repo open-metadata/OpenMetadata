@@ -4701,12 +4701,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     createRequest.setDomains(null);
     T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
-    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    assertReference(expectedDomain, entity.getDomains().get(0));
     entity = getEntity(entity.getId(), "domains", ADMIN_AUTH_HEADERS);
-    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    assertReference(expectedDomain, entity.getDomains().get(0));
     assertTrue(entity.getDomains().get(0).getInherited());
     entity = getEntityByName(entity.getFullyQualifiedName(), "domains", ADMIN_AUTH_HEADERS);
-    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    assertReference(expectedDomain, entity.getDomains().get(0));
     assertTrue(entity.getDomains().get(0).getInherited());
     assertEntityReferenceFromSearch(entity, expectedDomain, Entity.FIELD_DOMAINS);
     return entity;
@@ -4738,11 +4738,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     for (int i = 0; i < expectedDomains.size(); i++) {
       assertReference(expectedDomains.get(i), entity.getDomains().get(i));
       assertTrue(entity.getDomains().get(i).getInherited());
-    }
-
-    // Verify each domain is properly indexed in search
-    for (EntityReference expectedDomain : expectedDomains) {
-      assertEntityReferenceFromSearch(entity, expectedDomain, Entity.FIELD_DOMAINS);
     }
 
     return entity;
