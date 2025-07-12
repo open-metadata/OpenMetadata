@@ -52,9 +52,14 @@ public class OpenSearchSourceBuilderFactory
             .filter(entry -> isFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
+    Map<String, Float> ngramFields =
+        fields.entrySet().stream()
+            .filter(entry -> isNonFuzzyField(entry.getKey()) && entry.getKey().endsWith(".ngram"))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
     Map<String, Float> nonFuzzyFields =
         fields.entrySet().stream()
-            .filter(entry -> isNonFuzzyField(entry.getKey()))
+            .filter(entry -> isNonFuzzyField(entry.getKey()) && !entry.getKey().endsWith(".ngram"))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     // Always use MultiMatch for consistency with table searches
@@ -71,6 +76,17 @@ public class OpenSearchSourceBuilderFactory
               .operator(Operator.AND)
               .tieBreaker(0.3f);
       combinedQuery.should(fuzzyQueryBuilder);
+    }
+
+    // Handle ngram fields separately - they need OR operator for substring matching
+    if (!ngramFields.isEmpty()) {
+      MultiMatchQueryBuilder ngramQueryBuilder =
+          QueryBuilders.multiMatchQuery(query)
+              .fields(ngramFields)
+              .type(MOST_FIELDS)
+              .operator(Operator.OR)
+              .tieBreaker(0.3f);
+      combinedQuery.should(ngramQueryBuilder);
     }
 
     if (!nonFuzzyFields.isEmpty()) {
@@ -218,14 +234,38 @@ public class OpenSearchSourceBuilderFactory
         combinedQuery.should(fuzzyQueryBuilder);
       }
 
-      if (!nonFuzzyFields.isEmpty()) {
+      // Separate ngram fields from other non-fuzzy fields
+      Map<String, Float> ngramFields = new HashMap<>();
+      Map<String, Float> otherNonFuzzyFields = new HashMap<>();
+
+      nonFuzzyFields.forEach(
+          (field, boost) -> {
+            if (field.endsWith(".ngram")) {
+              ngramFields.put(field, boost);
+            } else {
+              otherNonFuzzyFields.put(field, boost);
+            }
+          });
+
+      // Handle ngram fields separately - they need OR operator for substring matching
+      if (!ngramFields.isEmpty()) {
+        MultiMatchQueryBuilder ngramQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MOST_FIELDS)
+                .operator(Operator.OR)
+                .tieBreaker(0.3f);
+        ngramFields.forEach(ngramQueryBuilder::field);
+        combinedQuery.should(ngramQueryBuilder);
+      }
+
+      if (!otherNonFuzzyFields.isEmpty()) {
         MultiMatchQueryBuilder nonFuzzyQueryBuilder =
             QueryBuilders.multiMatchQuery(query)
                 .type(MOST_FIELDS)
                 .operator(Operator.AND)
                 .tieBreaker(0.3f)
                 .fuzziness(Fuzziness.ZERO);
-        nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
+        otherNonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
         combinedQuery.should(nonFuzzyQueryBuilder);
       }
 
@@ -455,14 +495,38 @@ public class OpenSearchSourceBuilderFactory
         combinedQuery.should(fuzzyQueryBuilder);
       }
 
-      if (!nonFuzzyFields.isEmpty()) {
+      // Separate ngram fields from other non-fuzzy fields
+      Map<String, Float> ngramFields = new HashMap<>();
+      Map<String, Float> otherNonFuzzyFields = new HashMap<>();
+
+      nonFuzzyFields.forEach(
+          (field, boost) -> {
+            if (field.endsWith(".ngram")) {
+              ngramFields.put(field, boost);
+            } else {
+              otherNonFuzzyFields.put(field, boost);
+            }
+          });
+
+      // Handle ngram fields separately - they need OR operator for substring matching
+      if (!ngramFields.isEmpty()) {
+        MultiMatchQueryBuilder ngramQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MOST_FIELDS)
+                .operator(Operator.OR)
+                .tieBreaker(0.3f);
+        ngramFields.forEach(ngramQueryBuilder::field);
+        combinedQuery.should(ngramQueryBuilder);
+      }
+
+      if (!otherNonFuzzyFields.isEmpty()) {
         MultiMatchQueryBuilder nonFuzzyQueryBuilder =
             QueryBuilders.multiMatchQuery(query)
                 .type(MOST_FIELDS)
                 .operator(Operator.AND)
                 .tieBreaker(0.3f)
                 .fuzziness(Fuzziness.ZERO);
-        nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
+        otherNonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
         combinedQuery.should(nonFuzzyQueryBuilder);
       }
 
