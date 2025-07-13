@@ -183,6 +183,7 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
@@ -196,6 +197,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -462,6 +464,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   protected abstract void storeEntity(T entity, boolean update);
 
+  protected void storeEntityWithVersion(T entity, boolean update, Double expectedVersion) {
+    // This method should be overridden by concrete repositories to use version-aware storage
+    // The default implementation uses the store method with version checking
+    store(entity, update, expectedVersion);
+  }
+
   protected void storeEntities(List<T> entities) {
     // Nothing to do here. This method is overridden in the child class if required
   }
@@ -622,6 +630,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected EntityUpdater getUpdater(
       T original, T updated, Operation operation, ChangeSource changeSource) {
     return new EntityUpdater(original, updated, operation, changeSource);
+  }
+
+  protected EntityUpdater getUpdater(
+      T original,
+      T updated,
+      Operation operation,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking) {
+    return new EntityUpdater(original, updated, operation, changeSource, useOptimisticLocking);
   }
 
   public final T get(UriInfo uriInfo, UUID id, Fields fields) {
@@ -1206,12 +1223,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PatchResponse<T> patch(
       UriInfo uriInfo, UUID id, String user, JsonPatch patch, ChangeSource changeSource) {
+    return patch(uriInfo, id, user, patch, changeSource, null);
+  }
+
+  @Transaction
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      UUID id,
+      String user,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
 
+    // Validate ETag if If-Match header is provided
+    boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
+    if (useOptimisticLocking) {
+      LOG.info(
+          "PATCH with ETag validation - entity: {}, version: {}, updatedAt: {}, provided ETag: {}",
+          original.getId(),
+          original.getVersion(),
+          original.getUpdatedAt(),
+          ifMatchHeader);
+      EntityETag.validateETag(ifMatchHeader, original, true);
+    }
+
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommon(original, patch, user, uriInfo, changeSource);
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking);
   }
 
   /**
@@ -1224,16 +1265,50 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final PatchResponse<T> patch(
       UriInfo uriInfo, String fqn, String user, JsonPatch patch, ChangeSource changeSource) {
+    return patch(uriInfo, fqn, user, patch, changeSource, null);
+  }
+
+  @Transaction
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      String fqn,
+      String user,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(findByName(fqn, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
 
+    // Validate ETag if If-Match header is provided
+    boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
+    if (useOptimisticLocking) {
+      LOG.info(
+          "PATCH with ETag validation - entity: {}, version: {}, updatedAt: {}, provided ETag: {}",
+          original.getId(),
+          original.getVersion(),
+          original.getUpdatedAt(),
+          ifMatchHeader);
+      EntityETag.validateETag(ifMatchHeader, original, true);
+    }
+
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommon(original, patch, user, uriInfo, changeSource);
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking);
   }
 
   private PatchResponse<T> patchCommon(
       T original, JsonPatch patch, String user, UriInfo uriInfo, ChangeSource changeSource) {
+    return patchCommonWithOptimisticLocking(original, patch, user, uriInfo, changeSource, false);
+  }
+
+  private PatchResponse<T> patchCommonWithOptimisticLocking(
+      T original,
+      JsonPatch patch,
+      String user,
+      UriInfo uriInfo,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking) {
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
@@ -1245,8 +1320,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
-    entityUpdater.update();
+    EntityUpdater entityUpdater;
+    if (useOptimisticLocking) {
+      // Use the 5-parameter version for optimistic locking
+      entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource, true);
+      entityUpdater.updateWithOptimisticLocking();
+    } else {
+      // Use the 4-parameter version to maintain backward compatibility with concrete repository
+      // implementations
+      entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
+      entityUpdater.update();
+    }
     if (entityUpdater.fieldsChanged()) {
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
@@ -1675,6 +1759,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   protected void store(T entity, boolean update) {
+    store(entity, update, null);
+  }
+
+  protected void store(T entity, boolean update, Double expectedVersion) {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on
     // relationships
     List<EntityReference> owners = entity.getOwners();
@@ -1687,8 +1775,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
     nullifyEntityFields(entity);
 
     if (update) {
-      dao.update(entity.getId(), entity.getFullyQualifiedName(), JsonUtils.pojoToJson(entity));
-      LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
+      if (expectedVersion != null) {
+        // Use optimistic locking with version check
+        int rowsUpdated =
+            dao.updateWithVersion(
+                dao.getTableName(),
+                dao.getNameHashColumn(),
+                entity.getFullyQualifiedName(),
+                entity.getId().toString(),
+                JsonUtils.pojoToJson(entity),
+                expectedVersion.toString());
+
+        if (rowsUpdated == 0) {
+          // Version mismatch - the entity was modified by another process
+          throw new PreconditionFailedException(
+              "The entity has been modified by another user. Please refresh and retry.");
+        }
+        LOG.info(
+            "Updated {}:{}:{} with version check (expected: {}, actual: {})",
+            entityType,
+            entity.getId(),
+            entity.getFullyQualifiedName(),
+            expectedVersion,
+            entity.getVersion());
+      } else {
+        // Regular update without version check (backward compatibility)
+        dao.update(entity.getId(), entity.getFullyQualifiedName(), JsonUtils.pojoToJson(entity));
+        LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
+      }
       invalidate(entity);
     } else {
       dao.insert(entity, entity.getFullyQualifiedName());
@@ -2094,6 +2208,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal());
       }
+    }
+  }
+
+  /**
+   * Apply multiple tags in batch to improve performance
+   */
+  @Transaction
+  public final void applyTagsAdd(List<TagLabel> tagLabels, String targetFQN) {
+    if (nullOrEmpty(tagLabels)) {
+      return;
+    }
+    // Filter out DERIVED tags as they are system-generated
+    List<TagLabel> nonDerivedTags =
+        tagLabels.stream()
+            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .collect(Collectors.toList());
+
+    if (!nonDerivedTags.isEmpty()) {
+      daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFQN);
+    }
+  }
+
+  /**
+   * Delete multiple tags in batch to improve performance
+   */
+  @Transaction
+  public final void applyTagsDelete(List<TagLabel> tagLabels, String targetFQN) {
+    if (nullOrEmpty(tagLabels)) {
+      return;
+    }
+    // Filter out DERIVED tags as they are system-generated
+    List<TagLabel> nonDerivedTags =
+        tagLabels.stream()
+            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .collect(Collectors.toList());
+
+    if (!nonDerivedTags.isEmpty()) {
+      daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFQN);
     }
   }
 
@@ -2641,17 +2793,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   protected void storeOwners(T entity, List<EntityReference> owners) {
     if (supportsOwners && !nullOrEmpty(owners)) {
-      for (EntityReference owner : owners) {
-        // Add relationship owner --- owns ---> ownedEntity
-        LOG.info(
-            "Adding owner {}:{} for entity {}:{}",
-            owner.getType(),
-            owner.getFullyQualifiedName(),
-            entityType,
-            entity.getId());
-        addRelationship(
-            owner.getId(), entity.getId(), owner.getType(), entityType, Relationship.OWNS);
-      }
+      // Batch add all owner relationships in a single operation
+      LOG.info("Adding {} owners for entity {}:{}", owners.size(), entityType, entity.getId());
+
+      List<CollectionDAO.EntityRelationshipObject> ownerRelationships =
+          owners.stream()
+              .map(
+                  owner ->
+                      CollectionDAO.EntityRelationshipObject.builder()
+                          .fromId(owner.getId().toString())
+                          .toId(entity.getId().toString())
+                          .fromEntity(owner.getType())
+                          .toEntity(entityType)
+                          .relation(Relationship.OWNS.ordinal())
+                          .build())
+              .collect(Collectors.toList());
+
+      daoCollection.relationshipDAO().bulkInsertTo(ownerRelationships);
     }
   }
 
@@ -2670,28 +2828,49 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   protected void storeReviewers(T entity, List<EntityReference> reviewers) {
-    if (supportsReviewers) {
-      // Add relationship user/team --- reviews ---> entity
-      for (EntityReference reviewer : listOrEmpty(reviewers)) {
-        addRelationship(
-            reviewer.getId(), entity.getId(), reviewer.getType(), entityType, Relationship.REVIEWS);
-      }
+    if (supportsReviewers && !nullOrEmpty(reviewers)) {
+      // Batch add all reviewer relationships in a single operation
+      List<CollectionDAO.EntityRelationshipObject> reviewerRelationships =
+          reviewers.stream()
+              .map(
+                  reviewer ->
+                      CollectionDAO.EntityRelationshipObject.builder()
+                          .fromId(reviewer.getId().toString())
+                          .toId(entity.getId().toString())
+                          .fromEntity(reviewer.getType())
+                          .toEntity(entityType)
+                          .relation(Relationship.REVIEWS.ordinal())
+                          .build())
+              .collect(Collectors.toList());
+
+      daoCollection.relationshipDAO().bulkInsertTo(reviewerRelationships);
     }
   }
 
   @Transaction
   protected void storeDataProducts(T entity, List<EntityReference> dataProducts) {
     if (supportsDataProducts && !nullOrEmpty(dataProducts)) {
-      for (EntityReference dataProduct : dataProducts) {
-        // Add relationship dataProduct --- has ---> entity
-        LOG.info(
-            "Adding dataProduct {} for entity {}:{}",
-            dataProduct.getFullyQualifiedName(),
-            entityType,
-            entity.getId());
-        addRelationship(
-            dataProduct.getId(), entity.getId(), DATA_PRODUCT, entityType, Relationship.HAS);
-      }
+      // Batch add all data product relationships
+      LOG.info(
+          "Adding {} data products for entity {}:{}",
+          dataProducts.size(),
+          entityType,
+          entity.getId());
+
+      List<CollectionDAO.EntityRelationshipObject> dataProductRelationships =
+          dataProducts.stream()
+              .map(
+                  dataProduct ->
+                      CollectionDAO.EntityRelationshipObject.builder()
+                          .fromId(dataProduct.getId().toString())
+                          .toId(entity.getId().toString())
+                          .fromEntity(DATA_PRODUCT)
+                          .toEntity(entityType)
+                          .relation(Relationship.HAS.ordinal())
+                          .build())
+              .collect(Collectors.toList());
+
+      daoCollection.relationshipDAO().bulkInsertTo(dataProductRelationships);
     }
   }
 
@@ -2803,14 +2982,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   private void removeOwners(T entity, List<EntityReference> owners) {
     if (!nullOrEmpty(owners)) {
-      for (EntityReference owner : owners) {
-        LOG.info(
-            "Removing owner {}:{} for entity {}",
-            owner.getType(),
-            owner.getFullyQualifiedName(),
-            entity.getId());
-        deleteRelationship(
-            owner.getId(), owner.getType(), entity.getId(), entityType, Relationship.OWNS);
+      // Batch remove all owner relationships
+      LOG.info("Removing {} owners for entity {}", owners.size(), entity.getId());
+
+      // Group by type for bulk removal
+      Map<String, List<EntityReference>> ownersByType =
+          owners.stream().collect(Collectors.groupingBy(EntityReference::getType));
+
+      for (Map.Entry<String, List<EntityReference>> entry : ownersByType.entrySet()) {
+        String ownerType = entry.getKey();
+        List<UUID> ownerIds =
+            entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+
+        if (!ownerIds.isEmpty()) {
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveFromRelationship(
+                  ownerIds, entity.getId(), ownerType, entityType, Relationship.OWNS.ordinal());
+        }
       }
     }
   }
@@ -3095,12 +3284,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean entityChanged = false;
     @Getter protected ChangeDescription incrementalChangeDescription = null;
     private ChangeSource changeSource;
+    private final boolean useOptimisticLocking;
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this(original, updated, operation, null);
     }
 
     public EntityUpdater(T original, T updated, Operation operation, ChangeSource changeSource) {
+      this(original, updated, operation, changeSource, false);
+    }
+
+    public EntityUpdater(
+        T original,
+        T updated,
+        Operation operation,
+        ChangeSource changeSource,
+        boolean useOptimisticLocking) {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
@@ -3109,6 +3308,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
               : getEntityByName(USER, updated.getUpdatedBy(), "", NON_DELETED);
       this.changeSource = changeSource;
+      this.useOptimisticLocking = useOptimisticLocking;
     }
 
     /**
@@ -3125,6 +3325,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       changeDescription = new ChangeDescription();
       updateInternal();
       storeUpdate();
+      postUpdate(original, updated);
+    }
+
+    /**
+     * Update with optimistic locking - ensures no concurrent modifications
+     */
+    @Transaction
+    public final void updateWithOptimisticLocking() {
+      boolean consolidateChanges = consolidateChanges(original, updated, operation);
+      incrementalChange();
+      if (consolidateChanges) {
+        revert();
+      }
+      // Now updated from previous/original to updated one
+      changeDescription = new ChangeDescription();
+      updateInternal();
+      storeUpdateWithOptimisticLocking();
       postUpdate(original, updated);
     }
 
@@ -3401,8 +3618,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     protected void updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
       origTags = listOrEmpty(origTags);
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
@@ -3411,21 +3626,55 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return; // Nothing to update
       }
 
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
+      List<TagLabel> addedTags = new ArrayList<>();
+      List<TagLabel> deletedTags = new ArrayList<>();
 
       if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists
+        // Calculate what needs to be added (tags in updatedTags but not in origTags)
+        // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
+        Set<String> origTagKeys = createTagKeySet(origTags);
+        for (TagLabel updatedTag : updatedTags) {
+          if (!origTagKeys.contains(createTagKey(updatedTag))) {
+            addedTags.add(updatedTag);
+          }
+        }
+        // For PUT, we don't delete any existing tags
+        // Merge the tags for validation and recording purposes
         EntityUtil.mergeTags(updatedTags, origTags);
+        checkMutuallyExclusive(updatedTags);
+      } else {
+        // PATCH operation replaces tags
+        // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
+        Set<String> updatedTagKeys = createTagKeySet(updatedTags);
+        Set<String> origTagKeys = createTagKeySet(origTags);
+
+        // Calculate what needs to be deleted (tags in origTags but not in updatedTags)
+        for (TagLabel origTag : origTags) {
+          if (!updatedTagKeys.contains(createTagKey(origTag))) {
+            deletedTags.add(origTag);
+          }
+        }
+        // Calculate what needs to be added (tags in updatedTags but not in origTags)
+        for (TagLabel updatedTag : updatedTags) {
+          if (!origTagKeys.contains(createTagKey(updatedTag))) {
+            addedTags.add(updatedTag);
+          }
+        }
         checkMutuallyExclusive(updatedTags);
       }
 
-      List<TagLabel> addedTags = new ArrayList<>();
-      List<TagLabel> deletedTags = new ArrayList<>();
+      // Apply differential updates - only modify what changed
+      if (!deletedTags.isEmpty()) {
+        applyTagsDelete(deletedTags, fqn);
+      }
+      if (!addedTags.isEmpty()) {
+        applyTagsAdd(addedTags, fqn);
+      }
+
+      // Record changes for audit trail
       recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
       updatedTags.sort(compareTagLabel);
-      applyTags(updatedTags, fqn);
     }
 
     protected void updateTagsForImport(
@@ -3948,15 +4197,56 @@ public abstract class EntityRepository<T extends EntityInterface> {
           field, origToRefs, updatedToRefs, added, deleted, entityReferenceMatch)) {
         return; // No changes between original and updated.
       }
-      // Remove relationships from original
-      deleteFrom(fromId, fromEntityType, relationshipType, toEntityType);
-      if (bidirectional) {
-        deleteTo(fromId, fromEntityType, relationshipType, toEntityType);
+
+      // Batch delete removed relationships
+      if (!deleted.isEmpty()) {
+        // Group by entity type for bulk removal
+        Map<String, List<EntityReference>> deletedByType =
+            deleted.stream().collect(Collectors.groupingBy(EntityReference::getType));
+
+        for (Map.Entry<String, List<EntityReference>> entry : deletedByType.entrySet()) {
+          List<UUID> typeIds =
+              entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveToRelationship(
+                  fromId, typeIds, fromEntityType, entry.getKey(), relationshipType.ordinal());
+          if (bidirectional) {
+            daoCollection
+                .relationshipDAO()
+                .bulkRemoveFromRelationship(
+                    typeIds, fromId, entry.getKey(), fromEntityType, relationshipType.ordinal());
+          }
+        }
       }
-      // Add relationships from updated
-      for (EntityReference ref : updatedToRefs) {
-        addRelationship(
-            fromId, ref.getId(), fromEntityType, toEntityType, relationshipType, bidirectional);
+
+      // Batch add new relationships
+      if (!added.isEmpty()) {
+        // Create forward relationships
+        List<UUID> addedIds =
+            added.stream().map(EntityReference::getId).collect(Collectors.toList());
+        daoCollection
+            .relationshipDAO()
+            .bulkInsertToRelationship(
+                fromId, addedIds, fromEntityType, toEntityType, relationshipType.ordinal());
+
+        if (bidirectional) {
+          // Create reverse relationships using bulkInsertTo for true batch operation
+          List<CollectionDAO.EntityRelationshipObject> reverseRelationships =
+              added.stream()
+                  .map(
+                      ref ->
+                          CollectionDAO.EntityRelationshipObject.builder()
+                              .fromId(ref.getId().toString())
+                              .toId(fromId.toString())
+                              .fromEntity(ref.getType())
+                              .toEntity(fromEntityType)
+                              .relation(relationshipType.ordinal())
+                              .build())
+                  .collect(Collectors.toList());
+
+          daoCollection.relationshipDAO().bulkInsertTo(reverseRelationships);
+        }
       }
       if (!nullOrEmpty(updatedToRefs)) {
         updatedToRefs.sort(EntityUtil.compareEntityReference);
@@ -4012,12 +4302,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
           field, originFromRefs, updatedFromRefs, added, deleted, entityReferenceMatch)) {
         return; // No changes between original and updated.
       }
-      // Remove relationships from original
-      deleteTo(toId, toEntityType, relationshipType, fromEntityType);
+      // Batch delete removed relationships
+      if (!deleted.isEmpty()) {
+        // Group by entity type for bulk removal
+        Map<String, List<EntityReference>> deletedByType =
+            deleted.stream().collect(Collectors.groupingBy(EntityReference::getType));
 
-      // Add relationships from updated
-      for (EntityReference ref : updatedFromRefs) {
-        addRelationship(ref.getId(), toId, ref.getType(), toEntityType, relationshipType);
+        for (Map.Entry<String, List<EntityReference>> entry : deletedByType.entrySet()) {
+          List<UUID> typeIds =
+              entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveFromRelationship(
+                  typeIds, toId, entry.getKey(), toEntityType, relationshipType.ordinal());
+        }
+      }
+
+      // Batch add new relationships
+      if (!added.isEmpty()) {
+        // Use bulkInsertTo for true batch operation
+        List<CollectionDAO.EntityRelationshipObject> relationships =
+            added.stream()
+                .map(
+                    ref ->
+                        CollectionDAO.EntityRelationshipObject.builder()
+                            .fromId(ref.getId().toString())
+                            .toId(toId.toString())
+                            .fromEntity(ref.getType())
+                            .toEntity(toEntityType)
+                            .relation(relationshipType.ordinal())
+                            .build())
+                .collect(Collectors.toList());
+
+        daoCollection.relationshipDAO().bulkInsertTo(relationships);
       }
       updatedFromRefs.sort(EntityUtil.compareEntityReference);
       originFromRefs.sort(EntityUtil.compareEntityReference);
@@ -4063,6 +4380,45 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
+    public final void storeUpdateWithOptimisticLocking() {
+      // During session consolidation, we need to bypass version checking
+      // because we're intentionally reverting to a previous version
+      boolean isConsolidating =
+          previous != null
+              && changeDescription != null
+              && changeDescription.getPreviousVersion() != null
+              && changeDescription.getPreviousVersion().equals(previous.getVersion());
+
+      if (updateVersion(original.getVersion())) { // Update changed the entity version
+        storeEntityHistory(); // Store old version for listing previous versions of the entity
+        if (isConsolidating) {
+          // During consolidation, use regular store without version check
+          storeNewVersion();
+        } else {
+          storeNewVersionWithOptimisticLocking(); // Store with version check
+        }
+      } else if (entityChanged) {
+        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
+          updated.setChangeDescription(original.getChangeDescription());
+        }
+        if (isConsolidating) {
+          storeNewVersion();
+        } else {
+          storeNewVersionWithOptimisticLocking();
+        }
+      } else { // Update did not change the entity version
+        updated.setChangeDescription(original.getChangeDescription());
+        updated.setUpdatedBy(original.getUpdatedBy());
+        updated.setUpdatedAt(original.getUpdatedAt());
+        // Remove entity history recorded when going from previous -> original (and now back to
+        // previous)
+        if (previous != null && previous.getVersion().equals(updated.getVersion())) {
+          storeNewVersion(); // Always use regular store for this case
+          removeEntityHistory(updated.getVersion());
+        }
+      }
+    }
+
     private void storeEntityHistory() {
       String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
       daoCollection
@@ -4079,6 +4435,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityRepository.this.storeEntity(updated, true);
     }
 
+    private void storeNewVersionWithOptimisticLocking() {
+      // Pass the original version to enable optimistic locking
+      // This ensures no other process has modified the entity between read and write
+      EntityRepository.this.storeEntityWithVersion(updated, true, original.getVersion());
+    }
+
     public final boolean updatedByBot() {
       return Boolean.TRUE.equals(updatingUser.getIsBot());
     }
@@ -4088,7 +4450,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       sessionTimeoutMillis = timeout;
     }
 
+    @VisibleForTesting
+    public static long getSessionTimeout() {
+      return sessionTimeoutMillis;
+    }
+
     protected boolean consolidateChanges(T original, T updated, Operation operation) {
+      // Skip consolidation if optimistic locking is being used
+      if (useOptimisticLocking) {
+        return false;
+      }
+
       // If user is the same and the new update is with in the user session timeout
       return original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
@@ -4501,6 +4873,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
         });
 
     return ownersMap;
+  }
+
+  /**
+   * Creates a unique key for a TagLabel combining TagFQN and Source for fast Set-based lookups.
+   * This replaces O(n) stream().anyMatch() operations with O(1) Set.contains() operations.
+   */
+  private String createTagKey(TagLabel tag) {
+    return tag.getTagFQN() + ":" + tag.getSource();
+  }
+
+  /**
+   * Creates a Set of tag keys from a list of TagLabels for efficient O(1) lookups.
+   */
+  private Set<String> createTagKeySet(List<TagLabel> tags) {
+    return tags.stream().map(this::createTagKey).collect(Collectors.toSet());
   }
 
   private Map<String, List<TagLabel>> batchFetchTags(List<String> entityFQNs) {

@@ -90,13 +90,13 @@ public class ElasticSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder searchBuilder(
-      QueryBuilder query, HighlightBuilder highlightBuilder, int from, int size) {
+      QueryBuilder query, HighlightBuilder highlightBuilder, int fromOffset, int size) {
     SearchSourceBuilder builder = new SearchSourceBuilder();
     builder.query(query);
     if (highlightBuilder != null) {
       builder.highlighter(highlightBuilder);
     }
-    builder.from(from);
+    builder.from(fromOffset);
     builder.size(size);
     return builder;
   }

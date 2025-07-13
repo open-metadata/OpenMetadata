@@ -43,7 +43,7 @@ class MultiUrlJwkProviderTest {
   }
 
   @Test
-  void testLocalJwkProviderReturnsKeyForMatchingKid() throws Exception {
+  void testLocalJwkProviderReturnsKeyForMatchingKid() {
     // Setup mock JWTTokenGenerator
     JWKSKey jwksKey = mock(JWKSKey.class);
     when(jwksKey.getKid()).thenReturn(LOCAL_KID);

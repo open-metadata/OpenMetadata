@@ -234,7 +234,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
 
   @Override
   public CsvImportResult importFromCsv(
-      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+      String name, String csv, boolean dryRun, String user, boolean recursive) {
     // For spreadsheets, we need the directory context for import
     throw new UnsupportedOperationException(
         "Spreadsheet import requires directory context. Use directory import instead.");
@@ -367,7 +367,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
           recordList,
           entity.getDataProducts() != null
               ? entity.getDataProducts().stream()
-                  .map(ref -> ref.getFullyQualifiedName())
+                  .map(EntityReference::getFullyQualifiedName)
                   .collect(Collectors.joining(";"))
               : "");
       addOwners(recordList, entity.getExperts());
