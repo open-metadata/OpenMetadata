@@ -55,6 +55,8 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       }
     } else if (ex instanceof EntityNotFoundException) {
       return getResponse(NOT_FOUND, ex.getLocalizedMessage());
+    } else if (ex instanceof PreconditionFailedException) {
+      return getResponse(Response.Status.PRECONDITION_FAILED, ex.getLocalizedMessage());
     } else if (ex instanceof IngestionPipelineDeploymentException) {
       return getResponse(BAD_REQUEST, ex.getLocalizedMessage());
     } else if (ex instanceof AuthenticationException) {

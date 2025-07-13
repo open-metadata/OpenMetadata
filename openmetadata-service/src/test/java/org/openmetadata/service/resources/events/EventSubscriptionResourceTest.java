@@ -93,6 +93,7 @@ public class EventSubscriptionResourceTest
         EventSubscriptionResource.FIELDS);
     supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
     supportsFieldsQueryParam = false;
+    supportsEtag = false;
   }
 
   @Test

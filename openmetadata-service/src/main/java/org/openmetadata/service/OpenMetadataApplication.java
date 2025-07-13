@@ -115,6 +115,8 @@ import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.filters.ETagRequestFilter;
+import org.openmetadata.service.resources.filters.ETagResponseFilter;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -294,6 +296,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
+
+    // Register ETag Filters for optimistic concurrency control
+    environment.jersey().register(ETagRequestFilter.class);
+    environment.jersey().register(ETagResponseFilter.class);
 
     // Register User Activity Tracking
     registerUserActivityTracking(environment);

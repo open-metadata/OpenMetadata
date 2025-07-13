@@ -112,6 +112,28 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("id") String id,
       @Bind("json") String json);
 
+  /**
+   * Update entity with optimistic locking using version check.
+   * Returns the number of rows updated (0 if version mismatch, 1 if successful)
+   */
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = :json, <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND (json->>'version')::text = :version",
+      connectionType = POSTGRES)
+  int updateWithVersion(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") String nameHashColumnValue,
+      @Bind("id") String id,
+      @Bind("json") String json,
+      @Bind("version") String version);
+
   default void updateFqn(String oldPrefix, String newPrefix) {
     LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
     if (!getNameHashColumn().equals("fqnHash")) {

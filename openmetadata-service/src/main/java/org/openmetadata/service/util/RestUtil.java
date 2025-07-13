@@ -168,10 +168,15 @@ public final class RestUtil {
 
   public record PatchResponse<T>(Status status, T entity, EventType changeType) {
     public Response toResponse() {
-      return Response.status(status)
-          .header(CHANGE_CUSTOM_HEADER, changeType.value())
-          .entity(entity)
-          .build();
+      ResponseBuilder responseBuilder =
+          Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType.value()).entity(entity);
+
+      // Add ETag header if entity implements EntityInterface
+      if (entity != null && entity instanceof org.openmetadata.schema.EntityInterface) {
+        EntityETag.addETagHeader(responseBuilder, (org.openmetadata.schema.EntityInterface) entity);
+      }
+
+      return responseBuilder.build();
     }
   }
 

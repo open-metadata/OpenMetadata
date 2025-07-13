@@ -183,6 +183,7 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
@@ -196,6 +197,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -462,6 +464,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   protected abstract void storeEntity(T entity, boolean update);
 
+  protected void storeEntityWithVersion(T entity, boolean update, Double expectedVersion) {
+    // This method should be overridden by concrete repositories to use version-aware storage
+    // The default implementation uses the store method with version checking
+    store(entity, update, expectedVersion);
+  }
+
   protected void storeEntities(List<T> entities) {
     // Nothing to do here. This method is overridden in the child class if required
   }
@@ -622,6 +630,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected EntityUpdater getUpdater(
       T original, T updated, Operation operation, ChangeSource changeSource) {
     return new EntityUpdater(original, updated, operation, changeSource);
+  }
+
+  protected EntityUpdater getUpdater(
+      T original,
+      T updated,
+      Operation operation,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking) {
+    return new EntityUpdater(original, updated, operation, changeSource, useOptimisticLocking);
   }
 
   public final T get(UriInfo uriInfo, UUID id, Fields fields) {
@@ -1206,12 +1223,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PatchResponse<T> patch(
       UriInfo uriInfo, UUID id, String user, JsonPatch patch, ChangeSource changeSource) {
+    return patch(uriInfo, id, user, patch, changeSource, null);
+  }
+
+  @Transaction
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      UUID id,
+      String user,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
 
+    // Validate ETag if If-Match header is provided
+    boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
+    if (useOptimisticLocking) {
+      LOG.info(
+          "PATCH with ETag validation - entity: {}, version: {}, updatedAt: {}, provided ETag: {}",
+          original.getId(),
+          original.getVersion(),
+          original.getUpdatedAt(),
+          ifMatchHeader);
+      EntityETag.validateETag(ifMatchHeader, original, true);
+    }
+
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommon(original, patch, user, uriInfo, changeSource);
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking);
   }
 
   /**
@@ -1224,16 +1265,50 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final PatchResponse<T> patch(
       UriInfo uriInfo, String fqn, String user, JsonPatch patch, ChangeSource changeSource) {
+    return patch(uriInfo, fqn, user, patch, changeSource, null);
+  }
+
+  @Transaction
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      String fqn,
+      String user,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(findByName(fqn, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
 
+    // Validate ETag if If-Match header is provided
+    boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
+    if (useOptimisticLocking) {
+      LOG.info(
+          "PATCH with ETag validation - entity: {}, version: {}, updatedAt: {}, provided ETag: {}",
+          original.getId(),
+          original.getVersion(),
+          original.getUpdatedAt(),
+          ifMatchHeader);
+      EntityETag.validateETag(ifMatchHeader, original, true);
+    }
+
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommon(original, patch, user, uriInfo, changeSource);
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking);
   }
 
   private PatchResponse<T> patchCommon(
       T original, JsonPatch patch, String user, UriInfo uriInfo, ChangeSource changeSource) {
+    return patchCommonWithOptimisticLocking(original, patch, user, uriInfo, changeSource, false);
+  }
+
+  private PatchResponse<T> patchCommonWithOptimisticLocking(
+      T original,
+      JsonPatch patch,
+      String user,
+      UriInfo uriInfo,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking) {
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
@@ -1245,8 +1320,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
-    entityUpdater.update();
+    EntityUpdater entityUpdater;
+    if (useOptimisticLocking) {
+      // Use the 5-parameter version for optimistic locking
+      entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource, true);
+      entityUpdater.updateWithOptimisticLocking();
+    } else {
+      // Use the 4-parameter version to maintain backward compatibility with concrete repository
+      // implementations
+      entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
+      entityUpdater.update();
+    }
     if (entityUpdater.fieldsChanged()) {
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
@@ -1675,6 +1759,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   protected void store(T entity, boolean update) {
+    store(entity, update, null);
+  }
+
+  protected void store(T entity, boolean update, Double expectedVersion) {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on
     // relationships
     List<EntityReference> owners = entity.getOwners();
@@ -1687,8 +1775,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
     nullifyEntityFields(entity);
 
     if (update) {
-      dao.update(entity.getId(), entity.getFullyQualifiedName(), JsonUtils.pojoToJson(entity));
-      LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
+      if (expectedVersion != null) {
+        // Use optimistic locking with version check
+        int rowsUpdated =
+            dao.updateWithVersion(
+                dao.getTableName(),
+                dao.getNameHashColumn(),
+                entity.getFullyQualifiedName(),
+                entity.getId().toString(),
+                JsonUtils.pojoToJson(entity),
+                expectedVersion.toString());
+
+        if (rowsUpdated == 0) {
+          // Version mismatch - the entity was modified by another process
+          throw new PreconditionFailedException(
+              "The entity has been modified by another user. Please refresh and retry.");
+        }
+        LOG.info(
+            "Updated {}:{}:{} with version check (expected: {}, actual: {})",
+            entityType,
+            entity.getId(),
+            entity.getFullyQualifiedName(),
+            expectedVersion,
+            entity.getVersion());
+      } else {
+        // Regular update without version check (backward compatibility)
+        dao.update(entity.getId(), entity.getFullyQualifiedName(), JsonUtils.pojoToJson(entity));
+        LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
+      }
       invalidate(entity);
     } else {
       dao.insert(entity, entity.getFullyQualifiedName());
@@ -3170,12 +3284,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean entityChanged = false;
     @Getter protected ChangeDescription incrementalChangeDescription = null;
     private ChangeSource changeSource;
+    private final boolean useOptimisticLocking;
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this(original, updated, operation, null);
     }
 
     public EntityUpdater(T original, T updated, Operation operation, ChangeSource changeSource) {
+      this(original, updated, operation, changeSource, false);
+    }
+
+    public EntityUpdater(
+        T original,
+        T updated,
+        Operation operation,
+        ChangeSource changeSource,
+        boolean useOptimisticLocking) {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
@@ -3184,6 +3308,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
               : getEntityByName(USER, updated.getUpdatedBy(), "", NON_DELETED);
       this.changeSource = changeSource;
+      this.useOptimisticLocking = useOptimisticLocking;
     }
 
     /**
@@ -3200,6 +3325,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       changeDescription = new ChangeDescription();
       updateInternal();
       storeUpdate();
+      postUpdate(original, updated);
+    }
+
+    /**
+     * Update with optimistic locking - ensures no concurrent modifications
+     */
+    @Transaction
+    public final void updateWithOptimisticLocking() {
+      boolean consolidateChanges = consolidateChanges(original, updated, operation);
+      incrementalChange();
+      if (consolidateChanges) {
+        revert();
+      }
+      // Now updated from previous/original to updated one
+      changeDescription = new ChangeDescription();
+      updateInternal();
+      storeUpdateWithOptimisticLocking();
       postUpdate(original, updated);
     }
 
@@ -4238,6 +4380,45 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
+    public final void storeUpdateWithOptimisticLocking() {
+      // During session consolidation, we need to bypass version checking
+      // because we're intentionally reverting to a previous version
+      boolean isConsolidating =
+          previous != null
+              && changeDescription != null
+              && changeDescription.getPreviousVersion() != null
+              && changeDescription.getPreviousVersion().equals(previous.getVersion());
+
+      if (updateVersion(original.getVersion())) { // Update changed the entity version
+        storeEntityHistory(); // Store old version for listing previous versions of the entity
+        if (isConsolidating) {
+          // During consolidation, use regular store without version check
+          storeNewVersion();
+        } else {
+          storeNewVersionWithOptimisticLocking(); // Store with version check
+        }
+      } else if (entityChanged) {
+        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
+          updated.setChangeDescription(original.getChangeDescription());
+        }
+        if (isConsolidating) {
+          storeNewVersion();
+        } else {
+          storeNewVersionWithOptimisticLocking();
+        }
+      } else { // Update did not change the entity version
+        updated.setChangeDescription(original.getChangeDescription());
+        updated.setUpdatedBy(original.getUpdatedBy());
+        updated.setUpdatedAt(original.getUpdatedAt());
+        // Remove entity history recorded when going from previous -> original (and now back to
+        // previous)
+        if (previous != null && previous.getVersion().equals(updated.getVersion())) {
+          storeNewVersion(); // Always use regular store for this case
+          removeEntityHistory(updated.getVersion());
+        }
+      }
+    }
+
     private void storeEntityHistory() {
       String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
       daoCollection
@@ -4254,6 +4435,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityRepository.this.storeEntity(updated, true);
     }
 
+    private void storeNewVersionWithOptimisticLocking() {
+      // Pass the original version to enable optimistic locking
+      // This ensures no other process has modified the entity between read and write
+      EntityRepository.this.storeEntityWithVersion(updated, true, original.getVersion());
+    }
+
     public final boolean updatedByBot() {
       return Boolean.TRUE.equals(updatingUser.getIsBot());
     }
@@ -4263,7 +4450,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       sessionTimeoutMillis = timeout;
     }
 
+    @VisibleForTesting
+    public static long getSessionTimeout() {
+      return sessionTimeoutMillis;
+    }
+
     protected boolean consolidateChanges(T original, T updated, Operation operation) {
+      // Skip consolidation if optimistic locking is being used
+      if (useOptimisticLocking) {
+        return false;
+      }
+
       // If user is the same and the new update is with in the user session timeout
       return original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
