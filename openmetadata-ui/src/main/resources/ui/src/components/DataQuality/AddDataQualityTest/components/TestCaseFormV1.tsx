@@ -45,6 +45,8 @@ import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import {
@@ -144,6 +146,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const { config, getResourceLimit } = useLimitStore();
   const [form] = useForm<FormValues>();
   const { isAirflowAvailable } = useAirflowStatus();
+  const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
+  const { ingestionPipeline } = permissions;
 
   const TEST_LEVEL_OPTIONS: SelectionOption[] = [
     {
@@ -170,7 +174,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   // Form state
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [isInitialized, setIsInitialized] = useState(false);
 
   // Test definition state
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
@@ -195,6 +198,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const [isTestNameManuallyEdited, setIsTestNameManuallyEdited] =
     useState<boolean>(false);
 
+  // Permission state - only need loading state
+  const [isCheckingPermissions, setIsCheckingPermissions] =
+    useState<boolean>(false);
+
   // =============================================
   // HOOKS - Form Watches
   // =============================================
@@ -209,7 +216,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const hasTestSuite = Boolean(
     testSuite?.id || selectedTableData?.testSuite?.id
   );
-  const isSelectAllTestCasesEnabled = Boolean(selectedTable && hasTestSuite);
+  // Show select all test cases switch only when table has test suite and can create pipeline
+  const isSelectAllTestCasesEnabled = Boolean(
+    selectedTable && hasTestSuite && canCreatePipeline
+  );
   const shouldShowScheduler = selectedTable && canCreatePipeline;
   const isFormLoading = loading || externalLoading;
 
@@ -504,14 +514,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         <Button
           data-testid="create-btn"
           htmlType="submit"
-          loading={isFormLoading}
+          loading={isFormLoading || isCheckingPermissions}
           type="primary"
           onClick={() => form.submit()}>
           {t('label.create')}
         </Button>
       </Space>
     ),
-    [isFormLoading, handleCancel, form]
+    [isFormLoading, isCheckingPermissions, handleCancel, form, t]
   );
 
   // API-related callbacks
@@ -634,6 +644,36 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     }
   }, [selectedTableData, selectedTable, hasTestSuite]);
 
+  // Permission checking callback
+  const checkTablePermissions = useCallback(
+    async (tableFqn: string) => {
+      setIsCheckingPermissions(true);
+
+      try {
+        const permissions = await getEntityPermissionByFqn(
+          ResourceEntity.TABLE,
+          tableFqn
+        );
+        const canCreate = permissions.EditAll || permissions.EditTests;
+
+        if (!canCreate) {
+          // Return false to trigger validation error
+          return Promise.reject(
+            t('message.no-permission-for-create-test-case-on-table')
+          );
+        }
+
+        return Promise.resolve();
+      } catch (error) {
+        // On permission check error, allow creation
+        return Promise.resolve();
+      } finally {
+        setIsCheckingPermissions(false);
+      }
+    },
+    [getEntityPermissionByFqn, t]
+  );
+
   // Utility callbacks
   const getSelectedTestDefinition = useCallback(() => {
     return testDefinitions.find(
@@ -687,7 +727,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const handleSubmit = useCallback(
     async (values: FormValues) => {
       setLoading(true);
-      setErrorMessage(''); // Clear any previous errors
+      setErrorMessage('');
       try {
         const testCaseObj = createTestCaseObj(values);
         const createdTestCase = await createTestCase(testCaseObj);
@@ -751,7 +791,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           };
 
           const ingestion = await addIngestionPipeline(ingestionPayload);
-          if (isAirflowAvailable) {
+          if (isAirflowAvailable && ingestionPipeline.EditAll) {
             await deployIngestionPipelineById(ingestion.id ?? '');
           }
         }
@@ -782,19 +822,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   // =============================================
   // EFFECT HOOKS
   // =============================================
-  // Auto-set selectAllTestCases to true when switch should be disabled
-  useEffect(() => {
-    if (!isSelectAllTestCasesEnabled) {
-      form.setFieldValue('selectAllTestCases', true);
-    }
-  }, [isSelectAllTestCasesEnabled, form]);
-
-  // Initialize form on mount
-  useEffect(() => {
-    if (!isInitialized) {
-      setIsInitialized(true);
-    }
-  }, [isInitialized]);
 
   // Handle test level changes
   useEffect(() => {
@@ -883,19 +910,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     setIsTestNameManuallyEdited(false);
   }, []);
 
-  // Reset manual edit flag when drawer is opened for new test case
-  useEffect(() => {
-    setIsTestNameManuallyEdited(false);
-  }, []);
-
-  // Set table value when table prop is provided
-  useEffect(() => {
-    if (table?.fullyQualifiedName) {
-      form.setFieldValue('selectedTable', table.fullyQualifiedName);
-      setSelectedTableData(table);
-    }
-  }, [table, form]);
-
   // Auto-generate test name when inputs change
   useEffect(() => {
     if (
@@ -915,7 +929,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     selectedTestDefinition,
     selectedTestLevel,
     generateDynamicTestName,
-    form,
     isTestNameManuallyEdited,
   ]);
 
@@ -944,7 +957,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           testLevel,
           useDynamicAssertion: false,
           ...testCaseClassBase.initialFormValues(),
-
           cron: DEFAULT_SCHEDULE_CRON_DAILY,
           enableDebugLog: false,
           raiseOnError: true,
@@ -986,6 +998,16 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 message: t('label.please-select-entity', {
                   entity: t('label.table-lowercase'),
                 }),
+              },
+              {
+                validator: async (_, value) => {
+                  if (value && !table) {
+                    // Only check permissions if table is not provided via props
+                    return checkTablePermissions(value);
+                  }
+
+                  return Promise.resolve();
+                },
               },
             ]}>
             <AsyncSelect
@@ -1116,7 +1138,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                   </Typography.Paragraph>
                 </div>
 
-                {!selectAllTestCases && isSelectAllTestCasesEnabled && (
+                {isSelectAllTestCasesEnabled && (
                   <Row className="m-b-md" gutter={[16, 16]}>
                     <Col span={12}>
                       <div className="d-flex gap-2 form-switch-container">
@@ -1124,7 +1146,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                           className="m-b-0"
                           name="selectAllTestCases"
                           valuePropName="checked">
-                          <Switch disabled={!isSelectAllTestCasesEnabled} />
+                          <Switch />
                         </Form.Item>
                         <Typography.Text className="font-medium">
                           {t('label.select-all-entity', {
@@ -1134,28 +1156,31 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                       </div>
                     </Col>
 
-                    <Col span={24}>
-                      <Form.Item
-                        label={t('label.test-case')}
-                        name="testCases"
-                        rules={[
-                          {
-                            required: true,
-                            message: t('label.field-required', {
-                              field: t('label.test-case'),
-                            }),
-                          },
-                        ]}
-                        valuePropName="selectedTest">
-                        <AddTestCaseList
-                          showButton={false}
-                          testCaseParams={{
-                            testSuiteId:
-                              testSuite?.id ?? selectedTableData?.testSuite?.id,
-                          }}
-                        />
-                      </Form.Item>
-                    </Col>
+                    {!selectAllTestCases && (
+                      <Col span={24}>
+                        <Form.Item
+                          label={t('label.test-case')}
+                          name="testCases"
+                          rules={[
+                            {
+                              required: true,
+                              message: t('label.field-required', {
+                                field: t('label.test-case'),
+                              }),
+                            },
+                          ]}
+                          valuePropName="selectedTest">
+                          <AddTestCaseList
+                            showButton={false}
+                            testCaseParams={{
+                              testSuiteId:
+                                testSuite?.id ??
+                                selectedTableData?.testSuite?.id,
+                            }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    )}
                   </Row>
                 )}
 

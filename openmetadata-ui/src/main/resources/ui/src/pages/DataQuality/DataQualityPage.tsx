@@ -137,17 +137,16 @@ const DataQualityPage = () => {
                       })}
                     </Button>
                   )}
-                {activeTab === DataQualityPageTabs.TEST_CASES &&
-                  testCasePermission?.Create && (
-                    <Button
-                      data-testid="add-test-case-btn"
-                      type="primary"
-                      onClick={handleOpenTestCaseModal}>
-                      {t('label.add-entity', {
-                        entity: t('label.test-case'),
-                      })}
-                    </Button>
-                  )}
+                {activeTab === DataQualityPageTabs.TEST_CASES && (
+                  <Button
+                    data-testid="add-test-case-btn"
+                    type="primary"
+                    onClick={handleOpenTestCaseModal}>
+                    {t('label.add-entity', {
+                      entity: t('label.test-case'),
+                    })}
+                  </Button>
+                )}
                 {exportDataQualityDashboardButton}
 
                 {activeTab === DataQualityPageTabs.DASHBOARD &&
