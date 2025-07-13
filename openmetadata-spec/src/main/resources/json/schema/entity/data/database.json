@@ -76,9 +76,8 @@
     },
     "usageSummary": {
       "description": "Latest usage information for this database.",
-      "$ref": "../../type/usageDetails.json",
-      "default": null
-    },
+      "$ref": "../../type/usageDetails.json"
+      },
     "databaseSchemas": {
       "description": "References to schemas in the database.",
       "$ref": "../../type/entityReferenceList.json"

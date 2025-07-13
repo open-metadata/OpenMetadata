@@ -89,9 +89,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
-      },
-      "default": null
-    }
+      }
+      }
   },
   "oneOf": [{"required": ["id", "entityLink", "description", "suggestionType"]},
     {"required": ["id", "entityLink", "tagLabels", "suggestionType"]}],

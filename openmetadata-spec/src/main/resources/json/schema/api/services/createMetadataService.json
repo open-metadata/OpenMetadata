@@ -35,9 +35,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "domain" : {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"

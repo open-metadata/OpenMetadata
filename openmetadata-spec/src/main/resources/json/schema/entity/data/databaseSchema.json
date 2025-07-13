@@ -141,9 +141,8 @@
       "properties": {
         "profileSample": {
           "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
-          "type": "number",
-          "default": null
-        },
+          "type": "number"
+          },
         "profileSampleType": {
           "$ref": "./table.json#/definitions/profileSampleType"
         },

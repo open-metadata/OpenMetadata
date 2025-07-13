@@ -14,9 +14,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "type": {
       "$ref": "../../entity/feed/suggestion.json#/definitions/suggestionType"
     },

@@ -117,9 +117,8 @@
     },
     "sampleData": {
       "description": "Sample data for a topic.",
-      "$ref": "#/definitions/topicSampleData",
-      "default": null
-    },
+      "$ref": "#/definitions/topicSampleData"
+      },
     "owners": {
       "description": "Owners of this topic.",
       "$ref": "../../type/entityReferenceList.json"

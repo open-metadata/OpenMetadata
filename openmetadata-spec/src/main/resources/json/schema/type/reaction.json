@@ -10,9 +10,8 @@
       "type": "array",
       "items": {
         "$ref": "reaction.json"
+      }
       },
-      "default": null
-    },
     "reactionType": {
       "javaType": "org.openmetadata.schema.type.ReactionType",
       "description": "Type of reaction.",

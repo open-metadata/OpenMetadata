@@ -100,9 +100,8 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
           },
-          "default": null
-        },
         "taskType": {
           "description": "Type of the Task. Usually refers to the class it implements.",
           "type": "string"
@@ -152,9 +151,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/taskStatus"
-          },
-          "default": null
-        }
+          }
+          }
       },
       "additionalProperties": false,
       "required": ["timestamp", "executionStatus"]
@@ -218,9 +216,8 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/task"
+      }
       },
-      "default": null
-    },
     "pipelineStatus": {
       "description": "Latest Pipeline Status.",
       "$ref": "#/definitions/pipelineStatus",
@@ -240,9 +237,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"

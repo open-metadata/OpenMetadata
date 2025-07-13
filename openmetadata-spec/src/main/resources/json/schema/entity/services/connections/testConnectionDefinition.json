@@ -69,9 +69,8 @@
     },
     "owners": {
       "description": "Owner of this TestConnection definition.",
-      "$ref": "../../../type/entityReferenceList.json",
-      "default": null
-    },
+      "$ref": "../../../type/entityReferenceList.json"
+      },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../../type/entityHistory.json#/definitions/entityVersion"

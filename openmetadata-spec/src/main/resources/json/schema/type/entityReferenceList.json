@@ -6,6 +6,5 @@
     "type": "array",
     "items": {
         "$ref": "entityReference.json"
-    },
-    "default": null
-}
+    }
+    }

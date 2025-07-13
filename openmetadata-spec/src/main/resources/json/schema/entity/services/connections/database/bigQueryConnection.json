@@ -59,9 +59,8 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
       },
-      "default": null
-    },
     "taxonomyLocation": {
       "title": "Taxonomy Location",
       "description": "Taxonomy location used to fetch policy tags",

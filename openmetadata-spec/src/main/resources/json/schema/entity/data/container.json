@@ -106,9 +106,8 @@
     },
     "dataModel": {
       "description": "References to the container's data model, if data is structured, or null otherwise",
-      "$ref": "#/definitions/containerDataModel",
-      "default": null
-    },
+      "$ref": "#/definitions/containerDataModel"
+      },
     "prefix": {
       "description": "Optional prefix path defined for this container",
       "type": "string",
@@ -129,9 +128,8 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/fileFormat"
+      }
       },
-      "default": null
-    },
     "serviceType": {
       "description": "Service type this table is hosted in.",
       "$ref": "../services/storageService.json#/definitions/storageServiceType"

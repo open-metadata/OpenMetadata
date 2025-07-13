@@ -35,25 +35,22 @@
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
       },
-      "default": null
-    },
     "dataModels": {
       "description": "List of fully qualified name of data models included in this Dashboard.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
       },
-      "default": null
-    },
     "tags": {
       "description": "Tags for this dashboard",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "owners": {
       "description": "Owners of this dashboard",
       "$ref": "../../type/entityReferenceList.json",

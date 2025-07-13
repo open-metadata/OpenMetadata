@@ -61,17 +61,15 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/response"
+      }
       },
-      "default": null
-    },
     "failedRequest": {
       "description": "Failure Request that can be processed successfully.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/response"
-      },
-      "default": null
-    }
+      }
+      }
   },
   "additionalProperties": false
 }

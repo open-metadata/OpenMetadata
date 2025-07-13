@@ -31,9 +31,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "query": {
       "description": "SQL Query definition.",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"

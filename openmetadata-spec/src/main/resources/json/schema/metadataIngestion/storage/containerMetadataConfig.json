@@ -28,9 +28,8 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
           },
-          "default": null
-        },
         "depth":{
           "title": "Depth",
           "description": "Depth of the data path in the container",
@@ -55,9 +54,8 @@
           "type": "array",
           "items": {
             "$ref": "../../entity/data/table.json#/definitions/column"
-          },
-          "default": null
-        }
+          }
+          }
       },
       "required": ["dataPath"]
     }
@@ -68,9 +66,8 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/metadataEntry"
-      },
-      "default": null
-    }
+      }
+      }
   },
   "required": ["entries"],
   "additionalProperties": false

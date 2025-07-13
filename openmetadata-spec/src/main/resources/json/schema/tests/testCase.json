@@ -86,9 +86,8 @@
     },
     "owners": {
       "description": "Owners of this Pipeline.",
-      "$ref": "../type/entityReferenceList.json",
-      "default": null
-    },
+      "$ref": "../type/entityReferenceList.json"
+      },
     "createdBy": {
       "description": "User who made the update.",
       "type": "string"

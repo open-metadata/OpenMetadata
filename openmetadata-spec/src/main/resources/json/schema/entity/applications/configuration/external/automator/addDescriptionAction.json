@@ -29,9 +29,8 @@
       "type": "array",
       "items": {
         "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      }
       },
-      "default": null
-    },
     "overwriteMetadata": {
       "title": "Overwrite Metadata",
       "description": "Update the description even if they are already defined in the asset. By default, we'll only add the descriptions to assets without the description set.",

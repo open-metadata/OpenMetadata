@@ -58,17 +58,15 @@
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
+      }
       },
-      "default": null
-    },
     "roles": {
       "description": "Roles that the user has been assigned",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
+      }
       },
-      "default": null
-    },
     "personas": {
       "description": "Persona that the user belongs to.",
       "$ref": "../../type/entityReferenceList.json"
@@ -101,9 +99,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/entityName"
-      },
-      "default": null
-    }
+      }
+      }
   },
   "required": ["name", "email"],
   "additionalProperties": false

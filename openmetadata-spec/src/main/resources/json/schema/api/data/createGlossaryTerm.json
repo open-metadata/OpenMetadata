@@ -58,17 +58,15 @@
     },
     "owners": {
       "description": "Owners of this glossary term.",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
+      "$ref": "../../type/entityReferenceList.json"
+      },
     "tags": {
       "description": "Tags for this glossary term.",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },

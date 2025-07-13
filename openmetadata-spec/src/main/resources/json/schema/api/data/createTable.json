@@ -28,9 +28,8 @@
       "type": "array",
       "items": {
         "$ref": "../../entity/data/table.json#/definitions/column"
+      }
       },
-      "default": null
-    },
     "dataModel": {
       "$ref": "../../entity/data/table.json#/definitions/dataModel"
     },
@@ -43,9 +42,8 @@
       "type": "array",
       "items": {
         "$ref": "../../entity/data/table.json#/definitions/tableConstraint"
+      }
       },
-      "default": null
-    },
     "tablePartition": {
       "$ref": "../../entity/data/table.json#/definitions/tablePartition"
     },
@@ -66,9 +64,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "schemaDefinition": {
       "description": "DDL for Tables and Views",
       "$ref": "../../type/basic.json#/definitions/sqlQuery",

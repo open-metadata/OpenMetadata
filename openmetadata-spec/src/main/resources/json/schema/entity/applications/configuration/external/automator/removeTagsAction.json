@@ -40,18 +40,16 @@
       "type": "array",
       "items": {
           "$ref": "#/definitions/labelType"
+      }
       },
-      "default": null
-    },
     "applyToChildren": {
       "title": "Apply to Children",
       "description": "Remove tags from the children of the selected assets. E.g., columns, tasks, topic fields,...",
       "type": "array",
       "items": {
         "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      }
       },
-      "default": null
-    },
     "applyToAll": {
       "title": "Apply to All",
       "description": "Remove tags from all the children and parent of the selected assets.",

@@ -38,9 +38,8 @@
     },
     "owners": {
       "description": "Owners of this Policy.",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
+      "$ref": "../../type/entityReferenceList.json"
+      },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"

@@ -65,9 +65,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/entityReference.json"
+      }
       },
-      "default": null
-    },
     "followers": {
       "description": "Followers of this Query.",
       "$ref": "../../type/entityReferenceList.json"

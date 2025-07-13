@@ -48,9 +48,8 @@
       "type": "array",
       "items": {
         "$ref": "../../entity/data/pipeline.json#/definitions/task"
+      }
       },
-      "default": null
-    },
     "state": {
       "description": "State of the pipeline.",
       "$ref": "../../entity/data/pipeline.json#/definitions/pipelineState",
@@ -61,9 +60,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "owners": {
       "description": "Owners of this pipeline",
       "$ref": "../../type/entityReferenceList.json",

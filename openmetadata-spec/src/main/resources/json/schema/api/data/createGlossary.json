@@ -34,9 +34,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },

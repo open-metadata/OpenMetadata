@@ -35,9 +35,8 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
       },
-      "default": null
-    },
     "messagingConnection": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.MessagingConnection",

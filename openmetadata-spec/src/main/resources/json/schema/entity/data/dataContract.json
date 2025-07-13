@@ -170,33 +170,29 @@
       "type": "array",
       "items": {
         "$ref": "./table.json#/definitions/column"
+      }
       },
-      "default": null
-    },
     "semantics": {
       "description": "Semantics rules defined in the data contract.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/semanticsRule"
+      }
       },
-      "default": null
-    },
     "qualityExpectations": {
       "description": "Quality expectations defined in the data contract.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/qualityExpectation"
+      }
       },
-      "default": null
-    },
     "contractUpdates": {
       "description": "History of updates to the data contract.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/contractUpdate"
+      }
       },
-      "default": null
-    },
     "owners": {
       "description": "Owners of this data contract.",
       "$ref": "../../type/entityReferenceList.json",

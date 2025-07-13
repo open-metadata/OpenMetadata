@@ -42,9 +42,8 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/serviceConnections"
+      }
       },
-      "default": null
-    },
     "profileSample": {
       "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
       "type": "number",
@@ -64,9 +63,8 @@
       "type": "array",
       "items": {
         "$ref": "../type/basic.json#/definitions/testCaseEntityName"
-      },
-      "default": null
-    }
+      }
+      }
   },
   "required": ["type"],
   "additionalProperties": false

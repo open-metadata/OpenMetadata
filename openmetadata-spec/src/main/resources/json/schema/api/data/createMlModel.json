@@ -30,9 +30,8 @@
       "type": "array",
       "items": {
         "$ref": "../../entity/data/mlmodel.json#/definitions/mlFeature"
+      }
       },
-      "default": null
-    },
     "target": {
       "description": "For supervised ML Models, the value to estimate.",
       "$ref": "../../type/basic.json#/definitions/entityName"
@@ -42,9 +41,8 @@
       "type": "array",
       "items": {
         "$ref": "../../entity/data/mlmodel.json#/definitions/mlHyperParameter"
+      }
       },
-      "default": null
-    },
     "dashboard": {
       "description": "Performance Dashboard fqn to track metric evolution",
       "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -62,9 +60,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "owners": {
       "description": "Owners of this database",
       "$ref": "../../type/entityReferenceList.json",

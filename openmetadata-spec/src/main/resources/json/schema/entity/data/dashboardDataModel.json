@@ -158,17 +158,15 @@
     },
     "sql": {
       "description": "In case the Data Model is based on a SQL query.",
-      "$ref": "../../type/basic.json#/definitions/sqlQuery",
-      "default": null
-    },
+      "$ref": "../../type/basic.json#/definitions/sqlQuery"
+      },
     "columns": {
       "description": "Columns from the data model.",
       "type": "array",
       "items": {
         "$ref": "table.json#/definitions/column"
+      }
       },
-      "default": null
-    },
     "project": {
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"

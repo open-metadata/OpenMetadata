@@ -30,17 +30,15 @@
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
       },
-      "default": null
-    },
     "tags": {
       "description": "Tags for this API Collection",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "owners": {
       "description": "Owners of this API Collection",
       "$ref": "../../type/entityReferenceList.json",

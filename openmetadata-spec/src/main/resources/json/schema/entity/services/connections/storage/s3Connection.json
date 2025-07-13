@@ -30,9 +30,8 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
       },
-      "default": null
-    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

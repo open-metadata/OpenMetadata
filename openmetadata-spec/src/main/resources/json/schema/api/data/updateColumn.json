@@ -19,9 +19,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "constraint": {
       "description": "Column level constraint. Only applicable to table columns, ignored for dashboard data model columns.",
       "$ref": "../../entity/data/table.json#/definitions/constraint"
