@@ -1265,7 +1265,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void create_profilerWrongTimestamp(TestInfo testInfo) throws IOException, ParseException {
+  void create_profilerWrongTimestamp(TestInfo testInfo) throws IOException {
     Table table = createEntity(createRequest(testInfo), ADMIN_AUTH_HEADERS);
     Long correctTimestamp = 1725525388000L;
     Long wrongTimestamp = 1725525388L;

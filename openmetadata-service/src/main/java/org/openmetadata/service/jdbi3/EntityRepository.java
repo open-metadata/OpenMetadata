@@ -2211,6 +2211,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Apply multiple tags in batch to improve performance
+   */
+  @Transaction
+  public final void applyTagsAdd(List<TagLabel> tagLabels, String targetFQN) {
+    if (nullOrEmpty(tagLabels)) {
+      return;
+    }
+    // Filter out DERIVED tags as they are system-generated
+    List<TagLabel> nonDerivedTags =
+        tagLabels.stream()
+            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .collect(Collectors.toList());
+
+    if (!nonDerivedTags.isEmpty()) {
+      daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFQN);
+    }
+  }
+
+  /**
+   * Delete multiple tags in batch to improve performance
+   */
+  @Transaction
+  public final void applyTagsDelete(List<TagLabel> tagLabels, String targetFQN) {
+    if (nullOrEmpty(tagLabels)) {
+      return;
+    }
+    // Filter out DERIVED tags as they are system-generated
+    List<TagLabel> nonDerivedTags =
+        tagLabels.stream()
+            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .collect(Collectors.toList());
+
+    if (!nonDerivedTags.isEmpty()) {
+      daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFQN);
+    }
+  }
+
   protected AssetCertification getCertification(T entity) {
     return !supportsCertification ? null : getCertification(entity.getCertification());
   }
@@ -2755,17 +2793,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   protected void storeOwners(T entity, List<EntityReference> owners) {
     if (supportsOwners && !nullOrEmpty(owners)) {
-      for (EntityReference owner : owners) {
-        // Add relationship owner --- owns ---> ownedEntity
-        LOG.info(
-            "Adding owner {}:{} for entity {}:{}",
-            owner.getType(),
-            owner.getFullyQualifiedName(),
-            entityType,
-            entity.getId());
-        addRelationship(
-            owner.getId(), entity.getId(), owner.getType(), entityType, Relationship.OWNS);
-      }
+      // Batch add all owner relationships in a single operation
+      LOG.info("Adding {} owners for entity {}:{}", owners.size(), entityType, entity.getId());
+
+      List<CollectionDAO.EntityRelationshipObject> ownerRelationships =
+          owners.stream()
+              .map(
+                  owner ->
+                      CollectionDAO.EntityRelationshipObject.builder()
+                          .fromId(owner.getId().toString())
+                          .toId(entity.getId().toString())
+                          .fromEntity(owner.getType())
+                          .toEntity(entityType)
+                          .relation(Relationship.OWNS.ordinal())
+                          .build())
+              .collect(Collectors.toList());
+
+      daoCollection.relationshipDAO().bulkInsertTo(ownerRelationships);
     }
   }
 
@@ -2784,28 +2828,49 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   protected void storeReviewers(T entity, List<EntityReference> reviewers) {
-    if (supportsReviewers) {
-      // Add relationship user/team --- reviews ---> entity
-      for (EntityReference reviewer : listOrEmpty(reviewers)) {
-        addRelationship(
-            reviewer.getId(), entity.getId(), reviewer.getType(), entityType, Relationship.REVIEWS);
-      }
+    if (supportsReviewers && !nullOrEmpty(reviewers)) {
+      // Batch add all reviewer relationships in a single operation
+      List<CollectionDAO.EntityRelationshipObject> reviewerRelationships =
+          reviewers.stream()
+              .map(
+                  reviewer ->
+                      CollectionDAO.EntityRelationshipObject.builder()
+                          .fromId(reviewer.getId().toString())
+                          .toId(entity.getId().toString())
+                          .fromEntity(reviewer.getType())
+                          .toEntity(entityType)
+                          .relation(Relationship.REVIEWS.ordinal())
+                          .build())
+              .collect(Collectors.toList());
+
+      daoCollection.relationshipDAO().bulkInsertTo(reviewerRelationships);
     }
   }
 
   @Transaction
   protected void storeDataProducts(T entity, List<EntityReference> dataProducts) {
     if (supportsDataProducts && !nullOrEmpty(dataProducts)) {
-      for (EntityReference dataProduct : dataProducts) {
-        // Add relationship dataProduct --- has ---> entity
-        LOG.info(
-            "Adding dataProduct {} for entity {}:{}",
-            dataProduct.getFullyQualifiedName(),
-            entityType,
-            entity.getId());
-        addRelationship(
-            dataProduct.getId(), entity.getId(), DATA_PRODUCT, entityType, Relationship.HAS);
-      }
+      // Batch add all data product relationships
+      LOG.info(
+          "Adding {} data products for entity {}:{}",
+          dataProducts.size(),
+          entityType,
+          entity.getId());
+
+      List<CollectionDAO.EntityRelationshipObject> dataProductRelationships =
+          dataProducts.stream()
+              .map(
+                  dataProduct ->
+                      CollectionDAO.EntityRelationshipObject.builder()
+                          .fromId(dataProduct.getId().toString())
+                          .toId(entity.getId().toString())
+                          .fromEntity(DATA_PRODUCT)
+                          .toEntity(entityType)
+                          .relation(Relationship.HAS.ordinal())
+                          .build())
+              .collect(Collectors.toList());
+
+      daoCollection.relationshipDAO().bulkInsertTo(dataProductRelationships);
     }
   }
 
@@ -2917,14 +2982,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   private void removeOwners(T entity, List<EntityReference> owners) {
     if (!nullOrEmpty(owners)) {
-      for (EntityReference owner : owners) {
-        LOG.info(
-            "Removing owner {}:{} for entity {}",
-            owner.getType(),
-            owner.getFullyQualifiedName(),
-            entity.getId());
-        deleteRelationship(
-            owner.getId(), owner.getType(), entity.getId(), entityType, Relationship.OWNS);
+      // Batch remove all owner relationships
+      LOG.info("Removing {} owners for entity {}", owners.size(), entity.getId());
+
+      // Group by type for bulk removal
+      Map<String, List<EntityReference>> ownersByType =
+          owners.stream().collect(Collectors.groupingBy(EntityReference::getType));
+
+      for (Map.Entry<String, List<EntityReference>> entry : ownersByType.entrySet()) {
+        String ownerType = entry.getKey();
+        List<UUID> ownerIds =
+            entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+
+        if (!ownerIds.isEmpty()) {
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveFromRelationship(
+                  ownerIds, entity.getId(), ownerType, entityType, Relationship.OWNS.ordinal());
+        }
       }
     }
   }
@@ -3543,8 +3618,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     protected void updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
       origTags = listOrEmpty(origTags);
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
@@ -3553,21 +3626,55 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return; // Nothing to update
       }
 
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
+      List<TagLabel> addedTags = new ArrayList<>();
+      List<TagLabel> deletedTags = new ArrayList<>();
 
       if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists
+        // Calculate what needs to be added (tags in updatedTags but not in origTags)
+        // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
+        Set<String> origTagKeys = createTagKeySet(origTags);
+        for (TagLabel updatedTag : updatedTags) {
+          if (!origTagKeys.contains(createTagKey(updatedTag))) {
+            addedTags.add(updatedTag);
+          }
+        }
+        // For PUT, we don't delete any existing tags
+        // Merge the tags for validation and recording purposes
         EntityUtil.mergeTags(updatedTags, origTags);
+        checkMutuallyExclusive(updatedTags);
+      } else {
+        // PATCH operation replaces tags
+        // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
+        Set<String> updatedTagKeys = createTagKeySet(updatedTags);
+        Set<String> origTagKeys = createTagKeySet(origTags);
+
+        // Calculate what needs to be deleted (tags in origTags but not in updatedTags)
+        for (TagLabel origTag : origTags) {
+          if (!updatedTagKeys.contains(createTagKey(origTag))) {
+            deletedTags.add(origTag);
+          }
+        }
+        // Calculate what needs to be added (tags in updatedTags but not in origTags)
+        for (TagLabel updatedTag : updatedTags) {
+          if (!origTagKeys.contains(createTagKey(updatedTag))) {
+            addedTags.add(updatedTag);
+          }
+        }
         checkMutuallyExclusive(updatedTags);
       }
 
-      List<TagLabel> addedTags = new ArrayList<>();
-      List<TagLabel> deletedTags = new ArrayList<>();
+      // Apply differential updates - only modify what changed
+      if (!deletedTags.isEmpty()) {
+        applyTagsDelete(deletedTags, fqn);
+      }
+      if (!addedTags.isEmpty()) {
+        applyTagsAdd(addedTags, fqn);
+      }
+
+      // Record changes for audit trail
       recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
       updatedTags.sort(compareTagLabel);
-      applyTags(updatedTags, fqn);
     }
 
     protected void updateTagsForImport(
@@ -4090,15 +4197,56 @@ public abstract class EntityRepository<T extends EntityInterface> {
           field, origToRefs, updatedToRefs, added, deleted, entityReferenceMatch)) {
         return; // No changes between original and updated.
       }
-      // Remove relationships from original
-      deleteFrom(fromId, fromEntityType, relationshipType, toEntityType);
-      if (bidirectional) {
-        deleteTo(fromId, fromEntityType, relationshipType, toEntityType);
+
+      // Batch delete removed relationships
+      if (!deleted.isEmpty()) {
+        // Group by entity type for bulk removal
+        Map<String, List<EntityReference>> deletedByType =
+            deleted.stream().collect(Collectors.groupingBy(EntityReference::getType));
+
+        for (Map.Entry<String, List<EntityReference>> entry : deletedByType.entrySet()) {
+          List<UUID> typeIds =
+              entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveToRelationship(
+                  fromId, typeIds, fromEntityType, entry.getKey(), relationshipType.ordinal());
+          if (bidirectional) {
+            daoCollection
+                .relationshipDAO()
+                .bulkRemoveFromRelationship(
+                    typeIds, fromId, entry.getKey(), fromEntityType, relationshipType.ordinal());
+          }
+        }
       }
-      // Add relationships from updated
-      for (EntityReference ref : updatedToRefs) {
-        addRelationship(
-            fromId, ref.getId(), fromEntityType, toEntityType, relationshipType, bidirectional);
+
+      // Batch add new relationships
+      if (!added.isEmpty()) {
+        // Create forward relationships
+        List<UUID> addedIds =
+            added.stream().map(EntityReference::getId).collect(Collectors.toList());
+        daoCollection
+            .relationshipDAO()
+            .bulkInsertToRelationship(
+                fromId, addedIds, fromEntityType, toEntityType, relationshipType.ordinal());
+
+        if (bidirectional) {
+          // Create reverse relationships using bulkInsertTo for true batch operation
+          List<CollectionDAO.EntityRelationshipObject> reverseRelationships =
+              added.stream()
+                  .map(
+                      ref ->
+                          CollectionDAO.EntityRelationshipObject.builder()
+                              .fromId(ref.getId().toString())
+                              .toId(fromId.toString())
+                              .fromEntity(ref.getType())
+                              .toEntity(fromEntityType)
+                              .relation(relationshipType.ordinal())
+                              .build())
+                  .collect(Collectors.toList());
+
+          daoCollection.relationshipDAO().bulkInsertTo(reverseRelationships);
+        }
       }
       if (!nullOrEmpty(updatedToRefs)) {
         updatedToRefs.sort(EntityUtil.compareEntityReference);
@@ -4154,12 +4302,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
           field, originFromRefs, updatedFromRefs, added, deleted, entityReferenceMatch)) {
         return; // No changes between original and updated.
       }
-      // Remove relationships from original
-      deleteTo(toId, toEntityType, relationshipType, fromEntityType);
+      // Batch delete removed relationships
+      if (!deleted.isEmpty()) {
+        // Group by entity type for bulk removal
+        Map<String, List<EntityReference>> deletedByType =
+            deleted.stream().collect(Collectors.groupingBy(EntityReference::getType));
 
-      // Add relationships from updated
-      for (EntityReference ref : updatedFromRefs) {
-        addRelationship(ref.getId(), toId, ref.getType(), toEntityType, relationshipType);
+        for (Map.Entry<String, List<EntityReference>> entry : deletedByType.entrySet()) {
+          List<UUID> typeIds =
+              entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveFromRelationship(
+                  typeIds, toId, entry.getKey(), toEntityType, relationshipType.ordinal());
+        }
+      }
+
+      // Batch add new relationships
+      if (!added.isEmpty()) {
+        // Use bulkInsertTo for true batch operation
+        List<CollectionDAO.EntityRelationshipObject> relationships =
+            added.stream()
+                .map(
+                    ref ->
+                        CollectionDAO.EntityRelationshipObject.builder()
+                            .fromId(ref.getId().toString())
+                            .toId(toId.toString())
+                            .fromEntity(ref.getType())
+                            .toEntity(toEntityType)
+                            .relation(relationshipType.ordinal())
+                            .build())
+                .collect(Collectors.toList());
+
+        daoCollection.relationshipDAO().bulkInsertTo(relationships);
       }
       updatedFromRefs.sort(EntityUtil.compareEntityReference);
       originFromRefs.sort(EntityUtil.compareEntityReference);
@@ -4698,6 +4873,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
         });
 
     return ownersMap;
+  }
+
+  /**
+   * Creates a unique key for a TagLabel combining TagFQN and Source for fast Set-based lookups.
+   * This replaces O(n) stream().anyMatch() operations with O(1) Set.contains() operations.
+   */
+  private String createTagKey(TagLabel tag) {
+    return tag.getTagFQN() + ":" + tag.getSource();
+  }
+
+  /**
+   * Creates a Set of tag keys from a list of TagLabels for efficient O(1) lookups.
+   */
+  private Set<String> createTagKeySet(List<TagLabel> tags) {
+    return tags.stream().map(this::createTagKey).collect(Collectors.toSet());
   }
 
   private Map<String, List<TagLabel>> batchFetchTags(List<String> entityFQNs) {

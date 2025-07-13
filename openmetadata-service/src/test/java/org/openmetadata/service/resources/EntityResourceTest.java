@@ -1817,6 +1817,150 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
+  void test_tagUpdateOptimization_PUT(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    TagLabel tag1 = new TagLabel().withTagFQN("PII.Sensitive");
+    TagLabel tag2 = new TagLabel().withTagFQN("Tier.Tier1");
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(listOf(tag1, tag2));
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify initial tags
+    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+    assertTagsContain(entity.getTags(), listOf(tag1, tag2));
+
+    // PUT with one new tag - should ADD the new tag without removing existing ones
+    TagLabel tag3 = new TagLabel().withTagFQN("PersonalData.Personal");
+    create.setTags(listOf(tag3));
+    T updated = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify all three tags are present (PUT merges tags)
+    updated = getEntity(updated.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(3, updated.getTags().size());
+    assertTagsContain(updated.getTags(), listOf(tag1, tag2, tag3));
+
+    // PUT with existing tags - should not duplicate
+    create.setTags(listOf(tag1, tag3));
+    updated = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify still three tags (no duplicates)
+    updated = getEntity(updated.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(3, updated.getTags().size());
+    assertTagsContain(updated.getTags(), listOf(tag1, tag2, tag3));
+  }
+
+  @Test
+  void test_tagUpdateOptimization_PATCH(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    TagLabel tag1 = new TagLabel().withTagFQN("PII.Sensitive");
+    TagLabel tag2 = new TagLabel().withTagFQN("Tier.Tier1");
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(listOf(tag1, tag2));
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+    assertTagsContain(entity.getTags(), listOf(tag1, tag2));
+
+    // PATCH with different tags - should REPLACE all tags
+    TagLabel tag3 = new TagLabel().withTagFQN("PersonalData.Personal");
+    TagLabel tag4 = new TagLabel().withTagFQN("Certification.Bronze");
+    String originalJson = JsonUtils.pojoToJson(entity);
+    entity.setTags(listOf(tag3, tag4));
+    T patched = patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+
+    // Verify only new tags are present (PATCH replaces tags)
+    patched = getEntity(patched.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, patched.getTags().size());
+    assertTagsContain(patched.getTags(), listOf(tag3, tag4));
+    assertTagsDoNotContain(patched.getTags(), listOf(tag1, tag2));
+
+    // PATCH with empty tags - should remove all tags
+    originalJson = JsonUtils.pojoToJson(patched);
+    patched.setTags(new ArrayList<>());
+    patched = patchEntity(patched.getId(), originalJson, patched, ADMIN_AUTH_HEADERS);
+
+    // Verify no tags
+    patched = getEntity(patched.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertTrue(patched.getTags().isEmpty());
+  }
+
+  @Test
+  void test_tagUpdateOptimization_LargeScale(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    // Create entity with initial tags (from different classifications)
+    List<TagLabel> initialTags = new ArrayList<>();
+    initialTags.add(
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+    initialTags.add(
+        new TagLabel()
+            .withTagFQN("Tier.Tier1")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(initialTags);
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify we have 2 unique tags
+    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+
+    // Add more unique tags via PUT - should be efficient (only adds new ones)
+    List<TagLabel> additionalTags = new ArrayList<>();
+    additionalTags.add(
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+    additionalTags.add(
+        new TagLabel()
+            .withTagFQN("Certification.Bronze")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+
+    create.setTags(additionalTags);
+
+    long startTime = System.currentTimeMillis();
+    T updated = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+    long updateTime = System.currentTimeMillis() - startTime;
+
+    updated = getEntity(updated.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(4, updated.getTags().size());
+    assertTagsContain(updated.getTags(), initialTags);
+    assertTagsContain(updated.getTags(), additionalTags);
+  }
+
+  private void assertTagsContain(List<TagLabel> tags, List<TagLabel> expectedTags) {
+    for (TagLabel expected : expectedTags) {
+      assertTrue(
+          tags.stream().anyMatch(tag -> tag.getTagFQN().equals(expected.getTagFQN())),
+          "Tags should contain: " + expected.getTagFQN());
+    }
+  }
+
+  private void assertTagsDoNotContain(List<TagLabel> tags, List<TagLabel> unexpectedTags) {
+    for (TagLabel unexpected : unexpectedTags) {
+      assertFalse(
+          tags.stream().anyMatch(tag -> tag.getTagFQN().equals(unexpected.getTagFQN())),
+          "Tags should not contain: " + unexpected.getTagFQN());
+    }
+  }
+
+  @Test
   @Execution(ExecutionMode.CONCURRENT)
   void patch_validEntityOwner_200(TestInfo test) throws IOException {
     if (!supportsOwners || !supportsPatch) {
@@ -3092,11 +3236,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               connectLatch.countDown();
               messageLatch.countDown();
             })
-        .on(
-            Socket.EVENT_DISCONNECT,
-            args -> {
-              LOG.info("Disconnected from Socket.IO server");
-            });
+        .on(Socket.EVENT_DISCONNECT, args -> LOG.info("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {
@@ -4972,9 +5112,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             })
         .on(
             Socket.EVENT_DISCONNECT,
-            args -> {
-              System.out.println("Disconnected from Socket.IO server");
-            });
+            args -> System.out.println("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {
@@ -5046,9 +5184,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             })
         .on(
             Socket.EVENT_DISCONNECT,
-            args -> {
-              System.out.println("Disconnected from Socket.IO server");
-            });
+            args -> System.out.println("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {

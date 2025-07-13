@@ -474,7 +474,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void post_testWithInvalidEntityTestSuite_4xx(TestInfo test) throws IOException {
+  void post_testWithInvalidEntityTestSuite_4xx(TestInfo test) {
     CreateTestCase create = createRequest(test);
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
 
@@ -984,13 +984,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     allEntities
         .getData()
         .forEach(
-            tc -> {
-              assertTrue(
-                  tc.getOwners().stream().anyMatch(owner -> owner.getId().equals(user2Ref.getId())),
-                  String.format(
-                      "Test case %s does not contain the expected owner %s",
-                      tc.getName(), user2Ref.getName()));
-            });
+            tc ->
+                assertTrue(
+                    tc.getOwners().stream()
+                        .anyMatch(owner -> owner.getId().equals(user2Ref.getId())),
+                    String.format(
+                        "Test case %s does not contain the expected owner %s",
+                        tc.getName(), user2Ref.getName())));
 
     queryParams.put("owner", team.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
@@ -3803,7 +3803,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_testCaseInvalidEntityLinkTest(TestInfo testInfo) throws IOException {
+  void test_testCaseInvalidEntityLinkTest(TestInfo testInfo) {
     // Invalid entity link as not parsable by antlr parser
     String entityLink = "<#E::table::special!@#$%^&*()_+[]{}|;:\\'\",./?>";
     CreateTestCase create = createRequest(testInfo);
@@ -3848,7 +3848,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_columnTestCaseValidation(TestInfo testInfo) throws IOException {
+  void test_columnTestCaseValidation(TestInfo testInfo) {
     CreateTestCase create = createRequest(testInfo);
     String invalidFieldNameLink =
         "<#E::table::" + TEST_TABLE1.getFullyQualifiedName() + "::invalidField::columnName>";
