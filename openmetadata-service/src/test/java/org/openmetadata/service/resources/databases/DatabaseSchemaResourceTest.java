@@ -617,7 +617,6 @@ public class DatabaseSchemaResourceTest
         listOrEmpty(updatedTable.getTags()).isEmpty(), "Tags should be empty after clearing");
     assertTrue(
         listOrEmpty(updatedTable.getDomains()).isEmpty(), "Domain should be null after clearing");
-    assertListNull(updatedTable.getDomains(), "Domain should be null after clearing");
   }
 
   @Test

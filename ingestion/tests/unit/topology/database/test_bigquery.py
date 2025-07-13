@@ -63,7 +63,6 @@ mock_bq_config = {
         "serviceConnection": {
             "config": {
                 "type": "BigQuery",
-                "billingProjectId": "my-gcp-billing-project",
                 "credentials": {
                     "gcpConfig": {
                         "type": "service_account",
@@ -297,6 +296,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="INTEGER",
                     constraint="PRIMARY_KEY",
+                    tags=[],
                 ),
                 Column(
                     name="first_name",
@@ -304,6 +304,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="VARCHAR",
                     constraint="NULL",
+                    tags=[],
                 ),
                 Column(
                     name="last_name",
@@ -311,6 +312,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="VARCHAR",
                     constraint="NULL",
+                    tags=[],
                 ),
             ],
             tableConstraints=[],
@@ -335,6 +337,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="INTEGER",
                     constraint="NULL",
+                    tags=[],
                 ),
                 Column(
                     name="customer_id",
@@ -342,6 +345,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="INTEGER",
                     constraint="NULL",
+                    tags=[],
                 ),
                 Column(
                     name="status",
@@ -349,6 +353,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="VARCHAR",
                     constraint="NULL",
+                    tags=[],
                 ),
             ],
             tableConstraints=[
@@ -526,7 +531,7 @@ class BigqueryUnitTest(TestCase):
             self.bq_source.inspector.get_table_comment = lambda table_name, schema: {
                 "text": table[2]
             }  # pylint: disable=cell-var-from-loop
-            
+
             # Mock the BigQuery client get_table method for clustering fields
             mock_table = Mock()
             mock_table.clustering_fields = []  # Empty list to avoid constraint creation

@@ -2529,10 +2529,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             createTestCase, DOMAIN.getEntityReference());
 
     // Check domain properly updated in search
-    verifyDomainInSearch(db.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(schema.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(table.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(testCase.getEntityReference(), DOMAIN.getEntityReference());
+    verifyDomainsInSearch(db.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(schema.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(table.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(testCase.getEntityReference(), List.of(DOMAIN.getEntityReference()));
 
     // Update domain of service within same session
     ChangeDescription change = getChangeDescription(dbService, MINOR_UPDATE);
@@ -2547,10 +2547,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             change);
 
     // Check domain properly updated in search
-    verifyDomainInSearch(db.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(schema.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(table.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(testCase.getEntityReference(), DOMAIN1.getEntityReference());
+    verifyDomainsInSearch(db.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(schema.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(table.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(testCase.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
 
     // Change the domain of table and ensure further ingestion updates don't overwrite the domain
     assertSingleDomainInheritanceOverride(
@@ -2593,12 +2593,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             createTable, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
 
     // Verify multiple domains are properly updated in search
-    verifyDomainInSearch(db.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(db.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(schema.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(schema.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(table.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(table.getEntityReference(), DOMAIN1.getEntityReference());
+    verifyDomainsInSearch(
+        db.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(
+        schema.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(
+        table.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
   }
 
   @Test

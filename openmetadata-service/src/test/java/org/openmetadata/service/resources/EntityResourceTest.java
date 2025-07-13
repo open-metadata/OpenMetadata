@@ -4792,7 +4792,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertReferenceList(expectedOwners, owners);
   }
 
-  public void verifyDomainInSearch(EntityReference entity, EntityReference expectedDomain)
+  public void verifyDomainsInSearch(EntityReference entity, List<EntityReference> expectedDomains)
       throws IOException {
     RestClient searchClient = getSearchClient();
     String entityType = entity.getType();
@@ -4818,7 +4818,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         (LinkedHashMap<String, Object>) hitsList.get(0).get("_source");
     List<EntityReference> domains =
         JsonUtils.convertObjects(source.get("domains"), EntityReference.class);
-    assertEquals(expectedDomain.getId(), domains.get(0).getId());
+    assertReferenceList(expectedDomains, domains);
   }
 
   private List<EntityReference> extractEntities(
