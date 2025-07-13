@@ -296,13 +296,13 @@ jwtTokenConfiguration:
   keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
 elasticsearch:
-  searchType: ${SEARCH_TYPE:- "opensearch"}
+  searchType: ${SEARCH_TYPE:- "elasticsearch"}
   host: ${ELASTICSEARCH_HOST:-localhost}
   port: ${ELASTICSEARCH_PORT:-9200}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
   username: ${ELASTICSEARCH_USER:-""}
   password: ${ELASTICSEARCH_PASSWORD:-""}
-  clusterAlias: ${ELASTICSEARCH_CLUSTER_ALIAS:-"openmetadata"}
+  clusterAlias: ${ELASTICSEARCH_CLUSTER_ALIAS:-""}
   truststorePath: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
   truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
