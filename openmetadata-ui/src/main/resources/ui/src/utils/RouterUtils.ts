@@ -359,18 +359,6 @@ export const getTagPath = (fqn?: string) => {
   return path;
 };
 
-export const getAddDataQualityTableTestPath = (
-  dashboardType: string,
-  fqn: string
-) => {
-  let path = ROUTES.ADD_DATA_QUALITY_TEST_CASE;
-
-  path = path
-    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
-
-  return path;
-};
 export const getAddCustomMetricPath = (
   dashboardType: ProfilerDashboardType,
   fqn: string

@@ -37,10 +37,7 @@ import {
 } from '../../../../../rest/tableAPI';
 import { Transi18next } from '../../../../../utils/CommonUtils';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
-import {
-  getAddCustomMetricPath,
-  getAddDataQualityTableTestPath,
-} from '../../../../../utils/RouterUtils';
+import { getAddCustomMetricPath } from '../../../../../utils/RouterUtils';
 import {
   calculateCustomMetrics,
   calculateRowCountMetrics,
@@ -50,6 +47,7 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
 import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
+import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import PageHeader from '../../../../PageHeader/PageHeader.component';
 import CustomBarChart from '../../../../Visualisations/Chart/CustomBarChart';
 import OperationDateBarChart from '../../../../Visualisations/Chart/OperationDateBarChart';
@@ -76,6 +74,7 @@ const TableProfilerChart = ({
     customMetric: tableCustomMetric,
     dateRangeObject = DEFAULT_RANGE_DATA,
     onDateRangeChange,
+    onTestCaseDrawerOpen,
   } = useTableProfiler();
 
   const { fqn: datasetFQN } = useFqn();
@@ -107,12 +106,7 @@ const TableProfilerChart = ({
       label: <TabsLabel id="test-case" name={t('label.test-case')} />,
       key: 'test-case',
       onClick: () => {
-        navigate(
-          getAddDataQualityTableTestPath(
-            ProfilerDashboardType.TABLE,
-            datasetFQN
-          )
-        );
+        onTestCaseDrawerOpen(TestLevel.TABLE);
       },
     },
     {

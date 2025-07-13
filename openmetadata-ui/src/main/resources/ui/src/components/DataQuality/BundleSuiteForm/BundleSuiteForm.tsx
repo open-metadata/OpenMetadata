@@ -79,7 +79,6 @@ import {
 const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
   className,
   drawerProps,
-  isDrawer = false,
   onCancel,
   onSuccess,
   initialValues,
@@ -293,26 +292,15 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         })
       );
 
-      if (isDrawer) {
-        onCancel?.();
-      }
+      onCancel?.();
     } catch (error) {
-      // Show inline error alert for drawer mode, toast for standalone
-      if (isDrawer) {
-        const errorMsg =
-          (error as AxiosError<{ message: string }>)?.response?.data?.message ||
-          t('server.create-entity-error', {
-            entity: t('label.test-suite'),
-          });
-        setErrorMessage(errorMsg);
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          t('server.create-entity-error', {
-            entity: t('label.test-suite'),
-          })
-        );
-      }
+      // Show inline error alert for drawer mode
+      const errorMsg =
+        (error as AxiosError<{ message: string }>)?.response?.data?.message ||
+        t('server.create-entity-error', {
+          entity: t('label.test-suite'),
+        });
+      setErrorMessage(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -343,17 +331,9 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
   );
 
   const formContent = (
-    <div
-      className={classNames(
-        'bundle-suite-form',
-        {
-          'drawer-mode': isDrawer,
-          'standalone-mode': !isDrawer,
-        },
-        className
-      )}>
+    <div className={classNames('bundle-suite-form drawer-mode', className)}>
       {/* Floating Error Alert - always visible at top */}
-      {isDrawer && errorMessage && (
+      {errorMessage && (
         <div className="floating-error-alert">
           <AlertBar
             defafultExpand
@@ -382,12 +362,6 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
           scrollMode: 'if-needed',
         }}
         onFinish={handleFormSubmit}>
-        {!isDrawer && (
-          <Typography.Title level={4}>
-            {t('label.create-entity', { entity: t('label.bundle-suite') })}
-          </Typography.Title>
-        )}
-
         {/* Basic Information */}
         <Card className="form-card-section" data-testid="basic-info-card">
           {generateFormFields(basicInfoFormFields)}
@@ -487,10 +461,6 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
           )}
         </Card>
       </Form>
-
-      {!isDrawer && (
-        <div className="bundle-suite-form-actions">{renderActionButtons}</div>
-      )}
     </div>
   );
 
@@ -498,35 +468,31 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
     <div className="drawer-footer-actions">{renderActionButtons}</div>
   );
 
-  if (isDrawer) {
-    return (
-      <Drawer
-        destroyOnClose
-        className="custom-drawer-style"
-        closable={false}
-        footer={drawerFooter}
-        maskClosable={false}
-        placement="right"
-        size="large"
-        title={t('label.add-entity', {
-          entity: t('label.bundle-suite'),
-        })}
-        {...drawerProps}
-        extra={
-          <Button
-            className="drawer-close-icon flex-center"
-            icon={<CloseIcon />}
-            type="link"
-            onClick={onCancel}
-          />
-        }
-        onClose={onCancel}>
-        <div className="drawer-form-content">{formContent}</div>
-      </Drawer>
-    );
-  }
-
-  return formContent;
+  return (
+    <Drawer
+      destroyOnClose
+      className="custom-drawer-style"
+      closable={false}
+      footer={drawerFooter}
+      maskClosable={false}
+      placement="right"
+      size="large"
+      title={t('label.add-entity', {
+        entity: t('label.bundle-suite'),
+      })}
+      {...drawerProps}
+      extra={
+        <Button
+          className="drawer-close-icon flex-center"
+          icon={<CloseIcon />}
+          type="link"
+          onClick={onCancel}
+        />
+      }
+      onClose={onCancel}>
+      <div className="drawer-form-content">{formContent}</div>
+    </Drawer>
+  );
 };
 
 export default BundleSuiteForm;

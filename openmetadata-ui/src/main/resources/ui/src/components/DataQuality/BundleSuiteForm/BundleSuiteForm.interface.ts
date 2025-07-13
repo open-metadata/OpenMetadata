@@ -16,7 +16,6 @@ import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 
 export interface BundleSuiteFormProps {
-  isDrawer?: boolean;
   drawerProps?: DrawerProps;
   className?: string;
   onCancel?: () => void;

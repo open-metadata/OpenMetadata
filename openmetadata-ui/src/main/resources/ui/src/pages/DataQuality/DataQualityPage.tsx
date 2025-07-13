@@ -13,6 +13,7 @@
 
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
+import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -35,7 +36,8 @@ const DataQualityPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { testSuite: testSuitePermission } = permissions;
+  const { testSuite: testSuitePermission, testCase: testCasePermission } =
+    permissions;
 
   // Add state for modal open/close
   const [isTestCaseModalOpen, setIsTestCaseModalOpen] = useState(false);
@@ -58,18 +60,27 @@ const DataQualityPage = () => {
     setIsBundleSuiteModalOpen(false);
   };
 
-  const addButtonContent = [
-    {
-      label: t('label.test-case'),
-      key: '1',
-      onClick: handleOpenTestCaseModal,
-    },
-    {
-      label: t('label.bundle-suite'),
-      key: '2',
-      onClick: handleOpenBundleSuiteModal,
-    },
-  ];
+  const addButtonContent = useMemo(() => {
+    const btn = [];
+
+    if (testCasePermission?.Create) {
+      btn.push({
+        label: t('label.test-case'),
+        key: '1',
+        onClick: handleOpenTestCaseModal,
+      });
+    }
+
+    if (testSuitePermission?.Create) {
+      btn.push({
+        label: t('label.bundle-suite'),
+        key: '2',
+        onClick: handleOpenBundleSuiteModal,
+      });
+    }
+
+    return btn;
+  }, [permissions]);
 
   const menuItems = useMemo(() => {
     const data = DataQualityClassBase.getDataQualityTab();
@@ -127,7 +138,7 @@ const DataQualityPage = () => {
                     </Button>
                   )}
                 {activeTab === DataQualityPageTabs.TEST_CASES &&
-                  testSuitePermission?.Create && (
+                  testCasePermission?.Create && (
                     <Button
                       data-testid="add-test-case-btn"
                       type="primary"
@@ -139,24 +150,25 @@ const DataQualityPage = () => {
                   )}
                 {exportDataQualityDashboardButton}
 
-                {activeTab === DataQualityPageTabs.DASHBOARD && (
-                  <Dropdown
-                    className="m-l-md h-10"
-                    menu={{
-                      items: addButtonContent,
-                    }}
-                    placement="bottomRight"
-                    trigger={['click']}>
-                    <Button
-                      data-testid="data-quality-add-button-menu"
-                      type="primary">
-                      <Space>
-                        {t('label.add')}
-                        <DownOutlined />
-                      </Space>
-                    </Button>
-                  </Dropdown>
-                )}
+                {activeTab === DataQualityPageTabs.DASHBOARD &&
+                  !isEmpty(addButtonContent) && (
+                    <Dropdown
+                      className="m-l-md h-10"
+                      menu={{
+                        items: addButtonContent,
+                      }}
+                      placement="bottomRight"
+                      trigger={['click']}>
+                      <Button
+                        data-testid="data-quality-add-button-menu"
+                        type="primary">
+                        <Space>
+                          {t('label.add')}
+                          <DownOutlined />
+                        </Space>
+                      </Button>
+                    </Dropdown>
+                  )}
               </Col>
             </Row>
           </Card>
@@ -173,7 +185,6 @@ const DataQualityPage = () => {
       </Row>
       {isTestCaseModalOpen && (
         <TestCaseFormV1
-          isDrawer
           drawerProps={{
             title: t('label.add-entity', {
               entity: t('label.test-case'),
@@ -185,7 +196,6 @@ const DataQualityPage = () => {
       )}
       {isBundleSuiteModalOpen && (
         <BundleSuiteForm
-          isDrawer
           drawerProps={{
             open: isBundleSuiteModalOpen,
           }}

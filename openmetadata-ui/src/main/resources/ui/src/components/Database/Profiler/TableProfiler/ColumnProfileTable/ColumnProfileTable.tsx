@@ -57,10 +57,7 @@ import { getListTestCaseBySearch } from '../../../../../rest/testAPI';
 import { formatNumberWithComma } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../../../utils/FeedUtils';
-import {
-  getAddCustomMetricPath,
-  getAddDataQualityTableTestPath,
-} from '../../../../../utils/RouterUtils';
+import { getAddCustomMetricPath } from '../../../../../utils/RouterUtils';
 import {
   generateEntityLink,
   getTableExpandableConfig,
@@ -73,6 +70,7 @@ import { SummaryCardProps } from '../../../../common/SummaryCard/SummaryCard.int
 import Table from '../../../../common/Table/Table';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import TestCaseStatusSummaryIndicator from '../../../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
+import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import PageHeader from '../../../../PageHeader/PageHeader.component';
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from '../ColumnPickerMenu';
@@ -100,6 +98,7 @@ const ColumnProfileTable = () => {
     dateRangeObject,
     onDateRangeChange,
     testCaseSummary,
+    onTestCaseDrawerOpen,
   } = useTableProfiler();
 
   const testCaseCounts = useMemo(
@@ -305,13 +304,7 @@ const ColumnProfileTable = () => {
       label: <TabsLabel id="test-case" name={t('label.test-case')} />,
       key: 'test-case',
       onClick: () => {
-        navigate({
-          pathname: getAddDataQualityTableTestPath(
-            ProfilerDashboardType.COLUMN,
-            fqn
-          ),
-          search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
-        });
+        onTestCaseDrawerOpen(TestLevel.COLUMN);
       },
     },
     {

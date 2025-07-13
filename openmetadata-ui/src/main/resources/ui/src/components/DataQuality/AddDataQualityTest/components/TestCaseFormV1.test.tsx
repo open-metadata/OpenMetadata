@@ -18,11 +18,6 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { forwardRef } from 'react';
-import {
-  LabelType,
-  State,
-  TagSource,
-} from '../../../../generated/type/tagLabel';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
@@ -31,13 +26,14 @@ import {
   getListTestDefinitions,
 } from '../../../../rest/testAPI';
 import TestCaseFormV1 from './TestCaseFormV1';
-import { TestCaseFormV1Props, TestLevel } from './TestCaseFormV1.interface';
+import { TestCaseFormV1Props } from './TestCaseFormV1.interface';
 
 const mockProps: TestCaseFormV1Props = {
   table: MOCK_TABLE,
   onFormSubmit: jest.fn(),
   onCancel: jest.fn(),
   loading: false,
+  drawerProps: { open: true },
 };
 
 const mockTestDefinitions = {
@@ -186,23 +182,29 @@ jest.mock('../../../../pages/TasksPage/shared/TagSuggestion', () =>
 );
 
 jest.mock('../../../common/AsyncSelect/AsyncSelect', () => ({
-  AsyncSelect: jest.fn().mockImplementation(({ api, onChange, ...props }) => (
-    <select
-      data-testid="async-select"
-      {...props}
-      onChange={(e) => {
-        onChange?.(e.target.value);
-        // Simulate API call result
-        if (api) {
-          api();
-        }
-      }}>
-      <option value="">Select table</option>
-      <option value="sample_data.ecommerce_db.shopify.users_table">
-        Users Table
-      </option>
-    </select>
-  )),
+  AsyncSelect: jest
+    .fn()
+    .mockImplementation(({ api, onChange, value, disabled }) => (
+      <select
+        data-testid="async-select"
+        disabled={disabled}
+        value={value || ''}
+        onChange={(e) => {
+          onChange?.(e.target.value);
+          // Simulate API call result
+          if (api) {
+            api();
+          }
+        }}>
+        <option value="">Select table</option>
+        <option value="sample_data.ecommerce_db.shopify.users_table">
+          Users Table
+        </option>
+        <option value="sample_data.ecommerce_db.shopify.dim_address">
+          Dim Address
+        </option>
+      </select>
+    )),
 }));
 
 jest.mock('../../../common/SelectionCardGroup/SelectionCardGroup', () =>
@@ -285,25 +287,13 @@ describe('TestCaseFormV1 Component', () => {
   });
 
   describe('Component Rendering', () => {
-    it('should render form in standalone mode', async () => {
-      render(<TestCaseFormV1 {...mockProps} />);
-
-      expect(
-        await screen.findByTestId('test-case-form-v1')
-      ).toBeInTheDocument();
-      expect(document.querySelector('.test-case-form-v1')).toBeInTheDocument();
-      expect(document.querySelector('.standalone-mode')).toBeInTheDocument();
-    });
-
     it('should render form in drawer mode', async () => {
       const drawerProps = {
         title: 'Create Test Case',
         open: true,
       };
 
-      render(
-        <TestCaseFormV1 {...mockProps} isDrawer drawerProps={drawerProps} />
-      );
+      render(<TestCaseFormV1 {...mockProps} drawerProps={drawerProps} />);
 
       expect(document.querySelector('.ant-drawer')).toBeInTheDocument();
       expect(
@@ -680,40 +670,30 @@ describe('TestCaseFormV1 Component', () => {
     });
   });
 
-  describe('Initial Values', () => {
-    it('should populate form with initial values', async () => {
-      const initialValues = {
-        testName: 'test_case_initial',
-        description: 'Initial test description',
-        tags: [
-          {
-            tagFQN: 'PII.Sensitive',
-            source: TagSource.Classification,
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ],
+  describe('Table Prop Handling', () => {
+    it('should pre-select table when provided via props', async () => {
+      const tableWithFQN = {
+        ...MOCK_TABLE,
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
       };
 
-      render(<TestCaseFormV1 {...mockProps} initialValues={initialValues} />);
-
-      const testNameField = await screen.findByTestId('test-case-name');
-
-      expect(testNameField).toHaveValue('test_case_initial');
-    });
-
-    it('should handle initial values for column test case', async () => {
-      const initialValues = {
-        testLevel: TestLevel.COLUMN,
-        selectedColumn: 'email',
-        testTypeId: 'columnValueLengthsToBeBetween',
-      };
-
-      render(<TestCaseFormV1 {...mockProps} initialValues={initialValues} />);
+      render(<TestCaseFormV1 {...mockProps} table={tableWithFQN} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('test-level-column')).toHaveClass('selected');
+        const tableSelect = screen.getByTestId('async-select');
+
+        expect(tableSelect).toHaveValue(
+          'sample_data.ecommerce_db.shopify.dim_address'
+        );
       });
+    });
+
+    it('should disable table selection when table is provided', async () => {
+      render(<TestCaseFormV1 {...mockProps} table={MOCK_TABLE} />);
+
+      const tableSelect = await screen.findByTestId('async-select');
+
+      expect(tableSelect).toBeDisabled();
     });
   });
 
@@ -744,11 +724,11 @@ describe('TestCaseFormV1 Component', () => {
     });
   });
 
-  describe('Drawer Mode Specific', () => {
-    it('should not show fixed action buttons in drawer mode', async () => {
-      render(<TestCaseFormV1 {...mockProps} isDrawer />);
+  describe('Drawer Specific', () => {
+    it('should not show fixed action buttons', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
 
-      // In drawer mode, action buttons should be in drawer footer, not fixed at bottom
+      // Action buttons should be in drawer footer, not fixed at bottom
       expect(
         document.querySelector('.test-case-form-actions')
       ).not.toBeInTheDocument();
@@ -760,9 +740,7 @@ describe('TestCaseFormV1 Component', () => {
         open: true,
       };
 
-      render(
-        <TestCaseFormV1 {...mockProps} isDrawer drawerProps={drawerProps} />
-      );
+      render(<TestCaseFormV1 {...mockProps} drawerProps={drawerProps} />);
 
       expect(screen.getByText('Custom Test Case Title')).toBeInTheDocument();
     });
@@ -773,9 +751,7 @@ describe('TestCaseFormV1 Component', () => {
         onClose: mockProps.onCancel,
       };
 
-      render(
-        <TestCaseFormV1 {...mockProps} isDrawer drawerProps={drawerProps} />
-      );
+      render(<TestCaseFormV1 {...mockProps} drawerProps={drawerProps} />);
 
       // Simulate drawer close
       await act(async () => {
@@ -787,23 +763,20 @@ describe('TestCaseFormV1 Component', () => {
   });
 
   describe('CSS Classes and Styling', () => {
-    it('should apply correct CSS classes in standalone mode', async () => {
+    it('should apply correct CSS classes in drawer mode', async () => {
       render(<TestCaseFormV1 {...mockProps} className="custom-class" />);
 
       const formContainer = document.querySelector('.test-case-form-v1');
 
       expect(formContainer).toHaveClass('test-case-form-v1');
-      expect(formContainer).toHaveClass('standalone-mode');
+      expect(formContainer).toHaveClass('drawer-mode');
       expect(formContainer).toHaveClass('custom-class');
     });
 
-    it('should apply drawer mode class when isDrawer is true', async () => {
+    it('should render drawer successfully', async () => {
       const drawerProps = { open: true };
-      render(
-        <TestCaseFormV1 {...mockProps} isDrawer drawerProps={drawerProps} />
-      );
+      render(<TestCaseFormV1 {...mockProps} drawerProps={drawerProps} />);
 
-      // In drawer mode, the component should render successfully
       expect(document.body).toBeInTheDocument();
     });
   });

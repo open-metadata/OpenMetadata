@@ -27,15 +27,14 @@ import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCar
 // COMPONENT PROPS
 // =============================================
 export interface TestCaseFormV1Props {
-  isDrawer?: boolean;
   drawerProps?: DrawerProps;
   className?: string;
   table?: Table;
   testSuite?: TestSuite;
   onFormSubmit?: (testCase: TestCase) => void;
   onCancel?: () => void;
-  initialValues?: Partial<FormValues>;
   loading?: boolean;
+  testLevel?: TestLevel;
 }
 
 // =============================================

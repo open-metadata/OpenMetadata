@@ -34,7 +34,7 @@ import {
 } from '../../../../../utils/SchedularUtils';
 import SelectionCardGroup from '../../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
-import './schedule-interval.less';
+import './schedule-interval-v1.less';
 import { StateValue } from './ScheduleInterval.interface';
 
 export interface ScheduleIntervalV1Props {

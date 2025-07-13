@@ -13,6 +13,40 @@
 
 @import (reference) url('../variables.less');
 
+// Mixins for icon button styles
+.icon-button-base() {
+  border-radius: @border-radius-base;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.icon-button-default() {
+  .icon-button-base();
+  width: 30px;
+  height: 30px;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+  }
+}
+
+.icon-button-sm() {
+  .icon-button-base();
+  width: 20px;
+  height: 20px;
+
+  svg {
+    width: 12px;
+    height: 12px;
+    vertical-align: middle;
+  }
+}
+
 .ant-btn,
 button {
   &:disabled {
@@ -116,42 +150,26 @@ button {
   background: transparent;
 }
 
+.ant-tooltip-disabled-compatible-wrapper.bordered {
+  .ant-btn-default {
+    .icon-button-default();
+  }
+
+  .ant-btn-sm {
+    .icon-button-sm();
+  }
+}
+
 .ant-btn.ant-btn-icon-only.bordered {
   border: 1px solid @grey-300;
   background-color: @white;
 
   &.ant-btn-default {
-    width: 30px;
-    height: 30px;
-    border-radius: @border-radius-base;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-
-    svg {
-      width: 16px;
-      height: 16px;
-      vertical-align: middle;
-    }
+    .icon-button-default();
   }
 
   &.ant-btn-sm {
-    width: 20px;
-    height: 20px;
-    border-radius: @border-radius-base;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-
-    svg {
-      width: 12px;
-      height: 12px;
-      vertical-align: middle;
-    }
+    .icon-button-sm();
   }
 
   svg {

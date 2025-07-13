@@ -59,6 +59,7 @@ const mockTestCases: TestCase[] = [
 const mockProps: BundleSuiteFormProps = {
   onCancel: jest.fn(),
   onSuccess: jest.fn(),
+  drawerProps: { open: true },
 };
 
 // Mock external dependencies
@@ -204,23 +205,21 @@ describe('BundleSuiteForm Component', () => {
   });
 
   describe('Component Rendering', () => {
-    it('should render form in standalone mode', async () => {
+    it('should render form in drawer mode', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 
       expect(await screen.findAllByText('label.create-entity')).toHaveLength(2); // One in header, one in card title
       expect(document.querySelector('.bundle-suite-form')).toBeInTheDocument();
-      expect(document.querySelector('.standalone-mode')).toBeInTheDocument();
+      expect(document.querySelector('.drawer-mode')).toBeInTheDocument();
     });
 
-    it('should render form in drawer mode', async () => {
+    it('should render drawer with custom props', async () => {
       const drawerProps = {
         open: true,
         title: 'Create Bundle Suite',
       };
 
-      render(
-        <BundleSuiteForm {...mockProps} isDrawer drawerProps={drawerProps} />
-      );
+      render(<BundleSuiteForm {...mockProps} drawerProps={drawerProps} />);
 
       await waitFor(() => {
         expect(document.querySelector('.ant-drawer')).toBeInTheDocument();
@@ -239,17 +238,8 @@ describe('BundleSuiteForm Component', () => {
       });
     });
 
-    it('should render action buttons in standalone mode', async () => {
-      render(<BundleSuiteForm {...mockProps} />);
-
-      expect(await screen.findByTestId('cancel-button')).toBeInTheDocument();
-      expect(await screen.findByTestId('submit-button')).toBeInTheDocument();
-    });
-
-    it('should render action buttons in drawer footer when isDrawer is true', async () => {
-      render(
-        <BundleSuiteForm {...mockProps} isDrawer drawerProps={{ open: true }} />
-      );
+    it('should render action buttons in drawer footer', async () => {
+      render(<BundleSuiteForm {...mockProps} drawerProps={{ open: true }} />);
 
       expect(await screen.findByTestId('cancel-button')).toBeInTheDocument();
       expect(await screen.findByTestId('submit-button')).toBeInTheDocument();
@@ -685,7 +675,7 @@ describe('BundleSuiteForm Component', () => {
       const mockNavigate = jest.fn();
       (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
 
-      render(<BundleSuiteForm />);
+      render(<BundleSuiteForm drawerProps={{ open: true }} />);
 
       const cancelBtn = await screen.findByTestId('cancel-button');
 
@@ -733,9 +723,9 @@ describe('BundleSuiteForm Component', () => {
     });
   });
 
-  describe('Drawer Mode Specific', () => {
-    it('should not show fixed action buttons in drawer mode', async () => {
-      render(<BundleSuiteForm {...mockProps} isDrawer />);
+  describe('Drawer Specific', () => {
+    it('should not show fixed action buttons', async () => {
+      render(<BundleSuiteForm {...mockProps} />);
 
       expect(
         document.querySelector('.bundle-suite-form-actions')
@@ -743,9 +733,7 @@ describe('BundleSuiteForm Component', () => {
     });
 
     it('should render drawer title when in drawer mode', async () => {
-      render(
-        <BundleSuiteForm {...mockProps} isDrawer drawerProps={{ open: true }} />
-      );
+      render(<BundleSuiteForm {...mockProps} drawerProps={{ open: true }} />);
 
       expect(screen.getByText('label.add-entity')).toBeInTheDocument();
     });
@@ -756,9 +744,7 @@ describe('BundleSuiteForm Component', () => {
         onClose: mockProps.onCancel,
       };
 
-      render(
-        <BundleSuiteForm {...mockProps} isDrawer drawerProps={drawerProps} />
-      );
+      render(<BundleSuiteForm {...mockProps} drawerProps={drawerProps} />);
 
       // Simulate drawer close
       await act(async () => {
@@ -769,9 +755,7 @@ describe('BundleSuiteForm Component', () => {
     });
 
     it('should call onCancel after successful submission in drawer mode', async () => {
-      render(
-        <BundleSuiteForm {...mockProps} isDrawer drawerProps={{ open: true }} />
-      );
+      render(<BundleSuiteForm {...mockProps} drawerProps={{ open: true }} />);
 
       // Fill required fields
       const nameInput = await screen.findByTestId('test-suite-name');
@@ -798,20 +782,18 @@ describe('BundleSuiteForm Component', () => {
   });
 
   describe('CSS Classes and Styling', () => {
-    it('should apply correct CSS classes in standalone mode', async () => {
+    it('should apply correct CSS classes in drawer mode', async () => {
       render(<BundleSuiteForm {...mockProps} className="custom-class" />);
 
       const formContainer = document.querySelector('.bundle-suite-form');
 
       expect(formContainer).toHaveClass('bundle-suite-form');
-      expect(formContainer).toHaveClass('standalone-mode');
+      expect(formContainer).toHaveClass('drawer-mode');
       expect(formContainer).toHaveClass('custom-class');
     });
 
-    it('should apply drawer mode class when isDrawer is true', async () => {
-      render(
-        <BundleSuiteForm {...mockProps} isDrawer drawerProps={{ open: true }} />
-      );
+    it('should apply drawer mode class', async () => {
+      render(<BundleSuiteForm {...mockProps} drawerProps={{ open: true }} />);
 
       const formContainer = document.querySelector('.bundle-suite-form');
 

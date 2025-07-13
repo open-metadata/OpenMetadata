@@ -57,7 +57,6 @@ import { Table } from '../../../../generated/entity/data/table';
 import { LogLevels } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   EntityType,
-  TestDataType,
   TestDefinition,
   TestPlatform,
 } from '../../../../generated/tests/testDefinition';
@@ -91,7 +90,7 @@ import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtil
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
-import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import { showSuccessToast } from '../../../../utils/ToastUtils';
 import AlertBar from '../../../AlertBar/AlertBar';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
@@ -131,19 +130,18 @@ const convertSearchSourceToTable = (searchSource: TableSearchSource): Table =>
 const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   className,
   drawerProps,
-  initialValues,
-  isDrawer = false,
   table,
   testSuite,
   onFormSubmit,
   onCancel,
   loading: externalLoading = false,
+  testLevel = TestLevel.TABLE,
 }: TestCaseFormV1Props) => {
   // =============================================
   // HOOKS - External
   // =============================================
   const { t } = useTranslation();
-  const { config } = useLimitStore();
+  const { config, getResourceLimit } = useLimitStore();
   const [form] = useForm<FormValues>();
   const { isAirflowAvailable } = useAirflowStatus();
 
@@ -178,9 +176,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
   const [selectedTestDefinition, setSelectedTestDefinition] =
     useState<TestDefinition>();
-  const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
-    initialValues?.testTypeId
-  );
+  const [selectedTestType, setSelectedTestType] = useState<
+    string | undefined
+  >();
   const [currentColumnType, setCurrentColumnType] = useState<string>();
 
   // Table state
@@ -284,21 +282,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     );
   }, [selectedTestDefinition, selectedTableData]);
 
-  // Initial parameter values
-  const getInitialParamsValue = useMemo(() => {
-    if (!initialValues?.parameterValues?.length) {
-      return undefined;
-    }
-
-    return initialValues.parameterValues.reduce(
-      (acc, curr) => ({
-        ...acc,
-        [curr.name || '']: curr?.value,
-      }),
-      {}
-    );
-  }, [initialValues?.parameterValues]);
-
   // Dynamic test name generation
   const generateDynamicTestName = useCallback(() => {
     const testType = selectedTestDefinition?.name || '';
@@ -391,7 +374,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         type: FieldTypes.DESCRIPTION,
         props: {
           'data-testid': 'description',
-          initialValue: initialValues?.description ?? '',
+          initialValue: '',
           style: { margin: 0 },
         },
       },
@@ -425,12 +408,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         },
       },
     ],
-    [
-      initialValues?.description,
-      initialValues?.tags,
-      existingTestCases,
-      setIsTestNameManuallyEdited,
-    ]
+    [existingTestCases, setIsTestNameManuallyEdited]
   );
 
   const computeRowCountField: FieldProp[] = useMemo(
@@ -537,44 +515,61 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   );
 
   // API-related callbacks
-  const fetchTables = useCallback(async (searchValue = '', page = 1) => {
-    try {
-      const response = await searchQuery({
-        query: searchValue ? `*${searchValue}*` : '*',
-        pageNumber: page,
-        pageSize: PAGE_SIZE_MEDIUM,
-        searchIndex: SearchIndex.TABLE,
-        includeFields: TABLE_SEARCH_FIELDS,
-        fetchSource: true,
-        trackTotalHits: true,
-      });
+  const fetchTables = useCallback(
+    async (searchValue = '', page = 1) => {
+      // Skip API call if table is provided via props
+      if (table) {
+        return {
+          data: [
+            {
+              label: table.fullyQualifiedName,
+              value: table.fullyQualifiedName,
+              data: table,
+            },
+          ],
+          paging: { total: 1 },
+        };
+      }
 
-      const data = response.hits.hits.map((hit) => {
-        setTablesCache((prev) => {
-          const newCache = new Map(prev);
-          newCache.set(
-            hit._source.fullyQualifiedName ?? hit._source.name,
-            hit._source
-          );
+      try {
+        const response = await searchQuery({
+          query: searchValue ? `*${searchValue}*` : '*',
+          pageNumber: page,
+          pageSize: PAGE_SIZE_MEDIUM,
+          searchIndex: SearchIndex.TABLE,
+          includeFields: TABLE_SEARCH_FIELDS,
+          fetchSource: true,
+          trackTotalHits: true,
+        });
 
-          return newCache;
+        const data = response.hits.hits.map((hit) => {
+          setTablesCache((prev) => {
+            const newCache = new Map(prev);
+            newCache.set(
+              hit._source.fullyQualifiedName ?? hit._source.name,
+              hit._source
+            );
+
+            return newCache;
+          });
+
+          return {
+            label: hit._source.fullyQualifiedName,
+            value: hit._source.fullyQualifiedName,
+            data: hit._source,
+          };
         });
 
         return {
-          label: hit._source.fullyQualifiedName,
-          value: hit._source.fullyQualifiedName,
-          data: hit._source,
+          data,
+          paging: { total: response.hits.total.value },
         };
-      });
-
-      return {
-        data,
-        paging: { total: response.hits.total.value },
-      };
-    } catch (error) {
-      return { data: [], paging: { total: 0 } };
-    }
-  }, []);
+      } catch (error) {
+        return { data: [], paging: { total: 0 } };
+      }
+    },
+    [table]
+  );
 
   const fetchTestDefinitions = useCallback(
     async (columnType?: string) => {
@@ -597,6 +592,12 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   );
 
   const fetchSelectedTableData = useCallback(async (tableFqn: string) => {
+    if (table) {
+      setSelectedTableData(table);
+
+      return;
+    }
+
     try {
       const tableData = await getTableDetailsByFQN(tableFqn, {
         fields: 'columns,testSuite',
@@ -635,30 +636,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
 
   // Utility callbacks
   const getSelectedTestDefinition = useCallback(() => {
-    const testType = isEmpty(initialValues?.testTypeId)
-      ? selectedTestType
-      : initialValues?.testTypeId;
-
     return testDefinitions.find(
-      (definition) => definition.fullyQualifiedName === testType
+      (definition) => definition.fullyQualifiedName === selectedTestType
     );
-  }, [initialValues?.testTypeId, selectedTestType, testDefinitions]);
-
-  const getParamsValue = useCallback(() => {
-    return initialValues?.parameterValues?.reduce(
-      (acc, curr) => ({
-        ...acc,
-        [curr.name || '']:
-          getSelectedTestDefinition()?.parameterDefinition?.[0].dataType ===
-          TestDataType.Array
-            ? (JSON.parse(curr?.value || '[]') as string[]).map((val) => ({
-                value: val,
-              }))
-            : curr?.value,
-      }),
-      {}
-    );
-  }, [initialValues?.parameterValues, getSelectedTestDefinition]);
+  }, [selectedTestType, testDefinitions]);
 
   const createTestCaseObj = useCallback(
     (value: FormValues): CreateTestCase => {
@@ -710,6 +691,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
       try {
         const testCaseObj = createTestCaseObj(values);
         const createdTestCase = await createTestCase(testCaseObj);
+
+        // Update current count when Create / Delete operation performed
+        await getResourceLimit('dataQuality', true, true);
         const testSuiteResponse = createdTestCase.testSuite ?? testSuite;
 
         // Pipeline Creation Logic:
@@ -779,40 +763,20 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         );
 
         onFormSubmit?.(createdTestCase);
-        if (isDrawer) {
-          onCancel?.();
-        }
+        onCancel?.();
       } catch (error) {
-        // Show inline error alert for drawer mode, toast for standalone
-        if (isDrawer) {
-          const errorMsg =
-            (error as AxiosError<{ message: string }>)?.response?.data
-              ?.message ||
-            t('server.create-entity-error', {
-              entity: t('label.test-case'),
-            });
-          setErrorMessage(errorMsg);
-        } else {
-          showErrorToast(
-            error as AxiosError,
-            t('server.create-entity-error', {
-              entity: t('label.test-case'),
-            })
-          );
-        }
+        // Show inline error alert for drawer mode
+        const errorMsg =
+          (error as AxiosError<{ message: string }>)?.response?.data?.message ||
+          t('server.create-entity-error', {
+            entity: t('label.test-case'),
+          });
+        setErrorMessage(errorMsg);
       } finally {
         setLoading(false);
       }
     },
-    [
-      createTestCaseObj,
-      testSuite,
-      selectedTable,
-      table,
-      onFormSubmit,
-      isDrawer,
-      onCancel,
-    ]
+    [createTestCaseObj, testSuite, selectedTable, table, onFormSubmit, onCancel]
   );
 
   // =============================================
@@ -825,23 +789,12 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     }
   }, [isSelectAllTestCasesEnabled, form]);
 
-  // Initialize form on mount and update params when test definition changes
+  // Initialize form on mount
   useEffect(() => {
     if (!isInitialized) {
       setIsInitialized(true);
-      if (initialValues?.parameterValues?.length && selectedTestDefinition) {
-        form.setFieldsValue({
-          params: getParamsValue(),
-        });
-      }
     }
-  }, [
-    isInitialized,
-    initialValues?.parameterValues,
-    selectedTestDefinition,
-    form,
-    getParamsValue,
-  ]);
+  }, [isInitialized]);
 
   // Handle test level changes
   useEffect(() => {
@@ -924,22 +877,24 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     checkExistingPipelines,
   ]);
 
-  // Initialize manual edit flag based on initial values
+  // Initialize manual edit flag
   useEffect(() => {
-    if (initialValues?.testName) {
-      setIsTestNameManuallyEdited(true);
-    } else {
-      // Reset manual edit flag when no initial values (new test case)
-      setIsTestNameManuallyEdited(false);
-    }
-  }, [initialValues?.testName]);
+    // Reset manual edit flag for new test case
+    setIsTestNameManuallyEdited(false);
+  }, []);
 
   // Reset manual edit flag when drawer is opened for new test case
   useEffect(() => {
-    if (isDrawer && !initialValues?.testName) {
-      setIsTestNameManuallyEdited(false);
+    setIsTestNameManuallyEdited(false);
+  }, []);
+
+  // Set table value when table prop is provided
+  useEffect(() => {
+    if (table?.fullyQualifiedName) {
+      form.setFieldValue('selectedTable', table.fullyQualifiedName);
+      setSelectedTableData(table);
     }
-  }, [isDrawer, initialValues?.testName]);
+  }, [table, form]);
 
   // Auto-generate test name when inputs change
   useEffect(() => {
@@ -947,7 +902,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
       selectedTable &&
       selectedTestDefinition &&
       selectedTestLevel &&
-      !initialValues?.testName && // Only auto-generate if no initial value provided
       !isTestNameManuallyEdited // Don't override if user has manually edited the name
     ) {
       const dynamicName = generateDynamicTestName();
@@ -962,7 +916,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     selectedTestLevel,
     generateDynamicTestName,
     form,
-    initialValues?.testName,
     isTestNameManuallyEdited,
   ]);
 
@@ -970,17 +923,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   // RENDER
   // =============================================
   const formContent = (
-    <div
-      className={classNames(
-        'test-case-form-v1',
-        {
-          'drawer-mode': isDrawer,
-          'standalone-mode': !isDrawer,
-        },
-        className
-      )}>
+    <div className={classNames('test-case-form-v1 drawer-mode', className)}>
       {/* Floating Error Alert - always visible at top */}
-      {isDrawer && errorMessage && (
+      {errorMessage && (
         <div className="floating-error-alert">
           <AlertBar
             defafultExpand
@@ -996,18 +941,15 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         data-testid="test-case-form-v1"
         form={form}
         initialValues={{
-          testLevel: TestLevel.TABLE,
+          testLevel,
+          useDynamicAssertion: false,
           ...testCaseClassBase.initialFormValues(),
-          testName: initialValues?.testName,
-          testTypeId: initialValues?.testTypeId,
-          params: getInitialParamsValue,
-          tags: initialValues?.tags || [],
-          useDynamicAssertion: initialValues?.useDynamicAssertion ?? false,
+
           cron: DEFAULT_SCHEDULE_CRON_DAILY,
           enableDebugLog: false,
           raiseOnError: true,
           selectAllTestCases: true,
-          ...initialValues,
+          selectedTable: table?.fullyQualifiedName,
         }}
         layout="vertical"
         name="testCaseFormV1"
@@ -1051,6 +993,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               enableInfiniteScroll
               showSearch
               api={fetchTables}
+              disabled={Boolean(table)}
               placeholder={t('label.select-entity', {
                 entity: t('label.table-lowercase'),
               })}
@@ -1262,10 +1205,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           </Row>
         )}
       </Form>
-
-      {!isDrawer && (
-        <div className="test-case-form-actions">{renderActionButtons}</div>
-      )}
     </div>
   );
 
@@ -1273,35 +1212,31 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     <div className="drawer-footer-actions">{renderActionButtons}</div>
   );
 
-  if (isDrawer) {
-    return (
-      <Drawer
-        destroyOnClose
-        className="custom-drawer-style"
-        closable={false}
-        footer={drawerFooter}
-        maskClosable={false}
-        placement="right"
-        size="large"
-        title={t('label.add-entity', {
-          entity: t('label.test-case'),
-        })}
-        {...drawerProps}
-        extra={
-          <Button
-            className="drawer-close-icon flex-center"
-            icon={<CloseIcon />}
-            type="link"
-            onClick={onCancel}
-          />
-        }
-        onClose={onCancel}>
-        <div className="drawer-form-content">{formContent}</div>
-      </Drawer>
-    );
-  }
-
-  return formContent;
+  return (
+    <Drawer
+      destroyOnClose
+      className="custom-drawer-style"
+      closable={false}
+      footer={drawerFooter}
+      maskClosable={false}
+      placement="right"
+      size="large"
+      title={t('label.add-entity', {
+        entity: t('label.test-case'),
+      })}
+      {...drawerProps}
+      extra={
+        <Button
+          className="drawer-close-icon flex-center"
+          icon={<CloseIcon />}
+          type="link"
+          onClick={onCancel}
+        />
+      }
+      onClose={onCancel}>
+      <div className="drawer-form-content">{formContent}</div>
+    </Drawer>
+  );
 };
 
 export default TestCaseFormV1;

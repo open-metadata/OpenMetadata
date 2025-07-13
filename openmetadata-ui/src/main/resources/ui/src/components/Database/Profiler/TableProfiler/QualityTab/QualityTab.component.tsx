@@ -37,12 +37,10 @@ import {
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
-import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { PipelineType } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
-import { useFqn } from '../../../../../hooks/useFqn';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import {
   ListTestCaseParamsBySearch,
@@ -52,14 +50,12 @@ import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
-import {
-  getAddDataQualityTableTestPath,
-  getEntityDetailsPath,
-} from '../../../../../utils/RouterUtils';
+import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
+import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { SummaryPanel } from '../../../../DataQuality/SummaryPannel/SummaryPanel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import PageHeader from '../../../../PageHeader/PageHeader.component';
@@ -79,6 +75,7 @@ export const QualityTab = () => {
     table,
     testCaseSummary,
     onSettingButtonClick,
+    onTestCaseDrawerOpen,
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
 
@@ -97,7 +94,7 @@ export const QualityTab = () => {
       editDataProfile: permissions?.EditAll || permissions?.EditDataProfile,
     };
   }, [permissions]);
-  const { fqn: datasetFQN } = useFqn();
+
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
@@ -284,8 +281,8 @@ export const QualityTab = () => {
     }
   };
 
-  const handleAddTestClick = (type: ProfilerDashboardType) => {
-    navigate(getAddDataQualityTableTestPath(type, datasetFQN));
+  const handleAddTestClick = (type: TestLevel) => {
+    onTestCaseDrawerOpen(type);
   };
 
   const handleTabChange = () => {
@@ -303,12 +300,12 @@ export const QualityTab = () => {
       {
         label: <TabsLabel id="table" name={t('label.table')} />,
         key: '1',
-        onClick: () => handleAddTestClick(ProfilerDashboardType.TABLE),
+        onClick: () => handleAddTestClick(TestLevel.TABLE),
       },
       {
         label: <TabsLabel id="column" name={t('label.column')} />,
         key: '2',
-        onClick: () => handleAddTestClick(ProfilerDashboardType.COLUMN),
+        onClick: () => handleAddTestClick(TestLevel.COLUMN),
       },
     ],
     []

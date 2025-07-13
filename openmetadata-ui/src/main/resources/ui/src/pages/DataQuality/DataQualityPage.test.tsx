@@ -106,19 +106,16 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 jest.mock(
   '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1',
   () => {
-    return jest
-      .fn()
-      .mockImplementation(({ isDrawer, drawerProps, onCancel }) => (
-        <div data-testid="test-case-form-v1-modal">
-          <div>TestCaseFormV1 Modal</div>
-          <button data-testid="test-case-cancel-btn" onClick={onCancel}>
-            Cancel
-          </button>
-          <div>isDrawer: {isDrawer ? 'true' : 'false'}</div>
-          <div>title: {drawerProps?.title}</div>
-          <div>open: {drawerProps?.open ? 'true' : 'false'}</div>
-        </div>
-      ));
+    return jest.fn().mockImplementation(({ drawerProps, onCancel }) => (
+      <div data-testid="test-case-form-v1-modal">
+        <div>TestCaseFormV1 Modal</div>
+        <button data-testid="test-case-cancel-btn" onClick={onCancel}>
+          Cancel
+        </button>
+        <div>title: {drawerProps?.title}</div>
+        <div>open: {drawerProps?.open ? 'true' : 'false'}</div>
+      </div>
+    ));
   }
 );
 
@@ -127,7 +124,7 @@ jest.mock(
   () => {
     return jest
       .fn()
-      .mockImplementation(({ isDrawer, drawerProps, onCancel, onSuccess }) => (
+      .mockImplementation(({ drawerProps, onCancel, onSuccess }) => (
         <div data-testid="bundle-suite-form-modal">
           <div>BundleSuiteForm Modal</div>
           <button data-testid="bundle-suite-cancel-btn" onClick={onCancel}>
@@ -136,7 +133,6 @@ jest.mock(
           <button data-testid="bundle-suite-success-btn" onClick={onSuccess}>
             Success
           </button>
-          <div>isDrawer: {isDrawer ? 'true' : 'false'}</div>
           <div>open: {drawerProps?.open ? 'true' : 'false'}</div>
         </div>
       ));
@@ -179,6 +175,9 @@ describe('DataQualityPage', () => {
 
       render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
 
+      // Debug: Check if the tab content is being rendered
+      expect(screen.getByTestId('data-insight-container')).toBeInTheDocument();
+
       expect(
         await screen.findByTestId('add-test-case-btn')
       ).toBeInTheDocument();
@@ -212,7 +211,6 @@ describe('DataQualityPage', () => {
         await screen.findByTestId('test-case-form-v1-modal')
       ).toBeInTheDocument();
       expect(screen.getByText('TestCaseFormV1 Modal')).toBeInTheDocument();
-      expect(screen.getByText('isDrawer: true')).toBeInTheDocument();
       expect(screen.getByText('open: true')).toBeInTheDocument();
     });
 
@@ -259,7 +257,6 @@ describe('DataQualityPage', () => {
         await screen.findByTestId('bundle-suite-form-modal')
       ).toBeInTheDocument();
       expect(screen.getByText('BundleSuiteForm Modal')).toBeInTheDocument();
-      expect(screen.getByText('isDrawer: true')).toBeInTheDocument();
       expect(screen.getByText('open: true')).toBeInTheDocument();
     });
 
