@@ -67,6 +67,20 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
           destinations: externalDestinations,
         });
 
+        // Check for failed destinations and show error toast
+        const failedDestinations = results.filter(
+          (dest) => dest.statusDetails?.status === 'Failed'
+        );
+        if (failedDestinations.length > 0) {
+          const failedCount = failedDestinations.length;
+          const totalCount = results.length;
+          const errorMessage =
+            failedCount === totalCount
+              ? `Test failed: All ${failedCount} destination(s) failed`
+              : `Test failed: ${failedCount} of ${totalCount} destination(s) failed`;
+          showErrorToast(errorMessage);
+        }
+
         setDestinationsWithStatus(results);
       }
     } catch (e) {
