@@ -799,10 +799,6 @@ public final class EntityUtil {
    * Gets the value of a field from an entity using reflection.
    * This method checks if the entity supports the given field and returns its value.
    * If the field is not supported, returns null.
-   *
-   * @param entity The entity to get the field value from
-   * @param fieldName The name of the field to get (corresponds to getter method name without 'get' prefix)
-   * @return The value of the field, or null if field is not supported by the entity
    */
   public static Object getEntityField(EntityInterface entity, String fieldName) {
     if (entity == null || fieldName == null || fieldName.isEmpty()) {
