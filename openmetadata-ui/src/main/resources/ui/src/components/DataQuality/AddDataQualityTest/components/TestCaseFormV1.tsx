@@ -147,7 +147,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const [form] = useForm<FormValues>();
   const { isAirflowAvailable } = useAirflowStatus();
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
-  const { ingestionPipeline } = permissions;
+  const { ingestionPipeline, testCase } = permissions;
 
   const TEST_LEVEL_OPTIONS: SelectionOption[] = [
     {
@@ -457,19 +457,22 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   // HOOKS - Callbacks (grouped by functionality)
   // =============================================
   // Pipeline-related callbacks
-  const checkExistingPipelines = useCallback(async (testSuiteFqn: string) => {
-    try {
-      const { paging } = await getIngestionPipelines({
-        testSuite: testSuiteFqn,
-        pipelineType: [PipelineType.TestSuite],
-        arrQueryFields: ['id'],
-        limit: 0,
-      });
-      setCanCreatePipeline(paging.total === 0);
-    } catch (error) {
-      setCanCreatePipeline(true);
-    }
-  }, []);
+  const checkExistingPipelines = useCallback(
+    async (testSuiteFqn: string) => {
+      try {
+        const { paging } = await getIngestionPipelines({
+          testSuite: testSuiteFqn,
+          pipelineType: [PipelineType.TestSuite],
+          arrQueryFields: ['id'],
+          limit: 0,
+        });
+        setCanCreatePipeline(paging.total === 0);
+      } catch (error) {
+        setCanCreatePipeline(true);
+      }
+    },
+    [ingestionPipeline]
+  );
 
   // Form interaction callbacks
   const handleCancel = useCallback(() => {
@@ -647,14 +650,19 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   // Permission checking callback
   const checkTablePermissions = useCallback(
     async (tableFqn: string) => {
-      setIsCheckingPermissions(true);
+      if (testCase.Create) {
+        return Promise.resolve();
+      }
 
+      setIsCheckingPermissions(true);
       try {
         const permissions = await getEntityPermissionByFqn(
           ResourceEntity.TABLE,
           tableFqn
         );
         const canCreate = permissions.EditAll || permissions.EditTests;
+
+        setCanCreatePipeline(canCreate);
 
         if (!canCreate) {
           // Return false to trigger validation error
@@ -884,24 +892,31 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
 
   // Check for existing pipelines when table is selected
   useEffect(() => {
-    if (selectedTableData?.testSuite?.fullyQualifiedName) {
-      // Table has test suite - check for existing pipelines
-      checkExistingPipelines(selectedTableData.testSuite.fullyQualifiedName);
-    } else if (testSuite?.fullyQualifiedName) {
-      // Using provided test suite - check for existing pipelines
-      checkExistingPipelines(testSuite.fullyQualifiedName);
-    } else if (selectedTable) {
-      // Table selected but no test suite - can create pipeline (test suite will be created)
-      setCanCreatePipeline(true);
-    } else {
-      // No table selected - hide scheduler
+    // Early return if user doesn't have permission to create pipelines or Early return if no table is selected
+    if (!ingestionPipeline.Create || !selectedTable) {
       setCanCreatePipeline(false);
+
+      return;
+    }
+
+    // Get the test suite FQN from either the table data or provided test suite
+    const testSuiteFqn =
+      selectedTableData?.testSuite?.fullyQualifiedName ||
+      testSuite?.fullyQualifiedName;
+
+    if (testSuiteFqn) {
+      // Check for existing pipelines if we have a test suite
+      checkExistingPipelines(testSuiteFqn);
+    } else {
+      // No test suite exists - can create pipeline (test suite will be created)
+      setCanCreatePipeline(true);
     }
   }, [
     selectedTableData?.testSuite?.fullyQualifiedName,
     testSuite?.fullyQualifiedName,
     selectedTable,
     checkExistingPipelines,
+    ingestionPipeline,
   ]);
 
   // Initialize manual edit flag

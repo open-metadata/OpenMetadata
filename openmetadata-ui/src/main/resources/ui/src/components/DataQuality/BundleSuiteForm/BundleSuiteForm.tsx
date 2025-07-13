@@ -34,6 +34,7 @@ import { MAX_NAME_LENGTH } from '../../../constants/constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../constants/Schedular.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OwnerType } from '../../../enums/user.enum';
 import {
   ConfigType,
@@ -92,6 +93,8 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
   const { config } = useLimitStore();
   const { currentUser } = useApplicationStore();
   const { isAirflowAvailable } = useAirflowStatus();
+  const { permissions } = usePermissionProvider();
+  const { ingestionPipeline } = permissions;
   const enableScheduler = Form.useWatch('enableScheduler', form);
 
   // =============================================
@@ -266,7 +269,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
       testSuiteId: testSuite.id ?? '',
     });
 
-    if (formData.enableScheduler) {
+    if (formData.enableScheduler && ingestionPipeline.Create) {
       await createAndDeployPipeline(testSuite, formData);
     }
 
@@ -391,75 +394,77 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         </Card>
 
         {/* Scheduler with Toggle */}
-        <Card className="form-card-section" data-testid="scheduler-card">
-          <div className="card-title-container d-flex items-center gap-3 m-b-lg">
-            <Form.Item
-              noStyle
-              className="m-b-0"
-              name="enableScheduler"
-              valuePropName="checked">
-              <Switch data-testid="scheduler-toggle" />
-            </Form.Item>
-            <div>
-              <Typography.Paragraph className="card-title-text m-0">
-                {t('label.create-entity', {
-                  entity: t('label.pipeline'),
-                })}
-              </Typography.Paragraph>
-              <Typography.Paragraph className="card-title-description m-0">
-                {`${t('message.pipeline-entity-description', {
-                  entity: t('label.bundle-suite'),
-                })} (${t('label.optional')})`}
-              </Typography.Paragraph>
-            </div>
-          </div>
-
-          {/* Scheduler form fields - only show when toggle is enabled */}
-          {enableScheduler && (
-            <>
-              {generateFormFields(schedulerFormFields)}
-
-              <Form.Item label={t('label.schedule-interval')} name="cron">
-                <ScheduleIntervalV1
-                  entity={t('label.test-suite')}
-                  includePeriodOptions={schedulerOptions}
-                />
+        {ingestionPipeline.Create && (
+          <Card className="form-card-section" data-testid="scheduler-card">
+            <div className="card-title-container d-flex items-center gap-3 m-b-lg">
+              <Form.Item
+                noStyle
+                className="m-b-0"
+                name="enableScheduler"
+                valuePropName="checked">
+                <Switch data-testid="scheduler-toggle" />
               </Form.Item>
-
-              {/* Debug Log and Raise on Error switches */}
-              <div className="m-t-md">
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <div className="d-flex gap-2 form-switch-container">
-                      <Form.Item
-                        className="m-b-0"
-                        name="enableDebugLog"
-                        valuePropName="checked">
-                        <Switch />
-                      </Form.Item>
-                      <Typography.Paragraph className="font-medium m-0">
-                        {t('label.enable-debug-log')}
-                      </Typography.Paragraph>
-                    </div>
-                  </Col>
-                  <Col span={12}>
-                    <div className="d-flex gap-2 form-switch-container">
-                      <Form.Item
-                        className="m-b-0"
-                        name="raiseOnError"
-                        valuePropName="checked">
-                        <Switch />
-                      </Form.Item>
-                      <Typography.Paragraph className="font-medium m-0">
-                        {t('label.raise-on-error')}
-                      </Typography.Paragraph>
-                    </div>
-                  </Col>
-                </Row>
+              <div>
+                <Typography.Paragraph className="card-title-text m-0">
+                  {t('label.create-entity', {
+                    entity: t('label.pipeline'),
+                  })}
+                </Typography.Paragraph>
+                <Typography.Paragraph className="card-title-description m-0">
+                  {`${t('message.pipeline-entity-description', {
+                    entity: t('label.bundle-suite'),
+                  })} (${t('label.optional')})`}
+                </Typography.Paragraph>
               </div>
-            </>
-          )}
-        </Card>
+            </div>
+
+            {/* Scheduler form fields - only show when toggle is enabled */}
+            {enableScheduler && (
+              <>
+                {generateFormFields(schedulerFormFields)}
+
+                <Form.Item label={t('label.schedule-interval')} name="cron">
+                  <ScheduleIntervalV1
+                    entity={t('label.test-suite')}
+                    includePeriodOptions={schedulerOptions}
+                  />
+                </Form.Item>
+
+                {/* Debug Log and Raise on Error switches */}
+                <div className="m-t-md">
+                  <Row gutter={[24, 16]}>
+                    <Col span={12}>
+                      <div className="d-flex gap-2 form-switch-container">
+                        <Form.Item
+                          className="m-b-0"
+                          name="enableDebugLog"
+                          valuePropName="checked">
+                          <Switch />
+                        </Form.Item>
+                        <Typography.Paragraph className="font-medium m-0">
+                          {t('label.enable-debug-log')}
+                        </Typography.Paragraph>
+                      </div>
+                    </Col>
+                    <Col span={12}>
+                      <div className="d-flex gap-2 form-switch-container">
+                        <Form.Item
+                          className="m-b-0"
+                          name="raiseOnError"
+                          valuePropName="checked">
+                          <Switch />
+                        </Form.Item>
+                        <Typography.Paragraph className="font-medium m-0">
+                          {t('label.raise-on-error')}
+                        </Typography.Paragraph>
+                      </div>
+                    </Col>
+                  </Row>
+                </div>
+              </>
+            )}
+          </Card>
+        )}
       </Form>
     </div>
   );

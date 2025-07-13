@@ -137,6 +137,25 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
   useLimitStore: () => ({ getResourceLimit: () => 100 }),
 }));
 
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+      EditAll: true,
+      EditTests: true,
+    }),
+    permissions: {
+      ingestionPipeline: {
+        Create: true,
+        EditAll: true,
+      },
+      testCase: {
+        Create: true,
+        EditAll: true,
+      },
+    },
+  }),
+}));
+
 jest.mock('crypto-random-string-with-promisify-polyfill', () =>
   jest.fn().mockReturnValue('ABC123')
 );

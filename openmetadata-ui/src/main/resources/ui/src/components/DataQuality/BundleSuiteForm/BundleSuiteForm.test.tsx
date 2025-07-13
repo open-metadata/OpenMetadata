@@ -97,6 +97,17 @@ jest.mock('../../../context/LimitsProvider/useLimitsStore', () => ({
   }),
 }));
 
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({
+    permissions: {
+      ingestionPipeline: {
+        Create: true,
+        EditAll: true,
+      },
+    },
+  }),
+}));
+
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
     currentUser: {
@@ -208,7 +219,9 @@ describe('BundleSuiteForm Component', () => {
     it('should render form in drawer mode', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 
-      expect(await screen.findAllByText('label.create-entity')).toHaveLength(2); // One in header, one in card title
+      expect(
+        await screen.findByText('label.create-entity')
+      ).toBeInTheDocument(); // Should appear in card title
       expect(document.querySelector('.bundle-suite-form')).toBeInTheDocument();
       expect(document.querySelector('.drawer-mode')).toBeInTheDocument();
     });

@@ -100,7 +100,7 @@ export const AddTestCaseList = ({
         setIsLoading(false);
       }
     },
-    [selectedTest, filters, testCaseParams]
+    [selectedTest]
   );
 
   const handleSubmit = async () => {
@@ -123,7 +123,7 @@ export const AddTestCaseList = ({
           });
       }
     },
-    [searchTerm, totalCount, items, isLoading, pageNumber, fetchTestCases]
+    [searchTerm, totalCount, items, isLoading]
   );
 
   const handleCardClick = (details: TestCase) => {
@@ -163,7 +163,7 @@ export const AddTestCaseList = ({
   };
   useEffect(() => {
     fetchTestCases({ searchText: searchTerm });
-  }, [searchTerm, fetchTestCases]);
+  }, [searchTerm]);
 
   const renderList = useMemo(() => {
     if (!isLoading && isEmpty(items)) {
