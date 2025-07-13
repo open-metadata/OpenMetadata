@@ -72,7 +72,7 @@ public class MicrometerBundleTest {
   }
 
   @Test
-  public void testPrometheusEndpoint() throws Exception {
+  public void testPrometheusEndpoint() {
     // Initialize and run bundle
     bundle.initialize(bootstrap);
     when(config.getClusterName()).thenReturn("test-cluster");

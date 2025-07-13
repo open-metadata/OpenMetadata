@@ -1320,8 +1320,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       EntityInterface parentEntity,
       String columnName,
       List<String> expectedFields,
-      String entityType)
-      throws IOException {
+      String entityType) {
 
     String entityLink =
         String.format("<#E::%s::%s>", entityType, parentEntity.getFullyQualifiedName());

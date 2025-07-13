@@ -28,7 +28,6 @@ import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -103,7 +102,7 @@ public final class RestUtil {
     return getHref(uriInfo, collectionPath, id.toString());
   }
 
-  public static int compareDates(String date1, String date2) throws ParseException {
+  public static int compareDates(String date1, String date2) {
     return LocalDateTime.parse(date1, DATE_FORMAT)
         .compareTo(LocalDateTime.parse(date2, DATE_FORMAT));
   }

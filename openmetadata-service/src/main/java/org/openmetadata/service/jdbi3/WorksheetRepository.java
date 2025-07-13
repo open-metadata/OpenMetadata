@@ -172,7 +172,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
 
   @Override
   public CsvImportResult importFromCsv(
-      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+      String name, String csv, boolean dryRun, String user, boolean recursive) {
     // For worksheets, we need the spreadsheet context for import
     throw new UnsupportedOperationException(
         "Worksheet import requires spreadsheet context. Use spreadsheet import instead.");

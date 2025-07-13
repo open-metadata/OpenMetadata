@@ -2145,7 +2145,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void test_botActivityNotTracked() throws HttpResponseException, InterruptedException {
+  void test_botActivityNotTracked() throws HttpResponseException {
     // Test that bot activity is not tracked
     // We'll use a simple approach: update a bot user's activity time directly
     // and verify it doesn't show in online users (assuming the query filters out bots)

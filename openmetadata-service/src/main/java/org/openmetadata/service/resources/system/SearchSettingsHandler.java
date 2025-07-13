@@ -80,10 +80,6 @@ public class SearchSettingsHandler {
    * Merges default search settings with incoming search settings.
    * Certain fields like aggregations and highlightFields are kept from defaults,
    * while user-configurable settings like termBoosts and fieldValueBoosts are taken from incoming settings if present.
-   *
-   * @param defaultSearchSettings The default search settings
-   * @param incomingSearchSettings The incoming search settings to merge
-   * @return The merged search settings
    */
   public SearchSettings mergeSearchSettings(
       SearchSettings defaultSearchSettings, SearchSettings incomingSearchSettings) {
@@ -184,9 +180,6 @@ public class SearchSettingsHandler {
   /**
    * Merges asset type configurations from default settings into incoming settings
    * ensuring all required asset types are present.
-   *
-   * @param defaultSearchSettings The default search settings
-   * @param incomingSearchSettings The incoming search settings
    */
   private void mergeAssetTypeConfigurations(
       SearchSettings defaultSearchSettings, SearchSettings incomingSearchSettings) {

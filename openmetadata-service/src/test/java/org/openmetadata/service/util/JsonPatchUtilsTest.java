@@ -5,12 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
-import com.github.fge.jsonpatch.JsonPatchException;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonReader;
-import java.io.IOException;
 import java.io.StringReader;
 import java.util.Set;
 import java.util.UUID;
@@ -87,7 +85,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testAddClassificationTag() throws JsonPatchException, IOException {
+  void testAddClassificationTag() {
     // Create a patch to add a new Classification tag
     String patchString =
         "[\n"
@@ -118,7 +116,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testRemoveGlossaryTag() throws JsonPatchException, IOException {
+  void testRemoveGlossaryTag() {
     // Create a patch to remove the Glossary tag
     String patchString =
         "[\n"
@@ -143,7 +141,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testAddClassificationAndRemoveGlossaryTag() throws IOException {
+  void testAddClassificationAndRemoveGlossaryTag() {
     // Create a patch to add a Classification tag and remove a Glossary tag
     String patchString =
         "[\n"
@@ -179,7 +177,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testReplaceTierTag() throws JsonPatchException, IOException {
+  void testReplaceTierTag() {
     // Create a patch to replace the Tier tag
     String patchString =
         "[\n"
@@ -205,7 +203,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testModifyNonTagField() throws JsonPatchException, IOException {
+  void testModifyNonTagField() {
     // Create a patch to modify a non-tag field (e.g., description)
     String patchString =
         "[\n"
@@ -231,7 +229,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testAddClassificationTagAtColumn() throws Exception {
+  void testAddClassificationTagAtColumn() {
     // Create a patch to add a new Classification tag
     String patchString =
         "[\n"
@@ -280,7 +278,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testAddCertificationTag() throws JsonPatchException, IOException {
+  void testAddCertificationTag() {
     // Create a patch to add a new Certification tag
     long currentTime = System.currentTimeMillis();
     String patchString = getPatchString(currentTime, "    \"op\": \"add\",\n");
@@ -300,7 +298,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testReplaceCertificationTag() throws JsonPatchException, IOException {
+  void testReplaceCertificationTag() {
     // Create a patch to replace the Certification tag
     long currentTime = System.currentTimeMillis();
     String patchString = getPatchString(currentTime, "    \"op\": \"replace\",\n");
@@ -320,7 +318,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  void testRemoveCertificationTag() throws JsonPatchException, IOException {
+  void testRemoveCertificationTag() {
     // Create a patch to remove the Certification tag
     String patchString =
         """

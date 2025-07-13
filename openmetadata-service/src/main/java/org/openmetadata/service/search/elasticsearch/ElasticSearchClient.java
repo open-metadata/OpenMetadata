@@ -852,8 +852,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
-      throws IOException {
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) {
     LOG.info("Searching with NLQ: {}", request.getQuery());
     if (nlqService != null) {
       try {
@@ -1457,8 +1456,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
-      throws IOException {
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
     if (isClientAvailable) {
       BulkRequest bulkRequest = new BulkRequest();
       for (Map<String, String> docAndId : docsAndIds) {

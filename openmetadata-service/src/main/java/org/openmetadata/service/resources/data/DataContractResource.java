@@ -629,8 +629,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id)
-      throws Exception {
+          UUID id) {
     DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
@@ -670,9 +669,8 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           UUID id,
       @Parameter(description = "Id of the data contract result", schema = @Schema(type = "UUID"))
           @PathParam("resultId")
-          UUID resultId)
-      throws Exception {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+          UUID resultId) {
+    repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
     ResourceContext<DataContract> resourceContext =
@@ -747,8 +745,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               description = "Timestamp of the result to delete",
               schema = @Schema(type = "number"))
           @PathParam("timestamp")
-          Long timestamp)
-      throws Exception {
+          Long timestamp) {
     DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.DELETE);

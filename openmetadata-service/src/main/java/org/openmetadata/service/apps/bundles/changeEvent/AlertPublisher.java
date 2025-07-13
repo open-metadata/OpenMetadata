@@ -13,7 +13,7 @@ public class AlertPublisher extends AbstractEventConsumer {
   }
 
   @Override
-  public void sendAlert(UUID receiverId, ChangeEvent event) throws EventPublisherException {
+  public void sendAlert(UUID receiverId, ChangeEvent event) {
     if (destinationMap.containsKey(receiverId)) {
       Destination<ChangeEvent> destination = destinationMap.get(receiverId);
       if (Boolean.TRUE.equals(destination.getEnabled())) {

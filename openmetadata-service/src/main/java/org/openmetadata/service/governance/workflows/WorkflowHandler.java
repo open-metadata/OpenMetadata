@@ -432,9 +432,8 @@ public class WorkflowHandler {
         .processDefinitionKey(getTriggerWorkflowId(workflowName))
         .list()
         .forEach(
-            instance -> {
-              runtimeService.deleteProcessInstance(
-                  instance.getId(), "Terminating all instances due to user request.");
-            });
+            instance ->
+                runtimeService.deleteProcessInstance(
+                    instance.getId(), "Terminating all instances due to user request."));
   }
 }

@@ -24,9 +24,6 @@ public class SearchAggregation {
    *   1. dimensions: the list of dimensions
    *   2. metrics: the list of metrics
    *   3. keys: the list of keys to traverse the aggregation tree
-   *
-   * @param aggregationMapList the list of aggregations
-   * @return the metadata
    */
   public DataQualityReportMetadata getAggregationMetadata() {
     DataQualityReportMetadata metadata = new DataQualityReportMetadata();

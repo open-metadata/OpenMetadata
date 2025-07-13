@@ -641,7 +641,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                     schema = @Schema(implementation = CSVExportResponse.class)))
       })
   public Response exportCsvAsync(
-      @Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
+      @Context SecurityContext securityContext, @PathParam("name") String name) {
     return exportCsvInternalAsync(securityContext, name, false);
   }
 

@@ -2583,11 +2583,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               connectLatch.countDown();
               messageLatch.countDown();
             })
-        .on(
-            Socket.EVENT_DISCONNECT,
-            args -> {
-              LOG.info("Disconnected from Socket.IO server");
-            });
+        .on(Socket.EVENT_DISCONNECT, args -> LOG.info("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {
@@ -4463,9 +4459,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             })
         .on(
             Socket.EVENT_DISCONNECT,
-            args -> {
-              System.out.println("Disconnected from Socket.IO server");
-            });
+            args -> System.out.println("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {
@@ -4537,9 +4531,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             })
         .on(
             Socket.EVENT_DISCONNECT,
-            args -> {
-              System.out.println("Disconnected from Socket.IO server");
-            });
+            args -> System.out.println("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {

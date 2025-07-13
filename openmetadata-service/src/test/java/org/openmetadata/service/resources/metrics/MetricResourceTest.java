@@ -178,8 +178,7 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual)
-      throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected != null && actual != null) {
       switch (fieldName) {
         case "relatedMetrics" -> TestUtils.assertEntityReferences(

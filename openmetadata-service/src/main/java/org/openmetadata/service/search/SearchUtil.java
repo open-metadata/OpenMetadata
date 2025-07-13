@@ -7,8 +7,6 @@ import org.openmetadata.service.Entity;
 public class SearchUtil {
   /**
    * Check if the index is a data asset index
-   * @param indexName name of the index to check
-   * @return true if index is a data asset, false otherwise
    */
   public static boolean isDataAssetIndex(String indexName) {
     return switch (indexName) {

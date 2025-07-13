@@ -27,9 +27,6 @@ public interface EntityLifecycleEventHandler {
 
   /**
    * Called after an entity is successfully created.
-   *
-   * @param entity The entity that was created
-   * @param subjectContext The security context of the user who created the entity
    */
   default void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
     // Default empty implementation
@@ -37,10 +34,6 @@ public interface EntityLifecycleEventHandler {
 
   /**
    * Called after an entity is successfully updated.
-   *
-   * @param entity The updated entity
-   * @param changeDescription Description of changes made to the entity
-   * @param subjectContext The security context of the user who updated the entity
    */
   default void onEntityUpdated(
       EntityInterface entity, ChangeDescription changeDescription, SubjectContext subjectContext) {
@@ -49,9 +42,6 @@ public interface EntityLifecycleEventHandler {
 
   /**
    * Called after an entity is successfully updated.
-   *
-   * @param entityRef The updated entity reference
-   * @param subjectContext The security context of the user who updated the entity
    */
   default void onEntityUpdated(EntityReference entityRef, SubjectContext subjectContext) {
     // Default empty implementation
@@ -59,9 +49,6 @@ public interface EntityLifecycleEventHandler {
 
   /**
    * Called after an entity is successfully deleted.
-   *
-   * @param entity The entity that was deleted
-   * @param subjectContext The security context of the user who deleted the entity
    */
   default void onEntityDeleted(EntityInterface entity, SubjectContext subjectContext) {
     // Default empty implementation
@@ -69,10 +56,6 @@ public interface EntityLifecycleEventHandler {
 
   /**
    * Called after an entity is soft deleted or restored.
-   *
-   * @param entity The entity that was soft deleted or restored
-   * @param isDeleted true if soft deleted, false if restored
-   * @param subjectContext The security context of the user who performed the action
    */
   default void onEntitySoftDeletedOrRestored(
       EntityInterface entity, boolean isDeleted, SubjectContext subjectContext) {
