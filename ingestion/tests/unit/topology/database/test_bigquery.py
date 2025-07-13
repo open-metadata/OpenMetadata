@@ -63,6 +63,7 @@ mock_bq_config = {
         "serviceConnection": {
             "config": {
                 "type": "BigQuery",
+                "billingProjectId": "my-gcp-billing-project",
                 "credentials": {
                     "gcpConfig": {
                         "type": "service_account",
@@ -296,7 +297,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="INTEGER",
                     constraint="PRIMARY_KEY",
-                    tags=[],
+                    tags=None,
                 ),
                 Column(
                     name="first_name",
@@ -304,7 +305,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="VARCHAR",
                     constraint="NULL",
-                    tags=[],
+                    tags=None,
                 ),
                 Column(
                     name="last_name",
@@ -312,7 +313,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="VARCHAR",
                     constraint="NULL",
-                    tags=[],
+                    tags=None,
                 ),
             ],
             tableConstraints=[],
@@ -337,7 +338,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="INTEGER",
                     constraint="NULL",
-                    tags=[],
+                    tags=None,
                 ),
                 Column(
                     name="customer_id",
@@ -345,7 +346,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="INTEGER",
                     constraint="NULL",
-                    tags=[],
+                    tags=None,
                 ),
                 Column(
                     name="status",
@@ -353,7 +354,7 @@ EXPECTED_TABLE = [
                     dataLength=1,
                     dataTypeDisplay="VARCHAR",
                     constraint="NULL",
-                    tags=[],
+                    tags=None,
                 ),
             ],
             tableConstraints=[
