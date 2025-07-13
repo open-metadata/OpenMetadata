@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.nlq;
 
-import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.NLQConfiguration;
 import org.openmetadata.schema.search.SearchRequest;
@@ -21,8 +20,7 @@ public class NoOpNLQService implements NLQService {
   }
 
   @Override
-  public String transformNaturalLanguageQuery(SearchRequest request, String additionalContext)
-      throws IOException {
+  public String transformNaturalLanguageQuery(SearchRequest request, String additionalContext) {
     return null;
   }
 
