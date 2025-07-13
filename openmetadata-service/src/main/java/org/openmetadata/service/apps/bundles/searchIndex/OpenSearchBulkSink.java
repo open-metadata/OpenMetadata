@@ -2,7 +2,6 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -216,7 +215,7 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
-  private void addEntity(EntityInterface entity, String indexName) throws Exception {
+  private void addEntity(EntityInterface entity, String indexName) {
     // Build the search index document using the proper transformation
     String entityType = Entity.getEntityTypeFromObject(entity);
     Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
@@ -230,8 +229,7 @@ public class OpenSearchBulkSink implements BulkSink {
     bulkProcessor.add(updateRequest);
   }
 
-  private void addTimeSeriesEntity(EntityTimeSeriesInterface entity, String indexName)
-      throws Exception {
+  private void addTimeSeriesEntity(EntityTimeSeriesInterface entity, String indexName) {
     String json = JsonUtils.pojoToJson(entity);
     String docId = entity.getId().toString();
 
@@ -263,7 +261,7 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     try {
       // Flush any pending requests
       bulkProcessor.flush();

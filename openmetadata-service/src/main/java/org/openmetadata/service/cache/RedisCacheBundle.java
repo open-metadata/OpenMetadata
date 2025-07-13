@@ -182,7 +182,7 @@ public class RedisCacheBundle implements ConfiguredBundle<OpenMetadataApplicatio
                   // Start warmup asynchronously after a short delay to allow application to fully
                   // start
                   CompletableFuture.delayedExecutor(5, java.util.concurrent.TimeUnit.SECONDS)
-                      .execute(() -> warmupService.startWarmup());
+                      .execute(warmupService::startWarmup);
                 }
 
                 @Override
