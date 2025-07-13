@@ -188,13 +188,12 @@ public abstract class AbstractEventConsumer
 
     for (var eventWithReceivers : filteredEvents.entrySet()) {
       for (UUID receiverId : eventWithReceivers.getValue()) {
-        try {
-          sendAlert(receiverId, eventWithReceivers.getKey());
+        boolean status = sendAlert(receiverId, eventWithReceivers.getKey());
+        if (status) {
           recordSuccessfulChangeEvent(eventSubscription.getId(), eventWithReceivers.getKey());
           alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
-        } catch (EventPublisherException e) {
+        } else {
           alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
-          handleFailedEvent(e, false);
         }
       }
     }

@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -505,7 +506,8 @@ public class SubscriptionUtil {
   }
 
   public static void postWebhookMessage(
-      Destination<ChangeEvent> destination, Invocation.Builder target, Object message) {
+      Destination<ChangeEvent> destination, Invocation.Builder target, Object message)
+      throws EventPublisherException {
     postWebhookMessage(destination, target, message, Webhook.HttpMethod.POST);
   }
 
@@ -513,7 +515,8 @@ public class SubscriptionUtil {
       Destination<ChangeEvent> destination,
       Invocation.Builder target,
       Object message,
-      Webhook.HttpMethod httpMethod) {
+      Webhook.HttpMethod httpMethod)
+      throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     Response response =
         (httpMethod == Webhook.HttpMethod.PUT)
@@ -530,6 +533,16 @@ public class SubscriptionUtil {
 
     StatusContext statusContext = createStatusContext(response);
     handleStatus(destination, attemptTime, statusContext);
+
+    // Throw exception for non-2xx responses to ensure proper error handling
+    int statusCode = statusContext.getStatusCode();
+    if (statusCode < 200 || statusCode >= 300) {
+      String errorMessage =
+          String.format(
+              "Webhook delivery failed with HTTP %d: %s",
+              statusCode, statusContext.getStatusInfo());
+      throw new EventPublisherException(errorMessage);
+    }
   }
 
   public static void deliverTestWebhookMessage(
@@ -555,8 +568,9 @@ public class SubscriptionUtil {
 
   private static void handleTestDestinationStatus(
       Destination<ChangeEvent> destination, StatusContext statusContext) {
+    int statusCode = statusContext.getStatusCode();
     TestDestinationStatus.Status testStatus =
-        (statusContext.getStatusCode() == 200)
+        (statusCode >= 200 && statusCode < 300)
             ? TestDestinationStatus.Status.SUCCESS
             : TestDestinationStatus.Status.FAILED;
 
@@ -568,11 +582,12 @@ public class SubscriptionUtil {
     int statusCode = statusContext.getStatusCode();
     String statusInfo = statusContext.getStatusInfo();
 
-    if (statusCode >= 300 && statusCode < 400) {
+    if (statusCode >= 200 && statusCode < 300) {
+      // 2xx response codes are considered successful
+      destination.setSuccessStatus(System.currentTimeMillis());
+    } else if (statusCode >= 300 && statusCode < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
       destination.setErrorStatus(attemptTime, statusCode, statusInfo);
-    } else if (statusCode == 200) {
-      destination.setSuccessStatus(System.currentTimeMillis());
     } else {
       // 4xx, 5xx response retry delivering events after timeout
       destination.setAwaitingRetry(attemptTime, statusCode, statusInfo);
