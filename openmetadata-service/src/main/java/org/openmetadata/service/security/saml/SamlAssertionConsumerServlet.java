@@ -18,13 +18,11 @@ import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.SE
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.onelogin.saml2.Auth;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -63,8 +61,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
   }
 
   @Override
-  protected void doPost(HttpServletRequest request, HttpServletResponse response)
-      throws ServletException, IOException {
+  protected void doPost(HttpServletRequest request, HttpServletResponse response) {
     try {
       // Convert Jakarta servlet types to javax servlet types using Apache Felix wrappers
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(request);

@@ -23,7 +23,7 @@ class RequestLatencyTrackingSimpleTest {
   }
 
   @Test
-  void testRequestLatencyTracking() throws InterruptedException {
+  void testRequestLatencyTracking() {
     String endpoint = "/api/v1/test";
     RequestLatencyContext.startRequest(endpoint);
     simulateWork(500);

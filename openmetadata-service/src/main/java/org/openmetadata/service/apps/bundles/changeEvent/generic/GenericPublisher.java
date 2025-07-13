@@ -91,7 +91,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     }
   }
 
-  private void sendActionsToTargets(ChangeEvent event) throws Exception {
+  private void sendActionsToTargets(ChangeEvent event) {
     List<Invocation.Builder> targets =
         getTargetsForWebhookAlert(
             webhook, subscriptionDestination.getCategory(), WEBHOOK, client, event);
