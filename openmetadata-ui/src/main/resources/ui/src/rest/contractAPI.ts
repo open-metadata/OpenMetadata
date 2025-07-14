@@ -11,7 +11,30 @@
  *  limitations under the License.
  */
 import { CreateDataContract } from '../generated/api/data/createDataContract';
+import { DataContract } from '../generated/entity/data/dataContract';
+import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
+
+const BASE_URL = '/dataContracts';
+
+interface ListContractsParams extends ListParams {
+  /**
+   * status of the contract
+   */
+  status?: 'Active';
+  /**
+   * entity ID to filter by
+   */
+  entity?: string;
+}
+
+export const listContracts = async (params: ListContractsParams) => {
+  const response = await APIClient.get<DataContract[]>(`${BASE_URL}`, {
+    params,
+  });
+
+  return response.data;
+};
 
 export const getContract = async (fqn: string) => {
   const response = await APIClient.get<CreateDataContract>(
