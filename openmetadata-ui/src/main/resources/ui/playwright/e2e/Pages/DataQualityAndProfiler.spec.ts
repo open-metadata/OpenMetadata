@@ -238,7 +238,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
-    await page.locator('button').filter({ hasText: 'Submit' }).click();
+    await page.locator('button').filter({ hasText: 'Save' }).click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');
     await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
@@ -387,7 +387,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
-    await page.locator('button').getByText('Submit').click();
+    await page.locator('button').getByText('Save').click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');
 
@@ -538,7 +538,7 @@ test(
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
-      await page.click('.ant-modal-footer >> text=Submit');
+      await page.click('.ant-modal-footer >> text=Save');
       const updateResponse1 = await updateTestCaseResponse;
       const body1 = await updateResponse1.request().postData();
 
@@ -560,7 +560,7 @@ test(
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
-      await page.click('.ant-modal-footer >> text=Submit');
+      await page.click('.ant-modal-footer >> text=Save');
       const updateResponse2 = await updateTestCaseResponse2;
       const body2 = await updateResponse2.request().postData();
 
@@ -582,7 +582,7 @@ test(
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
-      await page.click('.ant-modal-footer >> text=Submit');
+      await page.click('.ant-modal-footer >> text=Save');
       const updateResponse3 = await updateTestCaseResponse3;
       const body3 = await updateResponse3.request().postData();
 
@@ -626,7 +626,7 @@ test(
 
         await page.locator('#tableTestForm_displayName').clear();
         await page.fill('#tableTestForm_displayName', 'Updated display name');
-        await page.click('.ant-modal-footer >> text=Submit');
+        await page.click('.ant-modal-footer >> text=Save');
         await toastNotification(page, 'Test case updated successfully.');
 
         await expect(
@@ -1202,6 +1202,8 @@ test(
   'Pagination functionality in test cases list',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page }) => {
+    test.slow();
+
     const { apiContext, afterAction } = await getApiContext(page);
     const paginationTable = new TableClass();
 

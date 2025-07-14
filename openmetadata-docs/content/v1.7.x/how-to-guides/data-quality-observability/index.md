@@ -1,5 +1,6 @@
 ---
-title: Data Quality and Observability
+title: Data Quality Observability Guide | Official Documentation
+description: Step-by-step guidance for data quality observability using Collate. Learn key actions, features, and best practices.
 slug: /how-to-guides/data-quality-observability
 ---
 
