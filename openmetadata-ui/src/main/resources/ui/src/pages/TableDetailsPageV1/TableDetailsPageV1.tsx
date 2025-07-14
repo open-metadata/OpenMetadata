@@ -507,10 +507,12 @@ const TableDetailsPageV1: React.FC = () => {
         tablePermissions,
         Operation.ViewQueries
       ),
-      viewProfilerPermission: getPrioritizedViewPermission(
-        tablePermissions,
-        Operation.ViewDataProfile
-      ),
+      viewProfilerPermission:
+        getPrioritizedViewPermission(
+          tablePermissions,
+          Operation.ViewDataProfile
+        ) ||
+        getPrioritizedViewPermission(tablePermissions, Operation.ViewTests),
       viewAllPermission: tablePermissions.ViewAll,
       viewBasicPermission: getPrioritizedViewPermission(
         tablePermissions,

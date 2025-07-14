@@ -762,6 +762,7 @@ export const getTableDetailPageBaseTabs = ({
   testCaseSummary,
   isViewTableType,
   labelMap,
+  viewProfilerPermission,
 }: TableDetailPageTabProps): TabProps[] => {
   return [
     {
@@ -873,13 +874,22 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.PROFILER,
-      children: (
-        <TableProfiler
-          permissions={tablePermissions}
-          table={tableDetails}
-          testCaseSummary={testCaseSummary}
-        />
-      ),
+      children:
+        !isTourOpen && !viewProfilerPermission ? (
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.data-observability'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
+        ) : (
+          <TableProfiler
+            permissions={tablePermissions}
+            table={tableDetails}
+            testCaseSummary={testCaseSummary}
+          />
+        ),
     },
     {
       label: (
