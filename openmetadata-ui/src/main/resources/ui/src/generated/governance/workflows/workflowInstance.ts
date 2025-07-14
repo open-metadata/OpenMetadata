@@ -38,6 +38,11 @@ export interface WorkflowInstance {
     timestamp?: number;
     variables?: { [key: string]: any };
     /**
+     * Version number for optimistic locking. Incremented on each update to detect concurrent
+     * modifications.
+     */
+    version?: number;
+    /**
      * Workflow Definition Id.
      */
     workflowDefinitionId?: string;
