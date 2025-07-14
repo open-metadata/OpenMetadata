@@ -49,7 +49,6 @@ const DataAssetsWidget = ({
     DATA_ASSETS_SORT_BY_KEYS.LATEST
   );
 
-  // Determine widget width from currentLayout
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
     [currentLayout, widgetKey]
@@ -82,7 +81,6 @@ const DataAssetsWidget = ({
     fetchDataAssets();
   }, [fetchDataAssets]);
 
-  // Sorting logic
   const sortedServices = useMemo(() => {
     switch (selectedSortBy) {
       case DATA_ASSETS_SORT_BY_KEYS.A_TO_Z:
@@ -119,7 +117,6 @@ const DataAssetsWidget = ({
     [t, navigate]
   );
 
-  // Responsive grid: 3 columns for half, 5 for full
   const getGridTemplateColumns = () => {
     return isFullSize ? 'repeat(5, 1fr)' : 'repeat(2, 2fr)';
   };
