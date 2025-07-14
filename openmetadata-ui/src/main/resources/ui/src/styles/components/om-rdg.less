@@ -14,14 +14,24 @@
 @import (reference) url('../variables.less');
 
 .om-rdg {
-  height: calc(100vh - 280px);
   border-radius: 12px;
   border: 1px solid @om-rdg-border-color;
   overflow: hidden;
 
   .rdg {
     border: none;
+    height: calc(100vh - 280px);
     background-color: @grey-9;
+  }
+
+  .rdg-editor-container {
+    .value-renderer-on-edit-cell {
+      padding-right: @size-xs;
+      padding-left: @size-xs;
+      white-space: nowrap;
+      overflow: clip;
+      text-overflow: ellipsis;
+    }
   }
 
   .rdg-header-row {

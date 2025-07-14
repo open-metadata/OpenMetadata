@@ -51,7 +51,6 @@
     "@fontsource/poppins": "^5.0.0",
     "@fontsource/source-code-pro": "^5.0.0",
     "@github/g-emoji-element": "^1.1.5",
-    "@inovua/reactdatagrid-community": "^5.10.2",
     "@melloware/react-logviewer": "^6.2.0",
     "@okta/okta-auth-js": "^7.11.3",
     "@okta/okta-react": "^6.4.3",

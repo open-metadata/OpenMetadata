@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import '@inovua/reactdatagrid-community/index.css';
-import { TypeComputedProps } from '@inovua/reactdatagrid-community/types';
 import { Button, Modal, Typography } from 'antd';
 import { isEmpty, omit } from 'lodash';
-import { FC, MutableRefObject, useCallback, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useGridEditController } from '../../../../hooks/useGridEditController';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { KeyDownStopPropagationWrapper } from '../../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import { TableTypePropertyValueType } from '../CustomPropertyTable.interface';
@@ -39,16 +38,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
     TableTypePropertyValueType['rows']
   >(() => rows.map((row, index) => ({ ...row, id: index + '' })));
 
-  const [gridRef, setGridRef] = useState<
-    MutableRefObject<TypeComputedProps | null>
-  >({ current: null });
-
-  const handleEditGridRef = useCallback(
-    (ref: MutableRefObject<TypeComputedProps | null>) => {
-      setGridRef(ref);
-    },
-    []
-  );
+  const gridContainerRef = useRef<HTMLDivElement>(null);
 
   const handleEditDataSource = useCallback((data: Record<string, string>[]) => {
     setDataSource(data);
@@ -57,13 +47,16 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
   const handleAddRow = useCallback(() => {
     setDataSource((data) => {
       setTimeout(() => {
-        gridRef.current?.scrollToId(data.length + '');
-        gridRef.current?.focus();
+        // Select first cell of last newly added row
+        const rows = gridContainerRef.current?.querySelectorAll('.rdg-row');
+        const lastRow = rows?.[rows.length - 1];
+        const firstCell = lastRow?.querySelector('.rdg-cell');
+        (firstCell as HTMLElement).click();
       }, 1);
 
       return [...data, { id: data.length + '' }];
     });
-  }, [gridRef]);
+  }, [gridContainerRef]);
 
   const handleUpdate = useCallback(async () => {
     const modifiedRows = dataSource
@@ -72,6 +65,24 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
       .filter((row) => !isEmpty(row) && Object.values(row).some(Boolean));
     await onSave({ rows: modifiedRows, columns });
   }, [onSave, dataSource, columns]);
+
+  useEffect(() => {
+    if (isEmpty(dataSource)) {
+      return;
+    }
+    const firstCell = gridContainerRef?.current?.querySelector(
+      '.rdg-cell[role="gridcell"]'
+    );
+    if (firstCell) {
+      (firstCell as HTMLElement).click();
+    }
+  }, [isEmpty(dataSource)]);
+
+  const { handleCopy, handlePaste, pushToUndoStack } = useGridEditController(
+    dataSource,
+    handleEditDataSource,
+    gridContainerRef
+  );
 
   return (
     <Modal
@@ -127,9 +138,11 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
           <TableTypePropertyEditTable
             columns={columns}
             dataSource={dataSource}
-            gridRef={gridRef}
+            gridContainerRef={gridContainerRef}
+            handleCopy={handleCopy}
             handleEditDataSource={handleEditDataSource}
-            handleEditGridRef={handleEditGridRef}
+            handlePaste={handlePaste}
+            pushToUndoStack={pushToUndoStack}
           />
         </KeyDownStopPropagationWrapper>
       )}

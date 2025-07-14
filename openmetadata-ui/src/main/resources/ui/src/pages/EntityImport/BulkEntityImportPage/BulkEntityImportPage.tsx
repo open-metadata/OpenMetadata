@@ -149,7 +149,9 @@ const BulkEntityImportPage = () => {
   }, [setActiveAsyncImportJob, activeAsyncImportJobRef]);
 
   const focusToGrid = useCallback(() => {
-    const firstCell = document.querySelector('.rdg-cell[role="gridcell"]');
+    const firstCell = gridContainerRef?.current?.querySelector(
+      '.rdg-cell[role="gridcell"]'
+    );
     if (firstCell) {
       (firstCell as HTMLElement).click();
     }
@@ -248,8 +250,8 @@ const BulkEntityImportPage = () => {
     setDataSource((data) => {
       setTimeout(() => {
         // Select first cell of last newly added row
-        const rows = document.querySelectorAll('.rdg-row');
-        const lastRow = rows[rows.length - 1];
+        const rows = gridContainerRef?.current?.querySelectorAll('.rdg-row');
+        const lastRow = rows?.[rows.length - 1];
         const firstCell = lastRow?.querySelector('.rdg-cell');
         (firstCell as HTMLElement).click();
       }, 1);

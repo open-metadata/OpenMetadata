@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/components/om-rdg.less');
+import { ReactNode } from 'react';
 
-.reserve-right-sidebar {
-  .import-footer {
-    // Right side padding 20 + 64 width of sidebar
-    padding-right: 84px;
-  }
-}
-
-.react-grid-select-dropdown {
-  width: 100%;
-  min-width: 12rem;
-}
+export const ValueRendererOnEditCell = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  return <div className="value-renderer-on-edit-cell">{children}</div>;
+};

@@ -22,6 +22,7 @@ import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component'
 import { KeyDownStopPropagationWrapper } from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { ValueRendererOnEditCell } from '../../components/common/ValueRendererOnEditCell/ValueRendererOnEditCell';
 import { ModalWithCustomPropertyEditor } from '../../components/Modals/ModalWithCustomProperty/ModalWithCustomPropertyEditor.component';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import SchemaModal from '../../components/Modals/SchemaModal/SchemaModal';
@@ -94,7 +95,7 @@ class CSVUtilsClassBase {
 
           return (
             <>
-              {value}
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
               <UserTeamSelectableList
                 hasPermission
                 multiple={{ user: true, team: false }}
@@ -116,19 +117,23 @@ class CSVUtilsClassBase {
           onClose,
           column,
         }: RenderEditCellProps<any, any>) => {
+          const value = row[column.key];
           const handleSave = async (description: string) => {
             onRowChange({ ...row, [column.key]: description }, true);
           };
 
           return (
-            <ModalWithMarkdownEditor
-              visible
-              header="Edit Description"
-              placeholder="Description"
-              value={row[column.key]}
-              onCancel={() => onClose(false)}
-              onSave={handleSave}
-            />
+            <>
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+              <ModalWithMarkdownEditor
+                visible
+                header="Edit Description"
+                placeholder="Description"
+                value={value}
+                onCancel={() => onClose(false)}
+                onSave={handleSave}
+              />
+            </>
           );
         };
       case 'tags':
@@ -236,7 +241,7 @@ class CSVUtilsClassBase {
 
           return (
             <>
-              {value}
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
               <TierCard
                 currentTier={value}
                 popoverProps={{ open: true }}
@@ -268,7 +273,7 @@ class CSVUtilsClassBase {
 
           return (
             <>
-              {value}
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
               <Certification
                 permission
                 currentCertificate={value}
@@ -313,7 +318,7 @@ class CSVUtilsClassBase {
 
           return (
             <>
-              {value}
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
               <DomainSelectableList
                 hasPermission
                 popoverProps={{ open: true }}
@@ -378,7 +383,7 @@ class CSVUtilsClassBase {
 
           return (
             <>
-              {value}
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
               <UserTeamSelectableList
                 hasPermission
                 previewSelected
@@ -409,14 +414,17 @@ class CSVUtilsClassBase {
           };
 
           return (
-            <ModalWithCustomPropertyEditor
-              visible
-              entityType={entityType}
-              header="Edit CustomProperty"
-              value={value}
-              onCancel={() => onClose(false)}
-              onSave={handleSave}
-            />
+            <>
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+              <ModalWithCustomPropertyEditor
+                visible
+                entityType={entityType}
+                header="Edit CustomProperty"
+                value={value}
+                onCancel={() => onClose(false)}
+                onSave={handleSave}
+              />
+            </>
           );
         };
       case 'entityType*':
@@ -464,16 +472,19 @@ class CSVUtilsClassBase {
           };
 
           return (
-            <SchemaModal
-              isFooterVisible
-              visible
-              data={value}
-              editorClass="custom-code-mirror-theme full-screen-editor-height"
-              mode={{ name: CSMode.SQL }}
-              onChange={handleChange}
-              onClose={() => onClose(false)}
-              onSave={() => onClose(true)}
-            />
+            <>
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+              <SchemaModal
+                isFooterVisible
+                visible
+                data={value}
+                editorClass="custom-code-mirror-theme full-screen-editor-height"
+                mode={{ name: CSMode.SQL }}
+                onChange={handleChange}
+                onClose={() => onClose(false)}
+                onSave={() => onClose(true)}
+              />
+            </>
           );
         };
       default:
