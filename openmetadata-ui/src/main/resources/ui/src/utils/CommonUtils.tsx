@@ -31,13 +31,18 @@ import {
   ExtraInfo,
   RecentlySearched,
   RecentlySearchedData,
+  RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
 import { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
+import { reactLocalStorage } from 'reactjs-localstorage';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { imageTypes } from '../constants/constants';
+import {
+  imageTypes,
+  LOCALSTORAGE_RECENTLY_VIEWED,
+} from '../constants/constants';
 import { BASE_COLORS } from '../constants/DataInsight.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
@@ -225,6 +230,18 @@ export const getCountBadge = (
       </span>
     </span>
   );
+};
+
+export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
+  const recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
+    LOCALSTORAGE_RECENTLY_VIEWED
+  ) as RecentlyViewed;
+
+  if (recentlyViewed?.data) {
+    return recentlyViewed.data;
+  }
+
+  return [];
 };
 
 export const setRecentlyViewedData = (
