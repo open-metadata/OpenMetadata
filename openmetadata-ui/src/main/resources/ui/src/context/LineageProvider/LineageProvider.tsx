@@ -13,7 +13,14 @@
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEqual, isUndefined, uniq, uniqueId, uniqWith } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  uniq,
+  uniqueId,
+  uniqWith,
+} from 'lodash';
 import { LoadingState } from 'Models';
 import QueryString from 'qs';
 import {
@@ -1501,11 +1508,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         );
       } else if (
         platformView === LineagePlatformView.Domain &&
-        entity?.domain
+        !isEmpty(entity?.domains)
       ) {
         fetchLineageData(
-          entity?.domain.fullyQualifiedName ?? '',
-          entity?.domain.type,
+          entity?.domains?.[0]?.fullyQualifiedName ?? '',
+          entity?.domains?.[0]?.type ?? '',
           lineageConfig
         );
       } else if (

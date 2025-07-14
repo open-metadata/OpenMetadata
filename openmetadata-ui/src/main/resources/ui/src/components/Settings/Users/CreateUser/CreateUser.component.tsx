@@ -424,7 +424,7 @@ const CreateUser = ({
           {selectedDomain && selectedDomain.length > 0 && (
             <DomainLabel
               multiple
-              domain={selectedDomain}
+              domains={selectedDomain}
               entityFqn=""
               entityId=""
               entityType={EntityType.USER}

@@ -25,10 +25,7 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
-import {
-  getDomainFieldFromEntityType,
-  renderDomainLink,
-} from '../../../utils/DomainUtils';
+import { renderDomainLink } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
@@ -40,7 +37,7 @@ import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.inter
 
 export const DomainLabelV2 = <
   T extends {
-    domain?: EntityReference | EntityReference[];
+    domains?: EntityReference[];
     id: string;
     fullyQualifiedName: string;
     deleted?: boolean;
@@ -49,17 +46,15 @@ export const DomainLabelV2 = <
   ...props
 }: Partial<DomainLabelProps>) => {
   const { data, type: entityType, permissions } = useGenericContext<T>();
-  const { id: entityId, fullyQualifiedName: entityFqn, domain } = data;
+  const { id: entityId, fullyQualifiedName: entityFqn, domains } = data;
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
-      const fieldData = getDomainFieldFromEntityType(entityType);
-
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
         entityFqn,
-        { fields: fieldData }
+        { fields: 'domains' }
       );
 
       try {
@@ -67,13 +62,13 @@ export const DomainLabelV2 = <
         if (entityDetailsResponse) {
           const jsonPatch = compare(entityDetailsResponse, {
             ...entityDetailsResponse,
-            [fieldData]: selectedDomain,
+            domains: selectedDomain,
           });
 
           const api = getAPIfromSource(entityType as AssetsUnion);
           const res = await api(entityId, jsonPatch);
 
-          const entityDomains = get(res, fieldData, {});
+          const entityDomains = get(res, 'domains', {});
           if (Array.isArray(entityDomains)) {
             setActiveDomain(entityDomains);
           } else {
@@ -92,14 +87,14 @@ export const DomainLabelV2 = <
   );
 
   useEffect(() => {
-    if (domain) {
-      if (Array.isArray(domain)) {
-        setActiveDomain(domain);
+    if (domains) {
+      if (Array.isArray(domains)) {
+        setActiveDomain(domains);
       } else {
-        setActiveDomain([domain]);
+        setActiveDomain([domains]);
       }
     }
-  }, [domain]);
+  }, [domains]);
 
   const domainLink = useMemo(() => {
     if (

@@ -277,16 +277,6 @@ export const initializeDomainEntityRef = (
   return undefined;
 };
 
-export const getDomainFieldFromEntityType = (
-  entityType: EntityType
-): string => {
-  if (entityType === EntityType.TEAM || entityType === EntityType.USER) {
-    return 'domains';
-  } else {
-    return 'domain';
-  }
-};
-
 export const convertDomainsToTreeOptions = (
   options: EntityReference[] | Domain[] = [],
   level = 0,

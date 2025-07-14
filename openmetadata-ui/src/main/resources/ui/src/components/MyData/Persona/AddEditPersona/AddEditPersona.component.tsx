@@ -55,13 +55,15 @@ export const AddEditPersonaForm = ({
         const { users } = data;
 
         const usersList = users?.map((u) => u.id) ?? [];
-        const domain = data.domain?.fullyQualifiedName;
+        const domains = data.domains
+          ?.map((d) => d.fullyQualifiedName)
+          .filter(Boolean) as string[];
         if (persona && isEditMode) {
           const jsonPatch = compare(persona, data);
 
           await updatePersona(persona?.id, jsonPatch);
         } else {
-          await createPersona({ ...data, users: usersList, domain });
+          await createPersona({ ...data, users: usersList, domains });
         }
         onSave();
       } catch (error) {

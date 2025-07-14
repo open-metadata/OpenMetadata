@@ -236,7 +236,7 @@ const getTableFieldsFromTableDetails = (tableDetails: Table) => {
     service,
     database,
     databaseSchema,
-    domain,
+    domains,
   } = tableDetails;
   const [serviceName, databaseName, schemaName] = getPartialNameFromTableFQN(
     fullyQualifiedName ?? '',
@@ -261,17 +261,17 @@ const getTableFieldsFromTableDetails = (tableDetails: Table) => {
     profile,
     columns,
     tableType,
-    domain,
+    domains,
   };
 };
 
 const getCommonOverview = (
   {
     owners,
-    domain,
+    domains,
   }: {
     owners?: EntityReference[];
-    domain?: EntityReference;
+    domains?: EntityReference[];
   },
   showOwner = true
 ) => {
@@ -287,9 +287,9 @@ const getCommonOverview = (
       : []),
     {
       name: i18next.t('label.domain'),
-      value: getEntityName(domain) || NO_DATA,
-      isLink: Boolean(domain),
-      url: getDomainPath(domain?.fullyQualifiedName),
+      value: getEntityName(domains?.[0]) || NO_DATA,
+      isLink: Boolean(domains?.[0]),
+      url: getDomainPath(domains?.[0]?.fullyQualifiedName),
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
   ];
@@ -310,11 +310,11 @@ const getTableOverview = (
     schema,
     tier,
     usage,
-    domain,
+    domains,
   } = getTableFieldsFromTableDetails(tableDetails);
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ owners, domain }),
+    ...getCommonOverview({ owners, domains }),
     {
       name: i18next.t('label.type'),
       value: tableType ?? TableType.Regular,
@@ -422,7 +422,7 @@ const getTableOverview = (
 
 const getTopicOverview = (topicDetails: Topic) => {
   const {
-    domain,
+    domains,
     partitions,
     replicationFactor,
     retentionSize,
@@ -432,7 +432,7 @@ const getTopicOverview = (topicDetails: Topic) => {
   } = topicDetails;
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ domain, owners: topicDetails.owners }),
+    ...getCommonOverview({ domains, owners: topicDetails.owners }),
     {
       name: i18next.t('label.partition-plural'),
       value: partitions ?? NO_DATA,
@@ -493,13 +493,13 @@ const getTopicOverview = (topicDetails: Topic) => {
 };
 
 const getPipelineOverview = (pipelineDetails: Pipeline) => {
-  const { owners, tags, sourceUrl, service, displayName, domain } =
+  const { owners, tags, sourceUrl, service, displayName, domains } =
     pipelineDetails;
   const tier = getTierTags(tags ?? []);
   const serviceDisplayName = getEntityName(service);
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ owners, domain }),
+    ...getCommonOverview({ owners, domains }),
     {
       name: `${i18next.t('label.pipeline')} ${i18next.t(
         'label.url-uppercase'
@@ -537,13 +537,13 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
 };
 
 const getDashboardOverview = (dashboardDetails: Dashboard) => {
-  const { owners, tags, sourceUrl, service, displayName, project, domain } =
+  const { owners, tags, sourceUrl, service, displayName, project, domains } =
     dashboardDetails;
   const tier = getTierTags(tags ?? []);
   const serviceDisplayName = getEntityName(service);
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ owners, domain }),
+    ...getCommonOverview({ owners, domains }),
     {
       name: `${i18next.t('label.dashboard')} ${i18next.t(
         'label.url-uppercase'
@@ -592,11 +592,11 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
 export const getSearchIndexOverview = (
   searchIndexDetails: SearchIndexEntity
 ) => {
-  const { owners, tags, service, domain } = searchIndexDetails;
+  const { owners, tags, service, domains } = searchIndexDetails;
   const tier = getTierTags(tags ?? []);
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ owners, domain }),
+    ...getCommonOverview({ owners, domains }),
     {
       name: i18next.t('label.tier'),
       value: entityTierRenderer(tier),
@@ -621,11 +621,11 @@ export const getSearchIndexOverview = (
 };
 
 const getMlModelOverview = (mlModelDetails: Mlmodel) => {
-  const { algorithm, target, server, dashboard, owners, domain } =
+  const { algorithm, target, server, dashboard, owners, domains } =
     mlModelDetails;
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ owners, domain }),
+    ...getCommonOverview({ owners, domains }),
     {
       name: i18next.t('label.algorithm'),
       value: algorithm || NO_DATA,
@@ -677,7 +677,7 @@ const getMlModelOverview = (mlModelDetails: Mlmodel) => {
 };
 
 const getContainerOverview = (containerDetails: Container) => {
-  const { numberOfObjects, serviceType, dataModel, owners, domain } =
+  const { numberOfObjects, serviceType, dataModel, owners, domains } =
     containerDetails;
 
   const visible = [
@@ -686,7 +686,7 @@ const getContainerOverview = (containerDetails: Container) => {
   ];
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ owners, domain }),
+    ...getCommonOverview({ owners, domains }),
     {
       name: i18next.t('label.object-plural'),
       value: numberOfObjects,
@@ -721,12 +721,12 @@ const getChartOverview = (chartDetails: Chart) => {
     service,
     serviceType,
     displayName,
-    domain,
+    domains,
   } = chartDetails;
   const serviceDisplayName = getEntityName(service);
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ owners, domain }),
+    ...getCommonOverview({ owners, domains }),
     {
       name: `${i18next.t('label.chart')} ${i18next.t('label.url-uppercase')}`,
       value: stringToHTML(displayName ?? '') || NO_DATA,
@@ -780,7 +780,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
     owners,
     tags,
     service,
-    domain,
+    domains,
     displayName,
     dataModelType,
     fullyQualifiedName,
@@ -788,7 +788,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
   const tier = getTierTags(tags ?? []);
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ owners, domain }),
+    ...getCommonOverview({ owners, domains }),
     {
       name: `${i18next.t('label.data-model')} ${i18next.t(
         'label.url-uppercase'
@@ -847,7 +847,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
 const getStoredProcedureOverview = (
   storedProcedureDetails: StoredProcedure
 ) => {
-  const { fullyQualifiedName, owners, tags, domain, storedProcedureCode } =
+  const { fullyQualifiedName, owners, tags, domains, storedProcedureCode } =
     storedProcedureDetails;
   const [service, database, schema] = getPartialNameFromTableFQN(
     fullyQualifiedName ?? '',
@@ -858,7 +858,7 @@ const getStoredProcedureOverview = (
   const tier = getTierTags(tags ?? []);
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ owners, domain }),
+    ...getCommonOverview({ owners, domains }),
     {
       name: i18next.t('label.service'),
       value: service || NO_DATA,
@@ -927,7 +927,7 @@ const getStoredProcedureOverview = (
 };
 
 const getDatabaseOverview = (databaseDetails: Database) => {
-  const { owners, service, domain, tags, usageSummary } = databaseDetails;
+  const { owners, service, domains, tags, usageSummary } = databaseDetails;
 
   const tier = getTierTags(tags ?? []);
 
@@ -937,7 +937,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
-    ...getCommonOverview({ domain }, false),
+    ...getCommonOverview({ domains }, false),
     {
       name: i18next.t('label.tier'),
       value: entityTierRenderer(tier),
@@ -967,7 +967,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
 };
 
 const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
-  const { owners, service, tags, domain, usageSummary, database } =
+  const { owners, service, tags, domains, usageSummary, database } =
     databaseSchemaDetails;
 
   const tier = getTierTags(tags ?? []);
@@ -978,7 +978,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
-    ...getCommonOverview({ domain }, false),
+    ...getCommonOverview({ domains }, false),
     {
       name: i18next.t('label.tier'),
       value: entityTierRenderer(tier),
@@ -1017,7 +1017,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
 };
 
 const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
-  const { owners, domain, tags, serviceType } = serviceDetails;
+  const { owners, domains, tags, serviceType } = serviceDetails;
 
   const tier = getTierTags(tags ?? []);
 
@@ -1027,7 +1027,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
-    ...getCommonOverview({ domain }, false),
+    ...getCommonOverview({ domains }, false),
     {
       name: i18next.t('label.tier'),
       value: entityTierRenderer(tier),
@@ -1050,10 +1050,10 @@ const getApiCollectionOverview = (apiCollection: APICollection) => {
     return [];
   }
 
-  const { service, domain } = apiCollection;
+  const { service, domains } = apiCollection;
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ domain }, false),
+    ...getCommonOverview({ domains }, false),
     {
       name: i18next.t('label.endpoint-url'),
       value: apiCollection.endpointURL || NO_DATA,
@@ -1080,10 +1080,10 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
   if (isNil(apiEndpoint) || isEmpty(apiEndpoint)) {
     return [];
   }
-  const { domain, service, apiCollection } = apiEndpoint;
+  const { service, apiCollection, domains } = apiEndpoint;
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ domain }, false),
+    ...getCommonOverview({ domains }, false),
     {
       name: i18next.t('label.endpoint-url'),
       value: apiEndpoint.endpointURL || NO_DATA,
@@ -1140,7 +1140,7 @@ const getMetricOverview = (metric: Metric) => {
   }
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ domain: metric.domain }, false),
+    ...getCommonOverview({ domains: metric.domains }, false),
     {
       name: i18next.t('label.metric-type'),
       value: metric.metricType || NO_DATA,
@@ -2105,14 +2105,14 @@ export const getEntityBreadcrumbs = (
 
     case EntityType.DATA_PRODUCT: {
       const data = entity as DataProduct;
-      if (!data.domain) {
+      if (!data.domains) {
         return [];
       }
 
       return [
         {
-          name: getEntityName(data.domain),
-          url: getDomainPath(data.domain.fullyQualifiedName),
+          name: getEntityName(data.domains[0]),
+          url: getDomainPath(data.domains[0].fullyQualifiedName),
         },
       ];
     }

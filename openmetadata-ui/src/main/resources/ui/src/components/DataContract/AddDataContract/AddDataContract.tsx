@@ -12,7 +12,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable i18next/no-literal-string */
+
 import { CodeOutlined, EditOutlined, TableOutlined } from '@ant-design/icons';
 import {
   Button,
@@ -37,17 +37,59 @@ import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSema
 import { ContractSLAFormTab } from '../ContractSLAFormTab/ContractSLAFormTab';
 import './add-data-contract.less';
 
+export interface FormStepProps {
+  onNext: () => void;
+  onPrev: () => void;
+  nextLabel?: string;
+  prevLabel?: string;
+  isNextVisible?: boolean;
+  isPrevVisible?: boolean;
+}
+
+const TABS = ['contract-detail', 'schema', 'semantics', 'security', 'quality'];
+
 const AddDataContract: React.FC = () => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<'YAML' | 'UI'>('YAML');
   const [yaml, setYaml] = useState('');
+  const [formValues, setFormValues] = useState<Record<string, any>>({});
+  const [activeTab, setActiveTab] = useState(TABS[0]);
 
   const handleFormChange: FormProviderProps['onFormFinish'] = (
     name: string,
     { forms, values }: { forms: Record<string, any>; values: any }
   ) => {
     console.log(name, forms, values);
+    setFormValues(values);
   };
+
+  const handleTabChange = useCallback((key: string) => {
+    setActiveTab(key);
+  }, []);
+
+  const isNextVisible = useMemo(() => {
+    return activeTab !== TABS[TABS.length - 1];
+  }, [activeTab]);
+
+  const isPrevVisible = useMemo(() => {
+    return activeTab !== TABS[0];
+  }, [activeTab]);
+
+  const onNext = useCallback(() => {
+    setActiveTab(TABS[TABS.indexOf(activeTab) + 1]);
+  }, [activeTab]);
+
+  const onPrev = useCallback(() => {
+    setActiveTab(TABS[TABS.indexOf(activeTab) - 1]);
+  }, [activeTab]);
+
+  const nextLabel = useMemo(() => {
+    return TABS[TABS.indexOf(activeTab) + 1];
+  }, [activeTab]);
+
+  const prevLabel = useMemo(() => {
+    return TABS[TABS.indexOf(activeTab) - 1];
+  }, [activeTab]);
 
   const items = useMemo(
     () => [
@@ -132,14 +174,15 @@ const AddDataContract: React.FC = () => {
             </Typography.Paragraph>
           </div>
           <div className="d-flex items-center">
-            <Radio.Group value={mode} onChange={handleModeChange}>
-              <Radio value="YAML">
-                <CodeOutlined />
-              </Radio>
-              <Radio value="UI">
-                <EditOutlined />
-              </Radio>
-            </Radio.Group>
+            <Radio.Group
+              optionType="button"
+              options={[
+                { label: <CodeOutlined />, value: 'YAML' },
+                { label: <EditOutlined />, value: 'UI' },
+              ]}
+              value={mode}
+              onChange={handleModeChange}
+            />
             <Divider type="vertical" />
           </div>
         </div>
@@ -168,7 +211,13 @@ const AddDataContract: React.FC = () => {
 
     return (
       <Form.Provider onFormFinish={handleFormChange}>
-        <Tabs className="contract-tabs" items={items} tabPosition="left" />
+        <Tabs
+          activeKey={activeTab}
+          className="contract-tabs"
+          items={items}
+          tabPosition="left"
+          onChange={handleTabChange}
+        />
       </Form.Provider>
     );
   }, [mode, items, t, handleFormChange]);
@@ -176,6 +225,24 @@ const AddDataContract: React.FC = () => {
   return (
     <Card className="h-full" title={cardTitle}>
       {cardContent}
+
+      <SchemaEditor
+        mode={{ name: CSMode.JAVASCRIPT }}
+        value={JSON.stringify(formValues, null, 2)}
+      />
+
+      <div className="d-flex justify-end">
+        {isPrevVisible ? (
+          <Button type="default" onClick={onPrev}>
+            {prevLabel ?? t('label.prev')}
+          </Button>
+        ) : null}
+        {isNextVisible ? (
+          <Button type="primary" onClick={onNext}>
+            {nextLabel ?? t('label.next')}
+          </Button>
+        ) : null}
+      </div>
     </Card>
   );
 };

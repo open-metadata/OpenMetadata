@@ -242,7 +242,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           {selectedDomain && (
             <DomainLabel
               multiple
-              domain={selectedDomain}
+              domains={selectedDomain}
               entityFqn=""
               entityId=""
               entityType={EntityType.GLOSSARY}
