@@ -218,9 +218,6 @@ public class FullyQualifiedName {
    * - Full hierarchy: "service", "service.database", "service.database.schema", "service.database.schema.table"
    * - Individual parts: "service", "database", "schema", "table"
    * - Bottom-up combinations: "database.schema.table", "schema.table", "table"
-   *
-   * @param fqn The fully qualified name to generate parts from
-   * @return Set of all possible FQN parts
    */
   public static Set<String> getAllParts(String fqn) {
     var parts = split(fqn);
@@ -242,9 +239,6 @@ public class FullyQualifiedName {
    * Generates hierarchical FQN parts from root to the full FQN.
    * For example, given FQN "service.database.schema.table", this method generates:
    * ["service", "service.database", "service.database.schema", "service.database.schema.table"]
-   *
-   * @param fqn The fully qualified name to generate hierarchy from
-   * @return List of hierarchical FQN parts from root to full FQN
    */
   public static List<String> getHierarchicalParts(String fqn) {
     var parts = split(fqn);
@@ -257,9 +251,6 @@ public class FullyQualifiedName {
    * Gets all ancestor FQNs for a given FQN.
    * For example, given FQN "service.database.schema.table", this method returns:
    * ["service.database.schema", "service.database", "service"]
-   *
-   * @param fqn The fully qualified name to get ancestors from
-   * @return List of ancestor FQNs (excluding the input FQN itself)
    */
   public static List<String> getAncestors(String fqn) {
     var parts = split(fqn);
