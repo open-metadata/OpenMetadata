@@ -1,5 +1,6 @@
 ---
 title: Basic Auth Connection | OpenMetadata Elasticsearch Service
+description: Get started with basicauth. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/search/elasticsearch/basicauth
 ---
 
