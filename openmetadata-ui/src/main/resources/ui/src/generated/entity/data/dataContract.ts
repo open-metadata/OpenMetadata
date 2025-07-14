@@ -95,6 +95,10 @@ export interface DataContract {
      */
     semantics?: SemanticsRule[];
     /**
+     * Service Level Agreement expectations (timeliness, availability, etc.)
+     */
+    sla?: Sla;
+    /**
      * Source URL of the data contract.
      */
     sourceUrl?: string;
@@ -817,6 +821,74 @@ export interface SemanticsRule {
      * Definition of the semantics rule.
      */
     rule: string;
+}
+
+/**
+ * Service Level Agreement expectations (timeliness, availability, etc.)
+ */
+export interface Sla {
+    /**
+     * Time of day by which data is expected to be available (e.g. "09:00 UTC")
+     */
+    availabilityTime?: string;
+    /**
+     * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+     */
+    maxLatency?: MaxLatency;
+    /**
+     * Expected frequency of data updates (e.g. every 1 day)
+     */
+    refreshFrequency?: RefreshFrequency;
+    /**
+     * How long the data is retained (if relevant)
+     */
+    retention?: Retention;
+    [property: string]: any;
+}
+
+/**
+ * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+ */
+export interface MaxLatency {
+    unit:  MaxLatencyUnit;
+    value: number;
+    [property: string]: any;
+}
+
+export enum MaxLatencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Minute = "minute",
+}
+
+/**
+ * Expected frequency of data updates (e.g. every 1 day)
+ */
+export interface RefreshFrequency {
+    interval: number;
+    unit:     RefreshFrequencyUnit;
+    [property: string]: any;
+}
+
+export enum RefreshFrequencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Month = "month",
+    Week = "week",
+}
+
+/**
+ * How long the data is retained (if relevant)
+ */
+export interface Retention {
+    period: number;
+    unit:   RetentionUnit;
+    [property: string]: any;
+}
+
+export enum RetentionUnit {
+    Day = "day",
+    Year = "year",
 }
 
 /**
