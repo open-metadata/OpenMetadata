@@ -1,5 +1,6 @@
 ---
-title: Azure Data Factory
+title: Datafactory | Official Documentation
+description: Get started with datafactory. Setup instructions, features, and configuration details inside.
 slug: /connectors/pipeline/datafactory
 collate: true
 ---
