@@ -169,9 +169,6 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
   /**
    * Handle bulk entity creation for better performance.
    * This method can be used by the dispatcher for optimized bulk operations.
-   *
-   * @param entities List of entities to index
-   * @param subjectContext Security context
    */
   public void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {
     if (entities == null || entities.isEmpty()) {

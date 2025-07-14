@@ -294,7 +294,7 @@ class CacheWarmupIntegrationTest extends CachedOpenMetadataApplicationResourceTe
   @Test
   @Order(2)
   @DisplayName("Test cache warmup improves query performance")
-  public void testCacheWarmupImprovesQueryPerformance() throws Exception {
+  public void testCacheWarmupImprovesQueryPerformance() {
     assertTrue(isCacheAvailable(), "Cache should be available for performance testing");
     clearCache();
 
@@ -316,7 +316,7 @@ class CacheWarmupIntegrationTest extends CachedOpenMetadataApplicationResourceTe
 
   @Test
   @DisplayName("Test cache warmup populates relationship data")
-  public void testCacheWarmupPopulatesRelationshipData() throws Exception {
+  public void testCacheWarmupPopulatesRelationshipData() {
     assertTrue(isCacheAvailable(), "Cache should be available for relationship testing");
     clearCache();
     Map<String, Long> initialStats = getCacheStats();
@@ -341,7 +341,7 @@ class CacheWarmupIntegrationTest extends CachedOpenMetadataApplicationResourceTe
 
   @Test
   @DisplayName("Test cache warmup populates tag data")
-  public void testCacheWarmupPopulatesTagData() throws Exception {
+  public void testCacheWarmupPopulatesTagData() {
     assertTrue(isCacheAvailable(), "Cache should be available for tag testing");
     clearCache();
     Map<String, List<TagLabel>> tagResults = new HashMap<>();
@@ -453,7 +453,7 @@ class CacheWarmupIntegrationTest extends CachedOpenMetadataApplicationResourceTe
 
   @Test
   @DisplayName("Test cache warmup handles large dataset efficiently")
-  public void testCacheWarmupHandlesLargeDatasetEfficiently() throws Exception {
+  public void testCacheWarmupHandlesLargeDatasetEfficiently() {
     assertTrue(isCacheAvailable(), "Cache should be available for large dataset testing");
 
     clearCache();
@@ -492,7 +492,7 @@ class CacheWarmupIntegrationTest extends CachedOpenMetadataApplicationResourceTe
 
   @Test
   @DisplayName("Test cache warmup integration with application lifecycle")
-  public void testCacheWarmupIntegrationWithApplicationLifecycle() throws Exception {
+  public void testCacheWarmupIntegrationWithApplicationLifecycle() {
     assertTrue(isCacheAvailable(), "Cache should be available for lifecycle testing");
     assertTrue(RelationshipCache.isAvailable(), "Cache should be initialized");
     assertFalse(testTables.isEmpty(), "Test entities should be created");
@@ -520,7 +520,7 @@ class CacheWarmupIntegrationTest extends CachedOpenMetadataApplicationResourceTe
 
   @Test
   @DisplayName("Test cache warmup with mixed entity types")
-  public void testCacheWarmupWithMixedEntityTypes() throws Exception {
+  public void testCacheWarmupWithMixedEntityTypes() {
     assertTrue(isCacheAvailable(), "Cache should be available for mixed entity testing");
     clearCache();
     entityRelationshipDAO.findTo(

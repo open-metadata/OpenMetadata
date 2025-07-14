@@ -1,6 +1,6 @@
 ---
 title: SingleStore Connector | OpenMetadata Scalable DB Guide
-description: Integrate SingleStore with OpenMetadata using our comprehensive connector guide. Set up data cataloging, lineage tracking, and metadata management seamlessly.
+description: Learn how to connect SingleStore database to OpenMetadata with step-by-step setup instructions, configuration options, and metadata extraction guides.
 slug: /connectors/database/singlestore
 ---
 
@@ -8,7 +8,7 @@ slug: /connectors/database/singlestore
 name="SingleStore"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Stored Procedures", "Owners", "Tags"]
 / %}
 
