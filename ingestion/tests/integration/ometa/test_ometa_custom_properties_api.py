@@ -428,8 +428,12 @@ class OMetaCustomAttributeTest(TestCase):
         self.assertEqual(CustomPropertyDataTypes.TIMEINTERVAL.value, "timeInterval")
         self.assertEqual(CustomPropertyDataTypes.TIMESTAMP.value, "timestamp")
         self.assertEqual(CustomPropertyDataTypes.ENUM.value, "enum")
-        self.assertEqual(CustomPropertyDataTypes.ENTITY_REFERENCE.value, "entityReference")
-        self.assertEqual(CustomPropertyDataTypes.ENTITY_REFERENCE_LIST.value, "entityReferenceList")
+        self.assertEqual(
+            CustomPropertyDataTypes.ENTITY_REFERENCE.value, "entityReference"
+        )
+        self.assertEqual(
+            CustomPropertyDataTypes.ENTITY_REFERENCE_LIST.value, "entityReferenceList"
+        )
 
     def test_date_time_custom_properties(self):
         """
@@ -484,10 +488,17 @@ class OMetaCustomAttributeTest(TestCase):
         custom_properties = self.metadata.get_entity_custom_properties(
             entity_type=Table
         )
-        
-        date_prop = next((cp for cp in custom_properties if cp["name"] == "CreationDate"), None)
-        datetime_prop = next((cp for cp in custom_properties if cp["name"] == "LastModifiedDateTime"), None)
-        time_prop = next((cp for cp in custom_properties if cp["name"] == "DailyBackupTime"), None)
+
+        date_prop = next(
+            (cp for cp in custom_properties if cp["name"] == "CreationDate"), None
+        )
+        datetime_prop = next(
+            (cp for cp in custom_properties if cp["name"] == "LastModifiedDateTime"),
+            None,
+        )
+        time_prop = next(
+            (cp for cp in custom_properties if cp["name"] == "DailyBackupTime"), None
+        )
 
         self.assertIsNotNone(date_prop)
         self.assertIsNotNone(datetime_prop)
@@ -505,16 +516,40 @@ class OMetaCustomAttributeTest(TestCase):
         test_cases = [
             (CustomPropertyDataTypes.STRING, "TestString", "String test property"),
             (CustomPropertyDataTypes.INTEGER, "TestInteger", "Integer test property"),
-            (CustomPropertyDataTypes.MARKDOWN, "TestMarkdown", "Markdown test property"),
+            (
+                CustomPropertyDataTypes.MARKDOWN,
+                "TestMarkdown",
+                "Markdown test property",
+            ),
             (CustomPropertyDataTypes.DATE, "TestDate", "Date test property"),
-            (CustomPropertyDataTypes.DATETIME, "TestDateTime", "DateTime test property"),
+            (
+                CustomPropertyDataTypes.DATETIME,
+                "TestDateTime",
+                "DateTime test property",
+            ),
             (CustomPropertyDataTypes.TIME, "TestTime", "Time test property"),
-            (CustomPropertyDataTypes.DURATION, "TestDuration", "Duration test property"),
+            (
+                CustomPropertyDataTypes.DURATION,
+                "TestDuration",
+                "Duration test property",
+            ),
             (CustomPropertyDataTypes.EMAIL, "TestEmail", "Email test property"),
             (CustomPropertyDataTypes.NUMBER, "TestNumber", "Number test property"),
-            (CustomPropertyDataTypes.SQLQUERY, "TestSqlQuery", "SQL Query test property"),
-            (CustomPropertyDataTypes.TIMEINTERVAL, "TestTimeInterval", "Time Interval test property"),
-            (CustomPropertyDataTypes.TIMESTAMP, "TestTimestamp", "Timestamp test property"),
+            (
+                CustomPropertyDataTypes.SQLQUERY,
+                "TestSqlQuery",
+                "SQL Query test property",
+            ),
+            (
+                CustomPropertyDataTypes.TIMEINTERVAL,
+                "TestTimeInterval",
+                "Time Interval test property",
+            ),
+            (
+                CustomPropertyDataTypes.TIMESTAMP,
+                "TestTimestamp",
+                "Timestamp test property",
+            ),
         ]
 
         for data_type, name, description in test_cases:
@@ -527,7 +562,7 @@ class OMetaCustomAttributeTest(TestCase):
                         propertyType=self.metadata.get_property_type_ref(data_type),
                     ),
                 )
-                
+
                 # This should not raise an exception
                 result = self.metadata.create_or_update_custom_property(
                     ometa_custom_property=property_request
@@ -538,9 +573,9 @@ class OMetaCustomAttributeTest(TestCase):
         custom_properties = self.metadata.get_entity_custom_properties(
             entity_type=Table
         )
-        
+
         created_properties = {cp["name"]: cp for cp in custom_properties}
-        
+
         for data_type, name, description in test_cases:
             with self.subTest(data_type=data_type, name=name):
                 self.assertIn(name, created_properties)
@@ -554,7 +589,7 @@ class OMetaCustomAttributeTest(TestCase):
         """
         # Create date/time custom properties
         self.test_date_time_custom_properties()
-        
+
         # Test data for date/time properties
         extensions = {
             "CreationDate": "2023-12-01",
@@ -562,33 +597,46 @@ class OMetaCustomAttributeTest(TestCase):
             "DailyBackupTime": "02:00:00",
         }
 
-        table = self.create_table(name="test_datetime_properties", extensions=extensions)
-        
+        table = self.create_table(
+            name="test_datetime_properties", extensions=extensions
+        )
+
         # Verify the table was created with the date/time extensions
         res = self.metadata.get_by_name(
             entity=Table,
             fqn="test-service-custom-properties.test-db.test-schema.test_datetime_properties",
             fields=["*"],
         )
-        
+
         self.assertEqual(res.extension.root["CreationDate"], extensions["CreationDate"])
-        self.assertEqual(res.extension.root["LastModifiedDateTime"], extensions["LastModifiedDateTime"])
-        self.assertEqual(res.extension.root["DailyBackupTime"], extensions["DailyBackupTime"])
+        self.assertEqual(
+            res.extension.root["LastModifiedDateTime"],
+            extensions["LastModifiedDateTime"],
+        )
+        self.assertEqual(
+            res.extension.root["DailyBackupTime"], extensions["DailyBackupTime"]
+        )
 
     def test_custom_property_enum_backwards_compatibility(self):
         """
         Test that the enum values work correctly with property type references
         """
         # Test that get_property_type_ref works with the new enum values
-        date_type_ref = self.metadata.get_property_type_ref(CustomPropertyDataTypes.DATE)
-        datetime_type_ref = self.metadata.get_property_type_ref(CustomPropertyDataTypes.DATETIME)
-        time_type_ref = self.metadata.get_property_type_ref(CustomPropertyDataTypes.TIME)
-        
+        date_type_ref = self.metadata.get_property_type_ref(
+            CustomPropertyDataTypes.DATE
+        )
+        datetime_type_ref = self.metadata.get_property_type_ref(
+            CustomPropertyDataTypes.DATETIME
+        )
+        time_type_ref = self.metadata.get_property_type_ref(
+            CustomPropertyDataTypes.TIME
+        )
+
         # These should not be None and should have the correct names
         self.assertIsNotNone(date_type_ref)
         self.assertIsNotNone(datetime_type_ref)
         self.assertIsNotNone(time_type_ref)
-        
+
         # Verify the type names match the enum values
         self.assertEqual(date_type_ref.name, "date-cp")
         self.assertEqual(datetime_type_ref.name, "dateTime-cp")
@@ -602,18 +650,18 @@ class OMetaCustomAttributeTest(TestCase):
         for data_type in CustomPropertyDataTypes:
             self.assertIsInstance(data_type.value, str)
             self.assertGreater(len(data_type.value), 0)
-            
+
         # Test specific enum members that were changed
         date_time_types = [
             CustomPropertyDataTypes.DATE,
             CustomPropertyDataTypes.DATETIME,
-            CustomPropertyDataTypes.TIME
+            CustomPropertyDataTypes.TIME,
         ]
-        
+
         for data_type in date_time_types:
             # These should all have the -cp suffix
             self.assertTrue(data_type.value.endswith("-cp"))
-            
+
         # Test that other types don't have the -cp suffix
         non_cp_types = [
             CustomPropertyDataTypes.STRING,
@@ -629,7 +677,7 @@ class OMetaCustomAttributeTest(TestCase):
             CustomPropertyDataTypes.ENTITY_REFERENCE,
             CustomPropertyDataTypes.ENTITY_REFERENCE_LIST,
         ]
-        
+
         for data_type in non_cp_types:
             self.assertFalse(data_type.value.endswith("-cp"))
 
@@ -647,7 +695,7 @@ class OMetaCustomAttributeTest(TestCase):
             (CustomPropertyDataTypes.EMAIL, "Owner", "Owner email"),
             (CustomPropertyDataTypes.NUMBER, "SizeGB", "Size in GB"),
         ]
-        
+
         for data_type, name, description in properties_to_create:
             property_request = OMetaCustomProperties(
                 entity_type=Table,
@@ -657,11 +705,11 @@ class OMetaCustomAttributeTest(TestCase):
                     propertyType=self.metadata.get_property_type_ref(data_type),
                 ),
             )
-            
+
             self.metadata.create_or_update_custom_property(
                 ometa_custom_property=property_request
             )
-        
+
         # Create a table with all these properties
         extensions = {
             "Description": "This is a test table",
@@ -672,16 +720,16 @@ class OMetaCustomAttributeTest(TestCase):
             "Owner": "test@example.com",
             "SizeGB": 2.5,
         }
-        
+
         table = self.create_table(name="test_mixed_types", extensions=extensions)
-        
+
         # Verify the table was created with all extensions
         res = self.metadata.get_by_name(
             entity=Table,
             fqn="test-service-custom-properties.test-db.test-schema.test_mixed_types",
             fields=["*"],
         )
-        
+
         for key, expected_value in extensions.items():
             self.assertEqual(res.extension.root[key], expected_value)
 
