@@ -58,6 +58,43 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
   }
 
   @Test
+  void test_duplicateRelatedMetricsIssue() throws IOException {
+    CreateMetric createMetric1 = createRequest("test_metric_duplicate_1", "", "", null);
+    Metric metric1 = createEntity(createMetric1, ADMIN_AUTH_HEADERS);
+
+    CreateMetric createMetric2 = createRequest("test_metric_duplicate_2", "", "", null);
+    Metric metric2 = createEntity(createMetric2, ADMIN_AUTH_HEADERS);
+
+    Metric originalMetric2 = getMetric(metric2.getId(), "*", ADMIN_AUTH_HEADERS);
+    String origJson = JsonUtils.pojoToJson(originalMetric2);
+
+    originalMetric2.setRelatedMetrics(List.of(metric1.getEntityReference()));
+    patchEntity(originalMetric2.getId(), origJson, originalMetric2, ADMIN_AUTH_HEADERS);
+
+    Metric updatedMetric2 = getMetric(metric2.getId(), "relatedMetrics", ADMIN_AUTH_HEADERS);
+
+    Assertions.assertNotNull(updatedMetric2.getRelatedMetrics());
+    Assertions.assertEquals(
+        1,
+        updatedMetric2.getRelatedMetrics().size(),
+        "Expected only 1 related metric, but found "
+            + updatedMetric2.getRelatedMetrics().size()
+            + ". Related metrics: "
+            + updatedMetric2.getRelatedMetrics());
+    Assertions.assertEquals(metric1.getId(), updatedMetric2.getRelatedMetrics().get(0).getId());
+
+    // Also verify that metric1 now has metric2 as a related metric (bidirectional)
+    Metric updatedMetric1 = getMetric(metric1.getId(), "relatedMetrics", ADMIN_AUTH_HEADERS);
+    Assertions.assertNotNull(updatedMetric1.getRelatedMetrics());
+    Assertions.assertEquals(
+        1,
+        updatedMetric1.getRelatedMetrics().size(),
+        "Expected only 1 related metric for the reverse relationship, but found "
+            + updatedMetric1.getRelatedMetrics().size());
+    Assertions.assertEquals(metric2.getId(), updatedMetric1.getRelatedMetrics().get(0).getId());
+  }
+
+  @Test
   void patch_MetricEntity() throws IOException {
     // Create a new Metric with different fields
     CreateMetric createRequest =
