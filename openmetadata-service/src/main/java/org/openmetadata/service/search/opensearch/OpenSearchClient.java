@@ -103,7 +103,6 @@ import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
@@ -1405,12 +1404,34 @@ public class OpenSearchClient implements SearchClient {
   public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-    // Build the query using the search builder factory
-    OpenSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
-    QueryBuilder queryBuilder =
-        searchBuilderFactory.buildSearchQueryBuilder(
-            request.getQuery(), SearchIndex.getAllFields());
-    searchSourceBuilder.query(queryBuilder);
+    // Check if query is JSON format or simple search query
+    if (request.getQuery() != null && !request.getQuery().isEmpty()) {
+      // Try to parse as JSON first (for backward compatibility with filters)
+      if (request.getQuery().trim().startsWith("{")) {
+        buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+      } else {
+        // Handle as a search query (including field:value syntax)
+        OpenSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+        // Use getSearchSourceBuilder which properly handles field:value syntax
+        SearchSourceBuilder tempBuilder =
+            searchBuilderFactory.getSearchSourceBuilder(
+                request.getIndex(), request.getQuery(), 0, 10);
+        searchSourceBuilder.query(tempBuilder.query());
+      }
+    }
+
+    // Apply deleted filter if specified
+    if (request.getDeleted() != null) {
+      QueryBuilder currentQuery = searchSourceBuilder.query();
+      BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+
+      if (currentQuery != null) {
+        boolQuery.must(currentQuery);
+      }
+      boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
+
+      searchSourceBuilder.query(boolQuery);
+    }
 
     String aggregationField = request.getFieldName();
     if (aggregationField == null || aggregationField.isBlank()) {

@@ -47,6 +47,10 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public QueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
+    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
+      return QueryBuilders.matchAllQuery();
+    }
+
     Map<String, Float> fuzzyFields =
         fields.entrySet().stream()
             .filter(entry -> isFuzzyField(entry.getKey()))

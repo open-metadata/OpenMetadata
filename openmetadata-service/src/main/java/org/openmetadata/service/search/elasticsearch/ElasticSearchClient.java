@@ -183,7 +183,6 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.QueryCostRecordsAggregator;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
-import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
@@ -464,13 +463,11 @@ public class ElasticSearchClient implements SearchClient {
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
 
-    // Log the search query for debugging
-    LOG.info("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
-    LOG.info("SearchSourceBuilder query: {}", searchSourceBuilder.query());
-    LOG.info("Full SearchSourceBuilder: {}", searchSourceBuilder.toString());
+    LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
+    LOG.debug("SearchSourceBuilder query: {}", searchSourceBuilder.query());
+    LOG.debug("Full SearchSourceBuilder: {}", searchSourceBuilder);
 
     try {
-      // Start search operation timing using Micrometer
       io.micrometer.core.instrument.Timer.Sample searchTimerSample =
           org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
 
@@ -1321,12 +1318,34 @@ public class ElasticSearchClient implements SearchClient {
   public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-    // Build the query using the search builder factory
-    ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
-    QueryBuilder queryBuilder =
-        searchBuilderFactory.buildSearchQueryBuilder(
-            request.getQuery(), SearchIndex.getAllFields());
-    searchSourceBuilder.query(queryBuilder);
+    // Check if query is JSON format or simple search query
+    if (request.getQuery() != null && !request.getQuery().isEmpty()) {
+      // Try to parse as JSON first (for backward compatibility with filters)
+      if (request.getQuery().trim().startsWith("{")) {
+        buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+      } else {
+        // Handle as a search query (including field:value syntax)
+        ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+        // Use getSearchSourceBuilder which properly handles field:value syntax
+        SearchSourceBuilder tempBuilder =
+            searchBuilderFactory.getSearchSourceBuilder(
+                request.getIndex(), request.getQuery(), 0, 10);
+        searchSourceBuilder.query(tempBuilder.query());
+      }
+    }
+
+    // Apply deleted filter if specified
+    if (request.getDeleted() != null) {
+      QueryBuilder currentQuery = searchSourceBuilder.query();
+      BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+
+      if (currentQuery != null) {
+        boolQuery.must(currentQuery);
+      }
+      boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
+
+      searchSourceBuilder.query(boolQuery);
+    }
 
     String aggregationField = request.getFieldName();
     if (aggregationField == null || aggregationField.isBlank()) {
