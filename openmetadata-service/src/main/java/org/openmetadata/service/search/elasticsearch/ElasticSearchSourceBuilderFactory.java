@@ -48,10 +48,6 @@ public class ElasticSearchSourceBuilderFactory
 
   @Override
   public QueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
-    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
-      return QueryBuilders.matchAllQuery();
-    }
-
     Map<String, Float> fuzzyFields =
         fields.entrySet().stream()
             .filter(entry -> isFuzzyField(entry.getKey()))
@@ -62,34 +58,28 @@ public class ElasticSearchSourceBuilderFactory
             .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-    // Always use MultiMatch for consistency with table searches
-    BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
+    QueryStringQueryBuilder fuzzyQueryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .fields(fuzzyFields)
+            .type(MOST_FIELDS)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO)
+            .fuzzyMaxExpansions(10)
+            .fuzzyPrefixLength(3)
+            .tieBreaker(0.5f);
 
-    if (!fuzzyFields.isEmpty()) {
-      MultiMatchQueryBuilder fuzzyQueryBuilder =
-          QueryBuilders.multiMatchQuery(query)
-              .fields(fuzzyFields)
-              .type(MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
-              .maxExpansions(10)
-              .prefixLength(1)
-              .operator(Operator.AND)
-              .tieBreaker(0.3f);
-      combinedQuery.should(fuzzyQueryBuilder);
-    }
+    MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+        QueryBuilders.multiMatchQuery(query)
+            .fields(nonFuzzyFields)
+            .type(MOST_FIELDS)
+            .operator(Operator.AND)
+            .tieBreaker(0.5f)
+            .fuzziness(Fuzziness.ZERO);
 
-    if (!nonFuzzyFields.isEmpty()) {
-      MultiMatchQueryBuilder nonFuzzyQueryBuilder =
-          QueryBuilders.multiMatchQuery(query)
-              .fields(nonFuzzyFields)
-              .type(MOST_FIELDS)
-              .operator(Operator.AND)
-              .tieBreaker(0.3f)
-              .fuzziness(Fuzziness.ZERO);
-      combinedQuery.should(nonFuzzyQueryBuilder);
-    }
-
-    return combinedQuery.minimumShouldMatch(1);
+    return QueryBuilders.boolQuery()
+        .should(fuzzyQueryBuilder)
+        .should(nonFuzzyQueryBuilder)
+        .minimumShouldMatch(1);
   }
 
   @Override
@@ -161,9 +151,10 @@ public class ElasticSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
+    Map<String, Float> allFields = getAllSearchFieldsFromSettings(searchSettings);
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .fields(SearchIndex.getAllFields())
+            .fields(allFields)
             .fuzziness(Fuzziness.AUTO)
             .fuzzyMaxExpansions(10);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
@@ -441,54 +432,8 @@ public class ElasticSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildCommonSearchBuilder(String query, int from, int size) {
-    // Get all fields from search settings
-    Map<String, Float> allFields = getAllSearchFieldsFromSettings(searchSettings);
-
-    // Separate fuzzy and non-fuzzy fields
-    Map<String, Float> fuzzyFields =
-        allFields.entrySet().stream()
-            .filter(entry -> isFuzzyField(entry.getKey()))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-    Map<String, Float> nonFuzzyFields =
-        allFields.entrySet().stream()
-            .filter(entry -> isNonFuzzyField(entry.getKey()))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-    // Build query using the same logic as buildDataAssetSearchBuilder
-    BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
-    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
-      baseQuery.must(QueryBuilders.matchAllQuery());
-    } else {
-      BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
-
-      if (!fuzzyFields.isEmpty()) {
-        MultiMatchQueryBuilder fuzzyQueryBuilder =
-            QueryBuilders.multiMatchQuery(query)
-                .fields(fuzzyFields)
-                .type(MOST_FIELDS)
-                .fuzziness(Fuzziness.AUTO)
-                .maxExpansions(10)
-                .prefixLength(1)
-                .operator(Operator.AND)
-                .tieBreaker(0.3f);
-        combinedQuery.should(fuzzyQueryBuilder);
-      }
-
-      if (!nonFuzzyFields.isEmpty()) {
-        MultiMatchQueryBuilder nonFuzzyQueryBuilder =
-            QueryBuilders.multiMatchQuery(query)
-                .fields(nonFuzzyFields)
-                .type(MOST_FIELDS)
-                .operator(Operator.AND)
-                .tieBreaker(0.3f)
-                .fuzziness(Fuzziness.ZERO);
-        combinedQuery.should(nonFuzzyQueryBuilder);
-      }
-
-      combinedQuery.minimumShouldMatch(1);
-      baseQuery.must(combinedQuery);
-    }
+    QueryBuilder queryStringBuilder =
+        buildSearchQueryBuilder(query, getAllSearchFieldsFromSettings(searchSettings));
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
 
@@ -506,11 +451,12 @@ public class ElasticSearchSourceBuilderFactory
       }
     }
 
-    QueryBuilder finalQuery = baseQuery;
+    QueryBuilder finalQuery = queryStringBuilder;
     if (!functions.isEmpty()) {
       FunctionScoreQueryBuilder functionScore =
           QueryBuilders.functionScoreQuery(
-              baseQuery, functions.toArray(new FunctionScoreQueryBuilder.FilterFunctionBuilder[0]));
+              queryStringBuilder,
+              functions.toArray(new FunctionScoreQueryBuilder.FilterFunctionBuilder[0]));
       functionScore.scoreMode(FunctionScoreQuery.ScoreMode.SUM);
       functionScore.boostMode(CombineFunction.MULTIPLY);
       finalQuery = functionScore;
