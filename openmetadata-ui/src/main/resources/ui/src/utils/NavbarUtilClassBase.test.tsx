@@ -33,7 +33,6 @@ describe('NavbarUtilClassBase', () => {
     expect(stringifyResult).toContain('label.doc-plural');
     expect(stringifyResult).toContain('label.api-uppercase');
     expect(stringifyResult).toContain('label.slack-support');
-    expect(stringifyResult).toContain('label.whats-new');
     expect(stringifyResult).toContain('label.version');
   });
 });

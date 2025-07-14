@@ -34,8 +34,7 @@ const getHelpDropdownLabelContentRenderer = (
       <Col className="flex items-center" span={20}>
         <Typography.Text className="text-base-color">
           {item.label}{' '}
-          {item.key === HELP_ITEMS_ENUM.VERSION &&
-            (version ?? '?').split('-')[0]}
+          {item.key === HELP_ITEMS_ENUM.VERSION && (version ?? '?')}
         </Typography.Text>
 
         {item.isExternal && (
