@@ -227,6 +227,18 @@ export const getCountBadge = (
   );
 };
 
+export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
+  const currentUser = useApplicationStore.getState().currentUser;
+  let recentlyViewed: RecentlyViewedData[] = [];
+
+  if (currentUser) {
+    const { preferences } = usePersistentStorage.getState();
+    recentlyViewed = get(preferences, [currentUser.name, 'recentlyViewed'], []);
+  }
+
+  return recentlyViewed;
+};
+
 export const setRecentlyViewedData = (
   recentData: Array<RecentlyViewedData>
 ): void => {
