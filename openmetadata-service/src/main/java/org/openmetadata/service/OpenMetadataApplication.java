@@ -13,7 +13,6 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
 
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
@@ -604,7 +603,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig)
       throws ConfigurationException {
-    if (!nullOrEmpty(catalogConfig.getAuthorizerConfiguration().getBotPrincipals())) {
+    if (catalogConfig.getAuthorizerConfiguration().getBotPrincipals() != null
+        || !catalogConfig.getAuthorizerConfiguration().getBotPrincipals().isEmpty()) {
       throw new ConfigurationException(
           "'botPrincipals' configuration is deprecated. Please remove it from "
               + "'openmetadata.yaml and restart the server");
