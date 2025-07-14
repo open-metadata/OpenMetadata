@@ -77,6 +77,14 @@ const BulkEntityImportPage = () => {
   const [activeAsyncImportJob, setActiveAsyncImportJob] =
     useState<CSVImportJobType>();
   const activeAsyncImportJobRef = useRef<CSVImportJobType>();
+  // This ref is used to track the bulk action processing for the Current/Active Page or Tab
+  const isBulkActionProcessingRef = useRef<{
+    isProcessing: boolean;
+    entityType?: EntityType;
+  }>({
+    isProcessing: false,
+    entityType: undefined,
+  });
 
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
@@ -177,6 +185,10 @@ const BulkEntityImportPage = () => {
   const handleLoadData = useCallback(
     async (e: ProgressEvent<FileReader>) => {
       try {
+        isBulkActionProcessingRef.current = {
+          isProcessing: true,
+          entityType,
+        };
         const result = e.target?.result as string;
 
         const initialLoadJobData: CSVImportJobType = {
@@ -220,6 +232,11 @@ const BulkEntityImportPage = () => {
       const csvData = getCSVStringFromColumnsAndDataSource(columns, dataSource);
 
       const api = getImportValidateAPIEntityType(entityType);
+
+      isBulkActionProcessingRef.current = {
+        isProcessing: true,
+        entityType,
+      };
 
       const validateLoadData: CSVImportJobType = {
         type: 'onValidate',
@@ -396,7 +413,11 @@ const BulkEntityImportPage = () => {
 
       // If the job is started, then save the job data and message to the active job.
       // This will help in case of restAPI response, didn't come in time.
-      if (websocketResponse.status === 'STARTED') {
+      if (
+        websocketResponse.status === 'STARTED' &&
+        isBulkActionProcessingRef.current.isProcessing &&
+        isBulkActionProcessingRef.current.entityType === entityType
+      ) {
         const processedStartedResponse = {
           ...websocketResponse,
           message: t('message.import-data-in-progress'),
@@ -418,9 +439,13 @@ const BulkEntityImportPage = () => {
           ...processedStartedResponse,
         };
 
+        isBulkActionProcessingRef.current = {
+          isProcessing: false,
+          entityType: undefined,
+        };
+
         return;
       }
-
       const activeImportJob = activeAsyncImportJobRef.current;
       if (websocketResponse.jobId === activeImportJob?.jobId) {
         setActiveAsyncImportJob((job) => {
@@ -476,6 +501,7 @@ const BulkEntityImportPage = () => {
       }
     },
     [
+      isBulkActionProcessingRef,
       activeAsyncImportJobRef,
       onCSVReadComplete,
       setActiveAsyncImportJob,
