@@ -45,7 +45,6 @@ import {
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { AsyncDeleteWebsocketResponse } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
@@ -58,6 +57,7 @@ import {
   JobType,
 } from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
@@ -86,7 +86,6 @@ import DomainSelectableList from '../common/DomainSelectableList/DomainSelectabl
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
-import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
@@ -112,8 +111,7 @@ const NavBar = () => {
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
-  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
-  const [version, setVersion] = useState<string>();
+  const { appVersion: version, setAppVersion } = useApplicationStore();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
     preferences: { isSidebarCollapsed, language },
@@ -130,7 +128,8 @@ const NavBar = () => {
         expires: new Date(Date.now() + ONE_HOUR_MS),
       });
 
-      setVersion(res.version);
+      // Remove -SNAPSHOT from the version
+      setAppVersion(res.version.replace('-SNAPSHOT', ''));
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -150,12 +149,6 @@ const NavBar = () => {
       return <Component key={key} />;
     });
   }, []);
-
-  const handleSupportClick = ({ key }: MenuInfo): void => {
-    if (key === HELP_ITEMS_ENUM.WHATS_NEW) {
-      setIsFeatureModalOpen(true);
-    }
-  };
 
   const { socket } = useWebSocketConnector();
 
@@ -431,8 +424,6 @@ const NavBar = () => {
     navigate(0);
   }, []);
 
-  const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);
-
   return (
     <>
       <Header>
@@ -552,7 +543,6 @@ const NavBar = () => {
             <Dropdown
               menu={{
                 items: getHelpDropdownItems(version),
-                onClick: handleSupportClick,
               }}
               overlayStyle={{ width: 175 }}
               placement="bottomRight"
@@ -569,12 +559,6 @@ const NavBar = () => {
           </div>
         </div>
       </Header>
-      <WhatsNewModal
-        header={`${t('label.whats-new')}!`}
-        visible={isFeatureModalOpen}
-        onCancel={handleModalCancel}
-      />
-
       {showVersionMissMatchAlert && (
         <Alert
           showIcon
