@@ -84,9 +84,8 @@ const CustomMetricGraphs = ({
     onCustomMetricUpdate,
   } = useTableProfiler();
   const editPermission =
-    (permissions &&
-      getPrioritizedEditPermission(permissions, Operation.EditDataProfile)) ||
-    false;
+    permissions &&
+    getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
   const deletePermission = permissions?.Delete || false;
 
   const [selectedMetrics, setSelectedMetrics] = useState<CustomMetric>();

@@ -397,7 +397,11 @@ const DatabaseDetails: FunctionComponent = () => {
       );
   }, [currentVersion, decodedDatabaseFQN]);
 
-  const { editCustomAttributePermission, viewAllPermission } = useMemo(
+  const {
+    editCustomAttributePermission,
+    viewAllPermission,
+    hasViewBasicPermission,
+  } = useMemo(
     () => ({
       editCustomAttributePermission:
         getPrioritizedEditPermission(
@@ -405,6 +409,10 @@ const DatabaseDetails: FunctionComponent = () => {
           PermissionOperation.EditCustomFields
         ) && !database.deleted,
       viewAllPermission: databasePermission.ViewAll,
+      hasViewBasicPermission: getPrioritizedViewPermission(
+        databasePermission,
+        PermissionOperation.ViewBasic
+      ),
     }),
     [databasePermission, database]
   );
@@ -565,12 +573,7 @@ const DatabaseDetails: FunctionComponent = () => {
     return <Loader />;
   }
 
-  if (
-    !getPrioritizedViewPermission(
-      databasePermission,
-      PermissionOperation.ViewBasic
-    )
-  ) {
+  if (!hasViewBasicPermission) {
     return (
       <ErrorPlaceHolder
         className="border-none"

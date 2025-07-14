@@ -229,11 +229,7 @@ const DashboardDetails = ({
           dashboardPermissions,
           PermissionOperation.EditCustomFields
         ) && !deleted,
-      editAllPermission:
-        getPrioritizedEditPermission(
-          dashboardPermissions,
-          PermissionOperation.EditAll
-        ) && !deleted,
+      editAllPermission: PermissionOperation.EditAll && !deleted,
       editLineagePermission:
         getPrioritizedEditPermission(
           dashboardPermissions,

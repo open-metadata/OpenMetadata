@@ -269,7 +269,7 @@ const DashboardDetailsPage = () => {
     ) {
       fetchDashboardDetail(dashboardFQN);
     }
-  }, [dashboardFQN, dashboardPermissions, getPrioritizedViewPermission]);
+  }, [dashboardFQN, dashboardPermissions]);
 
   useEffect(() => {
     fetchResourcePermission(dashboardFQN);
