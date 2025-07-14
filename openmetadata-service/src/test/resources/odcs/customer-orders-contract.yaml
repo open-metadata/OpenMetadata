@@ -1,0 +1,275 @@
+apiVersion: v3.0.2
+kind: DataContract
+id: "urn:datacontract:checkout:orders-latest"
+name: "Customer Orders Contract"
+version: "1.0.0"
+status: "active"
+domain: "checkout"
+dataProduct: "customer_analytics"
+
+description:
+  purpose: |
+    This data contract defines the structure and quality guarantees for the customer orders dataset.
+    The data is used for sales analytics, customer behavior analysis, and financial reporting.
+  limitations: |
+    - Historical data only goes back to 2020-01-01
+    - PII data is masked for non-authorized consumers
+    - Real-time data has a 5-minute delay
+  usage: |
+    This dataset can be used for:
+    - Daily/weekly/monthly sales reports
+    - Customer segmentation analysis
+    - Revenue forecasting
+    - Inventory planning
+
+contact:
+  name: "Data Platform Team"
+  email: "data-platform@company.com"
+
+servers:
+  - type: "bigquery"
+    project: "analytics-prod"
+    dataset: "sales_data"
+    
+schema:
+  - name: "orders"
+    type: "table"
+    description: "Main orders table containing all customer transactions"
+    properties:
+      - name: "order_id"
+        businessName: "Order ID"
+        logicalType: "string"
+        physicalType: "VARCHAR(50)"
+        description: "Unique identifier for each order"
+        primaryKey: true
+        required: true
+        unique: true
+        
+      - name: "customer_id"
+        businessName: "Customer ID"
+        logicalType: "string"
+        physicalType: "VARCHAR(50)"
+        description: "Reference to customer who placed the order"
+        required: true
+        references:
+          table: "customers"
+          column: "customer_id"
+          
+      - name: "order_date"
+        businessName: "Order Date"
+        logicalType: "timestamp"
+        physicalType: "TIMESTAMP"
+        description: "Date and time when the order was placed"
+        required: true
+        
+      - name: "order_amount"
+        businessName: "Order Total Amount"
+        logicalType: "decimal"
+        physicalType: "DECIMAL(10,2)"
+        precision: 10
+        scale: 2
+        description: "Total amount of the order including taxes"
+        required: true
+        
+      - name: "currency"
+        businessName: "Currency Code"
+        logicalType: "string"
+        physicalType: "CHAR(3)"
+        maxLength: 3
+        description: "ISO 4217 currency code"
+        required: true
+        enum: ["USD", "EUR", "GBP", "CAD", "AUD"]
+        
+      - name: "status"
+        businessName: "Order Status"
+        logicalType: "string"
+        physicalType: "VARCHAR(20)"
+        description: "Current status of the order"
+        required: true
+        enum: ["pending", "confirmed", "shipped", "delivered", "cancelled", "refunded"]
+        
+      - name: "shipping_address"
+        businessName: "Shipping Address"
+        logicalType: "object"
+        description: "Nested shipping address information"
+        properties:
+          - name: "street"
+            logicalType: "string"
+            required: true
+          - name: "city"
+            logicalType: "string"
+            required: true
+          - name: "state"
+            logicalType: "string"
+            required: true
+          - name: "postal_code"
+            logicalType: "string"
+            required: true
+          - name: "country"
+            logicalType: "string"
+            required: true
+            
+      - name: "items"
+        businessName: "Order Items"
+        logicalType: "array"
+        description: "Array of items in the order"
+        items:
+          type: "object"
+          properties:
+            - name: "product_id"
+              logicalType: "string"
+              required: true
+            - name: "quantity"
+              logicalType: "integer"
+              required: true
+            - name: "unit_price"
+              logicalType: "decimal"
+              precision: 10
+              scale: 2
+              required: true
+              
+      - name: "customer_email"
+        businessName: "Customer Email"
+        logicalType: "string"
+        physicalType: "VARCHAR(255)"
+        maxLength: 255
+        description: "Customer email address"
+        required: false
+        classification: "PII"
+        tags: ["personal-data", "encrypted"]
+        
+      - name: "created_at"
+        businessName: "Record Creation Time"
+        logicalType: "timestamp"
+        physicalType: "TIMESTAMP"
+        description: "When this record was created in the system"
+        required: true
+        
+      - name: "updated_at"
+        businessName: "Record Update Time"
+        logicalType: "timestamp"
+        physicalType: "TIMESTAMP"
+        description: "When this record was last updated"
+        required: true
+
+quality:
+  - type: "text"
+    description: "Order amount must be positive"
+    rule: "order_amount > 0"
+    
+  - type: "text"
+    description: "Order date cannot be in the future"
+    rule: "order_date <= CURRENT_TIMESTAMP()"
+    
+  - type: "sql"
+    description: "Check for duplicate order IDs"
+    rule: |
+      SELECT COUNT(*) as duplicate_count
+      FROM orders
+      GROUP BY order_id
+      HAVING COUNT(*) > 1
+      
+  - type: "sql"
+    description: "Verify foreign key integrity"
+    rule: |
+      SELECT COUNT(*) as orphaned_orders
+      FROM orders o
+      LEFT JOIN customers c ON o.customer_id = c.customer_id
+      WHERE c.customer_id IS NULL
+      
+  - type: "library"
+    description: "Email format validation"
+    library: "great_expectations"
+    rule: "expect_column_values_to_match_regex"
+    parameters:
+      column: "customer_email"
+      regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      
+  - type: "library"
+    description: "Currency code validation"
+    library: "great_expectations"
+    rule: "expect_column_values_to_be_in_set"
+    parameters:
+      column: "currency"
+      value_set: ["USD", "EUR", "GBP", "CAD", "AUD"]
+      
+  - type: "custom"
+    description: "Business hours validation"
+    rule: |
+      Orders should primarily be placed during business hours (6 AM - 11 PM)
+      with exceptions for promotional periods
+
+slaProperties:
+  - property: "refreshFrequency"
+    value: "24"
+    unit: "hours"
+    description: "Data is refreshed daily"
+    
+  - property: "maxLatency"
+    value: "4"
+    unit: "hours"
+    description: "Maximum delay between order placement and appearance in dataset"
+    
+  - property: "availabilityTime"
+    value: "06:00 UTC"
+    description: "Daily data available by 6 AM UTC"
+    
+  - property: "retention"
+    value: "7"
+    unit: "years"
+    description: "Data retained for 7 years"
+    
+  - property: "uptime"
+    value: "99.9"
+    unit: "percent"
+    description: "Dataset availability SLA"
+
+team:
+  - username: "john.doe"
+    role: "Data Owner"
+    email: "john.doe@company.com"
+    
+  - username: "jane.smith"
+    role: "Data Steward"
+    email: "jane.smith@company.com"
+    
+  - username: "bob.wilson"
+    role: "Technical Lead"
+    email: "bob.wilson@company.com"
+    
+  - username: "alice.johnson"
+    role: "Data Quality Reviewer"
+    email: "alice.johnson@company.com"
+
+pricing:
+  - name: "standard"
+    price: 0.10
+    currency: "USD"
+    unit: "GB"
+    description: "Standard tier pricing per GB scanned"
+    
+stakeholders:
+  - name: "Sales Team"
+    role: "Consumer"
+    contact: "sales-team@company.com"
+    
+  - name: "Finance Department"
+    role: "Consumer"
+    contact: "finance@company.com"
+    
+  - name: "Marketing Analytics"
+    role: "Consumer"
+    contact: "marketing-analytics@company.com"
+
+tags:
+  - "sales"
+  - "orders"
+  - "customer-data"
+  - "financial"
+  - "tier-1"
+
+customProperties:
+  dataClassification: "Confidential"
+  regulatoryCompliance: ["GDPR", "CCPA"]
+  businessCriticality: "High"
+  costCenter: "CC-12345"

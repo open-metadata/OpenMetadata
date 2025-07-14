@@ -68,6 +68,10 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.datacontract.odcs.ODCSImportResponse;
+import org.openmetadata.service.datacontract.odcs.ODCSImportUtil;
+import org.openmetadata.service.exception.DataContractImportException;
+import jakarta.ws.rs.WebApplicationException;
 
 @Slf4j
 @Path("/v1/dataContracts")
@@ -351,6 +355,80 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       return create(uriInfo, securityContext, dataContract);
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid YAML content: " + e.getMessage(), e);
+    }
+  }
+
+  @POST
+  @Path("/import/odcs")
+  @Consumes({MediaType.APPLICATION_JSON, "application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "importODCSDataContract",
+      summary = "Import ODCS data contract",
+      description = "Import a data contract from ODCS (Open Data Contract Standard) format. "
+          + "Supports versions v3.0.0, v3.0.1, and v3.0.2. The target entity must be specified via entityId parameter.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully imported ODCS contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ODCSImportResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid ODCS format or validation error"),
+        @ApiResponse(responseCode = "404", description = "Target entity not found"),
+        @ApiResponse(responseCode = "422", description = "ODCS contract could not be mapped to OpenMetadata format")
+      })
+  public Response importODCSContract(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "ID of the table or topic entity to attach the contract to",
+              schema = @Schema(type = "UUID"),
+              required = true)
+          @QueryParam("entityId")
+          UUID entityId,
+      @Parameter(
+              description = "Format of the input content (json or yaml)",
+              schema = @Schema(type = "string", allowableValues = {"json", "yaml"}))
+          @QueryParam("format")
+          @DefaultValue("yaml")
+          String format,
+      String odcsContent) {
+    
+    if (entityId == null) {
+      throw new IllegalArgumentException("entityId parameter is required");
+    }
+    
+    try {
+      // Import and map the ODCS contract
+      ODCSImportResponse importResponse = ODCSImportUtil.importContract(odcsContent, format, entityId);
+      
+      // Log the contract details before creation
+      LOG.info("Creating data contract with name: {}, entity: {}", 
+          importResponse.getContract().getName(), 
+          importResponse.getContract().getEntity().getId());
+      
+      // Create the data contract
+      DataContract created;
+      try {
+        created = repository.create(uriInfo, importResponse.getContract());
+        created = addHref(uriInfo, created);
+      } catch (Exception e) {
+        LOG.error("Failed to create data contract. Contract details: name={}, entity={}, fqn={}", 
+            importResponse.getContract().getName(),
+            importResponse.getContract().getEntity().getId(),
+            importResponse.getContract().getFullyQualifiedName(), e);
+        throw e;
+      }
+      
+      // Update response with created contract
+      importResponse.getImportReport().setContractId(created.getId().toString());
+      importResponse.setContract(created);
+      
+      return Response.ok(importResponse).build();
+    } catch (DataContractImportException e) {
+      // DataContractImportException already has the right status code (409)
+      throw e;
     }
   }
 

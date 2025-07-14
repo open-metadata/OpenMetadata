@@ -1,0 +1,45 @@
+apiVersion: v3.0.0
+kind: DataContract
+id: "dc-simple-001"
+name: "Simple User Table Contract"
+version: "1.0.0"
+status: "active"
+
+description:
+  purpose: "Define structure for user registration data"
+
+schema:
+  - name: "users"
+    properties:
+      - name: "user_id"
+        logicalType: "integer"
+        primaryKey: true
+        required: true
+        
+      - name: "username"
+        logicalType: "string"
+        required: true
+        unique: true
+        
+      - name: "email"
+        logicalType: "string"
+        required: true
+        classification: "PII"
+        
+      - name: "created_date"
+        logicalType: "date"
+        required: true
+
+quality:
+  - type: "text"
+    description: "Username must be at least 3 characters"
+    rule: "LENGTH(username) >= 3"
+
+slaProperties:
+  - property: "refreshFrequency"
+    value: "1"
+    unit: "day"
+
+team:
+  - username: "admin"
+    role: "Data Owner"

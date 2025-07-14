@@ -53,6 +53,10 @@
       },
       "default": null
     },
+    "sla": {
+      "$ref": "../../entity/data/dataContract.json#/definitions/sla",
+      "default": null
+    },
     "owners": {
       "description": "Owners of this data contract.",
       "$ref": "../../type/entityReferenceList.json",

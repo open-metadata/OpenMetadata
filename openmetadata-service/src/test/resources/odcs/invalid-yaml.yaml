@@ -1,0 +1,14 @@
+apiVersion: v3.0.2
+kind: DataContract
+id: "dc-invalid-yaml"
+name: "Invalid YAML Contract"
+version: "1.0.0"
+status: "active"
+  invalid indentation here
+schema:
+  - name: "test"
+    properties:
+      - name: "id"
+        logicalType: "integer"
+        : missing key
+      primaryKey: true

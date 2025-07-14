@@ -1,0 +1,41 @@
+apiVersion: v3.0.2
+kind: DataContract
+id: "dc-deprecated-001"
+name: "Legacy Orders Contract"
+version: "2.5.0"
+status: "deprecated"
+
+description:
+  purpose: "Legacy order system - to be retired"
+  limitations: "This contract is deprecated. Please use customer-orders-contract instead"
+
+schema:
+  - name: "legacy_orders"
+    properties:
+      - name: "id"
+        logicalType: "integer"
+        primaryKey: true
+        
+      - name: "customer"
+        logicalType: "string"
+        
+      - name: "amount"
+        logicalType: "float"
+        
+      - name: "date"
+        logicalType: "datetime"
+
+quality:
+  - type: "text"
+    description: "Basic validation only"
+    rule: "id > 0"
+
+slaProperties:
+  - property: "retention"
+    value: "90"
+    unit: "days"
+    description: "Data will be deleted after 90 days"
+
+team:
+  - username: "legacy.support"
+    role: "Maintainer"

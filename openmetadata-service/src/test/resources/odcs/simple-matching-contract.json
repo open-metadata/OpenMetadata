@@ -1,0 +1,53 @@
+{
+  "apiVersion": "v3.0.0",
+  "kind": "DataContract",
+  "id": "dc-json-match-001",
+  "name": "JSON Matching Contract",
+  "version": "1.0.0",
+  "status": "active",
+  "description": {
+    "purpose": "Test JSON format import with matching schema"
+  },
+  "schema": [
+    {
+      "name": "test_table",
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "integer",
+          "primaryKey": true,
+          "required": true
+        },
+        {
+          "name": "name",
+          "logicalType": "string",
+          "required": true
+        },
+        {
+          "name": "description",
+          "logicalType": "text"
+        }
+      ]
+    }
+  ],
+  "quality": [
+    {
+      "type": "text",
+      "description": "ID must be positive",
+      "rule": "id > 0"
+    }
+  ],
+  "slaProperties": [
+    {
+      "property": "refreshFrequency",
+      "value": "12",
+      "unit": "hours"
+    }
+  ],
+  "team": [
+    {
+      "username": "data.team",
+      "role": "Data Owner"
+    }
+  ]
+}
