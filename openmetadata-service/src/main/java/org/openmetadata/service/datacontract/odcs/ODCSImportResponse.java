@@ -13,10 +13,10 @@ import org.openmetadata.schema.entity.data.DataContract;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ODCSImportResponse {
-  
+
   @JsonProperty("contract")
   private DataContract contract;
-  
+
   @JsonProperty("importReport")
   private ODCSImportReport importReport;
 }

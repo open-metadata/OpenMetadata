@@ -14,17 +14,17 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ODCSSla {
-  
+
   @JsonProperty("property")
   @NotBlank(message = "SLA property name is required")
   private String property;
-  
+
   @JsonProperty("value")
   private String value;
-  
+
   @JsonProperty("unit")
   private String unit;
-  
+
   @JsonProperty("customProperties")
   private Map<String, Object> customProperties;
 }

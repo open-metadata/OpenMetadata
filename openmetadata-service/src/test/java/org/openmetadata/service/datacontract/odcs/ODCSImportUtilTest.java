@@ -17,10 +17,11 @@ import org.openmetadata.service.Entity;
 
 @ExtendWith(MockitoExtension.class)
 class ODCSImportUtilTest {
-  
+
   @Test
   void testImportValidYamlContract() {
-    String yamlContent = """
+    String yamlContent =
+        """
         apiVersion: v3.0.2
         kind: DataContract
         id: "12345678-1234-1234-1234-123456789012"
@@ -57,9 +58,9 @@ class ODCSImportUtilTest {
           - username: "john.doe"
             role: "Data Owner"
         """;
-    
+
     UUID entityId = UUID.randomUUID();
-    
+
     // Mock the entity lookup
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       Table mockTable = mock(Table.class);
@@ -67,19 +68,20 @@ class ODCSImportUtilTest {
       tableRef.setId(entityId);
       tableRef.setName("orders");
       tableRef.setType("table");
-      
+
       when(mockTable.getEntityReference()).thenReturn(tableRef);
-      entityMock.when(() -> Entity.getEntity(Entity.TABLE, entityId, "", Include.NON_DELETED))
+      entityMock
+          .when(() -> Entity.getEntity(Entity.TABLE, entityId, "", Include.NON_DELETED))
           .thenReturn(mockTable);
-      
+
       // Import the contract
       ODCSImportResponse response = ODCSImportUtil.importContract(yamlContent, "yaml", entityId);
-      
+
       // Verify response
       assertNotNull(response);
       assertNotNull(response.getContract());
       assertNotNull(response.getImportReport());
-      
+
       // Verify contract
       DataContract contract = response.getContract();
       assertEquals("Customer Orders Contract", contract.getName());
@@ -87,7 +89,7 @@ class ODCSImportUtilTest {
       assertEquals(tableRef, contract.getEntity());
       assertNotNull(contract.getSchema());
       assertEquals(3, contract.getSchema().size());
-      
+
       // Verify import report
       ODCSImportReport report = response.getImportReport();
       assertEquals("v3.0.2", report.getOdcsVersion());
@@ -99,20 +101,21 @@ class ODCSImportUtilTest {
       assertTrue(report.getMappedFields().contains("quality"));
       assertTrue(report.getMappedFields().contains("slaProperties"));
       assertTrue(report.getMappedFields().contains("team"));
-      
+
       // Verify skipped fields
       assertTrue(report.getSkippedFields().contains("domain"));
       assertTrue(report.getSkippedFields().contains("dataProduct"));
-      
+
       // Verify warnings
-      assertTrue(report.getWarnings().stream()
-          .anyMatch(w -> w.contains("Domain and data product")));
+      assertTrue(
+          report.getWarnings().stream().anyMatch(w -> w.contains("Domain and data product")));
     }
   }
-  
+
   @Test
   void testImportValidJsonContract() {
-    String jsonContent = """
+    String jsonContent =
+        """
         {
           "apiVersion": "v3.0.0",
           "kind": "DataContract",
@@ -130,9 +133,9 @@ class ODCSImportUtilTest {
           }]
         }
         """;
-    
+
     UUID entityId = UUID.randomUUID();
-    
+
     // Mock the entity lookup
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       Table mockTable = mock(Table.class);
@@ -140,14 +143,15 @@ class ODCSImportUtilTest {
       tableRef.setId(entityId);
       tableRef.setName("test_table");
       tableRef.setType("table");
-      
+
       when(mockTable.getEntityReference()).thenReturn(tableRef);
-      entityMock.when(() -> Entity.getEntity(Entity.TABLE, entityId, "", Include.NON_DELETED))
+      entityMock
+          .when(() -> Entity.getEntity(Entity.TABLE, entityId, "", Include.NON_DELETED))
           .thenReturn(mockTable);
-      
+
       // Import the contract
       ODCSImportResponse response = ODCSImportUtil.importContract(jsonContent, "json", entityId);
-      
+
       // Verify response
       assertNotNull(response);
       DataContract contract = response.getContract();
@@ -156,25 +160,28 @@ class ODCSImportUtilTest {
       assertEquals("v3.0.0", response.getImportReport().getOdcsVersion());
     }
   }
-  
+
   @Test
   void testImportInvalidYaml() {
-    String invalidYaml = """
+    String invalidYaml =
+        """
         apiVersion: v3.0.2
         kind: DataContract
         invalid yaml syntax here:::
         """;
-    
+
     UUID entityId = UUID.randomUUID();
-    
+
     // Should throw exception for invalid YAML
-    assertThrows(IllegalStateException.class, () -> 
-        ODCSImportUtil.importContract(invalidYaml, "yaml", entityId));
+    assertThrows(
+        IllegalStateException.class,
+        () -> ODCSImportUtil.importContract(invalidYaml, "yaml", entityId));
   }
-  
+
   @Test
   void testImportUnsupportedVersion() {
-    String yamlContent = """
+    String yamlContent =
+        """
         apiVersion: v2.0.0
         kind: DataContract
         id: "test-id"
@@ -182,9 +189,9 @@ class ODCSImportUtilTest {
         version: "1.0.0"
         status: "active"
         """;
-    
+
     UUID entityId = UUID.randomUUID();
-    
+
     // Mock the entity lookup
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       Table mockTable = mock(Table.class);
@@ -192,20 +199,23 @@ class ODCSImportUtilTest {
       tableRef.setId(entityId);
       tableRef.setName("test_table");
       tableRef.setType("table");
-      
+
       when(mockTable.getEntityReference()).thenReturn(tableRef);
-      entityMock.when(() -> Entity.getEntity(Entity.TABLE, entityId, "", Include.NON_DELETED))
+      entityMock
+          .when(() -> Entity.getEntity(Entity.TABLE, entityId, "", Include.NON_DELETED))
           .thenReturn(mockTable);
-      
+
       // Should throw exception for unsupported version
-      assertThrows(IllegalStateException.class, () -> 
-          ODCSImportUtil.importContract(yamlContent, "yaml", entityId));
+      assertThrows(
+          IllegalStateException.class,
+          () -> ODCSImportUtil.importContract(yamlContent, "yaml", entityId));
     }
   }
-  
+
   @Test
   void testImportEntityNotFound() {
-    String yamlContent = """
+    String yamlContent =
+        """
         apiVersion: v3.0.1
         kind: DataContract
         id: "test-id"
@@ -213,28 +223,33 @@ class ODCSImportUtilTest {
         version: "1.0.0"
         status: "active"
         """;
-    
+
     UUID entityId = UUID.randomUUID();
-    
+
     // Mock entity not found
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock.when(() -> Entity.getEntity(eq(Entity.TABLE), eq(entityId), anyString(), any()))
+      entityMock
+          .when(() -> Entity.getEntity(eq(Entity.TABLE), eq(entityId), anyString(), any()))
           .thenThrow(new RuntimeException("Entity not found"));
-      entityMock.when(() -> Entity.getEntity(eq(Entity.TOPIC), eq(entityId), anyString(), any()))
+      entityMock
+          .when(() -> Entity.getEntity(eq(Entity.TOPIC), eq(entityId), anyString(), any()))
           .thenThrow(new RuntimeException("Entity not found"));
-      
+
       // Should throw exception for entity not found
-      Exception exception = assertThrows(IllegalStateException.class, () -> 
-          ODCSImportUtil.importContract(yamlContent, "yaml", entityId));
-      
+      Exception exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> ODCSImportUtil.importContract(yamlContent, "yaml", entityId));
+
       assertTrue(exception.getCause().getMessage().contains("Entity with id"));
       assertTrue(exception.getCause().getMessage().contains("not found"));
     }
   }
-  
+
   @Test
   void testImportWithServersIgnored() {
-    String yamlContent = """
+    String yamlContent =
+        """
         apiVersion: v3.0.2
         kind: DataContract
         id: "test-id"
@@ -247,9 +262,9 @@ class ODCSImportUtilTest {
             database: "sales_db"
             schema: "public"
         """;
-    
+
     UUID entityId = UUID.randomUUID();
-    
+
     // Mock the entity lookup
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       Table mockTable = mock(Table.class);
@@ -257,19 +272,19 @@ class ODCSImportUtilTest {
       tableRef.setId(entityId);
       tableRef.setName("orders");
       tableRef.setType("table");
-      
+
       when(mockTable.getEntityReference()).thenReturn(tableRef);
-      entityMock.when(() -> Entity.getEntity(Entity.TABLE, entityId, "", Include.NON_DELETED))
+      entityMock
+          .when(() -> Entity.getEntity(Entity.TABLE, entityId, "", Include.NON_DELETED))
           .thenReturn(mockTable);
-      
+
       // Import the contract
       ODCSImportResponse response = ODCSImportUtil.importContract(yamlContent, "yaml", entityId);
-      
+
       // Verify servers was skipped
       ODCSImportReport report = response.getImportReport();
       assertTrue(report.getSkippedFields().contains("servers"));
-      assertTrue(report.getWarnings().stream()
-          .anyMatch(w -> w.contains("Servers field ignored")));
+      assertTrue(report.getWarnings().stream().anyMatch(w -> w.contains("Servers field ignored")));
     }
   }
 }

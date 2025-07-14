@@ -13,13 +13,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ODCSRole {
-  
+
   @JsonProperty("name")
   private String name;
-  
+
   @JsonProperty("access")
   private List<String> access;
-  
+
   @JsonProperty("approvers")
   private List<String> approvers;
 }

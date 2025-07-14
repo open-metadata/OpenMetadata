@@ -18,7 +18,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Topic;
@@ -56,8 +55,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     String entityFQN = dataContract.getEntity().getFullyQualifiedName();
     String name = dataContract.getName();
     String fqn = entityFQN + ".dataContract_" + name;
-    LOG.debug("Setting FQN for data contract: name={}, entityFQN={}, resultFQN={}", 
-        name, entityFQN, fqn);
+    LOG.debug(
+        "Setting FQN for data contract: name={}, entityFQN={}, resultFQN={}", name, entityFQN, fqn);
     dataContract.setFullyQualifiedName(fqn);
   }
 

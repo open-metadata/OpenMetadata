@@ -15,27 +15,27 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ODCSSchema {
-  
+
   @JsonProperty("name")
   @NotBlank(message = "Schema name is required")
   private String name;
-  
+
   @JsonProperty("physicalName")
   private String physicalName;
-  
+
   @JsonProperty("physicalType")
   private String physicalType;
-  
+
   @JsonProperty("businessName")
   private String businessName;
-  
+
   @JsonProperty("description")
   private String description;
-  
+
   @JsonProperty("properties")
   @Valid
   private List<ODCSProperty> properties;
-  
+
   @JsonProperty("tags")
   private List<String> tags;
 }

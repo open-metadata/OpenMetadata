@@ -12,13 +12,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ODCSPrice {
-  
+
   @JsonProperty("priceAmount")
   private Double priceAmount;
-  
+
   @JsonProperty("priceCurrency")
   private String priceCurrency;
-  
+
   @JsonProperty("priceUnit")
   private String priceUnit;
 }

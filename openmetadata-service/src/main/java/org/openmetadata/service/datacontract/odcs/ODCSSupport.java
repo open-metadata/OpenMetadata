@@ -12,13 +12,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ODCSSupport {
-  
+
   @JsonProperty("name")
   private String name;
-  
+
   @JsonProperty("channel")
   private String channel;
-  
+
   @JsonProperty("url")
   private String url;
 }

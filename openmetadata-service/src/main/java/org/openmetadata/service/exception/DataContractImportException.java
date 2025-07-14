@@ -8,11 +8,11 @@ import org.openmetadata.sdk.exception.WebServiceException;
  */
 public class DataContractImportException extends WebServiceException {
   private static final String ERROR_TYPE = "DATA_CONTRACT_IMPORT_ERROR";
-  
+
   public DataContractImportException(String message) {
     super(Response.Status.CONFLICT, ERROR_TYPE, message);
   }
-  
+
   public DataContractImportException(String message, Throwable cause) {
     super(Response.Status.CONFLICT, ERROR_TYPE, message, cause);
   }

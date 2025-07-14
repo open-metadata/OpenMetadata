@@ -26,9 +26,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.zjsonpatch.JsonDiff;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +49,8 @@ import org.openmetadata.schema.api.data.CreateDataContractResult;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.MaxLatency;
+import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -66,15 +71,10 @@ import org.openmetadata.schema.type.QualityExpectation;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.datacontract.odcs.ODCSImportResponse;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.datacontract.odcs.ODCSImportResponse;
-import org.openmetadata.schema.api.data.RefreshFrequency;
-import org.openmetadata.schema.api.data.MaxLatency;
-import jakarta.ws.rs.core.MediaType;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Execution(ExecutionMode.CONCURRENT)
@@ -1332,28 +1332,32 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT) 
+  @Execution(ExecutionMode.CONCURRENT)
   void testImportODCSContractYamlSimple(TestInfo test) throws IOException {
     // Create a table with a much shorter name to avoid FQN length issues
     String shortTableName = "tbl_" + System.currentTimeMillis() % 100000;
-    CreateTable createTable = new CreateTable()
-        .withName(shortTableName)
-        .withDatabaseSchema(ensureDatabaseSchema())
-        .withColumns(
-            List.of(
-                new Column().withName("id").withDataType(ColumnDataType.INT),
-                new Column().withName("name").withDataType(ColumnDataType.STRING)))
-        .withTableConstraints(List.of());
-    
+    CreateTable createTable =
+        new CreateTable()
+            .withName(shortTableName)
+            .withDatabaseSchema(ensureDatabaseSchema())
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING)))
+            .withTableConstraints(List.of());
+
     WebTarget tableTarget = APP.client().target(getTableUri());
-    Response tableResponse = SecurityUtil.addHeaders(tableTarget, ADMIN_AUTH_HEADERS)
-        .post(Entity.json(createTable));
-    Table table = TestUtils.readResponse(tableResponse, Table.class, Status.CREATED.getStatusCode());
+    Response tableResponse =
+        SecurityUtil.addHeaders(tableTarget, ADMIN_AUTH_HEADERS).post(Entity.json(createTable));
+    Table table =
+        TestUtils.readResponse(tableResponse, Table.class, Status.CREATED.getStatusCode());
     createdTables.add(table);
-    
+
     // Create a minimal ODCS YAML inline with a short name
     String contractName = "C" + System.currentTimeMillis() % 10000;
-    String minimalOdcsYaml = String.format("""
+    String minimalOdcsYaml =
+        String.format(
+            """
         apiVersion: v3.0.0
         kind: DataContract
         id: "dc-%s"
@@ -1367,42 +1371,50 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
             properties:
               - name: "id"
                 logicalType: "integer"
-              - name: "name"  
+              - name: "name"
                 logicalType: "string"
-        """, contractName, contractName);
-    
+        """,
+            contractName, contractName);
+
     LOG.info("Testing with minimal ODCS YAML for table: {}", table.getId());
-    
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("entityId", table.getId())
-        .queryParam("format", "yaml");
-    
-    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-        .post(Entity.entity(minimalOdcsYaml, "application/yaml"));
-    
-    ODCSImportResponse importResponse = TestUtils.readResponse(
-        response, ODCSImportResponse.class, Status.OK.getStatusCode());
-    
+
+    WebTarget target =
+        getCollection()
+            .path("/import/odcs")
+            .queryParam("entityId", table.getId())
+            .queryParam("format", "yaml");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(minimalOdcsYaml, "application/yaml"));
+
+    ODCSImportResponse importResponse =
+        TestUtils.readResponse(response, ODCSImportResponse.class, Status.OK.getStatusCode());
+
     assertNotNull(importResponse);
     assertNotNull(importResponse.getContract());
     DataContract contract = importResponse.getContract();
     assertEquals(contractName, contract.getName());
     assertEquals(ContractStatus.Active, contract.getStatus());
     assertEquals(table.getId(), contract.getEntity().getId());
-    
+
     createdContracts.add(contract);
   }
-  
+
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void testImportODCSContractYaml(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
-    
+
     // First, verify we can create a regular contract for this table
     try {
-      CreateDataContract regularContract = createDataContractRequest("regular_" + test.getDisplayName(), table);
+      CreateDataContract regularContract =
+          createDataContractRequest("regular_" + test.getDisplayName(), table);
       DataContract created = createDataContract(regularContract);
-      LOG.info("Successfully created regular contract: {} for table: {}", created.getId(), table.getId());
+      LOG.info(
+          "Successfully created regular contract: {} for table: {}",
+          created.getId(),
+          table.getId());
       // Delete it so we can test import
       deleteDataContract(created.getId());
       LOG.info("Deleted regular contract to proceed with import test");
@@ -1410,25 +1422,29 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
       LOG.error("Failed to create regular contract for table: {}", table.getId(), e);
       throw new AssertionError("Cannot create regular contract, import will likely fail too", e);
     }
-    
+
     // Check if a contract already exists for this table (shouldn't happen, but let's be sure)
     try {
       // First, let's check if there are any contracts with our name pattern
-      WebTarget listTarget = getCollection()
-          .queryParam("fields", "id,name,entity")
-          .queryParam("limit", "100");
+      WebTarget listTarget =
+          getCollection().queryParam("fields", "id,name,entity").queryParam("limit", "100");
       Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
       if (listResponse.getStatus() == 200) {
         String responseBody = listResponse.readEntity(String.class);
         if (responseBody.contains("TestODCSContract_")) {
           LOG.error("Found existing test contracts in database: {}", responseBody);
           // Try to clean them up
-          ResultList<DataContract> contracts = JsonUtils.readValue(responseBody, 
-              new com.fasterxml.jackson.core.type.TypeReference<ResultList<DataContract>>() {});
+          ResultList<DataContract> contracts =
+              JsonUtils.readValue(
+                  responseBody,
+                  new com.fasterxml.jackson.core.type.TypeReference<ResultList<DataContract>>() {});
           for (DataContract contract : contracts.getData()) {
             if (contract.getName() != null && contract.getName().startsWith("TestODCSContract_")) {
               try {
-                LOG.info("Cleaning up stale test contract: {} - {}", contract.getId(), contract.getName());
+                LOG.info(
+                    "Cleaning up stale test contract: {} - {}",
+                    contract.getId(),
+                    contract.getName());
                 deleteDataContract(contract.getId());
               } catch (Exception ex) {
                 LOG.warn("Failed to clean up contract {}: {}", contract.getId(), ex.getMessage());
@@ -1440,36 +1456,46 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     } catch (Exception e) {
       LOG.warn("Error checking for existing contracts: {}", e.getMessage());
     }
-    
+
     // Load the ODCS YAML and make it unique by adding a name field
     String odcsYaml = loadODCSResource("dynamic-test-contract.yaml");
     String uniqueId = UUID.randomUUID().toString();
     long timestamp = System.nanoTime();
-    
+
     // Add a unique name to the ODCS contract to avoid conflicts
     // Insert the name field after the version field
     // Use a shorter name to avoid potential issues with long FQNs
     String shortUniqueId = uniqueId.substring(0, 8);
     String uniqueContractName = String.format("ODCS_%s_%d", shortUniqueId, timestamp % 1000000);
-    odcsYaml = odcsYaml.replace("version: \"1.0.0\"", 
-                                 "version: \"1.0.0\"\nname: \"" + uniqueContractName + "\"");
-    
+    odcsYaml =
+        odcsYaml.replace(
+            "version: \"1.0.0\"", "version: \"1.0.0\"\nname: \"" + uniqueContractName + "\"");
+
     // Log the modified YAML to verify the change
-    LOG.info("Modified ODCS YAML (first 500 chars): {}", odcsYaml.substring(0, Math.min(500, odcsYaml.length())));
-    LOG.info("Creating contract '{}' for table: {} - {}", uniqueContractName, table.getId(), table.getFullyQualifiedName());
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("entityId", table.getId())
-        .queryParam("format", "yaml");
-    
-    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-        .post(Entity.entity(odcsYaml, "application/yaml"));
-    
+    LOG.info(
+        "Modified ODCS YAML (first 500 chars): {}",
+        odcsYaml.substring(0, Math.min(500, odcsYaml.length())));
+    LOG.info(
+        "Creating contract '{}' for table: {} - {}",
+        uniqueContractName,
+        table.getId(),
+        table.getFullyQualifiedName());
+    WebTarget target =
+        getCollection()
+            .path("/import/odcs")
+            .queryParam("entityId", table.getId())
+            .queryParam("format", "yaml");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(odcsYaml, "application/yaml"));
+
     if (response.getStatus() != Status.OK.getStatusCode()) {
       String errorBody = response.readEntity(String.class);
       LOG.error("Import failed with status {} and body: {}", response.getStatus(), errorBody);
       throw new AssertionError("Import failed: " + errorBody);
     }
-    
+
     ODCSImportResponse importResponse = response.readEntity(ODCSImportResponse.class);
     assertNotNull(importResponse);
     assertNotNull(importResponse.getContract());
@@ -1483,30 +1509,35 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertTrue(contract.getDescription().contains("Use for unit testing"));
     assertNotNull(contract.getSchema());
     assertEquals(4, contract.getSchema().size());
-    Column idCol = contract.getSchema().stream()
-        .filter(c -> "id".equals(c.getName()))
-        .findFirst().orElse(null);
+    Column idCol =
+        contract.getSchema().stream()
+            .filter(c -> "id".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
     assertNotNull(idCol);
     assertEquals(ColumnDataType.INT, idCol.getDataType());
-    
-    Column emailCol = contract.getSchema().stream()
-        .filter(c -> "email".equals(c.getName()))
-        .findFirst().orElse(null);
+
+    Column emailCol =
+        contract.getSchema().stream()
+            .filter(c -> "email".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
     assertNotNull(emailCol);
     assertEquals(ColumnDataType.STRING, emailCol.getDataType());
     assertEquals(255, emailCol.getDataLength());
     assertNotNull(emailCol.getTags());
-    assertTrue(emailCol.getTags().stream()
-        .anyMatch(tag -> tag.getTagFQN().contains("PII")));
-    
+    assertTrue(emailCol.getTags().stream().anyMatch(tag -> tag.getTagFQN().contains("PII")));
+
     assertNotNull(contract.getQualityExpectations());
-    assertTrue(contract.getQualityExpectations().stream()
-        .anyMatch(q -> q.getName().contains("ID must be positive")));
-    
+    assertTrue(
+        contract.getQualityExpectations().stream()
+            .anyMatch(q -> q.getName().contains("ID must be positive")));
+
     assertNotNull(contract.getSemantics());
-    assertTrue(contract.getSemantics().stream()
-        .anyMatch(s -> s.getName().contains("Check for duplicate names")));
-    
+    assertTrue(
+        contract.getSemantics().stream()
+            .anyMatch(s -> s.getName().contains("Check for duplicate names")));
+
     assertNotNull(contract.getSla());
     assertNotNull(contract.getSla().getRefreshFrequency());
     assertEquals(24, contract.getSla().getRefreshFrequency().getInterval());
@@ -1516,10 +1547,12 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(MaxLatency.Unit.HOUR, contract.getSla().getMaxLatency().getUnit());
     assertNotNull(contract.getOwners());
     assertNotNull(contract.getReviewers());
-    assertTrue(importResponse.getImportReport().getErrors().stream()
-        .anyMatch(e -> e.contains("john.doe") && e.contains("not found")));
-    assertTrue(importResponse.getImportReport().getErrors().stream()
-        .anyMatch(e -> e.contains("alice.johnson") && e.contains("not found")));
+    assertTrue(
+        importResponse.getImportReport().getErrors().stream()
+            .anyMatch(e -> e.contains("john.doe") && e.contains("not found")));
+    assertTrue(
+        importResponse.getImportReport().getErrors().stream()
+            .anyMatch(e -> e.contains("alice.johnson") && e.contains("not found")));
     assertEquals("v3.0.2", importResponse.getImportReport().getOdcsVersion());
     assertTrue(importResponse.getImportReport().getMappedFields().contains("schema"));
     assertTrue(importResponse.getImportReport().getMappedFields().contains("quality"));
@@ -1527,8 +1560,9 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertTrue(importResponse.getImportReport().getMappedFields().contains("team"));
     assertTrue(importResponse.getImportReport().getSkippedFields().contains("servers"));
     assertTrue(importResponse.getImportReport().getSkippedFields().contains("price"));
-    assertTrue(importResponse.getImportReport().getWarnings().stream()
-        .anyMatch(w -> w.contains("Servers field ignored")));
+    assertTrue(
+        importResponse.getImportReport().getWarnings().stream()
+            .anyMatch(w -> w.contains("Servers field ignored")));
     createdContracts.add(contract);
   }
 
@@ -1537,22 +1571,27 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   void testImportODCSContractJson(TestInfo test) throws IOException {
     // Create a table to attach the contract to
     Table table = createUniqueTable(test.getDisplayName());
-    
+
     // Load ODCS JSON from resources
     String odcsJson = loadODCSResource("simple-contract.json");
-    
+
     // Call ODCS import endpoint
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("entityId", table.getId())
-        .queryParam("format", "json");
-    
-    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-        .post(Entity.entity(odcsJson, MediaType.APPLICATION_JSON));
-    
+    WebTarget target =
+        getCollection()
+            .path("/import/odcs")
+            .queryParam("entityId", table.getId())
+            .queryParam("format", "json");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(odcsJson, MediaType.APPLICATION_JSON));
+
     // This should fail because simple-contract.json has a 'created_at' column not in the table
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
     String responseBody = response.readEntity(String.class);
-    assertTrue(responseBody.contains("Field 'created_at' specified in the data contract does not exist in table"));
+    assertTrue(
+        responseBody.contains(
+            "Field 'created_at' specified in the data contract does not exist in table"));
   }
 
   @Test
@@ -1560,36 +1599,41 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   void testImportODCSContractJsonMatching(TestInfo test) throws IOException {
     // Create a table to attach the contract to
     Table table = createUniqueTable(test.getDisplayName());
-    
+
     // Load ODCS JSON that matches table schema
     String odcsJson = loadODCSResource("simple-matching-contract.json");
-    
+
     // Call ODCS import endpoint
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("entityId", table.getId())
-        .queryParam("format", "json");
-    
-    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-        .post(Entity.entity(odcsJson, MediaType.APPLICATION_JSON));
-    
-    ODCSImportResponse importResponse = TestUtils.readResponse(
-        response, ODCSImportResponse.class, Status.OK.getStatusCode());
-    
+    WebTarget target =
+        getCollection()
+            .path("/import/odcs")
+            .queryParam("entityId", table.getId())
+            .queryParam("format", "json");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(odcsJson, MediaType.APPLICATION_JSON));
+
+    ODCSImportResponse importResponse =
+        TestUtils.readResponse(response, ODCSImportResponse.class, Status.OK.getStatusCode());
+
     // Verify import
     assertNotNull(importResponse);
     DataContract contract = importResponse.getContract();
     assertEquals("JSON Matching Contract", contract.getName());
     assertEquals(ContractStatus.Active, contract.getStatus());
     assertEquals("v3.0.0", importResponse.getImportReport().getOdcsVersion());
-    
+
     // Verify schema
     assertEquals(3, contract.getSchema().size());
-    Column idCol = contract.getSchema().stream()
-        .filter(c -> "id".equals(c.getName()))
-        .findFirst().orElse(null);
+    Column idCol =
+        contract.getSchema().stream()
+            .filter(c -> "id".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
     assertNotNull(idCol);
     assertEquals(ColumnDataType.INT, idCol.getDataType());
-    
+
     // Track for cleanup
     createdContracts.add(contract);
   }
@@ -1599,14 +1643,14 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   void testImportODCSMissingEntityId(TestInfo test) throws IOException {
     // Use simple contract for missing entity ID test
     String odcsYaml = loadODCSResource("simple-contract.yaml");
-    
+
     // Call without entityId parameter
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("format", "yaml");
-    
-    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-        .post(Entity.entity(odcsYaml, "application/yaml"));
-    
+    WebTarget target = getCollection().path("/import/odcs").queryParam("format", "yaml");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(odcsYaml, "application/yaml"));
+
     // Should fail with 400 Bad Request
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
   }
@@ -1615,16 +1659,19 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void testImportODCSInvalidYaml(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
-    
+
     String invalidYaml = loadODCSResource("invalid-yaml.yaml");
-    
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("entityId", table.getId())
-        .queryParam("format", "yaml");
-    
-    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-        .post(Entity.entity(invalidYaml, "application/yaml"));
-    
+
+    WebTarget target =
+        getCollection()
+            .path("/import/odcs")
+            .queryParam("entityId", table.getId())
+            .queryParam("format", "yaml");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(invalidYaml, "application/yaml"));
+
     // Should fail with error
     assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
     String responseBody = response.readEntity(String.class);
@@ -1635,21 +1682,25 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void testImportODCSUnsupportedVersion(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
-    
+
     String unsupportedVersion = loadODCSResource("invalid-version.yaml");
-    
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("entityId", table.getId())
-        .queryParam("format", "yaml");
-    
-    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-        .post(Entity.entity(unsupportedVersion, "application/yaml"));
-    
+
+    WebTarget target =
+        getCollection()
+            .path("/import/odcs")
+            .queryParam("entityId", table.getId())
+            .queryParam("format", "yaml");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(unsupportedVersion, "application/yaml"));
+
     // Should fail validation with 409 Conflict
     assertEquals(Response.Status.CONFLICT.getStatusCode(), response.getStatus());
     String responseBody = response.readEntity(String.class);
     // The error message might be in a different format, let's just check it mentions version
-    assertTrue(responseBody.contains("version") || responseBody.contains("v3.0.0, v3.0.1, v3.0.2"),
+    assertTrue(
+        responseBody.contains("version") || responseBody.contains("v3.0.0, v3.0.1, v3.0.2"),
         "Expected error about version but got: " + responseBody);
   }
 
@@ -1657,17 +1708,20 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void testImportODCSEntityNotFound(TestInfo test) throws IOException {
     UUID fakeEntityId = UUID.randomUUID();
-    
+
     // Use simple contract for entity not found test
     String odcsYaml = loadODCSResource("simple-contract.yaml");
-    
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("entityId", fakeEntityId)
-        .queryParam("format", "yaml");
-    
-    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-        .post(Entity.entity(odcsYaml, "application/yaml"));
-    
+
+    WebTarget target =
+        getCollection()
+            .path("/import/odcs")
+            .queryParam("entityId", fakeEntityId)
+            .queryParam("format", "yaml");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(odcsYaml, "application/yaml"));
+
     // Should fail with entity not found
     assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
     String responseBody = response.readEntity(String.class);
@@ -1679,24 +1733,27 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   void testImportODCSWithAuthorization(TestInfo test) throws IOException {
     // Create table as admin
     Table table = createUniqueTable(test.getDisplayName());
-    
+
     String odcsYaml = loadODCSResource("simple-contract.yaml");
-    
+
     // Try to import as regular user (should succeed if user has edit rights on table)
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("entityId", table.getId())
-        .queryParam("format", "yaml");
-    
-    Response response = SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS)
-        .post(Entity.entity(odcsYaml, "application/yaml"));
-    
+    WebTarget target =
+        getCollection()
+            .path("/import/odcs")
+            .queryParam("entityId", table.getId())
+            .queryParam("format", "yaml");
+
+    Response response =
+        SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS)
+            .post(Entity.entity(odcsYaml, "application/yaml"));
+
     // For this test, we expect it might fail with 403 if TEST user doesn't have edit rights
     // or succeed if they do. The important thing is the auth check happens.
     int statusCode = response.getStatus();
-    assertTrue(statusCode == Status.OK.getStatusCode() || 
-               statusCode == Status.FORBIDDEN.getStatusCode(),
-               "Expected either 200 OK or 403 Forbidden, got: " + statusCode);
-    
+    assertTrue(
+        statusCode == Status.OK.getStatusCode() || statusCode == Status.FORBIDDEN.getStatusCode(),
+        "Expected either 200 OK or 403 Forbidden, got: " + statusCode);
+
     if (statusCode == Status.OK.getStatusCode()) {
       ODCSImportResponse importResponse = response.readEntity(ODCSImportResponse.class);
       createdContracts.add(importResponse.getContract());
@@ -1707,17 +1764,20 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void testImportODCSComplexTypeMapping(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
-    
+
     // Load complex types contract
     String odcsYaml = loadODCSResource("complex-types-contract.yaml");
-    
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("entityId", table.getId())
-        .queryParam("format", "yaml");
-    
-    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-        .post(Entity.entity(odcsYaml, "application/yaml"));
-    
+
+    WebTarget target =
+        getCollection()
+            .path("/import/odcs")
+            .queryParam("entityId", table.getId())
+            .queryParam("format", "yaml");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(odcsYaml, "application/yaml"));
+
     // This should fail because the ODCS columns don't match the table columns
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
     String responseBody = response.readEntity(String.class);
@@ -1728,32 +1788,37 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void testImportODCSStatusMapping(TestInfo test) throws IOException {
     // Test using existing resource files with different statuses
-    Map<String, ContractStatus> statusTests = Map.of(
-        "draft-contract.yaml", ContractStatus.Draft,
-        "simple-contract.yaml", ContractStatus.Active,
-        "deprecated-contract.yaml", ContractStatus.Deprecated,
-        "retired-contract.yaml", ContractStatus.Deprecated
-    );
-    
+    Map<String, ContractStatus> statusTests =
+        Map.of(
+            "draft-contract.yaml", ContractStatus.Draft,
+            "simple-contract.yaml", ContractStatus.Active,
+            "deprecated-contract.yaml", ContractStatus.Deprecated,
+            "retired-contract.yaml", ContractStatus.Deprecated);
+
     for (Map.Entry<String, ContractStatus> entry : statusTests.entrySet()) {
       // Create a unique table for each status test to avoid conflicts
       Table table = createUniqueTable(test.getDisplayName() + "_" + entry.getKey());
-      
+
       String odcsYaml = loadODCSResource(entry.getKey());
-      
-      WebTarget target = getCollection().path("/import/odcs")
-          .queryParam("entityId", table.getId())
-          .queryParam("format", "yaml");
-      
-      Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-          .post(Entity.entity(odcsYaml, "application/yaml"));
-      
-      ODCSImportResponse importResponse = TestUtils.readResponse(
-          response, ODCSImportResponse.class, Status.OK.getStatusCode());
-      
-      assertEquals(entry.getValue(), importResponse.getContract().getStatus(),
+
+      WebTarget target =
+          getCollection()
+              .path("/import/odcs")
+              .queryParam("entityId", table.getId())
+              .queryParam("format", "yaml");
+
+      Response response =
+          SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+              .post(Entity.entity(odcsYaml, "application/yaml"));
+
+      ODCSImportResponse importResponse =
+          TestUtils.readResponse(response, ODCSImportResponse.class, Status.OK.getStatusCode());
+
+      assertEquals(
+          entry.getValue(),
+          importResponse.getContract().getStatus(),
           "Status mapping failed for file: " + entry.getKey());
-      
+
       createdContracts.add(importResponse.getContract());
     }
   }
@@ -1769,58 +1834,59 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void testImportODCSWithMissingEntityId(TestInfo test) throws IOException {
     String odcsYaml = loadODCSResource("simple-contract.yaml");
-    
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("format", "yaml");
-    
-    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-        .post(Entity.entity(odcsYaml, "application/yaml"));
-    
+
+    WebTarget target = getCollection().path("/import/odcs").queryParam("format", "yaml");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(odcsYaml, "application/yaml"));
+
     // Should fail with missing parameter
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
   }
-  
+
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void testImportODCSWithDetailedSchemaAndSLA(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
-    
+
     // Load comprehensive contract with all features
     String odcsYaml = loadODCSResource("test-table-matching-contract.yaml");
-    
-    WebTarget target = getCollection().path("/import/odcs")
-        .queryParam("entityId", table.getId())
-        .queryParam("format", "yaml");
-    
-    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
-        .post(Entity.entity(odcsYaml, "application/yaml"));
-    
-    ODCSImportResponse importResponse = TestUtils.readResponse(
-        response, ODCSImportResponse.class, Status.OK.getStatusCode());
-    
+
+    WebTarget target =
+        getCollection()
+            .path("/import/odcs")
+            .queryParam("entityId", table.getId())
+            .queryParam("format", "yaml");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(odcsYaml, "application/yaml"));
+
+    ODCSImportResponse importResponse =
+        TestUtils.readResponse(response, ODCSImportResponse.class, Status.OK.getStatusCode());
+
     DataContract contract = importResponse.getContract();
-    
+
     // Verify SLA details
     assertNotNull(contract.getSla());
     assertNotNull(contract.getSla().getRefreshFrequency());
     assertEquals(24, contract.getSla().getRefreshFrequency().getInterval());
     assertEquals(RefreshFrequency.Unit.HOUR, contract.getSla().getRefreshFrequency().getUnit());
-    
+
     assertNotNull(contract.getSla().getMaxLatency());
     assertEquals(4, contract.getSla().getMaxLatency().getValue());
     assertEquals(MaxLatency.Unit.HOUR, contract.getSla().getMaxLatency().getUnit());
-    
+
     assertEquals("06:00 UTC", contract.getSla().getAvailabilityTime());
-    
+
     // Verify team mapping
     assertNotNull(contract.getOwners());
-    assertTrue(contract.getOwners().stream()
-        .anyMatch(o -> "john.doe".equals(o.getName())));
-    
+    assertTrue(contract.getOwners().stream().anyMatch(o -> "john.doe".equals(o.getName())));
+
     assertNotNull(contract.getReviewers());
-    assertTrue(contract.getReviewers().stream()
-        .anyMatch(r -> "alice.johnson".equals(r.getName())));
-    
+    assertTrue(contract.getReviewers().stream().anyMatch(r -> "alice.johnson".equals(r.getName())));
+
     // Verify import report details
     assertTrue(importResponse.getImportReport().getMappedFields().contains("schema"));
     assertTrue(importResponse.getImportReport().getMappedFields().contains("quality"));
@@ -1828,12 +1894,12 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertTrue(importResponse.getImportReport().getMappedFields().contains("team"));
     assertTrue(importResponse.getImportReport().getSkippedFields().contains("servers"));
     assertTrue(importResponse.getImportReport().getSkippedFields().contains("pricing"));
-    
+
     createdContracts.add(contract);
   }
-  
+
   // ===================== ODCS Resource Loading =====================
-  
+
   private String loadODCSResource(String filename) throws IOException {
     try (InputStream is = getClass().getResourceAsStream("/odcs/" + filename)) {
       if (is == null) {

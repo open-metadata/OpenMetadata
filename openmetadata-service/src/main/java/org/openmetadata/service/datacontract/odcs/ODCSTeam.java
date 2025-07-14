@@ -12,16 +12,16 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ODCSTeam {
-  
+
   @JsonProperty("username")
   private String username;
-  
+
   @JsonProperty("role")
   private String role;
-  
+
   @JsonProperty("dateIn")
   private String dateIn;
-  
+
   @JsonProperty("dateOut")
   private String dateOut;
 }
