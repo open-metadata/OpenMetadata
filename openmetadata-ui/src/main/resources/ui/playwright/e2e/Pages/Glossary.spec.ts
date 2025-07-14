@@ -500,7 +500,7 @@ test.describe('Glossary tests', () => {
           'text=Adding a new Asset is easy, just give it a spin!'
         );
 
-        await dashboardEntity.visitEntityPage(page);
+        await dashboardEntity.visitEntityPageWithCustomSearchBox(page);
 
         // Dashboard Entity Right Panel
         await page.click(
@@ -1044,7 +1044,7 @@ test.describe('Glossary tests', () => {
       await table.create(apiContext);
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
-      await table.visitEntityPage(page);
+      await table.visitEntityPageWithCustomSearchBox(page);
       await assignGlossaryTerm(page, glossaryTerm1.responseData);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
