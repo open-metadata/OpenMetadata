@@ -60,6 +60,9 @@ describe('useCurrentUserStore', () => {
     language: SupportedLocales.English,
     selectedEntityTableColumns: {},
     globalPageSize: 15,
+    recentlySearched: [],
+    recentlyViewed: [],
+    recentlyViewedQuickLinks: [],
   };
 
   describe('useCurrentUserPreferences', () => {
@@ -141,6 +144,9 @@ describe('useCurrentUserStore', () => {
         language: SupportedLocales.English, // From defaultPreferences
         selectedEntityTableColumns: { table1: ['col1', 'col2'] },
         globalPageSize: 15,
+        recentlySearched: [],
+        recentlyViewed: [],
+        recentlyViewedQuickLinks: [],
       });
     });
 
@@ -162,6 +168,9 @@ describe('useCurrentUserStore', () => {
             language: SupportedLocales.简体中文,
             selectedEntityTableColumns: {},
             globalPageSize: 15,
+            recentlySearched: [],
+            recentlyViewed: [],
+            recentlyViewedQuickLinks: [],
           },
         },
       });
@@ -174,6 +183,9 @@ describe('useCurrentUserStore', () => {
         language: SupportedLocales.简体中文, // User's existing preference preserved
         selectedEntityTableColumns: {},
         globalPageSize: 15,
+        recentlySearched: [],
+        recentlyViewed: [],
+        recentlyViewedQuickLinks: [],
       });
     });
   });

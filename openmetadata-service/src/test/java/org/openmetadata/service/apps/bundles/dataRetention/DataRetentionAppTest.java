@@ -91,8 +91,7 @@ class DataRetentionAppTest extends OpenMetadataApplicationTest {
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void test_dataRetention_withOrphanedRelationshipsCleanup_shouldExecuteSuccessfully()
-      throws Exception {
+  void test_dataRetention_withOrphanedRelationshipsCleanup_shouldExecuteSuccessfully() {
     // Test that the enhanced DataRetention executes the orphaned relationships cleanup
 
     // Create a test configuration

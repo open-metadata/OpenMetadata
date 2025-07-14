@@ -1,0 +1,104 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createWorksheet.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateWorksheetRequest",
+  "description": "Create Worksheet entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateWorksheet",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this worksheet.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this worksheet.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the worksheet.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "spreadsheet": {
+      "description": "Link to the parent spreadsheet fully qualified name",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "service": {
+      "description": "Link to the drive service fully qualified name where this worksheet is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "worksheetId": {
+      "description": "Native worksheet/tab ID",
+      "type": "string"
+    },
+    "index": {
+      "description": "Position/index of the worksheet in the spreadsheet",
+      "type": "integer"
+    },
+    "rowCount": {
+      "description": "Number of rows in the worksheet",
+      "type": "integer"
+    },
+    "columnCount": {
+      "description": "Number of columns in the worksheet",
+      "type": "integer"
+    },
+    "columns": {
+      "description": "Column definitions if structured data",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/table.json#/definitions/column"
+      },
+      "default": []
+    },
+    "isHidden": {
+      "description": "Whether the worksheet is hidden",
+      "type": "boolean",
+      "default": false
+    },
+    "sourceUrl": {
+      "description": "Source URL of worksheet.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "tags": {
+      "description": "Tags for this Worksheet.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owners": {
+      "description": "Owners of this worksheet",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "dataProducts": {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "domain": {
+      "description": "Fully qualified name of the domain the Worksheet belongs to.",
+      "type": "string"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": ["name", "spreadsheet"],
+  "additionalProperties": false
+}

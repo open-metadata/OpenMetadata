@@ -15,7 +15,6 @@ import { CSSProperties } from 'react';
 import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
 import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
-import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { Status } from '../generated/entity/applications/appRunRecord';
 import i18n from '../utils/i18next/LocalUtil';
 import {
@@ -66,8 +65,9 @@ export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const ONE_HOUR_MS = 3600000; // 1 hour in milliseconds
 export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
-export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
-export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
+export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
+export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
+export const VERSION = 'VERSION';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';

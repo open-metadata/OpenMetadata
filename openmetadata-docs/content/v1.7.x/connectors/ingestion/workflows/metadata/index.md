@@ -1,5 +1,6 @@
 ---
-title: Metadata Ingestion Workflow
+title: Metadata Ingestion Workflow | Official Documentation
+description: Get started with metadata. Setup instructions, features, and configuration details inside.
 slug: /connectors/ingestion/workflows/metadata
 ---
 

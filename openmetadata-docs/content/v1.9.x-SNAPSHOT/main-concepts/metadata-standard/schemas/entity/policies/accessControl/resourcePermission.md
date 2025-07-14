@@ -1,5 +1,6 @@
 ---
 title: Resource Permission | OpenMetadata Resource Permissions
+description: Learn how to configure resource permissions in OpenMetadata's access control system. Define granular user access rights for data assets and metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/resourcepermission
 ---
 
