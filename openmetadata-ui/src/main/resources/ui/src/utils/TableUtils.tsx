@@ -757,7 +757,6 @@ export const getTableDetailPageBaseTabs = ({
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
-  viewProfilerPermission,
   editLineagePermission,
   fetchTableDetails,
   testCaseSummary,
