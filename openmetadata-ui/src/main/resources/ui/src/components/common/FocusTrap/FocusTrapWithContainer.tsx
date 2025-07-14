@@ -11,8 +11,52 @@
  *  limitations under the License.
  */
 
-import { FocusTrap } from 'focus-trap-react';
-import { useRef } from 'react';
+import { createFocusTrap, FocusTrap as FocusTrapInstance } from 'focus-trap';
+import { useEffect, useRef } from 'react';
+
+type UseMultiContainerFocusTrapProps = {
+  containers: Array<HTMLElement | null | undefined>;
+  active?: boolean;
+  options?: Parameters<typeof createFocusTrap>[1];
+};
+
+export function useMultiContainerFocusTrap({
+  containers,
+  active = true,
+  options = {},
+}: UseMultiContainerFocusTrapProps) {
+  const trapRef = useRef<FocusTrapInstance | null>(null);
+
+  useEffect(() => {
+    if (active) {
+      const validContainers = containers.filter(Boolean) as HTMLElement[];
+      if (validContainers.length === 0) {
+        return;
+      }
+
+      // If already active, deactivate before re-activating with new containers
+      trapRef.current?.deactivate();
+
+      trapRef.current = createFocusTrap(validContainers, {
+        fallbackFocus: validContainers[0],
+        ...options,
+      });
+
+      trapRef.current.activate();
+
+      return () => {
+        trapRef.current?.deactivate();
+      };
+    } else {
+      trapRef.current?.deactivate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, ...containers]);
+
+  return {
+    trapRef,
+  };
+}
 
 export const FocusTrapWithContainer = ({
   children,
@@ -23,25 +67,20 @@ export const FocusTrapWithContainer = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  useMultiContainerFocusTrap({
+    containers: [containerRef.current],
+    active,
+  });
+
   return (
-    <FocusTrap
-      active={active}
-      focusTrapOptions={{
-        fallbackFocus: () => containerRef.current || document.body,
-        initialFocus: () =>
-          (containerRef.current?.querySelector(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-          ) as HTMLElement) || containerRef.current,
+    <div
+      ref={containerRef}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.stopPropagation();
+        }
       }}>
-      <div
-        ref={containerRef}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.stopPropagation();
-          }
-        }}>
-        {children}
-      </div>
-    </FocusTrap>
+      {children}
+    </div>
   );
 };

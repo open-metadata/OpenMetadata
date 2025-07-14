@@ -13,11 +13,12 @@
 
 import Select, { DefaultOptionType } from 'antd/lib/select';
 import { toString } from 'lodash';
-import { ReactNode } from 'react';
+import { ReactNode, useRef } from 'react';
 import { RenderEditCellProps, textEditor } from 'react-data-grid';
 import Certification from '../../components/Certification/Certification.component';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
+import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
 import { KeyDownStopPropagationWrapper } from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import TierCard from '../../components/common/TierCard/TierCard';
@@ -143,6 +144,13 @@ class CSVUtilsClassBase {
           onClose,
           column,
         }: RenderEditCellProps<any, any>) => {
+          const containerRef = useRef<HTMLDivElement | null>(null);
+          const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
+          useMultiContainerFocusTrap({
+            containers: [containerRef.current, dropdownContainerRef.current],
+            active: true,
+          });
+
           const tags = row[column.key]
             ? row[column.key]?.split(';').map(
                 (tag: string) =>
@@ -163,19 +171,22 @@ class CSVUtilsClassBase {
 
           return (
             <KeyDownStopPropagationWrapper>
-              <InlineEdit
-                onCancel={() => onClose(false)}
-                onSave={() => onClose(true)}>
-                <TagSuggestion
-                  autoFocus
-                  selectProps={{
-                    className: 'react-grid-select-dropdown',
-                    size: 'small',
-                  }}
-                  value={tags}
-                  onChange={handleChange}
-                />
-              </InlineEdit>
+              <div ref={containerRef}>
+                <InlineEdit
+                  onCancel={() => onClose(false)}
+                  onSave={() => onClose(true)}>
+                  <TagSuggestion
+                    autoFocus
+                    dropdownContainerRef={dropdownContainerRef}
+                    selectProps={{
+                      className: 'react-grid-select-dropdown',
+                      size: 'small',
+                    }}
+                    value={tags}
+                    onChange={handleChange}
+                  />
+                </InlineEdit>
+              </div>
             </KeyDownStopPropagationWrapper>
           );
         };
@@ -187,6 +198,13 @@ class CSVUtilsClassBase {
           onClose,
           column,
         }: RenderEditCellProps<any, any>) => {
+          const containerRef = useRef<HTMLDivElement | null>(null);
+          const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
+          useMultiContainerFocusTrap({
+            containers: [containerRef.current, dropdownContainerRef.current],
+            active: true,
+          });
+
           const value = row[column.key];
           const tags = value ? value?.split(';') : [];
 
@@ -209,16 +227,19 @@ class CSVUtilsClassBase {
           };
 
           return (
-            <TreeAsyncSelectList
-              defaultValue={tags}
-              optionClassName="tag-select-box"
-              tagType={TagSource.Glossary}
-              onCancel={() => {
-                onClose(false);
-              }}
-              onChange={handleChange}
-              onSubmit={() => onClose(true)}
-            />
+            <div ref={containerRef}>
+              <TreeAsyncSelectList
+                defaultValue={tags}
+                dropdownContainerRef={dropdownContainerRef}
+                optionClassName="tag-select-box"
+                tagType={TagSource.Glossary}
+                onCancel={() => {
+                  onClose(false);
+                }}
+                onChange={handleChange}
+                onSubmit={() => onClose(true)}
+              />
+            </div>
           );
         };
       case 'tiers':

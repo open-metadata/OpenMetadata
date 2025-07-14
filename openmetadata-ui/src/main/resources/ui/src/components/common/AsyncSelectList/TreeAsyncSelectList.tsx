@@ -61,7 +61,6 @@ import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
-import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { KeyDownStopPropagationWrapper } from '../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
@@ -75,6 +74,7 @@ interface TreeAsyncSelectListProps
   isMultiSelect?: boolean;
   isParentSelectable?: boolean;
   onSubmit?: () => void;
+  dropdownContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
@@ -89,6 +89,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   isMultiSelect = true, // default to true for backward compatibility
   isParentSelectable = false, // by default, only leaf nodes can be selected
   onSubmit,
+  dropdownContainerRef,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -135,7 +136,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
 
   const dropdownRender = (menu: React.ReactElement) => (
     <KeyDownStopPropagationWrapper>
-      <FocusTrapWithContainer>
+      <div ref={dropdownContainerRef}>
         {isLoading ? <Loader size="small" /> : menu}
         <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
           <Button
@@ -158,7 +159,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
             {t('label.cancel')}
           </Button>
         </Space>
-      </FocusTrapWithContainer>
+      </div>
     </KeyDownStopPropagationWrapper>
   );
 

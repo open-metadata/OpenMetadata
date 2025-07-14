@@ -34,7 +34,7 @@ describe('CSVUtils', () => {
       const columnConfig = getColumnConfig(column, EntityType.GLOSSARY);
 
       expect(columnConfig).toBeDefined();
-      expect(columnConfig.name).toBe(column);
+      expect(columnConfig.key).toBe(column);
     });
   });
 
