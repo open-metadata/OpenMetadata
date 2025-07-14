@@ -845,6 +845,9 @@ public class AuthenticationCodeFlowHandler {
       String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
       String userNameClaimValue = getClaimOrObject(claims.get(usernameClaim));
       if (!nullOrEmpty(userNameClaimValue)) {
+        if (userNameClaimValue.contains("@")) {
+          return userNameClaimValue.split("@")[0];
+        }
         return userNameClaimValue;
       } else {
         throw new AuthenticationException("Invalid JWT token, 'username' claim is not present");
