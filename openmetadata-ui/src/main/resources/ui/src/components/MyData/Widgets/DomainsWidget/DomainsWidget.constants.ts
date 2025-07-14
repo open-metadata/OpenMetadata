@@ -12,23 +12,23 @@
  */
 import { t } from '../../../../utils/i18next/LocalUtil';
 
-export const MY_TASK_SORT_BY_KEYS = {
+export const DOMAIN_SORT_BY_KEYS = {
   LATEST: 'latest',
   A_TO_Z: 'a-to-z',
   Z_TO_A: 'z-to-a',
 };
 
-export const MY_TASK_SORT_BY_OPTIONS = [
+export const DOMAIN_SORT_BY_OPTIONS = [
   {
-    key: MY_TASK_SORT_BY_KEYS.LATEST,
+    key: DOMAIN_SORT_BY_KEYS.LATEST,
     label: t('label.latest'),
   },
   {
-    key: MY_TASK_SORT_BY_KEYS.A_TO_Z,
+    key: DOMAIN_SORT_BY_KEYS.A_TO_Z,
     label: t('label.a-to-z'),
   },
   {
-    key: MY_TASK_SORT_BY_KEYS.Z_TO_A,
+    key: DOMAIN_SORT_BY_KEYS.Z_TO_A,
     label: t('label.z-to-a'),
   },
 ];
