@@ -13,7 +13,7 @@ Utilities for working with the Presidio Library.
 """
 import inspect
 import logging
-from typing import Iterable, Optional, Type
+from typing import Iterable, Type, Union
 
 import spacy
 from presidio_analyzer import (
@@ -64,7 +64,7 @@ def build_analyzer_engine(
     return analyzer_engine
 
 
-def set_presidio_logger_level(log_level: Optional[int] = logging.ERROR) -> None:
+def set_presidio_logger_level(log_level: Union[int, str] = logging.ERROR) -> None:
     """
     Set the presidio logger to talk less about internal entities unless we are debugging.
     """
