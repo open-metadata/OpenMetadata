@@ -1,5 +1,6 @@
 ---
 title: Salesforce Connection | OpenMetadata Salesforce
+description: Get started with salesforceconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/salesforceconnection
 ---
 

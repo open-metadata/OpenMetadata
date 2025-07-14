@@ -1,5 +1,6 @@
 ---
-title: sapHanaHDBConnection
+title: Saphanahdbconnection | Official Documentation
+description: Get started with saphanahdbconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/saphana/saphanahdbconnection
 ---
 
