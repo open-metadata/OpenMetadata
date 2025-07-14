@@ -25,8 +25,11 @@ import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -43,6 +46,7 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 
 @Slf4j
 @Execution(ExecutionMode.CONCURRENT)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
 
   private static TableResourceTest tableTest;
@@ -205,7 +209,8 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
+  @Order(1)
+  @Execution(ExecutionMode.SAME_THREAD)
   void test_validationOfExistingRelationships() {
     long relationshipCountBefore = collectionDAO.relationshipDAO().getTotalRelationshipCount();
     cleanup = new EntityRelationshipCleanup(collectionDAO, false);
