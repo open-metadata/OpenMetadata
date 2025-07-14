@@ -42,17 +42,13 @@ class ProfilerClassBase {
     } as GetProfilerTabsType;
   }
 
-  public getProfilerTabOptions({
-    viewProfiler,
-    viewTest,
-  }: GetProfilerTabOptionsType) {
+  public getProfilerTabOptions() {
     return [
       {
         label: i18n.t('label.table-entity-text', {
           entityText: i18n.t('label.profile'),
         }),
         key: TableProfilerTab.TABLE_PROFILE,
-        disabled: !viewProfiler,
         icon: TableProfileIcon,
       },
       {
@@ -60,7 +56,6 @@ class ProfilerClassBase {
           entity: i18n.t('label.profile'),
         }),
         key: TableProfilerTab.COLUMN_PROFILE,
-        disabled: !viewProfiler,
         icon: ColumnProfileIcon,
       },
       {
@@ -68,13 +63,11 @@ class ProfilerClassBase {
           entity: i18n.t('label.quality'),
         }),
         key: TableProfilerTab.DATA_QUALITY,
-        disabled: !viewTest,
         icon: DataQualityIcon,
       },
       {
         label: i18n.t('label.incident-plural'),
         key: TableProfilerTab.INCIDENTS,
-        disabled: !viewTest,
         icon: IncidentIcon,
       },
     ];

@@ -34,6 +34,7 @@ import { ReactComponent as DropDownIcon } from '../../../../../assets/svg/drop-d
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import {
@@ -68,6 +69,7 @@ import {
   getTableExpandableConfig,
 } from '../../../../../utils/TableUtils';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
+import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
@@ -483,6 +485,15 @@ const ColumnProfileTable = () => {
       onSearch: handleSearchAction,
     };
   }, [searchText, handleSearchAction]);
+
+  if (!permissions.ViewDataProfile) {
+    return (
+      <ErrorPlaceHolder
+        permissionValue={Operation.ViewDataProfile}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
 
   return (
     <Row data-testid="column-profile-table-container" gutter={[16, 16]}>
