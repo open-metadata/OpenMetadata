@@ -30,18 +30,18 @@ import { updateAutoPilotStatus } from '../../utils/LocalStorageUtils';
 import {
   checkIfAutoPilotStatusIsDismissed,
   filterDistributionChartItem,
+  getChartsDataFromWidgetName,
   getPlatformInsightsChartDataFormattingMethod,
   getStatusIconFromStatusType,
 } from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import {
-  ChartData,
-  ChartSeriesData,
-} from './PlatformInsightsWidget/PlatformInsightsWidget.interface';
 import './service-insights-tab.less';
-import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
+import {
+  ChartsResults,
+  ServiceInsightsTabProps,
+} from './ServiceInsightsTab.interface';
 
 const ServiceInsightsTab = ({
   serviceDetails,
@@ -50,11 +50,7 @@ const ServiceInsightsTab = ({
 }: ServiceInsightsTabProps) => {
   const { serviceCategory } =
     useRequiredParams<{ serviceCategory: ServiceTypes }>();
-  const [chartsResults, setChartsResults] = useState<{
-    platformInsightsChart: ChartSeriesData[];
-    piiDistributionChart: ChartData[];
-    tierDistributionChart: ChartData[];
-  }>();
+  const [chartsResults, setChartsResults] = useState<ChartsResults>();
   const [isLoading, setIsLoading] = useState(false);
 
   const serviceName = serviceDetails.name;
@@ -106,10 +102,6 @@ const ServiceInsightsTab = ({
     }
   };
 
-  useEffect(() => {
-    fetchChartsData();
-  }, []);
-
   const arrayOfWidgets = [
     { Widget: widgets.PlatformInsightsWidget, name: 'PlatformInsightsWidget' },
     { Widget: widgets.CollateAIWidget, name: 'CollateAIWidget' },
@@ -122,19 +114,6 @@ const ServiceInsightsTab = ({
     },
     { Widget: widgets.DataQualityWidget, name: 'DataQualityWidget' },
   ];
-
-  const getChartsDataFromWidgetName = (widgetName: string) => {
-    switch (widgetName) {
-      case 'PlatformInsightsWidget':
-        return chartsResults?.platformInsightsChart ?? [];
-      case 'PIIDistributionWidget':
-        return chartsResults?.piiDistributionChart ?? [];
-      case 'TierDistributionWidget':
-        return chartsResults?.tierDistributionChart ?? [];
-      default:
-        return [];
-    }
-  };
 
   const {
     Icon: StatusIcon,
@@ -174,6 +153,10 @@ const ServiceInsightsTab = ({
     serviceDetails.fullyQualifiedName,
     workflowStatesData?.mainInstanceState?.status,
   ]);
+
+  useEffect(() => {
+    fetchChartsData();
+  }, []);
 
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
@@ -218,7 +201,7 @@ const ServiceInsightsTab = ({
                   : 24
               }>
               <Widget
-                chartsData={getChartsDataFromWidgetName(name)}
+                chartsData={getChartsDataFromWidgetName(name, chartsResults)}
                 isLoading={isLoading}
                 serviceName={serviceName}
                 workflowStatesData={workflowStatesData}

@@ -25,6 +25,7 @@ import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.
 import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ChartsResults } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -349,4 +350,20 @@ export const checkIfAutoPilotStatusIsDismissed = (
     (status) =>
       status.serviceFQN === serviceFQN && status.status === workflowStatus
   );
+};
+
+export const getChartsDataFromWidgetName = (
+  widgetName: string,
+  chartsResults?: ChartsResults
+) => {
+  switch (widgetName) {
+    case 'PlatformInsightsWidget':
+      return chartsResults?.platformInsightsChart ?? [];
+    case 'PIIDistributionWidget':
+      return chartsResults?.piiDistributionChart ?? [];
+    case 'TierDistributionWidget':
+      return chartsResults?.tierDistributionChart ?? [];
+    default:
+      return [];
+  }
 };
