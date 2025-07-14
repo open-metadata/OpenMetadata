@@ -14,7 +14,8 @@
                 "tags",
                 "glossaryTerms",
                 "owner",
-                "tier"
+                "tier",
+                "domain"
             ]
         },
         "value": {
@@ -22,7 +23,17 @@
             "description": "List of attribute values that will stop propagation when any of them is matched",
             "type": "array",
             "items": {
-                "type": "string"
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "$ref": "../../../../../type/tagLabel.json"
+                    },
+                    {
+                        "$ref": "../../../../../type/entityReference.json"
+                    }
+                ]
             }
         }
     },
