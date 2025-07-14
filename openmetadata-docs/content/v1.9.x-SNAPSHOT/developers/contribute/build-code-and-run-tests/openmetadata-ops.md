@@ -1,5 +1,6 @@
 ---
 title: Understanding openmetadata-ops.sh file
+description: Get started with openmetadata ops. Setup instructions, features, and configuration details inside.
 slug: /developers/contribute/build-code-and-run-tests/openmetadata-ops
 ---
 

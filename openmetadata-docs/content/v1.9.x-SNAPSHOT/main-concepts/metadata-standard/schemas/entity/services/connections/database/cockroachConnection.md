@@ -1,5 +1,6 @@
 ---
 title: Cockroach Connection | OpenMetadata Cockroach
+description: Get started with cockroachconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cockroachconnection
 ---
 

@@ -15,9 +15,9 @@ import classNames from 'classnames';
 import { isNumber } from 'lodash';
 import Qs from 'qs';
 import { useMemo } from 'react';
-import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { pluralize } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
@@ -46,6 +46,10 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   handleSummaryPanelDisplay,
   filter,
 }) => {
+  const {
+    preferences: { globalPageSize },
+  } = useCurrentUserPreferences();
+
   const searchResultCards = useMemo(() => {
     return data.map(({ _source: table, highlight }, index) => {
       const matches = highlight
@@ -93,7 +97,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     }
   };
 
-  const { page = 1, size = PAGE_SIZE } = useMemo(
+  const { page = 1, size = globalPageSize } = useMemo(
     () =>
       Qs.parse(
         location.search.startsWith('?')
@@ -119,7 +123,9 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                   className="text-center p-b-box"
                   current={isNumber(Number(page)) ? Number(page) : 1}
                   pageSize={
-                    size && isNumber(Number(size)) ? Number(size) : PAGE_SIZE
+                    size && isNumber(Number(size))
+                      ? Number(size)
+                      : globalPageSize
                   }
                   total={totalValue}
                   onChange={onPaginationChange}
