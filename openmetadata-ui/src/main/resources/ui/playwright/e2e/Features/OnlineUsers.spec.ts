@@ -52,16 +52,6 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-base.afterAll('Cleanup', async ({ browser }) => {
-  test.slow(true);
-
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-
-  await afterAction();
-});
-
 test.describe('Online Users Feature', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);

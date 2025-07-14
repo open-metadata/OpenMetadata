@@ -37,14 +37,6 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await afterAction();
   });
 
-  test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
-
-    await table1.delete(apiContext);
-
-    await afterAction();
-  });
-
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
   });

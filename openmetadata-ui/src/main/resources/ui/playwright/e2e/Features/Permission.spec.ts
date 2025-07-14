@@ -134,15 +134,6 @@ test.beforeAll(async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await user.delete(apiContext);
-  await role.delete(apiContext);
-  await policy.delete(apiContext);
-  await table.delete(apiContext);
-  await afterAction();
-});
-
 test('Permissions', async ({ userPage, adminPage }) => {
   test.slow();
 

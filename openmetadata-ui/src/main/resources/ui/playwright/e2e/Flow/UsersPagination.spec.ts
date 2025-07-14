@@ -49,17 +49,6 @@ test.describe('Soft Delete User Pagination', () => {
     await userResponsePromise;
   });
 
-  test.afterAll('Permanently deleting users', async ({ browser }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await createNewPage(browser);
-    for (const testUser of users) {
-      await testUser.delete(apiContext);
-    }
-    await adminUser.delete(apiContext);
-    await afterAction();
-  });
-
   test('Testing user API calls and pagination', async ({ page }) => {
     const expectedUrl =
       '**/api/v1/users?isBot=false&fields=profile%2Cteams%2Croles&limit=25&isAdmin=false&include=deleted';

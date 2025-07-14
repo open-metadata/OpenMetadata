@@ -49,11 +49,5 @@ entities.forEach((EntityClass) => {
       await redirectToHomePage(page);
       await checkDataAssetWidget(page, toLower(entity.service.serviceType));
     });
-
-    test.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await entity.delete(apiContext);
-      await afterAction();
-    });
   });
 });

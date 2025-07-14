@@ -63,14 +63,6 @@ test.describe.serial('My Data page', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-
-    await Promise.all(TableEntities.map((table) => table.delete(apiContext)));
-    await afterAction();
-  });
-
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await redirectToHomePage(page);
     await removeLandingBanner(page);

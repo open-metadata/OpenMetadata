@@ -122,19 +122,6 @@ test.describe('Service Version pages', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow();
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-
-    await EntityDataClass.postRequisitesForTests(
-      apiContext,
-      entityCreationConfig
-    );
-    await afterAction();
-  });
-
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await redirectToHomePage(page);
   });

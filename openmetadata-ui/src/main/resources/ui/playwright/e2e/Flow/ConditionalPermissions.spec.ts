@@ -20,7 +20,6 @@ import {
 import { performAdminLogin } from '../../utils/admin';
 import {
   checkViewAllPermission,
-  conditionalPermissionsCleanup,
   conditionalPermissionsPrerequisites,
   getEntityFQN,
 } from '../../utils/conditionalPermissions';
@@ -48,14 +47,6 @@ test.beforeAll(async ({ browser }) => {
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await conditionalPermissionsPrerequisites(apiContext);
-  await afterAction();
-});
-
-test.afterAll(async ({ browser }) => {
-  test.slow();
-
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await conditionalPermissionsCleanup(apiContext);
   await afterAction();
 });
 

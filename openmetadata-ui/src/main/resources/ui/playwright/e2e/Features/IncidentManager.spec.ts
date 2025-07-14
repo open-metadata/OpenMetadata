@@ -80,14 +80,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    for (const entity of [...users, table1]) {
-      await entity.delete(apiContext);
-    }
-    await afterAction();
-  });
-
   test.slow(true);
 
   test.beforeEach(async ({ page }) => {

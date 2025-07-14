@@ -47,13 +47,6 @@ test.describe.serial('Persona operations', () => {
     await afterAction();
   });
 
-  test.afterAll('cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await user.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.PERSONA);

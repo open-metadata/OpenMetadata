@@ -99,12 +99,6 @@ test.describe('Teams Page', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await user.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach('Visit Home Page', async ({ page }) => {
     await redirectToHomePage(page);
     const fetchOrganizationResponse = page.waitForResponse(
@@ -727,18 +721,6 @@ test.describe('Teams Page with EditUser Permission', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-    await user2.delete(apiContext);
-    await editOnlyUser.delete(apiContext);
-    await team.delete(apiContext);
-    await team2.delete(apiContext);
-    await policy.delete(apiContext);
-    await role.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach('Visit Home Page', async ({ editOnlyUserPage }) => {
     await redirectToHomePage(editOnlyUserPage);
     await team2.visitTeamPage(editOnlyUserPage);
@@ -796,15 +778,6 @@ test.describe('Teams Page with Data Consumer User', () => {
     });
     await team.create(apiContext);
     await team2.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await dataConsumerUser.delete(apiContext);
-    await user.delete(apiContext);
-    await team.delete(apiContext);
-    await team2.delete(apiContext);
     await afterAction();
   });
 

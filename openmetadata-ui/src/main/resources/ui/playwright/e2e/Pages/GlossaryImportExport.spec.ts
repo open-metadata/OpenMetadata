@@ -80,18 +80,6 @@ test.describe('Glossary Bulk Import Export', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-    await user3.delete(apiContext);
-    await glossary1.delete(apiContext);
-    await glossary2.delete(apiContext);
-
-    await afterAction();
-  });
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
