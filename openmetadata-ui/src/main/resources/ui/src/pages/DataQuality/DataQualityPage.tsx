@@ -36,8 +36,7 @@ const DataQualityPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { testSuite: testSuitePermission, testCase: testCasePermission } =
-    permissions;
+  const { testSuite: testSuitePermission } = permissions;
 
   // Add state for modal open/close
   const [isTestCaseModalOpen, setIsTestCaseModalOpen] = useState(false);
@@ -61,15 +60,15 @@ const DataQualityPage = () => {
   };
 
   const addButtonContent = useMemo(() => {
-    const btn = [];
-
-    if (testCasePermission?.Create) {
-      btn.push({
+    // Since we will be checking permissions during test case creation, based on table ownership and
+    // test case creation rights
+    const btn = [
+      {
         label: t('label.test-case'),
         key: '1',
         onClick: handleOpenTestCaseModal,
-      });
-    }
+      },
+    ];
 
     if (testSuitePermission?.Create) {
       btn.push({

@@ -52,12 +52,12 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table pagination with sorting should works', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
-    const listTestCaseResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?**`
-    );
-
     await page.click('[data-testid="test-cases"]');
-    await listTestCaseResponse;
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByText('Name', { exact: true }).click();
 
     await page.getByTestId('next').click();

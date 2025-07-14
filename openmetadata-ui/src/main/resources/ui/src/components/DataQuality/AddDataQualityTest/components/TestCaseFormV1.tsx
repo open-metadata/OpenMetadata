@@ -1086,6 +1086,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             tooltip={selectedTestDefinition?.description}>
             <Select
               showSearch
+              data-testid="test-type"
               filterOption={filterSelectOptions}
               options={testTypeOptions}
               placeholder={t('label.select-entity', {

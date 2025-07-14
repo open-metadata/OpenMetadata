@@ -112,12 +112,12 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await page.click('[data-testid="table"]');
 
   await test.step('Create', async () => {
-    await page.click('#tableTestForm_testTypeId');
+    await page.fill('[data-testid="test-case-name"]', NEW_TABLE_TEST_CASE.name);
+    await page.click('#testCaseFormV1_testTypeId');
     await page.waitForSelector(`text=${NEW_TABLE_TEST_CASE.label}`);
     await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
-    await page.fill('#tableTestForm_testName', NEW_TABLE_TEST_CASE.name);
     await page.fill(
-      '#tableTestForm_params_columnName',
+      '#testCaseFormV1_params_columnName',
       NEW_TABLE_TEST_CASE.field
     );
     await page.locator(descriptionBox).fill(NEW_TABLE_TEST_CASE.description);
@@ -149,46 +149,18 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .click();
 
     await clickOutside(page);
-
-    await page.click('[data-testid="submit-test"]');
-
-    await page.waitForSelector('[data-testid="success-line"]');
-
-    await expect(page.locator('[data-testid="success-line"]')).toBeVisible();
-
-    await page.waitForSelector('[data-testid="add-ingestion-button"]');
-    await page.click('[data-testid="add-ingestion-button"]');
-    await page.click('[data-testid="select-all-test-cases"]');
-
-    // Schedule & Deploy
-    await page.click('[data-testid="cron-type"]');
-    await page.waitForSelector('.ant-select-item-option-content');
-    await page.click('.ant-select-item-option-content:has-text("Hour")');
     const ingestionPipelines = page.waitForResponse(
       '/api/v1/services/ingestionPipelines'
     );
     const deploy = page.waitForResponse(
       '/api/v1/services/ingestionPipelines/deploy/*'
     );
-    await page.click('[data-testid="deploy-button"]');
+    await page.click('[data-testid="create-btn"]');
+
     await ingestionPipelines;
     await deploy;
 
-    // check success
-    await page.waitForSelector('[data-testid="success-line"]', {
-      timeout: 15000,
-    });
-
-    await expect(page.locator('[data-testid="success-line"]')).toBeVisible();
-    await expect(
-      page.getByText('has been created and deployed successfully')
-    ).toBeVisible();
-
-    const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list?*fields=*'
-    );
-    await page.click(`[data-testid="view-service-button"]`);
-    await testCaseResponse;
+    await toastNotification(page, 'Test case created successfully.');
 
     await expect(page.getByTestId(NEW_TABLE_TEST_CASE.name)).toBeVisible();
   });
@@ -290,18 +262,22 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const testDefinitionResponse = page.waitForResponse(
       '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
     );
-    await page.click('#tableTestForm_column');
+    await page.click('#testCaseFormV1_selectedColumn');
     await page.click(`[title="${NEW_COLUMN_TEST_CASE.column}"]`);
     await testDefinitionResponse;
-    await page.fill('#tableTestForm_testName', NEW_COLUMN_TEST_CASE.name);
-    await page.click('#tableTestForm_testTypeId');
+
+    await page.fill(
+      '[data-testid="test-case-name"]',
+      NEW_COLUMN_TEST_CASE.name
+    );
+    await page.click('#testCaseFormV1_testTypeId');
     await page.click(`[data-testid="${NEW_COLUMN_TEST_CASE.type}"]`);
     await page.fill(
-      '#tableTestForm_params_minLength',
+      '#testCaseFormV1_params_minLength',
       NEW_COLUMN_TEST_CASE.min
     );
     await page.fill(
-      '#tableTestForm_params_maxLength',
+      '#testCaseFormV1_params_maxLength',
       NEW_COLUMN_TEST_CASE.max
     );
     await page.locator(descriptionBox).fill(NEW_COLUMN_TEST_CASE.description);
@@ -335,18 +311,8 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
     await clickOutside(page);
 
-    await page.click('[data-testid="submit-test"]');
-    await page.waitForSelector('[data-testid="success-line"]');
-
-    await expect(page.locator('[data-testid="success-line"]')).toBeVisible();
-
-    await page.waitForSelector('[data-testid="view-service-button"]');
-
-    const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list?*fields=*'
-    );
-    await page.click(`[data-testid="view-service-button"]`);
-    await testCaseResponse;
+    await page.click('[data-testid="create-btn"]');
+    await toastNotification(page, 'Test case created successfully.');
 
     await page.waitForSelector(`[data-testid="${NEW_COLUMN_TEST_CASE.name}"]`);
 
@@ -939,11 +905,13 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   try {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
-    const getTestCaseListData = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list?*'
-    );
+
     await page.click('[data-testid="test-cases"]');
-    await getTestCaseListData;
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     // get all the filters
     await page.click('[data-testid="advanced-filter"]');
     await page.click('[value="tableFqn"]');
@@ -1223,102 +1191,94 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   }
 });
 
-test(
-  'Pagination functionality in test cases list',
-  PLAYWRIGHT_INGESTION_TAG_OBJ,
-  async ({ page }) => {
-    test.slow();
+test('Pagination functionality in test cases list', async ({ page }) => {
+  test.slow();
 
-    const { apiContext, afterAction } = await getApiContext(page);
-    const paginationTable = new TableClass();
+  const { apiContext, afterAction } = await getApiContext(page);
+  const paginationTable = new TableClass();
 
-    try {
-      await paginationTable.create(apiContext);
-      await paginationTable.createTestSuiteAndPipelines(apiContext);
+  try {
+    await paginationTable.create(apiContext);
+    await paginationTable.createTestSuiteAndPipelines(apiContext);
 
-      // Create multiple test cases to ensure pagination is always visible
-      const testCaseCount = 25; // Create enough test cases to trigger pagination
+    // Create multiple test cases to ensure pagination is always visible
+    const testCaseCount = 25; // Create enough test cases to trigger pagination
 
-      for (let i = 0; i < testCaseCount; i++) {
-        await paginationTable.createTestCase(apiContext, {
-          name: `pagination-test-case-${i + 1}-${uuid()}`,
-          testDefinition: 'tableRowCountToBeBetween',
-          parameterValues: [
-            { name: 'minValue', value: 10 + i },
-            { name: 'maxValue', value: 100 + i },
-          ],
-        });
-      }
+    for (let i = 0; i < testCaseCount; i++) {
+      await paginationTable.createTestCase(apiContext, {
+        name: `pagination-test-case-${i + 1}-${uuid()}`,
+        testDefinition: 'tableRowCountToBeBetween',
+        parameterValues: [
+          { name: 'minValue', value: 10 + i },
+          { name: 'maxValue', value: 100 + i },
+        ],
+      });
+    }
 
-      await sidebarClick(page, SidebarItem.DATA_QUALITY);
-      await page.waitForLoadState('networkidle');
-      const getTestCaseListData = page.waitForResponse(
+    await sidebarClick(page, SidebarItem.DATA_QUALITY);
+    await page.click('[data-testid="test-cases"]');
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await test.step('Verify pagination controls are visible', async () => {
+      await expect(page.locator('[data-testid="pagination"]')).toBeVisible();
+      await expect(page.locator('[data-testid="previous"]')).toBeVisible();
+      await expect(page.locator('[data-testid="next"]')).toBeVisible();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toBeVisible();
+    });
+
+    await test.step('Verify first page state', async () => {
+      await expect(page.locator('[data-testid="previous"]')).toBeDisabled();
+      await expect(page.locator('[data-testid="next"]')).not.toBeDisabled();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('1 of');
+    });
+
+    await test.step('Navigate to next page', async () => {
+      const nextPageResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list?*'
       );
-      await page.click('[data-testid="by-test-cases"]');
-      await getTestCaseListData;
+      await page.click('[data-testid="next"]');
+      await nextPageResponse;
 
-      await page.getByTestId('loader').waitFor({ state: 'detached' });
+      await expect(page.locator('[data-testid="previous"]')).not.toBeDisabled();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('2 of');
+    });
 
-      await test.step('Verify pagination controls are visible', async () => {
-        await expect(page.locator('[data-testid="pagination"]')).toBeVisible();
-        await expect(page.locator('[data-testid="previous"]')).toBeVisible();
-        await expect(page.locator('[data-testid="next"]')).toBeVisible();
-        await expect(
-          page.locator('[data-testid="page-indicator"]')
-        ).toBeVisible();
-      });
+    await test.step('Navigate back to previous page', async () => {
+      const prevPageResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?*'
+      );
+      await page.click('[data-testid="previous"]');
+      await prevPageResponse;
 
-      await test.step('Verify first page state', async () => {
-        await expect(page.locator('[data-testid="previous"]')).toBeDisabled();
-        await expect(page.locator('[data-testid="next"]')).not.toBeDisabled();
-        await expect(
-          page.locator('[data-testid="page-indicator"]')
-        ).toContainText('1 of');
-      });
+      await expect(page.locator('[data-testid="previous"]')).toBeDisabled();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('1 of');
+    });
 
-      await test.step('Navigate to next page', async () => {
-        const nextPageResponse = page.waitForResponse(
-          '/api/v1/dataQuality/testCases/search/list?*'
-        );
-        await page.click('[data-testid="next"]');
-        await nextPageResponse;
+    await test.step('Test page size dropdown', async () => {
+      await expect(
+        page.locator('[data-testid="page-size-selection-dropdown"]')
+      ).toBeVisible();
 
-        await expect(
-          page.locator('[data-testid="previous"]')
-        ).not.toBeDisabled();
-        await expect(
-          page.locator('[data-testid="page-indicator"]')
-        ).toContainText('2 of');
-      });
+      await page.click('[data-testid="page-size-selection-dropdown"]');
 
-      await test.step('Navigate back to previous page', async () => {
-        const prevPageResponse = page.waitForResponse(
-          '/api/v1/dataQuality/testCases/search/list?*'
-        );
-        await page.click('[data-testid="previous"]');
-        await prevPageResponse;
-
-        await expect(page.locator('[data-testid="previous"]')).toBeDisabled();
-        await expect(
-          page.locator('[data-testid="page-indicator"]')
-        ).toContainText('1 of');
-      });
-
-      await test.step('Test page size dropdown', async () => {
-        await expect(
-          page.locator('[data-testid="page-size-selection-dropdown"]')
-        ).toBeVisible();
-
-        await page.click('[data-testid="page-size-selection-dropdown"]');
-
-        // Verify dropdown options are visible
-        await expect(page.locator('.ant-dropdown-menu')).toBeVisible();
-        await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
-      });
-    } finally {
-      await paginationTable.delete(apiContext);
-      await afterAction();
-    }
+      // Verify dropdown options are visible
+      await expect(page.locator('.ant-dropdown-menu')).toBeVisible();
+      await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
+    });
+  } finally {
+    await paginationTable.delete(apiContext);
+    await afterAction();
   }
-);
+});

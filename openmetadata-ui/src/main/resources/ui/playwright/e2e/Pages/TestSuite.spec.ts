@@ -174,9 +174,9 @@ test('Logical TestSuite', async ({ page }) => {
   await test.step('Add test suite pipeline', async () => {
     await page.getByRole('tab', { name: 'Pipeline' }).click();
 
-    await expect(page.getByTestId('add-pipeline-button')).toBeVisible();
+    await expect(page.getByTestId('add-placeholder-button')).toBeVisible();
 
-    await page.getByTestId('add-pipeline-button').click();
+    await page.getByTestId('add-placeholder-button').click();
     await page.getByTestId('select-all-test-cases').click();
 
     await expect(page.getByTestId('cron-type').getByText('Day')).toBeAttached();
