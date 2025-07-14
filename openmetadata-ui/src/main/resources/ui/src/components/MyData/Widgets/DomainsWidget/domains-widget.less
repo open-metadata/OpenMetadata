@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../../styles/variables.less');
+@import (reference) url('../../../../styles/variables.less');
+@import (reference) url('../../../../styles/fonts.less');
 
 .domains-widget-container {
   display: flex;
@@ -21,7 +22,7 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    padding: 0px;
+    padding: 0;
     overflow: hidden;
   }
 
@@ -35,7 +36,7 @@
 
   .entity-list-body {
     flex: 1;
-    padding: 20px 20px 0 20px;
+    padding: @size-mlg @size-mlg 0 @size-mlg;
     margin: 0;
     overflow-y: auto;
     min-height: 0;
@@ -45,8 +46,8 @@
     flex-shrink: 0;
     width: 100%;
     background-color: @white;
-    border-bottom-right-radius: 12px;
-    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: @size-sm;
+    border-bottom-left-radius: @size-sm;
   }
 }
 
@@ -61,7 +62,6 @@
   }
 }
 
-.domains-widget-loading,
 .domains-widget-error {
   display: flex;
   align-items: center;
@@ -73,19 +73,19 @@
 .domains-widget-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: @size-md;
 }
 
 .domain-card {
   display: flex;
   align-items: center;
   background: @white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  box-shadow: @button-box-shadow-default;
   position: relative;
   overflow: hidden;
-  height: 48px;
+  height: @size-2xl;
   border: 1px solid #dbe0e7;
-  border-radius: 8px;
+  border-radius: @size-xs;
 }
 
 .domain-card-bar {
@@ -99,25 +99,20 @@
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 0 16px;
+  padding: 0 @size-md;
   min-width: 0;
 }
 
 .domain-card-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: @size-xs;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: @font-medium;
   color: @text-color;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.domain-icon {
-  font-size: 18px;
-  margin-right: 2px;
 }
 
 .domain-card-name {
@@ -133,10 +128,10 @@
   background: @grey-30;
   color: @blue-35;
   font-size: 13px;
-  font-weight: 600;
-  border-radius: 8px;
-  padding: 2px 12px;
-  margin-left: 10px;
+  font-weight: @font-semibold;
+  border-radius: @size-xs;
+  padding: 2px @size-sm;
+  margin-left: @size-xs;
   min-width: 40px;
   text-align: center;
   display: inline-block;
@@ -147,24 +142,24 @@
   align-items: center;
   background: @white;
   border: 1px solid #dbe0e7;
-  border-radius: 12px;
+  border-radius: @size-sm;
   width: 340px;
   height: 80px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-  padding: 0 12px;
-  gap: 18px;
+  box-shadow: @button-box-shadow-default;
+  padding: 0 @size-sm;
+  gap: @size-mlg;
 }
 
 .domain-card-full-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
+  width: @size-2xl;
+  height: @size-2xl;
+  border-radius: @size-xs;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 32px;
   color: @white;
-  padding: 8px;
+  padding: @size-xs;
 }
 
 .domain-card-full-content {
@@ -178,7 +173,7 @@
 .domain-card-full-title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: @size-xs;
   margin-bottom: 2px;
 }
 
@@ -186,21 +181,26 @@
   background: @grey-30;
   color: @blue-35;
   font-size: 12px;
-  font-weight: 400;
-  border-radius: 8px;
-  padding: 2px 8px;
+  font-weight: @font-regular;
+  border-radius: @size-xs;
+  padding: 2px @size-xs;
   text-align: center;
   display: inline-block;
   margin-left: 6px;
 }
 
 .domain-card-icon {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
+  width: @size-md;
+  height: @size-md;
+  border-radius: @size-xxs;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.domain-icon {
+  font-size: 18px;
+  margin-right: 2px;
 }
 
 .domain-icon-url {
