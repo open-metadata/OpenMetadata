@@ -1,5 +1,6 @@
 ---
 title: GCS Config | OpenMetadata Google Cloud Storage Config
+description: Get started with gcsconfig. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake/gcsconfig
 ---
 
