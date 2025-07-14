@@ -1,5 +1,6 @@
 ---
-title: customDatabaseConnection
+title: Customdatabaseconnection | Official Documentation
+description: Get started with customdatabaseconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/customdatabaseconnection
 ---
 
