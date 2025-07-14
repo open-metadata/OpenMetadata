@@ -1,5 +1,6 @@
 ---
 title: Database Connection Pooling
+description: Optimize your OpenMetadata deployment with database connection pooling. Learn configuration best practices, performance tuning, and setup guides.
 slug: /deployment/database-connection-pooling
 collate: false
 ---

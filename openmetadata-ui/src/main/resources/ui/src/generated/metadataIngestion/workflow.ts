@@ -1778,6 +1778,8 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only fetch tables or databases that matches the pattern.
  *
+ * Regex to only fetch stored procedures that matches the pattern.
+ *
  * Regex exclude tables or databases that matches the pattern.
  *
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
@@ -4129,6 +4131,10 @@ export interface Pipeline {
      */
     processViewLineage?: boolean;
     /**
+     * Regex to only fetch stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    /**
      * Regex exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
@@ -5303,6 +5309,12 @@ export interface IncrementalMetadataExtractionConfiguration {
  * Details required to generate Lineage
  */
 export interface LineageInformation {
+    /**
+     * List of service path prefixes for lineage matching. Supported formats: DBServiceName,
+     * DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or
+     * DBServiceName.DatabaseName.SchemaName.TableName
+     */
+    dbServicePrefixes?: string[];
     /**
      * List of Database Service Names for creation of lineage
      */
