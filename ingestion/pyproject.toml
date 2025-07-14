@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # since it helps us organize and isolate version management
 [project]
 name = "openmetadata-ingestion"
-version = "1.7.5.3"
+version = "1.7.5.4"
 dynamic = ["readme", "dependencies", "optional-dependencies"]
 authors = [
     { name = "OpenMetadata Committers" }
