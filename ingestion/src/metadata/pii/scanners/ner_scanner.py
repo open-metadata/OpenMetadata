@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, ConfigDict
 
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.pii.algorithms.presidio_utils import _load_spacy_model
 from metadata.pii.constants import PII, SPACY_EN_MODEL
 from metadata.pii.models import TagAndConfidence
 from metadata.pii.ner import NEREntity
@@ -56,18 +57,10 @@ class NERScanner(BaseScanner):
     """Based on https://microsoft.github.io/presidio/"""
 
     def __init__(self):
-        import spacy
         from presidio_analyzer import AnalyzerEngine
         from presidio_analyzer.nlp_engine.spacy_nlp_engine import SpacyNlpEngine
 
-        try:
-            spacy.load(SPACY_EN_MODEL)
-        except OSError:
-            logger.warning("Downloading en_core_web_md language model for the spaCy")
-            from spacy.cli import download
-
-            download(SPACY_EN_MODEL)
-            spacy.load(SPACY_EN_MODEL)
+        _load_spacy_model(SPACY_EN_MODEL)
 
         nlp_engine_model = NLPEngineModel(
             lang_code=SUPPORTED_LANG, model_name=SPACY_EN_MODEL
