@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 import org.flowable.common.engine.impl.cfg.IdGenerator;
 import org.flowable.common.engine.impl.persistence.StrongUuidGenerator;
+import org.flowable.engine.ProcessEngineConfiguration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -34,15 +35,20 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -74,9 +80,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
 
     // --- TEST-ONLY: Force Flowable to use UUIDs for all IDs ---
     // This ensures task/process IDs are UUIDs, not numeric, in this test context only.
-    org.flowable.engine.ProcessEngineConfiguration cfg =
-        org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
-            .getProcessEngineConfiguration();
+    ProcessEngineConfiguration cfg = WorkflowHandler.getInstance().getProcessEngineConfiguration();
     if (cfg != null) {
       originalIdGenerator = cfg.getIdGenerator();
       cfg.setIdGenerator(new StrongUuidGenerator());
@@ -86,9 +90,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
   @AfterAll
   public void cleanup() {
     // Restore the original idGenerator to avoid affecting the application singleton
-    org.flowable.engine.ProcessEngineConfiguration cfg =
-        org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
-            .getProcessEngineConfiguration();
+    ProcessEngineConfiguration cfg = WorkflowHandler.getInstance().getProcessEngineConfiguration();
     if (cfg != null && originalIdGenerator != null) {
       cfg.setIdGenerator(originalIdGenerator);
     }
@@ -119,20 +121,15 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
 
     // 4. Fetch workflow instance states using the repository (API uses same logic)
     // Resolve workflow definition name from ID
-    org.openmetadata.service.jdbi3.WorkflowDefinitionRepository workflowDefinitionRepository =
-        (org.openmetadata.service.jdbi3.WorkflowDefinitionRepository)
-            org.openmetadata.service.Entity.getEntityRepository(
-                org.openmetadata.service.Entity.WORKFLOW_DEFINITION);
-    org.openmetadata.schema.governance.workflows.WorkflowDefinition workflowDefinition =
+    WorkflowDefinitionRepository workflowDefinitionRepository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    WorkflowDefinition workflowDefinition =
         workflowDefinitionRepository.get(
-            null,
-            instance.getWorkflowDefinitionId(),
-            org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS);
+            null, instance.getWorkflowDefinitionId(), EntityUtil.Fields.EMPTY_FIELDS);
     String workflowDefinitionName = workflowDefinition.getName();
-    org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository stateRepo =
-        (org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository)
-            org.openmetadata.service.Entity.getEntityTimeSeriesRepository(
-                org.openmetadata.service.Entity.WORKFLOW_INSTANCE_STATE);
+    WorkflowInstanceStateRepository stateRepo =
+        (WorkflowInstanceStateRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
     long startTs = instance.getStartedAt() != null ? instance.getStartedAt() : 0L;
     long endTs = instance.getEndedAt() != null ? instance.getEndedAt() : System.currentTimeMillis();
     ResultList<WorkflowInstanceState> states =
@@ -204,7 +201,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
             });
 
     // 4. Approve the term as reviewerUser (reviewer)
-    String json = org.openmetadata.schema.utils.JsonUtils.pojoToJson(term);
+    String json = JsonUtils.pojoToJson(term);
     term.setStatus(Status.APPROVED);
     term =
         glossaryTermTest.patchEntity(
@@ -214,28 +211,21 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     instance = waitForWorkflowInstanceCompletion(workflowInstanceId);
 
     // 6. Fetch and print all states
-    org.openmetadata.service.jdbi3.WorkflowDefinitionRepository workflowDefinitionRepository =
-        (org.openmetadata.service.jdbi3.WorkflowDefinitionRepository)
-            org.openmetadata.service.Entity.getEntityRepository(
-                org.openmetadata.service.Entity.WORKFLOW_DEFINITION);
-    org.openmetadata.schema.governance.workflows.WorkflowDefinition workflowDefinition =
+    WorkflowDefinitionRepository workflowDefinitionRepository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    WorkflowDefinition workflowDefinition =
         workflowDefinitionRepository.get(
-            null,
-            instance.getWorkflowDefinitionId(),
-            org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS);
+            null, instance.getWorkflowDefinitionId(), EntityUtil.Fields.EMPTY_FIELDS);
     String workflowDefinitionName = workflowDefinition.getName();
-    org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository stateRepo =
-        (org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository)
-            org.openmetadata.service.Entity.getEntityTimeSeriesRepository(
-                org.openmetadata.service.Entity.WORKFLOW_INSTANCE_STATE);
+    WorkflowInstanceStateRepository stateRepo =
+        (WorkflowInstanceStateRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
     long startTs = instance.getStartedAt() != null ? instance.getStartedAt() : 0L;
     long endTs = instance.getEndedAt() != null ? instance.getEndedAt() : System.currentTimeMillis();
     ResultList<WorkflowInstanceState> states =
         stateRepo.listWorkflowInstanceStatesForInstance(
             workflowDefinitionName, workflowInstanceId, null, startTs, endTs, 100, false);
 
-    // Print all states for debugging
-    System.out.println("Workflow instance states (with reviewer):");
     for (WorkflowInstanceState state : states.getData()) {
       System.out.println(state);
     }

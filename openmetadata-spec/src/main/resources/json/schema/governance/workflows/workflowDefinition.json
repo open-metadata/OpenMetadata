@@ -24,6 +24,18 @@
           "description": "If True, all the stage status will be stored in the database.",
           "type": "boolean",
           "default": false
+        },
+        "optimisticLockMaxRetries": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Maximum number of retries for optimistic locking on workflow instance updates."
+        },
+        "maxStagesPerInstance": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100,
+          "description": "Maximum number of stages to retain per workflow instance. Older stages will be dropped."
         }
       },
       "additionalProperties": false,

@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.Stage;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
@@ -18,6 +19,7 @@ import org.openmetadata.service.resources.governance.WorkflowInstanceStateResour
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 
+@Slf4j
 public class WorkflowInstanceStateRepository
     extends EntityTimeSeriesRepository<WorkflowInstanceState> {
   public WorkflowInstanceStateRepository() {
@@ -127,9 +129,15 @@ public class WorkflowInstanceStateRepository
 
   public void updateStage(
       UUID workflowInstanceStateId, Long endedAt, Map<String, Object> variables) {
+    String json = timeSeriesDao.getById(workflowInstanceStateId);
+    if (json == null) {
+      // State not found, log and return (or throw exception if preferred)
+      LOG.warn(
+          "WorkflowInstanceState with id {} not found. Skipping update.", workflowInstanceStateId);
+      return;
+    }
     WorkflowInstanceState workflowInstanceState =
-        JsonUtils.readValue(
-            timeSeriesDao.getById(workflowInstanceStateId), WorkflowInstanceState.class);
+        JsonUtils.readValue(json, WorkflowInstanceState.class);
 
     Stage stage = workflowInstanceState.getStage();
     stage.setEndedAt(endedAt);
@@ -209,10 +217,23 @@ public class WorkflowInstanceStateRepository
           filtered.add(s);
         }
       }
-      // Pagination (offset/limit) - for now, just limit
-      int toIndex = Math.min(limitParam, filtered.size());
-      java.util.List<WorkflowInstanceState> paged = filtered.subList(0, toIndex);
-      return getResultList(paged, null, null, filtered.size());
+      // Proper offset/limit pagination
+      int startIndex = 0;
+      if (offset != null) {
+        try {
+          String decoded = org.openmetadata.service.util.RestUtil.decodeCursor(offset);
+          startIndex = Integer.parseInt(decoded);
+        } catch (Exception e) {
+          startIndex = 0;
+        }
+      }
+      int endIndex = Math.min(startIndex + limitParam, filtered.size());
+      java.util.List<WorkflowInstanceState> paged = filtered.subList(startIndex, endIndex);
+      // Compute cursors
+      String beforeCursor =
+          (startIndex > 0) ? String.valueOf(Math.max(0, startIndex - limitParam)) : null;
+      String afterCursor = (endIndex < filtered.size()) ? String.valueOf(endIndex) : null;
+      return getResultList(paged, beforeCursor, afterCursor, filtered.size());
     }
   }
 }

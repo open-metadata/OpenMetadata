@@ -48,6 +48,12 @@
     "exception": {
       "type": "string"
     },
+    "version": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Version number for optimistic locking. Incremented on each update to detect concurrent modifications."
+    },
     "stages": {
       "type": "array",
       "description": "List of stage records for this workflow instance (used when storeStageStatus is false)",

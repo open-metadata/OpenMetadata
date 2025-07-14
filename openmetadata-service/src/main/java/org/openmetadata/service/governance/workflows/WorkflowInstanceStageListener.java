@@ -10,8 +10,15 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.openmetadata.schema.governance.workflows.Stage;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
+import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
+import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class WorkflowInstanceStageListener implements JavaDelegate {
@@ -22,28 +29,47 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
       WorkflowInstanceStateRepository workflowInstanceStateRepository =
           (WorkflowInstanceStateRepository)
               Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
+      WorkflowDefinition workflowDefinition = getWorkflowDefinition(execution);
 
       switch (execution.getEventName()) {
-        case "start" -> addNewStage(varHandler, execution, workflowInstanceStateRepository);
-        case "end" -> updateStage(varHandler, execution, workflowInstanceStateRepository);
+        case "start" -> addNewStage(
+            varHandler, execution, workflowInstanceStateRepository, workflowDefinition);
+        case "end" -> updateStage(
+            varHandler, execution, workflowInstanceStateRepository, workflowDefinition);
         default -> LOG.debug(
-            String.format(
-                "WorkflowStageUpdaterListener does not support listening for the event: '%s'",
-                execution.getEventName()));
+            "WorkflowStageUpdaterListener does not support listening for the event: '{}'",
+            execution.getEventName());
       }
     } catch (Exception exc) {
       LOG.error(
-          String.format(
-              "[%s] Failed due to: %s ",
-              getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc.getMessage()),
+          "[{}] Failed due to: {} ",
+          getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()),
+          exc.getMessage(),
           exc);
     }
+  }
+
+  // Helper to fetch WorkflowDefinition by execution
+  private WorkflowDefinition getWorkflowDefinition(DelegateExecution execution) {
+    String workflowDefinitionName =
+        getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+    WorkflowDefinitionRepository workflowDefinitionRepository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    return workflowDefinitionRepository.getByName(
+        null, workflowDefinitionName, EntityUtil.Fields.EMPTY_FIELDS);
+  }
+
+  // Helper to get optimistic lock max retries from config
+  private int getOptimisticLockMaxRetries(WorkflowDefinition workflowDefinition) {
+    Integer maxRetries = workflowDefinition.getConfig().getOptimisticLockMaxRetries();
+    return (maxRetries == null || maxRetries < 1) ? 3 : maxRetries;
   }
 
   private void addNewStage(
       WorkflowVariableHandler varHandler,
       DelegateExecution execution,
-      WorkflowInstanceStateRepository workflowInstanceStateRepository) {
+      WorkflowInstanceStateRepository workflowInstanceStateRepository,
+      WorkflowDefinition workflowDefinition) {
     execution.removeTransientVariable(FAILURE_VARIABLE);
     String workflowDefinitionName =
         getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
@@ -53,16 +79,6 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
     String stage =
         Optional.ofNullable(execution.getCurrentActivityId()).orElse(workflowDefinitionName);
 
-    // Fetch workflow definition to check config
-    org.openmetadata.service.jdbi3.WorkflowDefinitionRepository workflowDefinitionRepository =
-        (org.openmetadata.service.jdbi3.WorkflowDefinitionRepository)
-            org.openmetadata.service.Entity.getEntityRepository(
-                org.openmetadata.service.Entity.WORKFLOW_DEFINITION);
-    org.openmetadata.schema.governance.workflows.WorkflowDefinition workflowDefinition =
-        workflowDefinitionRepository.getByName(
-            null,
-            workflowDefinitionName,
-            org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS);
     boolean storeStageStatus = workflowDefinition.getConfig().getStoreStageStatus();
 
     if (storeStageStatus) {
@@ -84,21 +100,10 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
   private void updateStage(
       WorkflowVariableHandler varHandler,
       DelegateExecution execution,
-      WorkflowInstanceStateRepository workflowInstanceStateRepository) {
-    // Fetch workflow definition to check config
-    String workflowDefinitionName =
-        getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
-    UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
-    org.openmetadata.service.jdbi3.WorkflowDefinitionRepository workflowDefinitionRepository =
-        (org.openmetadata.service.jdbi3.WorkflowDefinitionRepository)
-            org.openmetadata.service.Entity.getEntityRepository(
-                org.openmetadata.service.Entity.WORKFLOW_DEFINITION);
-    org.openmetadata.schema.governance.workflows.WorkflowDefinition workflowDefinition =
-        workflowDefinitionRepository.getByName(
-            null,
-            workflowDefinitionName,
-            org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS);
+      WorkflowInstanceStateRepository workflowInstanceStateRepository,
+      WorkflowDefinition workflowDefinition) {
     boolean storeStageStatus = workflowDefinition.getConfig().getStoreStageStatus();
+    UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
 
     if (storeStageStatus) {
       // Existing logic: update WorkflowInstanceStateRepository
@@ -107,7 +112,7 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
       workflowInstanceStateRepository.updateStage(
           workflowInstanceStateId, System.currentTimeMillis(), execution.getVariables());
     } else {
-      handleUpdateStageInInstance(workflowInstanceId, execution);
+      handleUpdateStageInInstance(workflowInstanceId, execution, workflowDefinition);
     }
   }
 
@@ -116,85 +121,119 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
       WorkflowVariableHandler varHandler,
       UUID workflowInstanceId,
       UUID workflowInstanceExecutionId,
-      org.openmetadata.schema.governance.workflows.WorkflowDefinition workflowDefinition,
+      WorkflowDefinition workflowDefinition,
       String stage) {
-    org.openmetadata.service.jdbi3.WorkflowInstanceRepository workflowInstanceRepository =
-        (org.openmetadata.service.jdbi3.WorkflowInstanceRepository)
-            org.openmetadata.service.Entity.getEntityTimeSeriesRepository(
-                org.openmetadata.service.Entity.WORKFLOW_INSTANCE);
-    org.openmetadata.schema.governance.workflows.WorkflowInstance instance =
-        workflowInstanceRepository.getById(workflowInstanceId);
-    if (instance.getStages() == null) {
-      instance.setStages(new java.util.ArrayList<>());
+    WorkflowInstanceRepository workflowInstanceRepository =
+        (WorkflowInstanceRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+    int maxRetries = getOptimisticLockMaxRetries(workflowDefinition);
+    int maxStages = 100;
+    if (workflowDefinition.getConfig().getMaxStagesPerInstance() != null
+        && workflowDefinition.getConfig().getMaxStagesPerInstance() > 0) {
+      maxStages = workflowDefinition.getConfig().getMaxStagesPerInstance();
     }
-    org.openmetadata.schema.governance.workflows.Stage stageObj =
-        new org.openmetadata.schema.governance.workflows.Stage()
-            .withName(stage)
-            .withStartedAt(System.currentTimeMillis());
-    org.openmetadata.schema.governance.workflows.WorkflowInstanceState state =
-        new org.openmetadata.schema.governance.workflows.WorkflowInstanceState()
-            .withStage(stageObj)
-            .withWorkflowInstanceExecutionId(workflowInstanceExecutionId)
-            .withWorkflowInstanceId(workflowInstanceId)
-            .withWorkflowDefinitionId(workflowDefinition.getId())
-            .withTimestamp(System.currentTimeMillis())
-            .withStatus(
-                org.openmetadata.schema.governance.workflows.WorkflowInstance.WorkflowStatus
-                    .RUNNING);
-    instance.getStages().add(state);
-    workflowInstanceRepository
-        .getTimeSeriesDao()
-        .update(org.openmetadata.schema.utils.JsonUtils.pojoToJson(instance), instance.getId());
+    int retries = 0;
+    boolean updated = false;
+    WorkflowInstance instance = null;
+    while (retries < maxRetries && !updated) {
+      instance = workflowInstanceRepository.getById(workflowInstanceId);
+      if (instance.getStages() == null) {
+        instance.setStages(new java.util.ArrayList<>());
+      }
+      // Enforce maxStages limit
+      while (instance.getStages().size() >= maxStages) {
+        instance.getStages().removeFirst(); // Remove oldest
+      }
+      Stage stageObj =
+          new org.openmetadata.schema.governance.workflows.Stage()
+              .withName(stage)
+              .withStartedAt(System.currentTimeMillis());
+      WorkflowInstanceState state =
+          new org.openmetadata.schema.governance.workflows.WorkflowInstanceState()
+              .withStage(stageObj)
+              .withWorkflowInstanceExecutionId(workflowInstanceExecutionId)
+              .withWorkflowInstanceId(workflowInstanceId)
+              .withWorkflowDefinitionId(workflowDefinition.getId())
+              .withTimestamp(System.currentTimeMillis())
+              .withStatus(WorkflowInstance.WorkflowStatus.RUNNING);
+      instance.getStages().add(state);
+      int expectedVersion = instance.getVersion() != null ? instance.getVersion() : 0;
+      updated = workflowInstanceRepository.updateIfVersionMatches(instance, expectedVersion);
+      if (!updated) {
+        retries++;
+      }
+    }
+    if (!updated) {
+      throw new RuntimeException(
+          "Failed to update workflow instance after retries (optimistic locking)");
+    }
     // Optionally set a dummy UUID for STAGE_INSTANCE_STATE_ID_VARIABLE
-    varHandler.setNodeVariable(STAGE_INSTANCE_STATE_ID_VARIABLE, state.getId());
+    varHandler.setNodeVariable(
+        STAGE_INSTANCE_STATE_ID_VARIABLE, instance.getStages().getLast().getId());
   }
 
   // Helper for updating the last stage in the instance's stages array
-  private void handleUpdateStageInInstance(UUID workflowInstanceId, DelegateExecution execution) {
-    org.openmetadata.service.jdbi3.WorkflowInstanceRepository workflowInstanceRepository =
-        (org.openmetadata.service.jdbi3.WorkflowInstanceRepository)
-            org.openmetadata.service.Entity.getEntityTimeSeriesRepository(
-                org.openmetadata.service.Entity.WORKFLOW_INSTANCE);
-    org.openmetadata.schema.governance.workflows.WorkflowInstance instance =
-        workflowInstanceRepository.getById(workflowInstanceId);
-    if (instance.getStages() != null && !instance.getStages().isEmpty()) {
-      // Find the last stage with matching executionId (or just last)
-      org.openmetadata.schema.governance.workflows.WorkflowInstanceState lastStage =
-          instance.getStages().getLast();
-      lastStage.getStage().setEndedAt(System.currentTimeMillis());
-      lastStage.getStage().setVariables(execution.getVariables());
-      lastStage.setStatus(
-          org.openmetadata.schema.governance.workflows.WorkflowInstance.WorkflowStatus.FINISHED);
-      // Optionally handle failure/exception as in the state repo
-      if (execution.getVariables().containsKey(FAILURE_VARIABLE)) {
-        lastStage.setStatus(
-            org.openmetadata.schema.governance.workflows.WorkflowInstance.WorkflowStatus.FAILURE);
+  private void handleUpdateStageInInstance(
+      UUID workflowInstanceId, DelegateExecution execution, WorkflowDefinition workflowDefinition) {
+    WorkflowInstanceRepository workflowInstanceRepository =
+        (WorkflowInstanceRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+    int maxRetries = getOptimisticLockMaxRetries(workflowDefinition);
+    int retries = 0;
+    boolean updated = false;
+    WorkflowInstance instance;
+    java.util.UUID currentExecutionId =
+        (java.util.UUID) execution.getVariable(WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE);
+    while (retries < maxRetries && !updated) {
+      instance = workflowInstanceRepository.getById(workflowInstanceId);
+      WorkflowInstanceState targetStage = null;
+      if (instance.getStages() != null && !instance.getStages().isEmpty()) {
+        // Find the stage with matching executionId (search from end for efficiency)
+        for (int i = instance.getStages().size() - 1; i >= 0; i--) {
+          WorkflowInstanceState stage = instance.getStages().get(i);
+          if (stage.getWorkflowInstanceExecutionId() != null
+              && stage.getWorkflowInstanceExecutionId().equals(currentExecutionId)) {
+            targetStage = stage;
+            break;
+          }
+        }
       }
-      // Exception handling
-      if (execution
-          .getVariables()
-          .containsKey(
-              org.openmetadata.service.governance.workflows.WorkflowVariableHandler
-                  .getNamespacedVariableName(
-                      org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE,
-                      org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE))) {
-        lastStage.setException(
-            (String)
-                execution
-                    .getVariables()
-                    .get(
-                        org.openmetadata.service.governance.workflows.WorkflowVariableHandler
-                            .getNamespacedVariableName(
-                                org.openmetadata.service.governance.workflows.Workflow
-                                    .GLOBAL_NAMESPACE,
-                                org.openmetadata.service.governance.workflows.Workflow
-                                    .EXCEPTION_VARIABLE)));
-        lastStage.setStatus(
-            org.openmetadata.schema.governance.workflows.WorkflowInstance.WorkflowStatus.EXCEPTION);
+      if (targetStage != null) {
+        targetStage.getStage().setEndedAt(System.currentTimeMillis());
+        targetStage.getStage().setVariables(execution.getVariables());
+        targetStage.setStatus(WorkflowInstance.WorkflowStatus.FINISHED);
+        if (execution.getVariables().containsKey(FAILURE_VARIABLE)) {
+          targetStage.setStatus(WorkflowInstance.WorkflowStatus.FAILURE);
+        }
+        if (execution
+            .getVariables()
+            .containsKey(
+                WorkflowVariableHandler.getNamespacedVariableName(
+                    Workflow.GLOBAL_NAMESPACE, Workflow.EXCEPTION_VARIABLE))) {
+          targetStage.setException(
+              (String)
+                  execution
+                      .getVariables()
+                      .get(
+                          WorkflowVariableHandler.getNamespacedVariableName(
+                              Workflow.GLOBAL_NAMESPACE, Workflow.EXCEPTION_VARIABLE)));
+          targetStage.setStatus(WorkflowInstance.WorkflowStatus.EXCEPTION);
+        }
+        int expectedVersion = instance.getVersion() != null ? instance.getVersion() : 0;
+        updated = workflowInstanceRepository.updateIfVersionMatches(instance, expectedVersion);
+        if (!updated) {
+          retries++;
+        }
+      } else {
+        // No matching stage found for this execution context
+        LOG.warn(
+            "No stage found for executionId {} in workflowInstance {}. Skipping update.",
+            currentExecutionId,
+            workflowInstanceId);
+        break;
       }
-      workflowInstanceRepository
-          .getTimeSeriesDao()
-          .update(org.openmetadata.schema.utils.JsonUtils.pojoToJson(instance), instance.getId());
+    }
+    if (!updated) {
+      throw new RuntimeException(
+          "Failed to update workflow instance after retries (optimistic locking)");
     }
   }
 }
