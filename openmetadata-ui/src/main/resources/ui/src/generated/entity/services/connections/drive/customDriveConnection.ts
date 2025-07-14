@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/**
+ * Custom Drive Connection to build a source that is not supported.
+ */
+export interface CustomDriveConnection {
+    connectionArguments?:        { [key: string]: any };
+    connectionOptions?:          { [key: string]: string };
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: CustomDriveType;
+}
 
-export type WhatsNewModalProps = {
-  header: string;
-  onCancel: () => void;
-  visible: boolean;
-};
-
-export enum ToggleType {
-  FEATURES = 'features',
-  CHANGE_LOG = 'change-log',
+/**
+ * Service Type
+ *
+ * Custom Drive service type
+ */
+export enum CustomDriveType {
+    CustomDrive = "CustomDrive",
 }

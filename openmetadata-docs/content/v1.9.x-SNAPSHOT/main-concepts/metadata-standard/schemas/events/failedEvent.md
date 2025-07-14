@@ -1,5 +1,6 @@
 ---
-title: Failed Event Schema | OpenMetadata Failed Event Information
+title: Failed Event Schema | Failed Event Information
+description: Get started with failedevent. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/events/failedevent
 ---
 

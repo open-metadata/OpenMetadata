@@ -136,7 +136,7 @@ test.describe('Login flow should work properly', () => {
     // Enter email
     await page.locator('#email').fill(CREDENTIALS.email);
     // Click on Forgot button
-    await page.getByRole('button', { name: 'Submit' }).click();
+    await page.getByRole('button', { name: 'Send Login Link' }).click();
     await page.locator('[data-testid="go-back-button"]').click();
   });
 
