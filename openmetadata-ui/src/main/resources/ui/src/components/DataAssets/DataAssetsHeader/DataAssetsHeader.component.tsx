@@ -610,6 +610,7 @@ export const DataAssetsHeader = ({
               <>
                 <DomainLabel
                   headerLayout
+                  multiple
                   afterDomainUpdateAction={afterDomainUpdateAction}
                   domains={(dataAsset as EntitiesWithDomainField).domains}
                   entityFqn={dataAsset.fullyQualifiedName ?? ''}

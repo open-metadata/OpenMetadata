@@ -62,7 +62,9 @@ export const DomainLabelV2 = <
         if (entityDetailsResponse) {
           const jsonPatch = compare(entityDetailsResponse, {
             ...entityDetailsResponse,
-            domains: selectedDomain,
+            domains: Array.isArray(selectedDomain)
+              ? selectedDomain
+              : [selectedDomain],
           });
 
           const api = getAPIfromSource(entityType as AssetsUnion);

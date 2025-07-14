@@ -236,10 +236,12 @@ export const DataAssetSummaryPanel = ({
               </Col>
               <Col className="d-flex flex-wrap gap-2" span={24}>
                 <DomainLabel
+                  multiple
                   domains={dataAsset.domains}
                   entityFqn={dataAsset.fullyQualifiedName ?? ''}
                   entityId={dataAsset.id ?? ''}
                   entityType={entityType}
+                  hasPermission={false}
                   textClassName="render-domain-lebel-style"
                 />
               </Col>

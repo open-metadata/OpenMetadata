@@ -62,7 +62,9 @@ export const DomainLabel = ({
         if (entityDetailsResponse) {
           const jsonPatch = compare(entityDetailsResponse, {
             ...entityDetailsResponse,
-            domains: selectedDomain,
+            domains: Array.isArray(selectedDomain)
+              ? selectedDomain
+              : [selectedDomain],
           });
 
           const api = getAPIfromSource(entityType as AssetsUnion);
@@ -207,7 +209,7 @@ export const DomainLabel = ({
         />
       )
     );
-  }, [hasPermission, activeDomain, handleDomainSave]);
+  }, [hasPermission, activeDomain, handleDomainSave, multiple, onUpdate]);
 
   const label = useMemo(() => {
     if (showDomainHeading) {
