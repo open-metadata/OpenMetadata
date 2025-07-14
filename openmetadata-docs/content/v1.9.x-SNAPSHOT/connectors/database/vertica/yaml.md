@@ -1,5 +1,6 @@
 ---
 title: Run the Vertica Connector Externally
+description: Configure OpenMetadata's Vertica database connector with YAML. Complete setup guide, connection parameters, and configuration examples for seamless data integration.
 slug: /connectors/database/vertica/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/vertica/yaml
 name="Vertica"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 

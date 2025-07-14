@@ -477,8 +477,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
   @Order(6)
   @Test
-  void get_dataQualityLineage(TestInfo test)
-      throws IOException, URISyntaxException, ParseException {
+  void get_dataQualityLineage(TestInfo test) throws IOException, ParseException {
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     TestDefinitionResourceTest testDefinitionResourceTest = new TestDefinitionResourceTest();

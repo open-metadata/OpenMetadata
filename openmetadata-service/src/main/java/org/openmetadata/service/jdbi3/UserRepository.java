@@ -1062,8 +1062,12 @@ public class UserRepository extends EntityRepository<User> {
 
       List<EntityReference> origDomains =
           EntityUtil.populateEntityReferences(listOrEmptyMutable(original.getDomains()));
+      // Skip domains inherited from teams,they are handled in setInheritedFields().
       List<EntityReference> updatedDomains =
-          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
+          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains())).stream()
+              .filter(domain -> domain.getInherited() == null || !domain.getInherited())
+              .collect(Collectors.toList());
+      updated.setDomains(updatedDomains);
 
       // Remove Domains for the user
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.DOMAIN);

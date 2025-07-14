@@ -536,7 +536,8 @@ public class SearchRepository {
             || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
             || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.API_SERVICE)) {
+            || entityType.equalsIgnoreCase(Entity.API_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.DRIVE_SERVICE)) {
           parentMatch = new ImmutablePair<>(SERVICE_ID, entityId);
         } else {
           parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
@@ -867,7 +868,8 @@ public class SearchRepository {
         || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
         || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
         || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
-        || entityType.equalsIgnoreCase(Entity.API_SERVICE)) {
+        || entityType.equalsIgnoreCase(Entity.API_SERVICE)
+        || entityType.equalsIgnoreCase(Entity.DRIVE_SERVICE)) {
       return "service." + fieldName;
     } else {
       return entityType + "." + fieldName;
@@ -1051,7 +1053,8 @@ public class SearchRepository {
           Entity.PIPELINE_SERVICE,
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE -> searchClient.deleteEntityByFields(
+          Entity.SEARCH_SERVICE,
+          Entity.DRIVE_SERVICE -> searchClient.deleteEntityByFields(
           indexMapping.getChildAliases(clusterAlias),
           List.of(new ImmutablePair<>("service.id", docId)));
       default -> {
@@ -1076,7 +1079,8 @@ public class SearchRepository {
           Entity.PIPELINE_SERVICE,
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE -> searchClient.softDeleteOrRestoreChildren(
+          Entity.SEARCH_SERVICE,
+          Entity.DRIVE_SERVICE -> searchClient.softDeleteOrRestoreChildren(
           indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
           List.of(new ImmutablePair<>("service.id", docId)));
