@@ -30,7 +30,7 @@ import {
   uuid,
 } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
 
@@ -417,7 +417,7 @@ test(
       testCaseName: 'column_value_max_to_be_between',
     };
 
-    await visitEntityPage({
+    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: DATA_QUALITY_TABLE.term,
       dataTestId: `${DATA_QUALITY_TABLE.serviceName}-${DATA_QUALITY_TABLE.term}`,
@@ -652,7 +652,7 @@ test(
       partitionValues: 'test',
     };
 
-    await table1.visitEntityPage(page);
+    await table1.visitEntityPageWithCustomSearchBox(page);
     await page.getByTestId('profiler').click();
     await page
       .getByTestId('profiler-tab-left-panel')
@@ -816,7 +816,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await domain.create(apiContext);
 
   // Add domain to table
-  await filterTable1.visitEntityPage(page);
+  await filterTable1.visitEntityPageWithCustomSearchBox(page);
   await assignDomain(page, domain.responseData);
   const testCases = [
     `pw_first_table_column_count_to_be_between_${uuid()}`,

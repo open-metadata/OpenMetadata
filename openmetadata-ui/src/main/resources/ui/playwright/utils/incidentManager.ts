@@ -19,7 +19,7 @@ import { sidebarClick } from './sidebar';
 
 export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await redirectToHomePage(page);
-  await table.visitEntityPage(page);
+  await table.visitEntityPageWithCustomSearchBox(page);
   await page.click('[data-testid="profiler"]');
 };
 
