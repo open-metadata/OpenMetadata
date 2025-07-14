@@ -2463,69 +2463,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return ids;
   }
 
-  public final Map<UUID, List<EntityReference>> findBothBatch(
-      List<UUID> entityIds, String entityType1, Relationship relationship, String entityType2) {
-    Map<UUID, List<EntityReference>> resultMap = new HashMap<>();
-    if (entityIds == null || entityIds.isEmpty()) {
-      return resultMap;
-    }
-
-    // Convert UUIDs to strings for batch operations
-    List<String> entityIdStrings = entityIds.stream().map(UUID::toString).toList();
-
-    // Find 'from' relationships (entityIds as source)
-    List<CollectionDAO.EntityRelationshipObject> fromRecords =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(entityIdStrings, relationship.ordinal(), entityType1, entityType2);
-
-    // Find 'to' relationships (entityIds as target)
-    List<CollectionDAO.EntityRelationshipObject> toRecords =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(entityIdStrings, relationship.ordinal(), entityType2, entityType1);
-
-    // Collect all unique entity IDs that need to be fetched
-    Set<UUID> entityIdsToFetch = new HashSet<>();
-    fromRecords.forEach(rec -> entityIdsToFetch.add(UUID.fromString(rec.getToId())));
-    toRecords.forEach(rec -> entityIdsToFetch.add(UUID.fromString(rec.getFromId())));
-
-    // Batch fetch all entity references
-    Map<UUID, EntityReference> entityReferences = new HashMap<>();
-    if (!entityIdsToFetch.isEmpty()) {
-      List<EntityReference> refs =
-          Entity.getEntityReferencesByIds(
-              entityType2, new ArrayList<>(entityIdsToFetch), Include.ALL);
-      refs.forEach(ref -> entityReferences.put(ref.getId(), ref));
-    }
-
-    // Build the result map
-    for (UUID entityId : entityIds) {
-      Set<EntityReference> relatedEntities = new HashSet<>();
-
-      // Add entities from 'from' relationships
-      fromRecords.stream()
-          .filter(rec -> rec.getFromId().equals(entityId.toString()))
-          .map(rec -> entityReferences.get(UUID.fromString(rec.getToId())))
-          .filter(Objects::nonNull)
-          .forEach(relatedEntities::add);
-
-      // Add entities from 'to' relationships
-      toRecords.stream()
-          .filter(rec -> rec.getToId().equals(entityId.toString()))
-          .map(rec -> entityReferences.get(UUID.fromString(rec.getFromId())))
-          .filter(Objects::nonNull)
-          .forEach(relatedEntities::add);
-
-      // Convert to sorted list for consistent ordering
-      List<EntityReference> sortedList = new ArrayList<>(relatedEntities);
-      sortedList.sort(EntityUtil.compareEntityReference);
-      resultMap.put(entityId, sortedList);
-    }
-
-    return resultMap;
-  }
-
   public final List<EntityReference> findFrom(
       UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
     List<EntityRelationshipRecord> records =

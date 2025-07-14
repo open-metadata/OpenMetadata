@@ -81,7 +81,7 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
             + updatedMetric2.getRelatedMetrics().size()
             + ". Related metrics: "
             + updatedMetric2.getRelatedMetrics());
-    Assertions.assertEquals(metric1.getId(), updatedMetric2.getRelatedMetrics().get(0).getId());
+    Assertions.assertEquals(metric1.getId(), updatedMetric2.getRelatedMetrics().getFirst().getId());
 
     // Also verify that metric1 now has metric2 as a related metric (bidirectional)
     Metric updatedMetric1 = getMetric(metric1.getId(), "relatedMetrics", ADMIN_AUTH_HEADERS);
@@ -91,7 +91,7 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
         updatedMetric1.getRelatedMetrics().size(),
         "Expected only 1 related metric for the reverse relationship, but found "
             + updatedMetric1.getRelatedMetrics().size());
-    Assertions.assertEquals(metric2.getId(), updatedMetric1.getRelatedMetrics().get(0).getId());
+    Assertions.assertEquals(metric2.getId(), updatedMetric1.getRelatedMetrics().getFirst().getId());
   }
 
   @Test
@@ -214,6 +214,7 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
     return entity;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected != null && actual != null) {
