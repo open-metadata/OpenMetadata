@@ -79,17 +79,13 @@ const WhatsNewAlert = () => {
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
-        <Affix
-          style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 2000 }}>
+        <Affix className="whats-new-alert-affix">
           <Card
-            bodyStyle={{ padding: 0 }}
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">
             <Row gutter={0} wrap={false}>
               <Col className="whats-new-alert-left" flex="160px">
-                <RocketIcon
-                  style={{ width: 48, height: 48, marginBottom: 16 }}
-                />
+                <RocketIcon className="whats-new-alert-rocket-icon" />
                 <Typography.Text className="whats-new-alert-version">
                   {t('label.version-number', {
                     version: appVersion ?? '',
