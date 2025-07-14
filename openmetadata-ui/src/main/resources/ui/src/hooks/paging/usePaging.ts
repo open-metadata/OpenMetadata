@@ -24,6 +24,7 @@ import {
 } from '../../constants/constants';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
+import { useCurrentUserPreferences } from '../currentUserStore/useCurrentUserStore';
 import { useTableFilters } from '../useTableFilters';
 
 type FilterState = Record<
@@ -58,17 +59,22 @@ export interface UsePagingInterface {
   pagingCursor: PagingUrlParams;
 }
 
-export const usePaging = (
-  defaultPageSize = PAGE_SIZE_BASE
-): UsePagingInterface => {
+export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
+  const {
+    preferences: { globalPageSize },
+    setPreference,
+  } = useCurrentUserPreferences();
+
+  const processedPageSize = defaultPageSize ?? globalPageSize;
+
   const { filters: urlParams, setFilters: updateUrlParams } = useTableFilters({
     cursorType: undefined,
     cursorValue: undefined,
     currentPage: String(INITIAL_PAGING_VALUE),
-    pageSize: String(defaultPageSize),
+    pageSize: String(processedPageSize),
   });
 
-  const initialPageSize = Number(urlParams.pageSize) || defaultPageSize;
+  const initialPageSize = Number(urlParams.pageSize) || processedPageSize;
   const initialCurrentPage =
     Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
 
@@ -81,20 +87,21 @@ export const usePaging = (
       cursorType: urlParams.cursorType,
       cursorValue: urlParams.cursorValue,
       currentPage: urlParams.currentPage,
-      pageSize: Number(urlParams.pageSize) || defaultPageSize,
+      pageSize: Number(urlParams.pageSize) || processedPageSize,
     }),
     [
       urlParams.cursorType,
       urlParams.cursorValue,
       urlParams.currentPage,
       urlParams.pageSize,
-      defaultPageSize,
+      processedPageSize,
     ]
   );
 
   const handlePageSize = useCallback(
     (page: number) => {
       setPageSize(page);
+      setPreference({ globalPageSize: page });
       setCurrentPage(INITIAL_PAGING_VALUE);
 
       // Update URL params, removing cursor data since they're invalid with new page size
@@ -109,8 +116,11 @@ export const usePaging = (
   );
 
   const paginationVisible = useMemo(() => {
-    return paging.total > pageSize || pageSize !== defaultPageSize;
-  }, [defaultPageSize, paging, pageSize]);
+    return (
+      paging.total > pageSize ||
+      pageSize !== (defaultPageSize ?? PAGE_SIZE_BASE)
+    );
+  }, [processedPageSize, paging, pageSize]);
 
   const handlePageChange = useCallback(
     (
@@ -131,6 +141,7 @@ export const usePaging = (
 
       if (pageSize) {
         urlUpdate.pageSize = pageSize;
+        setPreference({ globalPageSize: pageSize });
       }
 
       updateUrlParams(urlUpdate as FilterState);

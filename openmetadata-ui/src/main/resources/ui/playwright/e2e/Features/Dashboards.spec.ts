@@ -10,13 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { performAdminLogin } from '../../utils/admin';
+import { redirectToHomePage } from '../../utils/common';
 import { generateEntityChildren } from '../../utils/entity';
-
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+import { test } from '../fixtures/pages';
 
 const dashboardEntity = new DashboardServiceClass();
 
@@ -24,7 +23,7 @@ test.slow(true);
 
 test.describe('Dashboards', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
     const dashboardChildren = generateEntityChildren('dashboard', 25);
 
@@ -34,17 +33,17 @@ test.describe('Dashboards', () => {
   });
 
   test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
+    const { afterAction, apiContext } = await performAdminLogin(browser);
 
     await dashboardEntity.delete(apiContext);
     await afterAction();
   });
 
-  test.beforeEach('Visit home page', async ({ page }) => {
+  test.beforeEach('Visit home page', async ({ dataConsumerPage: page }) => {
     await redirectToHomePage(page);
   });
 
-  test(`should change the page size`, async ({ page }) => {
+  test(`should change the page size`, async ({ dataConsumerPage: page }) => {
     await dashboardEntity.visitEntityPage(page);
 
     await page.getByRole('tab', { name: 'Dashboards' }).click();
