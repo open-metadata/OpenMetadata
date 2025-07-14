@@ -348,7 +348,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
           recordList,
           entity.getDataProducts() != null
               ? entity.getDataProducts().stream()
-                  .map(ref -> ref.getFullyQualifiedName())
+                  .map(EntityReference::getFullyQualifiedName)
                   .collect(Collectors.joining(";"))
               : "");
       addOwners(recordList, entity.getExperts());

@@ -185,7 +185,7 @@ public class FileRepository extends EntityRepository<File> {
 
   @Override
   public CsvImportResult importFromCsv(
-      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+      String name, String csv, boolean dryRun, String user, boolean recursive) {
     // For files, we need the directory context for import
     throw new UnsupportedOperationException(
         "File import requires directory context. Use directory import instead.");

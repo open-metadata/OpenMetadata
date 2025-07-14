@@ -86,7 +86,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
   private static String testDatabaseSchemaFQN = null;
 
   @AfterEach
-  void cleanup() throws IOException {
+  void cleanup() {
     for (DataContract contract : createdContracts) {
       try {
         deleteDataContract(contract.getId());

@@ -2113,11 +2113,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
               connectLatch.countDown();
               messageLatch.countDown();
             })
-        .on(
-            Socket.EVENT_DISCONNECT,
-            args -> {
-              LOG.info("Disconnected from Socket.IO server");
-            });
+        .on(Socket.EVENT_DISCONNECT, args -> LOG.info("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {

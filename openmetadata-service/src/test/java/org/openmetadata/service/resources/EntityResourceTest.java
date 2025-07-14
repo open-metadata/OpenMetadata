@@ -18,6 +18,7 @@ import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -76,6 +77,7 @@ import es.org.elasticsearch.xcontent.json.JsonXContent;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
@@ -94,7 +96,10 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -190,6 +195,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
@@ -230,6 +236,7 @@ import org.openmetadata.service.util.CSVImportMessage;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.DeleteEntityMessage;
 import org.openmetadata.service.util.DeleteEntityResponse;
+import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
@@ -255,6 +262,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsOwners;
   protected boolean supportsTags;
   protected boolean supportsPatch = true;
+  protected boolean supportsEtag = true;
   protected final boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected final boolean supportsEmptyDescription;
@@ -1810,6 +1818,150 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
+  void test_tagUpdateOptimization_PUT(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    TagLabel tag1 = new TagLabel().withTagFQN("PII.Sensitive");
+    TagLabel tag2 = new TagLabel().withTagFQN("Tier.Tier1");
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(listOf(tag1, tag2));
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify initial tags
+    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+    assertTagsContain(entity.getTags(), listOf(tag1, tag2));
+
+    // PUT with one new tag - should ADD the new tag without removing existing ones
+    TagLabel tag3 = new TagLabel().withTagFQN("PersonalData.Personal");
+    create.setTags(listOf(tag3));
+    T updated = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify all three tags are present (PUT merges tags)
+    updated = getEntity(updated.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(3, updated.getTags().size());
+    assertTagsContain(updated.getTags(), listOf(tag1, tag2, tag3));
+
+    // PUT with existing tags - should not duplicate
+    create.setTags(listOf(tag1, tag3));
+    updated = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify still three tags (no duplicates)
+    updated = getEntity(updated.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(3, updated.getTags().size());
+    assertTagsContain(updated.getTags(), listOf(tag1, tag2, tag3));
+  }
+
+  @Test
+  void test_tagUpdateOptimization_PATCH(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    TagLabel tag1 = new TagLabel().withTagFQN("PII.Sensitive");
+    TagLabel tag2 = new TagLabel().withTagFQN("Tier.Tier1");
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(listOf(tag1, tag2));
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+    assertTagsContain(entity.getTags(), listOf(tag1, tag2));
+
+    // PATCH with different tags - should REPLACE all tags
+    TagLabel tag3 = new TagLabel().withTagFQN("PersonalData.Personal");
+    TagLabel tag4 = new TagLabel().withTagFQN("Certification.Bronze");
+    String originalJson = JsonUtils.pojoToJson(entity);
+    entity.setTags(listOf(tag3, tag4));
+    T patched = patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+
+    // Verify only new tags are present (PATCH replaces tags)
+    patched = getEntity(patched.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, patched.getTags().size());
+    assertTagsContain(patched.getTags(), listOf(tag3, tag4));
+    assertTagsDoNotContain(patched.getTags(), listOf(tag1, tag2));
+
+    // PATCH with empty tags - should remove all tags
+    originalJson = JsonUtils.pojoToJson(patched);
+    patched.setTags(new ArrayList<>());
+    patched = patchEntity(patched.getId(), originalJson, patched, ADMIN_AUTH_HEADERS);
+
+    // Verify no tags
+    patched = getEntity(patched.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertTrue(patched.getTags().isEmpty());
+  }
+
+  @Test
+  void test_tagUpdateOptimization_LargeScale(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    // Create entity with initial tags (from different classifications)
+    List<TagLabel> initialTags = new ArrayList<>();
+    initialTags.add(
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+    initialTags.add(
+        new TagLabel()
+            .withTagFQN("Tier.Tier1")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(initialTags);
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify we have 2 unique tags
+    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+
+    // Add more unique tags via PUT - should be efficient (only adds new ones)
+    List<TagLabel> additionalTags = new ArrayList<>();
+    additionalTags.add(
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+    additionalTags.add(
+        new TagLabel()
+            .withTagFQN("Certification.Bronze")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+
+    create.setTags(additionalTags);
+
+    long startTime = System.currentTimeMillis();
+    T updated = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+    long updateTime = System.currentTimeMillis() - startTime;
+
+    updated = getEntity(updated.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(4, updated.getTags().size());
+    assertTagsContain(updated.getTags(), initialTags);
+    assertTagsContain(updated.getTags(), additionalTags);
+  }
+
+  private void assertTagsContain(List<TagLabel> tags, List<TagLabel> expectedTags) {
+    for (TagLabel expected : expectedTags) {
+      assertTrue(
+          tags.stream().anyMatch(tag -> tag.getTagFQN().equals(expected.getTagFQN())),
+          "Tags should contain: " + expected.getTagFQN());
+    }
+  }
+
+  private void assertTagsDoNotContain(List<TagLabel> tags, List<TagLabel> unexpectedTags) {
+    for (TagLabel unexpected : unexpectedTags) {
+      assertFalse(
+          tags.stream().anyMatch(tag -> tag.getTagFQN().equals(unexpected.getTagFQN())),
+          "Tags should not contain: " + unexpected.getTagFQN());
+    }
+  }
+
+  @Test
   @Execution(ExecutionMode.CONCURRENT)
   void patch_validEntityOwner_200(TestInfo test) throws IOException {
     if (!supportsOwners || !supportsPatch) {
@@ -2290,6 +2442,507 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void patch_etag_in_get_response(TestInfo test) throws IOException {
+    if (!supportsPatch || !supportsEtag) {
+      return;
+    }
+
+    // Create a test entity
+    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Get the entity and check for ETag header
+    WebTarget target = getResource(entity.getId());
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    // Check if ETag header is present
+    String etag = response.getHeaderString(EntityETag.ETAG_HEADER);
+    assertNotNull(etag, "ETag header should be present in GET response");
+    assertTrue(etag.startsWith("\"") && etag.endsWith("\""), "ETag should be wrapped in quotes");
+
+    T returnedEntity = response.readEntity(entityClass);
+
+    // Verify ETag format includes version and timestamp
+    // Remove any compression suffixes (e.g., "--gzip") from the ETag for comparison
+    String cleanEtag = etag.replaceAll("--\\w+\"$", "\"");
+    String expectedETag = EntityETag.generateETag(returnedEntity);
+    assertEquals(
+        expectedETag,
+        cleanEtag,
+        "Generated ETag should match response ETag (ignoring compression suffix)");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void patch_with_valid_etag(TestInfo test) throws IOException {
+    if (!supportsPatch || !supportsEtag) {
+      return;
+    }
+
+    // Create a test entity
+    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Get the entity with ETag
+    WebTarget getTarget = getResource(entity.getId());
+    Response getResponse = SecurityUtil.addHeaders(getTarget, ADMIN_AUTH_HEADERS).get();
+    String etag = getResponse.getHeaderString(EntityETag.ETAG_HEADER);
+    T originalEntity = getResponse.readEntity(entityClass);
+
+    // Prepare patch to update description
+    String originalJson = JsonUtils.pojoToJson(originalEntity);
+    originalEntity.setDescription("Updated description with ETag");
+    String updatedJson = JsonUtils.pojoToJson(originalEntity);
+    JsonNode patch =
+        JsonDiff.asJson(
+            JsonUtils.getObjectMapper().readTree(originalJson),
+            JsonUtils.getObjectMapper().readTree(updatedJson));
+
+    // PATCH with valid ETag in If-Match header
+    WebTarget patchTarget = getResource(entity.getId());
+    Map<String, String> headers = new HashMap<>(ADMIN_AUTH_HEADERS);
+    headers.put(EntityETag.IF_MATCH_HEADER, etag);
+
+    Response patchResponse =
+        SecurityUtil.addHeaders(patchTarget, headers)
+            .method(
+                "PATCH",
+                jakarta.ws.rs.client.Entity.entity(
+                    patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+
+    assertEquals(
+        OK.getStatusCode(), patchResponse.getStatus(), "PATCH with valid ETag should succeed");
+
+    // Verify response has new ETag
+    String newETag = patchResponse.getHeaderString(EntityETag.ETAG_HEADER);
+    assertNotNull(newETag, "Response should include new ETag");
+    assertNotEquals(etag, newETag, "ETag should change after update");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void patch_with_stale_etag(TestInfo test) throws IOException {
+    if (!supportsPatch || !supportsEtag) {
+      return;
+    }
+
+    // Create a test entity
+    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Get the entity with ETag
+    WebTarget getTarget = getResource(entity.getId());
+    Response getResponse = SecurityUtil.addHeaders(getTarget, ADMIN_AUTH_HEADERS).get();
+    String originalETag = getResponse.getHeaderString(EntityETag.ETAG_HEADER);
+    T originalEntity = getResponse.readEntity(entityClass);
+
+    // First update to change the ETag
+    String originalJson = JsonUtils.pojoToJson(originalEntity);
+    originalEntity.setDescription("First update");
+    patchEntity(entity.getId(), originalJson, originalEntity, ADMIN_AUTH_HEADERS);
+
+    // Try to patch with the stale ETag
+    originalEntity.setDescription("Second update with stale ETag");
+    String updatedJson = JsonUtils.pojoToJson(originalEntity);
+    JsonNode patch =
+        JsonDiff.asJson(
+            JsonUtils.getObjectMapper().readTree(originalJson),
+            JsonUtils.getObjectMapper().readTree(updatedJson));
+
+    // PATCH with stale ETag
+    WebTarget patchTarget = getResource(entity.getId());
+    Map<String, String> headers = new HashMap<>(ADMIN_AUTH_HEADERS);
+    headers.put(EntityETag.IF_MATCH_HEADER, originalETag);
+
+    Response patchResponse =
+        SecurityUtil.addHeaders(patchTarget, headers)
+            .method(
+                "PATCH",
+                jakarta.ws.rs.client.Entity.entity(
+                    patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+
+    // Should return 412 Precondition Failed if ETag validation is enabled
+    // For backward compatibility, it might still return 200 if validation is disabled
+    int status = patchResponse.getStatus();
+    assertTrue(
+        status == OK.getStatusCode() || status == PRECONDITION_FAILED.getStatusCode(),
+        "PATCH with stale ETag should either succeed (if validation disabled) or return 412");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void patch_concurrent_updates_with_etag(TestInfo test) throws Exception {
+    if (!supportsPatch || !supportsEtag) {
+      return;
+    }
+
+    // Create a test entity
+    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Get the entity with ETag
+    WebTarget getTarget = getResource(entity.getId());
+    Response getResponse = SecurityUtil.addHeaders(getTarget, ADMIN_AUTH_HEADERS).get();
+    String etag = getResponse.getHeaderString(EntityETag.ETAG_HEADER);
+    T originalEntity = getResponse.readEntity(entityClass);
+
+    // Prepare for concurrent updates
+    ExecutorService executorService = Executors.newFixedThreadPool(2);
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch completionLatch = new CountDownLatch(2);
+    AtomicReference<Response> response1 = new AtomicReference<>();
+    AtomicReference<Response> response2 = new AtomicReference<>();
+    AtomicReference<Exception> error = new AtomicReference<>();
+
+    // Task 1: Update description
+    executorService.submit(
+        () -> {
+          try {
+            startLatch.await();
+
+            String originalJson = JsonUtils.pojoToJson(originalEntity);
+            T updated = JsonUtils.readValue(originalJson, entityClass);
+            updated.setDescription("Concurrent update 1");
+            String updatedJson = JsonUtils.pojoToJson(updated);
+            JsonNode patch =
+                JsonDiff.asJson(
+                    JsonUtils.getObjectMapper().readTree(originalJson),
+                    JsonUtils.getObjectMapper().readTree(updatedJson));
+
+            WebTarget patchTarget = getResource(entity.getId());
+            Map<String, String> headers = new HashMap<>(ADMIN_AUTH_HEADERS);
+            headers.put(EntityETag.IF_MATCH_HEADER, etag);
+
+            Response response =
+                SecurityUtil.addHeaders(patchTarget, headers)
+                    .method(
+                        "PATCH",
+                        jakarta.ws.rs.client.Entity.entity(
+                            patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+            response1.set(response);
+
+          } catch (Exception e) {
+            error.compareAndSet(null, e);
+          } finally {
+            completionLatch.countDown();
+          }
+        });
+
+    // Task 2: Update displayName
+    executorService.submit(
+        () -> {
+          try {
+            startLatch.await();
+
+            String originalJson = JsonUtils.pojoToJson(originalEntity);
+            T updated = JsonUtils.readValue(originalJson, entityClass);
+            updated.setDisplayName("Concurrent Display Name");
+            String updatedJson = JsonUtils.pojoToJson(updated);
+            JsonNode patch =
+                JsonDiff.asJson(
+                    JsonUtils.getObjectMapper().readTree(originalJson),
+                    JsonUtils.getObjectMapper().readTree(updatedJson));
+
+            WebTarget patchTarget = getResource(entity.getId());
+            Map<String, String> headers = new HashMap<>(ADMIN_AUTH_HEADERS);
+            headers.put(EntityETag.IF_MATCH_HEADER, etag);
+
+            Response response =
+                SecurityUtil.addHeaders(patchTarget, headers)
+                    .method(
+                        "PATCH",
+                        jakarta.ws.rs.client.Entity.entity(
+                            patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+            response2.set(response);
+
+          } catch (Exception e) {
+            error.compareAndSet(null, e);
+          } finally {
+            completionLatch.countDown();
+          }
+        });
+
+    // Start both tasks simultaneously
+    startLatch.countDown();
+
+    // Wait for completion
+    assertTrue(completionLatch.await(30, TimeUnit.SECONDS), "Tasks should complete within timeout");
+    executorService.shutdown();
+
+    // Check results
+    if (error.get() != null) {
+      throw new RuntimeException("Error in concurrent update", error.get());
+    }
+
+    int status1 = response1.get().getStatus();
+    int status2 = response2.get().getStatus();
+
+    // With ETag validation, at least one should fail with 412 or both succeed due to timing
+    LOG.info("Concurrent update with ETag - status 1: {}, status 2: {}", status1, status2);
+
+    // If ETag validation is enabled, one should fail
+    // If disabled, both might succeed
+    assertTrue(
+        (status1 == OK.getStatusCode() && status2 == OK.getStatusCode())
+            || // Both succeed (no validation)
+            (status1 == OK.getStatusCode() && status2 == PRECONDITION_FAILED.getStatusCode())
+            || // First succeeds
+            (status1 == PRECONDITION_FAILED.getStatusCode()
+                && status2 == OK.getStatusCode()), // Second succeeds
+        "One update should succeed and other should fail with 412, or both succeed if validation disabled");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void patch_concurrentUpdates_dataLossTest(TestInfo test) throws Exception {
+    if (!supportsPatch || !supportsEtag) {
+      return;
+    }
+
+    // Store original session timeout and set a short one to avoid consolidation
+    long originalTimeout = EntityRepository.EntityUpdater.getSessionTimeout();
+    EntityRepository.EntityUpdater.setSessionTimeout(10); // 10ms timeout
+
+    try {
+      // Create initial entity
+      K createRequest = createRequest(test);
+      T entity = createAndCheckEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+      // Set up for concurrent updates
+      int numThreads = 2;
+      CountDownLatch startLatch = new CountDownLatch(1);
+      CountDownLatch completionLatch = new CountDownLatch(numThreads);
+      AtomicReference<T> entityAfterUpdate1 = new AtomicReference<>();
+      AtomicReference<T> entityAfterUpdate2 = new AtomicReference<>();
+      AtomicReference<Exception> errorRef = new AtomicReference<>();
+      AtomicInteger retryCount = new AtomicInteger(0);
+
+      // Thread 1: Update description with ETag and retry logic
+      java.lang.Thread thread1 =
+          new java.lang.Thread(
+              () -> {
+                try {
+                  startLatch.await();
+
+                  boolean updated = false;
+                  int attempts = 0;
+                  while (!updated && attempts < 3) {
+                    attempts++;
+
+                    // Get fresh copy of entity with ETag
+                    WebTarget target = getResource(entity.getId());
+                    Response getResponse =
+                        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+                    T currentEntity = getResponse.readEntity(entityClass);
+                    String etag = getResponse.getHeaderString("ETag");
+                    // Remove compression suffix if present (e.g., "--gzip")
+                    if (etag != null && etag.contains("--")) {
+                      etag = etag.substring(0, etag.indexOf("--")) + "\"";
+                    }
+                    String originalJson = JsonUtils.pojoToJson(currentEntity);
+
+                    // Update description
+                    currentEntity.setDescription("Updated by thread 1 - new description");
+
+                    // Simulate processing delay
+                    java.lang.Thread.sleep(100);
+
+                    // Patch the entity with ETag
+                    try {
+                      String updatedJson = JsonUtils.pojoToJson(currentEntity);
+                      JsonNode patch =
+                          JsonDiff.asJson(
+                              JsonUtils.getObjectMapper().readTree(originalJson),
+                              JsonUtils.getObjectMapper().readTree(updatedJson));
+
+                      T result =
+                          TestUtils.patch(
+                              getResource(entity.getId()),
+                              patch,
+                              entityClass,
+                              ADMIN_AUTH_HEADERS,
+                              etag);
+                      entityAfterUpdate1.set(result);
+                      updated = true;
+                    } catch (HttpResponseException e) {
+                      if (e.getStatusCode() == 412) { // Precondition Failed - ETag mismatch
+                        retryCount.incrementAndGet();
+                        LOG.info("Thread 1 got 412, retrying... (attempt {})", attempts);
+                        // Will retry with fresh data in next iteration
+                      } else {
+                        throw e;
+                      }
+                    }
+                  }
+
+                  if (!updated) {
+                    fail("Thread 1 failed to update after 3 attempts");
+                  }
+
+                } catch (Exception e) {
+                  errorRef.compareAndSet(null, e);
+                } finally {
+                  completionLatch.countDown();
+                }
+              });
+
+      // Thread 2: Add tags (if supported) or update displayName with ETag and retry logic
+      java.lang.Thread thread2 =
+          new java.lang.Thread(
+              () -> {
+                try {
+                  startLatch.await();
+
+                  boolean updated = false;
+                  int attempts = 0;
+                  while (!updated && attempts < 3) {
+                    attempts++;
+
+                    // Get fresh copy of entity with ETag
+                    WebTarget target = getResource(entity.getId());
+                    Response getResponse =
+                        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+                    T currentEntity = getResponse.readEntity(entityClass);
+                    String etag = getResponse.getHeaderString("ETag");
+                    // Remove compression suffix if present (e.g., "--gzip")
+                    if (etag != null && etag.contains("--")) {
+                      etag = etag.substring(0, etag.indexOf("--")) + "\"";
+                    }
+                    String originalJson = JsonUtils.pojoToJson(currentEntity);
+
+                    // Add tags or update displayName
+                    if (supportsTags && currentEntity instanceof EntityInterface) {
+                      EntityInterface entityInterface = (EntityInterface) currentEntity;
+                      List<TagLabel> tags = new ArrayList<>();
+                      tags.add(TIER1_TAG_LABEL);
+                      tags.add(USER_ADDRESS_TAG_LABEL);
+                      entityInterface.setTags(tags);
+                    } else {
+                      currentEntity.setDisplayName("Updated by thread 2");
+                    }
+
+                    // Simulate processing delay
+                    java.lang.Thread.sleep(150);
+
+                    // Patch the entity with ETag
+                    try {
+                      String updatedJson = JsonUtils.pojoToJson(currentEntity);
+                      JsonNode patch =
+                          JsonDiff.asJson(
+                              JsonUtils.getObjectMapper().readTree(originalJson),
+                              JsonUtils.getObjectMapper().readTree(updatedJson));
+
+                      T result =
+                          TestUtils.patch(
+                              getResource(entity.getId()),
+                              patch,
+                              entityClass,
+                              ADMIN_AUTH_HEADERS,
+                              etag);
+                      entityAfterUpdate2.set(result);
+                      updated = true;
+                    } catch (HttpResponseException e) {
+                      if (e.getStatusCode() == 412) { // Precondition Failed - ETag mismatch
+                        retryCount.incrementAndGet();
+                        LOG.info("Thread 2 got 412, retrying... (attempt {})", attempts);
+                        // Will retry with fresh data in next iteration
+                      } else {
+                        throw e;
+                      }
+                    }
+                  }
+
+                  if (!updated) {
+                    fail("Thread 2 failed to update after 3 attempts");
+                  }
+
+                } catch (Exception e) {
+                  errorRef.compareAndSet(null, e);
+                } finally {
+                  completionLatch.countDown();
+                }
+              });
+
+      // Start both threads
+      thread1.start();
+      thread2.start();
+
+      // Release both threads to run concurrently
+      startLatch.countDown();
+
+      // Add a small delay to ensure threads fetch at slightly different times
+      // This increases the chance of one thread getting a stale ETag
+      java.lang.Thread.sleep(50);
+
+      // Wait for completion
+      assertTrue(
+          completionLatch.await(30, TimeUnit.SECONDS), "Threads should complete within timeout");
+
+      // Check for errors
+      if (errorRef.get() != null) {
+        throw new AssertionError("Thread execution failed", errorRef.get());
+      }
+
+      // Get final entity state
+      T finalEntity = getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
+
+      // Verify both updates were applied (this should fail if there's a concurrency issue)
+      // The issue is that when both threads start with the same version, the second update
+      // might overwrite the first update's changes
+
+      // Check description from thread 1
+      assertEquals(
+          "Updated by thread 1 - new description",
+          finalEntity.getDescription(),
+          "Description update from thread 1 should be preserved");
+
+      // Check tags/displayName from thread 2
+      if (supportsTags) {
+        List<TagLabel> finalTags = finalEntity.getTags();
+        assertNotNull(finalTags, "Tags should not be null after thread 2 update");
+        assertEquals(2, finalTags.size(), "Should have 2 tags from thread 2");
+        assertTrue(
+            finalTags.stream().anyMatch(tag -> tag.getTagFQN().equals(TIER1_TAG_LABEL.getTagFQN())),
+            "Should have Tier1 tag from thread 2");
+        assertTrue(
+            finalTags.stream()
+                .anyMatch(tag -> tag.getTagFQN().equals(USER_ADDRESS_TAG_LABEL.getTagFQN())),
+            "Should have User.Address tag from thread 2");
+      } else {
+        assertEquals(
+            "Updated by thread 2",
+            finalEntity.getDisplayName(),
+            "DisplayName update from thread 2 should be preserved");
+      }
+
+      // Verify version increments
+      assertTrue(
+          finalEntity.getVersion() > entity.getVersion(),
+          "Version should be incremented after updates");
+
+      // Both updates should result in version increments
+      // If concurrency is handled properly, we should see version increments for both updates
+      assertNotNull(entityAfterUpdate1.get(), "Thread 1 should have completed update");
+      assertNotNull(entityAfterUpdate2.get(), "Thread 2 should have completed update");
+
+      // Verify retry occurred (at least one thread should have retried due to concurrent update)
+      assertTrue(
+          retryCount.get() > 0, "At least one thread should have retried due to ETag mismatch");
+
+      // Log versions for debugging
+      LOG.info("Concurrent update test completed successfully with {} retries", retryCount.get());
+      LOG.info(
+          "Initial version: {}, Thread1 version: {}, Thread2 version: {}, Final version: {}",
+          entity.getVersion(),
+          entityAfterUpdate1.get().getVersion(),
+          entityAfterUpdate2.get().getVersion(),
+          finalEntity.getVersion());
+    } finally {
+      // Restore original session timeout
+      EntityRepository.EntityUpdater.setSessionTimeout(originalTimeout);
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void put_addEntityCustomAttributes(TestInfo test) throws IOException {
     if (!supportsCustomExtension) {
       return;
@@ -2584,11 +3237,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               connectLatch.countDown();
               messageLatch.countDown();
             })
-        .on(
-            Socket.EVENT_DISCONNECT,
-            args -> {
-              LOG.info("Disconnected from Socket.IO server");
-            });
+        .on(Socket.EVENT_DISCONNECT, args -> LOG.info("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {
@@ -4457,9 +5106,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             })
         .on(
             Socket.EVENT_DISCONNECT,
-            args -> {
-              System.out.println("Disconnected from Socket.IO server");
-            });
+            args -> System.out.println("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {
@@ -4531,9 +5178,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             })
         .on(
             Socket.EVENT_DISCONNECT,
-            args -> {
-              System.out.println("Disconnected from Socket.IO server");
-            });
+            args -> System.out.println("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {

@@ -1,5 +1,6 @@
 ---
 title: End Event | OpenMetadata End Event Details
+description: Get started with endevent. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/endevent/endevent
 ---
 
