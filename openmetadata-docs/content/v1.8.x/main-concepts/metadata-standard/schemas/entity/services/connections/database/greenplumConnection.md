@@ -1,5 +1,6 @@
 ---
 title: Greenplum Connection | OpenMetadata Greenplum
+description: Get started with greenplumconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/greenplumconnection
 ---
 
