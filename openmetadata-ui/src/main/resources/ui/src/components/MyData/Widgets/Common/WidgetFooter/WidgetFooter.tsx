@@ -44,7 +44,6 @@ const WidgetFooter = ({
           <Button
             className="text-primary hover:underline w-full footer-view-more-button"
             href={moreButtonLink}
-            target="_blank"
             type="link">
             {moreButtonText || t('label.view-more')}
             <ArrowRightOutlined data-testid="arrow-right-icon" />
