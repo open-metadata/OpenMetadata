@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.data;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -41,6 +42,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateDataContract;
+import org.openmetadata.schema.api.data.CreateDataContractResult;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -51,17 +53,21 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.ContractStatus;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Field;
-import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.QualityExpectation;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -80,7 +86,7 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   private static String testDatabaseSchemaFQN = null;
 
   @AfterEach
-  void cleanup() throws IOException {
+  void cleanup() {
     for (DataContract contract : createdContracts) {
       try {
         deleteDataContract(contract.getId());
@@ -178,7 +184,7 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     long counter = tableCounter.incrementAndGet();
     long timestamp = System.nanoTime();
     String uniqueId = UUID.randomUUID().toString().replace("-", "");
-    long threadId = Thread.currentThread().getId();
+    long threadId = Thread.currentThread().threadId();
 
     String tableName =
         "dc_test_"
@@ -235,7 +241,7 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
             + "_"
             + System.nanoTime()
             + "_"
-            + Thread.currentThread().getId()
+            + Thread.currentThread().threadId()
             + "_"
             + tableCounter.incrementAndGet();
     String contractName = "contract_" + name + "_" + uniqueSuffix;
@@ -298,8 +304,6 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     Response response = SecurityUtil.addHeaders(tableTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
-
-  // ===================== Permission Helper Methods =====================
 
   private DataContract createDataContractWithAuth(
       CreateDataContract create, Map<String, String> authHeaders) throws IOException {
@@ -442,18 +446,18 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     String originalJson = JsonUtils.pojoToJson(created);
 
     // Add schema fields via patch
-    List<Field> schemaFields = new ArrayList<>();
-    schemaFields.add(
-        new Field()
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
             .withName(C1)
             .withDescription("Updated ID field")
-            .withDataType(FieldDataType.INT));
-    schemaFields.add(
-        new Field()
+            .withDataType(ColumnDataType.INT));
+    columns.add(
+        new Column()
             .withName(C2)
             .withDescription("Updated name field")
-            .withDataType(FieldDataType.STRING));
-    created.setSchema(schemaFields);
+            .withDataType(ColumnDataType.STRING));
+    created.setSchema(columns);
 
     DataContract patched = patchDataContract(created.getId(), originalJson, created);
 
@@ -507,13 +511,13 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     created.setStatus(ContractStatus.Active);
     created.setDescription("Updated contract description via patch");
 
-    List<Field> schemaFields = new ArrayList<>();
-    schemaFields.add(
-        new Field()
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
             .withName(C1)
             .withDescription("Patched ID field")
-            .withDataType(FieldDataType.INT));
-    created.setSchema(schemaFields);
+            .withDataType(ColumnDataType.INT));
+    created.setSchema(columns);
 
     DataContract patched = patchDataContract(created.getId(), originalJson, created);
 
@@ -521,7 +525,7 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals("Updated contract description via patch", patched.getDescription());
     assertNotNull(patched.getSchema());
     assertEquals(1, patched.getSchema().size());
-    assertEquals("Patched ID field", patched.getSchema().get(0).getDescription());
+    assertEquals("Patched ID field", patched.getSchema().getFirst().getDescription());
   }
 
   @Test
@@ -545,17 +549,20 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     Table table = createUniqueTable(test.getDisplayName());
 
     // Add schema fields that match the table's columns
-    List<Field> schemaFields = new ArrayList<>();
-    schemaFields.add(
-        new Field()
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
             .withName(C1)
             .withDescription("Unique identifier")
-            .withDataType(FieldDataType.INT));
-    schemaFields.add(
-        new Field().withName(C2).withDescription("Name field").withDataType(FieldDataType.STRING));
+            .withDataType(ColumnDataType.INT));
+    columns.add(
+        new Column()
+            .withName(C2)
+            .withDescription("Name field")
+            .withDataType(ColumnDataType.STRING));
 
     CreateDataContract create =
-        createDataContractRequest(test.getDisplayName(), table).withSchema(schemaFields);
+        createDataContractRequest(test.getDisplayName(), table).withSchema(columns);
 
     DataContract dataContract = createDataContract(create);
 
@@ -585,7 +592,7 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     assertNotNull(dataContract.getQualityExpectations());
     assertEquals(1, dataContract.getQualityExpectations().size());
-    assertEquals("Completeness", dataContract.getQualityExpectations().get(0).getName());
+    assertEquals("Completeness", dataContract.getQualityExpectations().getFirst().getName());
   }
 
   @Test
@@ -594,15 +601,15 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     Table table = createUniqueTable(test.getDisplayName());
 
     // Create schema with field that doesn't exist in the table
-    List<Field> schemaFields = new ArrayList<>();
-    schemaFields.add(
-        new Field()
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
             .withName("non_existent_field")
             .withDescription("This field doesn't exist")
-            .withDataType(FieldDataType.STRING));
+            .withDataType(ColumnDataType.STRING));
 
     CreateDataContract create =
-        createDataContractRequest(test.getDisplayName(), table).withSchema(schemaFields);
+        createDataContractRequest(test.getDisplayName(), table).withSchema(columns);
 
     // Should throw error for non-existent field
     assertResponseContains(
@@ -643,7 +650,7 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
             + "_"
             + System.nanoTime()
             + "_"
-            + Thread.currentThread().getId()
+            + Thread.currentThread().threadId()
             + "_"
             + tableCounter.incrementAndGet();
     String contractName = "contract_" + test.getDisplayName() + "_" + uniqueSuffix;
@@ -712,7 +719,7 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(ContractStatus.Active, dataContract.getStatus());
     assertEquals(2, dataContract.getSchema().size());
     assertEquals(1, dataContract.getQualityExpectations().size());
-    assertEquals("EmailFormat", dataContract.getQualityExpectations().get(0).getName());
+    assertEquals("EmailFormat", dataContract.getQualityExpectations().getFirst().getName());
   }
 
   @Test
@@ -770,25 +777,25 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     Table table = createUniqueTable(test.getDisplayName());
 
     // Create schema with multiple fields that don't exist in the table
-    List<Field> schemaFields = new ArrayList<>();
-    schemaFields.add(
-        new Field()
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
             .withName("invalid_field_1")
             .withDescription("First invalid field")
-            .withDataType(FieldDataType.STRING));
-    schemaFields.add(
-        new Field()
+            .withDataType(ColumnDataType.STRING));
+    columns.add(
+        new Column()
             .withName("invalid_field_2")
             .withDescription("Second invalid field")
-            .withDataType(FieldDataType.INT));
-    schemaFields.add(
-        new Field()
+            .withDataType(ColumnDataType.INT));
+    columns.add(
+        new Column()
             .withName(C1) // This one is valid
             .withDescription("Valid field")
-            .withDataType(FieldDataType.INT));
+            .withDataType(ColumnDataType.INT));
 
     CreateDataContract create =
-        createDataContractRequest(test.getDisplayName(), table).withSchema(schemaFields);
+        createDataContractRequest(test.getDisplayName(), table).withSchema(columns);
 
     // Should fail on the first invalid field encountered
     assertResponseContains(
@@ -1012,5 +1019,309 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
         () -> createDataContractWithAuth(create, TEST_AUTH_HEADERS),
         Status.FORBIDDEN,
         "Principal: CatalogPrincipal{name='test'} operations [Create] not allowed");
+  }
+
+  // ===================== Reviewers Tests =====================
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractWithReviewers(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Get admin user entity reference
+    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+    WebTarget userTarget = getResource("users").path("name").path("admin");
+    Response response = SecurityUtil.addHeaders(userTarget, authHeaders).get();
+    User adminUser = TestUtils.readResponse(response, User.class, Status.OK.getStatusCode());
+
+    // Create user references for reviewers using the full entity reference
+    List<EntityReference> reviewers = new ArrayList<>();
+    reviewers.add(adminUser.getEntityReference());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withReviewers(reviewers);
+
+    DataContract dataContract = createDataContract(create);
+
+    // Get with reviewers field to verify they were set
+    DataContract retrieved = getDataContract(dataContract.getId(), "owners,reviewers");
+
+    assertNotNull(retrieved.getReviewers());
+    assertEquals(1, retrieved.getReviewers().size());
+    assertEquals("admin", retrieved.getReviewers().getFirst().getName());
+    assertEquals("user", retrieved.getReviewers().getFirst().getType());
+    assertNotNull(retrieved.getReviewers().getFirst().getId());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testPatchDataContractAddReviewers(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Get admin user entity reference
+    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+    WebTarget userTarget = getResource("users").path("name").path("admin");
+    Response response = SecurityUtil.addHeaders(userTarget, authHeaders).get();
+    User adminUser = TestUtils.readResponse(response, User.class, Status.OK.getStatusCode());
+
+    // Get the full data contract with all fields
+    created = getDataContract(created.getId(), "reviewers");
+    String originalJson = JsonUtils.pojoToJson(created);
+
+    // Add reviewers via patch
+    List<EntityReference> reviewers = new ArrayList<>();
+    reviewers.add(adminUser.getEntityReference());
+    created.setReviewers(reviewers);
+
+    DataContract patched = patchDataContract(created.getId(), originalJson, created);
+
+    assertNotNull(patched.getReviewers());
+    assertEquals(1, patched.getReviewers().size());
+    assertEquals("admin", patched.getReviewers().get(0).getName());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testPatchDataContractRemoveReviewers(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Get admin user entity reference
+    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+    WebTarget userTarget = getResource("users").path("name").path("admin");
+    Response response = SecurityUtil.addHeaders(userTarget, authHeaders).get();
+    User adminUser = TestUtils.readResponse(response, User.class, Status.OK.getStatusCode());
+
+    // Create with reviewers
+    List<EntityReference> initialReviewers = new ArrayList<>();
+    initialReviewers.add(adminUser.getEntityReference());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withReviewers(initialReviewers);
+    DataContract created = createDataContract(create);
+
+    // Get full data contract with reviewers
+    created = getDataContract(created.getId(), "owners,reviewers");
+    assertNotNull(created.getReviewers());
+    assertEquals(1, created.getReviewers().size());
+
+    String originalJson = JsonUtils.pojoToJson(created);
+
+    // Remove reviewers via patch
+    created.setReviewers(new ArrayList<>());
+
+    DataContract patched = patchDataContract(created.getId(), originalJson, created);
+
+    assertNotNull(patched.getReviewers());
+    assertEquals(0, patched.getReviewers().size());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testPatchDataContractUpdateReviewers(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Get user entity references
+    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+    WebTarget userTarget = getResource("users").path("name").path("admin");
+    Response response = SecurityUtil.addHeaders(userTarget, authHeaders).get();
+    User adminUser = TestUtils.readResponse(response, User.class, Status.OK.getStatusCode());
+
+    userTarget = getResource("users").path("name").path("test");
+    response = SecurityUtil.addHeaders(userTarget, authHeaders).get();
+    User testUser = TestUtils.readResponse(response, User.class, Status.OK.getStatusCode());
+
+    // Create with one reviewer
+    List<EntityReference> initialReviewers = new ArrayList<>();
+    initialReviewers.add(adminUser.getEntityReference());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withReviewers(initialReviewers);
+    DataContract created = createDataContract(create);
+
+    // Get full data contract
+    created = getDataContract(created.getId(), "reviewers");
+    String originalJson = JsonUtils.pojoToJson(created);
+
+    // Update to different reviewers (test user)
+    List<EntityReference> newReviewers = new ArrayList<>();
+    newReviewers.add(testUser.getEntityReference());
+    created.setReviewers(newReviewers);
+
+    DataContract patched = patchDataContract(created.getId(), originalJson, created);
+
+    assertNotNull(patched.getReviewers());
+    assertEquals(1, patched.getReviewers().size());
+    assertEquals("test", patched.getReviewers().get(0).getName());
+  }
+
+  // ===================== Data Contract Results Tests =====================
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreateDataContractResult(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract dataContract = createDataContract(create);
+
+    // Create a contract result
+    CreateDataContractResult createResult =
+        new CreateDataContractResult()
+            .withDataContractFQN(dataContract.getFullyQualifiedName())
+            .withTimestamp(System.currentTimeMillis())
+            .withContractExecutionStatus(ContractExecutionStatus.Success)
+            .withResult("All validations passed")
+            .withExecutionTime(1234L);
+
+    WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
+    Response response =
+        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).post(Entity.json(createResult));
+    DataContractResult result =
+        TestUtils.readResponse(response, DataContractResult.class, Status.OK.getStatusCode());
+
+    assertNotNull(result);
+    assertNotNull(result.getId());
+    assertEquals(dataContract.getFullyQualifiedName(), result.getDataContractFQN());
+    assertEquals(ContractExecutionStatus.Success, result.getContractExecutionStatus());
+    assertEquals("All validations passed", result.getResult());
+    assertEquals(1234L, result.getExecutionTime());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testListDataContractResults(TestInfo test) throws Exception {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract dataContract = createDataContract(create);
+
+    // Create multiple contract results with different dates
+    String dateStr = "2024-01-";
+    for (int i = 1; i <= 5; i++) {
+      CreateDataContractResult createResult =
+          new CreateDataContractResult()
+              .withDataContractFQN(dataContract.getFullyQualifiedName())
+              .withTimestamp(TestUtils.dateToTimestamp(dateStr + String.format("%02d", i)))
+              .withContractExecutionStatus(
+                  i % 2 == 0 ? ContractExecutionStatus.Success : ContractExecutionStatus.Failed)
+              .withResult("Result " + i)
+              .withExecutionTime(1000L + i);
+
+      WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
+      Response response =
+          SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS)
+              .post(Entity.json(createResult));
+      assertEquals(Status.OK.getStatusCode(), response.getStatus());
+      response.readEntity(String.class); // Consume response
+    }
+
+    // List results
+    WebTarget listTarget = getResource(dataContract.getId()).path("/results");
+    Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
+    String jsonResponse =
+        TestUtils.readResponse(listResponse, String.class, Status.OK.getStatusCode());
+    ResultList<DataContractResult> results =
+        JsonUtils.readValue(
+            jsonResponse,
+            new com.fasterxml.jackson.core.type.TypeReference<ResultList<DataContractResult>>() {});
+
+    assertNotNull(results);
+    assertEquals(5, results.getData().size());
+
+    // Verify results are in descending order by timestamp (newest first)
+    for (int i = 0; i < results.getData().size() - 1; i++) {
+      assertTrue(
+          results.getData().get(i).getTimestamp() >= results.getData().get(i + 1).getTimestamp());
+    }
+
+    // Verify the newest result is from January 5th
+    assertEquals("Result 5", results.getData().get(0).getResult());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testGetLatestDataContractResult(TestInfo test) throws Exception {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract dataContract = createDataContract(create);
+
+    // Create multiple results with different dates
+    String[] dates = {"2024-01-01", "2024-01-02", "2024-01-03"};
+    for (int i = 0; i < dates.length; i++) {
+      CreateDataContractResult createResult =
+          new CreateDataContractResult()
+              .withDataContractFQN(dataContract.getFullyQualifiedName())
+              .withTimestamp(TestUtils.dateToTimestamp(dates[i]))
+              .withContractExecutionStatus(ContractExecutionStatus.Success)
+              .withResult("Result " + i)
+              .withExecutionTime(1000L);
+
+      WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
+      Response response =
+          SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS)
+              .post(Entity.json(createResult));
+      assertEquals(Status.OK.getStatusCode(), response.getStatus());
+      response.readEntity(String.class); // Consume response
+    }
+
+    // Get latest result
+    WebTarget latestTarget = getResource(dataContract.getId()).path("/results/latest");
+    Response latestResponse = SecurityUtil.addHeaders(latestTarget, ADMIN_AUTH_HEADERS).get();
+    DataContractResult latest =
+        TestUtils.readResponse(latestResponse, DataContractResult.class, Status.OK.getStatusCode());
+
+    assertNotNull(latest);
+    assertEquals("Result 2", latest.getResult()); // Latest is from January 3rd (index 2)
+    assertEquals(TestUtils.dateToTimestamp("2024-01-03"), latest.getTimestamp());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDeleteDataContractResults(TestInfo test) throws Exception {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract dataContract = createDataContract(create);
+
+    // Create a result with a specific date
+    long timestamp = TestUtils.dateToTimestamp("2024-01-15");
+    CreateDataContractResult createResult =
+        new CreateDataContractResult()
+            .withDataContractFQN(dataContract.getFullyQualifiedName())
+            .withTimestamp(timestamp)
+            .withContractExecutionStatus(ContractExecutionStatus.Success)
+            .withResult("Test result")
+            .withExecutionTime(1000L);
+
+    WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
+    Response createResponse =
+        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).post(Entity.json(createResult));
+    assertEquals(Status.OK.getStatusCode(), createResponse.getStatus());
+    createResponse.readEntity(String.class); // Consume response
+
+    // Verify result exists
+    WebTarget listTarget = getResource(dataContract.getId()).path("/results");
+    Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
+    String jsonResponse =
+        TestUtils.readResponse(listResponse, String.class, Status.OK.getStatusCode());
+    ResultList<DataContractResult> results =
+        JsonUtils.readValue(
+            jsonResponse,
+            new com.fasterxml.jackson.core.type.TypeReference<ResultList<DataContractResult>>() {});
+    assertEquals(1, results.getData().size());
+
+    // Delete the result
+    WebTarget deleteTarget = getResource(dataContract.getId()).path("/results/" + timestamp);
+    Response deleteResponse = SecurityUtil.addHeaders(deleteTarget, ADMIN_AUTH_HEADERS).delete();
+    assertEquals(Status.OK.getStatusCode(), deleteResponse.getStatus());
+
+    // Verify result is deleted
+    Response listResponse2 = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
+    String jsonResponse2 =
+        TestUtils.readResponse(listResponse2, String.class, Status.OK.getStatusCode());
+    ResultList<DataContractResult> results2 =
+        JsonUtils.readValue(
+            jsonResponse2,
+            new com.fasterxml.jackson.core.type.TypeReference<ResultList<DataContractResult>>() {});
+    assertEquals(0, results2.getData().size());
   }
 }

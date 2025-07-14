@@ -718,6 +718,10 @@ export interface ConfigClass {
      */
     authorityURI?: string;
     /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
+    /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
     pagination_entity_per_page?: number;
@@ -1773,6 +1777,8 @@ export interface UsernamePasswordAuthentication {
  * Regex to only fetch databases that matches the pattern.
  *
  * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex to only fetch stored procedures that matches the pattern.
  *
  * Regex exclude tables or databases that matches the pattern.
  *
@@ -4125,6 +4131,10 @@ export interface Pipeline {
      */
     processViewLineage?: boolean;
     /**
+     * Regex to only fetch stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    /**
      * Regex exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
@@ -4706,6 +4716,10 @@ export interface Action {
      * Propagate description through lineage
      */
     propagateDescription?: boolean;
+    /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
     /**
      * Propagate glossary terms through lineage
      */
@@ -5324,6 +5338,12 @@ export interface IncrementalMetadataExtractionConfiguration {
  * Details required to generate Lineage
  */
 export interface LineageInformation {
+    /**
+     * List of service path prefixes for lineage matching. Supported formats: DBServiceName,
+     * DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or
+     * DBServiceName.DatabaseName.SchemaName.TableName
+     */
+    dbServicePrefixes?: string[];
     /**
      * List of Database Service Names for creation of lineage
      */

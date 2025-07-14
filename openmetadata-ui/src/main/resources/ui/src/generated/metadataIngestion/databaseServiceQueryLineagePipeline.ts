@@ -79,6 +79,10 @@ export interface DatabaseServiceQueryLineagePipeline {
      */
     schemaFilterPattern?: FilterPattern;
     /**
+     * Regex to only fetch stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    /**
      * Regex exclude tables or databases that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
@@ -98,6 +102,8 @@ export interface DatabaseServiceQueryLineagePipeline {
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex to only fetch stored procedures that matches the pattern.
  *
  * Regex exclude tables or databases that matches the pattern.
  */

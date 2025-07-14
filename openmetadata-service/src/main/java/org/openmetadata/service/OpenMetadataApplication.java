@@ -24,6 +24,8 @@ import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
+import io.dropwizard.jetty.ConnectorFactory;
+import io.dropwizard.jetty.HttpsConnectorFactory;
 import io.dropwizard.jetty.MutableServletContextHandler;
 import io.dropwizard.lifecycle.Managed;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
@@ -40,6 +42,7 @@ import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.servers.Server;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
+import jakarta.servlet.SessionCookieConfig;
 import jakarta.validation.Validation;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseFilter;
@@ -50,6 +53,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
@@ -111,6 +115,8 @@ import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.filters.ETagRequestFilter;
+import org.openmetadata.service.resources.filters.ETagResponseFilter;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -142,7 +148,6 @@ import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CustomParameterNameProvider;
-import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.pac4j.core.util.CommonHelper;
 import org.quartz.SchedulerException;
@@ -202,8 +207,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
-    // Initialize HTTP and JDBI timers
-    MicrometerBundleSingleton.initLatencyEvents();
+    // Metrics initialization now handled by MicrometerBundle
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
@@ -293,6 +297,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
 
+    // Register ETag Filters for optimistic concurrency control
+    environment.jersey().register(ETagRequestFilter.class);
+    environment.jersey().register(ETagResponseFilter.class);
+
     // Register User Activity Tracking
     registerUserActivityTracking(environment);
 
@@ -375,9 +383,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
       // Set up a Session Manager
       MutableServletContextHandler contextHandler = environment.getApplicationContext();
-      if (contextHandler.getSessionHandler() == null) {
-        contextHandler.setSessionHandler(new SessionHandler());
+      SessionHandler sessionHandler = contextHandler.getSessionHandler();
+      if (sessionHandler == null) {
+        sessionHandler = new SessionHandler();
+        contextHandler.setSessionHandler(sessionHandler);
       }
+
+      SessionCookieConfig cookieConfig =
+          Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
+      cookieConfig.setHttpOnly(true);
+      cookieConfig.setSecure(isHttps(config));
+      cookieConfig.setMaxAge(
+          config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
+      cookieConfig.setPath("/");
+      sessionHandler.setMaxInactiveInterval(
+          config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
 
       AuthenticationCodeFlowHandler authenticationCodeFlowHandler =
           new AuthenticationCodeFlowHandler(
@@ -406,9 +426,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
+  public static boolean isHttps(OpenMetadataApplicationConfig configuration) {
+    if (configuration.getServerFactory() instanceof DefaultServerFactory serverFactory) {
+      ConnectorFactory connector = serverFactory.getApplicationConnectors().getFirst();
+      return connector instanceof HttpsConnectorFactory;
+    }
+    return false;
+  }
+
   protected void initializeSearchRepository(OpenMetadataApplicationConfig config) {
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
+    Integer databaseMaxSize = config.getDataSourceFactory().getMaxSize();
+    LOG.info(
+        "AUTO-TUNE INIT: Initializing SearchRepository with database max pool size: {}",
+        databaseMaxSize);
     SearchRepository searchRepository =
         new SearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
@@ -530,6 +562,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             return configuration.getWebConfiguration();
           }
         });
+
+    // Add Micrometer bundle for Prometheus metrics
+    bootstrap.addBundle(new org.openmetadata.service.monitoring.MicrometerBundle());
+
     super.initialize(bootstrap);
   }
 
@@ -652,6 +688,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig);
       environment.jersey().register(eventFilter);
     }
+
+    // Register metrics request filter for tracking request latencies
+    environment.jersey().register(org.openmetadata.service.monitoring.MetricsRequestFilter.class);
   }
 
   private void registerUserActivityTracking(Environment environment) {

@@ -1705,6 +1705,91 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(PIIMasker.MASKED_MAIL, noEmailUser.getEmail());
   }
 
+  @Test
+  void testUpdateUser_RemovesInheritedDomainsFromRemovedTeams(TestInfo test)
+      throws HttpResponseException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+
+    // Create team1 with domain1
+    CreateTeam createTeam1 =
+        teamResourceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
+    Team team1 = teamResourceTest.createEntity(createTeam1, ADMIN_AUTH_HEADERS);
+
+    // Create team2 with domain2
+    CreateTeam createTeam2 =
+        teamResourceTest
+            .createRequest(test, 1)
+            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
+    Team team2 = teamResourceTest.createEntity(createTeam2, ADMIN_AUTH_HEADERS);
+
+    // Create user with both teams
+    CreateUser create = createRequest(test).withTeams(listOf(team1.getId(), team2.getId()));
+    User user = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify user has both domains inherited from the teams
+    User createdUser = getEntity(user.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertNotNull(createdUser.getDomains());
+    assertEquals(2, createdUser.getDomains().size());
+
+    // Check that both domains are inherited
+    List<EntityReference> domains = createdUser.getDomains();
+    boolean hasDomain1 =
+        domains.stream().anyMatch(d -> d.getId().equals(DOMAIN.getId()) && d.getInherited());
+    boolean hasDomain2 =
+        domains.stream().anyMatch(d -> d.getId().equals(DOMAIN1.getId()) && d.getInherited());
+    assertTrue(hasDomain1, "User should inherit domain from team1");
+    assertTrue(hasDomain2, "User should inherit domain from team2");
+
+    // Scenario 1: Remove team2 from user - domain2 should be removed as well
+    String userJson = JsonUtils.pojoToJson(createdUser);
+    createdUser.setTeams(List.of(team1.getEntityReference()));
+
+    // Update user to only have team1
+    User updatedUser = patchEntity(createdUser.getId(), userJson, createdUser, ADMIN_AUTH_HEADERS);
+    updatedUser = getEntity(updatedUser.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+
+    // Verify that domain2 is no longer in the domains list
+    assertEquals(1, updatedUser.getDomains().size());
+    assertEquals(DOMAIN.getId(), updatedUser.getDomains().get(0).getId());
+    assertTrue(updatedUser.getDomains().get(0).getInherited());
+
+    // Scenario 2: Create team3 with the same domain as team1 (domain1)
+    // and verify that when one team is removed, domain remains inherited
+    CreateTeam createTeam3 =
+        teamResourceTest
+            .createRequest(test, 2)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
+    Team team3 = teamResourceTest.createEntity(createTeam3, ADMIN_AUTH_HEADERS);
+
+    // Add user to both teams that have the same domain
+    userJson = JsonUtils.pojoToJson(updatedUser);
+    updatedUser.setTeams(List.of(team1.getEntityReference(), team3.getEntityReference()));
+
+    User userWithBothTeams =
+        patchEntity(updatedUser.getId(), userJson, updatedUser, ADMIN_AUTH_HEADERS);
+    userWithBothTeams = getEntity(userWithBothTeams.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+
+    // Still should have just domain1
+    assertEquals(1, userWithBothTeams.getDomains().size());
+    assertEquals(DOMAIN.getId(), userWithBothTeams.getDomains().get(0).getId());
+    assertTrue(userWithBothTeams.getDomains().get(0).getInherited());
+
+    // Remove team1, but keep team3 - domain1 should still be inherited from team3
+    userJson = JsonUtils.pojoToJson(userWithBothTeams);
+    userWithBothTeams.setTeams(List.of(team3.getEntityReference()));
+
+    User userWithTeam3 =
+        patchEntity(userWithBothTeams.getId(), userJson, userWithBothTeams, ADMIN_AUTH_HEADERS);
+    userWithTeam3 = getEntity(userWithTeam3.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+
+    // Should still have domain1 inherited from team3
+    assertEquals(1, userWithTeam3.getDomains().size());
+    assertEquals(DOMAIN.getId(), userWithTeam3.getDomains().get(0).getId());
+    assertTrue(
+        userWithTeam3.getDomains().get(0).getInherited(),
+        "Domain should still be marked as inherited");
+  }
+
   private DecodedJWT decodedJWT(String token) {
     DecodedJWT jwt;
     try {
@@ -2060,7 +2145,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void test_botActivityNotTracked() throws HttpResponseException, InterruptedException {
+  void test_botActivityNotTracked() throws HttpResponseException {
     // Test that bot activity is not tracked
     // We'll use a simple approach: update a bot user's activity time directly
     // and verify it doesn't show in online users (assuming the query filters out bots)

@@ -244,9 +244,6 @@ public class EntityRelationshipCleanup {
 
   /**
    * Deletes orphaned relationships from the database
-   *
-   * @param orphanedRelationships List of orphaned relationships to delete
-   * @return Number of relationships successfully deleted
    */
   private int deleteOrphanedRelationships(List<OrphanedRelationship> orphanedRelationships) {
     LOG.info("Deleting {} orphaned relationships", orphanedRelationships.size());

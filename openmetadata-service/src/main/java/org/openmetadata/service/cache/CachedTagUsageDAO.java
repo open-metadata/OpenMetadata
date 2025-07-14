@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
@@ -324,5 +325,128 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
   @Override
   public List<String> getTargetFQNHashForTagPrefix(String tagFQNHashPrefix) {
     return delegate.getTargetFQNHashForTagPrefix(tagFQNHashPrefix);
+  }
+
+  @Override
+  public Map<String, Integer> getTagCountsBulk(int source, List<String> tagFQNs) {
+    if (!RelationshipCache.isAvailable() || tagFQNs == null || tagFQNs.isEmpty()) {
+      return delegate.getTagCountsBulk(source, tagFQNs);
+    }
+
+    String cacheKey = TAG_BATCH_CACHE_PREFIX + "counts:" + source + ":" + tagFQNs.hashCode();
+
+    try {
+      Map<String, Object> cachedData = RelationshipCache.get(cacheKey);
+      @SuppressWarnings("unchecked")
+      Map<String, Integer> cachedCounts = (Map<String, Integer>) cachedData.get("tagCounts");
+      if (cachedCounts != null) {
+        LOG.debug("Cache hit for bulk tag counts: {} tags from source {}", tagFQNs.size(), source);
+        return cachedCounts;
+      }
+
+      Map<String, Integer> counts = delegate.getTagCountsBulk(source, tagFQNs);
+
+      if (counts != null) {
+        Map<String, Object> cacheData = new HashMap<>();
+        cacheData.put("tagCounts", counts);
+        RelationshipCache.put(cacheKey, cacheData);
+        LOG.debug("Cached bulk tag counts for {} tags from source {}", tagFQNs.size(), source);
+      }
+
+      return counts;
+    } catch (Exception e) {
+      LOG.error("Error retrieving bulk tag counts: {}", e.getMessage(), e);
+      return delegate.getTagCountsBulk(source, tagFQNs);
+    }
+  }
+
+  @Override
+  @Deprecated
+  public List<Map.Entry<String, Integer>> getTagCountsBulkComplex(
+      String sampleTagFQN,
+      int source,
+      String tagFQNHash,
+      String tagFQNHashPrefix,
+      List<String> tagFQNs) {
+    // Since this is deprecated, we'll delegate directly without caching
+    // This ensures backward compatibility while encouraging use of the newer method
+    return delegate.getTagCountsBulkComplex(
+        sampleTagFQN, source, tagFQNHash, tagFQNHashPrefix, tagFQNs);
+  }
+
+  @Override
+  public void applyTagsBatch(List<TagLabel> tagLabels, String targetFQN) {
+    if (tagLabels == null || tagLabels.isEmpty()) {
+      return;
+    }
+
+    try {
+      delegate.applyTagsBatch(tagLabels, targetFQN);
+      if (RelationshipCache.isAvailable()) {
+        String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
+        invalidateTagCaches(targetFQNHash);
+
+        // Update tag usage counters
+        for (TagLabel tagLabel : tagLabels) {
+          RelationshipCache.bumpTag(tagLabel.getTagFQN(), 1);
+        }
+
+        LOG.debug(
+            "Applied {} tags to entity {} in batch and invalidated cache",
+            tagLabels.size(),
+            targetFQN);
+      }
+    } catch (Exception e) {
+      LOG.error("Error applying tags batch to entity {}: {}", targetFQN, e.getMessage(), e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteTagsBatch(List<TagLabel> tagLabels, String targetFQN) {
+    if (tagLabels == null || tagLabels.isEmpty()) {
+      return;
+    }
+
+    try {
+      delegate.deleteTagsBatch(tagLabels, targetFQN);
+      if (RelationshipCache.isAvailable()) {
+        String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
+        invalidateTagCaches(targetFQNHash);
+
+        // Update tag usage counters
+        for (TagLabel tagLabel : tagLabels) {
+          RelationshipCache.bumpTag(tagLabel.getTagFQN(), -1);
+        }
+
+        LOG.debug(
+            "Deleted {} tags from entity {} in batch and invalidated cache",
+            tagLabels.size(),
+            targetFQN);
+      }
+    } catch (Exception e) {
+      LOG.error("Error deleting tags batch from entity {}: {}", targetFQN, e.getMessage(), e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void applyTagsBatchInternal(
+      List<Integer> sources,
+      List<String> tagFQNs,
+      List<String> tagFQNHashes,
+      List<String> targetFQNHashes,
+      List<Integer> labelTypes,
+      List<Integer> states) {
+    // This is an internal method that delegates directly to the database
+    delegate.applyTagsBatchInternal(
+        sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states);
+  }
+
+  @Override
+  public void deleteTagsBatchInternal(
+      List<Integer> sources, List<String> tagFQNHashes, List<String> targetFQNHashes) {
+    // This is an internal method that delegates directly to the database
+    delegate.deleteTagsBatchInternal(sources, tagFQNHashes, targetFQNHashes);
   }
 }

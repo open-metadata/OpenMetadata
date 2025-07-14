@@ -41,6 +41,7 @@ from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.filters import filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.stored_procedures import get_procedure_name_from_call
 from metadata.utils.time_utils import datetime_to_timestamp
@@ -289,6 +290,15 @@ class StoredProcedureLineageMixin(ABC):
             or []
         ):
             if procedure:
+                if filter_by_stored_procedure(
+                    self.source_config.storedProcedureFilterPattern,
+                    procedure.name.root,
+                ):
+                    self.status.filter(
+                        procedure.name.root,
+                        "Stored Procedure Filtered Out",
+                    )
+                    continue
                 logger.debug(f"Processing Lineage for [{procedure.name}]")
                 for query_by_procedure in (
                     queries_dict.get(procedure.name.root.lower()) or []
