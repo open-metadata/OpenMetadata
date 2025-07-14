@@ -39,7 +39,7 @@ import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb
 import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import Stepper from '../../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
-import { UploadFile } from '../../../components/UploadFile/UploadFile';
+import UploadFile from '../../../components/UploadFile/UploadFile';
 import {
   ENTITY_IMPORT_STEPS,
   VALIDATION_STEP,
@@ -385,7 +385,6 @@ const BulkEntityImportPage = () => {
       importedEntityType,
       handleResetImportJob,
       handleActiveStepChange,
-      history,
     ]
   );
 
@@ -504,7 +503,8 @@ const BulkEntityImportPage = () => {
     }
 
     return () => {
-      socket && socket.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL);
+      socket?.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL);
+      handleResetImportJob();
     };
   }, [socket]);
 
