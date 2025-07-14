@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -10,8 +11,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-/* eslint-disable @typescript-eslint/ban-types */
 
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
@@ -33,27 +32,21 @@ import {
   ExtraInfo,
   RecentlySearched,
   RecentlySearchedData,
-  RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
 import { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
-import { reactLocalStorage } from 'reactjs-localstorage';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import {
-  imageTypes,
-  LOCALSTORAGE_RECENTLY_SEARCHED,
-  LOCALSTORAGE_RECENTLY_VIEWED,
-} from '../constants/constants';
+import { imageTypes } from '../constants/constants';
 import { BASE_COLORS } from '../constants/DataInsight.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
-import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
+import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import { FeedCounts } from '../interface/feed.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
@@ -235,43 +228,75 @@ export const getCountBadge = (
   );
 };
 
-export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
-  const recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_VIEWED
-  ) as RecentlyViewed;
-
-  if (recentlyViewed?.data) {
-    return recentlyViewed.data;
-  }
-
-  return [];
-};
-
 export const setRecentlyViewedData = (
   recentData: Array<RecentlyViewedData>
 ): void => {
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_VIEWED, {
-    data: recentData,
-  });
+  const currentUser = useApplicationStore.getState().currentUser;
+  if (!currentUser) {
+    return;
+  }
+  const { setUserPreference } = usePersistentStorage.getState();
+  setUserPreference(currentUser.name, { recentlyViewed: recentData });
+};
+
+export const addToRecentViewed = (eData: RecentlyViewedData): void => {
+  const entityData = { ...eData, timestamp: Date.now() };
+  const currentUser = useApplicationStore.getState().currentUser;
+  let recentlyViewed: RecentlyViewedData[] = [];
+  if (!currentUser) {
+    recentlyViewed = [];
+  } else {
+    const { preferences } = usePersistentStorage.getState();
+    recentlyViewed = get(preferences, [currentUser.name, 'recentlyViewed'], []);
+  }
+
+  let newData = [...recentlyViewed];
+  if (recentlyViewed) {
+    const arrData = recentlyViewed
+      .filter((item) => item.fqn !== entityData.fqn)
+      .sort(arraySorterByKey<RecentlyViewedData>('timestamp', true));
+    arrData.unshift(entityData);
+
+    if (arrData.length > 8) {
+      arrData.pop();
+    }
+    newData = arrData;
+  } else {
+    newData = [entityData];
+  }
+  setRecentlyViewedData(newData);
 };
 
 export const setRecentlySearchedData = (
   recentData: Array<RecentlySearchedData>
 ): void => {
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_SEARCHED, {
-    data: recentData,
-  });
+  const currentUser = useApplicationStore.getState().currentUser;
+  if (!currentUser) {
+    return;
+  }
+  const { setUserPreference } = usePersistentStorage.getState();
+  setUserPreference(currentUser.name, { recentlySearched: recentData });
 };
 
 export const addToRecentSearched = (searchTerm: string): void => {
   if (searchTerm.trim()) {
     const searchData = { term: searchTerm, timestamp: Date.now() };
-    const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-      LOCALSTORAGE_RECENTLY_SEARCHED
-    ) as RecentlySearched;
+    const currentUser = useApplicationStore.getState().currentUser;
+    let recentlySearched: RecentlySearchedData[] = [];
+    if (!currentUser) {
+      recentlySearched = [];
+    } else {
+      const { preferences } = usePersistentStorage.getState();
+      recentlySearched = get(
+        preferences,
+        [currentUser.name, 'recentlySearched'],
+        []
+      );
+    }
+
     let arrSearchedData: RecentlySearched['data'] = [];
-    if (recentlySearch?.data) {
-      const arrData = recentlySearch.data
+    if (recentlySearched && recentlySearched.length > 0) {
+      const arrData = recentlySearched
         // search term is not case-insensitive.
         .filter((item) => item.term !== searchData.term)
         .sort(arraySorterByKey<RecentlySearchedData>('timestamp', true));
@@ -286,29 +311,6 @@ export const addToRecentSearched = (searchTerm: string): void => {
     }
     setRecentlySearchedData(arrSearchedData);
   }
-};
-
-export const addToRecentViewed = (eData: RecentlyViewedData): void => {
-  const entityData = { ...eData, timestamp: Date.now() };
-  let recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_VIEWED
-  ) as RecentlyViewed;
-  if (recentlyViewed?.data) {
-    const arrData = recentlyViewed.data
-      .filter((item) => item.fqn !== entityData.fqn)
-      .sort(arraySorterByKey<RecentlyViewedData>('timestamp', true));
-    arrData.unshift(entityData);
-
-    if (arrData.length > 8) {
-      arrData.pop();
-    }
-    recentlyViewed.data = arrData;
-  } else {
-    recentlyViewed = {
-      data: [entityData],
-    };
-  }
-  setRecentlyViewedData(recentlyViewed.data);
 };
 
 export const errorMsg = (value: string) => {
@@ -563,10 +565,6 @@ export const getTeamsUser = (
   }
 
   return;
-};
-
-export const getEmptyPlaceholder = () => {
-  return <ErrorPlaceHolder size={SIZE.MEDIUM} />;
 };
 
 //  return the status like loading and success
