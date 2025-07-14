@@ -1160,4 +1160,56 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
   private Column updateColumnByFQN(String columnFQN, UpdateColumn updateColumn) throws IOException {
     return updateColumnByFQN(columnFQN, updateColumn, "table");
   }
+
+  @Test
+  void test_updateNestedTableColumn_description() throws IOException {
+    // Create a deeply nested column structure
+    List<Column> nestedColumns =
+        List.of(
+            new Column().withName("personal_details").withDataType(ColumnDataType.STRING),
+            new Column().withName("other_info").withDataType(ColumnDataType.STRING));
+    List<Column> customerInfoChildren =
+        List.of(
+            new Column()
+                .withName("personal_details")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(nestedColumns));
+    List<Column> deeplyNestedDataChildren =
+        List.of(
+            new Column()
+                .withName("customer_info")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(customerInfoChildren));
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("deeply_nested_data")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(deeplyNestedDataChildren));
+    CreateTable createTable =
+        new CreateTable()
+            .withName("deeply_nested_table")
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(columns);
+    Table nestedTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Build the FQN for the innermost nested column
+    String columnFQN =
+        nestedTable.getFullyQualifiedName() + ".deeply_nested_data.customer_info.personal_details";
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDescription("<p>Personal details nested structure updated</p>");
+
+    Column updatedColumn = updateColumnByFQN(columnFQN, updateColumn, "table");
+    assertEquals(
+        "<p>Personal details nested structure updated</p>", updatedColumn.getDescription());
+
+    // Fetch the table and verify the nested column's description is updated
+    Table updatedTable =
+        tableResourceTest.getEntity(nestedTable.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column deeplyNestedData = updatedTable.getColumns().getFirst();
+    Column customerInfo = deeplyNestedData.getChildren().getFirst();
+    Column personalDetails = customerInfo.getChildren().getFirst();
+    assertEquals(
+        "<p>Personal details nested structure updated</p>", personalDetails.getDescription());
+  }
 }
