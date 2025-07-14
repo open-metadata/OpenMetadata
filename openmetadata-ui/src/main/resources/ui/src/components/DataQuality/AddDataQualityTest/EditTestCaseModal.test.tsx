@@ -94,7 +94,7 @@ describe('EditTestCaseModal Component', () => {
       await screen.findByText('ParameterForm.component')
     ).toBeInTheDocument();
     expect(await screen.findByText('label.cancel')).toBeInTheDocument();
-    expect(await screen.findByText('label.submit')).toBeInTheDocument();
+    expect(await screen.findByText('label.save')).toBeInTheDocument();
   });
 
   it('table, name, test definition, should be disabled', async () => {
@@ -139,7 +139,7 @@ describe('EditTestCaseModal Component', () => {
     render(<EditTestCaseModal {...mockProps} />);
 
     await act(async () => {
-      userEvent.click(await screen.findByText('label.submit'));
+      userEvent.click(await screen.findByText('label.save'));
     });
 
     await waitFor(() => {
@@ -408,7 +408,7 @@ describe('EditTestCaseModal Component', () => {
     expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
 
     // Submit the form
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -497,7 +497,7 @@ describe('EditTestCaseModal Component', () => {
     expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
 
     // Submit the form
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -573,7 +573,7 @@ describe('EditTestCaseModal Component', () => {
     expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
 
     // Submit the form
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
 
     await act(async () => {
       fireEvent.click(submitBtn);

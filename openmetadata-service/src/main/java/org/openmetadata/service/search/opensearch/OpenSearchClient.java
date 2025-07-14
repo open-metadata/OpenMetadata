@@ -480,11 +480,22 @@ public class OpenSearchClient implements SearchClient {
     try {
       RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
       builder.addHeader("Content-Type", "application/json");
+
+      // Start search operation timing using Micrometer
+      io.micrometer.core.instrument.Timer.Sample searchTimerSample =
+          org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
+
       SearchResponse searchResponse =
           client.search(
               new os.org.opensearch.action.search.SearchRequest(request.getIndex())
                   .source(searchSourceBuilder),
               RequestOptions.DEFAULT);
+
+      // End search operation timing
+      if (searchTimerSample != null) {
+        org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
+            searchTimerSample);
+      }
       if (Boolean.FALSE.equals(request.getIsHierarchy())) {
         return Response.status(OK).entity(searchResponse.toString()).build();
       } else {
@@ -498,8 +509,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
-      throws IOException {
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) {
     LOG.info("Searching with NLQ: {}", request.getQuery());
 
     if (nlqService != null) {
@@ -523,8 +533,18 @@ public class OpenSearchClient implements SearchClient {
           // Use DFS Query Then Fetch for consistent scoring across shards
           searchRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
 
+          // Start search operation timing using Micrometer
+          io.micrometer.core.instrument.Timer.Sample searchTimerSample =
+              org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
+
           os.org.opensearch.action.search.SearchResponse response =
               client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
+
+          // End search operation timing
+          if (searchTimerSample != null) {
+            org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
+                searchTimerSample);
+          }
           if (response.getHits() != null
               && response.getHits().getTotalHits() != null
               && response.getHits().getTotalHits().value > 0) {
@@ -1590,8 +1610,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
-      throws IOException {
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
     if (isClientAvailable) {
       BulkRequest bulkRequest = new BulkRequest();
       for (Map<String, String> docAndId : docsAndIds) {
@@ -2504,7 +2523,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public List<String> getDataStreams(String prefix) throws IOException {
+  public List<String> getDataStreams(String prefix) {
     try {
       GetDataStreamRequest request = new GetDataStreamRequest(prefix + "*");
       GetDataStreamResponse response =

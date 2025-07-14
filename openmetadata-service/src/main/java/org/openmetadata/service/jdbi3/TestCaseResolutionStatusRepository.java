@@ -7,10 +7,8 @@ import static org.openmetadata.service.Entity.getEntityReferenceByName;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.beans.BeanInfo;
-import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -95,8 +93,7 @@ public class TestCaseResolutionStatusRepository
   }
 
   public RestUtil.PatchResponse<TestCaseResolutionStatus> patch(
-      UUID id, JsonPatch patch, String user)
-      throws IntrospectionException, InvocationTargetException, IllegalAccessException {
+      UUID id, JsonPatch patch, String user) {
     String originalJson = timeSeriesDao.getById(id);
     if (originalJson == null) {
       throw new EntityNotFoundException(String.format("Entity with id %s not found", id));

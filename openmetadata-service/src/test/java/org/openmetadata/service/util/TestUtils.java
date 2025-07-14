@@ -220,6 +220,23 @@ public final class TestUtils {
               .retryExceptions(RetryableAssertionError.class)
               .build());
 
+  /**
+   * Simulates work by performing a CPU-intensive operation
+   * that takes approximately the specified milliseconds.
+   * This is more reliable than Thread.sleep() for testing
+   * as it doesn't block threads and is more predictable.
+   */
+  public static void simulateWork(long targetMillis) {
+    long startTime = System.nanoTime();
+    long targetNanos = targetMillis * 1_000_000L;
+
+    // Perform busy work until target time is reached
+    while ((System.nanoTime() - startTime) < targetNanos) {
+      // Perform some computation to consume CPU time
+      Math.sqrt(Math.random());
+    }
+  }
+
   public static void assertCustomProperties(
       List<CustomProperty> expected, List<CustomProperty> actual) {
     if (expected == actual) { // Take care of both being null
@@ -558,6 +575,22 @@ public final class TestUtils {
       throws HttpResponseException {
     Response response =
         SecurityUtil.addHeaders(target, headers)
+            .method(
+                "PATCH",
+                Entity.entity(patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+    return readResponse(response, clz, Status.OK.getStatusCode());
+  }
+
+  public static <T> T patch(
+      WebTarget target,
+      JsonNode patch,
+      Class<T> clz,
+      Map<String, String> headers,
+      String ifMatchHeader)
+      throws HttpResponseException {
+    Response response =
+        SecurityUtil.addHeaders(target, headers)
+            .header("If-Match", ifMatchHeader)
             .method(
                 "PATCH",
                 Entity.entity(patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));

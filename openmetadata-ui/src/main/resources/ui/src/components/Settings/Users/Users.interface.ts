@@ -32,4 +32,5 @@ export enum UserPageTabs {
   MY_DATA = 'mydata',
   FOLLOWING = 'following',
   ACCESS_TOKEN = 'access-token',
+  PERMISSIONS = 'permissions',
 }

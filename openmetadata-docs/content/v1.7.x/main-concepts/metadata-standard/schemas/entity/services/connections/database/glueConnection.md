@@ -1,5 +1,6 @@
 ---
 title: Glue Connection | OpenMetadata AWS Glue Connection Details
+description: Get started with glueconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/glueconnection
 ---
 
