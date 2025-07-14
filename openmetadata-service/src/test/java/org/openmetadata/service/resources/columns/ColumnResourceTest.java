@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
@@ -820,7 +821,9 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> updateColumnByFQN(invalidFQN, updateColumn),
         NOT_FOUND,
-        "table instance for " + FullyQualifiedName.getParentFQN(invalidFQN) + " not found");
+        "table instance for "
+            + FullyQualifiedName.getParentEntityFQN(invalidFQN, TABLE)
+            + " not found");
   }
 
   @Test
