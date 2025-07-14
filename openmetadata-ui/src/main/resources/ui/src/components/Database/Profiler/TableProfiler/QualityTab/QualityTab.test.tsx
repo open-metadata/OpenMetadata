@@ -45,6 +45,8 @@ const mockUseTableProfiler = {
     EditAll: true,
     EditDataProfile: true,
     EditTests: true,
+    ViewTests: true,
+    ViewAll: true,
   },
   fetchAllTests: jest.fn(),
   onTestCaseUpdate: jest.fn(),
@@ -228,16 +230,17 @@ describe('QualityTab', () => {
     const { getPrioritizedEditPermission } = jest.requireMock(
       '../../../../../utils/PermissionsUtils'
     );
-    getPrioritizedEditPermission.mockReturnValue(false);
 
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
       permissions: {
         EditAll: false,
         EditTests: false,
+        ViewTests: true,
       },
       isTableDeleted: false,
     });
+    getPrioritizedEditPermission.mockReturnValue(false);
 
     await act(async () => {
       render(<QualityTab />);
@@ -254,6 +257,7 @@ describe('QualityTab', () => {
       permissions: {
         EditAll: true,
         EditTests: true,
+        ViewTests: true,
       },
       isTableDeleted: true,
     });
@@ -284,6 +288,7 @@ describe('QualityTab', () => {
       permissions: {
         EditAll: true,
         EditTests: true,
+        ViewTests: true,
       },
       isTableDeleted: false,
     }));
