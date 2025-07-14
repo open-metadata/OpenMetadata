@@ -13,12 +13,10 @@
 import { expect } from '@playwright/test';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
-import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { test } from '../fixtures/pages';
 
-const user = new UserClass();
 const container = new ContainerClass();
 
 test.slow(true);
@@ -26,8 +24,6 @@ test.slow(true);
 test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
-
-    await user.create(apiContext);
     await container.create(apiContext, CONTAINER_CHILDREN);
 
     await afterAction();
@@ -36,8 +32,7 @@ test.describe('Container entity specific tests ', () => {
   test.afterAll('Clean up', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
-    await user.delete(apiContext);
-    // await container.delete(apiContext);
+    await container.delete(apiContext);
 
     await afterAction();
   });
