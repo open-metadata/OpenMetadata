@@ -1,5 +1,3 @@
-import { t } from 'i18next';
-
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +10,8 @@ import { t } from 'i18next';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { t } from '../../../../utils/i18next/LocalUtil';
+
 export const DOMAIN_SORT_BY_KEYS = {
   LATEST: 'latest',
   A_TO_Z: 'a-to-z',

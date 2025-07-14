@@ -13,6 +13,7 @@
 import { Typography } from 'antd';
 import { isEmpty, orderBy, toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
 import {
@@ -26,7 +27,6 @@ import {
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getDomainList } from '../../../../rest/domainAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';
-import { t } from '../../../../utils/i18next/LocalUtil';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -45,6 +45,7 @@ const DomainsWidget = ({
   handleLayoutUpdate,
   currentLayout,
 }: WidgetCommonProps) => {
+  const { t } = useTranslation();
   const [domains, setDomains] = useState<Domain[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     DOMAIN_SORT_BY_KEYS.LATEST
