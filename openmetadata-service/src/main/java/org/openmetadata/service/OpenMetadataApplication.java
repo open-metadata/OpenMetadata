@@ -604,7 +604,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig)
       throws ConfigurationException {
     if (catalogConfig.getAuthorizerConfiguration().getBotPrincipals() != null
-        || !catalogConfig.getAuthorizerConfiguration().getBotPrincipals().isEmpty()) {
+        && !catalogConfig.getAuthorizerConfiguration().getBotPrincipals().isEmpty()) {
       throw new ConfigurationException(
           "'botPrincipals' configuration is deprecated. Please remove it from "
               + "'openmetadata.yaml and restart the server");
