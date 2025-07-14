@@ -242,7 +242,9 @@ describe('Test NavBar Component', () => {
     render(<NavBarComponent />);
 
     expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('domain-dropdown')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('domain-selectable-list')
+    ).not.toBeInTheDocument();
   });
 
   it('should hide global search bar and domain dropdown on customize-page route', () => {
@@ -252,7 +254,9 @@ describe('Test NavBar Component', () => {
     render(<NavBarComponent />);
 
     expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('domain-dropdown')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('domain-selectable-list')
+    ).not.toBeInTheDocument();
   });
 
   it('should show global search bar and domain dropdown on other routes', () => {
@@ -262,7 +266,7 @@ describe('Test NavBar Component', () => {
     render(<NavBarComponent />);
 
     expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-dropdown')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
   });
 
   it('should show global search bar and domain dropdown on settings route', () => {
@@ -272,7 +276,7 @@ describe('Test NavBar Component', () => {
     render(<NavBarComponent />);
 
     expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-dropdown')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
   });
 });
 

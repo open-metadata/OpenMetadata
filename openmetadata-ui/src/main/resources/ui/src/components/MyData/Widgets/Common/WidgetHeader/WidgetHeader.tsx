@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { DragOutlined, MoreOutlined } from '@ant-design/icons';
+import { DragOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Typography } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
+import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { WidgetConfig } from '../../../../../pages/CustomizablePage/CustomizablePage.interface';
 import WidgetMoreOptions from '../WidgetMoreOptions/WidgetMoreOptions';
 import WidgetSortFilter from '../WidgetSortFilter/WidgetSortFilter';
@@ -23,7 +24,6 @@ import './widget-header.less';
 import { WIDGET_MORE_MENU_ITEMS } from './WidgetHeader.constants';
 
 export interface WidgetHeaderProps {
-  badge?: ReactNode;
   className?: string;
   currentLayout?: Layout[];
   handleLayoutUpdate?: (layout: Layout[]) => void;
@@ -37,7 +37,7 @@ export interface WidgetHeaderProps {
     key: string;
     label: string;
   }>;
-  title: string;
+  title: ReactNode;
   widgetKey: string;
   widgetWidth?: number;
 }
@@ -45,7 +45,6 @@ export interface WidgetHeaderProps {
 const WidgetHeader = ({
   title,
   icon,
-  badge,
   isEditView = false,
   widgetWidth = 2,
   sortOptions,
@@ -96,7 +95,7 @@ const WidgetHeader = ({
           style={{
             maxWidth: widgetWidth === 1 ? '200px' : '525px',
           }}>
-          {title} {badge}
+          {title}
         </Typography.Paragraph>
       </Col>
 
@@ -113,7 +112,7 @@ const WidgetHeader = ({
                 <Button
                   className="widget-header-options"
                   data-testid="edit-widget-button"
-                  icon={<MoreOutlined size={20} />}
+                  icon={<EditIcon height={20} width={20} />}
                   onClick={onEditClick}
                 />
               )}

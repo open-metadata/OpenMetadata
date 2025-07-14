@@ -19,7 +19,6 @@ import WidgetHeader from './WidgetHeader';
 const mockProps = {
   title: 'Test Widget',
   icon: <TaskIcon data-testid="widget-icon" />,
-  badge: <span data-testid="widget-badge">(5)</span>,
   isEditView: false,
   widgetWidth: 2,
   sortOptions: [
@@ -54,7 +53,6 @@ describe('WidgetHeader', () => {
 
     expect(screen.getByText('Test Widget')).toBeInTheDocument();
     expect(screen.getByTestId('widget-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('widget-badge')).toBeInTheDocument();
   });
 
   it('renders sort dropdown when not in edit view', () => {
@@ -107,7 +105,6 @@ describe('WidgetHeader', () => {
   it('handles missing optional props gracefully', () => {
     renderWidgetHeader({
       icon: undefined,
-      badge: undefined,
       sortOptions: undefined,
       selectedSortBy: undefined,
       onSortChange: undefined,

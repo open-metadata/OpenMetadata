@@ -17,19 +17,19 @@ import { useTranslation } from 'react-i18next';
 import './widget-footer.less';
 
 export interface WidgetFooterProps {
-  showMoreButton?: boolean;
+  className?: string;
+  moreButtonLink?: string;
   moreButtonText?: string;
   onMoreClick?: () => void;
-  moreButtonLink?: string;
-  className?: string;
+  showMoreButton?: boolean;
 }
 
 const WidgetFooter = ({
-  showMoreButton = false,
+  className = '',
+  moreButtonLink,
   moreButtonText,
   onMoreClick,
-  moreButtonLink,
-  className = '',
+  showMoreButton = false,
 }: WidgetFooterProps) => {
   const { t } = useTranslation();
   if (!showMoreButton) {
