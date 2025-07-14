@@ -10,6 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+jest.mock('../../../../../utils/PermissionsUtils', () => ({
+  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
+  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
+}));
+
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
@@ -219,6 +225,11 @@ describe('QualityTab', () => {
   });
 
   it('should not render the Add button if editTest is false', async () => {
+    const { getPrioritizedEditPermission } = jest.requireMock(
+      '../../../../../utils/PermissionsUtils'
+    );
+    getPrioritizedEditPermission.mockReturnValue(false);
+
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
       permissions: {
@@ -287,6 +298,11 @@ describe('QualityTab', () => {
   });
 
   it('should call onSettingButtonClick', async () => {
+    const { getPrioritizedEditPermission } = jest.requireMock(
+      '../../../../../utils/PermissionsUtils'
+    );
+    getPrioritizedEditPermission.mockReturnValue(true);
+
     await act(async () => {
       render(<QualityTab />);
     });
