@@ -256,14 +256,6 @@
         {
           "field": "tags.tagFQN.text",
           "boost": 5.0
-        },
-        {
-          "field": "columns.description",
-          "boost": 2.0
-        },
-        {
-          "field": "columns.children.description",
-          "boost": 1.0
         }
       ],
       "aggregations": [
@@ -283,8 +275,7 @@
       "highlightFields": [
         "name",
         "description",
-        "displayName",
-        "columns.description"
+        "displayName"
       ],
       "fieldValueBoosts": [
         {

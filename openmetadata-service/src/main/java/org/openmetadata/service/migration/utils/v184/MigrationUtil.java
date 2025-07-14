@@ -21,15 +21,10 @@ public class MigrationUtil {
   private static final String SEARCH_SETTINGS_KEY = "searchSettings";
 
   // JSON field names
-  private static final String ASSET_TYPE_CONFIGURATIONS = "assetTypeConfigurations";
   private static final String ALLOWED_FIELDS = "allowedFields";
-  private static final String SEARCH_FIELDS = "searchFields";
-  private static final String HIGHLIGHT_FIELDS = "highlightFields";
   private static final String FIELDS = "fields";
-  private static final String ASSET_TYPE = "assetType";
   private static final String ENTITY_TYPE = "entityType";
   private static final String TABLE = "table";
-  private static final String FIELD = "field";
   private static final String NAME = "name";
 
   // Column field names
@@ -44,7 +39,7 @@ public class MigrationUtil {
 
   public static void updateSearchSettings() {
     try {
-      LOG.info("Updating search settings to add column description support");
+      LOG.info("Updating search settings to add column description to allowed fields");
 
       Settings searchSettings = systemRepository.getConfigWithKey(SEARCH_SETTINGS_KEY);
       if (searchSettings == null) {
@@ -57,25 +52,6 @@ public class MigrationUtil {
       JsonNode settingsNode = JsonUtils.readTree(rawJson);
       JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
       AtomicBoolean needsUpdate = new AtomicBoolean(false);
-
-      JsonNode assetTypeConfigurations = settingsNode.get(ASSET_TYPE_CONFIGURATIONS);
-      if (assetTypeConfigurations != null && assetTypeConfigurations.isArray()) {
-        StreamSupport.stream(assetTypeConfigurations.spliterator(), false)
-            .map(config -> new IndexedNode(config, getNodeIndex(assetTypeConfigurations, config)))
-            .filter(indexedNode -> TABLE.equals(indexedNode.node.get(ASSET_TYPE).asText()))
-            .findFirst()
-            .ifPresent(
-                indexedNode -> {
-                  boolean updated =
-                      addSearchFieldPatch(patchBuilder, indexedNode.node, indexedNode.index);
-                  updated |=
-                      addHighlightFieldPatch(patchBuilder, indexedNode.node, indexedNode.index);
-                  updated |=
-                      addChildrenDescriptionSearchFieldPatch(
-                          patchBuilder, indexedNode.node, indexedNode.index);
-                  needsUpdate.compareAndSet(false, updated);
-                });
-      }
 
       JsonNode allowedFields = settingsNode.get(ALLOWED_FIELDS);
       if (allowedFields != null && allowedFields.isArray()) {
@@ -115,52 +91,6 @@ public class MigrationUtil {
     }
   }
 
-  private static boolean addSearchFieldPatch(
-      JsonPatchBuilder patchBuilder, JsonNode config, int configIndex) {
-    try {
-      JsonNode searchFields = config.get(SEARCH_FIELDS);
-      if (searchFields != null && searchFields.isArray()) {
-        for (JsonNode field : searchFields) {
-          if (COLUMNS_DESCRIPTION.equals(field.get(FIELD).asText())) {
-            return false;
-          }
-        }
-
-        patchBuilder.add(
-            "/" + ASSET_TYPE_CONFIGURATIONS + "/" + configIndex + "/" + SEARCH_FIELDS + "/-",
-            Json.createObjectBuilder().add(FIELD, COLUMNS_DESCRIPTION).add("boost", 2.0).build());
-        LOG.info("Adding {} to searchFields for table configuration", COLUMNS_DESCRIPTION);
-        return true;
-      }
-    } catch (Exception e) {
-      LOG.error("Error adding search field patch", e);
-    }
-    return false;
-  }
-
-  private static boolean addHighlightFieldPatch(
-      JsonPatchBuilder patchBuilder, JsonNode config, int configIndex) {
-    try {
-      JsonNode highlightFields = config.get(HIGHLIGHT_FIELDS);
-      if (highlightFields != null && highlightFields.isArray()) {
-        for (JsonNode field : highlightFields) {
-          if (COLUMNS_DESCRIPTION.equals(field.asText())) {
-            return false;
-          }
-        }
-
-        patchBuilder.add(
-            "/" + ASSET_TYPE_CONFIGURATIONS + "/" + configIndex + "/" + HIGHLIGHT_FIELDS + "/-",
-            Json.createValue(COLUMNS_DESCRIPTION));
-        LOG.info("Adding {} to highlightFields for table configuration", COLUMNS_DESCRIPTION);
-        return true;
-      }
-    } catch (Exception e) {
-      LOG.error("Error adding highlight field patch", e);
-    }
-    return false;
-  }
-
   private static boolean addAllowedFieldPatch(
       JsonPatchBuilder patchBuilder, JsonNode fieldConfig, int configIndex) {
     try {
@@ -183,32 +113,6 @@ public class MigrationUtil {
       }
     } catch (Exception e) {
       LOG.error("Error adding allowed field patch", e);
-    }
-    return false;
-  }
-
-  private static boolean addChildrenDescriptionSearchFieldPatch(
-      JsonPatchBuilder patchBuilder, JsonNode config, int configIndex) {
-    try {
-      JsonNode searchFields = config.get(SEARCH_FIELDS);
-      if (searchFields != null && searchFields.isArray()) {
-        for (JsonNode field : searchFields) {
-          if (COLUMNS_CHILDREN_DESCRIPTION.equals(field.get(FIELD).asText())) {
-            return false;
-          }
-        }
-
-        patchBuilder.add(
-            "/" + ASSET_TYPE_CONFIGURATIONS + "/" + configIndex + "/" + SEARCH_FIELDS + "/-",
-            Json.createObjectBuilder()
-                .add(FIELD, COLUMNS_CHILDREN_DESCRIPTION)
-                .add("boost", 1.0)
-                .build());
-        LOG.info("Adding {} to searchFields for table configuration", COLUMNS_CHILDREN_DESCRIPTION);
-        return true;
-      }
-    } catch (Exception e) {
-      LOG.error("Error adding children description search field patch", e);
     }
     return false;
   }
