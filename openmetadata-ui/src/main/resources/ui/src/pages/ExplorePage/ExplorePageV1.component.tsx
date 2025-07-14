@@ -30,7 +30,6 @@ import {
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
-import { PAGE_SIZE } from '../../constants/constants';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
 import {
   mockSearchData,
@@ -41,6 +40,7 @@ import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
@@ -70,6 +70,10 @@ const ExplorePageV1: FunctionComponent = () => {
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
   const { isNLPActive, isNLPEnabled } = useSearchStore();
   const isNLPRequestEnabled = isNLPEnabled && isNLPActive;
+  const {
+    preferences: { globalPageSize },
+    setPreference,
+  } = useCurrentUserPreferences();
 
   const { tab } = useParams<UrlParams>();
 
@@ -108,13 +112,19 @@ const ExplorePageV1: FunctionComponent = () => {
     size,
     showDeleted,
   } = useMemo(() => {
-    return parseSearchParams(location.search, queryFilter);
+    return parseSearchParams(location.search, globalPageSize, queryFilter);
   }, [location.search, queryFilter]);
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
     history.push({
-      search: Qs.stringify({ ...parsedSearch, page, size: size ?? PAGE_SIZE }),
+      search: Qs.stringify({
+        ...parsedSearch,
+        page,
+        size: size ?? globalPageSize,
+      }),
     });
+
+    setPreference({ globalPageSize: size ?? globalPageSize });
   };
 
   const handleSortValueChange = (page: number, sortVal: string) => {
@@ -122,7 +132,7 @@ const ExplorePageV1: FunctionComponent = () => {
       search: Qs.stringify({
         ...parsedSearch,
         page,
-        size: size ?? PAGE_SIZE,
+        size,
         sort: sortVal,
       }),
     });
@@ -133,7 +143,7 @@ const ExplorePageV1: FunctionComponent = () => {
       search: Qs.stringify({
         ...parsedSearch,
         page,
-        size: size ?? PAGE_SIZE,
+        size,
         sortOrder: sortOrderVal,
       }),
     });

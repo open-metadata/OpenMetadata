@@ -28,6 +28,10 @@ jest.mock('../../utils/i18next/LocalUtil', () => ({
   detectBrowserLanguage: jest.fn(() => 'en-US'),
 }));
 
+jest.mock('../../constants/constants', () => ({
+  PAGE_SIZE_BASE: 15,
+}));
+
 const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
   typeof useApplicationStore
 >;
@@ -55,6 +59,7 @@ describe('useCurrentUserStore', () => {
     isSidebarCollapsed: false,
     language: SupportedLocales.English,
     selectedEntityTableColumns: {},
+    globalPageSize: 15,
   };
 
   describe('useCurrentUserPreferences', () => {
@@ -135,6 +140,7 @@ describe('useCurrentUserStore', () => {
         isSidebarCollapsed: true,
         language: SupportedLocales.English, // From defaultPreferences
         selectedEntityTableColumns: { table1: ['col1', 'col2'] },
+        globalPageSize: 15,
       });
     });
 
@@ -155,6 +161,7 @@ describe('useCurrentUserStore', () => {
             isSidebarCollapsed: false,
             language: SupportedLocales.简体中文,
             selectedEntityTableColumns: {},
+            globalPageSize: 15,
           },
         },
       });
@@ -166,6 +173,7 @@ describe('useCurrentUserStore', () => {
         isSidebarCollapsed: false,
         language: SupportedLocales.简体中文, // User's existing preference preserved
         selectedEntityTableColumns: {},
+        globalPageSize: 15,
       });
     });
   });
