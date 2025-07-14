@@ -1,5 +1,6 @@
 ---
 title: Add Description Action | OpenMetadata Description Actions
+description: Get started with adddescriptionaction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/adddescriptionaction
 ---
 

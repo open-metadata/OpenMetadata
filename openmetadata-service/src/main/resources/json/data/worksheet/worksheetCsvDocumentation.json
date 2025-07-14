@@ -1,0 +1,141 @@
+{
+  "summary": "Worksheet CSV file is used for importing and exporting worksheet metadata. The CSV file can be used to create new worksheets or update existing ones within spreadsheets.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "Name of the worksheet.",
+      "examples": [
+        "Sheet1", "Revenue", "Q4_Data"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name of the worksheet.",
+      "examples": [
+        "Revenue Analysis", "Q4 Sales Data"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the worksheet in Markdown format.",
+      "examples": [
+        "This worksheet contains quarterly revenue analysis data"
+      ]
+    },
+    {
+      "name": "spreadsheet",
+      "required": true,
+      "description": "Fully qualified name of the parent spreadsheet.",
+      "examples": [
+        "googleDrive.Finance.Budget2024", "sharepoint.Analytics.SalesData"
+      ]
+    },
+    {
+      "name": "worksheetId",
+      "required": false,
+      "description": "Native worksheet/tab ID from the source system.",
+      "examples": [
+        "123456", "gid=0"
+      ]
+    },
+    {
+      "name": "index",
+      "required": false,
+      "description": "Position/index of the worksheet in the spreadsheet (0-based).",
+      "examples": [
+        "0", "1", "5"
+      ]
+    },
+    {
+      "name": "rowCount",
+      "required": false,
+      "description": "Number of rows in the worksheet.",
+      "examples": [
+        "1000", "50000"
+      ]
+    },
+    {
+      "name": "columnCount",
+      "required": false,
+      "description": "Number of columns in the worksheet.",
+      "examples": [
+        "26", "100"
+      ]
+    },
+    {
+      "name": "isHidden",
+      "required": false,
+      "description": "Whether the worksheet is hidden (true/false).",
+      "examples": [
+        "true", "false"
+      ]
+    },
+    {
+      "name": "columns",
+      "required": false,
+      "description": "Column definitions in JSON format if structured data.",
+      "examples": [
+        "[{\"name\":\"ID\",\"dataType\":\"INTEGER\"},{\"name\":\"Name\",\"dataType\":\"VARCHAR\"}]"
+      ]
+    },
+    {
+      "name": "owners",
+      "required": false,
+      "description": "Owners of the worksheet. Multiple owners are separated by ';'. Each owner is specified as 'type:name' format.",
+      "examples": [
+        "user:analyst1", "team:analytics-team;user:data.scientist"
+      ]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the worksheet separated by ';'.",
+      "examples": [
+        "PII.Sensitive", "Finance.Revenue"
+      ]
+    },
+    {
+      "name": "glossaryTerms",
+      "required": false,
+      "description": "Fully qualified glossary term names associated with the worksheet separated by ';'.",
+      "examples": [
+        "Glossary.Finance.Revenue", "Glossary.Sales"
+      ]
+    },
+    {
+      "name": "domain",
+      "required": false,
+      "description": "Fully qualified name of the domain the worksheet belongs to.",
+      "examples": [
+        "Finance", "Sales"
+      ]
+    },
+    {
+      "name": "dataProducts",
+      "required": false,
+      "description": "List of fully qualified names of data products this worksheet is part of, separated by ';'.",
+      "examples": [
+        "SalesAnalytics", "RevenueReporting"
+      ]
+    },
+    {
+      "name": "experts",
+      "required": false,
+      "description": "Subject matter experts for this worksheet. Multiple experts are separated by ';'.",
+      "examples": [
+        "user:data.analyst", "user:analyst1;user:analyst2"
+      ]
+    },
+    {
+      "name": "reviewers",
+      "required": false,
+      "description": "Reviewers for this worksheet. Multiple reviewers are separated by ';'.",
+      "examples": [
+        "user:lead.analyst", "user:manager1;team:qa-team"
+      ]
+    }
+  ]
+}

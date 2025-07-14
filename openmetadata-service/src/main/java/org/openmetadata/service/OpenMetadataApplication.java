@@ -115,6 +115,8 @@ import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.filters.ETagRequestFilter;
+import org.openmetadata.service.resources.filters.ETagResponseFilter;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -146,7 +148,6 @@ import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CustomParameterNameProvider;
-import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.pac4j.core.util.CommonHelper;
 import org.quartz.SchedulerException;
@@ -206,8 +207,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
-    // Initialize HTTP and JDBI timers
-    MicrometerBundleSingleton.initLatencyEvents();
+    // Metrics initialization now handled by MicrometerBundle
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
@@ -296,6 +296,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
+
+    // Register ETag Filters for optimistic concurrency control
+    environment.jersey().register(ETagRequestFilter.class);
+    environment.jersey().register(ETagResponseFilter.class);
 
     // Register User Activity Tracking
     registerUserActivityTracking(environment);
@@ -560,7 +564,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         });
 
     // Add Micrometer bundle for Prometheus metrics
-    bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
+    bootstrap.addBundle(new org.openmetadata.service.monitoring.MicrometerBundle());
 
     super.initialize(bootstrap);
   }
@@ -684,6 +688,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig);
       environment.jersey().register(eventFilter);
     }
+
+    // Register metrics request filter for tracking request latencies
+    environment.jersey().register(org.openmetadata.service.monitoring.MetricsRequestFilter.class);
   }
 
   private void registerUserActivityTracking(Environment environment) {

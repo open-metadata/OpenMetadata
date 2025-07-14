@@ -52,7 +52,7 @@ class RateLimiterProductionReadinessTest {
     LOG.info("⚠️  Alternative: Guava RateLimiter - Works but marked @Beta (use with caution)");
   }
 
-  private void testGuavaRateLimiterProduction(double targetRate, int operations) throws Exception {
+  private void testGuavaRateLimiterProduction(double targetRate, int operations) {
     LOG.info("\n--- Testing Guava RateLimiter (v33.4.8-jre) ---");
     LOG.info("Status: ⚠️ Marked @Beta - Use with caution in production");
 
@@ -80,8 +80,7 @@ class RateLimiterProductionReadinessTest {
         duration >= (operations - 1) * 1000 / targetRate * 0.5, "Should take reasonable time");
   }
 
-  private void testResilience4jRateLimiterProduction(double targetRate, int operations)
-      throws Exception {
+  private void testResilience4jRateLimiterProduction(double targetRate, int operations) {
     LOG.info("\n--- Testing Resilience4j RateLimiter (v2.2.0) ---");
     LOG.info("Status: ✅ Production Ready - Stable and well-maintained");
 
@@ -144,7 +143,7 @@ class RateLimiterProductionReadinessTest {
     LOG.info("All rate limiters successfully controlled database load during warmup");
   }
 
-  private void simulateCacheWarmupWithGuava(double rate, int queries) throws Exception {
+  private void simulateCacheWarmupWithGuava(double rate, int queries) {
     LOG.info("\n--- Cache Warmup with Guava RateLimiter ---");
     RateLimiter rateLimiter = RateLimiter.create(rate);
 
@@ -165,7 +164,7 @@ class RateLimiterProductionReadinessTest {
         rate);
   }
 
-  private void simulateCacheWarmupWithResilience4j(double rate, int queries) throws Exception {
+  private void simulateCacheWarmupWithResilience4j(double rate, int queries) {
     LOG.info("\n--- Cache Warmup with Resilience4j RateLimiter ---");
 
     RateLimiterConfig config =
@@ -227,7 +226,7 @@ class RateLimiterProductionReadinessTest {
           io.github.resilience4j.ratelimiter.RateLimiter rateLimiter =
               io.github.resilience4j.ratelimiter.RateLimiter.of("stability-test", config);
 
-          return () -> rateLimiter.acquirePermission();
+          return rateLimiter::acquirePermission;
         },
         threadCount,
         operationsPerThread,
