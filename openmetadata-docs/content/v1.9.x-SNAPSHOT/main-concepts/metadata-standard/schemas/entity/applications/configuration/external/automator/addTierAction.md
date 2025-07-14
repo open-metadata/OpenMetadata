@@ -1,5 +1,6 @@
 ---
 title: Add Tier Action | OpenMetadata Tier Actions
+description: Get started with addtieraction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/addtieraction
 ---
 

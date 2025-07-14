@@ -1,5 +1,6 @@
 ---
 title: MySQL Connection | OpenMetadata MySQL Database Connection
+description: Get started with mysqlconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mysqlconnection
 ---
 

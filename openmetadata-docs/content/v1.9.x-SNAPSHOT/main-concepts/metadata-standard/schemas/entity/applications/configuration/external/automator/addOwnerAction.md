@@ -1,5 +1,6 @@
 ---
 title: Add Owner Action | OpenMetadata Ownership Actions
+description: Get started with addowneraction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/addowneraction
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Metastore Config | OpenMetadata Metastore
+description: Get started with metastoreconfig. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/deltalake/metastoreconfig
 ---
 

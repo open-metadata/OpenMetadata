@@ -1,5 +1,6 @@
 ---
-title: dynamoDbCatalogConnection
+title: Dynamodbcatalogconnection | Official Documentation
+description: Get started with dynamodbcatalogconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/iceberg/dynamodbcatalogconnection
 ---
 

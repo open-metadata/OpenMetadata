@@ -1,5 +1,6 @@
 ---
 title: Exasol Connection | OpenMetadata Exasol Database Connection
+description: Get started with exasolconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/exasolconnection
 ---
 

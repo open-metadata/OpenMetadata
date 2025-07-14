@@ -1,5 +1,6 @@
 ---
-title: removeCustomPropertiesAction
+title: Removecustompropertiesaction | Official Documentation
+description: Get started with removecustompropertiesaction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/removecustompropertiesaction
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: DeltaLake Connection | OpenMetadata DeltaLake
+description: Get started with deltalakeconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/deltalakeconnection
 ---
 

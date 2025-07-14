@@ -1,5 +1,6 @@
 ---
 title: Azure SQL Connection | OpenMetadata Azure SQL
+description: Get started with azuresqlconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/azuresqlconnection
 ---
 

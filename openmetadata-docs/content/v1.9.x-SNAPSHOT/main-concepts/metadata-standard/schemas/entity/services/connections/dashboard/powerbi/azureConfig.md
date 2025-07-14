@@ -1,5 +1,6 @@
 ---
 title: Azure Config | OpenMetadata Azure Config
+description: Get started with azureconfig. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/powerbi/azureconfig
 ---
 

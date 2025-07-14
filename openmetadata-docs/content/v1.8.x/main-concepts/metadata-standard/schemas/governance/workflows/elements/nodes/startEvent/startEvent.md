@@ -1,5 +1,6 @@
 ---
 title: Start Event | OpenMetadata Start Event Details
+description: Get started with startevent. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/startevent/startevent
 ---
 

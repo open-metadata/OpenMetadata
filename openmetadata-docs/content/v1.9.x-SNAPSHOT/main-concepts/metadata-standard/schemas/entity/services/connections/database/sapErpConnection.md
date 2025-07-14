@@ -1,5 +1,6 @@
 ---
 title: SAP ERP Connection | OpenMetadata SAP ERP
+description: Get started with saperpconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/saperpconnection
 ---
 

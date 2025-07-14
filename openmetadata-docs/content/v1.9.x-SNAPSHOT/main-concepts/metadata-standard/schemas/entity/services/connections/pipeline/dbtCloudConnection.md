@@ -1,5 +1,6 @@
 ---
 title: dbt Cloud Connection | OpenMetadata dbt Cloud
+description: Get started with dbtcloudconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/dbtcloudconnection
 ---
 

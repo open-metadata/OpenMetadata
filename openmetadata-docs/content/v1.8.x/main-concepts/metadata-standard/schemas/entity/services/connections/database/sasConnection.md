@@ -1,5 +1,6 @@
 ---
 title: SAS Connection | OpenMetadata SAS Database Connection
+description: Get started with sasconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/sasconnection
 ---
 

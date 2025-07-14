@@ -1,5 +1,6 @@
 ---
-title: glueCatalogConnection
+title: Gluecatalogconnection | Official Documentation
+description: Get started with gluecatalogconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/iceberg/gluecatalogconnection
 ---
 

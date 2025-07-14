@@ -1,5 +1,6 @@
 ---
 title: setEntityCertificationTask
+description: Get started with setentitycertificationtask. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/automatedtask/setentitycertificationtask
 ---
 

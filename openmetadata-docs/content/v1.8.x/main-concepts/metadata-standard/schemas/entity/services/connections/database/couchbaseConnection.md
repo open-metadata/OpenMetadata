@@ -1,5 +1,6 @@
 ---
 title: Couchbase Connection | OpenMetadata Couchbase
+description: Get started with couchbaseconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/couchbaseconnection
 ---
 

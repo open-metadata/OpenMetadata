@@ -1,5 +1,6 @@
 ---
 title: Airbyte Connection | OpenMetadata Airbyte
+description: Get started with airbyteconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/airbyteconnection
 ---
 

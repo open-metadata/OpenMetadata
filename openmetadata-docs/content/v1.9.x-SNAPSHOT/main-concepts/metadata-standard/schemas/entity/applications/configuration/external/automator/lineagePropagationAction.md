@@ -1,5 +1,6 @@
 ---
-title: lineagePropagationAction
+title: Lineagepropagationaction | Official Documentation
+description: Get started with lineagepropagationaction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/lineagepropagationaction
 ---
 

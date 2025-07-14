@@ -1,5 +1,6 @@
 ---
 title: API Auth | OpenMetadata API Authentication Details
+description: Get started with apiauth. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/search/elasticsearch/apiauth
 ---
 

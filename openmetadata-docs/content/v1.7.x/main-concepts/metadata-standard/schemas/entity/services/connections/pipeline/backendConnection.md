@@ -1,5 +1,6 @@
 ---
 title: Backend Connection | OpenMetadata Backend
+description: Get started with backendconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/backendconnection
 ---
 

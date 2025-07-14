@@ -1,5 +1,6 @@
 ---
 title: Basic Auth | OpenMetadata Basic Authentication Setup
+description: Get started with basicauth. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/basicauth
 ---
 

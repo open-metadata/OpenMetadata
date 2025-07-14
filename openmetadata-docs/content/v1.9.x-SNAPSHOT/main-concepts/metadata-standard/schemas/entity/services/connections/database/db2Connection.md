@@ -1,5 +1,6 @@
 ---
 title: DB2 Connection | OpenMetadata DB2 Database Connection
+description: Get started with db2connection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/db2connection
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: datafactoryConnection
+title: Datafactoryconnection | Official Documentation
+description: Get started with datafactoryconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/datafactoryconnection
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: restCatalogConnection
+title: Restcatalogconnection | Official Documentation
+description: Get started with restcatalogconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/iceberg/restcatalogconnection
 ---
 

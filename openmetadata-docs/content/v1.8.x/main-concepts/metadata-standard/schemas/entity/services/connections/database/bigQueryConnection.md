@@ -1,5 +1,6 @@
 ---
 title: BigQuery Connection | OpenMetadata BigQuery
+description: Get started with bigqueryconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/bigqueryconnection
 ---
 

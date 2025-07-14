@@ -1,5 +1,6 @@
 ---
 title: Remove Domain Action | OpenMetadata Domain Removal
+description: Get started with removedomainaction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/removedomainaction
 ---
 

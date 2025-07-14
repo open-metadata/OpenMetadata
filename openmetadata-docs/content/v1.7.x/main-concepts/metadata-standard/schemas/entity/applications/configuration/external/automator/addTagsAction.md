@@ -1,5 +1,6 @@
 ---
 title: Add Tags Action | OpenMetadata Tag Actions
+description: Get started with addtagsaction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/addtagsaction
 ---
 

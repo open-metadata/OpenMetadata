@@ -1,5 +1,6 @@
 ---
 title: Iceberg Catalog | OpenMetadata Iceberg Catalog Configuration
+description: Get started with icebergcatalog. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/iceberg/icebergcatalog
 ---
 

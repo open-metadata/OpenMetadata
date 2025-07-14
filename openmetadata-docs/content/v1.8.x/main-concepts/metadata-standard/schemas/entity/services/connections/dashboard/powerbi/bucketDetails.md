@@ -1,5 +1,6 @@
 ---
 title: Bucket Details | OpenMetadata Bucket Details
+description: Get started with bucketdetails. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/powerbi/bucketdetails
 ---
 
