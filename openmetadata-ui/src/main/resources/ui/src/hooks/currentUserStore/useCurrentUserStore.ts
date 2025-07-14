@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { RecentlySearchedData, RecentlyViewedData } from 'Models';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { detectBrowserLanguage } from '../../utils/i18next/LocalUtil';
@@ -21,6 +22,9 @@ export interface UserPreferences {
   isSidebarCollapsed: boolean;
   language: SupportedLocales;
   selectedEntityTableColumns: Record<string, string[]>;
+  recentlyViewed: RecentlyViewedData[];
+  recentlySearched: RecentlySearchedData[];
+  recentlyViewedQuickLinks: RecentlyViewedData[];
 }
 
 interface Store {
@@ -37,6 +41,9 @@ const defaultPreferences: UserPreferences = {
   isSidebarCollapsed: false,
   language: detectBrowserLanguage(),
   selectedEntityTableColumns: {},
+  recentlyViewed: [],
+  recentlySearched: [],
+  recentlyViewedQuickLinks: [],
   // Add default values for other preferences
 };
 
