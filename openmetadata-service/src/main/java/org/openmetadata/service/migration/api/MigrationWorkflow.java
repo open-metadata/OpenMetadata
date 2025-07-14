@@ -175,7 +175,6 @@ public class MigrationWorkflow {
 
   /*
    * Parse a version string into an array of integers
-   * @param version The version string to parse
    * Follows the format major.minor.patch, patch can contain -extension
    */
   private static int[] parseVersion(String version) {
