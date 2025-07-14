@@ -27,6 +27,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
+import { buildDomainFilter } from '../utils/elasticsearchQueryBuilder';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
@@ -97,24 +98,15 @@ export const fetchDataProductsElasticSearch = async (
   }[];
   paging: Paging;
 }> => {
+  // Use the utility function to build the domain filter
+  const queryFilter = buildDomainFilter(domainFQNs);
+
   const res = await searchQuery({
     query: searchText,
     filters: '',
     pageNumber: page,
     pageSize: PAGE_SIZE,
-    queryFilter: {
-      query: {
-        bool: {
-          should: [
-            {
-              term: {
-                'domain.fullyQualifiedName': domainFQNs,
-              },
-            },
-          ],
-        },
-      },
-    },
+    queryFilter,
     searchIndex: SearchIndex.DATA_PRODUCT,
   });
 
