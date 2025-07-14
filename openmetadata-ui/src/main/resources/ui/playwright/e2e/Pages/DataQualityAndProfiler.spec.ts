@@ -1158,11 +1158,12 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .click();
 
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
-    const getTestCaseList = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list?*'
-    );
+
     await page.click('[data-testid="test-cases"]');
-    await getTestCaseList;
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
     await verifyFilterTestCase(page);
     await verifyFilter2TestCase(page, true);
     await visitDataQualityTab(page, filterTable1);
