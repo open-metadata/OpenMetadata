@@ -5,8 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
 import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.getClaimOrObject;
-import static org.openmetadata.service.security.SecurityUtil.getFirstMatchJwtClaim;
+import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
@@ -745,8 +744,7 @@ public class AuthenticationCodeFlowHandler {
             Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
             claims.putAll(storedCredentials.getIdToken().getJWTClaimsSet().getClaims());
 
-            String username =
-                SecurityUtil.findUserNameFromClaims(claimsMapping, claimsOrder, claims);
+            String username = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
             User user = Entity.getEntityByName(Entity.USER, username, "id", Include.NON_DELETED);
 
             // Create a JWT here
@@ -833,34 +831,6 @@ public class AuthenticationCodeFlowHandler {
       throw new TechnicalException("Exception while refreshing Azure AD token", e);
     } finally {
       HttpUtils.closeConnection(connection);
-    }
-  }
-
-  public static String findUserNameFromClaims(
-      Map<String, String> jwtPrincipalClaimsMapping,
-      List<String> jwtPrincipalClaimsOrder,
-      Map<String, ?> claims) {
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
-      // We have a mapping available so we will use that
-      String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
-      String userNameClaimValue = getClaimOrObject(claims.get(usernameClaim));
-      if (!nullOrEmpty(userNameClaimValue)) {
-        if (userNameClaimValue.contains("@")) {
-          return userNameClaimValue.split("@")[0];
-        }
-        return userNameClaimValue;
-      } else {
-        throw new AuthenticationException("Invalid JWT token, 'username' claim is not present");
-      }
-    } else {
-      String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
-      String userName;
-      if (jwtClaim.contains("@")) {
-        userName = jwtClaim.split("@")[0];
-      } else {
-        userName = jwtClaim;
-      }
-      return userName;
     }
   }
 
