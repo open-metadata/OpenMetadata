@@ -1,5 +1,6 @@
 ---
-title: OIDC Based Authentication
+title: OIDC Based Authentication | Official Documentation
+description: Enable OIDC-based authentication to unify identity providers using open standards, access tokens, and flexible integration patterns.
 slug: /deployment/security/oidc
 collate: false
 ---
