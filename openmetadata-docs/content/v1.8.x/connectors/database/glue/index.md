@@ -9,7 +9,7 @@ name="Glue"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "dbt"]
-unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Sample Data"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Sample Data", "Auto-Classification"]
 / %}
 
 

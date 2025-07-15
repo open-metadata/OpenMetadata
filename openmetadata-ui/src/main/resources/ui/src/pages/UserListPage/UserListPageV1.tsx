@@ -30,11 +30,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-  ROUTES,
-} from '../../constants/constants';
+import { INITIAL_PAGING_VALUE, ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -49,6 +45,7 @@ import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useAuth } from '../../hooks/authHooks';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { searchData } from '../../rest/miscAPI';
@@ -65,6 +62,9 @@ import './user-list-page-v1.less';
 const UserListPageV1 = () => {
   const { t } = useTranslation();
   const { tab } = useRequiredParams<{ tab: GlobalSettingOptions }>();
+  const {
+    preferences: { globalPageSize },
+  } = useCurrentUserPreferences();
   const navigate = useNavigate();
   const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
   const { isAdminUser } = useAuth();
@@ -94,7 +94,7 @@ const UserListPageV1 = () => {
     pageSize,
     paging,
     showPagination,
-  } = usePaging(PAGE_SIZE_MEDIUM);
+  } = usePaging();
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -211,7 +211,7 @@ const UserListPageV1 = () => {
 
   const handleShowDeletedUserChange = (value: boolean) => {
     handlePageChange(INITIAL_PAGING_VALUE);
-    handlePageSizeChange(PAGE_SIZE_MEDIUM);
+    handlePageSizeChange(globalPageSize);
     // Clear search value, on Toggle delete
     setFilters({ isDeleted: value || null, user: null });
   };
@@ -227,7 +227,7 @@ const UserListPageV1 = () => {
     setFilters({});
     setIsDataLoading(true);
     handlePageChange(INITIAL_PAGING_VALUE);
-    handlePageSizeChange(PAGE_SIZE_MEDIUM);
+    handlePageSizeChange(globalPageSize);
   }, [isAdminPage]);
 
   useEffect(() => {
