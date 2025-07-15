@@ -1836,6 +1836,7 @@
     "hex-color-validation": "Die Eingabe ist kein gültiger HEX-Code.",
     "hi-user-welcome-to": "Hallo {{user}}, Willkommen bei",
     "image-upload-error": "Das Hochladen von Bildern wird nicht unterstützt. Bitte verwenden Sie die Markdown-Syntax für Bilder, die über eine URL verfügbar sind.",
+    "import-data-in-progress": "Import läuft.",
     "import-entity-help": "Sparen Sie Zeit und Aufwand, indem Sie eine CSV-Datei mit mehreren {{entity}} in einem Durchgang hochladen.",
     "in-this-database": "In dieser Datenbank",
     "include-assets-message": "Aktivieren Sie die Extraktion von {{assets}} aus der Datenquelle.",

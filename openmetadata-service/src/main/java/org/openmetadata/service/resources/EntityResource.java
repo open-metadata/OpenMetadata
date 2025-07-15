@@ -663,10 +663,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     String jobId = UUID.randomUUID().toString();
+    CSVImportResponse responseEntity = new CSVImportResponse(jobId, "Import is in progress.");
+    Response response =
+        Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
         () -> {
           try {
+            WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
             CsvImportResult result =
                 importCsvInternal(securityContext, name, csv, dryRun, recursive);
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
@@ -677,8 +681,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, e.getMessage());
           }
         });
-    CSVImportResponse response = new CSVImportResponse(jobId, "Import is in progress.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+
+    return response;
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name, boolean recursive)

@@ -21,7 +21,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import { UploadFileProps } from './UploadFile.interface';
 
-export const UploadFile: FC<UploadFileProps> = ({
+const UploadFile: FC<UploadFileProps> = ({
   fileType,
   beforeUpload,
   onCSVUploaded,
@@ -77,3 +77,5 @@ export const UploadFile: FC<UploadFileProps> = ({
     </Dragger>
   );
 };
+
+export default UploadFile;
