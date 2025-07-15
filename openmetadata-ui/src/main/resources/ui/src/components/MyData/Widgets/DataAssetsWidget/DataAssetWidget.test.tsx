@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../../Explore/Explore.mock';
@@ -46,10 +47,20 @@ jest.mock('../../../../utils/CommonUtils', () => ({
 const mockHandleRemoveWidget = jest.fn();
 
 const widgetProps = {
-  selectedGridSize: 10,
   isEditView: true,
   widgetKey: 'testWidgetKey',
   handleRemoveWidget: mockHandleRemoveWidget,
+  handleLayoutUpdate: jest.fn(),
+  currentLayout: [
+    {
+      i: 'testWidgetKey',
+      x: 0,
+      y: 0,
+      w: 2,
+      h: 4,
+      config: {},
+    },
+  ],
 };
 
 describe('DataAssetsWidget', () => {
@@ -57,8 +68,16 @@ describe('DataAssetsWidget', () => {
     jest.clearAllMocks();
   });
 
-  it('should fetch dataAssets initially', async () => {
-    render(<DataAssetsWidget {...widgetProps} />);
+  const renderDataAssetsWidget = (props = {}) => {
+    return render(
+      <MemoryRouter>
+        <DataAssetsWidget {...widgetProps} {...props} />
+      </MemoryRouter>
+    );
+  };
+
+  it('should fetch dataAssets initially', () => {
+    renderDataAssetsWidget();
 
     expect(searchData).toHaveBeenCalledWith('', 0, 0, '', 'updatedAt', '', [
       SearchIndex.TABLE,
@@ -72,7 +91,7 @@ describe('DataAssetsWidget', () => {
     ]);
   });
 
-  it('should render DataAssetsWidget', async () => {
+  it('should render DataAssetsWidget with widget wrapper', async () => {
     (searchData as jest.Mock).mockImplementation(() =>
       Promise.resolve({
         data: {
@@ -80,34 +99,53 @@ describe('DataAssetsWidget', () => {
         },
       })
     );
-    await act(async () => {
-      render(<DataAssetsWidget {...widgetProps} />);
-    });
 
-    expect(screen.getByTestId('data-assets-widget')).toBeInTheDocument();
+    renderDataAssetsWidget();
+
+    expect(await screen.findByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
     expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+  });
+
+  it('should render empty state when no data assets', async () => {
+    (searchData as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        data: {
+          aggregations: { 'sterms#serviceType': { buckets: [] } },
+        },
+      })
+    );
+
+    renderDataAssetsWidget();
+
+    expect(await screen.findByTestId('widget-empty-state')).toBeInTheDocument();
     expect(screen.queryByText('DataAssetCard')).not.toBeInTheDocument();
   });
 
-  it('should render ErrorPlaceholder if API is rejected', async () => {
-    (searchData as jest.Mock).mockImplementation(() => Promise.reject());
-    await act(async () => {
-      render(<DataAssetsWidget {...widgetProps} />);
-    });
-
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
-  });
-
-  it('should render DataAsset card if data present', async () => {
+  it('should render DataAsset cards when data is present', async () => {
     (searchData as jest.Mock).mockImplementation(() =>
       Promise.resolve({ data: MOCK_EXPLORE_SEARCH_RESULTS })
     );
-    await act(async () => {
-      render(<DataAssetsWidget {...widgetProps} />);
-    });
 
-    expect(screen.getAllByText('DataAssetCard')).toHaveLength(10);
-    expect(screen.queryByText('ErrorPlaceHolder')).not.toBeInTheDocument();
+    renderDataAssetsWidget();
+
+    expect(await screen.findByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
+    expect(
+      await screen.findByText('label.data-asset-plural')
+    ).toBeInTheDocument();
+    expect(await screen.findAllByText('DataAssetCard')).toHaveLength(10);
+    expect(await screen.findByTestId('widget-footer')).toBeInTheDocument();
+  });
+
+  it('should render footer when data assets are available', async () => {
+    (searchData as jest.Mock).mockImplementation(() =>
+      Promise.resolve({ data: MOCK_EXPLORE_SEARCH_RESULTS })
+    );
+
+    renderDataAssetsWidget();
+
+    expect(await screen.findByTestId('widget-footer')).toBeInTheDocument();
+    expect(await screen.findByText('label.view-more')).toBeInTheDocument();
   });
 });
