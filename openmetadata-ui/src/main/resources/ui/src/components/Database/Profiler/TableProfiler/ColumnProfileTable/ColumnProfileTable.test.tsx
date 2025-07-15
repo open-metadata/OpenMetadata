@@ -79,6 +79,13 @@ jest.mock('../../../../common/TestIndicator/TestIndicator', () => {
 jest.mock('../TableProfilerProvider', () => ({
   useTableProfiler: jest.fn().mockImplementation(() => ({
     tableProfiler: MOCK_TABLE,
+    permissions: {
+      EditAll: true,
+      EditTests: true,
+      EditDataProfile: true,
+      ViewDataProfile: true,
+      ViewAll: true,
+    },
   })),
 }));
 

@@ -204,6 +204,8 @@ jest.mock('../../utils/EntityUtils', () => ({
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   DEFAULT_ENTITY_PERMISSION: {},
+  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
+  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../utils/StringsUtils', () => ({
@@ -243,10 +245,22 @@ jest.mock('../../hoc/LimitWrapper', () => {
 });
 
 describe('Container Page Component', () => {
+  beforeEach(() => {
+    const { getPrioritizedEditPermission, getPrioritizedViewPermission } =
+      jest.requireMock('../../utils/PermissionsUtils');
+    getPrioritizedEditPermission.mockReturnValue(true);
+    getPrioritizedViewPermission.mockReturnValue(true);
+  });
+
   it('should show error-placeholder, if not have view permission', async () => {
     mockGetEntityPermissionByFqn.mockResolvedValueOnce({
       ViewBasic: false,
     });
+
+    const { getPrioritizedViewPermission } = jest.requireMock(
+      '../../utils/PermissionsUtils'
+    );
+    getPrioritizedViewPermission.mockReturnValue(false);
 
     render(<ContainerPage />);
 
