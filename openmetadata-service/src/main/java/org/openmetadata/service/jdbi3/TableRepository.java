@@ -998,9 +998,6 @@ public class TableRepository extends EntityRepository<Table> {
 
   /**
    * Export columns for a table, handling nested column structure
-   *
-   * @param table The table whose columns are being exported
-   * @param csvFile The CSV file to add column records to
    */
   public void exportColumnsRecursively(Table table, CsvFile csvFile) {
     if (table.getColumns() != null && !table.getColumns().isEmpty()) {
