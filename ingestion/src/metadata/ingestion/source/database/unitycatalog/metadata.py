@@ -193,15 +193,15 @@ class UnitycatalogSource(
         Prepare a database request and pass it to the sink
         """
         catalog = self.client.catalogs.get(database_name)
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=database_name,
-                service=self.context.get().database_service,
-                owners=self.get_owner_ref(catalog.owner),
-                description=catalog.comment,
-                tags=self.get_database_tag_labels(database_name),
-            )
+        database_request = CreateDatabaseRequest(
+            name=database_name,
+            service=self.context.get().database_service,
+            owners=self.get_owner_ref(catalog.owner),
+            description=catalog.comment,
+            tags=self.get_database_tag_labels(database_name),
         )
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_database_schema_names(self) -> Iterable[str]:
         """
@@ -247,22 +247,22 @@ class UnitycatalogSource(
         schema = self.client.schemas.get(
             full_name=f"{self.context.get().database}.{schema_name}"
         )
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-                description=schema.comment,
-                owners=self.get_owner_ref(schema.owner),
-                tags=self.get_schema_tag_labels(schema_name),
-            )
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
+            ),
+            description=schema.comment,
+            owners=self.get_owner_ref(schema.owner),
+            tags=self.get_schema_tag_labels(schema_name),
         )
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     def get_tables_name_and_type(self) -> Iterable[Tuple[str, str]]:
         """

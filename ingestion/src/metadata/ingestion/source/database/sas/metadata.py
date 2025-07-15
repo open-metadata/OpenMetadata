@@ -845,12 +845,12 @@ class SasSource(
     def yield_database(
         self, database_name: str
     ) -> Iterable[Either[CreateDatabaseRequest]]:
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=EntityName(database_name),
-                service=self.context.get().database_service,
-            )
+        database_request = CreateDatabaseRequest(
+            name=EntityName(database_name),
+            service=self.context.get().database_service,
         )
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_database_schema_names(self) -> Iterable[Tuple[str, str]]:
         for database, database_schemas in self.database_schemas.items():
@@ -860,17 +860,19 @@ class SasSource(
     def yield_database_schema(
         self, schema_name: Tuple[str, str]
     ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=schema_name[1],
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=schema_name[0],
-                ),
-            )
+
+        schema_request = CreateDatabaseSchemaRequest(
+            name=schema_name[1],
+            database=fqn.build(
+                metadata=self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,
+                database_name=schema_name[0],
+            ),
         )
+
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     def yield_tag(
         self, schema_name: str
