@@ -207,6 +207,8 @@ export interface DashboardConnection {
  * Qlik Cloud Connection Config
  *
  * Sigma Connection Config
+ *
+ * ThoughtSpot Connection Config
  */
 export interface Connection {
     /**
@@ -270,12 +272,17 @@ export interface Connection {
      * Host and Port of the Qlik Cloud instance.
      *
      * Sigma API url.
+     *
+     * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      */
     hostPort?: string;
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
-    projectFilterPattern?:       FilterPattern;
+    projectFilterPattern?: FilterPattern;
+    /**
+     * Supports Metadata Extraction.
+     */
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -353,6 +360,8 @@ export interface Connection {
      * Tableau API version. If not provided, the version will be used from the tableau server.
      *
      * Sigma API version.
+     *
+     * ThoughtSpot API version to use
      */
     apiVersion?: string;
     /**
@@ -471,6 +480,15 @@ export interface Connection {
      * token to connect to Qlik Cloud.
      */
     token?: string;
+    /**
+     * ThoughtSpot authentication configuration
+     */
+    authentication?: Authentication;
+    /**
+     * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
+     * only.
+     */
+    orgId?: string;
 }
 
 /**
@@ -497,6 +515,28 @@ export interface AuthenticationTypeForTableau {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+}
+
+/**
+ * ThoughtSpot authentication configuration
+ *
+ * Basic Auth Credentials
+ *
+ * API Access Token Auth Credentials
+ */
+export interface Authentication {
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Access Token for the API
+     */
+    accessToken?: string;
 }
 
 /**
@@ -1255,6 +1295,8 @@ export enum SpaceType {
  *
  * Sigma service type
  *
+ * ThoughtSpot service type
+ *
  * Type of dashboard service such as Looker or Superset...
  *
  * Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode,
@@ -1277,6 +1319,7 @@ export enum DashboardServiceType {
     Sigma = "Sigma",
     Superset = "Superset",
     Tableau = "Tableau",
+    ThoughtSpot = "ThoughtSpot",
 }
 
 /**
