@@ -17,8 +17,10 @@ import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import { default as React, useMemo } from 'react';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
@@ -37,8 +39,10 @@ export const DomainExpertWidget = () => {
 
   const { editOwnerPermission, editAllPermission } = useMemo(
     () => ({
-      editOwnerPermission: permissions.EditAll || permissions.EditOwners,
-      editAllPermission: permissions.EditAll,
+      editOwnerPermission:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditOwners),
+      editAllPermission: permissions?.EditAll,
     }),
     [permissions]
   );

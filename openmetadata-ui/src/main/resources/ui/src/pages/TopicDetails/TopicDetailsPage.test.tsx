@@ -85,6 +85,8 @@ jest.mock('../../utils/PermissionsUtils', () => ({
     ViewTests: true,
     ViewUsage: true,
   },
+  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
+  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
 describe('Test TopicDetailsPage component', () => {

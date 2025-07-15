@@ -25,6 +25,7 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   EntityReference,
@@ -46,6 +47,7 @@ import {
   getEntityName,
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -231,11 +233,19 @@ const IncidentManagerPageHeader = ({
         }
       : {
           hasEditStatusPermission:
-            testCasePermission?.EditAll || testCasePermission?.EditStatus,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditStatus
+            ),
           hasEditOwnerPermission:
-            testCasePermission?.EditAll || testCasePermission?.EditOwners,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditOwners
+            ),
         };
-  }, [testCasePermission, isVersionPage]);
+  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
 
   const statusDetails = useMemo(() => {
     if (isLoading) {

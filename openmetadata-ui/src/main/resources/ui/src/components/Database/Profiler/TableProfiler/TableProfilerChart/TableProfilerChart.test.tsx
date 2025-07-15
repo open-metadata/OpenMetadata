@@ -70,6 +70,8 @@ jest.mock('../TableProfilerProvider', () => ({
     permissions: {
       EditAll: true,
       EditDataProfile: true,
+      ViewDataProfile: true,
+      ViewAll: true,
     },
     isTableDeleted: false,
   }),

@@ -66,6 +66,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
@@ -91,7 +92,10 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+} from '../../../utils/PermissionsUtils';
 import {
   getDomainDetailsPath,
   getDomainPath,
@@ -212,7 +216,10 @@ const DomainDetailsPage = ({
   }, [domain, isVersionsView]);
 
   const editDisplayNamePermission = useMemo(() => {
-    return domainPermission.EditAll || domainPermission.EditDisplayName;
+    return getPrioritizedEditPermission(
+      domainPermission,
+      Operation.EditDisplayName
+    );
   }, [domainPermission]);
 
   const addButtonContent = [

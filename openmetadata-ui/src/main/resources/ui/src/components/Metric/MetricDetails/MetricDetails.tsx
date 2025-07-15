@@ -22,6 +22,7 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Metric } from '../../../generated/entity/data/metric';
+import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -36,6 +37,10 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -183,14 +188,21 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   } = useMemo(
     () => ({
       editCustomAttributePermission:
-        (metricPermissions.EditAll || metricPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          metricPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editAllPermission: metricPermissions.EditAll && !deleted,
       editLineagePermission:
-        (metricPermissions.EditAll || metricPermissions.EditLineage) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          metricPermissions,
+          Operation.EditLineage
+        ) && !deleted,
       viewSampleDataPermission:
-        metricPermissions.ViewAll || metricPermissions.ViewSampleData,
+        getPrioritizedViewPermission(
+          metricPermissions,
+          Operation.ViewSampleData
+        ) && !deleted,
       viewAllPermission: metricPermissions.ViewAll,
     }),
     [metricPermissions, deleted]

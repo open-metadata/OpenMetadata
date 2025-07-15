@@ -28,11 +28,13 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -170,6 +172,28 @@ public class PermissionsResource {
           String name) {
     ResourceContext<?> resourceContext = new ResourceContext(resource, null, name);
     return authorizer.getPermission(securityContext, user, resourceContext);
+  }
+
+  @GET
+  @Path("/view/{entityType}")
+  @Operation(
+      operationId = "getEntityTypeFieldPermissions",
+      summary = "Get permissions for a given entity type at field level.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Permissions for logged in user",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResourcePermissionList.class)))
+      })
+  public Map<String, MetadataOperation> getEntityTypeFieldPermissions(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Type of the entity", schema = @Schema(type = "String"))
+          @PathParam("entityType")
+          String entityType) {
+    return ResourceRegistry.getResourceFieldViewOperations(entityType);
   }
 
   @GET

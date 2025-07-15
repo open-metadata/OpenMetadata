@@ -10,6 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+jest.mock('../../../../../utils/PermissionsUtils', () => ({
+  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
+  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
+}));
+
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
@@ -41,6 +47,8 @@ const mockUseTableProfiler = {
     EditAll: true,
     EditDataProfile: true,
     EditTests: true,
+    ViewTests: true,
+    ViewAll: true,
   },
   fetchAllTests: jest.fn(),
   onTestCaseUpdate: jest.fn(),
@@ -225,14 +233,20 @@ describe('QualityTab', () => {
   });
 
   it('should not render the Add button if editTest is false', async () => {
+    const { getPrioritizedEditPermission } = jest.requireMock(
+      '../../../../../utils/PermissionsUtils'
+    );
+
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
       permissions: {
         EditAll: false,
         EditTests: false,
+        ViewTests: true,
       },
       isTableDeleted: false,
     });
+    getPrioritizedEditPermission.mockReturnValue(false);
 
     await act(async () => {
       render(<QualityTab />);
@@ -249,6 +263,7 @@ describe('QualityTab', () => {
       permissions: {
         EditAll: true,
         EditTests: true,
+        ViewTests: true,
       },
       isTableDeleted: true,
     });
@@ -279,6 +294,7 @@ describe('QualityTab', () => {
       permissions: {
         EditAll: true,
         EditTests: true,
+        ViewTests: true,
       },
       isTableDeleted: false,
     }));
@@ -293,6 +309,11 @@ describe('QualityTab', () => {
   });
 
   it('should call onSettingButtonClick', async () => {
+    const { getPrioritizedEditPermission } = jest.requireMock(
+      '../../../../../utils/PermissionsUtils'
+    );
+    getPrioritizedEditPermission.mockReturnValue(true);
+
     await act(async () => {
       render(<QualityTab />);
     });

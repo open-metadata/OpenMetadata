@@ -16,7 +16,9 @@ import Qs from 'qs';
 import React, { useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import profilerClassBase from './ProfilerClassBase';
 import { TableProfilerProps } from './TableProfiler.interface';
@@ -42,19 +44,18 @@ const TableProfiler = (props: TableProfilerProps) => {
 
   const { viewTest, viewProfiler } = useMemo(() => {
     const { permissions } = props;
-    const viewPermission = permissions.ViewAll || permissions.ViewBasic;
 
     return {
-      viewTest: viewPermission || permissions.ViewTests,
-      viewProfiler: viewPermission || permissions.ViewDataProfile,
+      viewTest: getPrioritizedViewPermission(permissions, Operation.ViewTests),
+      viewProfiler: getPrioritizedViewPermission(
+        permissions,
+        Operation.ViewDataProfile
+      ),
     };
   }, [props.permissions]);
 
   const tabOptions: ItemType[] = useMemo(() => {
-    const profilerTabOptions = profilerClassBase.getProfilerTabOptions({
-      viewProfiler,
-      viewTest,
-    });
+    const profilerTabOptions = profilerClassBase.getProfilerTabOptions();
 
     return profilerTabOptions.map((tab) => {
       const SvgIcon = tab.icon;
