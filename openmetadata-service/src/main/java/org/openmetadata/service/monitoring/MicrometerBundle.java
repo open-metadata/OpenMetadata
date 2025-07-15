@@ -111,14 +111,6 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
         .addMapping("/prometheus");
 
     LOG.info("Prometheus metrics endpoint registered at admin port on /prometheus");
-
-    // Register user metrics endpoint
-    environment
-        .admin()
-        .addServlet("user-metrics", new UserMetricsServlet())
-        .addMapping("/user-metrics");
-
-    LOG.info("User metrics endpoint registered at admin port on /user-metrics");
   }
 
   private void registerJdbiMetrics(Environment environment) {
