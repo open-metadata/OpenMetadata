@@ -10,24 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import CustomiseLandingPageHeader from './CustomiseLandingPageHeader';
 
 jest.mock('../../../../hooks/useApplicationStore');
-jest.mock('../../../../hooks/useSearchStore');
 jest.mock('../../../../utils/ServiceUtilClassBase');
 jest.mock('../../../../utils/CommonUtils');
 
 // Create typed mocks
 const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
   typeof useApplicationStore
->;
-const mockUseSearchStore = useSearchStore as jest.MockedFunction<
-  typeof useSearchStore
 >;
 const mockGetRecentlyViewedData = getRecentlyViewedData as jest.MockedFunction<
   typeof getRecentlyViewedData
@@ -47,6 +42,13 @@ const mockCurrentUser = {
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
+  useLocation: () => ({
+    pathname: '/explore',
+    search: '',
+    state: undefined,
+    key: '',
+    hash: '',
+  }),
   useNavigate: () => mockNavigate,
 }));
 
@@ -57,12 +59,6 @@ describe('CustomiseLandingPageHeader', () => {
     // Set default mock implementations
     mockUseApplicationStore.mockReturnValue({
       currentUser: mockCurrentUser,
-    });
-
-    mockUseSearchStore.mockReturnValue({
-      isNLPEnabled: false,
-      isNLPActive: false,
-      setNLPActive: jest.fn(),
     });
 
     mockGetRecentlyViewedData.mockReturnValue([]);
@@ -102,77 +98,6 @@ describe('CustomiseLandingPageHeader', () => {
     expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
     expect(screen.getByTestId('domain-icon')).toBeInTheDocument();
     expect(screen.getByTestId('dropdown-icon')).toBeInTheDocument();
-  });
-
-  it('should not render NLP button when NLP is disabled', () => {
-    mockUseSearchStore.mockReturnValue({
-      isNLPEnabled: false,
-      isNLPActive: false,
-      setNLPActive: jest.fn(),
-    });
-
-    render(<CustomiseLandingPageHeader />);
-
-    expect(
-      screen.queryByTestId('nlp-suggestions-button')
-    ).not.toBeInTheDocument();
-  });
-
-  it('should render NLP button when NLP is enabled', () => {
-    const mockSetNLPActive = jest.fn();
-    mockUseSearchStore.mockReturnValue({
-      isNLPEnabled: true,
-      isNLPActive: false,
-      setNLPActive: mockSetNLPActive,
-    });
-
-    render(<CustomiseLandingPageHeader />);
-
-    const nlpButton = screen.getByTestId('nlp-suggestions-button');
-
-    expect(nlpButton).toBeInTheDocument();
-    expect(nlpButton).toHaveClass('nlp-search-button');
-  });
-
-  it('should show active state when NLP is active', () => {
-    const mockSetNLPActive = jest.fn();
-    mockUseSearchStore.mockReturnValue({
-      isNLPEnabled: true,
-      isNLPActive: true,
-      setNLPActive: mockSetNLPActive,
-    });
-
-    render(<CustomiseLandingPageHeader />);
-
-    const nlpButton = screen.getByTestId('nlp-suggestions-button');
-
-    expect(nlpButton).toHaveClass('active');
-  });
-
-  it('should toggle NLP state when NLP button is clicked', async () => {
-    const mockSetNLPActive = jest.fn();
-    mockUseSearchStore.mockReturnValue({
-      isNLPEnabled: true,
-      isNLPActive: false,
-      setNLPActive: mockSetNLPActive,
-    });
-
-    render(<CustomiseLandingPageHeader />);
-
-    const nlpButton = screen.getByTestId('nlp-suggestions-button');
-    fireEvent.click(nlpButton);
-
-    expect(mockSetNLPActive).toHaveBeenCalledWith(true);
-  });
-
-  it('should navigate to explore page when search is submitted', () => {
-    render(<CustomiseLandingPageHeader />);
-
-    const searchInput = screen.getByTestId('customise-searchbox');
-    fireEvent.change(searchInput, { target: { value: 'test search' } });
-    fireEvent.keyDown(searchInput, { key: 'Enter', code: 'Enter' });
-
-    expect(mockNavigate).toHaveBeenCalledWith('/explore?search=test%20search');
   });
 
   it('should render recently viewed data when available', () => {

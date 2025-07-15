@@ -15,7 +15,7 @@ import { isEmpty, orderBy, toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TaskIcon } from '../../../../assets/svg/ic-task.svg';
+import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/ic-my-task.svg';
 import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/my-task-no-data-placeholder.svg';
 import { SIZE, SORT_ORDER } from '../../../../enums/common.enum';
 import { FeedFilter } from '../../../../enums/mydata.enum';
@@ -125,7 +125,7 @@ const MyTaskWidget = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<TaskIcon data-testid="task-icon" />}
+        icon={<MyTaskIcon data-testid="task-icon" />}
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}
         sortOptions={MY_TASK_SORT_BY_OPTIONS}
