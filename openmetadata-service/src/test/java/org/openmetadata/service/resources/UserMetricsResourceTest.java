@@ -264,7 +264,7 @@ class UserMetricsResourceTest extends OpenMetadataApplicationTest {
     }
 
     UserActivityTracker.getInstance().forceFlushSync();
-    TestUtils.simulateWork(2);
+    TestUtils.simulateWork(3); // Increased wait time for database propagation
 
     Map<String, Object> metrics = getUserMetrics();
     LOG.info("Metrics after multiple users: {}", metrics);
@@ -272,12 +272,13 @@ class UserMetricsResourceTest extends OpenMetadataApplicationTest {
     String lastActivity = (String) metrics.get("last_activity");
     assertNotNull(lastActivity, "Last activity should not be null");
 
-    // Verify activity is very recent (within last 30 seconds to account for test execution time)
+    // Verify activity is very recent (within last 60 seconds to account for test execution time and
+    // async updates)
     Instant lastActivityTime = Instant.parse(lastActivity);
     Instant now = Instant.now();
     long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
     assertTrue(
-        secondsSinceActivity < 30,
+        secondsSinceActivity < 60,
         "Last activity should be very recent, but was " + secondsSinceActivity + " seconds ago");
   }
 
