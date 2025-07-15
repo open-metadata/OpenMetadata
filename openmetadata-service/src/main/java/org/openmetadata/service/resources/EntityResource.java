@@ -555,7 +555,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<T> response =
-        repository.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
+        repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
     repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());
     LOG.info(
