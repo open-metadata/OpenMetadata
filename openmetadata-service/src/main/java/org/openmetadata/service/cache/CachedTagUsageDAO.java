@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
@@ -371,5 +372,81 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
     // This ensures backward compatibility while encouraging use of the newer method
     return delegate.getTagCountsBulkComplex(
         sampleTagFQN, source, tagFQNHash, tagFQNHashPrefix, tagFQNs);
+  }
+
+  @Override
+  public void applyTagsBatch(List<TagLabel> tagLabels, String targetFQN) {
+    if (tagLabels == null || tagLabels.isEmpty()) {
+      return;
+    }
+
+    try {
+      delegate.applyTagsBatch(tagLabels, targetFQN);
+      if (RelationshipCache.isAvailable()) {
+        String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
+        invalidateTagCaches(targetFQNHash);
+
+        // Update tag usage counters
+        for (TagLabel tagLabel : tagLabels) {
+          RelationshipCache.bumpTag(tagLabel.getTagFQN(), 1);
+        }
+
+        LOG.debug(
+            "Applied {} tags to entity {} in batch and invalidated cache",
+            tagLabels.size(),
+            targetFQN);
+      }
+    } catch (Exception e) {
+      LOG.error("Error applying tags batch to entity {}: {}", targetFQN, e.getMessage(), e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteTagsBatch(List<TagLabel> tagLabels, String targetFQN) {
+    if (tagLabels == null || tagLabels.isEmpty()) {
+      return;
+    }
+
+    try {
+      delegate.deleteTagsBatch(tagLabels, targetFQN);
+      if (RelationshipCache.isAvailable()) {
+        String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
+        invalidateTagCaches(targetFQNHash);
+
+        // Update tag usage counters
+        for (TagLabel tagLabel : tagLabels) {
+          RelationshipCache.bumpTag(tagLabel.getTagFQN(), -1);
+        }
+
+        LOG.debug(
+            "Deleted {} tags from entity {} in batch and invalidated cache",
+            tagLabels.size(),
+            targetFQN);
+      }
+    } catch (Exception e) {
+      LOG.error("Error deleting tags batch from entity {}: {}", targetFQN, e.getMessage(), e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void applyTagsBatchInternal(
+      List<Integer> sources,
+      List<String> tagFQNs,
+      List<String> tagFQNHashes,
+      List<String> targetFQNHashes,
+      List<Integer> labelTypes,
+      List<Integer> states) {
+    // This is an internal method that delegates directly to the database
+    delegate.applyTagsBatchInternal(
+        sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states);
+  }
+
+  @Override
+  public void deleteTagsBatchInternal(
+      List<Integer> sources, List<String> tagFQNHashes, List<String> targetFQNHashes) {
+    // This is an internal method that delegates directly to the database
+    delegate.deleteTagsBatchInternal(sources, tagFQNHashes, targetFQNHashes);
   }
 }
