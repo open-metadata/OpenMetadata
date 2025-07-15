@@ -40,6 +40,7 @@ public class DriveServiceIndex implements SearchIndex {
     doc.put("tier", parseTags.getTierTag());
     doc.put("serviceType", driveService.getServiceType());
     doc.put("entityType", Entity.DRIVE_SERVICE);
+    doc.put("upstreamLineage", SearchIndex.getLineageData(driveService.getEntityReference()));
 
     return doc;
   }

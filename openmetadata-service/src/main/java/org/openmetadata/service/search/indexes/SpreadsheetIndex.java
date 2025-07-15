@@ -56,7 +56,7 @@ public class SpreadsheetIndex implements SearchIndex {
       doc.put("worksheetNames", worksheetNames);
       doc.put("worksheetNamesFuzzy", String.join(" ", worksheetNames));
     }
-
+    doc.put("upstreamLineage", SearchIndex.getLineageData(spreadsheet.getEntityReference()));
     return doc;
   }
 
