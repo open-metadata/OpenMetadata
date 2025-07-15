@@ -99,6 +99,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     addViewOperation(
         "owners,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
     Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
+    Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
   }
 
   /** Method used for initializing a resource, such as creating default policies, roles, etc. */

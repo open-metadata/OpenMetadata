@@ -39,6 +39,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -60,7 +61,11 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
 import { defaultFields } from '../../utils/SearchIndexUtils';
@@ -89,7 +94,8 @@ function SearchIndexDetailsPage() {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const viewPermission = useMemo(
-    () => searchIndexPermissions.ViewAll || searchIndexPermissions.ViewBasic,
+    () =>
+      getPrioritizedViewPermission(searchIndexPermissions, Operation.ViewBasic),
     [searchIndexPermissions]
   );
 
@@ -156,29 +162,42 @@ function SearchIndexDetailsPage() {
   } = useMemo(
     () => ({
       editTagsPermission:
-        (searchIndexPermissions.EditTags || searchIndexPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditTags
+        ) && !deleted,
       editGlossaryTermsPermission:
-        (searchIndexPermissions.EditGlossaryTerms ||
-          searchIndexPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (searchIndexPermissions.EditDescription ||
-          searchIndexPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (searchIndexPermissions.EditAll ||
-          searchIndexPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editLineagePermission:
-        (searchIndexPermissions.EditAll ||
-          searchIndexPermissions.EditLineage) &&
-        !deleted,
-      viewSampleDataPermission:
-        searchIndexPermissions.ViewAll || searchIndexPermissions.ViewSampleData,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditLineage
+        ) && !deleted,
+      viewSampleDataPermission: getPrioritizedViewPermission(
+        searchIndexPermissions,
+        Operation.ViewSampleData
+      ),
       viewAllPermission: searchIndexPermissions.ViewAll,
     }),
-    [searchIndexPermissions, deleted]
+    [
+      searchIndexPermissions,
+      deleted,
+      getPrioritizedEditPermission,
+      getPrioritizedViewPermission,
+    ]
   );
 
   const fetchResourcePermission = useCallback(

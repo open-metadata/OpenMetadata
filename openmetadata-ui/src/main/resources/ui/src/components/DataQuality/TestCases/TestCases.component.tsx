@@ -57,6 +57,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -70,6 +71,7 @@ import {
 } from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -465,7 +467,7 @@ export const TestCases = () => {
 
   useEffect(() => {
     if (
-      (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) &&
+      getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic) &&
       tab === DataQualityPageTabs.TEST_CASES
     ) {
       getTestCases();

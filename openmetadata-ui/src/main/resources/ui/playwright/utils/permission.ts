@@ -109,6 +109,9 @@ export const validateViewPermissions = async (
   await page.waitForLoadState('domcontentloaded');
   await checkNoPermissionPlaceholder(page, /Queries/, permission?.viewQueries);
   await page.click('[data-testid="profiler"]');
+  await page.getByTestId('loader').waitFor({ state: 'detached' });
+  await page.waitForLoadState('domcontentloaded');
+  await page.getByText('Data Quality').click();
   await page.waitForLoadState('domcontentloaded');
   await checkNoPermissionPlaceholder(
     page,

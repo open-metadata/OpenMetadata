@@ -30,6 +30,7 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../../enums/entity.enum';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
@@ -42,6 +43,7 @@ import {
   TestSuiteType,
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import {
   getEntityDetailsPath,
   getTestSuitePath,
@@ -252,7 +254,9 @@ export const TestSuites = () => {
   };
 
   useEffect(() => {
-    if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
+    if (
+      getPrioritizedViewPermission(testSuitePermission, Operation.ViewBasic)
+    ) {
       fetchTestSuites(currentPage, {
         limit: pageSize,
       });

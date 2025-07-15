@@ -17,10 +17,7 @@ import { ReactComponent as TableProfilerIcon } from '../../../../assets/svg/tabl
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './ColumnProfileTable/ColumnProfileTable';
 import IncidentsTab from './IncidentsTab/IncidentsTab.component';
-import {
-  GetProfilerTabOptionsType,
-  ProfilerClassBase,
-} from './ProfilerClassBase';
+import { ProfilerClassBase } from './ProfilerClassBase';
 import { QualityTab } from './QualityTab/QualityTab.component';
 import TableProfilerChart from './TableProfilerChart/TableProfilerChart';
 
@@ -48,40 +45,30 @@ describe('ProfilerClassBase', () => {
 
   describe('getProfilerTabOptions', () => {
     it('should return the correct profiler tab options', () => {
-      const options: GetProfilerTabOptionsType = {
-        viewProfiler: true,
-        viewTest: true,
-      };
-
       const expectedOptions = [
         {
           label: 'label.table-entity-text',
           key: TableProfilerTab.TABLE_PROFILE,
-          disabled: false,
           icon: TableProfilerIcon,
         },
         {
           label: 'label.column-entity',
           key: TableProfilerTab.COLUMN_PROFILE,
-          disabled: false,
           icon: ColumnProfileIcon,
         },
         {
           label: 'label.data-entity',
           key: TableProfilerTab.DATA_QUALITY,
-          disabled: false,
           icon: DataQualityIcon,
         },
         {
           label: 'label.incident-plural',
           key: TableProfilerTab.INCIDENTS,
-          disabled: false,
           icon: IncidentIcon,
         },
       ];
 
-      const tabOptions =
-        profilerClassBaseInstance.getProfilerTabOptions(options);
+      const tabOptions = profilerClassBaseInstance.getProfilerTabOptions();
 
       expect(tabOptions).toEqual(expectedOptions);
     });

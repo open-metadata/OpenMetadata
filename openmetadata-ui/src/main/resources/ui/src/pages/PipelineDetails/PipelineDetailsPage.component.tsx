@@ -29,6 +29,7 @@ import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { Paging } from '../../generated/type/paging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
@@ -44,7 +45,10 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { defaultFields } from '../../utils/PipelineDetailsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -306,7 +310,12 @@ const PipelineDetailsPage = () => {
   );
 
   useEffect(() => {
-    if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {
+    if (
+      getPrioritizedViewPermission(
+        pipelinePermissions,
+        PermissionOperation.ViewBasic
+      )
+    ) {
       fetchPipelineDetail(decodedPipelineFQN);
     }
   }, [pipelinePermissions, decodedPipelineFQN]);
