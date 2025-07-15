@@ -739,7 +739,7 @@ public final class EntityUtil {
 
   public static <T extends FieldInterface> List<T> getFlattenedEntityField(List<T> fields) {
     List<T> flattenedFields = new ArrayList<>();
-    fields.forEach(column -> flattenEntityField(column, flattenedFields));
+    listOrEmpty(fields).forEach(column -> flattenEntityField(column, flattenedFields));
     return flattenedFields;
   }
 

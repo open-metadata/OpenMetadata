@@ -28,8 +28,7 @@
       "type": "array",
       "items": {
         "$ref": "../../entity/data/table.json#/definitions/column"
-      },
-      "default": null
+      }
     },
     "dataModel": {
       "$ref": "../../entity/data/table.json#/definitions/dataModel"

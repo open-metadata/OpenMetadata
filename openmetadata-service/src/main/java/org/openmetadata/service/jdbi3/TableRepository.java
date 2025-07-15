@@ -728,7 +728,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void setColumnProfile(List<Column> columnList) {
-    for (Column column : columnList) {
+    for (Column column : listOrEmpty(columnList)) {
       ColumnProfile columnProfile =
           JsonUtils.readValue(
               daoCollection
