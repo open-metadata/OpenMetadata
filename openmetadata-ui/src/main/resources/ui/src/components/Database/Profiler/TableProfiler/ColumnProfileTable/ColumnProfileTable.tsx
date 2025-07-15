@@ -54,7 +54,10 @@ import {
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
 import { getListTestCaseBySearch } from '../../../../../rest/testAPI';
-import { formatNumberWithComma } from '../../../../../utils/CommonUtils';
+import {
+  formatNumberWithComma,
+  getTableFQNFromColumnFQN,
+} from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../../../utils/FeedUtils';
 import {
@@ -88,6 +91,7 @@ const ColumnProfileTable = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
+  const tableFqn = useMemo(() => getTableFQNFromColumnFQN(fqn), [fqn]);
   const {
     isTestsLoading,
     isProfilerDataLoading,
@@ -308,7 +312,7 @@ const ColumnProfileTable = () => {
         navigate({
           pathname: getAddDataQualityTableTestPath(
             ProfilerDashboardType.COLUMN,
-            fqn
+            tableFqn
           ),
           search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
         });
@@ -319,7 +323,10 @@ const ColumnProfileTable = () => {
       key: 'custom-metric',
       onClick: () => {
         navigate({
-          pathname: getAddCustomMetricPath(ProfilerDashboardType.COLUMN, fqn),
+          pathname: getAddCustomMetricPath(
+            ProfilerDashboardType.COLUMN,
+            tableFqn
+          ),
           search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
         });
       },
@@ -397,7 +404,7 @@ const ColumnProfileTable = () => {
 
   const fetchTableColumnWithProfiler = useCallback(
     async (page: number, searchText: string) => {
-      if (!fqn) {
+      if (!tableFqn) {
         return;
       }
 
@@ -406,13 +413,13 @@ const ColumnProfileTable = () => {
         const offset = (page - 1) * pageSize;
         // Use search API if there's a search query, otherwise use regular pagination
         const response = searchText
-          ? await searchTableColumnsByFQN(fqn, {
+          ? await searchTableColumnsByFQN(tableFqn, {
               q: searchText,
               limit: pageSize,
               offset: offset,
               fields: TabSpecificField.PROFILE,
             })
-          : await getTableColumnsByFQN(fqn, {
+          : await getTableColumnsByFQN(tableFqn, {
               limit: pageSize,
               offset: offset,
               fields: TabSpecificField.PROFILE,
@@ -430,7 +437,7 @@ const ColumnProfileTable = () => {
         setIsColumnsLoading(false);
       }
     },
-    [fqn, pageSize, searchText]
+    [tableFqn, pageSize, searchText]
   );
 
   const handleColumnProfilePageChange = useCallback(
@@ -441,10 +448,10 @@ const ColumnProfileTable = () => {
   );
 
   useEffect(() => {
-    if (fqn) {
+    if (tableFqn) {
       fetchTableColumnWithProfiler(currentPage, searchText);
     }
-  }, [fqn, currentPage, searchText, pageSize]);
+  }, [tableFqn, currentPage, searchText, pageSize]);
 
   useEffect(() => {
     if (activeColumnFqn) {
