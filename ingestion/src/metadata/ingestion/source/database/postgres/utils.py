@@ -509,13 +509,32 @@ def get_postgres_time_column_name(engine) -> str:
     """
     Return the correct column name for the time column based on postgres version
     """
-    time_column_name = "total_exec_time"
-    postgres_version = get_postgres_version(engine)
-    if postgres_version and version.parse(postgres_version) < version.parse(
-        OLD_POSTGRES_VERSION
-    ):
-        time_column_name = "total_time"
-    return time_column_name
+    # Try to check the column in pg_stat_statements, fallback to version check if fails
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'pg_stat_statements'"
+            )
+            columns = {row[0] for row in result}
+            if "total_exec_time" in columns:
+                return "total_exec_time"
+            elif "total_time" in columns:
+                return "total_time"
+            else:
+                logger.warning(
+                    "Neither 'total_exec_time' nor 'total_time' found in pg_stat_statements. Defaulting to 'total_exec_time'."
+                )
+                return "total_exec_time"
+    except Exception as ex:
+        logger.debug(f"Failed to check columns in pg_stat_statements: {ex}")
+        # Fallback to version check
+        time_column_name = "total_exec_time"
+        postgres_version = get_postgres_version(engine)
+        if postgres_version and version.parse(postgres_version) < version.parse(
+            OLD_POSTGRES_VERSION
+        ):
+            time_column_name = "total_time"
+        return time_column_name
 
 
 @reflection.cache
