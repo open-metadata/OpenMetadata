@@ -12,12 +12,51 @@
  */
 @import (reference) '../../../styles/variables.less';
 
-.platform-insights-card {
+.platform-insights-card.ant-collapse-icon-position-end {
+  border: none;
+  border-radius: @border-radius-sm;
+
+  .ant-collapse-item:last-child {
+    background-color: @white;
+    border-radius: @border-radius-sm;
+    border: 1px solid @grey-15;
+    .ant-collapse-header {
+      border-radius: @border-radius-sm;
+      border-bottom: none;
+    }
+    .ant-collapse-content {
+      border-radius: @border-radius-sm;
+      border-top: none;
+    }
+  }
+
   .other-charts-container {
     display: grid;
-    grid-template-rows: repeat(2, 1fr);
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 16px;
+  }
+
+  .percent-change-tag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background-color: @green-9;
+    border: 1px solid @green-16;
+    border-radius: 6px;
+    width: fit-content;
+    padding: 0px 6px;
+  }
+
+  .ant-collapse-item {
+    .ant-collapse-header {
+      .ant-collapse-arrow.expand-icon-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+      }
+    }
   }
 
   .other-charts-card.ant-card {
@@ -26,6 +65,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      padding: 12px;
 
       &::before,
       &::after {

@@ -141,7 +141,6 @@ export const getPlatformInsightsChartDataFormattingMethod =
 
     return {
       chartType,
-      data,
       isIncreased,
       percentageChange: percentageChangeOverall,
       currentPercentage: round(lastDayData ?? 0, 2),

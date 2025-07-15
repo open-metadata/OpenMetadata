@@ -14,7 +14,7 @@
 
 import { DEFAULT_THEME } from './Appearance.constants';
 
-export const GREEN_1 = '#12B76A';
+export const GREEN_1 = '#067647';
 export const GREEN_3 = '#48ca9e';
 export const GREEN_3_OPACITY = '#48ca9e30';
 export const YELLOW_2 = '#ffbe0e';

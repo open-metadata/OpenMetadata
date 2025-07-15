@@ -103,7 +103,6 @@ const ServiceInsightsTab = ({
   };
 
   const arrayOfWidgets = [
-    { Widget: widgets.PlatformInsightsWidget, name: 'PlatformInsightsWidget' },
     { Widget: widgets.CollateAIWidget, name: 'CollateAIWidget' },
     { Widget: widgets.PIIDistributionWidget, name: 'PIIDistributionWidget' },
     { Widget: widgets.TierDistributionWidget, name: 'TierDistributionWidget' },
@@ -114,6 +113,8 @@ const ServiceInsightsTab = ({
     },
     { Widget: widgets.DataQualityWidget, name: 'DataQualityWidget' },
   ];
+
+  const { PlatformInsightsWidget, TotalDataAssetsWidget } = widgets;
 
   const {
     Icon: StatusIcon,
@@ -188,6 +189,22 @@ const ServiceInsightsTab = ({
           onClose={onStatusBannerClose}
         />
       )}
+      <Col span={18}>
+        <PlatformInsightsWidget
+          chartsData={getChartsDataFromWidgetName(
+            'PlatformInsightsWidget',
+            chartsResults
+          )}
+          isLoading={isLoading}
+        />
+      </Col>
+      <Col span={6}>
+        <TotalDataAssetsWidget
+          serviceName={serviceName}
+          workflowStatesData={workflowStatesData}
+        />
+      </Col>
+
       {arrayOfWidgets.map(
         ({ Widget, name }) =>
           !isUndefined(Widget) && (
