@@ -10,9 +10,9 @@ import java.util.stream.StreamSupport;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.settings.Settings;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
