@@ -12,16 +12,16 @@
 Lineage Source Module
 """
 import csv
-import multiprocessing
 import os
 import time
 import traceback
 from abc import ABC
 from functools import partial
-from multiprocessing import Process, Queue
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
 
+import billiard
 import networkx as nx
+from billiard import Process, Queue
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -59,7 +59,7 @@ CHUNK_SIZE = 200
 THREAD_TIMEOUT = 10 * 60
 PROCESS_TIMEOUT = 10 * 60
 # Maximum number of processes to use for parallel processing
-MAX_PROCESSES = min(multiprocessing.cpu_count(), 8)  # Limit to 8 or available CPUs
+MAX_PROCESSES = min(billiard.cpu_count(), 8)  # Limit to 8 or available CPUs
 
 
 class LineageSource(QueryParserSource, ABC):
@@ -142,42 +142,73 @@ class LineageSource(QueryParserSource, ABC):
 
         def chunk_generator():
             """Group items from producer into chunks of specified size."""
+            chunk_index = 1
             temp_chunk = []
             for item in producer_fn():
                 temp_chunk.append(item)
                 if len(temp_chunk) >= chunk_size:
+                    logger.info(
+                        f"Processing chunk {chunk_index}: size={len(temp_chunk)}"
+                    )
                     yield temp_chunk
                     temp_chunk = []
+                    chunk_index += 1
             if temp_chunk:
+                logger.info(
+                    f"Processing final chunk {chunk_index}: size={len(temp_chunk)}"
+                )
                 yield temp_chunk
 
-        # Use multiprocessing Queue instead of threading Queue
+        # Use multiprocessing Queue for lineage requests
         queue = Queue()
+
+        # Create chunk iterator and tracking
+        chunk_iter = iter(chunk_generator())
+        chunks_exhausted = False
+
         active_processes = []
-
-        # Dictionary to track process start times
         process_start_times = {}
+        completed_chunks = 0
+        total_started = 0
 
-        # Start processing each chunk in a separate process
-        for _, chunk in enumerate(chunk_generator()):
-            # Start a process for processing
+        logger.info(f"Starting lineage processing with MAX_PROCESSES={MAX_PROCESSES}")
+
+        def start_next_process():
+            """Start the next pending process if available."""
+            nonlocal total_started
+
+            # Try to get the next chunk for next time
+            try:
+                chunk = next(chunk_iter)
+            except StopIteration:
+                # No more chunks to process
+                return False
+
+            # Use billiard.Process to handle the multiprocessing instead of the
+            # multiprocessing.Process since spawning child process from daemon
+            # process is not supported in Airflow 2+.
+            # Billiard is a fork of multiprocessing that is compatible with Airflow
+            # and recommended by the Airflow team.
+            # ref: https://github.com/apache/airflow/issues/14896
+            total_started += 1
             process = Process(
                 target=_process_chunk_in_subprocess,
                 args=(chunk, processor_fn, queue, *args),
             )
             process.daemon = True
-            process_start_times[process.name] = (
-                time.time()
-            )  # Track when the process started
+            process_start_times[process.name] = time.time()
             logger.info(
-                f"Process {process.name} started at {process_start_times[process.name]}"
+                f"Started lineage process {process.name} for chunk {total_started} "
+                f"(active: {len(active_processes) + 1}/{MAX_PROCESSES}, chunk_size: {len(chunk)})"
             )
             active_processes.append(process)
             process.start()
 
-        # Process results from the queue and check for timed-out processes
-        while active_processes or not queue.empty():
-            # Process any available results
+            return True
+
+        # Process requests from the queue and check for completed or timed-out processes
+        while active_processes or not chunks_exhausted or not queue.empty():
+            # Process any available requests from the queue
             try:
                 while not queue.empty():
                     yield queue.get_nowait()
@@ -198,25 +229,43 @@ class LineageSource(QueryParserSource, ABC):
                             f"Process {process.name} timed out after {processor_timeout}s"
                         )
                         process.terminate()  # Force terminate the timed out process
+                        completed_chunks += 1
                     else:
                         still_active.append(process)
                 else:
                     # Clean up completed process
                     process.join()
+                    completed_chunks += 1
+                    runtime = time.time() - process_start_times[process.name]
+                    logger.info(
+                        f"Lineage process {process.name} completed successfully "
+                        f"(runtime: {runtime:.1f}s, progress: {completed_chunks}/{total_started})"
+                    )
 
             active_processes = still_active
 
+            # Start initial/next processes to fill available slots
+            while len(active_processes) < MAX_PROCESSES:
+                if start_next_process():
+                    continue
+                chunks_exhausted = True
+                break
+
             # Small pause to prevent CPU spinning
-            if active_processes:
+            if active_processes or not chunks_exhausted:
                 time.sleep(0.1)
 
-        # Final check for any remaining results
+        # Final check for any remaining queue requests
         try:
             while not queue.empty():
                 yield queue.get_nowait()
         except Exception as exc:
             logger.warning(f"Error processing queue: {exc}")
             logger.debug(traceback.format_exc())
+
+        logger.info(
+            f"Lineage processing completed with {completed_chunks}/{total_started} chunks processed"
+        )
 
     def yield_table_query(self) -> Iterator[TableQuery]:
         """

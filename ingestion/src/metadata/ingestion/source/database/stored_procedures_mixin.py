@@ -38,6 +38,7 @@ from metadata.ingestion.source.database.lineage_processors import (
     procedure_lineage_processor,
 )
 from metadata.utils.filters import filter_by_stored_procedure
+from metadata.utils.helpers import pprint_format_object
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.stored_procedures import get_procedure_name_from_call
 
@@ -100,6 +101,17 @@ class StoredProcedureLineageMixin(ABC):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+        queries_count_per_procedure = {
+            procedure_name: len(queries)
+            for procedure_name, queries in queries_dict.items()
+        }
+        logger.info(
+            f"Count of queries executed for stored procedures: {sum(queries_count_per_procedure.values())}"
+        )
+        logger.info(
+            f"Count of queries per stored procedure: {pprint_format_object(queries_count_per_procedure)}"
+        )
 
         return queries_dict
 
