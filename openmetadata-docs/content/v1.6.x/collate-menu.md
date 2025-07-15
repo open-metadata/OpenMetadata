@@ -395,6 +395,12 @@ site_menu:
     url: /connectors/dashboard/tableau/yaml
   - category: Connectors / Dashboard / Tableau / Troubleshooting
     url: /connectors/dashboard/tableau/troubleshooting
+  - category: Connectors / Dashboard / ThoughtSpot
+    url: /connectors/dashboard/thoughtspot
+  - category: Connectors / Dashboard / ThoughtSpot / Run Externally
+    url: /connectors/dashboard/thoughtspot/yaml
+  - category: Connectors / Dashboard / ThoughtSpot / Troubleshooting
+    url: /connectors/dashboard/thoughtspot/troubleshooting
 
   - category: Connectors / Messaging
     url: /connectors/messaging
