@@ -131,7 +131,7 @@ public class PIIMasker {
   }
 
   public static List<Column> getTableProfile(List<Column> columns) {
-    for (Column column : columns) {
+    for (Column column : listOrEmpty(columns)) {
       if (hasPiiSensitiveTag(column)) {
         column.setProfile(null);
         column.setName(flagMaskedName(column.getName()));
