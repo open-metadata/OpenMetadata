@@ -21,8 +21,9 @@ export interface FlinkConnection {
     /**
      * Regex exclude pipelines.
      */
-    pipelineFilterPattern?: FilterPattern;
-    sslConfig?:             Config;
+    pipelineFilterPattern?:      FilterPattern;
+    sslConfig?:                  Config;
+    supportsMetadataExtraction?: boolean;
     /**
      * Service Type
      */

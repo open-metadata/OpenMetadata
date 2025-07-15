@@ -73,7 +73,9 @@ public class ApplicationHandler {
     try {
       AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
       app.setPreview(appPrivateConfig.getPreview());
-      if (appPrivateConfig.getParameters() != null) {
+
+      if (appPrivateConfig.getParameters() != null
+          && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
         app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
       }
     } catch (IOException e) {
