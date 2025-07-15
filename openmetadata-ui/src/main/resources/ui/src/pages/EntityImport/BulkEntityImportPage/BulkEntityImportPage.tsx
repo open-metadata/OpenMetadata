@@ -479,7 +479,7 @@ const BulkEntityImportPage = () => {
     return (
       <DataGrid
         className="rdg-light"
-        columns={columns as Column<any>[]}
+        columns={columns}
         rows={dataSource}
         onCopy={handleCopy}
         onPaste={handlePaste}

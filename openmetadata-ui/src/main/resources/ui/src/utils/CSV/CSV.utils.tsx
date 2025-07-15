@@ -164,9 +164,7 @@ export const getCSVStringFromColumnsAndDataSource = (
 ) => {
   const header = columns.map((col) => col.key).join(',');
   const rows = dataSource.map((row) => {
-    const compactValues = compact(
-      columns.map((col) => row[(col.key as string) ?? ''])
-    );
+    const compactValues = compact(columns.map((col) => row[col.key ?? '']));
 
     if (compactValues.length === 0) {
       return '';
@@ -174,8 +172,8 @@ export const getCSVStringFromColumnsAndDataSource = (
 
     return columns
       .map((col) => {
-        const value = get(row, (col.key as string) ?? '', '');
-        const colName = (col.key as string) ?? '';
+        const value = get(row, col.key ?? '', '');
+        const colName = col.key ?? '';
         if (
           csvUtilsClassBase
             .columnsWithMultipleValuesEscapeNeeded()
@@ -193,7 +191,7 @@ export const getCSVStringFromColumnsAndDataSource = (
           return isEmpty(value) ? '' : `"${value}"`;
         }
 
-        return get(row, (col.key as string) ?? '', '');
+        return get(row, col.key ?? '', '');
       })
       .join(',');
   });

@@ -12,7 +12,7 @@
  */
 
 import { createFocusTrap, FocusTrap as FocusTrapInstance } from 'focus-trap';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 type UseMultiContainerFocusTrapProps = {
   containers: Array<HTMLElement | null | undefined>;
@@ -27,33 +27,37 @@ export function useMultiContainerFocusTrap({
 }: UseMultiContainerFocusTrapProps) {
   const trapRef = useRef<FocusTrapInstance | null>(null);
 
+  const activateTrap = useCallback(() => {
+    const validContainers = containers.filter(Boolean) as HTMLElement[];
+    if (validContainers.length === 0) {
+      return;
+    }
+    // If already active, deactivate before re-activating with new containers
+    trapRef.current?.deactivate();
+    trapRef.current = createFocusTrap(validContainers, {
+      fallbackFocus: validContainers[0],
+      ...options,
+    });
+    trapRef.current.activate();
+  }, [options, ...containers]);
+
+  const deactivateTrap = useCallback(() => {
+    trapRef.current?.deactivate();
+  }, [trapRef.current]);
+
   useEffect(() => {
     if (active) {
-      const validContainers = containers.filter(Boolean) as HTMLElement[];
-      if (validContainers.length === 0) {
-        return;
-      }
-
-      // If already active, deactivate before re-activating with new containers
-      trapRef.current?.deactivate();
-
-      trapRef.current = createFocusTrap(validContainers, {
-        fallbackFocus: validContainers[0],
-        ...options,
-      });
-
-      trapRef.current.activate();
+      activateTrap();
 
       return () => {
-        trapRef.current?.deactivate();
+        deactivateTrap();
       };
     } else {
-      trapRef.current?.deactivate();
+      deactivateTrap();
 
       return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, ...containers]);
+  }, [active, activateTrap, deactivateTrap]);
 
   return {
     trapRef,

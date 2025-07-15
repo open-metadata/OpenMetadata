@@ -441,6 +441,7 @@ test.describe('Bulk Import Export', () => {
         ).toBeVisible();
 
         await page.click('[data-testid="add-row-btn"]');
+        await page.waitForTimeout(1000);
 
         // click on last row first cell
         const rows = await page.$$('.rdg-row');
@@ -548,11 +549,12 @@ test.describe('Bulk Import Export', () => {
         );
 
         await page.getByRole('button', { name: 'Next' }).click();
-        const loader = page.locator(
-          '.inovua-react-toolkit-load-mask__background-layer'
-        );
-
-        await loader.waitFor({ state: 'hidden' });
+        await page.waitForSelector('text=Import is in progress.', {
+          state: 'attached',
+        });
+        await page.waitForSelector('text=Import is in progress.', {
+          state: 'detached',
+        });
 
         await validateImportStatus(page, {
           passed: '13',
@@ -576,6 +578,7 @@ test.describe('Bulk Import Export', () => {
           'Entity created',
           'Entity created',
           'Entity updated',
+          'Entity created',
         ];
 
         await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);

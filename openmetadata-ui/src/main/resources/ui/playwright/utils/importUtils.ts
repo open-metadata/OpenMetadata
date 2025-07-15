@@ -100,10 +100,15 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   await page.click('[data-testid="owner-select-users-search-bar"]');
 
   for (const owner of owners) {
+    const searchOwner = page.waitForResponse(
+      'api/v1/search/query?q=*&index=user_search_index*'
+    );
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
-    await page.keyboard.type(owner);
-    await page.waitForResponse(
-      `/api/v1/search/query?q=*${owner}*%20AND%20isBot:false*index=user_search_index*`
+    await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
+    await searchOwner;
+    await page.waitForSelector(
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+      { state: 'detached' }
     );
 
     await page.getByRole('listitem', { name: owner }).click();
@@ -285,7 +290,6 @@ export const fillCustomPropertyDetails = async (
   page: Page,
   propertyListName: Record<string, string>
 ) => {
-  await page.click('.rdg-cell-extension');
   await page
     .locator('.rdg-cell[aria-selected="true"]')
     .press('Enter', { delay: 100 });
@@ -578,7 +582,7 @@ export const fillRowDetails = async (
   page: Page,
   customPropertyRecord?: Record<string, string>
 ) => {
-  await page.locator('[class*="rdg-cell-name"]').last().click();
+  await page.locator('.rdg-cell-name').last().click();
 
   const activeCell = page.locator('.rdg-cell[aria-selected="true"]');
   const isActive = await activeCell.isVisible();
@@ -587,7 +591,7 @@ export const fillRowDetails = async (
     await fillTextInputDetails(page, row.name);
   } else {
     // Click the name cell again
-    await page.locator('[class*="rdg-cell-name"]').last().click();
+    await page.locator('.rdg-cell-name').last().click();
     await fillTextInputDetails(page, row.name);
   }
 
@@ -867,7 +871,7 @@ export const fillRecursiveColumnDetails = async (
   },
   page: Page
 ) => {
-  await page.locator('[class*="rdg-cell-name"]').last().click();
+  await page.locator('.rdg-cell-name').last().click();
 
   const activeCell = page.locator('.rdg-cell[aria-selected="true"]');
   const isActive = await activeCell.isVisible();
@@ -876,7 +880,7 @@ export const fillRecursiveColumnDetails = async (
     await fillTextInputDetails(page, row.name);
   } else {
     // Click the name cell again
-    await page.locator('[class*="rdg-cell-name"]').last().click();
+    await page.locator('.rdg-cell-name').last().click();
     await fillTextInputDetails(page, row.name);
   }
 
