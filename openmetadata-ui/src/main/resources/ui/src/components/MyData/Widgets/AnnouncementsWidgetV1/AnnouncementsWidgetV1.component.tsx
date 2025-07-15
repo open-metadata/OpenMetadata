@@ -97,6 +97,7 @@ const AnnouncementsWidgetV1 = ({
               className="announcement-count-badge"
               count={announcements.length}
               data-testid="announcement-count-badge"
+              style={{ color: currentBackgroundColor }}
             />
           </div>
           <Button
