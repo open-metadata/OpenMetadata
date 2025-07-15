@@ -21,6 +21,8 @@ import { ReactComponent as IconExternalLink } from '../../../../assets/svg/exter
 import { ICON_DIMENSION } from '../../../../constants/constants';
 import { CommonEntitySummaryInfoProps } from './CommonEntitySummaryInfo.interface';
 
+import './common-entity-summary.less';
+
 function CommonEntitySummaryInfo({
   entityInfo,
   componentType,
@@ -29,7 +31,7 @@ function CommonEntitySummaryInfo({
   const { t } = useTranslation();
 
   return (
-    <Row className="text-sm" gutter={[0, 4]}>
+    <Row className="text-sm common-entity-summary-info" gutter={[0, 4]}>
       {entityInfo.map((info) => {
         const isDomain = isDomainVisible && info.name === t('label.domain');
 
@@ -46,6 +48,7 @@ function CommonEntitySummaryInfo({
               <Col span={16}>
                 {info.isLink ? (
                   <Link
+                    className="summary-item-link"
                     component={Typography.Link}
                     data-testid={`${info.name}-value`}
                     target={info.isExternal ? '_blank' : '_self'}
