@@ -30,7 +30,7 @@ const PaginationComponent = (props: PaginationProps) => {
     if (type === 'prev') {
       return (
         <Button
-          className="pagination-button hover-button"
+          className="pagination-button hover-button h-full"
           data-testid="previous"
           icon={
             <Icon
@@ -46,7 +46,7 @@ const PaginationComponent = (props: PaginationProps) => {
     if (type === 'next') {
       return (
         <Button
-          className="pagination-button hover-button"
+          className="pagination-button hover-button h-full"
           data-testid="next"
           type="text">
           <span> {t('label.next')}</span>
