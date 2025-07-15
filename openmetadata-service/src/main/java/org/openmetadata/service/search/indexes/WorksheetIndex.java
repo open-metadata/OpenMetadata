@@ -68,7 +68,7 @@ public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex {
     doc.put("rowCount", worksheet.getRowCount());
     doc.put("columnCount", worksheet.getColumnCount());
     doc.put("isHidden", worksheet.getIsHidden());
-
+    doc.put("upstreamLineage", SearchIndex.getLineageData(worksheet.getEntityReference()));
     return doc;
   }
 
