@@ -391,7 +391,7 @@ describe('EditTestCaseModal Component', () => {
     });
 
     // Submit the form
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
 
     await act(async () => {
       fireEvent.click(submitBtn);
