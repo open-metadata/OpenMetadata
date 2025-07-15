@@ -102,7 +102,7 @@ if [ -z "$OPENMETADATA_GC_LOG_OPTS" ]; then
 fi
 
 NOW_EPOCH=$(date +%s)
-export OPENMETADATA_DIAG_OPTS="-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${LOG_DIR:-/opt/openmetadata/logs} -XX:+ExitOnOutOfMemoryError -XX:StartFlightRecording=filename=${LOG_DIR:-/opt/openmetadata/logs}/om_${NOW_EPOCH}.jfr,duration=0s,settings=profile"
+export OPENMETADATA_DIAG_OPTS="-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${LOG_DIR:-/opt/openmetadata/logs} -XX:+ExitOnOutOfMemoryError -XX:StartFlightRecording=filename=${LOG_DIR:-/opt/openmetadata/logs}/om_${NOW_EPOCH}.jfr,maxsize=500m,settings=profile"
 
 # JVM performance options
 if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
