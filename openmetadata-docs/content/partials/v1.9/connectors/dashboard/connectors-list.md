@@ -15,5 +15,6 @@
 {% connectorInfoCard name="Sigma" stage="PROD" href="/connectors/dashboard/sigma" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Superset" stage="PROD" href="/connectors/dashboard/superset" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Tableau" stage="PROD" href="/connectors/dashboard/tableau" platform="OpenMetadata" / %}
+{% connectorInfoCard name="ThoughtSpot" stage="PROD" href="/connectors/dashboard/thoughtspot" platform="Collate" / %}
 
 {% /connectorsListContainer %}
