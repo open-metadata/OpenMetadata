@@ -99,6 +99,12 @@ alt="Email Configuration"
 caption="Email Configuration"
 /%}
 
+{% note %}
+
+If you encounter issues connecting to the SMTP server, ensure that the correct Certificate Authority (CA) is configured to trust the SMTP host. Additionally, use the DNS hostname instead of the IP address in the SMTP server endpoint configuration to avoid certificate validation errors.
+
+{% /note %}
+
 ### Inviting Users
 
 After metadata has been ingested into OpenMetadata, you can [invite users](/how-to-guides/admin-guide/teams-and-users/invite-users) to collaborate on the data and assign different roles.
