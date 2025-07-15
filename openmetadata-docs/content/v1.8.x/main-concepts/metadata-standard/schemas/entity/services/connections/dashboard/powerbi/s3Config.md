@@ -1,5 +1,6 @@
 ---
 title: S3 Config | OpenMetadata Amazon S3 Storage Configuration
+description: Get started with s3config. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/powerbi/s3config
 ---
 

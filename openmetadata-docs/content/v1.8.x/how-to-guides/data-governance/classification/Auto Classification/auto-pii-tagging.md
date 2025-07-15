@@ -1,5 +1,6 @@
 ---
-title: Auto PII Tagging
+title: Auto Pii Tagging Guide | Official Documentation
+description: Automatically tag personally identifiable information (PII) in your datasets to support data classification, compliance, and privacy enforcement.
 slug: /how-to-guides/data-governance/classification/auto-classification/auto-pii-tagging
 ---
 

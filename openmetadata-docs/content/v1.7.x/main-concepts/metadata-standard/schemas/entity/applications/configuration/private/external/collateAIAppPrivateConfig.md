@@ -1,5 +1,6 @@
 ---
-title: collateAIAppPrivateConfig
+title: CollateAIAppPrivateConfig | Official Documentation
+description: Get started with Collate AI App Private config. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/private/external/collateaiappprivateconfig
 ---
 
