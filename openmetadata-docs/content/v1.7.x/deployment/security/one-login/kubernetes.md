@@ -1,5 +1,6 @@
 ---
-title: OneLogin SSO for Kubernetes
+title: OneLogin SSO for Kubernetes | Official Documentation
+description: Integrate OneLogin into Kubernetes clusters to securely manage authentication, access tokens, and identity roles at runtime.
 slug: /deployment/security/one-login/kubernetes
 collate: false
 ---

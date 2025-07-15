@@ -1,5 +1,6 @@
 ---
 title: Teradata Connection | OpenMetadata Teradata
+description: Get started with teradataconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/teradataconnection
 ---
 

@@ -24,6 +24,7 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/page';
 import { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -42,6 +43,10 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -262,21 +267,31 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   } = useMemo(
     () => ({
       editTagsPermission:
-        (topicPermissions.EditTags || topicPermissions.EditAll) && !deleted,
+        getPrioritizedEditPermission(topicPermissions, Operation.EditTags) &&
+        !deleted,
       editGlossaryTermsPermission:
-        (topicPermissions.EditGlossaryTerms || topicPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          topicPermissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (topicPermissions.EditDescription || topicPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          topicPermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (topicPermissions.EditAll || topicPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          topicPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editAllPermission: topicPermissions.EditAll && !deleted,
       editLineagePermission:
-        (topicPermissions.EditAll || topicPermissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        topicPermissions.ViewAll || topicPermissions.ViewSampleData,
+        getPrioritizedEditPermission(topicPermissions, Operation.EditLineage) &&
+        !deleted,
+      viewSampleDataPermission: getPrioritizedViewPermission(
+        topicPermissions,
+        Operation.ViewSampleData
+      ),
       viewAllPermission: topicPermissions.ViewAll,
     }),
     [topicPermissions, deleted]
