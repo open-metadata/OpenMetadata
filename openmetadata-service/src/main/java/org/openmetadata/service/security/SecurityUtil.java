@@ -106,7 +106,10 @@ public final class SecurityUtil {
       String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
       String userNameClaimValue = getClaimOrObject(claims.get(usernameClaim));
       if (!nullOrEmpty(userNameClaimValue)) {
-        userName = userNameClaimValue;
+        userName =
+            userNameClaimValue.contains("@")
+                ? userNameClaimValue.split("@")[0]
+                : userNameClaimValue;
       } else {
         throw new AuthenticationException("Invalid JWT token, 'username' claim is not present");
       }
