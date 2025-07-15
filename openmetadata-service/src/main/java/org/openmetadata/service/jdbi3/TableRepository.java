@@ -963,18 +963,26 @@ public class TableRepository extends EntityRepository<Table> {
   public Table applySuggestion(EntityInterface entity, String columnFQN, Suggestion suggestion) {
     Table table = (Table) entity;
     for (Column col : table.getColumns()) {
-      if (col.getFullyQualifiedName().equals(columnFQN)) {
-        applySuggestionToColumn(col, suggestion);
-      }
-      if (col.getChildren() != null && !col.getChildren().isEmpty()) {
-        for (Column child : col.getChildren()) {
-          if (child.getFullyQualifiedName().equals(columnFQN)) {
-            applySuggestionToColumn(child, suggestion);
-          }
-        }
-      }
+      findAndApplySuggestionToColumn(col, columnFQN, suggestion);
     }
     return table;
+  }
+
+  private void findAndApplySuggestionToColumn(
+      Column column, String columnFQN, Suggestion suggestion) {
+    if (column.getFullyQualifiedName().equals(columnFQN)) {
+      applySuggestionToColumn(column, suggestion);
+      return;
+    }
+
+    // If the column FQN is a prefix of the target columnFQN, search recursively in children
+    if (column.getChildren() != null
+        && !column.getChildren().isEmpty()
+        && columnFQN.startsWith(column.getFullyQualifiedName() + ".")) {
+      for (Column child : column.getChildren()) {
+        findAndApplySuggestionToColumn(child, columnFQN, suggestion);
+      }
+    }
   }
 
   public void applySuggestionToColumn(Column column, Suggestion suggestion) {
