@@ -340,6 +340,10 @@ export interface Action {
      * Propagate tier from the parent
      */
     propagateTier?: boolean;
+    /**
+     * Number of levels to propagate lineage. If not set, it will propagate to all levels.
+     */
+    propagationDepth?: number;
 }
 
 /**
