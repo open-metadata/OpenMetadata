@@ -45,10 +45,6 @@ function TotalDataAssetsWidget({
     tab: string;
   }>();
   const [loadingCount, setLoadingCount] = useState<number>(0);
-  const [hoveredSegment, setHoveredSegment] = useState<{
-    name: string;
-    value: number;
-  } | null>(null);
   const [entityCounts, setEntityCounts] =
     useState<
       Array<{ name: string; value: number; fill: string; icon: JSX.Element }>
@@ -60,9 +56,6 @@ function TotalDataAssetsWidget({
       entityCounts?.every((entity) => entity.value === 0),
     [entityCounts]
   );
-
-  const totalCount =
-    entityCounts?.reduce((sum, entity) => sum + entity.value, 0) ?? 0;
 
   const getDataAssetsCount = useCallback(async () => {
     try {
