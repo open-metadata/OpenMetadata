@@ -35,9 +35,7 @@ import { ReactComponent as MyDataIcon } from '../assets/svg/ic-my-data.svg';
 import { ReactComponent as MyTaskIcon } from '../assets/svg/ic-my-task.svg';
 import { ReactComponent as TotalAssetsIcon } from '../assets/svg/ic-total-data-assets.svg';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
-import AnnouncementsWidget, {
-  AnnouncementsWidgetProps,
-} from '../components/MyData/RightSidebar/AnnouncementsWidget';
+import { AnnouncementsWidgetProps } from '../components/MyData/RightSidebar/AnnouncementsWidget';
 import FollowingWidget, {
   FollowingWidgetProps,
 } from '../components/MyData/RightSidebar/FollowingWidget';
@@ -111,7 +109,7 @@ class CustomizeMyDataPageClassBase {
     h: this.landingPageWidgetDefaultHeights.announcements,
     i: LandingPageWidgetKeys.ANNOUNCEMENTS,
     w: 1,
-    x: 2,
+    x: 0,
     y: 0,
     static: true, // Making announcement widget fixed on top right position
   };
@@ -211,9 +209,6 @@ class CustomizeMyDataPageClassBase {
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)) {
       return TotalDataAssetsWidget;
-    }
-    if (widgetKey.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)) {
-      return AnnouncementsWidget;
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.FOLLOWING)) {
       return FollowingWidget;

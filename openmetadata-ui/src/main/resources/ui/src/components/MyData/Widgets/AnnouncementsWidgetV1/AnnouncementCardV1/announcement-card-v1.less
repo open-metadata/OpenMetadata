@@ -1,0 +1,151 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../../../../styles/variables.less');
+@import (reference) url('../../../../../styles/fonts.less');
+
+.announcement-card-v1 {
+  border: none;
+  border-radius: 12px;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  cursor: pointer;
+  overflow: hidden;
+  background: #f5fbff !important;
+
+  .ant-card-body {
+    padding: 16px;
+    background: @white !important;
+  }
+
+  .announcement-card-v1-content {
+    padding: 12px;
+    background: transparent !important;
+    position: relative;
+
+    .announcement-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+      background: @white !important;
+
+      .announcement-title-section {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 1;
+        min-width: 0;
+        background: linear-gradient(270deg, #ffffff -12.07%, #9dd5fa 233.72%);
+
+        .user-name {
+          font-weight: @font-semibold;
+          font-size: @font-size-base;
+          white-space: nowrap;
+          color: @primary-color;
+          text-decoration: none;
+          cursor: pointer;
+          transition: color 0.2s ease;
+
+          &:hover {
+            color: @primary-color;
+          }
+
+          &:focus {
+            outline: 2px solid @primary-color;
+            outline-offset: 2px;
+            border-radius: 2px;
+          }
+        }
+
+        .field-operation-text {
+          color: @text-color;
+          font-size: @font-size-base;
+          white-space: nowrap;
+          font-weight: 400;
+        }
+
+        .announcement-entity-icon {
+          color: @text-color;
+          font-size: 14px;
+          margin: 0 0 0 2px;
+
+          svg {
+            width: 20px;
+            height: 20px;
+          }
+        }
+
+        .announcement-entity-name {
+          font-weight: @font-semibold;
+          font-size: @font-size-base;
+          color: @primary-color;
+          text-decoration: none;
+          cursor: pointer;
+          transition: color 0.2s ease;
+
+          &:hover {
+            color: @primary-color;
+          }
+
+          &:focus {
+            outline: 2px solid @primary-color;
+            outline-offset: 2px;
+            border-radius: 2px;
+          }
+        }
+
+        .announcement-title {
+          font-weight: 600;
+          font-size: 16px;
+          line-height: 1.4;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: flex;
+          border-left: 3px solid @primary-color;
+          padding: 4px 0 4px 4px;
+          gap: 4px;
+          flex: 1;
+          flex-wrap: wrap;
+        }
+      }
+
+      .timestamp {
+        color: @text-color;
+        font-size: @size-sm;
+        white-space: nowrap;
+        margin-left: 12px;
+        flex-shrink: 0;
+      }
+    }
+
+    .announcement-message {
+      color: @text-color;
+      font-size: @size-sm;
+      line-height: 1.5;
+      margin: 8px 0 0 0;
+    }
+
+    .column-info {
+      color: @text-color;
+      font-size: @size-sm;
+      margin: 8px 0 0 0;
+
+      .column-name {
+        font-weight: @font-semibold;
+        color: @text-color;
+      }
+    }
+  }
+}

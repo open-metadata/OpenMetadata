@@ -12,9 +12,10 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
@@ -22,14 +23,19 @@ import { ReactComponent as FilterIcon } from '../../../../assets/svg/filter.svg'
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
+import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
+import { Thread } from '../../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
+import { getActiveAnnouncement } from '../../../../rest/feedsAPI';
 import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
+import AnnouncementsWidgetV1 from '../../Widgets/AnnouncementsWidgetV1/AnnouncementsWidgetV1.component';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import './customise-landing-page-header.less';
 import { CustomiseLandingPageHeaderProps } from './CustomiseLandingPageHeader.interface';
@@ -52,7 +58,9 @@ const CustomiseLandingPageHeader = ({
     useDomainStore();
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
-
+  const [announcements, setAnnouncements] = useState<Thread[]>([]);
+  const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(false);
+  const [showAnnouncements, setShowAnnouncements] = useState(true);
   const bgColor = backgroundColor ?? DEFAULT_HEADER_BG_COLOR;
 
   const recentlyViewData = useMemo(() => {
@@ -74,6 +82,19 @@ const CustomiseLandingPageHeader = ({
     });
   }, []);
 
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      setIsAnnouncementLoading(true);
+      const response = await getActiveAnnouncement();
+
+      setAnnouncements(response.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsAnnouncementLoading(false);
+    }
+  }, []);
+
   const handleOpenCustomiseHomeModal = () => {
     setShowCustomiseHomeModal(true);
   };
@@ -90,6 +111,10 @@ const CustomiseLandingPageHeader = ({
     },
     [updateActiveDomain, navigate]
   );
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
 
   return (
     <div className="customise-landing-page" style={{ background: bgColor }}>
@@ -180,7 +205,20 @@ const CustomiseLandingPageHeader = ({
             )}
           </div>
         </div>
-        <div className="announcements" />
+        {/* <div className="announcements" /> */}
+        {announcements.length > 0 && showAnnouncements && (
+          <div className="announcements-container">
+            <AnnouncementsWidgetV1
+              announcements={announcements}
+              currentBackgroundColor={bgColor}
+              handleRemoveWidget={() => {
+                setShowAnnouncements(false);
+              }}
+              loading={isAnnouncementLoading}
+              widgetKey={LandingPageWidgetKeys.ANNOUNCEMENTS}
+            />
+          </div>
+        )}
       </div>
       {overlappedContainer && <div className="overlapped-container" />}
 
