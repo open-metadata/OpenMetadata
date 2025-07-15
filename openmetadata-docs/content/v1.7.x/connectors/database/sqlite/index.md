@@ -1,5 +1,6 @@
 ---
-title: SQLite
+title: SQLite Connector | OpenMetadata Lightweight DB Integration
+description: Learn to configure OpenMetadata's SQLite database connector for seamless data cataloging. Step-by-step setup guide with examples and troubleshooting tips.
 slug: /connectors/database/sqlite
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/sqlite
 name="SQLite"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 

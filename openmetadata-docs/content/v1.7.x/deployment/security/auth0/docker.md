@@ -1,5 +1,5 @@
 ---
-title: Auth0 SSO for Docker
+title: Azure SSO | OpenMetadata Security Integration
 slug: /deployment/security/auth0/docker
 collate: false
 ---

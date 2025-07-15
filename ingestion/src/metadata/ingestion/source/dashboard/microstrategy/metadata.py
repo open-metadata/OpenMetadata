@@ -184,16 +184,23 @@ class MicrostrategySource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: MstrDashboardDetails,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
-        Get lineage between datamodel and data sources
+        Get lineage between dashboard and data sources
         """
-        if not db_service_name:
+        if not db_service_prefix:
             return
 
+        (
+            prefix_db_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+
         database_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=db_service_name
+            entity=DatabaseService, fqn=prefix_db_service_name
         )
         dialect = ConnectionTypeDialectMapper.dialect_of(
             database_service.serviceType.value
@@ -221,7 +228,7 @@ class MicrostrategySource(DashboardServiceSource):
                 for table in lineage_parser.source_tables:
                     table_entities = get_table_entities_from_query(
                         metadata=self.metadata,
-                        service_name=db_service_name,
+                        service_name=prefix_db_service_name,
                         database_name="*",
                         database_schema="*",
                         table_name=str(table),
@@ -230,6 +237,29 @@ class MicrostrategySource(DashboardServiceSource):
                         logger.debug(f"Table not found in metadata: {str(table)}")
                         continue
                     for table_entity in table_entities or []:
+                        if (
+                            prefix_table_name
+                            and prefix_table_name.lower()
+                            != str(table_entity.name.root).lower()
+                        ):
+                            continue
+
+                        if (
+                            prefix_schema_name
+                            and getattr(table_entity.databaseSchema, "name", None)
+                            and prefix_schema_name.lower()
+                            != str(table_entity.databaseSchema.name).lower()
+                        ):
+                            continue
+
+                        if (
+                            prefix_database_name
+                            and getattr(table_entity.database, "name", None)
+                            and prefix_database_name.lower()
+                            != str(table_entity.database.name).lower()
+                        ):
+                            continue
+
                         yield Either(
                             right=AddLineageRequest(
                                 edge=EntitiesEdge(

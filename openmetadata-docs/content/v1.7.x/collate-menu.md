@@ -530,9 +530,11 @@ site_menu:
   - category: Connectors / Pipeline / Spline / Troubleshooting
     url: /connectors/pipeline/spline/troubleshooting
   - category: Connectors / Pipeline / SSIS
-    url: /connectors/pipeline/SSIS
+    url: /connectors/pipeline/ssis
   - category: Connectors / Pipeline / SSIS / Run Externally
-    url: /connectors/pipeline/SSIS/yaml
+    url: /connectors/pipeline/ssis/yaml
+  - category: Connectors / Pipeline / SSIS / Troubleshooting
+    url: /connectors/pipeline/ssis/troubleshooting
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
   - category: Connectors / Pipeline / Stitch / Run Externally
@@ -673,6 +675,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt
   - category: Connectors / Ingestion / Workflows / dbt / Configure dbt workflow from OpenMetadata UI
     url: /connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui
+  - category: Connectors / Ingestion / Workflows / dbt / Auto Ingest DBT Core Artifacts
+    url: /connectors/ingestion/workflows/dbt/auto-ingest-dbt-core    
   - category: Connectors / Ingestion / Workflows / dbt / Run Externally
     url: /connectors/ingestion/workflows/dbt/run-dbt-workflow-externally
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
@@ -743,6 +747,8 @@ site_menu:
     url: /applications/autopilot
   - category: Applications / Data Retention Application
     url: /applications/data-retention
+  - category: Applications / Slack Application
+    url: /applications/slack
 
   - category: How-to Guides
     url: /how-to-guides
@@ -975,6 +981,8 @@ site_menu:
     url: /how-to-guides/data-governance/glossary/export
   - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
     url: /how-to-guides/data-governance/glossary/approval
+  - category: How-to Guides / Data Governance / Glossary / Import-Export Troubleshooting
+    url: /how-to-guides/data-governance/glossary/troubleshooting
   - category: How-to Guides / Data Governance / Glossary / Glossary Styling
     url: /how-to-guides/data-governance/glossary/styling
   - category: How-to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms

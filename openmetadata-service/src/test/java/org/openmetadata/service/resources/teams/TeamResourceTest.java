@@ -105,6 +105,7 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
@@ -114,7 +115,6 @@ import org.openmetadata.service.resources.teams.TeamResource.TeamHierarchyList;
 import org.openmetadata.service.resources.teams.TeamResource.TeamList;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -576,6 +576,57 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         () -> createWithChildren("invalidGroup", GROUP, bu11.getEntityReference()),
         BAD_REQUEST,
         CREATE_GROUP);
+  }
+
+  @Test
+  void test_listTeamsWithoutFieldsReturnsZeroCounts() throws IOException {
+    // Create a team hierarchy
+    Team parentTeam =
+        createWithParents("parent-team-counts", BUSINESS_UNIT, ORG_TEAM.getEntityReference());
+    Team childTeam1 =
+        createWithParents("child-team-1-counts", DIVISION, parentTeam.getEntityReference());
+    Team childTeam2 =
+        createWithParents("child-team-2-counts", DIVISION, parentTeam.getEntityReference());
+
+    // List teams without requesting childrenCount and userCount fields
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("parentTeam", ORGANIZATION_NAME);
+    // Explicitly not including childrenCount and userCount in fields
+    ResultList<Team> teams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Find the parent team in the results
+    Team listedParentTeam =
+        teams.getData().stream()
+            .filter(t -> t.getName().equals("parent-team-counts"))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Parent team not found in listing"));
+
+    // Verify that childrenCount and userCount are 0, not null
+    assertNotNull(listedParentTeam.getChildrenCount(), "childrenCount should not be null");
+    assertNotNull(listedParentTeam.getUserCount(), "userCount should not be null");
+    assertEquals(
+        0,
+        listedParentTeam.getChildrenCount(),
+        "childrenCount should default to 0 when not requested");
+    assertEquals(
+        0, listedParentTeam.getUserCount(), "userCount should default to 0 when not requested");
+
+    // Also verify that when fields are explicitly requested, the counts are correct
+    queryParams.put("fields", "childrenCount,userCount");
+    teams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    listedParentTeam =
+        teams.getData().stream()
+            .filter(t -> t.getName().equals("parent-team-counts"))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Parent team not found in listing"));
+
+    assertEquals(
+        2,
+        listedParentTeam.getChildrenCount(),
+        "childrenCount should be 2 when explicitly requested");
+    assertEquals(
+        0, listedParentTeam.getUserCount(), "userCount should be 0 when explicitly requested");
   }
 
   @Test

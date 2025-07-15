@@ -94,6 +94,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.TableConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -109,7 +110,6 @@ import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -758,6 +758,78 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Test
+  void test_importCsvWithFullTermUpdate() throws IOException {
+    // Create a glossary
+    String glossaryName = "fullUpdateTest";
+    createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
+
+    // Create custom property for testing
+    TypeResourceTest typeResourceTest = new TypeResourceTest();
+    Type entityType =
+        typeResourceTest.getEntityByName(
+            Entity.GLOSSARY_TERM, "customProperties", ADMIN_AUTH_HEADERS);
+    CustomProperty stringCp =
+        new CustomProperty()
+            .withName("glossaryTermStringCp")
+            .withDescription("string type custom property")
+            .withPropertyType(STRING_TYPE.getEntityReference());
+    typeResourceTest.addAndCheckCustomProperty(
+        entityType.getId(), stringCp, OK, ADMIN_AUTH_HEADERS);
+
+    // First create terms with initial hierarchy and values
+    String initialCsv =
+        createCsv(
+            GlossaryCsv.HEADERS,
+            listOf(
+                ",term1,Term 1,Description 1,syn1;syn2,,,PII.None,,,Draft,",
+                ",term2,Term 2,Description 2,,,,,,,Approved,",
+                "fullUpdateTest.term1,term3,Term 3,Description 3,,,,,,,Approved,"),
+            null);
+
+    // Import initial terms
+    CsvImportResult result = importCsv(glossaryName, initialCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 4, 4, 0);
+
+    // Now update with changes - move term3 to term2 and update other fields
+    String updateCsv =
+        createCsv(
+            GlossaryCsv.HEADERS,
+            listOf(
+                "fullUpdateTest.term2,term3,Term 3 Updated,Description 3 Updated,newSyn1;newSyn2,,ref1;http://ref1.com,PII.Sensitive,,,Approved,glossaryTermStringCp:test value"),
+            null);
+
+    // Import updates
+    result = importCsv(glossaryName, updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
+
+    // Verify all fields were updated
+    GlossaryTerm term3 =
+        new GlossaryTermResourceTest()
+            .getEntityByName(
+                "fullUpdateTest.term2.term3",
+                "owners,reviewers,parent,glossary,tags,extension",
+                ADMIN_AUTH_HEADERS);
+    assertEquals("Term 3 Updated", term3.getDisplayName());
+    assertEquals("Description 3 Updated", term3.getDescription());
+    assertEquals(List.of("newSyn1", "newSyn2"), term3.getSynonyms());
+    assertEquals("term2", term3.getParent().getName());
+    assertEquals(1, term3.getReferences().size());
+    assertEquals("ref1", term3.getReferences().getFirst().getName());
+    assertEquals("http://ref1.com", term3.getReferences().getFirst().getEndpoint().toString());
+    assertEquals(1, term3.getTags().size());
+    assertEquals("PII.Sensitive", term3.getTags().getFirst().getTagFQN());
+    assertEquals(GlossaryTerm.Status.APPROVED, term3.getStatus());
+    // Fix: Safely extract the custom property from the extension map
+    Object extension = term3.getExtension();
+    String customPropValue = null;
+    if (extension instanceof Map) {
+      Object val = ((Map<?, ?>) extension).get("glossaryTermStringCp");
+      if (val != null) customPropValue = val.toString();
+    }
+    assertEquals("test value", customPropValue);
+  }
+
+  @Test
   void testGlossaryImportExport() throws IOException {
     EventSubscriptionResourceTest eventSubscriptionResourceTest =
         new EventSubscriptionResourceTest();
@@ -926,20 +998,20 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 user1, "Approved"),
             String.format(
                 "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,g1.g1t1;g2.g2t1,,,user:%s,team:%s,%s,",
-                reviewerRef.get(0), team11, "Draft"));
+                reviewerRef.getFirst(), team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                ",g1,dsp1,new-dsc1,h1;h2;h3,g1.g1t1;importExportTest.g2;g2.g2t1,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
-                reviewerRef.get(0), user1, "Approved", team11, user1, user2),
+                ",g1,dsp1,new-dsc1,h1;h2;h3,g1.g1t1;g2.g2t1;importExportTest.g2,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
+                reviewerRef.getFirst(), user1, "Approved", team11, user1, user2),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,importExportTest.g1;g1.g1t1;g2.g2t1,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val1|val2|val3|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
+                ",g2,dsp2,new-dsc3,h1;h3;h3,g1.g1t1;g2.g2t1;importExportTest.g1,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val1|val2|val3|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
                 user1, user2, "Approved"),
             String.format(
                 "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"",
-                reviewerRef.get(0), team11, "Draft"));
+                reviewerRef.getFirst(), team11, "Draft"));
 
     // Add new row to existing rows
     List<String> newRecords =

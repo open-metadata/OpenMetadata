@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { CSSProperties } from 'react';
 import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
 import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
-import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { Status } from '../generated/entity/applications/appRunRecord';
 import i18n from '../utils/i18next/LocalUtil';
 import {
@@ -65,8 +63,11 @@ export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
-export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
-export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
+export const ONE_HOUR_MS = 3600000; // 1 hour in milliseconds
+export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
+export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
+export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
+export const VERSION = 'VERSION';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
@@ -90,7 +91,7 @@ export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
 export const RUNNER = 'ingestionRunner';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
-export const ERROR500 = t('message.something-went-wrong');
+export const ERROR500 = i18n.t('message.something-went-wrong');
 
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
@@ -311,10 +312,11 @@ export const SOCKET_EVENTS = {
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
+  MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
-  '/database/': [t('message.in-this-database')],
+  '/database/': [i18n.t('message.in-this-database')],
 };
 
 export const NOTIFICATION_READ_TIMER = 2500;
@@ -432,6 +434,3 @@ export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
 
 export const BREADCRUMB_SEPARATOR = '/';
-
-export const VERSION_FETCH_TIME_KEY = 'versionFetchTime';
-export const ONE_HOUR_MS = 60 * 60 * 1000;

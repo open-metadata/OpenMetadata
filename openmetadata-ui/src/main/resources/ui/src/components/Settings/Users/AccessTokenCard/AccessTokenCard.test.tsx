@@ -12,7 +12,6 @@
  */
 import '@testing-library/jest-dom/extend-expect';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { revokeAccessToken } from '../../../../rest/userAPI';
 import { mockAccessData } from '../mocks/User.mocks';
 import AccessTokenCard from './AccessTokenCard.component';

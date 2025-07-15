@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
-import { useParams } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -29,6 +27,7 @@ import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
@@ -61,9 +60,13 @@ const mockProps: DataAssetsHeaderProps = {
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useParams: jest.fn().mockImplementation(() => ({
-    serviceCategory: ServiceCategory.DATABASE_SERVICES,
-  })),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockReturnValue({
+    serviceCategory: undefined,
+  }),
 }));
 
 jest.mock('../../../rest/applicationAPI', () => ({
@@ -338,9 +341,9 @@ describe('DataAssetsHeader component', () => {
       expiryDate: 1735406645688,
     };
 
-    // Mock useParams to return undefined serviceCategory
-    const useParamsMock = useParams as jest.Mock;
-    useParamsMock.mockReturnValue({
+    // Mock useRequiredParamsMock to return undefined serviceCategory
+    const useRequiredParamsMock = useRequiredParams as jest.Mock;
+    useRequiredParamsMock.mockReturnValue({
       serviceCategory: undefined,
     });
 
@@ -372,7 +375,7 @@ describe('DataAssetsHeader component', () => {
     );
 
     // Reset the mock to original value
-    useParamsMock.mockReturnValue({
+    useRequiredParamsMock.mockReturnValue({
       serviceCategory: ServiceCategory.DATABASE_SERVICES,
     });
   });
@@ -435,5 +438,41 @@ describe('DataAssetsHeader component', () => {
     expect(triggerOnDemandApp).toHaveBeenCalledWith(AUTO_PILOT_APP_NAME, {
       entityLink: 'entityFeedLink',
     });
+  });
+
+  it('should disable the button when disableRunAgentsButton is true', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        disableRunAgentsButton
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeDisabled();
+  });
+
+  it('should enable the button when isAutoPilotWorkflowStatusLoading is false', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButton={false}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeEnabled();
   });
 });

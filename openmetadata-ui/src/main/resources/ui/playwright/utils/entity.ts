@@ -263,6 +263,24 @@ export const addMultiOwner = async (data: {
     { state: 'detached' }
   );
 
+  const isClearButtonVisible = await page
+    .locator("[data-testid='select-owner-tabs']")
+    .getByTestId('clear-all-button')
+    .isVisible();
+
+  // If the user is not in the Users tab, switch to it
+  if (!isClearButtonVisible) {
+    await page
+      .locator("[data-testid='select-owner-tabs']")
+      .getByRole('tab', { name: 'Users' })
+      .click();
+
+    await page.waitForSelector(
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
+  }
+
   if (clearAll && isMultipleOwners) {
     await page.click('[data-testid="clear-all-button"]');
   }
@@ -325,6 +343,8 @@ export const assignTier = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByTestId(`radio-btn-${tier}`).click();
+  await page.click(`[data-testid="update-tier-card"]`);
+
   await patchRequest;
   await clickOutside(page);
 
@@ -340,6 +360,7 @@ export const removeTier = async (page: Page, endpoint: string) => {
       response.request().method() === 'PATCH'
   );
   await page.getByTestId('clear-tier').click();
+
   await patchRequest;
   await clickOutside(page);
 
@@ -409,7 +430,8 @@ export const updateDescriptionForChildren = async (
   page: Page,
   description: string,
   rowId: string,
-  rowSelector: string
+  rowSelector: string,
+  entityEndpoint: string
 ) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
@@ -421,9 +443,15 @@ export const updateDescriptionForChildren = async (
   await page.locator(descriptionBox).first().click();
   await page.locator(descriptionBox).first().clear();
   await page.locator(descriptionBox).first().fill(description);
-  const updateRequest = page.waitForResponse((req) =>
-    ['PATCH', 'PUT'].includes(req.request().method())
-  );
+  let updateRequest;
+  if (
+    entityEndpoint === 'tables' ||
+    entityEndpoint === 'dashboard/datamodels'
+  ) {
+    updateRequest = page.waitForResponse('/api/v1/columns/name/*');
+  } else {
+    updateRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+  }
   await page.getByTestId('save').click();
   await updateRequest;
 
@@ -445,8 +473,9 @@ export const assignTag = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
-  tagFqn?: string,
-  parentId = 'KnowledgePanel.Tags'
+  endpoint: string,
+  parentId = 'KnowledgePanel.Tags',
+  tagFqn?: string
 ) => {
   await page
     .getByTestId(parentId)
@@ -466,11 +495,13 @@ export const assignTag = async (
     { state: 'visible' }
   );
 
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+  await patchRequest;
 
   await expect(
     page
@@ -486,12 +517,14 @@ export const assignTagToChildren = async ({
   rowId,
   action = 'Add',
   rowSelector = 'data-row-key',
+  entityEndpoint,
 }: {
   page: Page;
   tag: string;
   rowId: string;
   action?: 'Add' | 'Edit';
   rowSelector?: string;
+  entityEndpoint: string;
 }) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
@@ -508,10 +541,15 @@ export const assignTagToChildren = async ({
   await searchTags;
 
   await page.getByTestId(`tag-${tag}`).click();
-
-  const putRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PUT'
-  );
+  let patchRequest;
+  if (
+    entityEndpoint === 'tables' ||
+    entityEndpoint === 'dashboard/datamodels'
+  ) {
+    patchRequest = page.waitForResponse('/api/v1/columns/name/*');
+  } else {
+    patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+  }
 
   await page.waitForSelector(
     '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
@@ -522,7 +560,7 @@ export const assignTagToChildren = async ({
 
   await page.getByTestId('saveAssociatedTag').click();
 
-  await putRequest;
+  await patchRequest;
 
   await expect(
     page
@@ -574,11 +612,13 @@ export const removeTagsFromChildren = async ({
   rowId,
   tags,
   rowSelector = 'data-row-key',
+  entityEndpoint,
 }: {
   page: Page;
   tags: string[];
   rowId: string;
   rowSelector?: string;
+  entityEndpoint: string;
 }) => {
   for (const tag of tags) {
     await page
@@ -593,10 +633,15 @@ export const removeTagsFromChildren = async ({
       .getByTestId('remove-tags')
       .click();
 
-    const putTagRequest = page.waitForResponse((response) =>
-      ['PUT', 'PATCH'].includes(response.request().method())
-    );
-
+    let patchRequest;
+    if (
+      entityEndpoint === 'tables' ||
+      entityEndpoint === 'dashboard/datamodels'
+    ) {
+      patchRequest = page.waitForResponse('/api/v1/columns/name/*');
+    } else {
+      patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+    }
     await page.waitForSelector(
       '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
       { state: 'visible' }
@@ -606,7 +651,7 @@ export const removeTagsFromChildren = async ({
 
     await page.getByTestId('saveAssociatedTag').click();
 
-    await putTagRequest;
+    await patchRequest;
 
     await expect(
       page
@@ -667,12 +712,14 @@ export const assignGlossaryTermToChildren = async ({
   action = 'Add',
   rowId,
   rowSelector = 'data-row-key',
+  entityEndpoint,
 }: {
   page: Page;
   glossaryTerm: GlossaryTermOption;
   rowId: string;
   action?: 'Add' | 'Edit';
   rowSelector?: string;
+  entityEndpoint: string;
 }) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
@@ -696,9 +743,20 @@ export const assignGlossaryTermToChildren = async ({
     { state: 'visible' }
   );
 
+  let patchRequest;
+  if (
+    entityEndpoint === 'tables' ||
+    entityEndpoint === 'dashboard/datamodels'
+  ) {
+    patchRequest = page.waitForResponse('/api/v1/columns/name/*');
+  } else {
+    patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+  }
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
+  await patchRequest;
 
   await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
@@ -757,11 +815,13 @@ export const removeGlossaryTermFromChildren = async ({
   page,
   glossaryTerms,
   rowId,
+  entityEndpoint,
   rowSelector = 'data-row-key',
 }: {
   page: Page;
   glossaryTerms: GlossaryTermOption[];
   rowId: string;
+  entityEndpoint: string;
   rowSelector?: string;
 }) => {
   for (const tag of glossaryTerms) {
@@ -778,9 +838,15 @@ export const removeGlossaryTermFromChildren = async ({
       .locator('svg')
       .click();
 
-    const putRequest = page.waitForResponse((response) =>
-      ['PUT', 'PATCH'].includes(response.request().method())
-    );
+    let patchRequest;
+    if (
+      entityEndpoint === 'tables' ||
+      entityEndpoint === 'dashboard/datamodels'
+    ) {
+      patchRequest = page.waitForResponse('/api/v1/columns/name/*');
+    } else {
+      patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+    }
 
     await page.waitForSelector(
       '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
@@ -791,7 +857,7 @@ export const removeGlossaryTermFromChildren = async ({
 
     await page.getByTestId('saveAssociatedTag').click();
 
-    await putRequest;
+    await patchRequest;
 
     expect(
       page
@@ -1664,4 +1730,23 @@ export const checkExploreSearchFilter = async (
   await page.click('[data-testid="clear-filters"]');
 
   await entity?.visitEntityPage(page);
+};
+
+export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
+  switch (entity.getType()) {
+    case 'Table':
+    case 'Dashboard Data Model':
+      return '/columns/0/dataTypeDisplay';
+    case 'ApiEndpoint':
+      return '/requestSchema/schemaFields/0/dataTypeDisplay';
+    case 'Topic':
+      return '/messageSchema/schemaFields/0/dataTypeDisplay';
+    case 'Container':
+      return '/dataModel/columns/0/dataTypeDisplay';
+    case 'SearchIndex':
+      return '/fields/0/dataTypeDisplay';
+
+    default:
+      return undefined;
+  }
 };

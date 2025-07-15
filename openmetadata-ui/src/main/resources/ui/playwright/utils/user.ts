@@ -211,11 +211,11 @@ export const hardDeleteUserProfilePage = async (
 export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="edit-displayname"]');
-  await page.fill('[data-testid="displayName"]', '');
-  await page.getByTestId('displayName').fill(editedUserName);
+  await page.fill('[data-testid="displayName-input"]', '');
+  await page.getByTestId('displayName-input').fill(editedUserName);
 
   const saveResponse = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="save-display-name"]');
+  await page.getByText('Save').click();
   await saveResponse;
 
   // Verify the updated display name
@@ -468,7 +468,7 @@ export const generateToken = async (page: Page) => {
 
   await page.click('[data-testid="token-expiry"]');
 
-  await page.locator('[title="1 hr"] div').click();
+  await page.locator('[title="1 hour"] div').click();
 
   await expect(page.locator('[data-testid="token-expiry"]')).toBeVisible();
 
@@ -491,9 +491,9 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
   await expect(page.locator('[data-testid="revoke-button"]')).not.toBeVisible();
 };
 
-export const updateExpiration = async (page: Page, expiry: number | string) => {
+export const updateExpiration = async (page: Page, expiry: number) => {
   await page.click('[data-testid="token-expiry"]');
-  await page.click(`text=${expiry} days`);
+  await page.click(`text=${expiry} day${expiry > 1 ? 's' : ''}`);
 
   const expiryDate = customFormatDateTime(
     getEpochMillisForFutureDays(expiry as number),

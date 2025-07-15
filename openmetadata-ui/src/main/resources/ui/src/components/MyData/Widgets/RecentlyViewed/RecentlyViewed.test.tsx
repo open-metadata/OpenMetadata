@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
-import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
 import RecentlyViewed from './RecentlyViewed';
 
 const mockProp = {
@@ -35,21 +33,24 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
-  getRecentlyViewedData: jest.fn().mockReturnValue([
-    {
-      displayName: 'test',
-      entityType: 'table',
-      fqn: 'test',
-      id: '1',
-      serviceType: 'BigQuery',
-      name: 'Test Item',
-      fullyQualifiedName: 'test.item',
-      type: 'test',
-      timestamp: 1706533046620,
+jest.mock('../../../../hooks/currentUserStore/useCurrentUserStore', () => ({
+  useCurrentUserPreferences: jest.fn().mockReturnValue({
+    preferences: {
+      recentlyViewed: [
+        {
+          displayName: 'test',
+          entityType: 'table',
+          fqn: 'test',
+          id: '1',
+          serviceType: 'BigQuery',
+          name: 'Test Item',
+          fullyQualifiedName: 'test.item',
+          type: 'test',
+          timestamp: 1706533046620,
+        },
+      ],
     },
-  ]),
-  prepareLabel: jest.fn(),
+  }),
 }));
 
 describe('RecentlyViewed', () => {
@@ -81,14 +82,5 @@ describe('RecentlyViewed', () => {
     });
 
     expect(screen.getByTestId('Recently Viewed-test')).toBeInTheDocument();
-  });
-
-  it('should render no data placeholder when data is  empty', async () => {
-    (getRecentlyViewedData as jest.Mock).mockReturnValue([]),
-      await act(async () => {
-        render(<RecentlyViewed widgetKey={mockProp.widgetKey} />);
-      });
-
-    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
   });
 });

@@ -35,12 +35,12 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -48,7 +48,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   private final Client client;
   private final Webhook webhook;
   private static final String TEST_MESSAGE_JSON =
-      "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.";
+      "{\"message\": \"This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.\"}";
 
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -104,7 +104,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     }
   }
 
-  private void sendActionsToTargets(ChangeEvent event) throws Exception {
+  private void sendActionsToTargets(ChangeEvent event) {
     List<Invocation.Builder> targets =
         getTargetsForWebhookAlert(
             webhook, subscriptionDestination.getCategory(), WEBHOOK, client, event);

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.util.OpenMetadataOperations.printToAsciiTable;
 
 import java.util.ArrayList;
@@ -63,7 +64,7 @@ public class EntityRelationshipCleanup {
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
-  public static class CleanupResult {
+  public static class EntityCleanupResult {
     private int totalRelationshipsScanned;
     private int orphanedRelationshipsFound;
     private int relationshipsDeleted;
@@ -83,12 +84,12 @@ public class EntityRelationshipCleanup {
     }
   }
 
-  public CleanupResult performCleanup(int batchSize) {
+  public EntityCleanupResult performCleanup(int batchSize) {
     LOG.info(
         "Starting entity relationship cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
 
-    CleanupResult result =
-        CleanupResult.builder()
+    EntityCleanupResult result =
+        EntityCleanupResult.builder()
             .orphanedRelationships(new ArrayList<>())
             .orphansByEntityType(new HashMap<>())
             .orphansByRelationType(new HashMap<>())
@@ -229,7 +230,7 @@ public class EntityRelationshipCleanup {
         LOG.debug("No repository found for entity type: {}", entityType);
         return false;
       }
-      repository.get(null, entityId, EntityUtil.Fields.EMPTY_FIELDS);
+      repository.get(null, entityId, EntityUtil.Fields.EMPTY_FIELDS, ALL, false);
       return true;
     } catch (EntityNotFoundException e) {
       LOG.debug("Entity {}:{} not found", entityType, entityId);
@@ -243,9 +244,6 @@ public class EntityRelationshipCleanup {
 
   /**
    * Deletes orphaned relationships from the database
-   *
-   * @param orphanedRelationships List of orphaned relationships to delete
-   * @return Number of relationships successfully deleted
    */
   private int deleteOrphanedRelationships(List<OrphanedRelationship> orphanedRelationships) {
     LOG.info("Deleting {} orphaned relationships", orphanedRelationships.size());
@@ -293,7 +291,7 @@ public class EntityRelationshipCleanup {
     return deletedCount;
   }
 
-  private void displayOrphanedRelationships(CleanupResult result) {
+  private void displayOrphanedRelationships(EntityCleanupResult result) {
     if (result.getOrphanedRelationships().isEmpty()) {
       LOG.info("No orphaned relationships found. All entity relationships are valid.");
       return;
@@ -323,7 +321,7 @@ public class EntityRelationshipCleanup {
     displaySummaryStatistics(result);
   }
 
-  private void displaySummaryStatistics(CleanupResult result) {
+  private void displaySummaryStatistics(EntityCleanupResult result) {
     if (!result.getOrphansByEntityType().isEmpty()) {
       LOG.info("Orphaned relationships by entity type:");
       List<String> entityColumns = Arrays.asList("Entity Type Pair", "Count");

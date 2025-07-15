@@ -18,7 +18,7 @@ import {
 import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { ReactComponent as FormatBoldIcon } from '../../../assets/svg/ic-format-bold.svg';
 import { ReactComponent as FormatInlineCodeIcon } from '../../../assets/svg/ic-format-inline-code.svg';
 import { ReactComponent as FormatItalicIcon } from '../../../assets/svg/ic-format-italic.svg';

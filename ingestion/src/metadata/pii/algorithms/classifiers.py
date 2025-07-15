@@ -73,9 +73,6 @@ class ColumnClassifier(ABC, Generic[T]):
         """
 
 
-# Implementations
-
-
 @final
 class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
     """
@@ -103,7 +100,6 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
         column_name: Optional[str] = None,
         column_data_type: Optional[DataType] = None,
     ) -> Mapping[PIITag, float]:
-
         if column_data_type is not None and is_non_pii_datatype(column_data_type):
             return {}
 

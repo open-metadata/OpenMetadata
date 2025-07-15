@@ -27,15 +27,9 @@ import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
@@ -45,13 +39,12 @@ import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-side
 import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
   DEFAULT_DOMAIN_VALUE,
+  LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
   ONE_HOUR_MS,
   SOCKET_EVENTS,
-  VERSION_FETCH_TIME_KEY,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { AsyncDeleteWebsocketResponse } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
@@ -64,6 +57,7 @@ import {
   JobType,
 } from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
@@ -73,7 +67,6 @@ import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
-import { refreshPage } from '../../utils/CommonUtils';
 import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -82,10 +75,8 @@ import {
   getEntityType,
   prepareFeedLink,
 } from '../../utils/FeedUtils';
-import {
-  languageSelectOptions,
-  SupportedLocales,
-} from '../../utils/i18next/i18nextUtil';
+import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
+import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -95,7 +86,6 @@ import DomainSelectableList from '../common/DomainSelectableList/DomainSelectabl
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
-import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
@@ -111,7 +101,7 @@ const NavBar = () => {
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
     useDomainStore();
   const { t } = useTranslation();
@@ -121,31 +111,25 @@ const NavBar = () => {
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
-  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
-  const [version, setVersion] = useState<string>();
+  const { appVersion: version, setAppVersion } = useApplicationStore();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
-    preferences: { isSidebarCollapsed },
+    preferences: { isSidebarCollapsed, language },
     setPreference,
   } = useCurrentUserPreferences();
 
   const fetchOMVersion = async () => {
-    // If version fetch happens within an hour, skip fetching
-    const lastFetchTime = cookieStorage.getItem(VERSION_FETCH_TIME_KEY);
-    const now = Date.now();
-
-    if (lastFetchTime && now - Number(lastFetchTime) < ONE_HOUR_MS) {
-      // Less than an hour since last fetch, skip fetching
-      return;
-    }
-
     try {
       const res = await getVersion();
-      setVersion(res.version);
-      // Set/update the cookie with current time, expires in 1 hour
-      cookieStorage.setItem(VERSION_FETCH_TIME_KEY, String(now), {
-        expires: new Date(now + ONE_HOUR_MS),
+
+      const now = Date.now();
+      // Update the cache timestamp
+      cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
+        expires: new Date(Date.now() + ONE_HOUR_MS),
       });
+
+      // Remove -SNAPSHOT from the version
+      setAppVersion(res.version.replace('-SNAPSHOT', ''));
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -165,19 +149,6 @@ const NavBar = () => {
       return <Component key={key} />;
     });
   }, []);
-
-  const handleSupportClick = ({ key }: MenuInfo): void => {
-    if (key === HELP_ITEMS_ENUM.WHATS_NEW) {
-      setIsFeatureModalOpen(true);
-    }
-  };
-
-  const language = useMemo(
-    () =>
-      (cookieStorage.getItem('i18next') as SupportedLocales) ||
-      SupportedLocales.English,
-    []
-  );
 
   const { socket } = useWebSocketConnector();
 
@@ -301,12 +272,12 @@ const NavBar = () => {
       if (isChrome > -1) {
         window.open(path);
       } else {
-        history.push(path);
+        navigate(path);
       }
     };
   };
 
-  const handleKeyPress = useCallback((event) => {
+  const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
       searchRef.current?.focus();
       event.preventDefault();
@@ -325,7 +296,27 @@ const NavBar = () => {
       ) {
         return;
       }
+
+      // Check if we need to fetch based on cache timing
+      // This is to block the API call for 1 hour
+      const lastFetchTime = cookieStorage.getItem(LAST_VERSION_FETCH_TIME_KEY);
+      const now = Date.now();
+
+      if (lastFetchTime) {
+        const timeSinceLastFetch = now - parseInt(lastFetchTime);
+        if (timeSinceLastFetch < ONE_HOUR_MS) {
+          // Less than 1 hour since last fetch, skip API call
+          return;
+        }
+      }
+
       const newVersion = await getVersion();
+
+      // Update the cache timestamp
+      cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
+        expires: new Date(Date.now() + ONE_HOUR_MS),
+      });
+
       // Compare version only if version is set previously to have fair comparison
       if (version && version !== newVersion.version) {
         setShowVersionMissMatchAlert(true);
@@ -422,17 +413,16 @@ const NavBar = () => {
     async (domain: EntityReference | EntityReference[]) => {
       updateActiveDomain(domain as EntityReference);
       setIsDomainDropdownOpen(false);
-      refreshPage();
+      navigate(0);
     },
     []
   );
 
-  const handleLanguageChange = useCallback(({ key }) => {
+  const handleLanguageChange = useCallback(({ key }: MenuInfo) => {
     i18next.changeLanguage(key);
-    refreshPage();
+    setPreference({ language: key as SupportedLocales });
+    navigate(0);
   }, []);
-
-  const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);
 
   return (
     <>
@@ -512,9 +502,7 @@ const NavBar = () => {
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
                 type="text">
-                {upperCase(
-                  (language || SupportedLocales.English).split('-')[0]
-                )}{' '}
+                {language ? upperCase(language.split('-')[0]) : ''}{' '}
                 <DropDownIcon width={12} />
               </Button>
             </Dropdown>
@@ -555,7 +543,6 @@ const NavBar = () => {
             <Dropdown
               menu={{
                 items: getHelpDropdownItems(version),
-                onClick: handleSupportClick,
               }}
               overlayStyle={{ width: 175 }}
               placement="bottomRight"
@@ -572,12 +559,6 @@ const NavBar = () => {
           </div>
         </div>
       </Header>
-      <WhatsNewModal
-        header={`${t('label.whats-new')}!`}
-        visible={isFeatureModalOpen}
-        onCancel={handleModalCancel}
-      />
-
       {showVersionMissMatchAlert && (
         <Alert
           showIcon
@@ -586,7 +567,7 @@ const NavBar = () => {
               size="small"
               type="link"
               onClick={() => {
-                history.go(0);
+                navigate(0);
               }}>
               {t('label.refresh')}
             </Button>

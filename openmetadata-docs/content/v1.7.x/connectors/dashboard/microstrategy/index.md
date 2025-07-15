@@ -1,5 +1,6 @@
 ---
-title: MicroStrategy
+title: MicroStrategy Connector | OpenMetadata Integration Guide
+description: Connect MicroStrategy dashboards to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration options, and metadata extraction steps.
 slug: /connectors/dashboard/microstrategy
 ---
 

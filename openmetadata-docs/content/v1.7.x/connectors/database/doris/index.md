@@ -1,5 +1,6 @@
 ---
-title: Doris
+title: Doris Connector | OpenMetadata Database Integration Guide
+description: Connect Apache Doris to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration steps, and metadata extraction tips.
 slug: /connectors/database/doris
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/doris
 name="Doris"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures"]
 / %}
 

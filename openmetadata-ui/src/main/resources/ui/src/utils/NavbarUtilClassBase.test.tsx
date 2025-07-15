@@ -13,8 +13,8 @@
 
 import { ROUTES } from '../constants/constants';
 import {
-  URL_GITHUB_REPO,
   URL_JOIN_SLACK,
+  URL_OM_RELEASE_UPDATES,
   URL_OPEN_METADATA_DOCS,
 } from '../constants/URL.constants';
 import navbarUtilClassBase from './NavbarUtilClassBase';
@@ -28,12 +28,11 @@ describe('NavbarUtilClassBase', () => {
     expect(stringifyResult).toContain(URL_OPEN_METADATA_DOCS);
     expect(stringifyResult).toContain(ROUTES.SWAGGER);
     expect(stringifyResult).toContain(URL_JOIN_SLACK);
-    expect(stringifyResult).toContain(URL_GITHUB_REPO);
+    expect(stringifyResult).toContain(URL_OM_RELEASE_UPDATES);
     expect(stringifyResult).toContain('label.tour');
     expect(stringifyResult).toContain('label.doc-plural');
     expect(stringifyResult).toContain('label.api-uppercase');
     expect(stringifyResult).toContain('label.slack-support');
-    expect(stringifyResult).toContain('label.whats-new');
     expect(stringifyResult).toContain('label.version');
   });
 });

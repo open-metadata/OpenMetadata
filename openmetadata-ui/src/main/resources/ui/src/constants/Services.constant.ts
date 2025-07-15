@@ -429,6 +429,8 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Cockroach,
   SearchServiceType.OpenSearch,
   PipelineServiceType.Ssis,
+  DatabaseServiceType.Ssas,
+  DashboardServiceType.ThoughtSpot,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -445,10 +447,6 @@ export const TEST_CONNECTION_FAILURE_MESSAGE = i18n.t(
 
 export const TEST_CONNECTION_TESTING_MESSAGE = i18n.t(
   'message.testing-your-connection-may-take-two-minutes'
-);
-
-export const TEST_CONNECTION_INFO_MESSAGE = i18n.t(
-  'message.test-connection-taking-too-long'
 );
 
 export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(

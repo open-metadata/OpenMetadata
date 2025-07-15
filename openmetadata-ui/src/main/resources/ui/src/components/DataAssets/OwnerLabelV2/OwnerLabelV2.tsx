@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { t } from 'i18next';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
@@ -36,7 +36,7 @@ export const OwnerLabelV2 = <
 ) => {
   const { dataTestId = 'glossary-right-panel-owner-link' } = props;
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
-
+  const { t } = useTranslation();
   const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
     const updatedEntity = { ...data };
     updatedEntity.owners = updatedUser;
@@ -49,7 +49,7 @@ export const OwnerLabelV2 = <
         <Typography.Text className="text-sm font-medium">
           {t('label.owner-plural')}
         </Typography.Text>
-        {(permissions.EditOwners || permissions.EditAll) && (
+        {!isVersionView && (permissions.EditOwners || permissions.EditAll) && (
           <UserTeamSelectableList
             hasPermission={permissions.EditOwners || permissions.EditAll}
             listHeight={200}
@@ -78,7 +78,7 @@ export const OwnerLabelV2 = <
         )}
       </div>
     ),
-    [data, permissions, handleUpdatedOwner]
+    [data, permissions, handleUpdatedOwner, isVersionView]
   );
 
   return (

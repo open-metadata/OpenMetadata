@@ -24,11 +24,11 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -248,13 +248,12 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
                       s.setStatus(testCase.getTestCaseStatus());
                       s.setTimestamp(testCase.getTestCaseResult().getTimestamp());
                     },
-                    () -> {
-                      resultSummaries.add(
-                          new ResultSummary()
-                              .withTestCaseName(testCase.getFullyQualifiedName())
-                              .withStatus(testCase.getTestCaseStatus())
-                              .withTimestamp(testCase.getTestCaseResult().getTimestamp()));
-                    });
+                    () ->
+                        resultSummaries.add(
+                            new ResultSummary()
+                                .withTestCaseName(testCase.getFullyQualifiedName())
+                                .withStatus(testCase.getTestCaseStatus())
+                                .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
           } else {
             testSuite.setTestCaseResultSummary(
                 List.of(

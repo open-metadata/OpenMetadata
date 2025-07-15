@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 @import (reference) url('../../../styles/variables.less');
-
-@selected-color: #1570ef;
-@hover-color: #d1e9ff;
-@active-color: #175cd3;
+@selected-color: @primary-color;
+@hover-color: @primary-1;
+@active-color: @primary-7;
 @left-sidebar-icon-size: 28px;
 
 .logo-container {
@@ -196,7 +195,7 @@
   .ant-menu-submenu.ant-menu-submenu-open {
     border-width: 0px 1px 1px 1px;
     border-style: solid;
-    border-color: #53b1fd;
+    border-color: @primary-4;
     color: @white;
     border-radius: 12px;
     overflow: hidden;

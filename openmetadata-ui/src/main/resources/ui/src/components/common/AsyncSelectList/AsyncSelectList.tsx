@@ -25,14 +25,7 @@ import {
 import { AxiosError } from 'axios';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -66,6 +59,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasContentLoading, setHasContentLoading] = useState(false);
+  const [open, setOpen] = useState(props.autoFocus ?? false);
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [searchValue, setSearchValue] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -312,12 +306,13 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
           />
         )
       }
+      open={open}
       optionLabelProp="label"
-      // this popupClassName class is used to identify the dropdown in the playwright tests
-      popupClassName="async-select-list-dropdown"
+      popupClassName="async-select-list-dropdown" // this popupClassName class is used to identify the dropdown in the playwright tests
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}
+      onDropdownVisibleChange={setOpen}
       onInputKeyDown={(event) => {
         if (event.key === 'Backspace') {
           return event.stopPropagation();

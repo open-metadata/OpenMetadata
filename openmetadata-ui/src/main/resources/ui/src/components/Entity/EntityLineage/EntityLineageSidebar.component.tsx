@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
-import React, { FC, HTMLAttributes } from 'react';
+import { FC, HTMLAttributes } from 'react';
 import { Node } from 'reactflow';
 import { ReactComponent as DragIconDotted } from '../../../assets/svg/dots-six-bold.svg';
 import { entityData } from '../../../constants/Lineage.constants';
@@ -60,7 +60,6 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
         </span>
         <span className="d-flex m-l-xs">
           <Icon
-            className="drag-icon "
             component={DragIconDotted}
             rotate={90}
             style={{

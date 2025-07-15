@@ -30,7 +30,9 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntities;
+import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
@@ -43,6 +45,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -94,6 +97,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
@@ -109,7 +113,6 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.ValidatorUtil;
@@ -150,6 +153,15 @@ public class TableRepository extends EntityRepository<Table> {
         UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
+    fieldFetchers.put("testSuite", this::fetchAndSetTestSuites);
+    fieldFetchers.put("queries", this::fetchAndSetQueries);
+    fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndSetTableProfilerConfigs);
+    fieldFetchers.put("joins", this::fetchAndSetJoins);
+    fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
   }
 
   @Override
@@ -162,7 +174,6 @@ public class TableRepository extends EntityRepository<Table> {
               : table.getUsageSummary());
     }
     if (fields.contains(COLUMN_FIELD)) {
-      // We'll get column tags only if we are getting the column fields
       populateEntityFieldTags(
           entityType,
           table.getColumns(),
@@ -191,6 +202,93 @@ public class TableRepository extends EntityRepository<Table> {
       List<String> queries = listOrEmpty(queriesEntity).stream().map(Query::getQuery).toList();
       table.setQueries(queries);
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Table> entities) {
+    // Bulk fetch and set default fields for all tables
+    fetchAndSetDefaultFields(entities);
+
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+
+    // Handle table-specific fields that aren't in fetchAndSetFields
+    entities.forEach(
+        table -> {
+          if (fields.contains(COLUMN_FIELD)) {
+            populateEntityFieldTags(
+                entityType,
+                table.getColumns(),
+                table.getFullyQualifiedName(),
+                fields.contains(FIELD_TAGS));
+          }
+
+          clearFieldsInternal(table, fields);
+        });
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetUsageSummaries(List<Table> tables, Fields fields) {
+    if (!fields.contains("usageSummary") || tables == null || tables.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true,
+        tables,
+        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(tables)),
+        Table::setUsageSummary);
+  }
+
+  private void fetchAndSetTestSuites(List<Table> tables, Fields fields) {
+    if (!fields.contains("testSuite") || tables == null || tables.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, tables, batchFetchTestSuites(tables), Table::setTestSuite);
+  }
+
+  private void fetchAndSetQueries(List<Table> tables, Fields fields) {
+    if (!fields.contains("queries") || tables == null || tables.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, tables, batchFetchQueries(tables), Table::setQueries);
+  }
+
+  private void fetchAndSetTableProfilerConfigs(List<Table> tables, Fields fields) {
+    if (!fields.contains(TABLE_PROFILER_CONFIG) || tables == null || tables.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true, tables, batchFetchTableProfilerConfigs(tables), Table::setTableProfilerConfig);
+  }
+
+  private void fetchAndSetJoins(List<Table> tables, Fields fields) {
+    if (!fields.contains("joins") || tables == null || tables.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, tables, batchFetchJoins(tables), Table::setJoins);
+  }
+
+  private void fetchAndSetCustomMetrics(List<Table> tables, Fields fields) {
+    if (!fields.contains(CUSTOM_METRICS) || tables == null || tables.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true,
+        tables,
+        batchFetchCustomMetrics(tables, fields.contains(COLUMN_FIELD)),
+        Table::setCustomMetrics);
+  }
+
+  private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
+    if (!fields.contains(FIELD_TAGS)
+        || !fields.contains(COLUMN_FIELD)
+        || tables == null
+        || tables.isEmpty()) {
+      return;
+    }
+    // Use bulk tag fetching to avoid N+1 queries
+    bulkPopulateEntityFieldTags(
+        tables, entityType, Table::getColumns, Table::getFullyQualifiedName);
   }
 
   @Override
@@ -225,7 +323,76 @@ public class TableRepository extends EntityRepository<Table> {
     table
         .withDatabaseSchema(schemaRef)
         .withDatabase(schema.getDatabase())
-        .withService(schema.getService());
+        .withService(schema.getService())
+        .withServiceType(schema.getServiceType());
+  }
+
+  private void fetchAndSetDefaultFields(List<Table> tables) {
+    if (tables == null || tables.isEmpty()) {
+      return;
+    }
+
+    var schemaRefsMap = batchFetchSchemas(tables);
+    var uniqueSchemaIds =
+        schemaRefsMap.values().stream().map(EntityReference::getId).distinct().toList();
+
+    var schemaRepository = (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
+    var schemasList =
+        schemaRepository.getDao().findEntitiesByIds(new ArrayList<>(uniqueSchemaIds), ALL);
+    schemaRepository.setFieldsInBulk(Fields.EMPTY_FIELDS, schemasList);
+    var schemas =
+        schemasList.stream().collect(Collectors.toMap(DatabaseSchema::getId, schema -> schema));
+    tables.forEach(
+        table -> {
+          var schemaRef = schemaRefsMap.get(table.getId());
+          if (schemaRef != null) {
+            var schema = schemas.get(schemaRef.getId());
+            table
+                .withDatabaseSchema(schemaRef)
+                .withDatabase(schema.getDatabase())
+                .withService(schema.getService())
+                .withServiceType(schema.getServiceType());
+          }
+        });
+  }
+
+  private Map<UUID, EntityReference> batchFetchSchemas(List<Table> tables) {
+    var schemaMap = new HashMap<UUID, EntityReference>();
+    if (tables == null || tables.isEmpty()) {
+      return schemaMap;
+    }
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var relations =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(tables), Relationship.CONTAINS.ordinal(), ALL);
+
+    // Collect all unique schema IDs first
+    var schemaIds =
+        relations.stream()
+            .filter(rel -> DATABASE_SCHEMA.equals(rel.getFromEntity()))
+            .map(rel -> UUID.fromString(rel.getFromId()))
+            .distinct()
+            .toList();
+
+    // Batch fetch all schema entity references
+    var schemaRefs = Entity.getEntityReferencesByIds(DATABASE_SCHEMA, schemaIds, ALL);
+    var schemaRefMap =
+        schemaRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+
+    // Map tables to their schema references
+    relations.forEach(
+        rel -> {
+          if (DATABASE_SCHEMA.equals(rel.getFromEntity())) {
+            var tableId = UUID.fromString(rel.getToId());
+            var schemaId = UUID.fromString(rel.getFromId());
+            var schemaRef = schemaRefMap.get(schemaId);
+            if (schemaRef != null) {
+              schemaMap.put(tableId, schemaRef);
+            }
+          }
+        });
+    return schemaMap;
   }
 
   @Override
@@ -588,8 +755,6 @@ public class TableRepository extends EntityRepository<Table> {
     table.setProfile(tableProfile);
     if (includeColumnProfile) {
       setColumnProfile(table.getColumns());
-    } else {
-      table.setColumns(null);
     }
 
     // Set the column tags. Will be used to hide the data
@@ -657,12 +822,12 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
-    if (dataModel.getSql() == null || dataModel.getSql().isBlank()) {
-      if (table.getDataModel() != null
-          && (table.getDataModel().getSql() != null && !table.getDataModel().getSql().isBlank())) {
-        dataModel.setSql(table.getDataModel().getSql());
-      }
+    if ((dataModel.getSql() == null || dataModel.getSql().isBlank())
+        && table.getDataModel() != null
+        && (table.getDataModel().getSql() != null && !table.getDataModel().getSql().isBlank())) {
+      dataModel.setSql(table.getDataModel().getSql());
     }
+
     table.withDataModel(dataModel);
 
     // Carry forward the table owners from the model to table entity, if empty
@@ -798,18 +963,26 @@ public class TableRepository extends EntityRepository<Table> {
   public Table applySuggestion(EntityInterface entity, String columnFQN, Suggestion suggestion) {
     Table table = (Table) entity;
     for (Column col : table.getColumns()) {
-      if (col.getFullyQualifiedName().equals(columnFQN)) {
-        applySuggestionToColumn(col, suggestion);
-      }
-      if (col.getChildren() != null && !col.getChildren().isEmpty()) {
-        for (Column child : col.getChildren()) {
-          if (child.getFullyQualifiedName().equals(columnFQN)) {
-            applySuggestionToColumn(child, suggestion);
-          }
-        }
-      }
+      findAndApplySuggestionToColumn(col, columnFQN, suggestion);
     }
     return table;
+  }
+
+  private void findAndApplySuggestionToColumn(
+      Column column, String columnFQN, Suggestion suggestion) {
+    if (column.getFullyQualifiedName().equals(columnFQN)) {
+      applySuggestionToColumn(column, suggestion);
+      return;
+    }
+
+    // If the column FQN is a prefix of the target columnFQN, search recursively in children
+    if (column.getChildren() != null
+        && !column.getChildren().isEmpty()
+        && columnFQN.startsWith(column.getFullyQualifiedName() + ".")) {
+      for (Column child : column.getChildren()) {
+        findAndApplySuggestionToColumn(child, columnFQN, suggestion);
+      }
+    }
   }
 
   public void applySuggestionToColumn(Column column, Suggestion suggestion) {
@@ -833,9 +1006,6 @@ public class TableRepository extends EntityRepository<Table> {
 
   /**
    * Export columns for a table, handling nested column structure
-   *
-   * @param table The table whose columns are being exported
-   * @param csvFile The CSV file to add column records to
    */
   public void exportColumnsRecursively(Table table, CsvFile csvFile) {
     if (table.getColumns() != null && !table.getColumns().isEmpty()) {
@@ -1338,6 +1508,38 @@ public class TableRepository extends EntityRepository<Table> {
       addConstraintRelationship(origTable, added);
       deleteConstraintRelationship(origTable, deleted);
     }
+
+    @Override
+    protected void handleColumnLineageUpdates(
+        List<String> deletedColumns,
+        java.util.HashMap<String, String> originalUpdatedColumnFqnMap) {
+      boolean hasRenames = !originalUpdatedColumnFqnMap.isEmpty();
+      boolean hasDeletes = !deletedColumns.isEmpty();
+
+      // Update lineage relationships stored in the database
+      if (hasRenames || hasDeletes) {
+        LineageRepository lineageRepository = Entity.getLineageRepository();
+        if (lineageRepository != null) {
+          lineageRepository.updateColumnLineage(
+              updated.getId(),
+              hasRenames ? originalUpdatedColumnFqnMap : java.util.Collections.emptyMap(),
+              hasDeletes ? deletedColumns : java.util.Collections.emptyList(),
+              updated.getSchemaDefinition(),
+              updated.getUpdatedBy());
+        }
+      }
+
+      if (hasRenames) {
+        searchRepository
+            .getSearchClient()
+            .updateColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, originalUpdatedColumnFqnMap);
+      }
+      if (hasDeletes) {
+        searchRepository
+            .getSearchClient()
+            .deleteColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, deletedColumns);
+      }
+    }
   }
 
   private void checkDuplicateTableConstraints(
@@ -1644,6 +1846,124 @@ public class TableRepository extends EntityRepository<Table> {
         validateTableColumns(column.getChildren());
       }
     }
+  }
+
+  private Map<UUID, TableProfilerConfig> batchFetchTableProfilerConfigs(List<Table> tables) {
+    Map<UUID, TableProfilerConfig> configMap = new HashMap<>();
+    if (tables == null || tables.isEmpty()) {
+      return configMap;
+    }
+
+    List<CollectionDAO.ExtensionRecordWithId> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsBatch(entityListToStrings(tables), TABLE_PROFILER_CONFIG_EXTENSION);
+
+    for (CollectionDAO.ExtensionRecordWithId record : records) {
+      try {
+        TableProfilerConfig config =
+            JsonUtils.readValue(record.extensionJson(), TableProfilerConfig.class);
+        configMap.put(record.id(), config);
+      } catch (Exception e) {
+        configMap.put(record.id(), null);
+      }
+    }
+
+    for (Table table : tables) {
+      if (!configMap.containsKey(table.getId())) {
+        configMap.put(table.getId(), null);
+      }
+    }
+
+    return configMap;
+  }
+
+  private Map<UUID, EntityReference> batchFetchTestSuites(List<Table> tables) {
+    Map<UUID, EntityReference> testSuiteMap = new HashMap<>();
+    if (tables == null || tables.isEmpty()) {
+      return testSuiteMap;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(tables), Relationship.CONTAINS.ordinal(), TEST_SUITE);
+
+    for (CollectionDAO.EntityRelationshipObject relRecord : records) {
+      UUID tableId = UUID.fromString(relRecord.getFromId());
+      EntityReference testSuiteRef =
+          getEntityReferenceById(TEST_SUITE, UUID.fromString(relRecord.getToId()), NON_DELETED);
+      testSuiteMap.put(tableId, testSuiteRef);
+    }
+
+    return testSuiteMap;
+  }
+
+  private Map<UUID, List<String>> batchFetchQueries(List<Table> tables) {
+    Map<UUID, List<String>> queriesMap = new HashMap<>();
+    if (tables == null || tables.isEmpty()) {
+      return queriesMap;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(tables), Relationship.MENTIONED_IN.ordinal(), QUERY);
+
+    Map<UUID, List<EntityReference>> queryRefsMap = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject relRecord : records) {
+      UUID tableId = UUID.fromString(relRecord.getFromId());
+      EntityReference queryRef =
+          getEntityReferenceById(QUERY, UUID.fromString(relRecord.getToId()), NON_DELETED);
+      queryRefsMap.computeIfAbsent(tableId, k -> new ArrayList<>()).add(queryRef);
+    }
+
+    for (UUID tableId : queryRefsMap.keySet()) {
+      List<Query> queriesEntity = getEntities(queryRefsMap.get(tableId), "id", ALL);
+      List<String> queries = queriesEntity.stream().map(Query::getQuery).toList();
+      queriesMap.put(tableId, queries);
+    }
+
+    for (Table table : tables) {
+      if (!queriesMap.containsKey(table.getId())) {
+        queriesMap.put(table.getId(), List.of());
+      }
+    }
+
+    return queriesMap;
+  }
+
+  private Map<UUID, TableJoins> batchFetchJoins(List<Table> tables) {
+    Map<UUID, TableJoins> joinsMap = new HashMap<>();
+    if (tables == null || tables.isEmpty()) {
+      return joinsMap;
+    }
+
+    for (Table table : tables) {
+      joinsMap.put(table.getId(), getJoins(table));
+    }
+
+    return joinsMap;
+  }
+
+  private Map<UUID, List<CustomMetric>> batchFetchCustomMetrics(
+      List<Table> tables, boolean includeColumnFields) {
+    Map<UUID, List<CustomMetric>> customMetricsMap = new HashMap<>();
+    if (tables == null || tables.isEmpty()) {
+      return customMetricsMap;
+    }
+
+    for (Table table : tables) {
+      List<CustomMetric> tableMetrics = getCustomMetrics(table, null);
+      if (includeColumnFields && table.getColumns() != null) {
+        for (Column column : table.getColumns()) {
+          column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+        }
+      }
+      customMetricsMap.put(table.getId(), tableMetrics);
+    }
+
+    return customMetricsMap;
   }
 
   public ResultList<Column> searchTableColumnsById(

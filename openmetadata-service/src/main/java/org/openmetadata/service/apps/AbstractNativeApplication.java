@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
@@ -38,11 +39,9 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
-import org.quartz.UnableToInterruptJobException;
 
 @Getter
 @Slf4j
@@ -124,7 +123,6 @@ public class AbstractNativeApplication implements NativeApplication {
   /**
    * Validate the configuration of the application. This method is called before the application is
    * triggered.
-   * @param config
    */
   protected void validateConfig(Map<String, Object> config) {
     LOG.warn("validateConfig is not implemented for this application. Skipping validation.");
@@ -334,7 +332,7 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void interrupt() throws UnableToInterruptJobException {
+  public void interrupt() {
     LOG.info("Interrupting the job for app: {}", this.app.getName());
     stop();
   }

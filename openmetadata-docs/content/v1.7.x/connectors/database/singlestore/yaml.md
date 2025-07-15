@@ -1,5 +1,6 @@
 ---
 title: Run the SingleStore Connector Externally
+description: Learn how to configure OpenMetadata's SingleStore database connector with YAML examples, connection parameters, and step-by-step setup instructions.
 slug: /connectors/database/singlestore/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/singlestore/yaml
 name="SingleStore"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Stored Procedures", "Owners", "Tags"]
 / %}
 

@@ -162,6 +162,8 @@ export interface ServiceConnection {
  *
  * Sigma Connection Config
  *
+ * ThoughtSpot Connection Config
+ *
  * Google BigQuery Connection Config
  *
  * Google BigTable Connection Config
@@ -250,6 +252,8 @@ export interface ServiceConnection {
  * Exasol Database Connection Config
  *
  * Cockroach Database Connection Config
+ *
+ * SSAS Metadata Database Connection Config
  *
  * Kafka Connection Config
  *
@@ -455,6 +459,8 @@ export interface ConfigClass {
      *
      * Sigma API url.
      *
+     * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
+     *
      * BigQuery APIs URL.
      *
      * Host and port of the AzureSQL service.
@@ -594,6 +600,8 @@ export interface ConfigClass {
      *
      * Password to connect to Exasol.
      *
+     * Password
+     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -699,6 +707,8 @@ export interface ConfigClass {
      * Username to connect to Cockroach. This user should have privileges to read all the
      * metadata in Cockroach.
      *
+     * Username
+     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -711,6 +721,10 @@ export interface ConfigClass {
      * Authority URI for the PowerBI service.
      */
     authorityURI?: string;
+    /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
     /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
@@ -768,6 +782,8 @@ export interface ConfigClass {
      *
      * Sigma API version.
      *
+     * ThoughtSpot API version to use
+     *
      * OpenMetadata server API version to use.
      *
      * Airbyte API version.
@@ -789,6 +805,11 @@ export interface ConfigClass {
      * Pagination limit used for Alation APIs pagination
      */
     paginationLimit?: number;
+    /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
     /**
      * Tableau Site Name.
      */
@@ -903,6 +924,15 @@ export interface ConfigClass {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * ThoughtSpot authentication configuration
+     */
+    authentication?: Authenticationation;
+    /**
+     * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
+     * only.
+     */
+    orgId?: string;
     /**
      * Billing Project ID
      */
@@ -1081,8 +1111,10 @@ export interface ConfigClass {
      * The maximum amount of time (in seconds) to wait for a successful connection to the data
      * source. If the connection attempt takes longer than this timeout period, an error will be
      * returned.
+     *
+     * Connection timeout in seconds.
      */
-    connectionTimeout?: number;
+    connectionTimeout?: number | number;
     /**
      * Databricks compute resources URL.
      */
@@ -1318,6 +1350,10 @@ export interface ConfigClass {
      * Client SSL/TLS settings.
      */
     tls?: SSLTLSSettings;
+    /**
+     * HTTP Link for SSAS ACCESS
+     */
+    httpConnection?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1757,6 +1793,8 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only fetch tables or databases that matches the pattern.
  *
+ * Regex to only fetch stored procedures that matches the pattern.
+ *
  * Regex exclude tables or databases that matches the pattern.
  *
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
@@ -1836,6 +1874,8 @@ export enum AuthProvider {
  * Azure Database Connection Config
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
+ *
+ * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
  *
@@ -2047,6 +2087,30 @@ export interface DataStaxAstraDBConfiguration {
  */
 export enum NoConfigAuthenticationTypes {
     OAuth2 = "OAuth2",
+}
+
+/**
+ * ThoughtSpot authentication configuration
+ *
+ * Types of methods used to authenticate to the alation instance
+ *
+ * Basic Auth Credentials
+ *
+ * API Access Token Auth Credentials
+ */
+export interface Authenticationation {
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Access Token for the API
+     */
+    accessToken?: string;
 }
 
 export interface AuthenticationModeObject {
@@ -3753,6 +3817,8 @@ export enum TransactionMode {
  *
  * Sigma service type
  *
+ * ThoughtSpot service type
+ *
  * Service type.
  *
  * Custom database service type
@@ -3884,12 +3950,14 @@ export enum RESTType {
     Snowflake = "Snowflake",
     Spark = "Spark",
     Spline = "Spline",
+    Ssas = "SSAS",
     Ssis = "SSIS",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",
     Tableau = "Tableau",
     Teradata = "Teradata",
+    ThoughtSpot = "ThoughtSpot",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
@@ -4107,6 +4175,10 @@ export interface Pipeline {
      */
     processViewLineage?: boolean;
     /**
+     * Regex to only fetch stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    /**
      * Regex exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
@@ -4184,6 +4256,7 @@ export interface Pipeline {
      * level metrics.
      */
     computeTableMetrics?: boolean;
+    processingEngine?:    ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
@@ -4468,6 +4541,11 @@ export interface CollateAIAppConfig {
     sendToAdmins?:            boolean;
     sendToTeams?:             boolean;
     /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
      * Number of threads to use for reindexing
      */
     consumerThreads?: number;
@@ -4683,6 +4761,10 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
+    /**
      * Propagate glossary terms through lineage
      */
     propagateGlossaryTerms?: boolean;
@@ -4873,6 +4955,10 @@ export interface TestCaseDefinitions {
     computePassedFailedRowCount?: boolean;
     parameterValues?:             TestCaseParameterValue[];
     /**
+     * Tags to apply
+     */
+    tags?: TagLabel[];
+    /**
      * Fully qualified name of the test definition.
      */
     testDefinition?: string;
@@ -5057,6 +5143,11 @@ export interface DataQualityConfig {
  * Entities selected to run the automation.
  */
 export interface Resource {
+    /**
+     * Filter JSON tree to be used for rendering the filters in the UI. This comes from
+     * Immutable Tree type of react-awesome-query-builder.
+     */
+    filterJsonTree?: string;
     /**
      * Query filter to be passed to ES. E.g.,
      * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
@@ -5263,6 +5354,12 @@ export interface IncrementalMetadataExtractionConfiguration {
  */
 export interface LineageInformation {
     /**
+     * List of service path prefixes for lineage matching. Supported formats: DBServiceName,
+     * DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or
+     * DBServiceName.DatabaseName.SchemaName.TableName
+     */
+    dbServicePrefixes?: string[];
+    /**
      * List of Database Service Names for creation of lineage
      */
     dbServiceNames?: string[];
@@ -5297,7 +5394,7 @@ export interface Operation {
     /**
      * Type of operation to perform
      */
-    type: Type;
+    type: OperationType;
 }
 
 /**
@@ -5339,10 +5436,41 @@ export interface ReverseIngestionConfig {
 /**
  * Type of operation to perform
  */
-export enum Type {
+export enum OperationType {
     UpdateDescription = "UPDATE_DESCRIPTION",
     UpdateOwner = "UPDATE_OWNER",
     UpdateTags = "UPDATE_TAGS",
+}
+
+/**
+ * Processing Engine Configuration. If not provided, the Native Engine will be used by
+ * default.
+ *
+ * Configuration for the native metadata ingestion engine
+ *
+ * This schema defines the configuration for a Spark Engine runner.
+ */
+export interface ProcessingEngine {
+    /**
+     * The type of the engine configuration
+     */
+    type: ProcessingEngineType;
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    config?: { [key: string]: any };
+    /**
+     * Spark Connect Remote URL.
+     */
+    remote?: string;
+}
+
+/**
+ * The type of the engine configuration
+ */
+export enum ProcessingEngineType {
+    Native = "Native",
+    Spark = "Spark",
 }
 
 /**

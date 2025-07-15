@@ -17,9 +17,12 @@ import traceback
 from typing import Any, Callable, Optional, Type
 
 from pydantic import BaseModel
-from sqlalchemy.engine import Engine
 
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.importer import import_connection_fn
 from metadata.utils.logger import cli_logger
@@ -70,7 +73,7 @@ def _get_connection_fn_from_service_spec(connection: BaseModel) -> Optional[Call
     if connection_class:
 
         def _get_client(conn):
-            return connection_class(conn).get_client()
+            return connection_class(conn).client
 
         return _get_client
     return None
@@ -121,15 +124,11 @@ def get_connection(connection: BaseModel) -> Any:
     return get_connection_fn(connection)(connection)
 
 
-def kill_active_connections(engine: Engine):
-    """
-    Method to kill the active connections
-    as well as idle connections in the engine
-    """
+def test_connection_common(metadata: OpenMetadata, connection_obj, service_connection):
+    test_connection_fn = get_test_connection_fn(service_connection)
+    # TODO: Remove this once we migrate all connectors to use the new test connection function
     try:
-        active_conn = engine.pool.checkedout() + engine.pool.checkedin()
-        if active_conn:
-            engine.dispose()
-    except Exception as exc:
-        logger.warning(f"Error Killing the active connections {exc}")
-        logger.debug(traceback.format_exc())
+        result = test_connection_fn(metadata)
+    except TypeError:
+        result = test_connection_fn(metadata, connection_obj, service_connection)
+    raise_test_connection_exception(result)

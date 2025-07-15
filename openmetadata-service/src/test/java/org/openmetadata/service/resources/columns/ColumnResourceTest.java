@@ -15,12 +15,14 @@ package org.openmetadata.service.resources.columns;
 
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
@@ -28,11 +30,16 @@ import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
@@ -52,6 +59,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
@@ -59,11 +67,13 @@ import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
+import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
@@ -71,6 +81,7 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -467,12 +478,13 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
 
     assertNotNull(updatedColumn.getTags());
     assertEquals(2, updatedColumn.getTags().size());
+    // Sorted order of glossary terms
     assertEquals(
-        businessTermsGlossaryTerm.getFullyQualifiedName(),
+        technicalTermsGlossaryTerm.getFullyQualifiedName(),
         updatedColumn.getTags().get(0).getTagFQN());
     assertEquals(TagLabel.TagSource.GLOSSARY, updatedColumn.getTags().get(0).getSource());
     assertEquals(
-        technicalTermsGlossaryTerm.getFullyQualifiedName(),
+        businessTermsGlossaryTerm.getFullyQualifiedName(),
         updatedColumn.getTags().get(1).getTagFQN());
     assertEquals(TagLabel.TagSource.GLOSSARY, updatedColumn.getTags().get(1).getSource());
   }
@@ -819,7 +831,9 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> updateColumnByFQN(invalidFQN, updateColumn),
         NOT_FOUND,
-        "table instance for " + FullyQualifiedName.getParentFQN(invalidFQN) + " not found");
+        "table instance for "
+            + FullyQualifiedName.getParentEntityFQN(invalidFQN, TABLE)
+            + " not found");
   }
 
   @Test
@@ -1033,6 +1047,318 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     assertNull(dimension1ColumnAfterDelete.getDescription());
   }
 
+  @Test
+  void test_updateColumnWithDerivedTags(TestInfo test) throws IOException {
+    // Create a classification and tag
+    ClassificationResourceTest classificationTest = new ClassificationResourceTest();
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName("Tier" + test.getDisplayName().replaceAll("[^A-Za-z0-9]", ""))
+            .withDescription("Tier classification for data quality");
+    Classification tierClassification =
+        classificationTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
+
+    TagResourceTest tagTest = new TagResourceTest();
+    CreateTag createTag =
+        new CreateTag()
+            .withName("Tier1")
+            .withDescription("Tier 1 data")
+            .withClassification(tierClassification.getFullyQualifiedName());
+    Tag tierTag = tagTest.createEntity(createTag, ADMIN_AUTH_HEADERS);
+
+    // Create a glossary
+    GlossaryResourceTest glossaryTest = new GlossaryResourceTest();
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName("TestGlossaryTag" + test.getDisplayName().replaceAll("[^A-Za-z0-9]", ""))
+            .withDescription("Test glossary for derived tags");
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create a glossary term with the tier tag
+    GlossaryTermResourceTest glossaryTermTest = new GlossaryTermResourceTest();
+    CreateGlossaryTerm createGlossaryTerm =
+        new CreateGlossaryTerm()
+            .withName("CustomerData" + test.getDisplayName().replaceAll("[^A-Za-z0-9]", ""))
+            .withDescription("Customer data term")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withTags(
+                List.of(
+                    new TagLabel()
+                        .withTagFQN(tierTag.getFullyQualifiedName())
+                        .withName(tierTag.getName())
+                        .withDisplayName(tierTag.getDisplayName())
+                        .withSource(TagLabel.TagSource.CLASSIFICATION)
+                        .withState(TagLabel.State.CONFIRMED)));
+    GlossaryTerm glossaryTerm =
+        glossaryTermTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    String columnFQN = FullyQualifiedName.add(table.getFullyQualifiedName(), "id");
+
+    // Update column with the glossary term tag
+    UpdateColumn updateColumnWithTags =
+        new UpdateColumn()
+            .withTags(
+                List.of(
+                    new TagLabel()
+                        .withTagFQN(glossaryTerm.getFullyQualifiedName())
+                        .withName(glossaryTerm.getName())
+                        .withDisplayName(glossaryTerm.getDisplayName())
+                        .withSource(TagLabel.TagSource.GLOSSARY)
+                        .withState(TagLabel.State.CONFIRMED)));
+
+    Column updatedColumnWithTags = updateColumnByFQN(columnFQN, updateColumnWithTags);
+
+    // Verify that both the glossary term tag and its associated tier tag are present
+    assertNotNull(updatedColumnWithTags.getTags());
+    assertEquals(2, updatedColumnWithTags.getTags().size());
+
+    // Verify the glossary term tag
+    TagLabel glossaryTag =
+        updatedColumnWithTags.getTags().stream()
+            .filter(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY)
+            .findFirst()
+            .orElse(null);
+    assertNotNull(glossaryTag);
+    assertEquals(glossaryTerm.getFullyQualifiedName(), glossaryTag.getTagFQN());
+    assertEquals(TagLabel.LabelType.MANUAL, glossaryTag.getLabelType());
+
+    // Verify the derived tier tag
+    TagLabel derivedTag =
+        updatedColumnWithTags.getTags().stream()
+            .filter(tag -> tag.getSource() == TagLabel.TagSource.CLASSIFICATION)
+            .findFirst()
+            .orElse(null);
+    assertNotNull(derivedTag);
+    assertEquals(tierTag.getFullyQualifiedName(), derivedTag.getTagFQN());
+    assertEquals(TagLabel.LabelType.DERIVED, derivedTag.getLabelType());
+
+    // Verify persistence by getting the table again
+    Table persistedTable =
+        tableResourceTest.getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+    Column persistedColumn =
+        persistedTable.getColumns().stream()
+            .filter(c -> c.getName().equals("id"))
+            .findFirst()
+            .orElseThrow();
+
+    // Verify tags are still present in persisted data
+    assertNotNull(persistedColumn.getTags());
+    assertEquals(2, persistedColumn.getTags().size());
+
+    // Verify both manual and derived tags are present in persisted data
+    boolean hasGlossaryTag =
+        persistedColumn.getTags().stream()
+            .anyMatch(
+                tag ->
+                    tag.getSource() == TagLabel.TagSource.GLOSSARY
+                        && tag.getTagFQN().equals(glossaryTerm.getFullyQualifiedName()));
+    boolean hasDerivedTag =
+        persistedColumn.getTags().stream()
+            .anyMatch(
+                tag ->
+                    tag.getSource() == TagLabel.TagSource.CLASSIFICATION
+                        && tag.getTagFQN().equals(tierTag.getFullyQualifiedName())
+                        && tag.getLabelType() == TagLabel.LabelType.DERIVED);
+
+    assertTrue(hasGlossaryTag, "Glossary tag should be present in persisted data");
+    assertTrue(hasDerivedTag, "Derived tag should be present in persisted data");
+  }
+
+  @Test
+  void test_tableColumnChangeEvents() throws IOException {
+    // Create a new table specifically for this test to avoid feed pollution
+    TableResourceTest isolatedTableTest = new TableResourceTest();
+    String testName = "tableColumnFeedTest_" + UUID.randomUUID();
+
+    DatabaseSchema schema =
+        new DatabaseSchemaResourceTest()
+            .createEntity(
+                new CreateDatabaseSchema()
+                    .withName(testName)
+                    .withDatabase(table.getDatabase().getFullyQualifiedName()),
+                ADMIN_AUTH_HEADERS);
+
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("id").withDataType(ColumnDataType.INT),
+            new Column()
+                .withName("description_col")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255),
+            new Column()
+                .withName("displayname_col")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255),
+            new Column()
+                .withName("tags_col")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255));
+
+    CreateTable createIsolatedTable =
+        new CreateTable()
+            .withName(testName)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(columns);
+
+    Table isolatedTable = isolatedTableTest.createEntity(createIsolatedTable, ADMIN_AUTH_HEADERS);
+
+    // 1. Test description change in feed
+    String descriptionColFQN = isolatedTable.getFullyQualifiedName() + ".description_col";
+    UpdateColumn updateDescription =
+        new UpdateColumn().withDescription("Test description for feed verification");
+    Column updatedDescriptionCol = updateColumnByFQN(descriptionColFQN, updateDescription);
+    assertEquals("Test description for feed verification", updatedDescriptionCol.getDescription());
+
+    // Verify description change appears in activity feed
+    verifyColumnChangeEventInFeed(isolatedTable, "description_col", List.of("description"), TABLE);
+
+    // 2. Test tags/terms change in feed
+    String tagsColFQN = isolatedTable.getFullyQualifiedName() + ".tags_col";
+
+    // Create tag label for classification tag
+    TagLabel classificationTag =
+        new TagLabel()
+            .withTagFQN(personalDataTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    // Create tag label for glossary term
+    TagLabel glossaryTerm =
+        new TagLabel()
+            .withTagFQN(businessTermsGlossaryTerm.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY);
+
+    // Update column with tags
+    UpdateColumn updateTags = new UpdateColumn().withTags(List.of(classificationTag, glossaryTerm));
+    Column updatedTagsCol = updateColumnByFQN(tagsColFQN, updateTags);
+
+    // Verify tags were added
+    assertEquals(2, updatedTagsCol.getTags().size());
+
+    // Verify tags change appears in activity feed
+    verifyColumnChangeEventInFeed(isolatedTable, "tags_col", List.of("tags"), TABLE);
+  }
+
+  @Test
+  void test_dashboardDataModelColumnChangeEvents() throws IOException {
+    // Create a new dashboard data model specifically for this test to avoid feed pollution
+    DashboardDataModelResourceTest isolatedModelTest = new DashboardDataModelResourceTest();
+    String testName = "dataModelColumnFeedTest_" + UUID.randomUUID();
+
+    // Create test data model with simple columns
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("metric_col").withDataType(ColumnDataType.NUMERIC),
+            new Column()
+                .withName("description_col")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255),
+            new Column()
+                .withName("displayname_col")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255),
+            new Column()
+                .withName("tags_col")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255));
+
+    CreateDashboardDataModel createIsolatedModel =
+        new CreateDashboardDataModel()
+            .withName(testName)
+            .withService(dashboardDataModel.getService().getFullyQualifiedName())
+            .withDataModelType(DataModelType.MetabaseDataModel)
+            .withColumns(columns);
+
+    DashboardDataModel isolatedModel =
+        isolatedModelTest.createEntity(createIsolatedModel, ADMIN_AUTH_HEADERS);
+
+    // 1. Test description change in feed
+    String descriptionColFQN = isolatedModel.getFullyQualifiedName() + ".description_col";
+    UpdateColumn updateDescription =
+        new UpdateColumn().withDescription("Test data model description for feed verification");
+    Column updatedDescriptionCol =
+        updateColumnByFQN(descriptionColFQN, updateDescription, "dashboardDataModel");
+    assertEquals(
+        "Test data model description for feed verification",
+        updatedDescriptionCol.getDescription());
+
+    // 2. Test tags/terms change in feed
+    String tagsColFQN = isolatedModel.getFullyQualifiedName() + ".tags_col";
+
+    // Create tag label for classification tag
+    TagLabel classificationTag =
+        new TagLabel()
+            .withTagFQN(businessMetricsTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    // Create tag label for glossary term
+    TagLabel glossaryTerm =
+        new TagLabel()
+            .withTagFQN(technicalTermsGlossaryTerm.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY);
+
+    // Update column with tags
+    UpdateColumn updateTags = new UpdateColumn().withTags(List.of(classificationTag, glossaryTerm));
+    Column updatedTagsCol = updateColumnByFQN(tagsColFQN, updateTags, "dashboardDataModel");
+
+    // Verify tags were added
+    assertEquals(2, updatedTagsCol.getTags().size());
+
+    // Verify tags change appears in activity feed
+    verifyColumnChangeEventInFeed(
+        isolatedModel, "tags_col", List.of("tags"), Entity.DASHBOARD_DATA_MODEL);
+  }
+
+  @Test
+  void test_updateNestedTableColumn_description() throws IOException {
+    // Create a deeply nested column structure
+    List<Column> nestedColumns =
+        List.of(
+            new Column().withName("personal_details").withDataType(ColumnDataType.STRING),
+            new Column().withName("other_info").withDataType(ColumnDataType.STRING));
+    List<Column> customerInfoChildren =
+        List.of(
+            new Column()
+                .withName("personal_details")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(nestedColumns));
+    List<Column> deeplyNestedDataChildren =
+        List.of(
+            new Column()
+                .withName("customer_info")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(customerInfoChildren));
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("deeply_nested_data")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(deeplyNestedDataChildren));
+    CreateTable createTable =
+        new CreateTable()
+            .withName("deeply_nested_table")
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(columns);
+    Table nestedTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Build the FQN for the innermost nested column
+    String columnFQN =
+        nestedTable.getFullyQualifiedName() + ".deeply_nested_data.customer_info.personal_details";
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDescription("<p>Personal details nested structure updated</p>");
+
+    Column updatedColumn = updateColumnByFQN(columnFQN, updateColumn, "table");
+    assertEquals(
+        "<p>Personal details nested structure updated</p>", updatedColumn.getDescription());
+
+    // Fetch the table and verify the nested column's description is updated
+    Table updatedTable =
+        tableResourceTest.getEntity(nestedTable.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column deeplyNestedData = updatedTable.getColumns().getFirst();
+    Column customerInfo = deeplyNestedData.getChildren().getFirst();
+    Column personalDetails = customerInfo.getChildren().getFirst();
+    assertEquals(
+        "<p>Personal details nested structure updated</p>", personalDetails.getDescription());
+  }
+
   private Column updateColumnByFQN(String columnFQN, UpdateColumn updateColumn, String entityType)
       throws IOException {
     WebTarget target =
@@ -1042,5 +1368,75 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
 
   private Column updateColumnByFQN(String columnFQN, UpdateColumn updateColumn) throws IOException {
     return updateColumnByFQN(columnFQN, updateColumn, "table");
+  }
+
+  private void verifyColumnChangeEventInFeed(
+      EntityInterface parentEntity,
+      String columnName,
+      List<String> expectedFields,
+      String entityType) {
+
+    String entityLink =
+        String.format("<#E::%s::%s>", entityType, parentEntity.getFullyQualifiedName());
+
+    FeedResourceTest feedResourceTest = new FeedResourceTest();
+
+    AtomicReference<ResultList<Thread>> threadsRef = new AtomicReference<>();
+
+    await()
+        .pollInterval(2, TimeUnit.SECONDS)
+        .atMost(90, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              // Poll for threads related to this entity
+              ResultList<Thread> fetchedThreads =
+                  feedResourceTest.listThreads(entityLink, null, ADMIN_AUTH_HEADERS);
+
+              if (fetchedThreads == null || fetchedThreads.getData().isEmpty()) {
+                return false;
+              }
+
+              // Check if any thread mentions our column
+              boolean found =
+                  fetchedThreads.getData().stream()
+                      .anyMatch(
+                          thread ->
+                              thread.getMessage() != null
+                                  && thread.getMessage().contains(columnName));
+
+              if (found) {
+                // Store the result only when we find a match
+                threadsRef.set(fetchedThreads);
+              }
+
+              return found;
+            });
+
+    ResultList<Thread> threads = threadsRef.get();
+
+    // Verify feed contains our column update
+    assertNotNull(threads);
+    assertFalse(threads.getData().isEmpty());
+
+    Optional<Thread> columnUpdateThread =
+        threads.getData().stream()
+            .filter(thread -> thread.getMessage().contains(columnName))
+            .findFirst();
+
+    assertTrue(
+        columnUpdateThread.isPresent(),
+        "No activity feed entry found for column update: " + columnName);
+
+    Thread thread = columnUpdateThread.get();
+
+    // Verify the thread message mentions the expected fields
+    boolean foundFieldReferences =
+        expectedFields.stream()
+            .allMatch(field -> thread.getMessage().toLowerCase().contains(field.toLowerCase()));
+
+    assertTrue(
+        foundFieldReferences,
+        "Activity feed doesn't contain references to all expected fields: "
+            + String.join(", ", expectedFields));
   }
 }

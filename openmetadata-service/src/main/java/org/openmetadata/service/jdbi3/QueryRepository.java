@@ -8,8 +8,12 @@ import static org.openmetadata.service.Entity.USER;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -21,13 +25,14 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
+@Slf4j
 public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
   private static final String QUERY_USERS_FIELD = "users";
@@ -69,6 +74,47 @@ public class QueryRepository extends EntityRepository<Query> {
   public void clearFields(Query entity, EntityUtil.Fields fields) {
     entity.withQueryUsedIn(fields.contains(QUERY_USED_IN_FIELD) ? entity.getQueryUsedIn() : null);
     entity.withUsers(fields.contains("users") ? this.getQueryUsers(entity) : null);
+  }
+
+  @Override
+  public void setFieldsInBulk(EntityUtil.Fields fields, List<Query> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    // Bulk fetch and set services for all queries first
+    fetchAndSetServices(entities);
+
+    // Then call parent's implementation which handles standard fields
+    super.setFieldsInBulk(fields, entities);
+  }
+
+  private void fetchAndSetServices(List<Query> queries) {
+    if (queries == null || queries.isEmpty()) {
+      return;
+    }
+
+    // Many queries already have service set from when they were created
+    // For those that don't, we need to fetch it
+    var queriesNeedingService = queries.stream().filter(q -> q.getService() == null).toList();
+
+    if (!queriesNeedingService.isEmpty()) {
+      // For queries, service information is stored differently
+      // Query doesn't have a direct CONTAINS relationship with service
+      // Instead, it has the service reference stored in its JSON
+      queriesNeedingService.forEach(
+          query -> {
+            try {
+              // The service should already be set in setFields for individual entities
+              // This is a fallback for bulk operations
+              var service =
+                  Entity.getEntityReferenceByName(
+                      Entity.DATABASE_SERVICE, query.getService().getName(), Include.NON_DELETED);
+              query.withService(service);
+            } catch (Exception e) {
+              LOG.warn("Could not fetch service for query: {}", query.getId(), e);
+            }
+          });
+    }
   }
 
   public List<EntityReference> getQueryUsage(Query queryEntity) {

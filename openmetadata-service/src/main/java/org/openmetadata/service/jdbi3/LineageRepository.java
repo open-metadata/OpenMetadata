@@ -51,8 +51,11 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -90,15 +93,15 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.CSVExportException;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -868,6 +871,7 @@ public class LineageRepository {
         return result;
       }
       case API_ENDPOINT -> {
+        Set<String> result = new HashSet<>();
         APIEndpoint apiEndpoint =
             Entity.getEntity(
                 API_ENDPOINT,
@@ -875,15 +879,20 @@ public class LineageRepository {
                 "responseSchema,requestSchema",
                 Include.NON_DELETED);
         if (apiEndpoint.getResponseSchema() != null) {
-          return CommonUtil.getChildrenNames(
-              apiEndpoint.getResponseSchema().getSchemaFields(),
-              "getChildren",
-              apiEndpoint.getFullyQualifiedName());
+          result.addAll(
+              CommonUtil.getChildrenNames(
+                  listOrEmpty(apiEndpoint.getResponseSchema().getSchemaFields()),
+                  "getChildren",
+                  apiEndpoint.getFullyQualifiedName()));
         }
-        return CommonUtil.getChildrenNames(
-            apiEndpoint.getRequestSchema().getSchemaFields(),
-            "getChildren",
-            apiEndpoint.getFullyQualifiedName());
+        if (apiEndpoint.getRequestSchema() != null) {
+          result.addAll(
+              CommonUtil.getChildrenNames(
+                  listOrEmpty(apiEndpoint.getRequestSchema().getSchemaFields()),
+                  "getChildren",
+                  apiEndpoint.getFullyQualifiedName()));
+        }
+        return result;
       }
       case METRIC -> {
         LOG.info("Metric column level lineage is not supported");
@@ -893,8 +902,10 @@ public class LineageRepository {
         LOG.info("Pipeline column level lineage is not supported");
         return new HashSet<>();
       }
-      default -> throw new IllegalArgumentException(
-          String.format("Unsupported Entity Type %s for lineage", entityReference.getType()));
+      default -> {
+        LOG.error("Unsupported Entity Type {} for column lineage", entityReference.getType());
+        return new HashSet<>();
+      }
     }
   }
 
@@ -1236,5 +1247,107 @@ public class LineageRepository {
     for (EntityReference entity : downstreamEntityReferences) {
       getDownstreamLineage(entity.getId(), entity.getType(), lineage, downstreamDepth);
     }
+  }
+
+  @Transaction
+  public void updateColumnLineage(
+      UUID tableId,
+      Map<String, String> renamed,
+      List<String> deleted,
+      String schemaDefinition,
+      String updatedBy) {
+    if ((renamed == null || renamed.isEmpty()) && (deleted == null || deleted.isEmpty())) {
+      return;
+    }
+
+    final Map<String, String> fqnRenameMap = Optional.ofNullable(renamed).orElse(Map.of());
+    final Set<String> deletedFqns = new HashSet<>(Optional.ofNullable(deleted).orElse(List.of()));
+
+    List<CollectionDAO.EntityRelationshipObject> lineageRows = new ArrayList<>();
+    List<String> tableIdList = List.of(tableId.toString());
+
+    // Table is upstream
+    lineageRows.addAll(
+        dao.relationshipDAO().findFromBatch(tableIdList, Relationship.UPSTREAM.ordinal()));
+    // Table is downstream
+    lineageRows.addAll(
+        dao.relationshipDAO()
+            .findToBatch(tableIdList, Relationship.UPSTREAM.ordinal(), Entity.TABLE, Entity.TABLE));
+
+    for (CollectionDAO.EntityRelationshipObject row : lineageRows) {
+      try {
+        LineageDetails details = JsonUtils.readValue(row.getJson(), LineageDetails.class);
+        boolean rowModified = rewriteColumnMappings(details, fqnRenameMap, deletedFqns);
+        if (rowModified) {
+          details.setSqlQuery(schemaDefinition);
+          details.setUpdatedAt(System.currentTimeMillis());
+          details.setUpdatedBy(updatedBy);
+          // UPSERT the updated lineage JSON back into the relationship table
+          dao.relationshipDAO()
+              .insert(
+                  UUID.fromString(row.getFromId()),
+                  UUID.fromString(row.getToId()),
+                  row.getFromEntity(),
+                  row.getToEntity(),
+                  row.getRelation(),
+                  JsonUtils.pojoToJson(details));
+        }
+      } catch (Exception ex) {
+        LOG.warn(
+            "Failed to update column lineage for relationship {} -> {}. Skipping this row.",
+            row.getFromId(),
+            row.getToId(),
+            ex);
+      }
+    }
+  }
+
+  private boolean rewriteColumnMappings(
+      LineageDetails details, Map<String, String> renameMap, Set<String> deletedFqns) {
+    if (details.getColumnsLineage() == null) {
+      return false;
+    }
+
+    boolean modified = false;
+
+    for (Iterator<ColumnLineage> mappingIter = details.getColumnsLineage().iterator();
+        mappingIter.hasNext(); ) {
+      ColumnLineage mapping = mappingIter.next();
+
+      if (mapping.getToColumn() != null) {
+        String renamed = renameMap.get(mapping.getToColumn());
+        if (renamed != null) {
+          mapping.setToColumn(renamed);
+          modified = true;
+        } else if (deletedFqns.contains(mapping.getToColumn())) {
+          mappingIter.remove();
+          modified = true;
+          continue; // No need to touch upstream side now
+        }
+      }
+
+      if (mapping.getFromColumns() != null) {
+        ListIterator<String> fromIter = mapping.getFromColumns().listIterator();
+        while (fromIter.hasNext()) {
+          String upstream = fromIter.next();
+
+          if (deletedFqns.contains(upstream)) {
+            fromIter.remove();
+            modified = true;
+          } else {
+            String renamed = renameMap.get(upstream);
+            if (renamed != null) {
+              fromIter.set(renamed);
+              modified = true;
+            }
+          }
+        }
+        // If nothing left on upstream side, drop the whole mapping
+        if (mapping.getFromColumns().isEmpty()) {
+          mappingIter.remove();
+        }
+      }
+    }
+    return modified;
   }
 }

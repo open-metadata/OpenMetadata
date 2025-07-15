@@ -144,6 +144,8 @@ site_menu:
     url: /deployment/security/keycloak/bare-metal
   - category: Deployment / Enable Security / Keycloak SSO / Kubernetes
     url: /deployment/security/keycloak/kubernetes
+  - category: Deployment / Enable Security / Keycloak SSO / Troubleshooting
+    url: /deployment/security/keycloak/troubleshooting
   - category: Deployment / Enable Security / Saml
     url: /deployment/security/saml
   - category: Deployment / Enable Security / Saml / AWS
@@ -815,6 +817,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt
   - category: Connectors / Ingestion / Workflows / dbt / Configure dbt workflow from OpenMetadata UI
     url: /connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui
+  - category: Connectors / Ingestion / Workflows / dbt / Auto Ingest DBT Core Artifacts
+    url: /connectors/ingestion/workflows/dbt/auto-ingest-dbt-core
   - category: Connectors / Ingestion / Workflows / dbt / Run Externally
     url: /connectors/ingestion/workflows/dbt/run-dbt-workflow-externally
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
@@ -1077,6 +1081,8 @@ site_menu:
     url: /how-to-guides/data-governance/glossary/export
   - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
     url: /how-to-guides/data-governance/glossary/approval
+  - category: How-to Guides / Data Governance / Glossary / Import-Export Troubleshooting
+    url: /how-to-guides/data-governance/glossary/troubleshooting
   - category: How-to Guides / Data Governance / Glossary / Glossary Styling
     url: /how-to-guides/data-governance/glossary/styling
   - category: How-to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms
@@ -1124,6 +1130,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.7.4 Release
+    url: /releases/all-releases/#1.7.4-release
   - category: Releases / All Releases / 1.7.3 Release
     url: /releases/all-releases/#1.7.3-release
   - category: Releases / All Releases / 1.7.2 Release

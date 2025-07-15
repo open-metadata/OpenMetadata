@@ -251,6 +251,11 @@ export interface CollateAIAppConfig {
     sendToAdmins?:            boolean;
     sendToTeams?:             boolean;
     /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
      * Number of threads to use for reindexing
      */
     consumerThreads?: number;
@@ -466,6 +471,10 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
+    /**
      * Propagate glossary terms through lineage
      */
     propagateGlossaryTerms?: boolean;
@@ -659,6 +668,10 @@ export interface TestCaseDefinitions {
     computePassedFailedRowCount?: boolean;
     parameterValues?:             TestCaseParameterValue[];
     /**
+     * Tags to apply
+     */
+    tags?: TagLabel[];
+    /**
      * Fully qualified name of the test definition.
      */
     testDefinition?: string;
@@ -843,6 +856,11 @@ export interface DataQualityConfig {
  * Entities selected to run the automation.
  */
 export interface Resource {
+    /**
+     * Filter JSON tree to be used for rendering the filters in the UI. This comes from
+     * Immutable Tree type of react-awesome-query-builder.
+     */
+    filterJsonTree?: string;
     /**
      * Query filter to be passed to ES. E.g.,
      * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
