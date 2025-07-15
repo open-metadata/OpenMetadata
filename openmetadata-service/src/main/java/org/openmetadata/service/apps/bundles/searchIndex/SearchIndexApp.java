@@ -953,6 +953,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     ResultList<?> entities = task.entities();
     Map<String, Object> contextData = new HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, entityType);
+    contextData.put("recreateIndex", jobData.getRecreateIndex());
 
     try {
       if (!TIME_SERIES_ENTITIES.contains(entityType)) {
