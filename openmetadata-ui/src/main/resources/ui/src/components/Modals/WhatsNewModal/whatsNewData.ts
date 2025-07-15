@@ -16,7 +16,7 @@
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 import { CarousalData } from './FeaturesCarousel.interface';
 
-export const COOKIE_VERSION = 'VERSION_1_8_3'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_8_4'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1098,6 +1098,44 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - Fix ElasticSearchSink and OpenSearchSink.
 - Fix Promtheus endpoint.
 - Removed debug test.`,
+    },
+  },
+  {
+    id: 78,
+    version: 'v1.8.4',
+    description: 'Released on 16th July 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- Search RBAC enhancements for better performance and accuracy.
+- Revamped metrics system with detailed request latencies and breakdown of database/search operations.
+- Added Virtual Threads and Semaphore control for improved performance.
+- Enhanced browser language support with fixes for Chinese (zh) language search indexing.
+- Improved German UI translations.
+- Dashboard service prefix support for better organization.
+- Added columns.description in search settings for enhanced discoverability.
+- Improved handling of appPrivateConfig with empty parameters.
+- Enhanced JVM parameters optimization for Java 21.
+- Added missing supportsMetadataExtraction flag in connectors.
+- Implement Freshness Test on Pandas. ${CollateIconWithLinkMD}`,
+      Fixes: `- Handle text overflow in CommonEntitySummaryInfo and improved loader in search bar.
+- Fixed soft-delete and restore handling for charts linked to dashboards.
+- Fixed null columns handling in various scenarios.
+- Fixed Postgres query column name for execution time.
+- Fixed pagination alignment issues in UI.
+- Resolved race condition in bulk import between websocket and REST API.
+- Fixed column lineage validation and update/delete operations.
+- Fixed activity feed not showing column-level metadata changes.
+- Fixed issues with Chinese (zh) language search index mapping.
+- Corrected parent FQN extraction for column FQN.
+- Fixed NPE when reading appPrivateConfig with empty parameters.
+- Fixed recursive suggestion application for deeply nested columns.
+- Fixed auto pilot trigger button enable state.
+- Fixed custom logo failure causing repetitive API calls.
+- Fixed unaligned charts display.
+- Removed "Default: null" from columns for better JSON to POJO handling.
+- Updated button names for consistency.
+- Set Presidio logger to ERROR level to reduce noise.
+- Reverse Metadata - Illegal result error. ${CollateIconWithLinkMD}`,
     },
   },
 ];
