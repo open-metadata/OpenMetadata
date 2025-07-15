@@ -1925,6 +1925,7 @@
     "hex-color-validation": "Giriş geçerli bir HEX kodu değil.",
     "hi-user-welcome-to": "Merhaba {{user}}, Hoş Geldiniz",
     "image-upload-error": "Resim yükleme desteklenmiyor. Lütfen URL üzerinden kullanılabilen resimler için Markdown sözdizimini kullanın.",
+    "import-data-in-progress": "İçe aktarma devam ediyor.",
     "import-entity-help": "Bir CSV dosyasını tek seferde birkaç {{entity}} ile yükleyerek zamandan ve emekten tasarruf edin.",
     "in-this-database": "Bu Veritabanında",
     "include-assets-message": "Veri kaynağından {{assets}} çıkarımını etkinleştirin.",
