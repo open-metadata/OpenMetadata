@@ -23,7 +23,8 @@ export interface CustomSearchConnection {
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
      */
-    sourcePythonClass?: string;
+    sourcePythonClass?:          string;
+    supportsMetadataExtraction?: boolean;
     /**
      * Custom search service type
      */
