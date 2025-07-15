@@ -100,9 +100,7 @@ const BulkEntityImportPage = () => {
     () =>
       columns?.filter(
         (col) =>
-          !csvUtilsClassBase
-            .hideImportsColumnList()
-            .includes((col.name as string) ?? '')
+          !csvUtilsClassBase.hideImportsColumnList().includes(col.key ?? '')
       ),
     [columns]
   );
@@ -479,7 +477,7 @@ const BulkEntityImportPage = () => {
     return (
       <DataGrid
         className="rdg-light"
-        columns={columns}
+        columns={filterColumns}
         rows={dataSource}
         onCopy={handleCopy}
         onPaste={handlePaste}
