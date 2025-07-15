@@ -25,6 +25,7 @@ import { WidgetCommonProps } from '../../../../pages/CustomizablePage/Customizab
 import { searchData } from '../../../../rest/miscAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
+import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './data-assets-widget.less';
@@ -160,6 +161,11 @@ const DataAssetsWidget = ({
         />
         <div className="widget-content flex-1">
           {isEmpty(sortedServices) ? emptyState : dataAssetsContent}
+          <WidgetFooter
+            moreButtonLink={ROUTES.EXPLORE}
+            moreButtonText={t('label.view-more')}
+            showMoreButton={Boolean(!loading)}
+          />
         </div>
       </div>
     ),

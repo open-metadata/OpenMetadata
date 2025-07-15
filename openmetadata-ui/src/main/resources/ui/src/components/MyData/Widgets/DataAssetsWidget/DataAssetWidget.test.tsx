@@ -135,5 +135,17 @@ describe('DataAssetsWidget', () => {
       await screen.findByText('label.data-asset-plural')
     ).toBeInTheDocument();
     expect(await screen.findAllByText('DataAssetCard')).toHaveLength(10);
+    expect(await screen.findByTestId('widget-footer')).toBeInTheDocument();
+  });
+
+  it('should render footer when data assets are available', async () => {
+    (searchData as jest.Mock).mockImplementation(() =>
+      Promise.resolve({ data: MOCK_EXPLORE_SEARCH_RESULTS })
+    );
+
+    renderDataAssetsWidget();
+
+    expect(await screen.findByTestId('widget-footer')).toBeInTheDocument();
+    expect(await screen.findByText('label.view-more')).toBeInTheDocument();
   });
 });
