@@ -1408,6 +1408,14 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with table."
+        },
+        {
+          "name": "columns.description",
+          "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents."
+        },
+        {
+          "name": "columns.children.description",
+          "description": "Search on descriptions of nested columns within complex data types. Helps find tables with nested fields serving specific purposes."
         }
       ]
     },
