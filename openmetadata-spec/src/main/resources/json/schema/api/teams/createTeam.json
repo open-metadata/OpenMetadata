@@ -40,33 +40,29 @@
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
+      }
       },
-      "default": null
-    },
     "children": {
       "description": "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have `Department` as children.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
+      }
       },
-      "default": null
-    },
     "users": {
       "description": "Optional IDs of users that are part of the team.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
+      }
       },
-      "default": null
-    },
     "defaultRoles": {
       "description": "Roles to be assigned to all users that are part of this team.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
+      }
       },
-      "default": null
-    },
     "owners": {
       "description": "Owners sof this team. ",
       "$ref": "../../type/entityReferenceList.json",
@@ -82,17 +78,15 @@
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
+      }
       },
-      "default": null
-    },
     "domains" : {
       "description": "Domains the team belongs to.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/entityName"
-      },
-      "default": null
-    }
+      }
+      }
   },
   "required": ["name", "teamType"],
   "additionalProperties": false

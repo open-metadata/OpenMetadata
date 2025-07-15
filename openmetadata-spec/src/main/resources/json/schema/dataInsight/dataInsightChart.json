@@ -99,9 +99,8 @@
     },
     "owners": {
       "description": "Owners of this Pipeline.",
-      "$ref": "../type/entityReferenceList.json",
-      "default": null
-    },
+      "$ref": "../type/entityReferenceList.json"
+      },
     "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../type/basic.json#/definitions/timestamp"

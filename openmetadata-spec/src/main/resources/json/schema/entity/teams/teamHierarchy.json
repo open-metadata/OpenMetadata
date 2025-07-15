@@ -10,9 +10,8 @@
       "type": "array",
       "items": {
         "$ref": "teamHierarchy.json"
-      },
-      "default": null
-    }
+      }
+      }
   },
   "properties": {
     "id": {

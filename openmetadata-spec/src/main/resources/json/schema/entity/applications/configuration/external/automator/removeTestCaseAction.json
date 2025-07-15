@@ -32,9 +32,8 @@
       "type": "array",
       "items": {
         "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      }
       },
-      "default": null
-    },
     "removeAll": {
       "title": "Remove All",
       "description": "Remove all test cases",

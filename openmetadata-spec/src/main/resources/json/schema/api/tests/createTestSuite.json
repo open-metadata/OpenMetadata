@@ -51,9 +51,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
-      },
-      "default": null
-    }
+      }
+      }
   },
   "required": [
     "name"

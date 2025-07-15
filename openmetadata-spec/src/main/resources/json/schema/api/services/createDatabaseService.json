@@ -25,9 +25,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "serviceType": {
       "$ref": "../../entity/services/databaseService.json#/definitions/databaseServiceType"
     },

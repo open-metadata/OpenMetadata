@@ -66,9 +66,8 @@
       "type": "array",
       "items": {
         "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      }
       },
-      "default": null
-    },
     "overwriteMetadata": {
       "title": "Overwrite Metadata",
       "description": "Update the test even if it is defined in the asset. By default, we will only apply the test to assets without the existing test already existing.",

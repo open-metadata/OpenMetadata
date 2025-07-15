@@ -218,9 +218,8 @@
           "type": "array",
           "items": {
             "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+          }
           },
-          "default": null
-        },
         "relationshipType": {
           "type": "string",
           "enum": [
@@ -357,9 +356,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/column"
+          }
           },
-          "default": null
-        },
         "profile": {
           "description": "Latest Data profile for a Column.",
           "$ref": "#/definitions/columnProfile",
@@ -370,9 +368,8 @@
           "type": "array",
           "items": {
             "$ref": "../../tests/customMetric.json"
-          },
-          "default": null
-        }
+          }
+          }
       },
       "required": [
         "name",
@@ -653,9 +650,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/customMetricProfile"
-          },
-          "default": null
-        }
+          }
+          }
       },
       "required": [
         "name",
@@ -707,9 +703,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "default": null
-        }
+          }
+          }
       }
     },
     "partitionProfilerConfig": {
@@ -796,17 +791,15 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
           },
-          "default": null
-        },
         "includeColumns": {
           "description": "Only run profiler on included columns with specific metrics.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/columnProfilerConfig"
+          }
           },
-          "default": null
-        },
         "partitioning": {
           "description": "Partitioning configuration",
           "$ref": "#/definitions/partitionProfilerConfig"
@@ -867,9 +860,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/customMetricProfile"
-          },
-          "default": null
-        }
+          }
+          }
       },
       "required": [
         "timestamp"
@@ -928,9 +920,8 @@
         },
         "owners": {
           "description": "Owners of this Table.",
-          "$ref": "../../type/entityReferenceList.json",
-          "default": null
-        },
+          "$ref": "../../type/entityReferenceList.json"
+          },
         "tags": {
           "description": "Tags for this data model.",
           "type": "array",
@@ -944,9 +935,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/column"
+          }
           },
-          "default": null
-        },
         "generatedAt": {
           "$ref": "../../type/basic.json#/definitions/dateTime"
         }
@@ -1015,9 +1005,8 @@
       "items": {
         "title": "TableConstraint",
         "$ref": "#/definitions/tableConstraint"
+      }
       },
-      "default": null
-    },
     "tablePartition": {
       "$ref": "#/definitions/tablePartition"
     },
@@ -1060,9 +1049,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "usageSummary": {
       "description": "Latest usage information for this table.",
       "$ref": "../../type/usageDetails.json",
@@ -1091,9 +1079,8 @@
       "type": "array",
       "items": {
         "$ref": "../../tests/customMetric.json"
+      }
       },
-      "default": null
-    },
     "profile": {
       "description": "Latest Data profile for a table.",
       "$ref": "#/definitions/tableProfile",
@@ -1171,9 +1158,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/sqlQuery"
-      },
-      "default": null
-    }
+      }
+      }
   },
   "required": [
     "id",

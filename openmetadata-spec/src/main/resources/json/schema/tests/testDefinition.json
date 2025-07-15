@@ -167,9 +167,8 @@
     },
     "owners": {
       "description": "Owners of this TestCase definition.",
-      "$ref": "../type/entityReferenceList.json",
-      "default": null
-    },
+      "$ref": "../type/entityReferenceList.json"
+      },
     "provider" : {
       "$ref": "../type/basic.json#/definitions/providerType"
     },

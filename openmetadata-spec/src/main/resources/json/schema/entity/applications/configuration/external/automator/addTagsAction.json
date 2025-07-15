@@ -32,9 +32,8 @@
       "type": "array",
       "items": {
         "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      }
       },
-      "default": null
-    },
     "overwriteMetadata": {
       "title": "Overwrite Metadata",
       "description": "Update tags even if they are already defined in the asset. By default, incoming tags are merged with the existing ones.",

@@ -25,9 +25,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "owners": {
       "description": "Owners of this database",
       "$ref": "../../type/entityReferenceList.json",

@@ -31,9 +31,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "owners": {
       "description": "Owners of this chart",
       "$ref": "../../type/entityReferenceList.json",
@@ -69,9 +68,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-      },
-      "default": null
-    }
+      }
+      }
   },
   "required": ["name", "service"],
   "additionalProperties": false

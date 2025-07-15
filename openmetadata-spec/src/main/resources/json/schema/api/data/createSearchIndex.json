@@ -29,9 +29,8 @@
       "type": "array",
       "items": {
         "$ref": "../../entity/data/searchIndex.json#/definitions/searchIndexField"
+      }
       },
-      "default": null
-    },
     "searchIndexSettings": {
       "description": "Contains key/value pair of searchIndex settings.",
       "$ref": "../../entity/data/searchIndex.json#/definitions/searchIndexSettings"
@@ -51,9 +50,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"

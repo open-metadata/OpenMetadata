@@ -61,9 +61,8 @@
           "default": "global"
         },
         "updatedBy": {
-          "type": "string",
-          "default": null
-        }
+          "type": "string"
+          }
       },
       "additionalProperties": false,
       "required": ["relatedEntity"]

@@ -90,9 +90,8 @@
     },
     "assetEdges": {
       "description": "Asset count in case of child assets lineage.",
-      "type": "integer",
-      "default": null
-    }
+      "type": "integer"
+      }
   },
   "additionalProperties": false
 }

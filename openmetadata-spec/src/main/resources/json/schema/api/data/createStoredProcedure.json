@@ -31,9 +31,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "storedProcedureCode": {
       "description": "SQL Query definition.",
       "$ref": "../../entity/data/storedProcedure.json#/definitions/storedProcedureCode"

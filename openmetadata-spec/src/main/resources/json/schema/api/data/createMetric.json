@@ -44,17 +44,15 @@
     },
     "owners": {
       "description": "Owners of this metric",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
+      "$ref": "../../type/entityReferenceList.json"
+      },
     "tags": {
       "description": "Tags for this metric",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "domain" : {
       "description": "Fully qualified name of the domain the Metric belongs to.",
       "type": "string"

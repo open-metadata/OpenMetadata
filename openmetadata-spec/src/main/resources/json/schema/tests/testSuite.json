@@ -63,9 +63,8 @@
       "type": "array",
       "items": {
         "$ref": "../type/entityReference.json"
+      }
       },
-      "default": null
-    },
     "connection": {
       "description": "TestSuite mock connection, since it needs to implement a Service.",
       "$ref": "#/definitions/testSuiteConnection"

@@ -24,9 +24,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
+      }
       },
-      "default": null
-    },
     "domain" : {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"

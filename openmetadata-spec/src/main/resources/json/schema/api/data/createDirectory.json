@@ -61,9 +61,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "owners": {
       "description": "Owners of this directory",
       "$ref": "../../type/entityReferenceList.json",

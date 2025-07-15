@@ -15,7 +15,7 @@
       "description": "Contains key/value pair of SearchIndex Settings.",
       "type": "object",
       "additionalProperties": {
-        ".{1,}": {
+        ".{1}": {
           "type": "string"
         }
       }
@@ -142,9 +142,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/searchIndexField"
-          },
-          "default": null
-        }
+          }
+          }
       },
       "required": [
         "name",
@@ -199,9 +198,8 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/searchIndexField"
+      }
       },
-      "default": null
-    },
     "searchIndexSettings": {
       "description": "Contains key/value pair of searchIndex settings.",
       "$ref": "#/definitions/searchIndexSettings"
@@ -230,9 +228,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"

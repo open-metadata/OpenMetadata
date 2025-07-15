@@ -69,9 +69,8 @@
               "type": "string"
             }
           },
-          "additionalProperties": false,
-          "default": null
-        }
+          "additionalProperties": false
+          }
       },
       "additionalProperties": false,
       "required": ["enabled"]

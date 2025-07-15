@@ -24,9 +24,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "dataProducts" : {
       "description": "List of fully qualified names of data products this entity is part of.",
       "type": "array",
@@ -36,9 +35,8 @@
     },
     "owners": {
       "description": "Owners of this data model.",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
+      "$ref": "../../type/entityReferenceList.json"
+      },
     "service": {
       "description": "Link to the data model service where this data model is hosted in.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -60,9 +58,8 @@
       "type": "array",
       "items": {
         "$ref": "../../entity/data/table.json#/definitions/column"
+      }
       },
-      "default": null
-    },
     "project": {
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"

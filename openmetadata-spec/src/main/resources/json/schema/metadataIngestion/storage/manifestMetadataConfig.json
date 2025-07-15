@@ -44,9 +44,8 @@
           "type": "array",
           "items": {
             "$ref": "../../entity/data/table.json#/definitions/column"
-          },
-          "default": null
-        }
+          }
+          }
       },
       "required": [
         "containerName" ,"dataPath"
@@ -59,9 +58,8 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/manifestMetadataEntry"
-      },
-      "default": null
-    }
+      }
+      }
   },
   "required": ["entries"],
   "additionalProperties": false

@@ -28,9 +28,8 @@
       "items": {
         "type": "string"
       },
-      "uniqueItems": true,
-      "default": null
-    },
+      "uniqueItems": true
+      },
     "testPrincipals": {
       "description": "List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT TO BE USED IN PRODUCTION SETUP**",
       "type": "array",

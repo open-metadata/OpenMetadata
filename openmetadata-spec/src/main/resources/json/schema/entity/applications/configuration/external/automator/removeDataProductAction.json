@@ -24,9 +24,8 @@
       "type": "array",
         "items": {
           "$ref": "../../../../../type/entityReference.json"
-        },
-      "default": null
-    }
+        }
+      }
   },
   "required": ["type", "dataProducts"],
   "additionalProperties": false

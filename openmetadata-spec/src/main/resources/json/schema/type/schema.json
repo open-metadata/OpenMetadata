@@ -101,17 +101,15 @@
           "type": "array",
           "items": {
             "$ref": "tagLabel.json"
+          }
           },
-          "default": null
-        },
         "children": {
           "description": "Child fields if dataType or arrayDataType is `map`, `record`, `message`",
           "type": "array",
           "items": {
             "$ref": "#/definitions/field"
-          },
-          "default": null
-        }
+          }
+          }
       },
       "required": [
         "name",

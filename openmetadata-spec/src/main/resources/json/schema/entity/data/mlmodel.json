@@ -96,9 +96,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/featureSource"
+          }
           },
-          "default": null
-        },
         "featureAlgorithm": {
           "description": "Description of the algorithm used to compute the feature, e.g., PCA, bucketing...",
           "type": "string"
@@ -108,9 +107,8 @@
           "type": "array",
           "items": {
             "$ref": "../../type/tagLabel.json"
-          },
-          "default": null
-        }
+          }
+          }
       }
     },
     "mlHyperParameter": {
@@ -180,17 +178,15 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/mlFeature"
+      }
       },
-      "default": null
-    },
     "mlHyperParameters": {
       "description": "Hyper Parameters used to train the ML Model.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/mlHyperParameter"
+      }
       },
-      "default": null
-    },
     "target": {
       "description": "For supervised ML Models, the value to estimate.",
       "$ref": "../../type/basic.json#/definitions/entityName"
@@ -224,9 +220,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      }
       },
-      "default": null
-    },
     "usageSummary": {
       "description": "Latest usage information for this ML Model.",
       "$ref": "../../type/usageDetails.json",

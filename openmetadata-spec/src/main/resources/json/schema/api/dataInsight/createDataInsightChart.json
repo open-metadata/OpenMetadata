@@ -39,9 +39,8 @@
     },
     "owners": {
       "description": "Owners of this chart",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
+      "$ref": "../../type/entityReferenceList.json"
+      },
     "domain" : {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"

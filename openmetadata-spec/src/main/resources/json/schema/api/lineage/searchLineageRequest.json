@@ -51,9 +51,8 @@
     },
     "includeDeleted": {
       "description": "Include deleted entities",
-      "type": "boolean",
-      "default": null
-    },
+      "type": "boolean"
+      },
     "includeSourceFields": {
       "description": "Include source fields",
       "type": "array",
