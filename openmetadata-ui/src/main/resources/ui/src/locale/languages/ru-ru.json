@@ -1925,6 +1925,7 @@
     "hex-color-validation": "Input is not valid HEX code.",
     "hi-user-welcome-to": "Привет, {{user}}! Добро пожаловать в",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
+    "import-data-in-progress": "Импорт выполняется.",
     "import-entity-help": "Сэкономьте время и усилия, загрузив CSV-файл с несколькими {{entity}} за один раз.",
     "in-this-database": "В этой базе данных",
     "include-assets-message": "Включите извлечение {{assets}} из источника данных.",
