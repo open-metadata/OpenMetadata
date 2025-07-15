@@ -50,6 +50,7 @@ jest.mock('../../../../common/SummaryCard/SummaryCard.component', () => ({
 
 jest.mock('../../../../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
+  getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => fqn),
 }));
 jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
   return jest
