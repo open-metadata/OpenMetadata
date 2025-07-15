@@ -30,6 +30,7 @@ import { ReactComponent as FollowingIcon } from '../assets/svg/ic-following-asse
 import { ReactComponent as KPIIcon } from '../assets/svg/ic-kpi-widget.svg';
 import { ReactComponent as MyDataIcon } from '../assets/svg/ic-my-data.svg';
 import { ReactComponent as TotalAssetsIcon } from '../assets/svg/ic-total-data-assets.svg';
+import { MyFeedWidget } from '../components/MyData/FeedWidget/FeedWidget.component';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
 import AnnouncementsWidget, {
   AnnouncementsWidgetProps,
@@ -190,6 +191,9 @@ class CustomizeMyDataPageClassBase {
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.MY_DATA)) {
       return MyDataWidget;
+    }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
+      return MyFeedWidget;
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.KPI)) {
       return KPIWidget;

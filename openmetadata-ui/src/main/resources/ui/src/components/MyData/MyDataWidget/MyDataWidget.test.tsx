@@ -133,7 +133,7 @@ describe('MyDataWidget component', () => {
     });
 
     expect(
-      await screen.findByText('label.view-more-capital')
+      await screen.findByText('label.view-more-count')
     ).toBeInTheDocument();
   });
 

@@ -23,6 +23,7 @@ import {
 import { Layout } from 'react-grid-layout';
 import { AdvanceSearchProvider } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { SIZE } from '../enums/common.enum';
 import {
   LandingPageWidgetKeys,
@@ -30,7 +31,6 @@ import {
 } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { Thread } from '../generated/entity/feed/thread';
-import { EntityReference } from '../generated/entity/type';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 
@@ -209,7 +209,7 @@ export const getWidgetFromKey = ({
 }: {
   announcements?: Thread[];
   currentLayout?: Array<WidgetConfig>;
-  followedData?: EntityReference[];
+  followedData?: SourceType[];
   isAnnouncementLoading?: boolean;
   handleLayoutUpdate?: (layout: Layout[]) => void;
   handleOpenAddWidgetModal?: () => void;

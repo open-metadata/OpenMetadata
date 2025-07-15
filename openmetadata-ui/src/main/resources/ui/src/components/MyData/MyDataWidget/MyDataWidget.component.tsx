@@ -17,6 +17,7 @@ import Icon, {
 } from '@ant-design/icons';
 import { Button, Card, Col, Dropdown, Row, Space, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
+import { ExtraInfo } from 'Models';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
@@ -27,12 +28,15 @@ import {
   PAGE_SIZE,
   ROUTES,
 } from '../../../constants/constants';
+import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import {
   WIDGETS_MORE_MENU_KEYS,
   WIDGETS_MORE_MENU_OPTIONS,
 } from '../../../constants/Widgets.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/tests/testCase';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import {
@@ -43,12 +47,16 @@ import { searchData } from '../../../rest/miscAPI';
 import customizeMyDataPageClassBase from '../../../utils/CustomizeMyDataPageClassBase';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getUserPath } from '../../../utils/RouterUtils';
+import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getUsagePercentile } from '../../../utils/TableUtils';
+import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import EntityListSkeleton from '../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './my-data-widget.less';
 
 const MyDataWidgetInternal = ({
@@ -67,6 +75,81 @@ const MyDataWidgetInternal = ({
   const widgetIcon = useMemo(() => {
     return customizeMyDataPageClassBase.getWidgetIconFromKey(widgetKey);
   }, [widgetKey]);
+
+  // Check if widget is in expanded form (full size)
+  const isExpanded = useMemo(() => {
+    const currentWidget = currentLayout?.find(
+      (layout: WidgetConfig) => layout.i === widgetKey
+    );
+
+    return (currentWidget?.w ?? 1) >= 2; // Full size is width 2, half size is width 1
+  }, [currentLayout, widgetKey]);
+
+  const getEntityExtraInfo = (item: SourceType): ExtraInfo[] => {
+    const extraInfo: ExtraInfo[] = [];
+    // Add domain info
+    if (item.domain) {
+      extraInfo.push({
+        key: 'Domain',
+        value: getDomainPath(item.domain.fullyQualifiedName),
+        placeholderText: getEntityName(item.domain),
+        isLink: true,
+        openInNewTab: false,
+      });
+    }
+
+    // Add owner info
+    if (item.owners && item.owners.length > 0) {
+      extraInfo.push({
+        key: 'Owner',
+        value: (
+          <OwnerLabel
+            isCompactView={false}
+            owners={(item.owners as EntityReference[]) ?? []}
+            showLabel={false}
+          />
+        ),
+      });
+    }
+
+    // Add tier info
+    if (item.tier) {
+      extraInfo.push({
+        key: 'Tier',
+        value: (
+          <TagsV1
+            startWith={TAG_START_WITH.SOURCE_ICON}
+            tag={item.tier as TagLabel}
+            tagProps={{
+              'data-testid': 'Tier',
+            }}
+          />
+        ),
+        isEntityDetails: true,
+      });
+    }
+
+    // Add table type info
+    if ('tableType' in item) {
+      extraInfo.push({
+        key: 'Type',
+        value: item.tableType,
+        showLabel: true,
+      });
+    }
+
+    // Add usage summary info
+    if ('usageSummary' in item) {
+      extraInfo.push({
+        key: 'Usage',
+        value: getUsagePercentile(
+          item.usageSummary?.weeklyStats?.percentileRank || 0
+        ),
+      });
+    }
+
+    return extraInfo;
+  };
 
   const fetchMyDataAssets = async () => {
     if (!isUndefined(currentUser)) {
@@ -245,14 +328,16 @@ const MyDataWidgetInternal = ({
           <div className="d-flex flex-col h-full">
             <div className="entity-list-body p-y-sm d-flex flex-col gap-3 flex-1 overflow-y-auto">
               {data.map((item) => {
+                const extraInfo = getEntityExtraInfo(item);
+
                 return (
                   <div
                     className="my-data-widget-list-item w-full p-sm border-radius-sm"
                     data-testid={`Recently Viewed-${getEntityName(item)}`}
                     key={item.id}>
-                    <div className="d-flex items-center">
+                    <div className="d-flex items-center justify-between w-full">
                       <Link
-                        className="item-link w-full"
+                        className="item-link"
                         to={entityUtilClassBase.getEntityLink(
                           item.entityType ?? '',
                           item.fullyQualifiedName as string
@@ -272,6 +357,23 @@ const MyDataWidgetInternal = ({
                           </Typography.Text>
                         </Button>
                       </Link>
+                      {isExpanded && (
+                        <div className="d-flex items-center gap-3 flex-wrap">
+                          {extraInfo.map((info, i) => (
+                            <>
+                              <EntitySummaryDetails
+                                data={info}
+                                key={info.key}
+                              />
+                              {i !== extraInfo.length - 1 && (
+                                <span className="px-1.5 d-inline-block text-xl font-semibold">
+                                  {t('label.middot-symbol')}
+                                </span>
+                              )}
+                            </>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -282,7 +384,7 @@ const MyDataWidgetInternal = ({
                 className="view-more-text text-sm font-regular m-b-lg cursor-pointer"
                 data-testid="view-more-link"
                 to={getUserPath(currentUser?.name ?? '', 'mydata')}>
-                {t('label.view-more-capital')}{' '}
+                {t('label.view-more-count', { count: data.length })}
                 <ArrowRightOutlined className="m-l-xss" />
               </Link>
             </div>

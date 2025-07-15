@@ -22,6 +22,7 @@ import Loader from '../../components/common/Loader/Loader';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
   KNOWLEDGE_LIST_LENGTH,
   LOGGED_IN_USER_STORAGE_KEY,
@@ -31,7 +32,6 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { Page, PageType } from '../../generated/system/ui/page';
-import { EntityReference } from '../../generated/type/entityReference';
 import { PersonaPreferences } from '../../generated/type/personaPreferences';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -56,7 +56,7 @@ const MyDataPage = () => {
   const { currentUser, selectedPersona, setCurrentUser } =
     useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
-  const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
+  const [followedData, setFollowedData] = useState<Array<SourceType>>([]);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);

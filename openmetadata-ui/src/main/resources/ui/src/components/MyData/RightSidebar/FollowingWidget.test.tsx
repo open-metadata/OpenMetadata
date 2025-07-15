@@ -96,6 +96,6 @@ describe('FollowingWidget', () => {
   it('should show view more link', () => {
     render(<FollowingWidget {...mockProps} />);
 
-    expect(screen.getByText('label.view-more-capital')).toBeInTheDocument();
+    expect(screen.getByText('label.view-more-count')).toBeInTheDocument();
   });
 });
