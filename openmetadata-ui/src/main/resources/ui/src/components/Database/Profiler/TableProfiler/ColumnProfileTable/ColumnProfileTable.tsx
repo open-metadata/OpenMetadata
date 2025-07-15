@@ -397,9 +397,7 @@ const ColumnProfileTable = () => {
 
   const fetchTableColumnWithProfiler = useCallback(
     async (page: number, searchText: string) => {
-      const tableFQN = tableProfiler?.fullyQualifiedName;
-
-      if (!tableFQN) {
+      if (!fqn) {
         return;
       }
 
@@ -408,13 +406,13 @@ const ColumnProfileTable = () => {
         const offset = (page - 1) * pageSize;
         // Use search API if there's a search query, otherwise use regular pagination
         const response = searchText
-          ? await searchTableColumnsByFQN(tableFQN, {
+          ? await searchTableColumnsByFQN(fqn, {
               q: searchText,
               limit: pageSize,
               offset: offset,
               fields: TabSpecificField.PROFILE,
             })
-          : await getTableColumnsByFQN(tableFQN, {
+          : await getTableColumnsByFQN(fqn, {
               limit: pageSize,
               offset: offset,
               fields: TabSpecificField.PROFILE,
@@ -432,7 +430,7 @@ const ColumnProfileTable = () => {
         setIsColumnsLoading(false);
       }
     },
-    [tableProfiler?.fullyQualifiedName, pageSize, searchText]
+    [fqn, pageSize, searchText]
   );
 
   const handleColumnProfilePageChange = useCallback(
@@ -443,10 +441,10 @@ const ColumnProfileTable = () => {
   );
 
   useEffect(() => {
-    if (tableProfiler?.fullyQualifiedName) {
+    if (fqn) {
       fetchTableColumnWithProfiler(currentPage, searchText);
     }
-  }, [tableProfiler?.fullyQualifiedName, currentPage, searchText, pageSize]);
+  }, [fqn, currentPage, searchText, pageSize]);
 
   useEffect(() => {
     if (activeColumnFqn) {
