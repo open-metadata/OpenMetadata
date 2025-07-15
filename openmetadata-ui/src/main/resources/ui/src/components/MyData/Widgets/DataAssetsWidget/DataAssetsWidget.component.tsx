@@ -10,34 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { DragOutlined, MoreOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Dropdown, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
-import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as DataAssetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
 import { ROUTES } from '../../../../constants/constants';
-import {
-  WIDGETS_MORE_MENU_KEYS,
-  WIDGETS_MORE_MENU_OPTIONS,
-} from '../../../../constants/Widgets.constant';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
+import { SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
-import {
-  WidgetCommonProps,
-  WidgetConfig,
-} from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../../rest/miscAPI';
-import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
+import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
+import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
+import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './data-assets-widget.less';
 import DataAssetCard from './DataAssetCard/DataAssetCard.component';
+import {
+  DATA_ASSETS_SORT_BY_KEYS,
+  DATA_ASSETS_SORT_BY_OPTIONS,
+} from './DataAssetsWidget.constants';
 
 const DataAssetsWidget = ({
   isEditView = false,
@@ -50,10 +46,16 @@ const DataAssetsWidget = ({
   const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(false);
   const [services, setServices] = useState<Bucket[]>([]);
+  const [selectedSortBy, setSelectedSortBy] = useState<string>(
+    DATA_ASSETS_SORT_BY_KEYS.LATEST
+  );
 
-  const widgetIcon = useMemo(() => {
-    return customizeMyDataPageClassBase.getWidgetIconFromKey(widgetKey);
-  }, [widgetKey]);
+  const widgetData = useMemo(
+    () => currentLayout?.find((w) => w.i === widgetKey),
+    [currentLayout, widgetKey]
+  );
+
+  const isFullSize = widgetData?.w === 2;
 
   const fetchDataAssets = useCallback(async () => {
     setLoading(true);
@@ -76,181 +78,118 @@ const DataAssetsWidget = ({
     }
   }, []);
 
-  const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
-  }, [widgetKey]);
-
-  const handleSizeChange = useCallback(
-    (value: number) => {
-      if (handleLayoutUpdate) {
-        const hasCurrentWidget = currentLayout?.find(
-          (layout: WidgetConfig) => layout.i === widgetKey
-        );
-
-        const updatedLayout = hasCurrentWidget
-          ? currentLayout?.map((layout: WidgetConfig) =>
-              layout.i === widgetKey ? { ...layout, w: value } : layout
-            )
-          : [
-              ...(currentLayout || []),
-              {
-                ...customizeMyDataPageClassBase.defaultLayout.find(
-                  (layout: WidgetConfig) => layout.i === widgetKey
-                ),
-                i: widgetKey,
-                w: value,
-              },
-            ];
-
-        handleLayoutUpdate(updatedLayout as Layout[]);
-      }
-    },
-    [currentLayout, handleLayoutUpdate, widgetKey]
-  );
-
-  const handleMoreClick = (e: MenuInfo) => {
-    if (e.key === WIDGETS_MORE_MENU_KEYS.REMOVE_WIDGET) {
-      handleCloseClick();
-    } else if (e.key === WIDGETS_MORE_MENU_KEYS.HALF_SIZE) {
-      handleSizeChange(1);
-    } else if (e.key === WIDGETS_MORE_MENU_KEYS.FULL_SIZE) {
-      handleSizeChange(2);
-    }
-  };
-
   useEffect(() => {
     fetchDataAssets();
-  }, []);
+  }, [fetchDataAssets]);
 
-  const header = useMemo(
-    () => (
-      <Row className="data-assets-header" justify="space-between">
-        <Col className="d-flex items-center h-full min-h-8">
-          <div className="d-flex h-6 w-6 m-r-xs">
-            <Icon
-              className="data-assets-widget-icon display-xs"
-              component={widgetIcon as any}
-            />
-          </div>
+  const sortedServices = useMemo(() => {
+    switch (selectedSortBy) {
+      case DATA_ASSETS_SORT_BY_KEYS.A_TO_Z:
+        return [...services].sort((a, b) => a.key.localeCompare(b.key));
+      case DATA_ASSETS_SORT_BY_KEYS.Z_TO_A:
+        return [...services].sort((a, b) => b.key.localeCompare(a.key));
+      case DATA_ASSETS_SORT_BY_KEYS.LATEST:
+      default:
+        return services;
+    }
+  }, [services, selectedSortBy]);
 
-          <Typography.Paragraph
-            className="ant-typography-ellipsis ant-typography-single-line ant-typography-ellipsis-single-line"
-            ellipsis={{ tooltip: true }}
-            style={{
-              maxWidth: '525px',
-              fontWeight: 500,
-              fontSize: '16px',
-              lineHeight: '28px',
-              marginBottom: 0,
-            }}>
-            {t('label.data-asset-plural')}
-          </Typography.Paragraph>
-        </Col>
-
-        <Col>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {isEditView && (
-              <>
-                <DragOutlined
-                  className="drag-widget-icon cursor-pointer widget-header-options"
-                  data-testid="drag-widget-button"
-                  size={20}
-                />
-                <Dropdown
-                  className="widget-header-options"
-                  data-testid="more-button"
-                  menu={{
-                    items: WIDGETS_MORE_MENU_OPTIONS,
-                    selectable: true,
-                    multiple: false,
-                    onClick: handleMoreClick,
-                    className: 'widget-header-menu',
-                  }}
-                  placement="bottomLeft"
-                  trigger={['click']}>
-                  <Button
-                    className=""
-                    data-testid="more-button"
-                    icon={
-                      <MoreOutlined
-                        data-testid="more-widget-button"
-                        size={20}
-                      />
-                    }
-                  />
-                </Dropdown>
-              </>
-            )}
-          </div>
-        </Col>
-      </Row>
-    ),
-    [isEditView, widgetIcon, handleMoreClick]
+  const handleSortByClick = useCallback(
+    (key: string) => {
+      setSelectedSortBy(key);
+    },
+    [setSelectedSortBy]
   );
 
   const emptyState = useMemo(
     () => (
-      <ErrorPlaceHolder
-        className="border-none p-t-box"
+      <WidgetEmptyState
+        actionButtonText={t('label.add-entity', {
+          entity: t('label.data-asset-plural'),
+        })}
+        description={t('message.no-data-assets-message')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
         }
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <div className="d-flex flex-col items-center">
-          <Typography.Text className="text-md font-semibold m-b-sm">
-            {t('message.no-data-assets-yet')}
-          </Typography.Text>
-          <Typography.Text className="placeholder-text text-sm font-regular">
-            {t('message.no-data-assets-message')}
-          </Typography.Text>
-          <Button
-            className="m-t-md"
-            type="primary"
-            onClick={() => {
-              navigate(ROUTES.EXPLORE);
-            }}>
-            {t('label.add-entity', {
-              entity: t('label.data-asset-plural'),
-            })}
-          </Button>
-        </div>
-      </ErrorPlaceHolder>
+        title={t('message.no-data-assets-yet')}
+        onActionClick={() => navigate(ROUTES.EXPLORE)}
+      />
     ),
     [t, navigate]
   );
 
+  const getGridTemplateColumns = () => {
+    return isFullSize ? 'repeat(5, 1fr)' : 'repeat(2, 2fr)';
+  };
+
   const dataAssetsContent = useMemo(
     () => (
-      <div className="cards-scroll-container flex-1 overflow-y-auto">
-        <Row className="d-flex gap-4 flex-wrap flex-1" gutter={[16, 16]}>
-          {services.map((service) => (
-            <Col key={service.key} lg={6} md={8} sm={12} xl={6} xs={24} xxl={4}>
+      <div className="entity-list-body">
+        <div
+          className="cards-scroll-container flex-1 overflow-y-auto"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: getGridTemplateColumns(),
+            gap: '16px',
+          }}>
+          {sortedServices.map((service) => (
+            <div className="card-wrapper" key={service.key}>
               <DataAssetCard service={service} />
-            </Col>
+            </div>
           ))}
-        </Row>
+        </div>
       </div>
     ),
-    [services]
+    [sortedServices, isFullSize]
   );
 
-  const bodyContent = useMemo(
+  const widgetContent = useMemo(
     () => (
-      <div className="data-assets-explore-widget-body">
-        {isEmpty(services) ? emptyState : dataAssetsContent}
+      <div className="data-assets-widget-container">
+        <WidgetHeader
+          currentLayout={currentLayout}
+          handleLayoutUpdate={handleLayoutUpdate}
+          handleRemoveWidget={handleRemoveWidget}
+          icon={<DataAssetIcon />}
+          isEditView={isEditView}
+          selectedSortBy={selectedSortBy}
+          sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+          title={t('label.data-asset-plural')}
+          widgetKey={widgetKey}
+          widgetWidth={widgetData?.w}
+          onSortChange={handleSortByClick}
+        />
+        <div className="widget-content flex-1">
+          {isEmpty(sortedServices) ? emptyState : dataAssetsContent}
+          <WidgetFooter
+            moreButtonLink={ROUTES.EXPLORE}
+            moreButtonText={t('label.view-more')}
+            showMoreButton={Boolean(!loading)}
+          />
+        </div>
       </div>
     ),
-    [services, emptyState, dataAssetsContent]
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      t,
+      widgetKey,
+      widgetData?.w,
+      selectedSortBy,
+      emptyState,
+      dataAssetsContent,
+      sortedServices,
+    ]
   );
 
   return (
-    <Card
-      className="data-assets-explore-widget-container card-widget"
-      data-testid="data-assets-widget"
+    <WidgetWrapper
+      dataLength={sortedServices.length !== 0 ? sortedServices.length : 5}
       loading={loading}>
-      {header}
-      {bodyContent}
-    </Card>
+      {widgetContent}
+    </WidgetWrapper>
   );
 };
 

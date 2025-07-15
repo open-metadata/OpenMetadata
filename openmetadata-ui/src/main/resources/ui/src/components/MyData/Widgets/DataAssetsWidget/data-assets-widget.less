@@ -10,80 +10,36 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../styles/variables.less';
+@import (reference) url('../../../../styles/variables.less');
+@import (reference) url('../../../../styles/fonts.less');
 
-.data-assets-explore-widget-container {
+.data-assets-widget-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
   .ant-card-body {
-    height: 100%;
     display: flex;
     flex-direction: column;
-    padding: 0px;
-  }
-
-  .data-assets-header {
-    padding: 12px 20px 12px 20px;
-    border-bottom: 1px solid @grey-15;
-  }
-
-  .data-assets-explore-widget-body {
     flex: 1;
-    overflow-y: auto;
     padding: 0;
-    margin-top: 0;
+    overflow: hidden;
+  }
+
+  .widget-content {
+    flex: 1;
     display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    align-content: flex-start;
-    padding-right: 4px;
-
-    .card-wrapper {
-      flex: 0 0 auto;
-      width: 220px;
-    }
-
-    .service-card.ant-card {
-      height: 100%;
-      border: none;
-      cursor: pointer;
-      transition: 0.3s ease-in-out;
-
-      &:hover {
-        background: @grey-1;
-      }
-
-      .ant-card-body {
-        display: flex;
-        flex-direction: column;
-        text-align: center;
-        align-items: center;
-        padding: 12px 20px;
-        max-height: 100%;
-
-        .data-asset-badge {
-          width: max-content;
-          padding: 6px 14px;
-          background-color: @blue-1;
-          .ant-typography {
-            color: @primary-color;
-            font-size: 12px;
-          }
-        }
-      }
-    }
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
   }
 
-  .data-assets-widget-icon {
-    svg {
-      fill: none;
-    }
-  }
-
-  .drag-widget-icon {
-    display: none;
-  }
-
-  .placeholder-text {
-    color: @grey-500;
+  .entity-list-body {
+    flex: 1;
+    padding: @size-mlg @size-mlg 0 @size-mlg;
+    margin: 0;
+    overflow-y: auto;
+    min-height: 0;
   }
 
   .ant-dropdown-menu-item {
@@ -104,33 +60,51 @@
   }
 }
 
-.data-assets-explore-widget-container:hover {
-  .drag-widget-icon {
-    display: block;
+  .widget-footer {
+    flex-shrink: 0;
+    width: 100%;
+    background-color: @white;
+    border-bottom-right-radius: @size-sm;
+    border-bottom-left-radius: @size-sm;
   }
 }
 
-.widget-header-options {
-  padding: 10px;
-  height: 40px;
-  min-width: 40px;
-  max-width: 100px;
-  border-radius: 8px;
-  border: 1px solid @grey-15;
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: @white;
+.cards-scroll-container {
+  display: grid;
+  gap: 16px;
 
-  &:hover {
-    background-color: @grey-1;
-    border-color: @primary-color;
+  .card-wrapper {
+    width: 100%;
+    height: 100%;
   }
+  
+  .service-card.ant-card {
+    height: 100%;
+    border: none;
+    cursor: pointer;
+    transition: 0.3s ease-in-out;
 
-  .widget-header-menu {
-    padding: 8px;
-    border-radius: 12px;
+    &:hover {
+      background: @grey-1;
+    }
+
+    .ant-card-body {
+      display: flex;
+      flex-direction: column;
+      text-align: center;
+      align-items: center;
+      padding: @size-sm @size-mlg;
+      max-height: 100%;
+
+      .data-asset-badge {
+        width: max-content;
+        padding: @size-xs @size-sm;
+        background-color: @blue-1;
+        .ant-typography {
+          color: @primary-color;
+          font-size: @size-sm;
+        }
+      }
+    }
   }
 }
