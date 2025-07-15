@@ -49,6 +49,7 @@ export const visitObservabilityAlertPage = async (page: Page) => {
     '/api/v1/events/subscriptions?*alertType=Observability*'
   );
   await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
+  await page.waitForURL('**/observability/alerts');
   await getAlerts;
 };
 
