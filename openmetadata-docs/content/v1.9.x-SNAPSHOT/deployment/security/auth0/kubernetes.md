@@ -1,5 +1,6 @@
 ---
-title: Auth0 SSO for Kubernetes
+title: Auth0 SSO for Kubernetes | Official Documentation
+description: Connect Kubernetes to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /deployment/security/auth0/kubernetes
 collate: false
 ---

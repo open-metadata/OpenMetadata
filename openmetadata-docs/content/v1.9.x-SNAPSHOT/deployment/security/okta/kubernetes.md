@@ -1,5 +1,6 @@
 ---
-title: Okta SSO for Kubernetes
+title: Okta SSO for Kubernetes | Official Documentation
+description: Connect Kubernetes to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /deployment/security/okta/kubernetes
 collate: false
 ---

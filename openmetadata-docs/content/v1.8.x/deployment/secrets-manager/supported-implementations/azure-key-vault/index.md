@@ -1,5 +1,6 @@
 ---
 title: Azure Key Vault | OpenMetadata Secrets Manager Guide
+description: Get started with azure key vault. Setup instructions, features, and configuration details inside. Refer to the official documentation for the latest updates.
 slug: /deployment/secrets-manager/supported-implementations/azure-key-vault
 collate: false
 ---

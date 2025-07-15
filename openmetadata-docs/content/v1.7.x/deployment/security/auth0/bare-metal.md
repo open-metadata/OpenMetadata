@@ -1,5 +1,6 @@
 ---
-title: Auth0 SSO for Bare Metal
+title: Auth0 SSO for Bare Metal | Official Documentation
+description: Connect Bare Metal to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /deployment/security/auth0/bare-metal
 collate: false
 ---
