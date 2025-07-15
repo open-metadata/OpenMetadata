@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../../../styles/variables.less';
+
 .ant-card.ant-card-bordered.total-data-insight-card {
   border-radius: 10px;
   box-shadow: none;
@@ -28,6 +30,53 @@
 
     &::-webkit-scrollbar {
       display: none;
+    }
+  }
+}
+
+.total-data-assets-widget-content {
+  .legend-list {
+    max-width: 450px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+
+    .data-value {
+      border-radius: @border-radius-md;
+      background-color: @grey-31;
+    }
+  }
+
+  .donut-chart-wrapper {
+    position: relative;
+  }
+
+  .donut-center-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+
+  .date-selector-wrapper {
+    .date-box {
+      border: 1px solid @grey-2;
+      background: @grey-29;
+      padding: @padding-xs @padding-sm;
+      border-radius: @border-radius-sm;
+      text-align: center;
+      cursor: pointer;
+      min-width: 50px;
+
+      .month {
+        color: @grey-26;
+      }
+
+      &.selected {
+        border: 1px solid @blue-29;
+        background: @blue-36;
+      }
     }
   }
 }
