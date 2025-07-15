@@ -43,11 +43,7 @@ export const buildDomainFilter = (
   domainFQNs: string[],
   options: DomainFilterOptions = {}
 ): Record<string, unknown> | undefined => {
-  const {
-    fieldName = 'domain.fullyQualifiedName',
-    minimumShouldMatch = 1,
-    boost = 1.0,
-  } = options;
+  const { fieldName = 'domains.fullyQualifiedName' } = options;
 
   if (!domainFQNs || domainFQNs.length === 0) {
     return undefined;
@@ -60,11 +56,9 @@ export const buildDomainFilter = (
           term: {
             [fieldName]: {
               value: domainFQN,
-              boost,
             },
           },
         })),
-        minimum_should_match: minimumShouldMatch,
       },
     },
   };
