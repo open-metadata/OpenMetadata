@@ -254,7 +254,9 @@ const TableProfilerChart = ({
   if (permissions && !permissions?.ViewDataProfile) {
     return (
       <ErrorPlaceHolder
-        permissionValue={Operation.ViewDataProfile}
+        permissionValue={t('label.view-entity', {
+          entity: t('label.data-observability'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
