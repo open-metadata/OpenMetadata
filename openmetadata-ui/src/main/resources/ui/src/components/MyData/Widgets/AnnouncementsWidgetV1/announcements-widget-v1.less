@@ -15,8 +15,7 @@
 
 // Override widget wrapper for announcement widget
 .announcements-widget-v1-wrapper {
-  background: #9a9a9a33 !important;
-
+  background: @severity-6-background !important;
   box-shadow: none !important;
 
   &:hover {
@@ -37,7 +36,7 @@
   flex-direction: column;
   height: 100%;
   background: transparent !important;
-  border-radius: 12px;
+  border-radius: @border-radius-lg;
   overflow-y: auto;
   max-width: 367px;
   max-height: 275px;
@@ -65,13 +64,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px 8px 20px;
+  padding: @padding-md @size-mlg @padding-xs @size-mlg;
   background: transparent !important;
 
   .header-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: @padding-xs;
     flex: 1;
     background: transparent !important;
 
@@ -79,14 +78,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
+      width: @size-lg;
+      height: @size-lg;
       color: @white;
       background: transparent !important;
 
       svg {
-        width: 24px;
-        height: 24px;
+        width: @size-lg;
+        height: @size-lg;
       }
     }
 
@@ -105,10 +104,10 @@
         color: @primary-color;
         font-weight: @font-semibold;
         border: 1px solid @white;
-        min-width: 24px;
-        height: 24px;
+        min-width: @size-lg;
+        height: @size-lg;
         line-height: 22px;
-        border-radius: 12px;
+        border-radius: @border-radius-lg;
         font-size: @size-sm;
       }
     }
@@ -118,8 +117,8 @@
     color: @white;
     border: none;
     background: transparent !important;
-    width: 32px;
-    height: 32px;
+    width: @size-xl;
+    height: @size-xl;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -132,14 +131,14 @@
     }
 
     .anticon {
-      font-size: 16px;
+      font-size: @font-size-base;
     }
   }
 }
 
 .announcements-widget-v1-content {
   flex: 1;
-  padding: 20px;
+  padding: @size-mlg;
   overflow-y: auto;
   background: transparent !important;
 }
@@ -147,6 +146,6 @@
 .announcement-cards-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: @padding-sm;
   background: transparent !important;
 }

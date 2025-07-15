@@ -205,7 +205,7 @@ const CustomiseLandingPageHeader = ({
             )}
           </div>
         </div>
-        {/* <div className="announcements" /> */}
+
         {announcements.length > 0 && showAnnouncements && (
           <div className="announcements-container">
             <AnnouncementsWidgetV1
