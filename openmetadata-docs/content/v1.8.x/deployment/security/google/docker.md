@@ -1,5 +1,6 @@
 ---
-title: Google SSO for Docker
+title: Google SSO for Docker | Official Documentation
+description: Deploy secure authentication using Google OAuth inside Docker environments, enabling token-based access control and session protection.
 slug: /deployment/security/google/docker
 collate: false
 ---

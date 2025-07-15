@@ -1,5 +1,6 @@
 ---
 title: Getting Started with OpenMetadata for Data cataloging
+description: Follow this guide to get started quickly with core deployment, authentication, data access, and configuration for your platform setup.
 slug: /quick-start/getting-started
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: Custom OIDC SSO for Docker
+title: Custom OIDC SSO for Docker | Official Documentation
+description: Use custom OIDC providers within Docker environments to manage authentication securely across diverse application services and endpoints.
 slug: /deployment/security/custom-oidc/docker
 collate: false
 ---

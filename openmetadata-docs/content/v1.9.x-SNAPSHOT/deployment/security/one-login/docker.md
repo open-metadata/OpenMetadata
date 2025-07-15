@@ -1,5 +1,6 @@
 ---
-title: One Login SSO for Docker
+title: One Login SSO for Docker | Official Documentation
+description: Deploy OneLogin authentication in Docker for fast, secure user validation and centralized identity management in container services.
 slug: /deployment/security/one-login/docker
 collate: false
 ---

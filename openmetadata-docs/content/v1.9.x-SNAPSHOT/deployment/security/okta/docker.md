@@ -1,5 +1,6 @@
 ---
 title: Okta SSO for Docker | OpenMetadata Deployment Guide
+description: Set up Okta authentication in Docker to streamline secure identity workflows, token validation, and backend integration for containers.
 slug: /deployment/security/okta/docker
 collate: false
 ---

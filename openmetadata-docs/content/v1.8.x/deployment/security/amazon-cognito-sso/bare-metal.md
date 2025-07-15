@@ -1,5 +1,6 @@
 ---
-title: Amazon Cognito SSO for Bare Metal
+title: Amazon Cognito SSO for Bare Metal | Official Documentation
+description: Deploy Amazon Cognito on bare-metal servers to offer secure authentication without relying on cloud-native services or hosted environments.
 slug: /deployment/security/amazon-cognito/bare-metal
 collate: false
 ---

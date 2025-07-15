@@ -1,5 +1,6 @@
 ---
-title: Custom OIDC SSO for Bare Metal
+title: Custom OIDC SSO for Bare Metal | Official Documentation
+description: Use custom OIDC authentication on bare-metal environments to support identity federation and secure access without cloud dependencies.
 slug: /deployment/security/custom-oidc/bare-metal
 collate: false
 ---

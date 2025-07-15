@@ -1,5 +1,6 @@
 ---
-title: OneLogin SSO for Bare Metal
+title: OneLogin SSO for Bare Metal | Official Documentation
+description: Use OneLogin authentication on bare-metal deployments to ensure secure, token-driven access without relying on cloud-native services.
 slug: /deployment/security/one-login/bare-metal
 collate: false
 ---

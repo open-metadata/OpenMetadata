@@ -1,5 +1,6 @@
 ---
 title: Azure SSO for Docker | OpenMetadata Deployment Guide
+description: Set up secure Azure-based authentication inside Docker deployments using standards-compliant flows and lightweight token exchange methods.
 slug: /deployment/security/azure/docker
 collate: false
 ---

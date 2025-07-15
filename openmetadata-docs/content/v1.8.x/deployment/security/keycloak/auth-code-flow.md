@@ -1,5 +1,6 @@
 ---
-title: Auth code flow of Keyclock
+title: Auth code flow of Keyclock | Official Documentation
+description: Implement Keycloak’s Authorization Code Flow for backend-based secure logins using token exchange, identity claims, and session control.
 slug: /deployment/security/keycloak/auth-code-flow
 collate: false
 ---

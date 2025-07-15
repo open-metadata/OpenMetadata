@@ -1,5 +1,6 @@
 ---
-title: Amazon Cognito SSO for Docker
+title: Amazon Cognito SSO for Docker | Official Documentation
+description: Enable Amazon Cognito with Docker containers to manage secure, token-based authentication in lightweight, containerized app deployments.
 slug: /deployment/security/amazon-cognito/docker
 collate: false
 ---

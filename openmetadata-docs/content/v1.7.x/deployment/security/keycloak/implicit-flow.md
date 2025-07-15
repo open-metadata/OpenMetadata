@@ -1,5 +1,6 @@
 ---
-title: Implicit flow of Keyclock
+title: Implicit flow of Keyclock | Official Documentation
+description: Configure Keycloak’s Implicit Flow to support secure, frontend-based token issuance for fast browser-based authentication workflows.
 slug: /deployment/security/keycloak/implicit-flow
 collate: false
 ---

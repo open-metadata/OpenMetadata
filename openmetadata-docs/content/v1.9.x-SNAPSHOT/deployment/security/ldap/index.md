@@ -1,5 +1,6 @@
 ---
 title: LDAP Authentication | OpenMetadata Security Setup
+description: Configure LDAP integration to support centralized identity management using directory-based authentication systems.
 slug: /deployment/security/ldap
 collate: false
 ---
