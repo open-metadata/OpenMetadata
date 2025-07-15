@@ -49,6 +49,8 @@ export function useMultiContainerFocusTrap({
       };
     } else {
       trapRef.current?.deactivate();
+
+      return;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, ...containers]);

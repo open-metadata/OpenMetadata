@@ -200,9 +200,12 @@ const BulkEntityImportPage = () => {
     [onCSVReadComplete, entityType, fqn]
   );
 
-  const onEditComplete = (data: Record<string, string>[]) => {
-    setDataSource(data);
-  };
+  const onEditComplete = useCallback(
+    (data: Record<string, string>[]) => {
+      setDataSource(data);
+    },
+    [setDataSource]
+  );
 
   const handleBack = () => {
     if (activeStep === VALIDATION_STEP.UPDATE) {
@@ -466,6 +469,35 @@ const BulkEntityImportPage = () => {
     gridContainerRef
   );
 
+  /*
+    Owner dropdown uses <ProfilePicture /> which uses useUserProfile hook
+    useUserProfile hook uses useApplicationStore hook
+    Updating store will trigger re-render of the component
+    This will cause the owner dropdown or full grid to re-render
+  */
+  const editDataGrid = useMemo(() => {
+    return (
+      <DataGrid
+        className="rdg-light"
+        columns={columns as Column<any>[]}
+        rows={dataSource}
+        onCopy={handleCopy}
+        onPaste={handlePaste}
+        onRowsChange={(updatedRows) => {
+          onEditComplete(updatedRows);
+          pushToUndoStack(dataSource);
+        }}
+      />
+    );
+  }, [
+    columns,
+    dataSource,
+    handleCopy,
+    handlePaste,
+    onEditComplete,
+    pushToUndoStack,
+  ]);
+
   return (
     <PageLayoutV1
       pageTitle={t('label.import-entity', {
@@ -554,17 +586,7 @@ const BulkEntityImportPage = () => {
               )}
               {activeStep === 1 && (
                 <div className="om-rdg" ref={gridContainerRef}>
-                  <DataGrid
-                    className="rdg-light"
-                    columns={columns as Column<any>[]}
-                    rows={dataSource}
-                    onCopy={handleCopy}
-                    onPaste={handlePaste}
-                    onRowsChange={(updatedRows) => {
-                      onEditComplete(updatedRows);
-                      pushToUndoStack(dataSource);
-                    }}
-                  />
+                  {editDataGrid}
                 </div>
               )}
               {activeStep === 2 && validationData && (
