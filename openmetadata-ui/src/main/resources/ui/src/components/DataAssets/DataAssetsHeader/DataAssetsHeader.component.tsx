@@ -446,8 +446,6 @@ export const DataAssetsHeader = ({
       return null;
     }
 
-    const isDisabled =
-      isAutoPilotWorkflowStatusLoading || disableRunAgentsButton;
     const isLoading = isAutoPilotWorkflowStatusLoading || isAutoPilotTriggering;
 
     return (
@@ -455,7 +453,7 @@ export const DataAssetsHeader = ({
         <Button
           className="font-semibold"
           data-testid="trigger-auto-pilot-application-button"
-          disabled={isDisabled}
+          disabled={disableRunAgentsButton}
           icon={<Icon className="flex-center" component={TriggerIcon} />}
           loading={isLoading}
           type="primary"

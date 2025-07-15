@@ -1136,14 +1136,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
-  const disableRunAgentsButton = useMemo(
-    () =>
-      workflowStatesData?.mainInstanceState.status &&
-      ![WorkflowStatus.Exception, WorkflowStatus.Failure].includes(
-        workflowStatesData?.mainInstanceState.status
-      ),
-    [workflowStatesData?.mainInstanceState.status]
-  );
+  const disableRunAgentsButton = useMemo(() => {
+    if (isWorkflowStatusLoading) {
+      return true;
+    }
+
+    return isEmpty(workflowStatesData?.mainInstanceState.status)
+      ? false
+      : workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running;
+  }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
     handlePageChange(INITIAL_PAGING_VALUE);

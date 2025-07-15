@@ -4309,30 +4309,45 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Batch add new relationships
       if (!added.isEmpty()) {
-        // Create forward relationships
-        List<UUID> addedIds =
-            added.stream().map(EntityReference::getId).collect(Collectors.toList());
-        daoCollection
-            .relationshipDAO()
-            .bulkInsertToRelationship(
-                fromId, addedIds, fromEntityType, toEntityType, relationshipType.ordinal());
-
         if (bidirectional) {
-          // Create reverse relationships using bulkInsertTo for true batch operation
-          List<CollectionDAO.EntityRelationshipObject> reverseRelationships =
-              added.stream()
-                  .map(
-                      ref ->
-                          CollectionDAO.EntityRelationshipObject.builder()
-                              .fromId(ref.getId().toString())
-                              .toId(fromId.toString())
-                              .fromEntity(ref.getType())
-                              .toEntity(fromEntityType)
-                              .relation(relationshipType.ordinal())
-                              .build())
-                  .collect(Collectors.toList());
+          // For bidirectional relationships, apply the optimization where smaller UUID is always
+          // fromId
+          List<CollectionDAO.EntityRelationshipObject> optimizedRelationships = new ArrayList<>();
+          for (EntityReference ref : added) {
+            UUID id1 = fromId;
+            UUID id2 = ref.getId();
+            String entity1 = fromEntityType;
+            String entity2 = ref.getType();
 
-          daoCollection.relationshipDAO().bulkInsertTo(reverseRelationships);
+            // Ensure smaller UUID is always fromId for bidirectional relationships
+            if (id1.compareTo(id2) > 0) {
+              // Swap the IDs and entities
+              UUID tempId = id1;
+              id1 = id2;
+              id2 = tempId;
+              String tempEntity = entity1;
+              entity1 = entity2;
+              entity2 = tempEntity;
+            }
+
+            optimizedRelationships.add(
+                CollectionDAO.EntityRelationshipObject.builder()
+                    .fromId(id1.toString())
+                    .toId(id2.toString())
+                    .fromEntity(entity1)
+                    .toEntity(entity2)
+                    .relation(relationshipType.ordinal())
+                    .build());
+          }
+          daoCollection.relationshipDAO().bulkInsertTo(optimizedRelationships);
+        } else {
+          // For non-bidirectional relationships, just create forward relationships
+          List<UUID> addedIds =
+              added.stream().map(EntityReference::getId).collect(Collectors.toList());
+          daoCollection
+              .relationshipDAO()
+              .bulkInsertToRelationship(
+                  fromId, addedIds, fromEntityType, toEntityType, relationshipType.ordinal());
         }
       }
       if (!nullOrEmpty(updatedToRefs)) {
