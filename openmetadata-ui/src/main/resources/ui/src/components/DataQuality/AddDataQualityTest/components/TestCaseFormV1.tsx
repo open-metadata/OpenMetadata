@@ -86,6 +86,7 @@ import {
   replaceAllSpacialCharWith_,
   Transi18next,
 } from '../../../../utils/CommonUtils';
+import { convertSearchSourceToTable } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
@@ -116,15 +117,6 @@ const TABLE_SEARCH_FIELDS: (keyof TableSearchSource)[] = [
   'columns',
   'testSuite',
 ];
-
-// =============================================
-// HELPER FUNCTIONS
-// =============================================
-const convertSearchSourceToTable = (searchSource: TableSearchSource): Table =>
-  ({
-    ...searchSource,
-    columns: searchSource.columns || [],
-  } as Table);
 
 // =============================================
 // MAIN COMPONENT

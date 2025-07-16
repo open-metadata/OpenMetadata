@@ -21,6 +21,7 @@ import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg
 import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
+import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
@@ -28,6 +29,7 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
+import { TableSearchSource } from '../../interface/search.interface';
 import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
 import { ListTestCaseParamsBySearch, TestCaseType } from '../../rest/testAPI';
 import { generateEntityLink } from '../TableUtils';
@@ -312,3 +314,11 @@ export const getDimensionIcon = (dimension: DataQualityDimensions) => {
       return NoDimensionIcon;
   }
 };
+
+export const convertSearchSourceToTable = (
+  searchSource: TableSearchSource
+): Table =>
+  ({
+    ...searchSource,
+    columns: searchSource.columns || [],
+  } as Table);

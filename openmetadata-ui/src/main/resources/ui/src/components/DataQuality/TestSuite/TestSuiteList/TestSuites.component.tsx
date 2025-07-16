@@ -276,6 +276,28 @@ export const TestSuites = () => {
     navigate(getDataQualityPagePath(tab, e.target.value as DataQualitySubTabs));
   };
 
+  const customPaginationProps = useMemo(
+    () => ({
+      currentPage,
+      isLoading,
+      pageSize,
+      isNumberBased: true,
+      paging,
+      pagingHandler: handleTestSuitesPageChange,
+      onShowSizeChange: handlePageSizeChange,
+      showPagination,
+    }),
+    [
+      currentPage,
+      isLoading,
+      pageSize,
+      paging,
+      handleTestSuitesPageChange,
+      handlePageSizeChange,
+      showPagination,
+    ]
+  );
+
   useEffect(() => {
     if (
       getPrioritizedViewPermission(testSuitePermission, Operation.ViewBasic)
@@ -365,16 +387,7 @@ export const TestSuites = () => {
           <Table
             columns={columns}
             containerClassName="custom-card-with-table"
-            customPaginationProps={{
-              currentPage,
-              isLoading,
-              pageSize,
-              isNumberBased: true,
-              paging,
-              pagingHandler: handleTestSuitesPageChange,
-              onShowSizeChange: handlePageSizeChange,
-              showPagination,
-            }}
+            customPaginationProps={customPaginationProps}
             data-testid="test-suite-table"
             dataSource={testSuites}
             loading={isLoading}

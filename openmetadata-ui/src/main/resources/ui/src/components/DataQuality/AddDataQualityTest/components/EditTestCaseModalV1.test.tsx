@@ -28,11 +28,10 @@ import {
   MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
 } from '../../../../mocks/TestSuite.mock';
 import { getTestDefinitionById } from '../../../../rest/testAPI';
-import EditTestCaseModalV1, {
-  EditTestCaseModalV1Props,
-} from './EditTestCaseModalV1';
+import { EditTestCaseModalProps } from './EditTestCaseModal.interface';
+import EditTestCaseModalV1 from './EditTestCaseModalV1';
 
-const mockProps: EditTestCaseModalV1Props = {
+const mockProps: EditTestCaseModalProps = {
   open: true,
   testCase: MOCK_TEST_CASE[0],
   onCancel: jest.fn(),

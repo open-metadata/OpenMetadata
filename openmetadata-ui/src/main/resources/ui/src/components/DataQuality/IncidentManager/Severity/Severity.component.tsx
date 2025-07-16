@@ -18,7 +18,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -117,13 +116,9 @@ const Severity = ({
             data-testid="edit-severity-icon"
             disabled={!hasEditPermission}
             size="small"
-            title={
-              hasEditPermission
-                ? t('label.edit-entity', {
-                    entity: t('label.severity'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }
+            title={t('label.edit-entity', {
+              entity: t('label.severity'),
+            })}
             onClick={onEditSeverity}
           />
         )}

@@ -56,7 +56,7 @@ const TagsV1 = ({
   );
 
   const startIcon = useMemo(() => {
-    if (newLook) {
+    if (newLook && !isGlossaryTag) {
       return (
         <IconTagNew
           className="flex-shrink m-r-xss"

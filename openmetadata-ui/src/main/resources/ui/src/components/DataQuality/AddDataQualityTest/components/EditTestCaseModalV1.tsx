@@ -12,7 +12,6 @@
  */
 
 import { Button, Card, Drawer, Form, FormProps, Input, Space } from 'antd';
-import { DrawerProps } from 'antd/lib/drawer';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isArray, isEmpty, isEqual, pick } from 'lodash';
@@ -24,7 +23,6 @@ import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { Table } from '../../../../generated/entity/data/table';
-import { TestCase } from '../../../../generated/tests/testCase';
 import {
   TestDataType,
   TestDefinition,
@@ -54,24 +52,13 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import AlertBar from '../../../AlertBar/AlertBar';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../../common/Loader/Loader';
+import { EditTestCaseModalProps } from './EditTestCaseModal.interface';
 import ParameterForm from './ParameterForm';
-
-// =============================================
-// INTERFACES
-// =============================================
-export interface EditTestCaseModalV1Props {
-  open: boolean;
-  testCase: TestCase;
-  showOnlyParameter?: boolean;
-  drawerProps?: DrawerProps;
-  onCancel: () => void;
-  onUpdate?: (testCase: TestCase) => void;
-}
 
 // =============================================
 // MAIN COMPONENT
 // =============================================
-const EditTestCaseModalV1: FC<EditTestCaseModalV1Props> = ({
+const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
   open,
   testCase,
   showOnlyParameter = false,
