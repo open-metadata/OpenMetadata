@@ -1,5 +1,6 @@
 ---
 title: Governance Workflows - Set Glossary Term Status
+description: Automate glossary term status updates in workflows for streamlined term management, publishing, and review cycles.
 slug: /how-to-guides/data-governance/workflows/elements/nodes/set-glossary-term-status
 collate: true
 ---
