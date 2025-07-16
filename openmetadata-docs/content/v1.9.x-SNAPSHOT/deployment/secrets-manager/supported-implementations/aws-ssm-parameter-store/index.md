@@ -1,5 +1,6 @@
 ---
 title: AWS Systems Manager Parameter Store
+description: Set up AWS SSM Parameter Store for secrets management to store and retrieve credentials securely in your deployment.
 slug: /deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
 collate: false
 ---

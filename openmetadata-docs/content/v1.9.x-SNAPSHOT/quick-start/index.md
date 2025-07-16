@@ -1,5 +1,6 @@
 ---
 title: Quickstart | OpenMetadata Quickstart Guide
+description: Get started with your platform using step-by-step onboarding instructions for setup, integration, and key feature exploration.
 slug: /quick-start
 description: The easiest way to deploy and use OpenMetadata
 ---

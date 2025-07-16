@@ -1,5 +1,6 @@
 ---
 title: Run the ingestion from your Airflow
+description: Deploy ingestion externally using Airflow for scalable orchestration of metadata pipelines across environments.
 slug: /deployment/ingestion/external/airflow
 collate: false
 ---

@@ -1,5 +1,6 @@
 ---
-title: Governance Workflows - Nodes
+title: Governance Workflows - Nodes | Official Documentation
+description: Add workflow nodes that perform actions like tagging, notifications, or certification to enforce governance logic.
 slug: /how-to-guides/data-governance/workflows/elements/nodes
 collate: true
 ---

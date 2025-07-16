@@ -1,5 +1,6 @@
 ---
 title: AWS Secrets Manager
+description: Use AWS Secrets Manager to integrate secret storage with your OpenMetadata, supporting encrypted access to service credentials.
 slug: /deployment/secrets-manager/supported-implementations/aws-secrets-manager
 collate: false
 ---

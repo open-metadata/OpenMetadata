@@ -1,5 +1,6 @@
 ---
 title: Enable SSL at the OpenMetadata Server
+description: Configure SSL for the OpenMetadata server to enable HTTPS, protect authentication flows, and secure backend communications.
 slug: /deployment/security/enable-ssl/openmetadata-server
 collate: false
 ---

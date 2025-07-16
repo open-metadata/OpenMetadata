@@ -1,5 +1,6 @@
 ---
-title: Run the ingestion from GCS Composer
+title: Run the ingestion from GCS Composer | Official Documentation
+description: Deploy external ingestion using GCS Composer to automate metadata and quality pipelines on Google Cloud environments.
 slug: /deployment/ingestion/external/gcs-composer
 collate: false
 ---

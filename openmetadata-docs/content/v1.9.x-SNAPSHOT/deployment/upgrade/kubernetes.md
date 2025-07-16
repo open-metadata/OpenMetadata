@@ -1,5 +1,6 @@
 ---
-title: Upgrade on Kubernetes
+title: Upgrade on Kubernetes | Official Documentation
+description: Upgrade Kubernetes deployments efficiently using version-specific instructions, Helm values, and best practices for safe rollout.
 slug: /deployment/upgrade/kubernetes
 collate: false
 ---

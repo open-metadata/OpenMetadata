@@ -1,5 +1,6 @@
 ---
 title: Governance Workflows - Table Certification Workflow (Default)
+description: Automate table certification using default workflows that route assets through validation and ownership stages.
 slug: /how-to-guides/data-governance/workflows/default-workflows/table-certification
 collate: true
 ---

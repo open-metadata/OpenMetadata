@@ -1,5 +1,6 @@
 ---
 title: Amazon Cognito SSO | OpenMetadata Authentication Setup
+description: Enable Amazon Cognito for managing user authentication, token issuance, and identity pools in distributed or serverless systems.
 slug: /deployment/security/amazon-cognito
 collate: false
 ---

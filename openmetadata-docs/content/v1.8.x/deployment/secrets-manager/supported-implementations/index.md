@@ -1,5 +1,6 @@
 ---
 title: Secrets Manager | OpenMetadata Deployment Integration
+description: Review supported secrets manager implementations to securely manage sensitive credentials across cloud and hybrid environments.
 slug: /deployment/secrets-manager/supported-implementations
 collate: false
 ---

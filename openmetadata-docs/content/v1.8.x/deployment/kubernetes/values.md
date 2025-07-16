@@ -1,5 +1,6 @@
 ---
-title: Kubernetes Helm Values
+title: Kubernetes Helm Values | Official Documentation
+description: Customize your Helm values for Kubernetes deployments to control services, authentication, storage, and resource tuning.
 slug: /deployment/kubernetes/helm-values
 collate: false
 ---

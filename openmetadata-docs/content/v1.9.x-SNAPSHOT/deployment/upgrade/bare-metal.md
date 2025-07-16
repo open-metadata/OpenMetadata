@@ -1,5 +1,6 @@
 ---
-title: Upgrade on Bare Metal
+title: Upgrade on Bare Metal | Official Documentation
+description: Learn how to upgrade deployments on bare-metal infrastructure with versioning steps, rollback plans, and configuration tips.
 slug: /deployment/upgrade/bare-metal
 collate: false
 ---

@@ -1,5 +1,6 @@
 ---
 title: Governance Workflows - Set Asset Certification
+description: Configure the node that sets asset certification within workflows to automate data trust labeling and ownership signals.
 slug: /how-to-guides/data-governance/workflows/elements/nodes/set-asset-certification
 collate: true
 ---

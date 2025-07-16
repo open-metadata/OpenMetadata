@@ -1,5 +1,6 @@
 ---
-title: Server Configuration Reference
+title: Server Configuration Reference | Official Documentation
+description: Configure your platform deployment using environmental settings, secret values, service parameters, and performance tuning options.
 slug: /deployment/configuration
 collate: false
 ---

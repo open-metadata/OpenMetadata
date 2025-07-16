@@ -1,5 +1,6 @@
 ---
 title: AWS EKS Deployment | OpenMetadata Kubernetes Guide
+description: Deploy the OpenMetadata on Amazon EKS for cloud-native scalability with secure identity integration and managed infrastructure support.
 slug: /deployment/kubernetes/eks
 collate: false
 ---

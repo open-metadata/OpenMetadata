@@ -1,5 +1,6 @@
 ---
 title: Azure SSO | OpenMetadata Authentication Integration
+description: Deploy Azure authentication to manage secure token-based access and identity roles in cloud-native or hybrid environments.
 slug: /deployment/security/azure
 collate: false
 ---

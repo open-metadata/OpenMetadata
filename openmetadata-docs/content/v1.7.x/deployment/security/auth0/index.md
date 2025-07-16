@@ -1,5 +1,6 @@
 ---
 title: Auth0 SSO | OpenMetadata Security Integration
+description: Set up Auth0 as an identity provider to manage secure, token-based authentication across web apps, APIs, and user-facing services.
 slug: /deployment/security/auth0
 collate: false
 ---

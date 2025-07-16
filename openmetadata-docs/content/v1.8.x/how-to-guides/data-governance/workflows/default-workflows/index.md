@@ -1,5 +1,6 @@
 ---
 title: Governance Workflows - Default Workflows
+description: Review and use default workflow templates for data governance, helping automate approvals, certifications, and policy enforcement.
 slug: /how-to-guides/data-governance/workflows/default-workflows
 collate: true
 ---

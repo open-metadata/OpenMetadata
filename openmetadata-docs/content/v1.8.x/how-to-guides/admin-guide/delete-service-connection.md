@@ -1,5 +1,6 @@
 ---
-title: How to Delete a Service Connection
+title: How to Delete a Service Connection | Official Documentation
+description: Delete a service connection safely to revoke platform integrations while maintaining metadata integrity and system consistency.
 slug: /how-to-guides/admin-guide/delete-service-connection
 ---
 

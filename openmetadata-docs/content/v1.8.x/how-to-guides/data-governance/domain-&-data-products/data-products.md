@@ -1,5 +1,6 @@
 ---
-title:  How to Use Data Products
+title:  How to Use Data Products | Official Documentation
+description: Define and manage data products as part of your governance strategy to track ownership, value, and metadata lineage efficiently.
 slug: /how-to-guides/data-governance/domains-&-data-products/data-products
 ---
 

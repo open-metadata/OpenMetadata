@@ -1,5 +1,6 @@
 ---
-title: Best Practices for Classification
+title: Best Practices for Classification | Official Documentation
+description: Follow classification best practices to ensure your data is consistently tagged, categorized, and compliant with governance rules.
 slug: /how-to-guides/data-governance/classification/best-practices
 ---
 

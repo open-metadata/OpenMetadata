@@ -1,5 +1,6 @@
 ---
-title: Glossary Approval Workflow
+title: Glossary Approval Workflow | Official Documentation
+description: Approve glossary terms for publishing after peer review to maintain high-quality, validated business definitions.
 slug: /how-to-guides/data-governance/glossary/approval
 ---
 

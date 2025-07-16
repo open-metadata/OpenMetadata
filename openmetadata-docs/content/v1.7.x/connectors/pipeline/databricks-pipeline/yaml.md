@@ -1,5 +1,6 @@
 ---
 title: Run the Databricks Pipeline Connector Externally
+description: Configure Databricks pipeline ingestion using YAML to automate metadata extraction, data profiling, and lineage tracking across workflows.
 slug: /connectors/pipeline/databricks-pipeline/yaml
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Enable SSL in Airflow | OpenMetadata Security Guide
+description: Enable SSL for Airflow-based deployments to secure metadata transport, authentication, and configuration endpoints.
 slug: /deployment/security/enable-ssl/airflow
 collate: false
 ---

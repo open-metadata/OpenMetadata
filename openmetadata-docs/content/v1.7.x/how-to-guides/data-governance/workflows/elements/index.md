@@ -1,5 +1,6 @@
 ---
-title: Governance Workflows - Elements
+title: Governance Workflows - Elements | Official Documentation
+description: Learn about key workflow elements that structure automated governance logic, including nodes, triggers, decisions, and outputs.
 slug: /how-to-guides/data-governance/workflows/elements
 collate: true
 ---
