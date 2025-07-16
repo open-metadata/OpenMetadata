@@ -52,10 +52,18 @@ export const visitEntityPage = async (data: {
   await waitForSearchResponse;
 
   // Wait for the entity to be visible and clickable
-  await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
-    state: 'visible',
-    timeout: 30000,
-  });
+  await page
+    .waitForSelector(`[data-testid="${dataTestId}"]`, {
+      state: 'visible',
+      timeout: 15000,
+    })
+    .catch(async () => {
+      await page.getByTestId('next').click();
+      await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
+        state: 'visible',
+        timeout: 15000,
+      });
+    });
 
   // Try different ways to click on the entity
   const entityElement = page.getByTestId(dataTestId);
@@ -81,7 +89,6 @@ export const visitEntityPageWithCustomSearchBox = async (data: {
 }) => {
   const { page, searchTerm, dataTestId } = data;
   await page.waitForLoadState('networkidle');
-
   // Wait for welcome screen and close it if visible
   const isWelcomeScreenVisible = await page
     .waitForSelector('[data-testid="welcome-screen-img"]', {
@@ -101,12 +108,19 @@ export const visitEntityPageWithCustomSearchBox = async (data: {
   await customSearchBox.fill(searchTerm);
   await customSearchBox.press('Enter');
   await waitForSearchResponse;
-
   // Wait for the entity to be visible and clickable
-  await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
-    state: 'visible',
-    timeout: 30000,
-  });
+  await page
+    .waitForSelector(`[data-testid="${dataTestId}"]`, {
+      state: 'visible',
+      timeout: 15000,
+    })
+    .catch(async () => {
+      await page.getByTestId('next').click();
+      await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
+        state: 'visible',
+        timeout: 15000,
+      });
+    });
 
   // Try different ways to click on the entity
   const entityElement = page.getByTestId(dataTestId);
@@ -1816,6 +1830,57 @@ export const checkExploreSearchFilter = async (
   await page.click('[data-testid="clear-filters"]');
 
   await entity?.visitEntityPage(page);
+};
+
+export const checkExploreSearchFilterWithCustomSearchBox = async (
+  page: Page,
+  filterLabel: string,
+  filterKey: string,
+  filterValue: string,
+  entity?: EntityClass
+) => {
+  await sidebarClick(page, SidebarItem.EXPLORE);
+  await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+  await searchAndClickOnOption(
+    page,
+    {
+      label: filterLabel,
+      key: filterKey,
+      value: filterValue,
+    },
+    true
+  );
+
+  const rawFilterValue = (filterValue ?? '').replace(/ /g, '+').toLowerCase();
+
+  // Escape double quotes before encoding
+  const escapedValue = rawFilterValue.replace(/"/g, '\\"');
+
+  const filterValueForSearchURL =
+    filterKey === 'tier.tagFQN'
+      ? filterValue
+      : /["%]/.test(filterValue ?? '')
+      ? encodeURIComponent(escapedValue)
+      : rawFilterValue;
+
+  const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${filterKey}*${filterValueForSearchURL}*`;
+
+  const queryRes = page.waitForResponse(querySearchURL);
+  await page.click('[data-testid="update-btn"]');
+  await queryRes;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(
+    page.getByTestId(
+      `table-data-card_${
+        (entity as any)?.entityResponseData?.fullyQualifiedName
+      }`
+    )
+  ).toBeVisible();
+
+  await page.click('[data-testid="clear-filters"]');
+
+  await entity?.visitEntityPageWithCustomSearchBox(page);
 };
 
 export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
