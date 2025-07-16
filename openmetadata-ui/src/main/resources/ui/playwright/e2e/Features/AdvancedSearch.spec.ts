@@ -94,7 +94,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         },
         {
           op: 'add',
-          path: '/domain',
+          path: '/domains/0',
           value: {
             id: EntityDataClass.domain1.responseData.id,
             type: 'domain',
@@ -126,7 +126,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         },
         {
           op: 'add',
-          path: '/domain',
+          path: '/domains/0',
           value: {
             id: EntityDataClass.domain2.responseData.id,
             type: 'domain',
