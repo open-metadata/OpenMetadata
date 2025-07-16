@@ -13,7 +13,6 @@
 
 import { FC } from 'react';
 import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
-import AnnouncementImg from '../assets/img/announcement.png';
 import CuratedAssetsImg from '../assets/img/curated-assets.png';
 import DataAssetsImg from '../assets/img/data-assets-widget.png';
 import DomainsImg from '../assets/img/domains-widget.png';
@@ -34,9 +33,6 @@ import { ReactComponent as MyDataIcon } from '../assets/svg/ic-my-data.svg';
 import { ReactComponent as MyTaskIcon } from '../assets/svg/ic-my-task.svg';
 import { ReactComponent as TotalAssetsIcon } from '../assets/svg/ic-total-data-assets.svg';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
-import AnnouncementsWidget, {
-  AnnouncementsWidgetProps,
-} from '../components/MyData/RightSidebar/AnnouncementsWidget';
 import FollowingWidget, {
   FollowingWidgetProps,
 } from '../components/MyData/RightSidebar/FollowingWidget';
@@ -102,15 +98,6 @@ class CustomizeMyDataPageClassBase {
     w: 1,
     x: 2,
     y: 12,
-  };
-
-  announcementWidget: WidgetConfig = {
-    h: this.landingPageWidgetDefaultHeights.announcements,
-    i: LandingPageWidgetKeys.ANNOUNCEMENTS,
-    w: 1,
-    x: 2,
-    y: 0,
-    static: true, // Making announcement widget fixed on top right position
   };
 
   defaultLayout: Array<WidgetConfig> = [
@@ -188,7 +175,7 @@ class CustomizeMyDataPageClassBase {
    */
   public getWidgetsFromKey(
     widgetKey: string
-  ): FC<WidgetCommonProps & AnnouncementsWidgetProps & FollowingWidgetProps> {
+  ): FC<WidgetCommonProps & FollowingWidgetProps> {
     if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
       return DataAssetsWidget;
     }
@@ -200,9 +187,6 @@ class CustomizeMyDataPageClassBase {
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)) {
       return TotalDataAssetsWidget;
-    }
-    if (widgetKey.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)) {
-      return AnnouncementsWidget;
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.FOLLOWING)) {
       return FollowingWidget;
@@ -244,9 +228,6 @@ class CustomizeMyDataPageClassBase {
         }
 
         return TotalAssetsImg;
-      }
-      case LandingPageWidgetKeys.ANNOUNCEMENTS: {
-        return AnnouncementImg;
       }
       case LandingPageWidgetKeys.FOLLOWING: {
         return FollowingImg;

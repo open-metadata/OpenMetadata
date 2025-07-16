@@ -1,0 +1,151 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../../../../styles/variables.less');
+@import (reference) url('../../../../../styles/fonts.less');
+
+.announcement-card-v1 {
+  border: none;
+  border-radius: @border-radius-lg;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  cursor: pointer;
+  overflow: hidden;
+  background: @blue-4 !important;
+
+  .ant-card-body {
+    padding: @padding-md;
+    background: @white !important;
+  }
+
+  .announcement-card-v1-content {
+    padding: @padding-sm;
+    background: transparent !important;
+    position: relative;
+
+    .announcement-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: @size-xs;
+      background: @white !important;
+
+      .announcement-title-section {
+        display: flex;
+        align-items: center;
+        gap: @size-xxs;
+        flex: 1;
+        min-width: 0;
+        background: linear-gradient(270deg, @white -12.07%, @blue-24 500.72%);
+
+        .user-name {
+          font-weight: @font-semibold;
+          font-size: @font-size-base;
+          white-space: nowrap;
+          color: @primary-color;
+          text-decoration: none;
+          cursor: pointer;
+          transition: color 0.2s ease;
+
+          &:hover {
+            color: @primary-color;
+          }
+
+          &:focus {
+            outline: 2px solid @primary-color;
+            outline-offset: 2px;
+            border-radius: 2px;
+          }
+        }
+
+        .field-operation-text {
+          color: @primary-color;
+          font-size: @font-size-base;
+          white-space: nowrap;
+          font-weight: @font-regular;
+        }
+
+        .announcement-card-entity-icon {
+          font-size: @font-size-base;
+          margin: 0 0 0 2px;
+          color: @primary-color;
+
+          svg {
+            width: @size-mlg;
+            height: @size-mlg;
+          }
+        }
+
+        .announcement-entity-name {
+          font-weight: @font-semibold !important;
+          font-size: @font-size-base;
+          color: @primary-color;
+          text-decoration: none;
+          cursor: pointer;
+          transition: color 0.2s ease;
+
+          &:focus {
+            outline: 2px solid @primary-color;
+            outline-offset: 2px;
+            border-radius: 2px;
+          }
+        }
+
+        .announcement-entity-name-tooltip {
+          color: @white;
+        }
+
+        .announcement-title {
+          font-weight: @font-semibold;
+          font-size: @size-md;
+          line-height: 1.4;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: flex;
+          border-left: 3px solid @primary-color;
+          padding: @size-xxs 0 @size-xxs @size-xxs;
+          gap: @size-xxs;
+          flex: 1;
+          flex-wrap: wrap;
+        }
+      }
+
+      .timestamp {
+        color: @primary-color;
+        font-size: @size-sm;
+        white-space: nowrap;
+        margin-left: @padding-sm;
+        flex-shrink: 0;
+      }
+    }
+
+    .announcement-message {
+      color: @text-color;
+      font-size: @size-sm;
+      line-height: 1.5;
+      margin: @padding-xs 0 0 0;
+    }
+
+    .column-info {
+      color: @text-color;
+      font-size: @size-sm;
+      margin: @padding-xs 0 0 0;
+
+      .column-name {
+        font-weight: @font-semibold;
+        color: @text-color;
+      }
+    }
+  }
+}

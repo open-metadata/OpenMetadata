@@ -180,18 +180,9 @@ const MyDataPage = () => {
 
   const widgets = useMemo(
     () =>
-      // Adding announcement widget to the layout when announcements are present
-      // Since the widget wont be in the layout config of the page
-      // ok
-      [
-        ...(isEmpty(announcements)
-          ? []
-          : [customizePageClassBase.announcementWidget]),
-        ...layout,
-      ].map((widget) => (
+      layout.map((widget) => (
         <div data-grid={widget} key={widget.i}>
           {getWidgetFromKey({
-            announcements: announcements,
             followedData,
             isLoadingOwnedData: isLoadingOwnedData,
             widgetConfig: widget,
