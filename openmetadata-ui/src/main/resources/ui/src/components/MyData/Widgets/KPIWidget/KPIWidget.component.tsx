@@ -14,7 +14,7 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,
@@ -49,11 +49,6 @@ import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './kpi-widget.less';
-import {
-  KPI_SORT_BY_KEYS,
-  KPI_SORT_BY_OPTIONS,
-  KPI_WIDGET_Y_AXIS_TICKS,
-} from './KPIWidget.constants';
 import { KPIWidgetProps } from './KPIWidget.interface';
 
 const KPIWidget = ({
@@ -73,9 +68,6 @@ const KPIWidget = ({
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [selectedSortBy, setSelectedSortBy] = useState<string>(
-    KPI_SORT_BY_KEYS.MONTHLY
-  );
 
   const getKPIResult = async (kpi: Kpi) => {
     const response = await getListKpiResult(kpi.fullyQualifiedName ?? '', {
@@ -170,10 +162,6 @@ const KPIWidget = ({
   };
 
   const kpiNames = useMemo(() => Object.keys(kpiResults), [kpiResults]);
-
-  const handleSortByClick = useCallback((key: string) => {
-    setSelectedSortBy(key);
-  }, []);
 
   const emptyState = useMemo(
     () => (
@@ -274,7 +262,7 @@ const KPIWidget = ({
                   strokeWidth: 1,
                   strokeDasharray: '3 3',
                 }}
-                ticks={KPI_WIDGET_Y_AXIS_TICKS}
+                ticks={[0, 9, 18, 27, 36]}
               />
 
               {kpiNames.map((key, i) => (
@@ -342,12 +330,9 @@ const KPIWidget = ({
           handleRemoveWidget={handleRemoveWidget}
           icon={<KPIIcon className="kpi-widget-icon" />}
           isEditView={isEditView}
-          selectedSortBy={selectedSortBy}
-          sortOptions={KPI_SORT_BY_OPTIONS}
           title={t('label.kpi-title')}
           widgetKey={widgetKey}
           widgetWidth={2}
-          onSortChange={handleSortByClick}
         />
         <div className="widget-content flex-1">
           {isEmpty(kpiList) || isEmpty(kpiResults) ? emptyState : kpiChartData}
