@@ -138,6 +138,7 @@ export const CardExpandCollapseIconButton = ({
       className={classNames('bordered', className)}
       disabled={disabled}
       icon={<CardExpandCollapseIcon />}
+      tabIndex={0}
       type="text"
       {...props}
     />

@@ -158,7 +158,6 @@ const Certification = ({
 
   return (
     <Popover
-      className="p-0"
       content={
         <FocusTrapWithContainer active={popoverProps?.open || false}>
           <Card
@@ -214,7 +213,7 @@ const Certification = ({
           </Card>
         </FocusTrapWithContainer>
       }
-      overlayClassName="certification-card-popover"
+      overlayClassName="certification-card-popover p-0"
       placement="bottomRight"
       ref={popoverRef}
       showArrow={false}

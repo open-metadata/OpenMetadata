@@ -45,7 +45,10 @@ import {
   SelectOption,
 } from './AsyncSelectList.interface';
 
-const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
+const AsyncSelectList: FC<
+  AsyncSelectListProps &
+    SelectProps & { dropdownContainerRef?: React.RefObject<HTMLDivElement> }
+> = ({
   mode,
   onChange,
   fetchOptions,
@@ -57,6 +60,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   onCancel,
   isSubmitLoading,
   newLook = false,
+  dropdownContainerRef,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -171,7 +175,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   };
 
   const dropdownRender = (menu: React.ReactElement) => (
-    <>
+    <div ref={dropdownContainerRef}>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
       {onCancel && (
@@ -194,7 +198,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
           </Button>
         </Space>
       )}
-    </>
+    </div>
   );
 
   const customTagRender = (data: CustomTagProps) => {
