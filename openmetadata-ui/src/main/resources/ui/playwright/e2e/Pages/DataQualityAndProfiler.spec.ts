@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
@@ -19,10 +19,10 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
   assignDomain,
   clickOutside,
-  createNewPage,
   descriptionBox,
   getApiContext,
   redirectToHomePage,
@@ -33,9 +33,7 @@ import { getCurrentMillis } from '../../utils/dateTime';
 import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
-
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
 const table2 = new TableClass();
@@ -53,7 +51,7 @@ const testGlossaryTerm1 = new GlossaryTerm(testGlossary);
 const testGlossaryTerm2 = new GlossaryTerm(testGlossary);
 
 test.beforeAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
+  const { apiContext, afterAction } = await performAdminLogin(browser);
   await table1.create(apiContext);
   await table2.create(apiContext);
   await table2.createTestCase(apiContext, {
@@ -77,7 +75,7 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
+  const { apiContext, afterAction } = await performAdminLogin(browser);
   await table1.delete(apiContext);
   await table2.delete(apiContext);
 
@@ -408,74 +406,106 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 });
 
 test(
-  'Profiler matrix and test case graph should visible',
+  'Profiler matrix and test case graph should visible for admin, data consumer and data steward',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
-  async ({ page }) => {
+  async ({ page: adminPage, dataConsumerPage, dataStewardPage }) => {
+    test.slow();
+
     const DATA_QUALITY_TABLE = {
       term: 'dim_address',
       serviceName: 'sample_data',
       testCaseName: 'column_value_max_to_be_between',
     };
 
-    await visitEntityPageWithCustomSearchBox({
-      page,
-      searchTerm: DATA_QUALITY_TABLE.term,
-      dataTestId: `${DATA_QUALITY_TABLE.serviceName}-${DATA_QUALITY_TABLE.term}`,
-    });
-    await page.waitForSelector(`[data-testid="entity-header-name"]`);
+    const runProfilerTest = async (page: Page) => {
+      await redirectToHomePage(page);
+      await visitEntityPage({
+        page,
+        searchTerm: DATA_QUALITY_TABLE.term,
+        dataTestId: `${DATA_QUALITY_TABLE.serviceName}-${DATA_QUALITY_TABLE.term}`,
+      });
 
-    await expect(
-      page.locator(`[data-testid="entity-header-name"]`)
-    ).toContainText(DATA_QUALITY_TABLE.term);
+      await page.waitForSelector(`[data-testid="entity-header-name"]`);
 
-    const profilerResponse = page.waitForResponse(
-      `/api/v1/tables/*/tableProfile/latest?includeColumnProfile=false`
-    );
-    await page.click('[data-testid="profiler"]');
-    await profilerResponse;
-    await page.waitForTimeout(1000);
-    await page
-      .getByRole('menuitem', {
-        name: 'Column Profile',
-      })
-      .click();
-    const getProfilerInfo = page.waitForResponse(
-      '/api/v1/tables/*/columnProfile?*'
-    );
-    await page.locator('[data-row-key="shop_id"]').getByText('shop_id').click();
-    await getProfilerInfo;
+      await expect(
+        page.locator(`[data-testid="entity-header-name"]`)
+      ).toContainText(DATA_QUALITY_TABLE.term);
 
-    await expect(page.locator('#count_graph')).toBeVisible();
-    await expect(page.locator('#proportion_graph')).toBeVisible();
-    await expect(page.locator('#math_graph')).toBeVisible();
-    await expect(page.locator('#sum_graph')).toBeVisible();
+      const profilerApiCall = page.waitForResponse(
+        `/api/v1/tables/*/tableProfile/latest?includeColumnProfile=false`
+      );
+      await page.click('[data-testid="profiler"]');
+      const profilerResponse = await profilerApiCall;
 
-    await page
-      .getByRole('menuitem', {
-        name: 'Data Quality',
-      })
-      .click();
+      expect(profilerResponse.status()).toBe(200);
 
-    await page.waitForSelector(
-      `[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`
-    );
-    const getTestCaseDetails = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/name/*?fields=*'
-    );
-    const getTestResult = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseResults/*?*'
-    );
-    await page
-      .locator(`[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`)
-      .getByText(DATA_QUALITY_TABLE.testCaseName)
-      .click();
+      const listColumnApiCall = page.waitForResponse(
+        '/api/v1/tables/name/*/columns?*'
+      );
+      await page
+        .getByRole('menuitem', {
+          name: 'Column Profile',
+        })
+        .click();
+      await listColumnApiCall;
+      const listColumnResponse = await listColumnApiCall;
 
-    await getTestCaseDetails;
-    await getTestResult;
+      expect(listColumnResponse.status()).toBe(200);
 
-    await expect(
-      page.locator(`#${DATA_QUALITY_TABLE.testCaseName}_graph`)
-    ).toBeVisible();
+      const getProfilerInfo = page.waitForResponse(
+        '/api/v1/tables/*/columnProfile?*'
+      );
+      await page
+        .locator('[data-row-key="shop_id"]')
+        .getByText('shop_id')
+        .click();
+      await getProfilerInfo;
+      const getProfilerInfoResponse = await getProfilerInfo;
+
+      expect(getProfilerInfoResponse.status()).toBe(200);
+
+      await expect(page.locator('#count_graph')).toBeVisible();
+      await expect(page.locator('#proportion_graph')).toBeVisible();
+      await expect(page.locator('#math_graph')).toBeVisible();
+      await expect(page.locator('#sum_graph')).toBeVisible();
+
+      await page
+        .getByRole('menuitem', {
+          name: 'Data Quality',
+        })
+        .click();
+
+      await page.waitForSelector(
+        `[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`
+      );
+      const getTestCaseDetails = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/name/*?fields=*'
+      );
+      const getTestResult = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/testCaseResults/*?*'
+      );
+      await page
+        .locator(`[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`)
+        .getByText(DATA_QUALITY_TABLE.testCaseName)
+        .click();
+
+      const getTestCaseDetailsResponse = await getTestCaseDetails;
+      const getTestResultResponse = await getTestResult;
+
+      expect(getTestCaseDetailsResponse.status()).toBe(200);
+      expect(getTestResultResponse.status()).toBe(200);
+
+      await expect(
+        page.locator(`#${DATA_QUALITY_TABLE.testCaseName}_graph`)
+      ).toBeVisible();
+    };
+
+    // Run all three user roles in parallel
+    await Promise.all([
+      runProfilerTest(adminPage),
+      runProfilerTest(dataConsumerPage),
+      runProfilerTest(dataStewardPage),
+    ]);
   }
 );
 

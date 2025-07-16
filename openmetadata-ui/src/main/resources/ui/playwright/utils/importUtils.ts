@@ -152,7 +152,12 @@ export const fillGlossaryTermDetails = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await page.click('[data-testid="tag-selector"]');
+  const searchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=**&index=glossary_term_search_index&**`
+  );
   await page.locator('[data-testid="tag-selector"] input').fill(glossary.name);
+  await searchResponse;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId(`tag-"${glossary.parent}"."${glossary.name}"`).click();
   await page.click('[data-testid="saveAssociatedTag"]');
   await page.click('.InovuaReactDataGrid__cell--cell-active');

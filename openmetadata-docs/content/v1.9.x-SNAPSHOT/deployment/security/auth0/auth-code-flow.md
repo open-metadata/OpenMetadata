@@ -1,5 +1,6 @@
 ---
 title: Auth0 SSO for Docker | OpenMetadata Deployment Guide
+description: Implement Auth0 Authorization Code Flow to manage user authentication securely with backend service token exchange and login session tracking.
 slug: /deployment/security/auth0/auth-code-flow
 collate: false
 ---

@@ -1959,6 +1959,7 @@
     "hex-color-validation": "A entrada não é um código HEX válido.",
     "hi-user-welcome-to": "Olá {{user}}, Bem-vindo(a) ao",
     "image-upload-error": "O upload de imagens não é suportado. Use a sintaxe Markdown para imagens disponíveis via URL.",
+    "import-data-in-progress": "A importação está em andamento.",
     "import-entity-help": "Economize tempo e esforço fazendo upload de um arquivo CSV com vários {{entity}} de uma só vez.",
     "in-this-database": "Neste Banco de Dados",
     "include-assets-message": "Habilite a extração de {{assets}} da fonte de dados.",
