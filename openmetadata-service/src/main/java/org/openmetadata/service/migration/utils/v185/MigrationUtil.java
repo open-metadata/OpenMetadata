@@ -75,7 +75,7 @@ public class MigrationUtil {
 
             if (!resolutionStatuses.isEmpty()) {
               // Group by stateId to get unique resolution status records
-              Set<UUID> uniqueStateIds =
+              Set<UUID> uniqueResolutionId =
                   resolutionStatuses.stream()
                       .map(TestCaseResolutionStatus::getId)
                       .collect(Collectors.toSet());
@@ -83,16 +83,16 @@ public class MigrationUtil {
               LOG.debug(
                   "Test case {} has {} unique resolution status states",
                   testCase.getFullyQualifiedName(),
-                  uniqueStateIds.size());
+                  uniqueResolutionId.size());
 
               // Create parent-child relationship for each unique state
-              for (UUID stateId : uniqueStateIds) {
+              for (UUID resolutionId : uniqueResolutionId) {
                 try {
                   collectionDAO
                       .relationshipDAO()
                       .insert(
                           testCase.getId(),
-                          stateId,
+                          resolutionId,
                           Entity.TEST_CASE,
                           Entity.TEST_CASE_RESOLUTION_STATUS,
                           Relationship.PARENT_OF.ordinal(),
@@ -101,7 +101,7 @@ public class MigrationUtil {
                   LOG.error(
                       "Failed to create relationship for test case {} and state {}: {}",
                       testCase.getFullyQualifiedName(),
-                      stateId,
+                      resolutionId,
                       e.getMessage());
                 }
               }
