@@ -53,6 +53,10 @@ export class Glossary extends EntityClass {
     await this.visitPage(page);
   }
 
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await this.visitPage(page);
+  }
+
   async visitPage(page: Page) {
     await visitGlossaryPage(page, this.data.displayName);
 

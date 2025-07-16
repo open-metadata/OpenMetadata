@@ -12,7 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
 
 const table = {
   term: 'dim_address',
@@ -30,7 +30,7 @@ test.describe('Schema definition (views)', () => {
   });
 
   test('Verify schema definition (views) of table entity', async ({ page }) => {
-    await visitEntityPage({
+    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: table.term,
       dataTestId: `${table.serviceName}-${table.term}`,

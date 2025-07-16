@@ -501,7 +501,7 @@ export const addPipelineBetweenNodes = async (
   pipelineItem?: PipelineClass,
   bVerifyPipeline = false
 ) => {
-  await sourceEntity.visitEntityPage(page);
+  await sourceEntity.visitEntityPageWithCustomSearchBox(page);
   await visitLineageTab(page);
   await editLineage(page);
 

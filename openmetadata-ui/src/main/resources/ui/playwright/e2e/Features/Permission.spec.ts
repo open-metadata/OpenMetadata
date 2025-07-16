@@ -149,7 +149,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
   await redirectToHomePage(userPage);
 
   await test.step('ViewBasic permission', async () => {
-    await table.visitEntityPage(userPage);
+    await table.visitEntityPageWithCustomSearchBox(userPage);
     await userPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -168,7 +168,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
           table.entityResponseData?.['fullyQualifiedName']
         )}`
       );
-      await table.visitEntityPage(userPage);
+      await table.visitEntityPageWithCustomSearchBox(userPage);
       await permissionResponse;
       await userPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -200,7 +200,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
         table.entityResponseData?.['fullyQualifiedName']
       )}`
     );
-    await table.visitEntityPage(userPage);
+    await table.visitEntityPageWithCustomSearchBox(userPage);
     await permissionResponse;
     await userPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -243,7 +243,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
         table.entityResponseData?.['fullyQualifiedName']
       )}`
     );
-    await table.visitEntityPage(userPage);
+    await table.visitEntityPageWithCustomSearchBox(userPage);
     await permissionResponse;
     await userPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',

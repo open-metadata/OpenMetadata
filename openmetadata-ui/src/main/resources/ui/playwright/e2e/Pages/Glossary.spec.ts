@@ -500,7 +500,7 @@ test.describe('Glossary tests', () => {
           'text=Adding a new Asset is easy, just give it a spin!'
         );
 
-        await dashboardEntity.visitEntityPageWithCustomSearchBox(page);
+        await dashboardEntity.visitEntityPage(page);
 
         // Dashboard Entity Right Panel
         await page.click(

@@ -62,6 +62,12 @@ export class Domain extends EntityClass {
     await selectDomain(page, this.responseData);
   }
 
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await page.waitForLoadState('networkidle');
+    await selectDomain(page, this.responseData);
+  }
+
   async create(apiContext: APIRequestContext) {
     const response = await apiContext.post('/api/v1/domains', {
       data: this.data,
