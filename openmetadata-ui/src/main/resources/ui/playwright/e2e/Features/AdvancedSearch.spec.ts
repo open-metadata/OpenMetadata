@@ -208,7 +208,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.pipeline1.entity.tasks[0].displayName,
         EntityDataClass.pipeline2.entity.tasks[1].displayName,
       ],
-      'domain.displayName.keyword': [
+      'domains.displayName.keyword': [
         EntityDataClass.domain1.data.displayName,
         EntityDataClass.domain2.data.displayName,
       ],

@@ -56,6 +56,8 @@ test.afterAll('Cleanup', async ({ browser }) => {
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
   await sidebarClick(page, SidebarItem.EXPLORE);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 });
 
 test('search dropdown should work properly for quick filters', async ({
@@ -64,7 +66,7 @@ test('search dropdown should work properly for quick filters', async ({
   const items = [
     {
       label: 'Domain',
-      key: 'domain.displayName.keyword',
+      key: 'domains.displayName.keyword',
       value: domain.responseData.displayName,
     },
     { label: 'Tag', key: 'tags.tagFQN', value: 'PersonalData.Personal' },
@@ -89,7 +91,7 @@ test('should search for empty or null filters', async ({ page }) => {
   const items = [
     { label: 'Owners', key: 'owners.displayName.keyword' },
     { label: 'Tag', key: 'tags.tagFQN' },
-    { label: 'Domain', key: 'domain.displayName.keyword' },
+    { label: 'Domain', key: 'domains.displayName.keyword' },
     { label: 'Tier', key: 'tier.tagFQN' },
   ];
 
@@ -109,7 +111,7 @@ test('should search for multiple values along with null filters', async ({
     },
     {
       label: 'Domain',
-      key: 'domain.displayName.keyword',
+      key: 'domains.displayName.keyword',
       value: domain.responseData.displayName,
     },
   ];

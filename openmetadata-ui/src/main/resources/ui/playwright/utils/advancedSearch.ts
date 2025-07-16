@@ -95,7 +95,7 @@ export const FIELDS: EntityFields[] = [
   },
   {
     id: 'Domain',
-    name: 'domain.displayName.keyword',
+    name: 'domains.displayName.keyword',
     localSearch: false,
   },
   {
