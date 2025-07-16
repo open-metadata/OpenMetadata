@@ -27,6 +27,7 @@ import {
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { MY_DATA_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -80,7 +81,7 @@ const MyDataWidgetInternal = ({
       (layout: WidgetConfig) => layout.i === widgetKey
     );
 
-    return (currentWidget?.w ?? 1) >= 2; // Full size is width 2, half size is width 1
+    return currentWidget?.w === 2;
   }, [currentLayout, widgetKey]);
 
   const getEntityExtraInfo = (item: SourceType): ExtraInfo[] => {
@@ -228,17 +229,17 @@ const MyDataWidgetInternal = ({
                 className="my-data-widget-list-item card-wrapper w-full p-xs border-radius-sm"
                 data-testid={`Recently Viewed-${getEntityName(item)}`}
                 key={item.id}>
-                <div className="d-flex items-center justify-between w-full">
+                <div className="d-flex items-center justify-between w-full overflow-hidden">
                   <Link
-                    className="item-link"
+                    className="item-link w-min-0"
                     to={entityUtilClassBase.getEntityLink(
                       item.entityType ?? '',
                       item.fullyQualifiedName as string
                     )}>
                     <Button
-                      className="entity-button flex-center gap-2 p-0"
+                      className="entity-button flex-center gap-2 p-0 w-full"
                       icon={
-                        <div className="entity-button-icon d-flex items-center justify-center">
+                        <div className="entity-button-icon d-flex items-center justify-center flex-shrink-0">
                           {getEntityIcon(item)}
                         </div>
                       }
@@ -293,13 +294,9 @@ const MyDataWidgetInternal = ({
           <WidgetFooter
             moreButtonLink={getUserPath(
               currentUser?.name ?? '',
-              'activity_feed'
+              EntityTabs.ACTIVITY_FEED
             )}
-            moreButtonText={
-              isExpanded
-                ? t('label.view-more-count', { count: data.length })
-                : t('label.view-more')
-            }
+            moreButtonText={t('label.view-more-count', { count: data.length })}
             showMoreButton={Boolean(!isLoading)}
           />
         </div>

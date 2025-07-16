@@ -12,7 +12,7 @@
  */
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { FeedFilter } from '../enums/mydata.enum';
-import i18n, { t } from '../utils/i18next/LocalUtil';
+import { t } from '../utils/i18next/LocalUtil';
 
 export const TAB_SUPPORTED_FILTER = [
   ActivityFeedTabs.ALL,
@@ -21,32 +21,32 @@ export const TAB_SUPPORTED_FILTER = [
 
 export const TASK_FEED_FILTER_LIST = [
   {
-    title: i18n.t('label.all'),
+    title: t('label.all'),
     key: FeedFilter.OWNER,
-    description: i18n.t('message.feed-filter-all'),
+    description: t('message.feed-filter-all'),
   },
   {
-    title: i18n.t('label.assigned'),
+    title: t('label.assigned'),
     key: FeedFilter.ASSIGNED_TO,
-    description: i18n.t('message.feed-filter-owner'),
+    description: t('message.feed-filter-owner'),
   },
   {
-    title: i18n.t('label.created-by'),
+    title: t('label.created-by'),
     key: FeedFilter.ASSIGNED_BY,
-    description: i18n.t('message.feed-filter-following'),
+    description: t('message.feed-filter-following'),
   },
 ];
 
 export const ACTIVITY_FEED_FILTER_LIST = [
   {
-    title: i18n.t('label.my-data'),
+    title: t('label.my-data'),
     key: FeedFilter.OWNER,
-    description: i18n.t('message.feed-filter-owner'),
+    description: t('message.feed-filter-owner'),
   },
   {
-    title: i18n.t('label.following'),
+    title: t('label.following'),
     key: FeedFilter.FOLLOWS,
-    description: i18n.t('message.feed-filter-following'),
+    description: t('message.feed-filter-following'),
   },
 ];
 
@@ -59,16 +59,16 @@ export const WIDGETS_MORE_MENU_KEYS = {
 export const WIDGETS_MORE_MENU_OPTIONS = [
   {
     key: WIDGETS_MORE_MENU_KEYS.HALF_SIZE,
-    label: i18n.t('label.half-size'),
+    label: t('label.half-size'),
   },
   {
     key: WIDGETS_MORE_MENU_KEYS.FULL_SIZE,
-    label: i18n.t('label.full-size'),
+    label: t('label.full-size'),
   },
   {
     key: WIDGETS_MORE_MENU_KEYS.REMOVE_WIDGET,
-    label: i18n.t('label.remove-entity', {
-      entity: i18n.t('label.widget'),
+    label: t('label.remove-entity', {
+      entity: t('label.widget'),
     }),
   },
 ];

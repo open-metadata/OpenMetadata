@@ -63,8 +63,9 @@ function FollowingWidget({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
-  const [selectedEntityFilter, setSelectedEntityFilter] =
-    useState<string>('Latest');
+  const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
+    FOLLOWING_WIDGET_FILTER_OPTIONS[0].key
+  );
 
   // Check if widget is in expanded form (full size)
   const isExpanded = useMemo(() => {
@@ -72,18 +73,8 @@ function FollowingWidget({
       (layout: WidgetConfig) => layout.i === widgetKey
     );
 
-    return (currentWidget?.w ?? 1) >= 2; // Full size is width 2, half size is width 1
+    return currentWidget?.w === 2;
   }, [currentLayout, widgetKey]);
-
-  // Filtered data based on selected entity type
-  const filteredFollowedData = useMemo(() => {
-    if (selectedEntityFilter === 'ALL') {
-      return followedData;
-    }
-
-    // Need to update this once filters are implemented
-    return followedData.filter((item) => item);
-  }, [followedData, selectedEntityFilter]);
 
   const handleEntityFilterChange = useCallback(({ key }: { key: string }) => {
     setSelectedEntityFilter(key);
@@ -194,7 +185,7 @@ function FollowingWidget({
     return (
       <div className="entity-list-body">
         <div className="cards-scroll-container flex-1 overflow-y-auto">
-          {filteredFollowedData.map((item) => {
+          {followedData.map((item) => {
             const extraInfo = getEntityExtraInfo(item);
 
             return (
@@ -204,13 +195,13 @@ function FollowingWidget({
                 key={item.id}>
                 <div className="d-flex items-center justify-between w-full">
                   <Link
-                    className="item-link"
+                    className="item-link w-min-0"
                     to={entityUtilClassBase.getEntityLink(
                       item.entityType ?? '',
                       item.fullyQualifiedName as string
                     )}>
                     <Button
-                      className="entity-button flex-center gap-2 p-0"
+                      className="entity-button flex-center gap-2 p-0 w-full"
                       icon={
                         <div className="entity-button-icon d-flex items-center justify-center">
                           {getEntityIcon(item)}
@@ -245,7 +236,7 @@ function FollowingWidget({
         </div>
       </div>
     );
-  }, [filteredFollowedData, emptyState]);
+  }, [followedData, emptyState]);
 
   const WidgetContent = useMemo(() => {
     return (
@@ -264,26 +255,22 @@ function FollowingWidget({
           onSortChange={(key) => handleEntityFilterChange({ key })}
         />
         <div className="widget-content flex-1">
-          {isEmpty(filteredFollowedData) ? emptyState : followingContent}
+          {isEmpty(followedData) ? emptyState : followingContent}
           <WidgetFooter
             moreButtonLink={getUserPath(
               currentUser?.name ?? '',
               'activity_feed'
             )}
-            moreButtonText={
-              isExpanded
-                ? t('label.view-more-count', {
-                    count: filteredFollowedData.length,
-                  })
-                : t('label.view-more')
-            }
+            moreButtonText={t('label.view-more-count', {
+              count: followedData.length,
+            })}
             showMoreButton={Boolean(!isLoadingOwnedData)}
           />
         </div>
       </div>
     );
   }, [
-    filteredFollowedData,
+    followedData,
     emptyState,
     isExpanded,
     isLoadingOwnedData,
@@ -298,9 +285,7 @@ function FollowingWidget({
 
   return (
     <WidgetWrapper
-      dataLength={
-        filteredFollowedData.length !== 0 ? filteredFollowedData.length : 5
-      }
+      dataLength={followedData.length !== 0 ? followedData.length : 5}
       loading={isLoadingOwnedData}>
       {WidgetContent}
     </WidgetWrapper>

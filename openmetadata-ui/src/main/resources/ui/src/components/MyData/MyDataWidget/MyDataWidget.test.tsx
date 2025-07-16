@@ -132,7 +132,9 @@ describe('MyDataWidget component', () => {
       );
     });
 
-    expect(await screen.findByText('label.view-more')).toBeInTheDocument();
+    expect(
+      await screen.findByText('label.view-more-count')
+    ).toBeInTheDocument();
   });
 
   it('should render table names', async () => {
