@@ -41,6 +41,7 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Diale
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
     get_lineage_by_graph,
+    get_lineage_by_procedure_graph,
     get_lineage_by_query,
 )
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
@@ -49,7 +50,7 @@ from metadata.ingestion.source.database.query_parser_source import QueryParserSo
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
-from metadata.utils.filters import filter_by_table
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -314,9 +315,19 @@ class LineageSource(QueryParserSource, ABC):
     ) -> Iterable[Either[AddLineageRequest]]:
         try:
             for view in views:
-                if filter_by_table(
-                    self.source_config.tableFilterPattern,
-                    view.table_name,
+                if (
+                    filter_by_database(
+                        self.source_config.databaseFilterPattern,
+                        view.db_name,
+                    )
+                    and filter_by_schema(
+                        self.source_config.schemaFilterPattern,
+                        view.schema_name,
+                    )
+                    and filter_by_table(
+                        self.source_config.tableFilterPattern,
+                        view.table_name,
+                    )
                 ):
                     self.status.filter(
                         view.table_name,
@@ -441,10 +452,21 @@ class LineageSource(QueryParserSource, ABC):
         Based on the query logs, prepare the lineage
         and send it to the sink
         """
+        if (
+            self.procedure_graph_map is None
+            and self.source_config.enableTempTableLineage
+        ):
+            # Create a dictionary to store the directed graph for each procedure
+            self.procedure_graph_map = {}
+
         if self.source_config.processViewLineage:
             yield from self.yield_view_lineage() or []
         if self.source_config.processStoredProcedureLineage:
             yield from self.yield_procedure_lineage() or []
+            yield from get_lineage_by_procedure_graph(
+                procedure_graph_map=self.procedure_graph_map,
+                metadata=self.metadata,
+            )
         if self.source_config.processQueryLineage:
             if hasattr(self.service_connection, "supportsLineageExtraction"):
                 yield from self.yield_query_lineage() or []

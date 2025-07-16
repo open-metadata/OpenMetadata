@@ -19,6 +19,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Union
 
+from networkx import DiGraph
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.engine import Engine
 
@@ -41,7 +42,11 @@ from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.filters import filter_by_stored_procedure
+from metadata.utils.filters import (
+    filter_by_database,
+    filter_by_schema,
+    filter_by_stored_procedure,
+)
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.stored_procedures import get_procedure_name_from_call
 from metadata.utils.time_utils import datetime_to_timestamp
@@ -78,6 +83,17 @@ class ProcedureAndQuery(BaseModel):
     query_by_procedure: QueryByProcedure
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class ProcedureAndProcedureGraph(BaseModel):
+    """
+    Model to hold the procedure and its graph
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    procedure: StoredProcedure
+    graph: DiGraph
 
 
 class StoredProcedureLineageMixin(ABC):
@@ -166,6 +182,18 @@ class StoredProcedureLineageMixin(ABC):
             query_type=query_by_procedure.query_type,
             query_text=query_by_procedure.query_text,
         ):
+            graph = None
+            if self.source_config.enableTempTableLineage:
+                if not self.procedure_graph_map.get(procedure.fullyQualifiedName.root):
+                    # Map to store the directed graph for each procedure with its FQN as key
+                    self.procedure_graph_map[procedure.fullyQualifiedName.root] = (
+                        ProcedureAndProcedureGraph(procedure=procedure, graph=DiGraph())
+                    )
+
+                graph = self.procedure_graph_map.get(
+                    procedure.fullyQualifiedName.root
+                ).graph
+
             self.stored_procedure_query_lineage = True
             for either_lineage in get_lineage_by_query(
                 self.metadata,
@@ -178,6 +206,7 @@ class StoredProcedureLineageMixin(ABC):
                 ),
                 timeout_seconds=self.source_config.parsingTimeoutLimit,
                 lineage_source=LineageSource.QueryLineage,
+                graph=graph,
             ):
                 if (
                     either_lineage.left is None
@@ -290,9 +319,19 @@ class StoredProcedureLineageMixin(ABC):
             or []
         ):
             if procedure:
-                if filter_by_stored_procedure(
-                    self.source_config.storedProcedureFilterPattern,
-                    procedure.name.root,
+                if (
+                    filter_by_database(
+                        self.source_config.databaseFilterPattern,
+                        procedure.database.name,
+                    )
+                    and filter_by_schema(
+                        self.source_config.schemaFilterPattern,
+                        procedure.databaseSchema.name,
+                    )
+                    and filter_by_stored_procedure(
+                        self.source_config.storedProcedureFilterPattern,
+                        procedure.name.root,
+                    )
                 ):
                     self.status.filter(
                         procedure.name.root,
