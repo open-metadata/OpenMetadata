@@ -25,8 +25,13 @@ import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import TotalDataAssetsWidget from './TotalDataAssetsWidget.component';
+import { DATA_ASSETS_SORT_BY_KEYS } from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
 // Mock dependencies
@@ -64,6 +69,19 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   ),
 }));
 
+jest.mock('../../../../constants/Widgets.constant', () => ({
+  TOTAL_DATA_ASSETS_WIDGET_COLORS: [
+    '#1890ff',
+    '#52c41a',
+    '#faad14',
+    '#f5222d',
+    '#722ed1',
+    '#13c2c2',
+    '#eb2f96',
+    '#fa8c16',
+  ],
+}));
+
 jest.mock('../Common/WidgetWrapper/WidgetWrapper', () => {
   return jest.fn().mockImplementation(({ children, loading, dataLength }) => (
     <div
@@ -79,7 +97,15 @@ jest.mock('../Common/WidgetHeader/WidgetHeader', () => {
   return jest
     .fn()
     .mockImplementation(
-      ({ title, handleRemoveWidget, isEditView, widgetKey }) => (
+      ({
+        title,
+        handleRemoveWidget,
+        isEditView,
+        widgetKey,
+        sortOptions,
+        selectedSortBy,
+        onSortChange,
+      }) => (
         <div data-testid="widget-header">
           <span>{title}</span>
           {isEditView && (
@@ -88,6 +114,20 @@ jest.mock('../Common/WidgetHeader/WidgetHeader', () => {
               onClick={() => handleRemoveWidget?.(widgetKey)}>
               Remove
             </button>
+          )}
+          {!isEditView && sortOptions && (
+            <div data-testid="sort-options">
+              <select
+                data-testid="sort-by-dropdown"
+                value={selectedSortBy}
+                onChange={(e) => onSortChange?.(e.target.value)}>
+                {sortOptions.map((option: any) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
         </div>
       )
@@ -209,6 +249,25 @@ describe('TotalDataAssetsWidget', () => {
       ).toBeInTheDocument();
     });
 
+    it('should render widget in edit view with remove button', async () => {
+      const handleRemoveWidget = jest.fn();
+
+      await act(async () => {
+        renderTotalDataAssetsWidget({
+          isEditView: true,
+          handleRemoveWidget,
+        });
+      });
+
+      const removeButton = screen.getByTestId('remove-widget-button');
+
+      expect(removeButton).toBeInTheDocument();
+
+      fireEvent.click(removeButton);
+
+      expect(handleRemoveWidget).toHaveBeenCalledWith('test-widget-key');
+    });
+
     it('should render empty state when no data is available', async () => {
       (getChartPreviewByName as jest.Mock).mockResolvedValue({ results: [] });
 
@@ -227,7 +286,7 @@ describe('TotalDataAssetsWidget', () => {
   });
 
   describe('Data Fetching', () => {
-    it('should fetch chart data on component mount', async () => {
+    it('should fetch chart data on component mount with default 7 days', async () => {
       await act(async () => {
         renderTotalDataAssetsWidget();
       });
@@ -239,22 +298,6 @@ describe('TotalDataAssetsWidget', () => {
           end: expect.any(Number),
         })
       );
-    });
-
-    it('should refetch data when selectedDays prop changes', async () => {
-      const { rerender } = renderTotalDataAssetsWidget({ selectedDays: 7 });
-
-      await act(async () => {
-        rerender(
-          <MemoryRouter>
-            <TotalDataAssetsWidget {...defaultProps} selectedDays={30} />
-          </MemoryRouter>
-        );
-      });
-
-      await waitFor(() => {
-        expect(getChartPreviewByName).toHaveBeenCalledTimes(2);
-      });
     });
 
     it('should handle API error gracefully', async () => {
@@ -281,6 +324,129 @@ describe('TotalDataAssetsWidget', () => {
       const wrapper = screen.getByTestId('widget-wrapper');
 
       expect(wrapper).toHaveAttribute('data-loading', 'true');
+    });
+  });
+
+  describe('Sorting/Filtering Functionality', () => {
+    it('should render sort dropdown with available options when not in edit view', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget({ isEditView: false });
+      });
+
+      expect(screen.getByTestId('sort-options')).toBeInTheDocument();
+      expect(screen.getByTestId('sort-by-dropdown')).toBeInTheDocument();
+    });
+
+    it('should not render sort dropdown when in edit view', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget({ isEditView: true });
+      });
+
+      expect(screen.queryByTestId('sort-options')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('sort-by-dropdown')).not.toBeInTheDocument();
+    });
+
+    it('should default to last 7 days sort option', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      const sortDropdown = screen.getByTestId(
+        'sort-by-dropdown'
+      ) as HTMLSelectElement;
+
+      expect(sortDropdown.value).toBe(DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS);
+    });
+
+    it('should change sort option and refetch data when dropdown value changes', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      const sortDropdown = screen.getByTestId('sort-by-dropdown');
+
+      // Change to 14 days
+      await act(async () => {
+        fireEvent.change(sortDropdown, {
+          target: { value: DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS },
+        });
+      });
+
+      await waitFor(() => {
+        expect(getChartPreviewByName).toHaveBeenCalledTimes(2); // Initial + after sort change
+      });
+    });
+
+    it('should change sort option and refetch data when dropdown value changes to 30 days', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      const sortDropdown = screen.getByTestId('sort-by-dropdown');
+
+      // Change to 30 days
+      await act(async () => {
+        fireEvent.change(sortDropdown, {
+          target: { value: DATA_ASSETS_SORT_BY_KEYS.LAST_30_DAYS },
+        });
+      });
+
+      await waitFor(() => {
+        expect(getChartPreviewByName).toHaveBeenCalledTimes(2); // Initial + after sort change
+      });
+    });
+
+    it('should fetch data with correct time period when sort changes', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      // Initially should call with 7 days
+      expect(getEpochMillisForPastDays).toHaveBeenCalledWith(7);
+      expect(getCurrentMillis).toHaveBeenCalled();
+
+      const sortDropdown = screen.getByTestId('sort-by-dropdown');
+
+      // Change to 14 days
+      await act(async () => {
+        fireEvent.change(sortDropdown, {
+          target: { value: DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS },
+        });
+      });
+
+      await waitFor(() => {
+        expect(getEpochMillisForPastDays).toHaveBeenCalledWith(14);
+      });
+
+      // Change to 30 days
+      await act(async () => {
+        fireEvent.change(sortDropdown, {
+          target: { value: DATA_ASSETS_SORT_BY_KEYS.LAST_30_DAYS },
+        });
+      });
+
+      await waitFor(() => {
+        expect(getEpochMillisForPastDays).toHaveBeenCalledWith(30);
+      });
+    });
+
+    it('should handle unknown sort key gracefully and default to 7 days', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      const sortDropdown = screen.getByTestId('sort-by-dropdown');
+
+      // Change to an unknown sort key
+      await act(async () => {
+        fireEvent.change(sortDropdown, {
+          target: { value: 'unknown_key' },
+        });
+      });
+
+      await waitFor(() => {
+        expect(getEpochMillisForPastDays).toHaveBeenCalledWith(7); // Should default to 7 days
+      });
     });
   });
 
@@ -319,7 +485,7 @@ describe('TotalDataAssetsWidget', () => {
         });
       });
 
-      // Should show legend with entity types and counts
+      // Should show legend with entity types and counts (startCase formatting)
       expect(screen.getByText('Table')).toBeInTheDocument();
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
       expect(screen.getByText('Pipeline')).toBeInTheDocument();
@@ -341,7 +507,7 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Legend should not be visible for smaller widgets
-      const legendElements = screen.queryAllByText('table');
+      const legendElements = screen.queryAllByText('Table');
 
       expect(legendElements.length).toBeLessThanOrEqual(1); // Only in pie chart data
     });
@@ -398,34 +564,6 @@ describe('TotalDataAssetsWidget', () => {
   });
 
   describe('Widget Configuration', () => {
-    it('should use default selected days when not provided', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget({ selectedDays: undefined });
-      });
-
-      expect(getChartPreviewByName).toHaveBeenCalledWith(
-        SystemChartType.TotalDataAssets,
-        expect.objectContaining({
-          start: expect.any(Number),
-          end: expect.any(Number),
-        })
-      );
-    });
-
-    it('should use custom selected days when provided', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget({ selectedDays: 30 });
-      });
-
-      expect(getChartPreviewByName).toHaveBeenCalledWith(
-        SystemChartType.TotalDataAssets,
-        expect.objectContaining({
-          start: expect.any(Number),
-          end: expect.any(Number),
-        })
-      );
-    });
-
     it('should pass correct props to WidgetWrapper', async () => {
       await act(async () => {
         renderTotalDataAssetsWidget();
@@ -435,6 +573,126 @@ describe('TotalDataAssetsWidget', () => {
 
       expect(wrapper).toHaveAttribute('data-loading', 'false');
       expect(wrapper).toHaveAttribute('data-length', '2'); // Two unique dates
+    });
+
+    it('should pass correct props to WidgetHeader', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      // Verify that the widget header receives the sorting props
+      expect(screen.getByTestId('sort-options')).toBeInTheDocument();
+      expect(screen.getByTestId('sort-by-dropdown')).toBeInTheDocument();
+    });
+  });
+
+  describe('Data Processing', () => {
+    it('should correctly group data by date', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      // Verify that data is processed correctly for different dates
+      const firstDateBox = screen.getByText('01').closest('.date-box');
+      await act(async () => {
+        fireEvent.click(firstDateBox!);
+      });
+
+      // First date should show 150 + 75 = 225
+      expect(screen.getByText('225')).toBeInTheDocument();
+    });
+
+    it('should handle data with undefined groups', async () => {
+      const dataWithUndefinedGroups: DataInsightCustomChartResult = {
+        results: [
+          {
+            count: 100,
+            day: 1640995200000,
+            group: 'table',
+            term: 'table',
+          },
+          {
+            count: 50,
+            day: 1640995200000,
+            group: '',
+            term: '',
+          },
+        ],
+      };
+
+      (getChartPreviewByName as jest.Mock).mockResolvedValue(
+        dataWithUndefinedGroups
+      );
+
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      // Should still render without errors
+      expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle network errors', async () => {
+      const networkError = new AxiosError('Network Error');
+      (getChartPreviewByName as jest.Mock).mockRejectedValue(networkError);
+
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      expect(showErrorToast).toHaveBeenCalledWith(networkError);
+      expect(screen.getByTestId('widget-empty-state')).toBeInTheDocument();
+    });
+
+    it('should handle API timeout errors', async () => {
+      const timeoutError = new AxiosError('Request timeout');
+      (getChartPreviewByName as jest.Mock).mockRejectedValue(timeoutError);
+
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      expect(showErrorToast).toHaveBeenCalledWith(timeoutError);
+    });
+
+    it('should handle malformed data gracefully', async () => {
+      const malformedData = {
+        results: null,
+      };
+
+      (getChartPreviewByName as jest.Mock).mockResolvedValue(malformedData);
+
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      // Should show empty state when results is null/undefined
+      expect(screen.getByTestId('widget-empty-state')).toBeInTheDocument();
+    });
+
+    it('should handle sort change error gracefully', async () => {
+      const mockError = new AxiosError('Sort change error');
+
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      // Mock error on second call (after sort change)
+      (getChartPreviewByName as jest.Mock).mockRejectedValueOnce(mockError);
+
+      const sortDropdown = screen.getByTestId('sort-by-dropdown');
+
+      await act(async () => {
+        fireEvent.change(sortDropdown, {
+          target: { value: DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS },
+        });
+      });
+
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalledWith(mockError);
+      });
     });
   });
 });

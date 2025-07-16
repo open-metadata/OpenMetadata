@@ -24,7 +24,6 @@ import {
 } from 'recharts';
 import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-total-data-assets.svg';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
-import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
 import { TOTAL_DATA_ASSETS_WIDGET_COLORS } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
@@ -42,11 +41,14 @@ import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './total-data-assets-widget.less';
+import {
+  DATA_ASSETS_SORT_BY_KEYS,
+  DATA_ASSETS_SORT_BY_OPTIONS,
+} from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
 const TotalDataAssetsWidget = ({
   isEditView = false,
-  selectedDays = CHART_WIDGET_DAYS_DURATION,
   handleRemoveWidget,
   widgetKey,
   currentLayout,
@@ -56,6 +58,9 @@ const TotalDataAssetsWidget = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [chartData, setChartData] = useState<DataInsightCustomChartResult>();
   const [selectedDate, setSelectedDate] = useState<number | undefined>();
+  const [selectedSortBy, setSelectedSortBy] = useState<string>(
+    DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS
+  );
 
   const isFullSizeWidget = useMemo(() => {
     return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
@@ -126,8 +131,16 @@ const TotalDataAssetsWidget = ({
   const fetchData = async () => {
     setIsLoading(true);
     try {
+      const daysMap: Record<string, number> = {
+        [DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS]: 7,
+        [DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS]: 14,
+        [DATA_ASSETS_SORT_BY_KEYS.LAST_30_DAYS]: 30,
+      };
+
+      const days = daysMap[selectedSortBy] ?? 7;
+
       const filter = {
-        start: getEpochMillisForPastDays(selectedDays),
+        start: getEpochMillisForPastDays(days),
         end: getCurrentMillis(),
       };
 
@@ -269,7 +282,7 @@ const TotalDataAssetsWidget = ({
 
   useEffect(() => {
     fetchData();
-  }, [selectedDays]);
+  }, [selectedSortBy]);
 
   useEffect(() => {
     if (!selectedDate && graphData.length > 0) {
@@ -287,9 +300,12 @@ const TotalDataAssetsWidget = ({
           handleRemoveWidget={handleRemoveWidget}
           icon={<TotalAssetsWidgetIcon />}
           isEditView={isEditView}
+          selectedSortBy={selectedSortBy}
+          sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
           title={t('label.data-insight-total-entity-summary')}
           widgetKey={widgetKey}
           widgetWidth={2}
+          onSortChange={(key) => setSelectedSortBy(key)}
         />
         <div className="widget-content flex-1">
           {isEmpty(graphData) ? emptyState : totalDataAssetsContent}
