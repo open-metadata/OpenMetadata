@@ -46,6 +46,7 @@ export enum SettingType {
     ScimConfiguration = "scimConfiguration",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
+    SecurityConfiguration = "securityConfiguration",
     SlackAppConfiguration = "slackAppConfiguration",
     SlackBot = "slackBot",
     SlackChat = "slackChat",
@@ -60,7 +61,11 @@ export enum SettingType {
  *
  * This schema defines the Authentication Configuration.
  *
+ * Authentication configuration
+ *
  * This schema defines the Authorization Configuration.
+ *
+ * Authorization configuration
  *
  * This schema defines the Elastic Search Configuration.
  *
@@ -86,6 +91,8 @@ export enum SettingType {
  * This schema defines the Lineage Settings.
  *
  * This schema defines the Workflow Settings.
+ *
+ * Complete security configuration including authentication and authorization
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -430,6 +437,14 @@ export interface PipelineServiceClientConfiguration {
      * Used to set up the History CleanUp Settings.
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
+    /**
+     * Authentication configuration
+     */
+    authenticationConfiguration?: AuthenticationConfiguration;
+    /**
+     * Authorization configuration
+     */
+    authorizerConfiguration?: AuthorizerConfiguration;
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -824,75 +839,76 @@ export enum AuthProvider {
 }
 
 /**
+ * This schema defines the Authentication Configuration.
+ *
+ * Authentication configuration
+ */
+export interface AuthenticationConfiguration {
+    /**
+     * Authentication Authority
+     */
+    authority: string;
+    /**
+     * Callback URL
+     */
+    callbackUrl: string;
+    /**
+     * Client ID
+     */
+    clientId: string;
+    /**
+     * Client Type
+     */
+    clientType?: ClientType;
+    /**
+     * Enable Self Sign Up
+     */
+    enableSelfSignup?: boolean;
+    /**
+     * Jwt Principal Claim
+     */
+    jwtPrincipalClaims: string[];
+    /**
+     * Jwt Principal Claim Mapping
+     */
+    jwtPrincipalClaimsMapping?: string[];
+    /**
+     * LDAP Configuration in case the Provider is LDAP
+     */
+    ldapConfiguration?: LDAPConfiguration;
+    /**
+     * Oidc Configuration for Confidential Client Type
+     */
+    oidcConfiguration?: OidcClientConfig;
+    provider:           AuthProvider;
+    /**
+     * Custom OIDC Authentication Provider Name
+     */
+    providerName: string;
+    /**
+     * List of Public Key URLs
+     */
+    publicKeyUrls: string[];
+    /**
+     * This is used by auth provider provide response as either id_token or code.
+     */
+    responseType?: ResponseType;
+    /**
+     * Saml Configuration that is applicable only when the provider is Saml
+     */
+    samlConfiguration?: SamlSSOClientConfig;
+    /**
+     * Token Validation Algorithm to use.
+     */
+    tokenValidationAlgorithm?: TokenValidationAlgorithm;
+}
+
+/**
  * Client Type
  */
 export enum ClientType {
     Confidential = "confidential",
     Public = "public",
-}
-
-/**
- * Used to set up the Workflow Executor Settings.
- */
-export interface ExecutorConfiguration {
-    /**
-     * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
-     */
-    corePoolSize?: number;
-    /**
-     * The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids
-     * jobs that takes too long to run being retried while running.
-     */
-    jobLockTimeInMillis?: number;
-    /**
-     * Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers.
-     */
-    maxPoolSize?: number;
-    /**
-     * Amount of Tasks that can be queued to be picked up by the Workflow Executor.
-     */
-    queueSize?: number;
-    /**
-     * The amount of Tasks that the Workflow Executor is able to pick up each time it looks for
-     * more.
-     */
-    tasksDuePerAcquisition?: number;
-}
-
-export interface GlobalSettings {
-    /**
-     * List of global aggregations to include in the search query.
-     */
-    aggregations?: Aggregation[];
-    /**
-     * Flag to enable or disable RBAC Search Configuration globally.
-     */
-    enableAccessControl?: boolean;
-    /**
-     * Optional list of numeric field-based boosts applied globally.
-     */
-    fieldValueBoosts?: FieldValueBoost[];
-    /**
-     * Which fields to highlight by default.
-     */
-    highlightFields?:   string[];
-    maxAggregateSize?:  number;
-    maxAnalyzedOffset?: number;
-    maxResultHits?:     number;
-    /**
-     * List of field=value term-boost rules that apply only to this asset.
-     */
-    termBoosts?: TermBoost[];
-}
-
-/**
- * Used to set up the History CleanUp Settings.
- */
-export interface HistoryCleanUpConfiguration {
-    /**
-     * Cleans the Workflow Task that were finished, after given number of days.
-     */
-    cleanAfterNumberOfDays?: number;
 }
 
 /**
@@ -1077,6 +1093,353 @@ export enum TruststoreConfigType {
     HostName = "HostName",
     JVMDefault = "JVMDefault",
     TrustAll = "TrustAll",
+}
+
+/**
+ * Oidc Configuration for Confidential Client Type
+ *
+ * Oidc client security configs.
+ */
+export interface OidcClientConfig {
+    /**
+     * Callback Url.
+     */
+    callbackUrl?: string;
+    /**
+     * Client Authentication Method.
+     */
+    clientAuthenticationMethod?: ClientAuthenticationMethod;
+    /**
+     * Custom Params.
+     */
+    customParams?: { [key: string]: any };
+    /**
+     * Disable PKCE.
+     */
+    disablePkce?: boolean;
+    /**
+     * Discovery Uri for the Client.
+     */
+    discoveryUri?: string;
+    /**
+     * Client ID.
+     */
+    id?: string;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    maxAge?: string;
+    /**
+     * Max Clock Skew
+     */
+    maxClockSkew?: string;
+    /**
+     * Preferred Jws Algorithm.
+     */
+    preferredJwsAlgorithm?: string;
+    /**
+     * Prompt whether login/consent
+     */
+    prompt?: string;
+    /**
+     * Auth0 Client Secret Key.
+     */
+    responseType?: string;
+    /**
+     * Oidc Request Scopes.
+     */
+    scope?: string;
+    /**
+     * Client Secret.
+     */
+    secret?: string;
+    /**
+     * Server Url.
+     */
+    serverUrl?: string;
+    /**
+     * Tenant in case of Azure.
+     */
+    tenant?: string;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    tokenValidity?: number;
+    /**
+     * IDP type (Example Google,Azure).
+     */
+    type?: string;
+    /**
+     * Use Nonce.
+     */
+    useNonce?: string;
+}
+
+/**
+ * Client Authentication Method.
+ */
+export enum ClientAuthenticationMethod {
+    ClientSecretBasic = "client_secret_basic",
+    ClientSecretJwt = "client_secret_jwt",
+    ClientSecretPost = "client_secret_post",
+    PrivateKeyJwt = "private_key_jwt",
+}
+
+/**
+ * This is used by auth provider provide response as either id_token or code.
+ *
+ * Response Type
+ */
+export enum ResponseType {
+    Code = "code",
+    IDToken = "id_token",
+}
+
+/**
+ * Saml Configuration that is applicable only when the provider is Saml
+ *
+ * SAML SSO client security configs.
+ */
+export interface SamlSSOClientConfig {
+    /**
+     * Get logs from the Library in debug mode
+     */
+    debugMode?: boolean;
+    idp:        Idp;
+    security?:  Security;
+    sp:         SP;
+}
+
+/**
+ * This schema defines defines the identity provider config.
+ */
+export interface Idp {
+    /**
+     * Authority URL to redirect the users on Sign In page
+     */
+    authorityUrl?: string;
+    /**
+     * Identity Provider Entity ID usually same as the SSO login URL.
+     */
+    entityId: string;
+    /**
+     * X509 Certificate
+     */
+    idpX509Certificate?: string;
+    /**
+     * Authority URL to redirect the users on Sign In page
+     */
+    nameId?: string;
+    /**
+     * SSO Login URL.
+     */
+    ssoLoginUrl: string;
+}
+
+/**
+ * This schema defines defines the security config for SAML.
+ */
+export interface Security {
+    /**
+     * KeyStore Alias
+     */
+    keyStoreAlias?: string;
+    /**
+     * KeyStore File Path
+     */
+    keyStoreFilePath?: string;
+    /**
+     * KeyStore Password
+     */
+    keyStorePassword?: string;
+    /**
+     * Encrypt Name Id while sending requests from SP.
+     */
+    sendEncryptedNameId?: boolean;
+    /**
+     * Sign the Authn Request while sending.
+     */
+    sendSignedAuthRequest?: boolean;
+    /**
+     * Want the Metadata of this SP to be signed.
+     */
+    signSpMetadata?: boolean;
+    /**
+     * Only accept valid signed and encrypted assertions if the relevant flags are set
+     */
+    strictMode?: boolean;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    tokenValidity?: number;
+    /**
+     * In case of strict mode whether to validate XML format.
+     */
+    validateXml?: boolean;
+    /**
+     * SP requires the assertion received to be encrypted.
+     */
+    wantAssertionEncrypted?: boolean;
+    /**
+     * SP requires the assertions received to be signed.
+     */
+    wantAssertionsSigned?: boolean;
+    /**
+     * SP requires the messages received to be signed.
+     */
+    wantMessagesSigned?: boolean;
+}
+
+/**
+ * This schema defines defines the identity provider config.
+ */
+export interface SP {
+    /**
+     * Assertion Consumer URL.
+     */
+    acs: string;
+    /**
+     * Service Provider Entity ID usually same as the SSO login URL.
+     */
+    callback: string;
+    /**
+     * Service Provider Entity ID.
+     */
+    entityId: string;
+    /**
+     * Sp Private Key for Signing and Encryption Only
+     */
+    spPrivateKey?: string;
+    /**
+     * X509 Certificate
+     */
+    spX509Certificate?: string;
+}
+
+/**
+ * Token Validation Algorithm to use.
+ */
+export enum TokenValidationAlgorithm {
+    Rs256 = "RS256",
+    Rs384 = "RS384",
+    Rs512 = "RS512",
+}
+
+/**
+ * This schema defines the Authorization Configuration.
+ *
+ * Authorization configuration
+ */
+export interface AuthorizerConfiguration {
+    /**
+     * List of unique admin principals.
+     */
+    adminPrincipals: string[];
+    /**
+     * Allowed Domains to access
+     */
+    allowedDomains?: string[];
+    /**
+     * List of unique email domains that are allowed to signup on the platforms
+     */
+    allowedEmailRegistrationDomains?: string[];
+    /**
+     * **@Deprecated** List of unique bot principals
+     */
+    botPrincipals?: string[];
+    /**
+     * Class Name for authorizer.
+     */
+    className: string;
+    /**
+     * Filter for the request authorization.
+     */
+    containerRequestFilter: string;
+    /**
+     * Enable Secure Socket Connection.
+     */
+    enableSecureSocketConnection: boolean;
+    /**
+     * Enable Enforce Principal Domain
+     */
+    enforcePrincipalDomain: boolean;
+    /**
+     * Principal Domain
+     */
+    principalDomain: string;
+    /**
+     * List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT
+     * TO BE USED IN PRODUCTION SETUP**
+     */
+    testPrincipals?: string[];
+    /**
+     * Use Roles from Provider
+     */
+    useRolesFromProvider?: boolean;
+}
+
+/**
+ * Used to set up the Workflow Executor Settings.
+ */
+export interface ExecutorConfiguration {
+    /**
+     * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
+     */
+    corePoolSize?: number;
+    /**
+     * The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids
+     * jobs that takes too long to run being retried while running.
+     */
+    jobLockTimeInMillis?: number;
+    /**
+     * Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers.
+     */
+    maxPoolSize?: number;
+    /**
+     * Amount of Tasks that can be queued to be picked up by the Workflow Executor.
+     */
+    queueSize?: number;
+    /**
+     * The amount of Tasks that the Workflow Executor is able to pick up each time it looks for
+     * more.
+     */
+    tasksDuePerAcquisition?: number;
+}
+
+export interface GlobalSettings {
+    /**
+     * List of global aggregations to include in the search query.
+     */
+    aggregations?: Aggregation[];
+    /**
+     * Flag to enable or disable RBAC Search Configuration globally.
+     */
+    enableAccessControl?: boolean;
+    /**
+     * Optional list of numeric field-based boosts applied globally.
+     */
+    fieldValueBoosts?: FieldValueBoost[];
+    /**
+     * Which fields to highlight by default.
+     */
+    highlightFields?:   string[];
+    maxAggregateSize?:  number;
+    maxAnalyzedOffset?: number;
+    maxResultHits?:     number;
+    /**
+     * List of field=value term-boost rules that apply only to this asset.
+     */
+    termBoosts?: TermBoost[];
+}
+
+/**
+ * Used to set up the History CleanUp Settings.
+ */
+export interface HistoryCleanUpConfiguration {
+    /**
+     * Cleans the Workflow Task that were finished, after given number of days.
+     */
+    cleanAfterNumberOfDays?: number;
 }
 
 /**
@@ -1411,227 +1774,6 @@ export interface TitleSection {
 }
 
 /**
- * Oidc Configuration for Confidential Client Type
- *
- * Oidc client security configs.
- */
-export interface OidcClientConfig {
-    /**
-     * Callback Url.
-     */
-    callbackUrl?: string;
-    /**
-     * Client Authentication Method.
-     */
-    clientAuthenticationMethod?: ClientAuthenticationMethod;
-    /**
-     * Custom Params.
-     */
-    customParams?: { [key: string]: any };
-    /**
-     * Disable PKCE.
-     */
-    disablePkce?: boolean;
-    /**
-     * Discovery Uri for the Client.
-     */
-    discoveryUri?: string;
-    /**
-     * Client ID.
-     */
-    id?: string;
-    /**
-     * Validity for the JWT Token created from SAML Response
-     */
-    maxAge?: string;
-    /**
-     * Max Clock Skew
-     */
-    maxClockSkew?: string;
-    /**
-     * Preferred Jws Algorithm.
-     */
-    preferredJwsAlgorithm?: string;
-    /**
-     * Prompt whether login/consent
-     */
-    prompt?: string;
-    /**
-     * Auth0 Client Secret Key.
-     */
-    responseType?: string;
-    /**
-     * Oidc Request Scopes.
-     */
-    scope?: string;
-    /**
-     * Client Secret.
-     */
-    secret?: string;
-    /**
-     * Server Url.
-     */
-    serverUrl?: string;
-    /**
-     * Tenant in case of Azure.
-     */
-    tenant?: string;
-    /**
-     * Validity for the JWT Token created from SAML Response
-     */
-    tokenValidity?: number;
-    /**
-     * IDP type (Example Google,Azure).
-     */
-    type?: string;
-    /**
-     * Use Nonce.
-     */
-    useNonce?: string;
-}
-
-/**
- * Client Authentication Method.
- */
-export enum ClientAuthenticationMethod {
-    ClientSecretBasic = "client_secret_basic",
-    ClientSecretJwt = "client_secret_jwt",
-    ClientSecretPost = "client_secret_post",
-    PrivateKeyJwt = "private_key_jwt",
-}
-
-/**
- * This is used by auth provider provide response as either id_token or code.
- *
- * Response Type
- */
-export enum ResponseType {
-    Code = "code",
-    IDToken = "id_token",
-}
-
-/**
- * Saml Configuration that is applicable only when the provider is Saml
- *
- * SAML SSO client security configs.
- */
-export interface SamlSSOClientConfig {
-    /**
-     * Get logs from the Library in debug mode
-     */
-    debugMode?: boolean;
-    idp:        Idp;
-    security?:  Security;
-    sp:         SP;
-}
-
-/**
- * This schema defines defines the identity provider config.
- */
-export interface Idp {
-    /**
-     * Authority URL to redirect the users on Sign In page
-     */
-    authorityUrl?: string;
-    /**
-     * Identity Provider Entity ID usually same as the SSO login URL.
-     */
-    entityId: string;
-    /**
-     * X509 Certificate
-     */
-    idpX509Certificate?: string;
-    /**
-     * Authority URL to redirect the users on Sign In page
-     */
-    nameId?: string;
-    /**
-     * SSO Login URL.
-     */
-    ssoLoginUrl: string;
-}
-
-/**
- * This schema defines defines the security config for SAML.
- */
-export interface Security {
-    /**
-     * KeyStore Alias
-     */
-    keyStoreAlias?: string;
-    /**
-     * KeyStore File Path
-     */
-    keyStoreFilePath?: string;
-    /**
-     * KeyStore Password
-     */
-    keyStorePassword?: string;
-    /**
-     * Encrypt Name Id while sending requests from SP.
-     */
-    sendEncryptedNameId?: boolean;
-    /**
-     * Sign the Authn Request while sending.
-     */
-    sendSignedAuthRequest?: boolean;
-    /**
-     * Want the Metadata of this SP to be signed.
-     */
-    signSpMetadata?: boolean;
-    /**
-     * Only accept valid signed and encrypted assertions if the relevant flags are set
-     */
-    strictMode?: boolean;
-    /**
-     * Validity for the JWT Token created from SAML Response
-     */
-    tokenValidity?: number;
-    /**
-     * In case of strict mode whether to validate XML format.
-     */
-    validateXml?: boolean;
-    /**
-     * SP requires the assertion received to be encrypted.
-     */
-    wantAssertionEncrypted?: boolean;
-    /**
-     * SP requires the assertions received to be signed.
-     */
-    wantAssertionsSigned?: boolean;
-    /**
-     * SP requires the messages received to be signed.
-     */
-    wantMessagesSigned?: boolean;
-}
-
-/**
- * This schema defines defines the identity provider config.
- */
-export interface SP {
-    /**
-     * Assertion Consumer URL.
-     */
-    acs: string;
-    /**
-     * Service Provider Entity ID usually same as the SSO login URL.
-     */
-    callback: string;
-    /**
-     * Service Provider Entity ID.
-     */
-    entityId: string;
-    /**
-     * Sp Private Key for Signing and Encryption Only
-     */
-    spPrivateKey?: string;
-    /**
-     * X509 Certificate
-     */
-    spX509Certificate?: string;
-}
-
-/**
  * This schema defines the language options available for search index mappings.
  */
 export enum SearchIndexMappingLanguage {
@@ -1685,15 +1827,6 @@ export interface Config {
 export enum Templates {
     Collate = "collate",
     Openmetadata = "openmetadata",
-}
-
-/**
- * Token Validation Algorithm to use.
- */
-export enum TokenValidationAlgorithm {
-    Rs256 = "RS256",
-    Rs384 = "RS384",
-    Rs512 = "RS512",
 }
 
 export enum TransportationStrategy {
