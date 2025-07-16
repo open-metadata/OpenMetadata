@@ -273,3 +273,5 @@ settings:
         - '.svg'
   react:
     version: detect
+  jest:
+    version: detect
