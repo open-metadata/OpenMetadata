@@ -182,7 +182,7 @@ const KPIWidget = ({
 
   const kpiChartData = useMemo(() => {
     return (
-      <Row className="p-t-xs p-x-md">
+      <Row className="p-t-sm p-x-md">
         {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
           <Col className="m-b-sm" span={24}>
             <KPILegend
@@ -193,7 +193,7 @@ const KPIWidget = ({
         )}
 
         <Col span={24}>
-          <ResponsiveContainer debounce={1} height={300} width="100%">
+          <ResponsiveContainer debounce={1} height={280} width="100%">
             <AreaChart
               margin={{
                 top: 10,

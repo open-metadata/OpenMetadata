@@ -52,7 +52,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
         if (isFullSize) {
           return (
             <Row
-              className="kpi-full-legend p-y-xss p-x-sm d-flex items-center border-radius-sm"
+              className="kpi-full-legend p-y-xs p-x-sm d-flex items-center border-radius-sm"
               gutter={16}
               key={key}>
               <Col flex="auto">
@@ -97,7 +97,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
 
         // Compact Mode
         return (
-          <div className="legend-item d-flex items-center justify-center gap-1 text-xs flex-wrap ">
+          <div className="legend-item p-sm d-flex items-center justify-center gap-1 text-xs flex-wrap ">
             <span
               className="legend-dot h-3 w-3 m-r-xss"
               style={{ backgroundColor: color }}
