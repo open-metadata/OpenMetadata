@@ -238,7 +238,7 @@ class CSVUtilsClassBase {
             />
           );
         };
-      case 'domain':
+      case 'domains':
         return ({ value, ...props }) => {
           const handleChange = async (domain?: EntityReference) => {
             if (!domain) {
@@ -268,6 +268,7 @@ class CSVUtilsClassBase {
           return (
             <DomainSelectableList
               hasPermission
+              multiple
               popoverProps={{ open: true }}
               selectedDomain={
                 value
