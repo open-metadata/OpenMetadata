@@ -20,6 +20,7 @@ const mockProps = {
   moreButtonText: 'View More',
   onMoreClick: jest.fn(),
   className: 'custom-footer-class',
+  moreButtonLink: 'users/test/task',
 };
 
 const renderWidgetFooter = (props = {}) => {
@@ -62,8 +63,11 @@ describe('WidgetFooter', () => {
     expect(footer).toHaveClass('custom-footer-class');
   });
 
-  it('renders without onMoreClick when not provided', () => {
-    renderWidgetFooter({ onMoreClick: undefined });
+  it('renders when onMoreClick and moreButtonLink are not provided', () => {
+    renderWidgetFooter({
+      onMoreClick: undefined,
+      moreButtonLink: undefined,
+    });
 
     expect(screen.queryByText('View More')).not.toBeInTheDocument();
   });
@@ -73,7 +77,6 @@ describe('WidgetFooter', () => {
 
     const link = screen.getByText('View More').closest('a');
 
-    expect(link).toHaveAttribute('href', 'users/undefined/task');
-    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('href', 'users/test/task');
   });
 });

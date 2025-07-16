@@ -10,9 +10,7 @@ import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
-import java.beans.IntrospectionException;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -339,8 +337,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return resultList;
   }
 
-  public RestUtil.PatchResponse<T> patch(UUID id, JsonPatch patch, String user)
-      throws IntrospectionException, InvocationTargetException, IllegalAccessException {
+  public RestUtil.PatchResponse<T> patch(UUID id, JsonPatch patch, String user) {
     String originalJson = timeSeriesDao.getById(id);
     if (originalJson == null) {
       throw new EntityNotFoundException(String.format("Entity with id %s not found", id));

@@ -16,7 +16,6 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.ext.Provider;
-import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -30,7 +29,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class UserActivityFilter implements ContainerRequestFilter {
 
   @Override
-  public void filter(ContainerRequestContext requestContext) throws IOException {
+  public void filter(ContainerRequestContext requestContext) {
     // Only track authenticated users
     SecurityContext securityContext = requestContext.getSecurityContext();
     if (securityContext == null || securityContext.getUserPrincipal() == null) {

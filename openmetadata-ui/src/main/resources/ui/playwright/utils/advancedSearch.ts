@@ -302,7 +302,7 @@ export const checkMustPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
   );
   await page.getByTestId('apply-btn').click();
 
@@ -345,7 +345,7 @@ export const checkMustNotPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
@@ -385,7 +385,7 @@ export const checkNullPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
@@ -528,7 +528,7 @@ export const checkAddRuleOrGroupWithOperator = async (
   }
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
   );
   await page.getByTestId('apply-btn').click();
 

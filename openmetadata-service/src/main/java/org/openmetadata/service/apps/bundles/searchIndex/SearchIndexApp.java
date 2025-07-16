@@ -529,11 +529,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   /**
    * Shuts down an executor service gracefully.
-   *
-   * @param executor The executor service to shut down.
-   * @param name     The name of the executor for logging.
-   * @param timeout  The timeout duration.
-   * @param unit     The time unit of the timeout.
    */
   private void shutdownExecutor(
       ExecutorService executor, String name, long timeout, TimeUnit unit) {

@@ -235,8 +235,8 @@ describe('CuratedAssetsWidget', () => {
     );
 
     expect(screen.getByText('message.no-curated-assets')).toBeInTheDocument();
-    expect(screen.getByTestId('add-curated-asset-button')).toBeInTheDocument();
-    expect(screen.getByTestId('plus-icon')).toBeInTheDocument();
+    expect(screen.getByText('label.create')).toBeInTheDocument();
+    expect(screen.getByTestId('curated-assets-empty-icon')).toBeInTheDocument();
     expect(screen.getByTestId('curated-assets-empty-icon')).toBeInTheDocument();
   });
 
@@ -298,7 +298,7 @@ describe('CuratedAssetsWidget', () => {
     render(
       <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
     );
-    fireEvent.click(screen.getByTestId('add-curated-asset-button'));
+    fireEvent.click(screen.getByText('label.create'));
     fireEvent.click(screen.getByTestId('saveButton'));
 
     expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
@@ -326,7 +326,7 @@ describe('CuratedAssetsWidget', () => {
     render(
       <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
     );
-    fireEvent.click(screen.getByTestId('add-curated-asset-button'));
+    fireEvent.click(screen.getByText('label.create'));
     fireEvent.click(screen.getByTestId('cancelButton'));
 
     expect(
@@ -345,7 +345,7 @@ describe('CuratedAssetsWidget', () => {
     render(
       <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
     );
-    fireEvent.click(screen.getByTestId('add-curated-asset-button'));
+    fireEvent.click(screen.getByText('label.create'));
 
     expect(screen.getByTestId('modal-title')).toHaveTextContent(
       'Create Widget'
@@ -387,7 +387,7 @@ describe('CuratedAssetsWidget', () => {
   it('renders sort dropdown in non-edit view', async () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByTestId('filter-button')).toBeInTheDocument();
+      expect(screen.getByTestId('widget-sort-by-dropdown')).toBeInTheDocument();
     });
   });
 
@@ -398,33 +398,12 @@ describe('CuratedAssetsWidget', () => {
     expect(screen.getByTestId('edit-widget-button')).toBeInTheDocument();
   });
 
-  it('renders more options dropdown', async () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    await waitFor(() => {
-      expect(screen.getByTestId('more-button')).toBeInTheDocument();
-    });
-  });
-
   it('handles sort by click in non-edit view', async () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
     await waitFor(() => {
-      const sortButton = screen.getByTestId('filter-button');
+      const sortButton = screen.getByTestId('widget-sort-by-dropdown');
 
       expect(sortButton).toBeInTheDocument();
     });
-  });
-
-  it('handles size change in edit view', () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    const moreButton = screen.getByTestId('more-button');
-
-    expect(moreButton).toBeInTheDocument();
-  });
-
-  it('handles widget removal', () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    const moreButton = screen.getByTestId('more-button');
-
-    expect(moreButton).toBeInTheDocument();
   });
 });

@@ -165,6 +165,16 @@ jest.mock(
   })
 );
 
+jest.mock('../CustomiseLandingPageHeader/CustomiseLandingPageHeader', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="customise-landing-page-header">
+        CustomiseLandingPageHeader
+      </div>
+    ))
+);
+
 describe('CustomizeMyData component', () => {
   it('CustomizeMyData should render the widgets in the page config', async () => {
     await act(async () => {
