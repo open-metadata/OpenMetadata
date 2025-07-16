@@ -1,5 +1,6 @@
 ---
 title: How to Create a Custom Property for a Data Asset
+description: Customize data asset pages by configuring fields, tabs, and layouts to match your organization’s metadata strategy.
 slug: /how-to-guides/guide-for-data-users/custom
 ---
 

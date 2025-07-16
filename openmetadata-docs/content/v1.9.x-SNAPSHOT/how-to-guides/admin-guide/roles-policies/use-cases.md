@@ -1,5 +1,6 @@
 ---
 title: Use Cases - Creating Roles & Policies in OpenMetadata
+description: Review real-world role-based access use cases for securing metadata access across teams, departments, and personas.
 slug: /how-to-guides/admin-guide/roles-policies/use-cases
 ---
 

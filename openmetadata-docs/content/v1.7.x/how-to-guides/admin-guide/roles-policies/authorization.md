@@ -1,5 +1,6 @@
 ---
 title: Building Blocks of Authorization - Rules, Policies, and Roles
+description: Understand authorization policies to manage read, write, and discover permissions for users and service accounts.
 slug: /how-to-guides/admin-guide/roles-policies/authorization
 ---
 

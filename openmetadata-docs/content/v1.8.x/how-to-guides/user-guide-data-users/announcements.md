@@ -1,5 +1,6 @@
 ---
-title: Overview of Announcements
+title: Overview of Announcements | Official Documentation
+description: Use announcements to communicate critical updates about datasets, dashboards, or quality concerns with your team.
 slug: /how-to-guides/guide-for-data-users/announcements
 ---
 

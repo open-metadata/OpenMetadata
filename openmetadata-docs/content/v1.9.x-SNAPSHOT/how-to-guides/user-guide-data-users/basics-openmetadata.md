@@ -1,5 +1,6 @@
 ---
 title: Understanding the Basics of OpenMetadata
+description: Learn the basics of using the platform, including navigation, lineage exploration, and collaborative features.
 slug: /how-to-guides/guide-for-data-users/basics-openmetadata
 ---
 

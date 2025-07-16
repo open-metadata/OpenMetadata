@@ -1,5 +1,6 @@
 ---
 title: How to Invite Users to OpenMetadata
+description: Invite users and configure their team access using email, domain patterns, or integrations with your identity platform.
 slug: /how-to-guides/admin-guide/teams-and-users/invite-users
 ---
 

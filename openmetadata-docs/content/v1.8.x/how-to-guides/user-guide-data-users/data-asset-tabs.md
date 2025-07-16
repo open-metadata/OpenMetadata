@@ -1,5 +1,6 @@
 ---
-title: Overview of Data Assets
+title: Overview of Data Assets | Official Documentation
+description: Navigate data asset tabs for schema, lineage, profiling, and usage insights in a unified, user-friendly interface.
 slug: /how-to-guides/guide-for-data-users/data-asset-tabs
 ---
 

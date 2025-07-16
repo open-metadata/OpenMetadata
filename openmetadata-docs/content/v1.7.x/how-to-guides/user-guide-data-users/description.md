@@ -1,5 +1,6 @@
 ---
 title: How to Add Description using Markdown
+description: Learn how data descriptions help users understand asset context, structure, and lineage across your catalog.
 slug: /how-to-guides/guide-for-data-users/description
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: What is a Glossary Term
+title: What is a Glossary Term | Official Documentation
+description: Create glossary terms with definitions, synonyms, status, and linked entities to support semantic understanding.
 slug: /how-to-guides/data-governance/glossary/glossary-term
 ---
 

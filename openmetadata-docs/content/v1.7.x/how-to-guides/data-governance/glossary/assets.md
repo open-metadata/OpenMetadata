@@ -1,5 +1,6 @@
 ---
 title: How to Add Assets to Glossary Terms
+description: Link glossary terms to assets so users can explore definitions directly from datasets, dashboards, and columns.
 slug: /how-to-guides/data-governance/glossary/assets
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: How to Add Glossary Terms
+title: How to Add Glossary Terms | Official Documentation
+description: Browse and search glossary terms to understand domain-specific terminology across your organization’s data assets.
 slug: /how-to-guides/guide-for-data-users/glossary
 ---
 

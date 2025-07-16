@@ -1,5 +1,6 @@
 ---
-title: How to Delete a Data Asset
+title: How to Delete a Data Asset | Official Documentation
+description: Delete outdated or test assets from your catalog to maintain clean, relevant metadata and simplify search results.
 slug: /how-to-guides/guide-for-data-users/delete
 ---
 

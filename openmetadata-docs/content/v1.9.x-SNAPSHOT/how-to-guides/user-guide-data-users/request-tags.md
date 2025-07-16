@@ -1,5 +1,6 @@
 ---
-title: How to Request for Tags
+title: How to Request for Tags | Official Documentation
+description: Use tag requests to suggest or request metadata labels for columns, tables, and dashboards that need categorization.
 slug: /how-to-guides/guide-for-data-users/request-tags
 ---
 
