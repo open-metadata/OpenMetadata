@@ -112,7 +112,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table page should show schema tab with count', async ({
     dataConsumerPage: page,
   }) => {
-    await table1.visitEntityPage(page);
+    await table1.visitEntityPageWithCustomSearchBox(page);
 
     await expect(page.getByRole('tab', { name: 'Columns' })).toContainText('4');
   });

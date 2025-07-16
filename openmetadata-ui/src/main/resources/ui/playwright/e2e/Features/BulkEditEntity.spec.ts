@@ -520,7 +520,7 @@ test.describe('Bulk Edit Entity', () => {
     await tableEntity.create(apiContext);
 
     await test.step('Perform bulk edit action', async () => {
-      await tableEntity.visitEntityPage(page);
+      await tableEntity.visitEntityPageWithCustomSearchBox(page);
 
       await page.click('[data-testid="bulk-edit-table"]');
 

@@ -135,7 +135,7 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database service details', async () => {
-      await dbService.visitEntityPage(page);
+      await dbService.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
 
@@ -152,7 +152,7 @@ test.describe('Bulk Import Export', () => {
     await test.step(
       'should import and edit with two additional database',
       async () => {
-        await dbService.visitEntityPage(page);
+        await dbService.visitEntityPageWithCustomSearchBox(page);
         await page.click('[data-testid="manage-button"] > .anticon');
         await page.click('[data-testid="import-button-description"]');
         const fileInput = page.getByTestId('upload-file-widget');
@@ -405,7 +405,7 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database details', async () => {
-      await dbEntity.visitEntityPage(page);
+      await dbEntity.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
 
@@ -423,7 +423,7 @@ test.describe('Bulk Import Export', () => {
     await test.step(
       'should import and edit with two additional database schema',
       async () => {
-        await dbEntity.visitEntityPage(page);
+        await dbEntity.visitEntityPageWithCustomSearchBox(page);
         await page.click('[data-testid="manage-button"] > .anticon');
         await page.click('[data-testid="import-button-description"]');
         const fileInput = await page.$('[type="file"]');
@@ -621,7 +621,7 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database schema details', async () => {
-      await dbSchemaEntity.visitEntityPage(page);
+      await dbSchemaEntity.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
       await page.click('[data-testid="manage-button"]');
@@ -638,7 +638,7 @@ test.describe('Bulk Import Export', () => {
     await test.step(
       'should import and edit with two additional table',
       async () => {
-        await dbSchemaEntity.visitEntityPage(page);
+        await dbSchemaEntity.visitEntityPageWithCustomSearchBox(page);
 
         await page.click('[data-testid="manage-button"] > .anticon');
         await page.click('[data-testid="import-button-description"]');
@@ -804,7 +804,7 @@ test.describe('Bulk Import Export', () => {
     await tableEntity.create(apiContext);
 
     await test.step('should export data table details', async () => {
-      await tableEntity.visitEntityPage(page);
+      await tableEntity.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
 
@@ -822,7 +822,7 @@ test.describe('Bulk Import Export', () => {
     await test.step(
       'should import and edit with two additional columns',
       async () => {
-        await tableEntity.visitEntityPage(page);
+        await tableEntity.visitEntityPageWithCustomSearchBox(page);
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
         const fileInput = await page.$('[type="file"]');

@@ -55,7 +55,7 @@ test.describe('Container entity specific tests ', () => {
   test('Container page children pagination', async ({
     dataConsumerPage: page,
   }) => {
-    await container.visitEntityPage(page);
+    await container.visitEntityPageWithCustomSearchBox(page);
 
     await page.getByText('Children').click();
 
