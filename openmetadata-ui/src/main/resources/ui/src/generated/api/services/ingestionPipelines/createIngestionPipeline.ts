@@ -1179,20 +1179,14 @@ export enum MetadataAttribute {
 export interface TagLabel {
     /**
      * Description for the tag label.
-     *
-     * Optional description of entity.
      */
     description?: string;
     /**
      * Display Name that identifies this tag.
-     *
-     * Display Name that identifies this entity.
      */
     displayName?: string;
     /**
      * Link to the tag resource.
-     *
-     * Link to the entity resource.
      */
     href?: string;
     /**

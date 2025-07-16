@@ -21,20 +21,7 @@
         "value": {
             "title": "Stop Values",
             "description": "List of attribute values that will stop propagation when any of them is matched",
-            "type": "array",
-            "items": {
-                "oneOf": [
-                    {
-                        "type": "string"
-                    },
-                    {
-                        "$ref": "../../../../../type/tagLabel.json"
-                    },
-                    {
-                        "$ref": "../../../../../type/entityReference.json"
-                    }
-                ]
-            }
+            "type": "array"
         }
     },
     "required": [
