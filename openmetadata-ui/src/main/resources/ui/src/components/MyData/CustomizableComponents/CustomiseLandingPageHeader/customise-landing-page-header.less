@@ -20,14 +20,13 @@
 
 .header-container {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: @size-mlg;
   width: 100%;
 }
 
 .dashboardHeader {
-  flex: 2.5;
+  flex: 3.5;
   min-width: 0;
   padding: 4.25rem 4.375rem 1.25rem 2.75rem;
 
@@ -121,8 +120,9 @@
 }
 
 .announcements-container {
+  flex: 2;
+  min-width: 0;
   margin: @size-xl 0;
-  width: 32.5%;
 }
 
 .overlapped-container {

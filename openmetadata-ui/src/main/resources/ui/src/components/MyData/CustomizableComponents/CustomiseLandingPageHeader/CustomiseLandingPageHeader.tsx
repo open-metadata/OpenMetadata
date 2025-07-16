@@ -205,8 +205,8 @@ const CustomiseLandingPageHeader = ({
           </div>
         </div>
 
-        {announcements.length > 0 && showAnnouncements && (
-          <div className="announcements-container">
+        <div className="announcements-container">
+          {announcements.length > 0 && showAnnouncements && (
             <AnnouncementsWidgetV1
               announcements={announcements}
               currentBackgroundColor={bgColor}
@@ -215,8 +215,8 @@ const CustomiseLandingPageHeader = ({
                 setShowAnnouncements(false);
               }}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
       {overlappedContainer && <div className="overlapped-container" />}
 

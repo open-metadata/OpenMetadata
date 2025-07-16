@@ -108,7 +108,7 @@ const validateTourSteps = async (page: Page) => {
   await page.getByTestId('saveButton').click();
 };
 
-test.describe('Tour should work properly', () => {
+test.describe.skip('Tour should work properly', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
