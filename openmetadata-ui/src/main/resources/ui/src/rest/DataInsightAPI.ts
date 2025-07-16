@@ -66,3 +66,20 @@ export const getMultiChartsPreviewByName = async (
 
   return response.data;
 };
+
+export const setChartDataStreamConnection = async (params: {
+  chartNames: SystemChartType[];
+  serviceName: string;
+  startTime: number;
+  endTime: number;
+}) => {
+  const response = await APIClient.post<DataInsightCustomChartResult>(
+    `/analytics/dataInsights/system/charts/stream`,
+    {},
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};

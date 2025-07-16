@@ -18,10 +18,15 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SOCKET_EVENTS } from '../../constants/constants';
 import { PLATFORM_INSIGHTS_CHART } from '../../constants/ServiceInsightsTab.constants';
+import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
-import { getMultiChartsPreviewByName } from '../../rest/DataInsightAPI';
+import {
+  getMultiChartsPreviewByName,
+  setChartDataStreamConnection,
+} from '../../rest/DataInsightAPI';
 import {
   getCurrentDayStartGMTinMillis,
   getDayAgoStartGMTinMillis,
@@ -50,6 +55,7 @@ const ServiceInsightsTab = ({
 }: ServiceInsightsTabProps) => {
   const { serviceCategory } =
     useRequiredParams<{ serviceCategory: ServiceTypes }>();
+  const { socket } = useWebSocketConnector();
   const [chartsResults, setChartsResults] = useState<ChartsResults>();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -155,9 +161,47 @@ const ServiceInsightsTab = ({
     workflowStatesData?.mainInstanceState?.status,
   ]);
 
-  useEffect(() => {
-    fetchChartsData();
+  const triggerSocketConnection = useCallback(async () => {
+    await setChartDataStreamConnection({
+      chartNames: PLATFORM_INSIGHTS_CHART,
+      serviceName,
+      startTime: getCurrentDayStartGMTinMillis(),
+      endTime: getCurrentDayStartGMTinMillis() + 360000000,
+    });
   }, []);
+
+  useEffect(() => {
+    if (
+      workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
+    ) {
+      triggerSocketConnection();
+    }
+    fetchChartsData();
+  }, [workflowStatesData?.mainInstanceState.status]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.CHART_DATA_STREAM, (newActivity) => {
+        if (newActivity) {
+          const data = JSON.parse(newActivity);
+
+          const platformInsightsChart = PLATFORM_INSIGHTS_CHART.map(
+            getPlatformInsightsChartDataFormattingMethod(data.data)
+          );
+
+          setChartsResults((prev) => ({
+            platformInsightsChart,
+            piiDistributionChart: prev?.piiDistributionChart ?? [],
+            tierDistributionChart: prev?.tierDistributionChart ?? [],
+          }));
+        }
+      });
+    }
+
+    return () => {
+      socket?.off(SOCKET_EVENTS.CHART_DATA_STREAM);
+    };
+  }, [socket]);
 
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>

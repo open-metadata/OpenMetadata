@@ -145,7 +145,7 @@ export const getPlatformInsightsChartDataFormattingMethod =
       percentageChange: percentageChangeOverall,
       currentPercentage: round(lastDayData ?? 0, 2),
       noRecords: summaryChartData.results.every((item) => isEmpty(item)),
-      numberOfDays: data.length - 1,
+      numberOfDays: data.length > 0 ? data.length - 1 : 0,
     };
   };
 
