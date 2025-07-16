@@ -26,11 +26,20 @@
 
   .rdg-editor-container {
     .value-renderer-on-edit-cell {
+      width: 100%;
+      min-height: 100%;
+      display: flex;
+      align-items: center;
       padding-right: @size-xs;
       padding-left: @size-xs;
-      white-space: nowrap;
-      overflow: clip;
-      text-overflow: ellipsis;
+
+      .ellipsis-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: block;
+        width: 100%;
+      }
     }
   }
 
@@ -69,9 +78,32 @@
     }
   }
 
+  .rdg-cell-glossaryTerms {
+    &.rdg-editor-container {
+      padding: @size-xxs;
+      min-width: -webkit-fill-available;
+      height: auto !important;
+      width: auto !important;
+      z-index: 999;
+      overflow: visible;
+      position: absolute;
+      top: 0;
+      left: 0;
+
+      .ant-select-focused .ant-select-selector {
+        border: none;
+        box-shadow: none;
+      }
+    }
+
+    .ant-select-selector {
+      border: none;
+    }
+  }
+
   .rdg-cell-entityType {
     &.rdg-editor-container {
-      padding: @size-0 @size-xxs;
+      padding: 2px @size-xxs;
 
       .ant-select-focused .ant-select-selector {
         border: none;
@@ -89,4 +121,8 @@
       border: none;
     }
   }
+}
+
+.certification-card-popover.ant-popover {
+  padding-top: 0;
 }

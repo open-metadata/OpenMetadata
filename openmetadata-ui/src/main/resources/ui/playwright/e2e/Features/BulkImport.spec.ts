@@ -12,6 +12,7 @@
  */
 import { expect, test } from '@playwright/test';
 
+import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
@@ -204,9 +205,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 13, 'ArrowLeft');
@@ -233,9 +234,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 13, 'ArrowLeft');
@@ -263,9 +264,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 13, 'ArrowLeft');
@@ -282,9 +283,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 19, 'ArrowLeft');
@@ -315,9 +316,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 19, 'ArrowLeft');
@@ -474,9 +475,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 13, 'ArrowLeft');
@@ -504,9 +505,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 13, 'ArrowLeft');
@@ -523,9 +524,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 17, 'ArrowLeft');
@@ -691,9 +692,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 13, 'ArrowLeft');
@@ -711,9 +712,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 17, 'ArrowLeft');
@@ -741,9 +742,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 13, 'ArrowLeft');
@@ -854,9 +855,9 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.rdg-cell[aria-selected="true"]');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.rdg-cell[aria-selected="true"]')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 9, 'ArrowLeft');

@@ -18,5 +18,9 @@ export const ValueRendererOnEditCell = ({
 }: {
   children: ReactNode;
 }) => {
-  return <div className="value-renderer-on-edit-cell">{children}</div>;
+  return (
+    <div className="value-renderer-on-edit-cell">
+      <span className="ellipsis-text">{children}</span>
+    </div>
+  );
 };

@@ -12,6 +12,7 @@
  */
 import { expect, test } from '@playwright/test';
 
+import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { SERVICE_TYPE } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -525,7 +526,7 @@ test.describe('Bulk Edit Entity', () => {
       // click on row first cell
       await page.click('.rdg-cell[role="gridcell"]');
 
-      await page.click('.rdg-cell[aria-selected="true"]');
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
 
       await pressKeyXTimes(page, 2, 'ArrowRight');
 
@@ -536,14 +537,14 @@ test.describe('Bulk Edit Entity', () => {
       await fillTagDetails(page, columnDetails1.tag);
 
       await page
-        .locator('.rdg-cell[aria-selected="true"]')
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
         .press('ArrowRight', { delay: 100 });
       await fillGlossaryTermDetails(page, columnDetails1.glossary);
 
       // Reverse traves to first cell to fill the details
-      await page.click('.rdg-cell[aria-selected="true"]');
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
       await page
-        .locator('.rdg-cell[aria-selected="true"]')
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
         .press('ArrowDown', { delay: 100 });
 
       await page.click('[type="button"] >> text="Next"', { force: true });

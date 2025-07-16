@@ -18,22 +18,22 @@ import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.
 
 export interface BulkEditEntityProps {
   dataSource: Record<string, string>[];
-  columns: Column<any>[];
+  columns: Column<Record<string, string>>[];
   breadcrumbList: TitleBreadcrumbProps['titleLinks'];
   activeStep: VALIDATION_STEP;
   activeAsyncImportJob?: CSVImportJobType;
   isValidating: boolean;
   validationData?: CSVImportResult;
   validateCSVData?: {
-    columns: Column<any>[];
+    columns: Column<Record<string, string>>[];
     dataSource: Record<string, string>[];
   };
   handleBack: () => void;
   handleValidate: () => Promise<void>;
   onCSVReadComplete: (results: { data: string[][] }) => void;
   onEditComplete: (data: Record<string, string>[]) => void;
-  gridContainerRef: React.RefObject<any>;
-  handleCopy: (event: CopyEvent<any>) => void;
-  handlePaste: (event: PasteEvent<any>) => void;
+  gridContainerRef: React.RefObject<HTMLDivElement>;
+  handleCopy: (event: CopyEvent<Record<string, string>>) => void;
+  handlePaste: (event: PasteEvent<Record<string, string>>) => void;
   pushToUndoStack: (dataSource: Record<string, string>[]) => void;
 }

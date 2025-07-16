@@ -84,12 +84,12 @@ const BulkEntityImportPage = () => {
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
   const [validationData, setValidationData] = useState<CSVImportResult>();
-  const [columns, setColumns] = useState<Column<any>[]>([]);
+  const [columns, setColumns] = useState<Column<Record<string, string>>[]>([]);
   const [dataSource, setDataSource] = useState<Record<string, string>[]>([]);
   const navigate = useNavigate();
   const { readString } = usePapaParse();
   const [validateCSVData, setValidateCSVData] = useState<{
-    columns: Column<any>[];
+    columns: Column<Record<string, string>>[];
     dataSource: Record<string, string>[];
   }>();
 

@@ -95,20 +95,17 @@ class CSVUtilsClassBase {
           };
 
           return (
-            <>
+            <UserTeamSelectableList
+              hasPermission
+              multiple={{ user: true, team: false }}
+              owner={ownerEntityRef}
+              popoverProps={{
+                open: true,
+              }}
+              onClose={onClose}
+              onUpdate={handleChange}>
               <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-              <UserTeamSelectableList
-                hasPermission
-                multiple={{ user: true, team: false }}
-                owner={ownerEntityRef}
-                popoverProps={{
-                  open: true,
-                }}
-                onClose={onClose}
-                onUpdate={handleChange}>
-                {' '}
-              </UserTeamSelectableList>
-            </>
+            </UserTeamSelectableList>
           );
         };
       case 'description':
@@ -261,16 +258,13 @@ class CSVUtilsClassBase {
           };
 
           return (
-            <>
+            <TierCard
+              currentTier={value}
+              popoverProps={{ open: true }}
+              updateTier={handleChange}
+              onClose={() => onClose(false)}>
               <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-              <TierCard
-                currentTier={value}
-                popoverProps={{ open: true }}
-                updateTier={handleChange}
-                onClose={() => onClose(false)}>
-                {' '}
-              </TierCard>
-            </>
+            </TierCard>
           );
         };
 
@@ -293,16 +287,14 @@ class CSVUtilsClassBase {
           };
 
           return (
-            <>
+            <Certification
+              permission
+              currentCertificate={value}
+              popoverProps={{ open: true }}
+              onCertificationUpdate={handleChange}
+              onClose={() => onClose(false)}>
               <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-              <Certification
-                permission
-                currentCertificate={value}
-                popoverProps={{ open: true }}
-                onCertificationUpdate={handleChange}
-                onClose={() => onClose(false)}
-              />
-            </>
+            </Certification>
           );
         };
       case 'domain':
@@ -338,25 +330,23 @@ class CSVUtilsClassBase {
           };
 
           return (
-            <>
+            <DomainSelectableList
+              hasPermission
+              popoverProps={{ open: true }}
+              selectedDomain={
+                value
+                  ? {
+                      type: EntityType.DOMAIN,
+                      name: value,
+                      id: '',
+                      fullyQualifiedName: value,
+                    }
+                  : undefined
+              }
+              wrapInButton={false}
+              onUpdate={(domain) => handleChange(domain as EntityReference)}>
               <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-              <DomainSelectableList
-                hasPermission
-                popoverProps={{ open: true }}
-                selectedDomain={
-                  value
-                    ? {
-                        type: EntityType.DOMAIN,
-                        name: value,
-                        id: '',
-                        fullyQualifiedName: value,
-                      }
-                    : undefined
-                }
-                onUpdate={(domain) => handleChange(domain as EntityReference)}>
-                {' '}
-              </DomainSelectableList>
-            </>
+            </DomainSelectableList>
           );
         };
       case 'reviewers':
@@ -403,23 +393,20 @@ class CSVUtilsClassBase {
           };
 
           return (
-            <>
+            <UserTeamSelectableList
+              hasPermission
+              previewSelected
+              label={t('label.reviewer-plural')}
+              listHeight={200}
+              multiple={{ user: true, team: false }}
+              owner={reviewersEntityRef}
+              popoverProps={{
+                open: true,
+              }}
+              onClose={onClose}
+              onUpdate={handleChange}>
               <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-              <UserTeamSelectableList
-                hasPermission
-                previewSelected
-                label={t('label.reviewer-plural')}
-                listHeight={200}
-                multiple={{ user: true, team: false }}
-                owner={reviewersEntityRef}
-                popoverProps={{
-                  open: true,
-                }}
-                onClose={onClose}
-                onUpdate={handleChange}>
-                {' '}
-              </UserTeamSelectableList>
-            </>
+            </UserTeamSelectableList>
           );
         };
       case 'extension':
