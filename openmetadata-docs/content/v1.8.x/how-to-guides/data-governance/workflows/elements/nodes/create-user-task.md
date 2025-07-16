@@ -1,5 +1,6 @@
 ---
 title: Governance Workflows - Create User Task
+description: Use the create user task node to assign actions in workflows, helping teams take ownership and act on data governance processes.
 slug: /how-to-guides/data-governance/workflows/elements/nodes/create-user-task
 collate: true
 ---

@@ -1,6 +1,6 @@
 ---
 title: High Level Design | OpenMetadata Architecture Overview
-description: Discover OpenMetadata's high-level architecture and core design principles. Learn how our unified metadata platform connects data sources, governance, a...
+description: Explore high-level architectural design to understand how components interact across storage, processing, and access layers.
 slug: /main-concepts/high-level-design
 ---
 

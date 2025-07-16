@@ -1,5 +1,6 @@
 ---
 title: Governance Workflows - Glossary Approval Workflow (Default)
+description: Route glossary term changes through approval workflows to maintain review, traceability, and publishing control.
 slug: /how-to-guides/data-governance/workflows/default-workflows/glossary-approval
 collate: true
 ---
