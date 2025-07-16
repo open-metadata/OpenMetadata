@@ -195,7 +195,7 @@ public class EntityRelationshipCleanup {
 
       // Check if fromEntity has any repository
       boolean fromEntityHasNoRepository = doEntityHaveAnyRepository(fromEntity);
-      if (fromEntityHasNoRepository) {
+      if (!fromEntityHasNoRepository) {
         LOG.error(
             "No repository found for from entity type: {}, the entity will not be cleaned",
             fromEntity);
@@ -203,7 +203,7 @@ public class EntityRelationshipCleanup {
       }
 
       boolean toEntityHasNoRepository = doEntityHaveAnyRepository(toEntity);
-      if (toEntityHasNoRepository) {
+      if (!toEntityHasNoRepository) {
         LOG.error(
             "No repository found for to entity type: {}, the entity will not be cleaned", toEntity);
         return null;
