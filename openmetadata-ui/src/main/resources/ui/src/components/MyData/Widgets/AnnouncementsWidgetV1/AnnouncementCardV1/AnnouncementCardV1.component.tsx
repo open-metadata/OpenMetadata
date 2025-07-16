@@ -73,35 +73,36 @@ const AnnouncementCardV1 = ({
     announcementTitleSectionStyle,
     announcementTitleStyle,
     userNameStyle,
-    entityNameStyle,
-    entityIconStyle,
-    fieldOperationStyle,
+    timeStampStyle,
   } = useMemo(() => {
+    if (!currentBackgroundColor) {
+      return {};
+    }
+
     return {
       announcementTitleSectionStyle: {
         background: `linear-gradient(270deg, #ffffff -12.07%, ${currentBackgroundColor} 233.72%)`,
+        color: `${currentBackgroundColor} !important`,
       },
       announcementTitleStyle: {
         borderLeft: `3px solid ${currentBackgroundColor}`,
+        color: `${currentBackgroundColor} !important`,
       },
       userNameStyle: {
         color: currentBackgroundColor,
       },
-      entityNameStyle: {
+      timeStampStyle: {
         color: currentBackgroundColor,
-      },
-      entityIconStyle: {
-        color: `${currentBackgroundColor} !important`,
-      },
-      fieldOperationStyle: {
-        color: `${currentBackgroundColor} !important`,
+        '&.ant-typography': {
+          color: `${currentBackgroundColor} !important`,
+        },
       },
     };
   }, [currentBackgroundColor]);
 
   const entityIcon = useMemo(() => {
-    return getEntityIcon(entityType, 'entity-icon');
-  }, [entityType]);
+    return getEntityIcon(entityType);
+  }, [entityType, currentBackgroundColor]);
 
   const handleEntityClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -139,19 +140,22 @@ const AnnouncementCardV1 = ({
                 </Link>
                 <Typography.Text
                   className="field-operation-text"
-                  style={fieldOperationStyle}>
+                  style={{
+                    color: currentBackgroundColor ?? 'inherit',
+                  }}>
                   {' '}
                   {getFieldOperationText(fieldOperation)}
                 </Typography.Text>
                 <span
-                  className="announcement-entity-icon"
-                  style={entityIconStyle}>
+                  className="announcement-card-entity-icon"
+                  style={{
+                    color: currentBackgroundColor ?? 'inherit',
+                  }}>
                   {entityIcon}
                 </span>
                 {entityFQN && entityType ? (
                   <Typography.Text
                     className="announcement-entity-name"
-                    data-testid="entity-link"
                     ellipsis={{
                       tooltip: (
                         <div className="announcement-entity-name-tooltip">
@@ -159,8 +163,14 @@ const AnnouncementCardV1 = ({
                         </div>
                       ),
                     }}
-                    style={entityNameStyle}>
+                    style={{
+                      color: currentBackgroundColor ?? 'inherit',
+                    }}>
                     <Link
+                      data-testid="announcement-entity-link"
+                      style={{
+                        color: currentBackgroundColor ?? 'inherit',
+                      }}
                       to={entityUtilClassBase.getEntityLink(
                         entityType,
                         entityFQN
@@ -172,10 +182,10 @@ const AnnouncementCardV1 = ({
                 ) : (
                   <Typography.Text
                     className="announcement-entity-name"
-                    ellipsis={{
-                      tooltip: true,
-                    }}
-                    style={entityNameStyle}>
+                    ellipsis={{ tooltip: true }}
+                    style={{
+                      color: currentBackgroundColor ?? 'inherit',
+                    }}>
                     {entityName}
                   </Typography.Text>
                 )}
@@ -187,7 +197,7 @@ const AnnouncementCardV1 = ({
                 {title}
               </Typography.Text>
             )}
-            <Typography.Text className="timestamp">
+            <Typography.Text className="timestamp" style={timeStampStyle}>
               {getRelativeTime(timestamp)}
             </Typography.Text>
           </div>

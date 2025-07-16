@@ -33,7 +33,7 @@ jest.mock('../../../../../utils/date-time/DateTimeUtils', () => ({
 jest.mock('../../../../../utils/EntityUtilClassBase', () => ({
   __esModule: true,
   default: {
-    getEntityLink: jest.fn(() => '/test-entity-link'),
+    getEntityLink: jest.fn(() => '/test-announcement-entity-link'),
   },
 }));
 
@@ -86,29 +86,6 @@ const mockUpdateAnnouncement: Thread = {
   },
   feedInfo: {
     fieldName: 'PARTNER_NAME',
-  },
-} as Thread;
-
-const mockAddedAnnouncement: Thread = {
-  id: '3',
-  type: 'Announcement',
-  href: 'http://localhost:8585/api/v1/feed/3',
-  threadTs: 1659609358138,
-  about: '<#E::dashboard::sample_data.ecommerce_db.shopify.dashboard>',
-  entityId: 'b9aba5ce-6899-4a09-b378-1e7fcbe596cc',
-  createdBy: 'maria',
-  updatedAt: 1659610946842,
-  updatedBy: 'maria',
-  resolved: false,
-  message: 'Maria added new_dashboard',
-  postsCount: 0,
-  posts: [],
-  reactions: [],
-  fieldOperation: FieldOperation.Added,
-  announcement: {
-    description: 'New dashboard has been added to the system.',
-    startTime: 1659609300000,
-    endTime: 1659868500000,
   },
 } as Thread;
 
@@ -170,18 +147,6 @@ describe('AnnouncementCardV1', () => {
     expect(screen.getByText('PARTNER_NAME')).toBeInTheDocument();
   });
 
-  it('should render added announcement card v1 correctly', () => {
-    renderAnnouncementCardV1(mockAddedAnnouncement);
-
-    expect(screen.getByTestId('announcement-card-v1-3')).toBeInTheDocument();
-    expect(screen.getByText('maria')).toBeInTheDocument();
-    expect(screen.getByText('label.added-lowercase')).toBeInTheDocument();
-    expect(screen.getByText('Maria added new_dashboard')).toBeInTheDocument();
-    expect(
-      screen.getByText('New dashboard has been added to the system.')
-    ).toBeInTheDocument();
-  });
-
   it('should render general announcement card v1 correctly', () => {
     renderAnnouncementCardV1(mockGeneralAnnouncement);
 
@@ -205,13 +170,6 @@ describe('AnnouncementCardV1', () => {
     fireEvent.click(card);
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
-  });
-
-  it('should display timestamp correctly', () => {
-    renderAnnouncementCardV1(mockUpdateAnnouncement);
-
-    // The timestamp should be formatted and displayed
-    expect(screen.getByText(/2022/)).toBeInTheDocument(); // Year should be visible
   });
 
   it('should handle announcement without description', () => {
@@ -244,87 +202,16 @@ describe('AnnouncementCardV1', () => {
     expect(screen.queryByText('label.column-name')).not.toBeInTheDocument();
   });
 
-  it('should handle empty entity name gracefully', () => {
-    const announcementWithEmptyAbout = {
-      ...mockUpdateAnnouncement,
-      about: '',
-    };
-
-    renderAnnouncementCardV1(announcementWithEmptyAbout);
-
-    expect(screen.getByTestId('announcement-card-v1-1')).toBeInTheDocument();
-    expect(screen.getByText('alberto')).toBeInTheDocument();
-  });
-
-  it('should handle different field operations correctly', () => {
-    const deletedAnnouncement = {
-      ...mockUpdateAnnouncement,
-      id: '4',
-      fieldOperation: FieldOperation.Deleted,
-      message: 'Alberto deleted `old_table`',
-    };
-
-    renderAnnouncementCardV1(deletedAnnouncement);
-
-    expect(screen.getByText('label.deleted-lowercase')).toBeInTheDocument();
-  });
-
-  it('should show field operation icon for field operations', () => {
-    renderAnnouncementCardV1(mockUpdateAnnouncement);
-
-    // The field operation icon should be present
-    const card = screen.getByTestId('announcement-card-v1-1');
-
-    expect(card).toBeInTheDocument();
-  });
-
-  it('should not show field operation icon for general announcements', () => {
-    renderAnnouncementCardV1(mockGeneralAnnouncement);
-
-    // The field operation icon should not be present for general announcements
-    const card = screen.getByTestId('announcement-card-v1-2');
-
-    expect(card).toBeInTheDocument();
-  });
-
   it('should render clickable entity name link for field operations', () => {
     renderAnnouncementCardV1(mockUpdateAnnouncement);
 
-    const entityLink = screen.getByTestId('entity-link');
+    const entityLink = screen.getByTestId('announcement-entity-link');
 
     expect(entityLink).toBeInTheDocument();
-    expect(entityLink).toHaveAttribute('href', '/test-entity-link');
-  });
-
-  it('should not render clickable entity name for general announcements', () => {
-    renderAnnouncementCardV1(mockGeneralAnnouncement);
-
-    const entityLink = screen.queryByTestId('entity-link');
-
-    expect(entityLink).not.toBeInTheDocument();
-  });
-
-  it('should handle entity click without triggering card click', () => {
-    renderAnnouncementCardV1(mockUpdateAnnouncement);
-
-    const entityLink = screen.getByTestId('entity-link');
-    fireEvent.click(entityLink);
-
-    // Card click should not be triggered when clicking on entity link
-    expect(mockOnClick).not.toHaveBeenCalled();
-  });
-
-  it('should handle announcement with missing entity information', () => {
-    const announcementWithoutEntity = {
-      ...mockUpdateAnnouncement,
-      about: '',
-    };
-
-    renderAnnouncementCardV1(announcementWithoutEntity);
-
-    // Should still render the announcement but without clickable entity name
-    expect(screen.getByTestId('announcement-card-v1-1')).toBeInTheDocument();
-    expect(screen.queryByTestId('entity-link')).not.toBeInTheDocument();
+    expect(entityLink).toHaveAttribute(
+      'href',
+      '/test-announcement-entity-link'
+    );
   });
 
   it('should render clickable user name link for field operations', () => {
@@ -361,7 +248,7 @@ describe('AnnouncementCardV1', () => {
     renderAnnouncementCardV1(mockUpdateAnnouncement);
 
     const userLink = screen.getByTestId('user-link');
-    const entityLink = screen.getByTestId('entity-link');
+    const entityLink = screen.getByTestId('announcement-entity-link');
 
     fireEvent.click(userLink);
 

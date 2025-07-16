@@ -69,14 +69,16 @@
         }
 
         .field-operation-text {
+          color: @primary-color;
           font-size: @font-size-base;
           white-space: nowrap;
           font-weight: @font-regular;
         }
 
-        .announcement-entity-icon {
+        .announcement-card-entity-icon {
           font-size: @font-size-base;
           margin: 0 0 0 2px;
+          color: @primary-color;
 
           svg {
             width: @size-mlg;
@@ -91,10 +93,6 @@
           text-decoration: none;
           cursor: pointer;
           transition: color 0.2s ease;
-
-          &:hover {
-            color: @primary-color;
-          }
 
           &:focus {
             outline: 2px solid @primary-color;
@@ -124,7 +122,7 @@
       }
 
       .timestamp {
-        color: @text-color;
+        color: @primary-color;
         font-size: @size-sm;
         white-space: nowrap;
         margin-left: @padding-sm;
