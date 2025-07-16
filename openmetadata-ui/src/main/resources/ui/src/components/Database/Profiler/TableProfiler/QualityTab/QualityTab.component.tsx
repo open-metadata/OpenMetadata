@@ -36,7 +36,9 @@ import {
 } from '../../../../../constants/profiler.constant';
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import { PipelineType } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
@@ -50,7 +52,9 @@ import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
+import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
@@ -90,10 +94,14 @@ export const QualityTab = () => {
 
   const { editTest, editDataProfile } = useMemo(() => {
     return {
-      editTest: permissions?.EditAll || permissions?.EditTests,
-      editDataProfile: permissions?.EditAll || permissions?.EditDataProfile,
+      editTest:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditTests),
+      editDataProfile:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
     };
-  }, [permissions]);
+  }, [permissions, getPrioritizedEditPermission]);
 
   const navigate = useNavigate();
   const location = useCustomLocation();
@@ -310,6 +318,17 @@ export const QualityTab = () => {
     ],
     []
   );
+
+  if (permissions && !permissions?.ViewTests) {
+    return (
+      <ErrorPlaceHolder
+        permissionValue={t('label.view-entity', {
+          entity: t('label.data-observability'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
 
   return (
     <Row gutter={[0, 16]}>

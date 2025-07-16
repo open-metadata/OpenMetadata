@@ -23,6 +23,12 @@ OpenMetadata supports a hierarchical team structure with **teamType** that can b
 {% /note noteType="Warning" %}
 {% /note %}
 
+{% note %}
+
+OpenMetadata supports flexible nested team hierarchies under organizational structures such as Business Unit, Division, and Department. While there is no hardcoded limit to the depth of hierarchy, leaf nodes such as "Group" cannot have child teams. Additionally, certain team types like "Department" cannot be nested within "Group." To extend the hierarchy, consider using other team types where appropriate.
+
+{% /note %}
+
 {% image
 src="/images/v1.8/how-to-guides/teams-and-users/teams.png"
 alt="team-structure"
