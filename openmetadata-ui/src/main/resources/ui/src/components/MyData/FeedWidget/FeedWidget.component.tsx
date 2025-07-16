@@ -57,7 +57,7 @@ const MyFeedWidgetInternal = ({
   useEffect(() => {
     if (feedList) {
       const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
-      setEntityThread(updatedFeedList.slice(0, 8)); // Limit to 8 items for widget
+      setEntityThread(updatedFeedList);
     }
   }, [feedList]);
 
