@@ -53,6 +53,10 @@ export interface LineagePropagationAction {
      */
     propagateTier?: boolean;
     /**
+     * Number of levels to propagate lineage. If not set, it will propagate to all levels.
+     */
+    propagationDepth?: number;
+    /**
      * List of configurations to stop propagation based on conditions
      */
     propagationStopConfigs?: PropagationStopConfig[];
