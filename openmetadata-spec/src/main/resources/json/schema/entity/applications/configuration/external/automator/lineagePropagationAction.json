@@ -78,6 +78,7 @@
       "description": "Number of levels to propagate lineage. If not set, it will propagate to all levels.",
       "type": "integer",
       "default": null
+    },
     "propagationStopConfigs": {
       "title": "Propagation Stop Configurations",
       "description": "List of configurations to stop propagation based on conditions",
