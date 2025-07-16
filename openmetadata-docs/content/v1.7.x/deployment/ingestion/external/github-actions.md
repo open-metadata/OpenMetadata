@@ -1,5 +1,6 @@
 ---
 title: Run the ingestion from GitHub Actions
+description: Configure GitHub Actions for metadata ingestion to run workflows on commits, schedules, or triggers in your CI/CD pipelines.
 slug: /deployment/ingestion/external/github-actions
 collate: false
 ---
