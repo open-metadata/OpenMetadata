@@ -1955,6 +1955,7 @@
     "hex-color-validation": "Invoer is geen geldige HEX-code.",
     "hi-user-welcome-to": "Hoi {{user}}, welkom bij",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
+    "import-data-in-progress": "Import is bezig.",
     "import-entity-help": "Bespaar tijd en moeite door een CSV-bestand te uploaden met verschillende {{entity}} in één keer.",
     "in-this-database": "In deze database",
     "include-assets-message": "Schakel het extraheren van {{assets}} uit de databron in.",
