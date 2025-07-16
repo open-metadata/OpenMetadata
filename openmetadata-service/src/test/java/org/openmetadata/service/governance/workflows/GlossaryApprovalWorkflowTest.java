@@ -14,23 +14,24 @@ package org.openmetadata.service.governance.workflows;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-
-import java.time.Duration;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.HashMap;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
-import org.apache.http.client.HttpResponseException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.flowable.common.engine.impl.cfg.IdGenerator;
 import org.flowable.common.engine.impl.persistence.StrongUuidGenerator;
 import org.flowable.engine.ProcessEngineConfiguration;
@@ -40,35 +41,31 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
-import org.openmetadata.schema.api.teams.CreateUser;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
-import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
@@ -95,7 +92,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
       originalIdGenerator = cfg.getIdGenerator();
       cfg.setIdGenerator(new StrongUuidGenerator());
     }
-    
+
     // Ensure WorkflowEventConsumer subscription exists and is active
     ensureWorkflowEventConsumerIsActive();
   }
@@ -104,41 +101,49 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
   // This uses the exact same configuration as WorkflowEvents.json
   private void ensureWorkflowEventConsumerIsActive() {
     try {
-      EventSubscriptionResourceTest eventSubscriptionResourceTest = new EventSubscriptionResourceTest();
-      
+      EventSubscriptionResourceTest eventSubscriptionResourceTest =
+          new EventSubscriptionResourceTest();
+
       EventSubscription existing = null;
       try {
-        existing = eventSubscriptionResourceTest.getEntityByName("WorkflowEventConsumer", null, ADMIN_AUTH_HEADERS);
+        existing =
+            eventSubscriptionResourceTest.getEntityByName(
+                "WorkflowEventConsumer", null, ADMIN_AUTH_HEADERS);
       } catch (Exception e) {
         // Subscription doesn't exist, we'll create it
       }
-      
+
       if (existing == null) {
         // Use exact same configuration as WorkflowEvents.json
-        CreateEventSubscription createSubscription = new CreateEventSubscription()
-            .withName("WorkflowEventConsumer")
-            .withDisplayName("Workflow Event Consumer")
-            .withDescription("Consumers EntityChange Events in order to trigger Workflows, if they exist.")
-            .withAlertType(CreateEventSubscription.AlertType.GOVERNANCE_WORKFLOW_CHANGE_EVENT)
-            .withResources(List.of("all"))
-            .withProvider(ProviderType.SYSTEM)
-            .withPollInterval(10)
-            .withEnabled(true)
-            .withDestinations(List.of(
-                new SubscriptionDestination()
-                    .withId(UUID.fromString("fc9e7a84-5dbd-4e63-8b78-6c3a7bf04a60"))
-                    .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
-                    .withType(SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT)
-                    .withEnabled(true)
-            ));
-        
+        CreateEventSubscription createSubscription =
+            new CreateEventSubscription()
+                .withName("WorkflowEventConsumer")
+                .withDisplayName("Workflow Event Consumer")
+                .withDescription(
+                    "Consumers EntityChange Events in order to trigger Workflows, if they exist.")
+                .withAlertType(CreateEventSubscription.AlertType.GOVERNANCE_WORKFLOW_CHANGE_EVENT)
+                .withResources(List.of("all"))
+                .withProvider(ProviderType.SYSTEM)
+                .withPollInterval(10)
+                .withEnabled(true)
+                .withDestinations(
+                    List.of(
+                        new SubscriptionDestination()
+                            .withId(UUID.fromString("fc9e7a84-5dbd-4e63-8b78-6c3a7bf04a60"))
+                            .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                            .withType(
+                                SubscriptionDestination.SubscriptionType
+                                    .GOVERNANCE_WORKFLOW_CHANGE_EVENT)
+                            .withEnabled(true)));
+
         eventSubscriptionResourceTest.createEntity(createSubscription, ADMIN_AUTH_HEADERS);
         java.lang.Thread.sleep(1000); // Give it time to initialize
       } else if (!existing.getEnabled()) {
         // Enable if disabled
         String json = JsonUtils.pojoToJson(existing);
         existing.setEnabled(true);
-        eventSubscriptionResourceTest.patchEntity(existing.getId(), json, existing, ADMIN_AUTH_HEADERS);
+        eventSubscriptionResourceTest.patchEntity(
+            existing.getId(), json, existing, ADMIN_AUTH_HEADERS);
         java.lang.Thread.sleep(1000);
       }
     } catch (Exception e) {
@@ -162,24 +167,24 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
   @Test
   public void testGlossaryApprovalWorkflowStatesApiIntegration() throws Exception {
     // Create glossary WITHOUT reviewers - this should go straight to approved
-    CreateGlossary createGlossary = new CreateGlossary()
-        .withName(TEST_GLOSSARY_NAME)
-        .withDescription("Test glossary");
+    CreateGlossary createGlossary =
+        new CreateGlossary().withName(TEST_GLOSSARY_NAME).withDescription("Test glossary");
     Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    
+
     // Create term WITHOUT reviewers - this should also go straight to approved
-    CreateGlossaryTerm createTerm = new CreateGlossaryTerm()
-        .withName(TEST_TERM_NAME)
-        .withGlossary(glossary.getFullyQualifiedName())
-        .withDescription("Test term");
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName(TEST_TERM_NAME)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Test term");
     GlossaryTerm term = glossaryTermTest.createEntity(createTerm, ADMIN_AUTH_HEADERS);
-    
+
     // Verify the term is approved (no reviewers = auto-approved)
     assertEquals(Status.APPROVED, term.getStatus());
-    
+
     String termFqn = glossary.getFullyQualifiedName() + "." + TEST_TERM_NAME;
     String entityLink = String.format("<#E::glossaryTerm::%s>", termFqn);
-    
+
     // Wait for workflow instance to be created and completed - with manual trigger fallback
     UUID workflowInstanceId;
     try {
@@ -190,53 +195,60 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
       manuallyTriggerWorkflowSignal(entityLink);
       workflowInstanceId = waitForWorkflowInstanceByEntityLink(entityLink);
     }
-    WorkflowInstance instance = waitForWorkflowInstanceCompletion(workflowInstanceId, "ApprovedEnd");
+    WorkflowInstance instance =
+        waitForWorkflowInstanceCompletion(workflowInstanceId, "ApprovedEnd");
 
-    // Fetch workflow states and assert expected transitions
-    List<WorkflowInstanceState> states = getWorkflowStatesForInstance(instance);
+    // Fetch workflow states using the enhanced API that gets states from latest workflow instance
+    List<WorkflowInstanceState> states =
+        getWorkflowStatesForEntityLink(entityLink, "GlossaryTermApprovalWorkflow");
     assertNotNull(states, "Workflow instance states should not be null");
     assertFalse(states.isEmpty(), "Workflow instance states should have entries");
 
     // Sort states by timestamp before asserting
     states.sort(Comparator.comparing(WorkflowInstanceState::getTimestamp));
-    
+
     // Assert the expected sequence of workflow states for auto-approve (no reviewers)
-    List<String> expectedStages = List.of(
-        "GlossaryTermCreated",
-        "CheckGlossaryTermHasReviewers",
-        "SetGlossaryTermStatusToApproved",
-        "ApprovedEnd"
-    );
+    List<String> expectedStages =
+        List.of(
+            "GlossaryTermCreated",
+            "CheckGlossaryTermHasReviewers",
+            "SetGlossaryTermStatusToApproved",
+            "ApprovedEnd");
     assertWorkflowStatesSequence(states, expectedStages);
 
     // Assert that the workflow instance is finished
-    assertEquals(WorkflowInstance.WorkflowStatus.FINISHED, instance.getStatus(), "Workflow instance should be finished");
+    assertEquals(
+        WorkflowInstance.WorkflowStatus.FINISHED,
+        instance.getStatus(),
+        "Workflow instance should be finished");
   }
 
   @Test
   public void testGlossaryApprovalWorkflowWithReviewer() throws Exception {
     // Create glossary with reviewer and stable name
-    CreateGlossary createGlossary = new CreateGlossary()
-        .withName("ReviewerGlossary")
-        .withDescription("Reviewer glossary")
-        .withReviewers(List.of(reviewerUser.getEntityReference()));
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName("ReviewerGlossary")
+            .withDescription("Reviewer glossary")
+            .withReviewers(List.of(reviewerUser.getEntityReference()));
     Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    
+
     // Create term with stable name and inherits reviewers from glossary
-    CreateGlossaryTerm createTerm = new CreateGlossaryTerm()
-        .withName("ReviewerTerm")
-        .withGlossary(glossary.getFullyQualifiedName())
-        .withDescription("Reviewer term");
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName("ReviewerTerm")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Reviewer term");
     GlossaryTerm term = glossaryTermTest.createEntity(createTerm, ADMIN_AUTH_HEADERS);
-    
+
     // Verify the term has reviewers and is in draft status
     assertNotNull(term.getReviewers());
     assertFalse(term.getReviewers().isEmpty());
     assertEquals(Status.DRAFT, term.getStatus());
-    
+
     String termFqn = glossary.getFullyQualifiedName() + "." + "ReviewerTerm";
     String entityLink = String.format("<#E::glossaryTerm::%s>", termFqn);
-    
+
     // Wait for workflow instance to be created - with manual trigger fallback
     UUID workflowInstanceId;
     try {
@@ -253,67 +265,82 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     await()
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(1))
-        .until(() -> {
-          GlossaryTerm refreshed = glossaryTermTest.getEntity(finalTerm.getId(), null, ADMIN_AUTH_HEADERS);
-          return refreshed.getStatus() == Status.IN_REVIEW;
-        });
+        .until(
+            () -> {
+              GlossaryTerm refreshed =
+                  glossaryTermTest.getEntity(finalTerm.getId(), null, ADMIN_AUTH_HEADERS);
+              return refreshed.getStatus() == Status.IN_REVIEW;
+            });
 
     // Approve the term as reviewerUser
     String json = JsonUtils.pojoToJson(term);
     term.setStatus(Status.APPROVED);
-    
-    Map<String, String> reviewerHeaders = authHeaders(reviewerUser.getName() + "@open-metadata.org");
-    term = glossaryTermTest.patchEntity(
-        term.getId(), json, term, reviewerHeaders);
+
+    Map<String, String> reviewerHeaders =
+        authHeaders(reviewerUser.getName() + "@open-metadata.org");
+    term = glossaryTermTest.patchEntity(term.getId(), json, term, reviewerHeaders);
 
     // Find the open approval task for the term via API
     String about = String.format("<#E::glossaryTerm::%s>", term.getFullyQualifiedName());
-    String url = "feed?threadType=Task&about=" + URLEncoder.encode(about, StandardCharsets.UTF_8) + "&taskStatus=Open";
+    String url =
+        "feed?threadType=Task&about="
+            + URLEncoder.encode(about, StandardCharsets.UTF_8)
+            + "&taskStatus=Open";
     WebTarget taskTarget = getResource(url);
     Invocation.Builder builder = taskTarget.request();
     for (Map.Entry<String, String> entry : ADMIN_AUTH_HEADERS.entrySet()) {
       builder = builder.header(entry.getKey(), entry.getValue());
     }
     String rawJson = builder.get(String.class);
-    ResultList<Thread> threads = JsonUtils.readValue(rawJson, new com.fasterxml.jackson.core.type.TypeReference<ResultList<Thread>>() {});
-    
-    // Find the approval task thread - filter for threads that have tasks first, then check task type
-    Thread taskThread = threads.getData().stream()
-        .filter(t -> t.getTask() != null)  // First ensure the thread has a task
-        .filter(t -> t.getTask().getType() == TaskType.RequestApproval)  // Then check task type
-        .findFirst()
-        .orElseThrow(() -> new AssertionError("No open approval task found"));
-    
+    ResultList<Thread> threads =
+        JsonUtils.readValue(
+            rawJson, new com.fasterxml.jackson.core.type.TypeReference<ResultList<Thread>>() {});
+
+    // Find the approval task thread - filter for threads that have tasks first, then check task
+    // type
+    Thread taskThread =
+        threads.getData().stream()
+            .filter(t -> t.getTask() != null) // First ensure the thread has a task
+            .filter(t -> t.getTask().getType() == TaskType.RequestApproval) // Then check task type
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("No open approval task found"));
+
     // Prepare the resolve payload
     ResolveTask resolveTask = new ResolveTask().withNewValue("approved");
-    WebTarget resolveTarget = getResource("feed/tasks/" + taskThread.getTask().getId() + "/resolve");
+    WebTarget resolveTarget =
+        getResource("feed/tasks/" + taskThread.getTask().getId() + "/resolve");
     TestUtils.put(resolveTarget, resolveTask, Response.Status.OK, reviewerHeaders);
 
     // Wait for workflow instance to finish
-    WorkflowInstance instance = waitForWorkflowInstanceCompletion(workflowInstanceId, "ApprovedEndAfterApproval");
+    WorkflowInstance instance =
+        waitForWorkflowInstanceCompletion(workflowInstanceId, "ApprovedEndAfterApproval");
 
-    // Fetch workflow states and assert expected transitions
-    List<WorkflowInstanceState> states = getWorkflowStatesForInstance(instance);
+    // Fetch workflow states using the enhanced API that gets states from latest workflow instance
+    List<WorkflowInstanceState> states =
+        getWorkflowStatesForEntityLink(entityLink, "GlossaryTermApprovalWorkflow");
     assertNotNull(states, "Workflow instance states should not be null");
     assertFalse(states.isEmpty(), "Workflow instance states should have entries");
 
     // Sort states by timestamp before asserting
     states.sort(Comparator.comparing(WorkflowInstanceState::getTimestamp));
-    
+
     // Assert the expected sequence of workflow states for reviewer approval
-    List<String> expectedStages = List.of(
-        "GlossaryTermCreated",
-        "CheckGlossaryTermHasReviewers",
-        "CheckGlossaryTermIsReadyToBeReviewed",
-        "SetGlossaryTermStatusToInReview",
-        "ApproveGlossaryTerm",
-        "SetGlossaryTermStatusToApprovedAfterApproval",
-        "ApprovedEndAfterApproval"     
-    );
+    List<String> expectedStages =
+        List.of(
+            "GlossaryTermCreated",
+            "CheckGlossaryTermHasReviewers",
+            "CheckGlossaryTermIsReadyToBeReviewed",
+            "SetGlossaryTermStatusToInReview",
+            "ApproveGlossaryTerm",
+            "SetGlossaryTermStatusToApprovedAfterApproval",
+            "ApprovedEndAfterApproval");
     assertWorkflowStatesSequence(states, expectedStages);
 
     // Assert that the workflow instance is finished
-    assertEquals(WorkflowInstance.WorkflowStatus.FINISHED, instance.getStatus(), "Workflow instance should be finished");
+    assertEquals(
+        WorkflowInstance.WorkflowStatus.FINISHED,
+        instance.getStatus(),
+        "Workflow instance should be finished");
   }
 
   // Helper: Wait for workflow instance related to a specific entity using entityLink variable
@@ -321,18 +348,23 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     int retries = 30;
     long now = System.currentTimeMillis();
     long oneHourAgo = now - 3600_000L;
-    
+
     while (retries-- > 0) {
-      String url = String.format("governance/workflowInstances?startTs=%d&endTs=%d&limit=100&entityLink=%s", 
-          oneHourAgo, now, URLEncoder.encode(entityLink, StandardCharsets.UTF_8));
+      String url =
+          String.format(
+              "governance/workflowInstances?startTs=%d&endTs=%d&limit=100&entityLink=%s",
+              oneHourAgo, now, URLEncoder.encode(entityLink, StandardCharsets.UTF_8));
       WebTarget target = getResource(url);
       Invocation.Builder builder = target.request();
       for (Map.Entry<String, String> entry : ADMIN_AUTH_HEADERS.entrySet()) {
         builder = builder.header(entry.getKey(), entry.getValue());
       }
       String rawJson = builder.get(String.class);
-      ResultList<WorkflowInstance> result = JsonUtils.readValue(rawJson, new com.fasterxml.jackson.core.type.TypeReference<ResultList<WorkflowInstance>>() {});
-      
+      ResultList<WorkflowInstance> result =
+          JsonUtils.readValue(
+              rawJson,
+              new com.fasterxml.jackson.core.type.TypeReference<ResultList<WorkflowInstance>>() {});
+
       if (!result.getData().isEmpty()) {
         return result.getData().getFirst().getId();
       }
@@ -341,26 +373,34 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     throw new AssertionError("No WorkflowInstance found for entityLink: " + entityLink);
   }
 
-  // Unified helper: poll until the workflow instance is finished and (optionally) final stage is present
-  private WorkflowInstance waitForWorkflowInstanceCompletion(UUID instanceId, String finalStage) throws InterruptedException {
+  // Unified helper: poll until the workflow instance is finished and (optionally) final stage is
+  // present
+  private WorkflowInstance waitForWorkflowInstanceCompletion(UUID instanceId, String finalStage)
+      throws InterruptedException {
     int retries = 60;
     long now = System.currentTimeMillis();
     long oneHourAgo = now - 3600_000L;
 
     while (retries-- > 0) {
-      String url = String.format("governance/workflowInstances?startTs=%d&endTs=%d&limit=100", oneHourAgo, now);
+      String url =
+          String.format(
+              "governance/workflowInstances?startTs=%d&endTs=%d&limit=100", oneHourAgo, now);
       WebTarget target = getResource(url);
       Invocation.Builder builder = target.request();
       for (Map.Entry<String, String> entry : ADMIN_AUTH_HEADERS.entrySet()) {
         builder = builder.header(entry.getKey(), entry.getValue());
       }
       String rawJson = builder.get(String.class);
-      ResultList<WorkflowInstance> result = JsonUtils.readValue(rawJson, new com.fasterxml.jackson.core.type.TypeReference<ResultList<WorkflowInstance>>() {});
-      
-      WorkflowInstance instance = result.getData().stream()
-          .filter(inst -> inst.getId().equals(instanceId))
-          .findFirst()
-          .orElse(null);
+      ResultList<WorkflowInstance> result =
+          JsonUtils.readValue(
+              rawJson,
+              new com.fasterxml.jackson.core.type.TypeReference<ResultList<WorkflowInstance>>() {});
+
+      WorkflowInstance instance =
+          result.getData().stream()
+              .filter(inst -> inst.getId().equals(instanceId))
+              .findFirst()
+              .orElse(null);
 
       if (instance == null) {
         java.lang.Thread.sleep(1000);
@@ -392,33 +432,87 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
       defBuilder = defBuilder.header(entry.getKey(), entry.getValue());
     }
     String defRawJson = defBuilder.get(String.class);
-    WorkflowDefinition workflowDefinition = JsonUtils.readValue(defRawJson, WorkflowDefinition.class);
-    
+    WorkflowDefinition workflowDefinition =
+        JsonUtils.readValue(defRawJson, WorkflowDefinition.class);
+
     long now = System.currentTimeMillis();
     long oneHourAgo = now - 3600_000L;
-    String url = String.format("governance/workflowInstanceStates/%s/%s?startTs=%d&endTs=%d&limit=100", 
-        workflowDefinition.getName(), instance.getId(), oneHourAgo, now);
+    String url =
+        String.format(
+            "governance/workflowInstanceStates/%s/%s?startTs=%d&endTs=%d&limit=100",
+            workflowDefinition.getName(), instance.getId(), oneHourAgo, now);
     WebTarget target = getResource(url);
     Invocation.Builder builder = target.request();
     for (Map.Entry<String, String> entry : ADMIN_AUTH_HEADERS.entrySet()) {
       builder = builder.header(entry.getKey(), entry.getValue());
     }
     String rawJson = builder.get(String.class);
-    ResultList<WorkflowInstanceState> result = JsonUtils.readValue(rawJson, new com.fasterxml.jackson.core.type.TypeReference<ResultList<WorkflowInstanceState>>() {});
+    ResultList<WorkflowInstanceState> result =
+        JsonUtils.readValue(
+            rawJson,
+            new com.fasterxml.jackson.core.type.TypeReference<
+                ResultList<WorkflowInstanceState>>() {});
     return result.getData();
   }
 
-  private void assertWorkflowStatesSequence(List<WorkflowInstanceState> states, List<String> expectedStages) {
-    List<String> actualStages = states.stream().map(s -> s.getStage().getName()).collect(Collectors.toList());
+  private List<WorkflowInstanceState> getWorkflowStatesForEntityLink(
+      String entityLink, String workflowDefinitionName) {
+    int retries = 30;
+    long now = System.currentTimeMillis();
+    long oneHourAgo = now - 3600_000L;
+
+    while (retries-- > 0) {
+      try {
+        String url =
+            String.format(
+                "governance/workflowInstanceStates?startTs=%d&endTs=%d&limit=100&entityLink=%s&workflowDefinitionName=%s",
+                oneHourAgo,
+                now,
+                URLEncoder.encode(entityLink, StandardCharsets.UTF_8),
+                URLEncoder.encode(workflowDefinitionName, StandardCharsets.UTF_8));
+        WebTarget target = getResource(url);
+        Invocation.Builder builder = target.request();
+        for (Map.Entry<String, String> entry : ADMIN_AUTH_HEADERS.entrySet()) {
+          builder = builder.header(entry.getKey(), entry.getValue());
+        }
+        String rawJson = builder.get(String.class);
+        ResultList<WorkflowInstanceState> result =
+            JsonUtils.readValue(
+                rawJson,
+                new com.fasterxml.jackson.core.type.TypeReference<
+                    ResultList<WorkflowInstanceState>>() {});
+
+        if (!result.getData().isEmpty()) {
+          return result.getData();
+        }
+        java.lang.Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        java.lang.Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+      }
+    }
+    throw new AssertionError(
+        "No WorkflowInstanceState found for entityLink: "
+            + entityLink
+            + " and workflowDefinitionName: "
+            + workflowDefinitionName);
+  }
+
+  private void assertWorkflowStatesSequence(
+      List<WorkflowInstanceState> states, List<String> expectedStages) {
+    List<String> actualStages =
+        states.stream().map(s -> s.getStage().getName()).collect(Collectors.toList());
     assertEquals(expectedStages, actualStages, "Workflow stages sequence mismatch");
-    
+
     // Also check that each state has required fields
     for (WorkflowInstanceState state : states) {
       assertNotNull(state.getStage(), "Stage should not be null");
       assertNotNull(state.getStatus(), "Status should not be null");
       assertNotNull(state.getTimestamp(), "Timestamp should not be null");
       if (state.getStage().getVariables() != null) {
-        assertFalse(state.getStage().getVariables().isEmpty(), "Stage variables should not be empty if present");
+        assertFalse(
+            state.getStage().getVariables().isEmpty(),
+            "Stage variables should not be empty if present");
       }
     }
   }
@@ -427,9 +521,8 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     try {
       Map<String, Object> variables = new HashMap<>();
       variables.put(
-          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-          entityLink);
-      
+          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE), entityLink);
+
       String signal = "glossaryTerm-entityCreated";
       WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
       java.lang.Thread.sleep(2000); // Give workflow time to process
