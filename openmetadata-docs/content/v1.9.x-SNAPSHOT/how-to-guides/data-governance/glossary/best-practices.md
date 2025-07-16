@@ -1,5 +1,6 @@
 ---
-title: Best Practices for Glossary
+title: Best Practices for Glossary | Official Documentation
+description: Apply best practices for creating glossary terms to ensure consistency, clarity, and shared understanding across teams.
 slug: /how-to-guides/data-governance/glossary/best-practices
 ---
 
