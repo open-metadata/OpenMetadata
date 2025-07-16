@@ -347,6 +347,7 @@ export const ENTITY_PATH = {
   query: 'query',
   testCases: 'testCase',
   domains: 'domain',
+  charts: 'chart',
 };
 
 export const VALIDATION_MESSAGES = {

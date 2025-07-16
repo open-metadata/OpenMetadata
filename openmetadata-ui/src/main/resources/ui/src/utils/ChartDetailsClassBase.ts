@@ -33,6 +33,7 @@ import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 export interface ChartDetailsTabsProps {
   chartDetails: Chart;
   editLineagePermission: boolean;
+  editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
   handleFeedCount: (data: FeedCounts) => void;
   feedCount: FeedCounts;
@@ -70,6 +71,7 @@ class ChartDetailsClassBase {
       EntityTabs.DETAILS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
+      EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,

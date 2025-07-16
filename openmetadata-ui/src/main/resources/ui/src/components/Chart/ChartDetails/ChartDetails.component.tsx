@@ -70,7 +70,7 @@ const ChartDetails = ({
   const { tab: activeTab = EntityTabs.DETAILS } = useRequiredParams<{
     tab: EntityTabs;
   }>();
-  const { customizedPage, isLoading } = useCustomPages(PageType.Chart);
+  const { customizedPage, isLoading } = useCustomPages('Chart' as PageType);
   const { fqn: decodedChartFQN } = useFqn();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -192,23 +192,30 @@ const ChartDetails = ({
     [navigate]
   );
 
-  const { editAllPermission, editLineagePermission, viewAllPermission } =
-    useMemo(
-      () => ({
-        editAllPermission: chartPermissions.EditAll && !deleted,
-        editLineagePermission:
-          (chartPermissions.EditAll || chartPermissions.EditLineage) &&
-          !deleted,
-        viewAllPermission: chartPermissions.ViewAll,
-      }),
-      [chartPermissions, deleted]
-    );
+  const {
+    editAllPermission,
+    editLineagePermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editAllPermission: chartPermissions.EditAll && !deleted,
+      editLineagePermission:
+        (chartPermissions.EditAll || chartPermissions.EditLineage) && !deleted,
+      editCustomAttributePermission:
+        (chartPermissions.EditAll || chartPermissions.EditCustomFields) &&
+        !deleted,
+      viewAllPermission: chartPermissions.ViewAll,
+    }),
+    [chartPermissions, deleted]
+  );
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = chartDetailsClassBase.getChartDetailPageTabs({
       editLineagePermission,
+      editCustomAttributePermission,
       viewAllPermission,
       chartDetails,
       deleted: deleted ?? false,
@@ -232,6 +239,7 @@ const ChartDetails = ({
     deleted,
     handleFeedCount,
     editLineagePermission,
+    editCustomAttributePermission,
     editAllPermission,
     viewAllPermission,
   ]);
@@ -256,7 +264,7 @@ const ChartDetails = ({
   };
 
   const isExpandViewSupported = useMemo(
-    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Chart),
+    () => checkIfExpandViewSupported(tabs[0], activeTab, 'Chart' as PageType),
     [tabs[0], activeTab]
   );
 

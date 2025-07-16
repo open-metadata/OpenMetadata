@@ -13,6 +13,7 @@
 
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -32,6 +33,8 @@ export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNE
 export const getChartDetailPageTabs = ({
   chartDetails,
   editLineagePermission,
+  editCustomAttributePermission,
+  viewAllPermission,
   handleFeedCount,
   feedCount,
   activeTab,
@@ -45,7 +48,7 @@ export const getChartDetailPageTabs = ({
         <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
       ),
       key: EntityTabs.DETAILS,
-      children: <GenericTab type={PageType.Chart} />,
+      children: <GenericTab type={'Chart' as PageType} />,
     },
     {
       label: (
@@ -82,6 +85,22 @@ export const getChartDetailPageTabs = ({
             hasEditAccess={editLineagePermission}
           />
         </LineageProvider>
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CUSTOM_PROPERTIES}
+          name={t('label.custom-property-plural')}
+        />
+      ),
+      key: EntityTabs.CUSTOM_PROPERTIES,
+      children: (
+        <CustomPropertyTable
+          entityType={EntityType.CHART}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];
