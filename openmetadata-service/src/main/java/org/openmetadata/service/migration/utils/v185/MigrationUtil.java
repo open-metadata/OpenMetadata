@@ -37,14 +37,15 @@ public class MigrationUtil {
           (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
       EntityDAO<TestCase> testCaseDAO = testCaseRepository.getDao();
       // Process test cases in batches
-      int batchSize = 1;
+      int batchSize = 100;
       int relationshipsCreated = 0;
       int processedCount = 0;
-      boolean hasMore = true;
       int offset = 0;
       String cursor = RestUtil.encodeCursor("0");
+      int total = testCaseDAO.listCount(new ListFilter(Include.ALL));
+      LOG.info("Processing TestCases: total={}", total);
 
-      do {
+      while (offset < total) {
         ResultList<TestCase> testCases =
             testCaseRepository.listWithOffset(
                 testCaseDAO::listAfter,
@@ -63,7 +64,6 @@ public class MigrationUtil {
 
         for (TestCase testCase : testCases.getData()) {
           processedCount++;
-
           try {
             // Check if this test case has any test case resolution status records
             List<TestCaseResolutionStatus> resolutionStatuses =
@@ -120,15 +120,9 @@ public class MigrationUtil {
             processedCount,
             relationshipsCreated);
 
-        // Check if we got fewer results than batch size (indicating we're at the end)
-        if (testCases.getPaging() != null && testCases.getPaging().getAfter() == null) {
-          hasMore = false;
-        } else {
-          // Prepare for next batch
-          offset += testCases.getData().size();
-          cursor = RestUtil.encodeCursor(String.valueOf(offset));
-        }
-      } while (hasMore);
+        offset += testCases.getData().size();
+        cursor = RestUtil.encodeCursor(String.valueOf(offset));
+      }
 
       LOG.info(
           "Migration completed. Processed {} test cases, created {} new relationships",
