@@ -255,9 +255,6 @@ describe('MyDataPage component', () => {
     expect(
       await screen.findByText('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText('KnowledgePanel.Announcements')
-    ).toBeInTheDocument();
     expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
@@ -281,7 +278,6 @@ describe('MyDataPage component', () => {
     expect(
       await screen.findByText('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
-    expect(screen.queryByText('KnowledgePanel.Announcements')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
@@ -301,9 +297,6 @@ describe('MyDataPage component', () => {
     ).toBeInTheDocument();
     expect(
       await screen.findByText('KnowledgePanel.Following')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('KnowledgePanel.Announcements')
     ).toBeInTheDocument();
     expect(await screen.findByText('KnowledgePanel.KPI')).toBeInTheDocument();
     expect(
@@ -326,9 +319,6 @@ describe('MyDataPage component', () => {
     ).toBeInTheDocument();
     expect(
       await screen.findByText('KnowledgePanel.Following')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('KnowledgePanel.Announcements')
     ).toBeInTheDocument();
     expect(await screen.findByText('KnowledgePanel.KPI')).toBeInTheDocument();
     expect(
