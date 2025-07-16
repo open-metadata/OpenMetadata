@@ -55,7 +55,7 @@ jest.mock('./AnnouncementCardV1/AnnouncementCardV1.component', () => {
   ));
 });
 
-const mockHandleRemoveWidget = jest.fn();
+const mockOnClose = jest.fn();
 
 const mockAnnouncements: Thread[] = [
   {
@@ -108,9 +108,7 @@ const mockAnnouncements: Thread[] = [
 ];
 
 const widgetProps = {
-  isEditView: false,
-  widgetKey: 'announcements-widget-v1',
-  handleRemoveWidget: mockHandleRemoveWidget,
+  onClose: mockOnClose,
   loading: false,
 };
 
@@ -167,21 +165,7 @@ describe('AnnouncementsWidgetV1', () => {
     const closeButton = screen.getByTestId('announcements-widget-v1-close');
     fireEvent.click(closeButton);
 
-    expect(mockHandleRemoveWidget).toHaveBeenCalledWith(
-      'announcements-widget-v1'
-    );
-  });
-
-  it('should hide widget when close button is clicked without handleRemoveWidget', () => {
-    const { container } = renderAnnouncementsWidgetV1({
-      announcements: mockAnnouncements,
-      handleRemoveWidget: undefined,
-    });
-
-    const closeButton = screen.getByTestId('announcements-widget-v1-close');
-    fireEvent.click(closeButton);
-
-    expect(container.firstChild).toBeNull();
+    expect(mockOnClose).toHaveBeenCalled();
   });
 
   it('should display correct announcement content', () => {

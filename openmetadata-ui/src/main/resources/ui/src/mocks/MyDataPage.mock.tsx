@@ -116,7 +116,7 @@ export const mockCustomizePageClassBase = {
   defaultLayout: mockDefaultLayout,
   announcementWidget: {
     h: 3,
-    i: LandingPageWidgetKeys.ANNOUNCEMENTS,
+    i: LandingPageWidgetKeys.ACTIVITY_FEED,
     w: 1,
     x: 3,
     y: 0,

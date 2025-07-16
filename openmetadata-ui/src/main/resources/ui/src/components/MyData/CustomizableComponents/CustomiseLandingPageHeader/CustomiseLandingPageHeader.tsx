@@ -23,7 +23,6 @@ import { ReactComponent as FilterIcon } from '../../../../assets/svg/filter.svg'
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
-import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -211,11 +210,10 @@ const CustomiseLandingPageHeader = ({
             <AnnouncementsWidgetV1
               announcements={announcements}
               currentBackgroundColor={bgColor}
-              handleRemoveWidget={() => {
+              loading={isAnnouncementLoading}
+              onClose={() => {
                 setShowAnnouncements(false);
               }}
-              loading={isAnnouncementLoading}
-              widgetKey={LandingPageWidgetKeys.ANNOUNCEMENTS}
             />
           </div>
         )}

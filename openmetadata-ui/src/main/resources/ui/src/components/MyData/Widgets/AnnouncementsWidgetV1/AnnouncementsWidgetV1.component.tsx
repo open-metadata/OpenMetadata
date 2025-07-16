@@ -12,12 +12,11 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import { Badge, Button, Typography } from 'antd';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MegaphoneIcon } from '../../../../assets/svg/announcements-v1.svg';
 import { Thread } from '../../../../generated/entity/feed/thread';
-import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import {
   getEntityFQN,
   getEntityType,
@@ -27,29 +26,24 @@ import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import AnnouncementCardV1 from './AnnouncementCardV1/AnnouncementCardV1.component';
 import './announcements-widget-v1.less';
 
-export interface AnnouncementsWidgetV1Props extends WidgetCommonProps {
+export interface AnnouncementsWidgetV1Props {
   announcements?: Thread[];
   loading?: boolean;
   currentBackgroundColor?: string;
+  onClose: () => void;
 }
 
 const AnnouncementsWidgetV1 = ({
   announcements = [],
   loading = false,
-  handleRemoveWidget,
-  widgetKey,
   currentBackgroundColor,
+  onClose,
 }: AnnouncementsWidgetV1Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [isVisible, setIsVisible] = useState(true);
 
   const handleClose = () => {
-    if (handleRemoveWidget) {
-      handleRemoveWidget(widgetKey);
-    } else {
-      setIsVisible(false);
-    }
+    onClose();
   };
 
   const handleAnnouncementClick = (announcement: Thread) => {
@@ -116,10 +110,6 @@ const AnnouncementsWidgetV1 = ({
     ),
     [announcements, announcementCards, t, handleClose]
   );
-
-  if (!isVisible) {
-    return null;
-  }
 
   return (
     <WidgetWrapper

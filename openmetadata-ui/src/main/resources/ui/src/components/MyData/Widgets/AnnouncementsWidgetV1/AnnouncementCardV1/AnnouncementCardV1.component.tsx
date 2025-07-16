@@ -74,6 +74,8 @@ const AnnouncementCardV1 = ({
     announcementTitleStyle,
     userNameStyle,
     entityNameStyle,
+    entityIconStyle,
+    fieldOperationStyle,
   } = useMemo(() => {
     return {
       announcementTitleSectionStyle: {
@@ -87,6 +89,12 @@ const AnnouncementCardV1 = ({
       },
       entityNameStyle: {
         color: currentBackgroundColor,
+      },
+      entityIconStyle: {
+        color: `${currentBackgroundColor} !important`,
+      },
+      fieldOperationStyle: {
+        color: `${currentBackgroundColor} !important`,
       },
     };
   }, [currentBackgroundColor]);
@@ -129,25 +137,45 @@ const AnnouncementCardV1 = ({
                   onClick={handleUserClick}>
                   {userName}
                 </Link>
-                <Typography.Text className="field-operation-text">
+                <Typography.Text
+                  className="field-operation-text"
+                  style={fieldOperationStyle}>
                   {' '}
                   {getFieldOperationText(fieldOperation)}
                 </Typography.Text>
-                <span className="announcement-entity-icon">{entityIcon}</span>
+                <span
+                  className="announcement-entity-icon"
+                  style={entityIconStyle}>
+                  {entityIcon}
+                </span>
                 {entityFQN && entityType ? (
-                  <Link
+                  <Typography.Text
                     className="announcement-entity-name"
                     data-testid="entity-link"
-                    style={entityNameStyle}
-                    to={entityUtilClassBase.getEntityLink(
-                      entityType,
-                      entityFQN
-                    )}
-                    onClick={handleEntityClick}>
-                    {entityName}
-                  </Link>
+                    ellipsis={{
+                      tooltip: (
+                        <div className="announcement-entity-name-tooltip">
+                          {entityName}
+                        </div>
+                      ),
+                    }}
+                    style={entityNameStyle}>
+                    <Link
+                      to={entityUtilClassBase.getEntityLink(
+                        entityType,
+                        entityFQN
+                      )}
+                      onClick={handleEntityClick}>
+                      {entityName}
+                    </Link>
+                  </Typography.Text>
                 ) : (
-                  <Typography.Text className="announcement-entity-name">
+                  <Typography.Text
+                    className="announcement-entity-name"
+                    ellipsis={{
+                      tooltip: true,
+                    }}
+                    style={entityNameStyle}>
                     {entityName}
                   </Typography.Text>
                 )}

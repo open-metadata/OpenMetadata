@@ -29,7 +29,6 @@ import {
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
-import { Thread } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/type';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
@@ -193,7 +192,6 @@ const getAllWidgetsArray = (layout: WidgetConfig[]) => {
 };
 
 export const getWidgetFromKey = ({
-  announcements,
   currentLayout,
   followedData,
   handleLayoutUpdate,
@@ -204,13 +202,10 @@ export const getWidgetFromKey = ({
   iconHeight,
   iconWidth,
   isEditView,
-  isAnnouncementLoading,
   widgetConfig,
 }: {
-  announcements?: Thread[];
   currentLayout?: Array<WidgetConfig>;
   followedData?: EntityReference[];
-  isAnnouncementLoading?: boolean;
   handleLayoutUpdate?: (layout: Layout[]) => void;
   handleOpenAddWidgetModal?: () => void;
   handlePlaceholderWidgetKey?: (key: string) => void;
@@ -245,12 +240,10 @@ export const getWidgetFromKey = ({
   return (
     <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
       <Widget
-        announcements={announcements}
         currentLayout={currentLayout}
         followedData={followedData ?? []}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        isAnnouncementLoading={isAnnouncementLoading}
         isEditView={isEditView}
         isLoadingOwnedData={isLoadingOwnedData}
         selectedGridSize={widgetConfig.w}
