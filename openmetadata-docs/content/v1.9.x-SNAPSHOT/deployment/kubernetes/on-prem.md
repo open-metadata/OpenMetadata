@@ -1,5 +1,6 @@
 ---
-title: Kubernetes On Premises Deployment
+title: Kubernetes On Premises Deployment | Official Documentation
+description: Set up the OpenMetadata on-premises with Kubernetes for full control over infrastructure, security, and compliance requirements.
 slug: /deployment/kubernetes/on-prem
 collate: false
 ---
@@ -23,7 +24,7 @@ We support
 
 - MySQL engine version 8 or higher
 - PostgreSQL engine version 12 or higher
-- ElasticSearch version 8.X (upto 8.11.4) or OpenSearch Version 2.X (upto 2.7)
+- ElasticSearch version 8.X (upto 8.11.4) or OpenSearch Version 2.X (upto 2.19)
 
 Once you have the External Database and Search Engine configured, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
 

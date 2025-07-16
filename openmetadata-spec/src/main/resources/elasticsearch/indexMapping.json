@@ -69,6 +69,34 @@
     "parentAliases": ["storageService", "all", "dataAsset"],
     "childAliases": []
   },
+  "directory": {
+    "indexName": "directory_search_index",
+    "indexMappingFile": "/elasticsearch/%s/directory_index_mapping.json",
+    "alias": "directory",
+    "parentAliases": ["driveService", "all", "dataAsset"],
+    "childAliases": ["file", "spreadsheet", "directory"]
+  },
+  "file": {
+    "indexName": "file_search_index",
+    "indexMappingFile": "/elasticsearch/%s/file_index_mapping.json",
+    "alias": "file",
+    "parentAliases": ["driveService", "directory", "all", "dataAsset"],
+    "childAliases": []
+  },
+  "spreadsheet": {
+    "indexName": "spreadsheet_search_index",
+    "indexMappingFile": "/elasticsearch/%s/spreadsheet_index_mapping.json",
+    "alias": "spreadsheet",
+    "parentAliases": ["driveService", "directory", "all", "dataAsset"],
+    "childAliases": ["worksheet"]
+  },
+  "worksheet": {
+    "indexName": "worksheet_search_index",
+    "indexMappingFile": "/elasticsearch/%s/worksheet_index_mapping.json",
+    "alias": "worksheet",
+    "parentAliases": ["driveService", "spreadsheet", "all", "dataAsset"],
+    "childAliases": []
+  },
   "searchIndex": {
     "indexName": "search_entity_search_index",
     "indexMappingFile": "/elasticsearch/%s/search_entity_index_mapping.json",
@@ -244,6 +272,13 @@
     "parentAliases": ["all", "service"],
     "childAliases": ["searchIndex"]
   },
+  "driveService": {
+    "indexName": "drive_service_search_index",
+    "indexMappingFile": "/elasticsearch/%s/drive_service_index_mapping.json",
+    "alias": "driveService",
+    "parentAliases": ["all", "service"],
+    "childAliases": ["directory", "file", "spreadsheet", "worksheet"]
+  },
   "storageService": {
     "indexName": "storage_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/storage_service_index_mapping.json",
@@ -284,6 +319,41 @@
     "alias": "apiEndpoint",
     "indexMappingFile": "/elasticsearch/%s/api_endpoint_index_mapping.json",
     "parentAliases": ["apiService", "apiCollection", "all", "dataAsset"],
+    "childAliases": []
+  },
+  "driveService": {
+    "indexName": "drive_service_search_index",
+    "indexMappingFile": "/elasticsearch/%s/drive_service_index_mapping.json",
+    "alias": "driveService",
+    "parentAliases": ["all", "service"],
+    "childAliases": ["directory", "file", "spreadsheet", "worksheet"]
+  },
+  "directory": {
+    "indexName": "directory_search_index",
+    "indexMappingFile": "/elasticsearch/%s/directory_index_mapping.json",
+    "alias": "directory",
+    "parentAliases": ["driveService", "all", "dataAsset"],
+    "childAliases": ["file", "spreadsheet"]
+  },
+  "file": {
+    "indexName": "file_search_index",
+    "indexMappingFile": "/elasticsearch/%s/file_index_mapping.json",
+    "alias": "file",
+    "parentAliases": ["driveService", "directory", "all", "dataAsset"],
+    "childAliases": []
+  },
+  "spreadsheet": {
+    "indexName": "spreadsheet_search_index",
+    "indexMappingFile": "/elasticsearch/%s/spreadsheet_index_mapping.json",
+    "alias": "spreadsheet",
+    "parentAliases": ["driveService", "directory", "all", "dataAsset"],
+    "childAliases": ["worksheet"]
+  },
+  "worksheet": {
+    "indexName": "worksheet_search_index",
+    "indexMappingFile": "/elasticsearch/%s/worksheet_index_mapping.json",
+    "alias": "worksheet",
+    "parentAliases": ["driveService", "spreadsheet", "all", "dataAsset"],
     "childAliases": []
   },
   "testCaseResolutionStatus": {

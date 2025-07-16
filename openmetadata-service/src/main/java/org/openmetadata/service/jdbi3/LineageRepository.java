@@ -871,6 +871,7 @@ public class LineageRepository {
         return result;
       }
       case API_ENDPOINT -> {
+        Set<String> result = new HashSet<>();
         APIEndpoint apiEndpoint =
             Entity.getEntity(
                 API_ENDPOINT,
@@ -878,15 +879,20 @@ public class LineageRepository {
                 "responseSchema,requestSchema",
                 Include.NON_DELETED);
         if (apiEndpoint.getResponseSchema() != null) {
-          return CommonUtil.getChildrenNames(
-              apiEndpoint.getResponseSchema().getSchemaFields(),
-              "getChildren",
-              apiEndpoint.getFullyQualifiedName());
+          result.addAll(
+              CommonUtil.getChildrenNames(
+                  listOrEmpty(apiEndpoint.getResponseSchema().getSchemaFields()),
+                  "getChildren",
+                  apiEndpoint.getFullyQualifiedName()));
         }
-        return CommonUtil.getChildrenNames(
-            apiEndpoint.getRequestSchema().getSchemaFields(),
-            "getChildren",
-            apiEndpoint.getFullyQualifiedName());
+        if (apiEndpoint.getRequestSchema() != null) {
+          result.addAll(
+              CommonUtil.getChildrenNames(
+                  listOrEmpty(apiEndpoint.getRequestSchema().getSchemaFields()),
+                  "getChildren",
+                  apiEndpoint.getFullyQualifiedName()));
+        }
+        return result;
       }
       case METRIC -> {
         LOG.info("Metric column level lineage is not supported");
@@ -896,8 +902,10 @@ public class LineageRepository {
         LOG.info("Pipeline column level lineage is not supported");
         return new HashSet<>();
       }
-      default -> throw new IllegalArgumentException(
-          String.format("Unsupported Entity Type %s for lineage", entityReference.getType()));
+      default -> {
+        LOG.error("Unsupported Entity Type {} for column lineage", entityReference.getType());
+        return new HashSet<>();
+      }
     }
   }
 

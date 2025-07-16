@@ -34,6 +34,7 @@ import { ReactComponent as DropDownIcon } from '../../../../../assets/svg/drop-d
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import {
@@ -41,6 +42,7 @@ import {
   ColumnProfile,
   Table as TableType,
 } from '../../../../../generated/entity/data/table';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import {
   TestCase,
   TestCaseStatus,
@@ -54,9 +56,13 @@ import {
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
 import { getListTestCaseBySearch } from '../../../../../rest/testAPI';
-import { formatNumberWithComma } from '../../../../../utils/CommonUtils';
+import {
+  formatNumberWithComma,
+  getTableFQNFromColumnFQN,
+} from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../../../utils/FeedUtils';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
@@ -66,6 +72,7 @@ import {
   getTableExpandableConfig,
 } from '../../../../../utils/TableUtils';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
+import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
@@ -88,6 +95,7 @@ const ColumnProfileTable = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
+  const tableFqn = useMemo(() => getTableFQNFromColumnFQN(fqn), [fqn]);
   const {
     isTestsLoading,
     isProfilerDataLoading,
@@ -143,10 +151,14 @@ const ColumnProfileTable = () => {
 
   const { editTest, editDataProfile } = useMemo(() => {
     return {
-      editTest: permissions?.EditAll || permissions?.EditTests,
-      editDataProfile: permissions?.EditAll || permissions?.EditDataProfile,
+      editTest:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditTests),
+      editDataProfile:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
     };
-  }, [permissions]);
+  }, [permissions, getPrioritizedEditPermission]);
 
   const updateActiveColumnFqn = (key: string) =>
     navigate({
@@ -308,7 +320,7 @@ const ColumnProfileTable = () => {
         navigate({
           pathname: getAddDataQualityTableTestPath(
             ProfilerDashboardType.COLUMN,
-            fqn
+            tableFqn
           ),
           search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
         });
@@ -319,7 +331,10 @@ const ColumnProfileTable = () => {
       key: 'custom-metric',
       onClick: () => {
         navigate({
-          pathname: getAddCustomMetricPath(ProfilerDashboardType.COLUMN, fqn),
+          pathname: getAddCustomMetricPath(
+            ProfilerDashboardType.COLUMN,
+            tableFqn
+          ),
           search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
         });
       },
@@ -397,9 +412,7 @@ const ColumnProfileTable = () => {
 
   const fetchTableColumnWithProfiler = useCallback(
     async (page: number, searchText: string) => {
-      const tableFQN = tableProfiler?.fullyQualifiedName;
-
-      if (!tableFQN) {
+      if (!tableFqn) {
         return;
       }
 
@@ -408,13 +421,13 @@ const ColumnProfileTable = () => {
         const offset = (page - 1) * pageSize;
         // Use search API if there's a search query, otherwise use regular pagination
         const response = searchText
-          ? await searchTableColumnsByFQN(tableFQN, {
+          ? await searchTableColumnsByFQN(tableFqn, {
               q: searchText,
               limit: pageSize,
               offset: offset,
               fields: TabSpecificField.PROFILE,
             })
-          : await getTableColumnsByFQN(tableFQN, {
+          : await getTableColumnsByFQN(tableFqn, {
               limit: pageSize,
               offset: offset,
               fields: TabSpecificField.PROFILE,
@@ -432,7 +445,7 @@ const ColumnProfileTable = () => {
         setIsColumnsLoading(false);
       }
     },
-    [tableProfiler?.fullyQualifiedName, pageSize, searchText]
+    [tableFqn, pageSize, searchText]
   );
 
   const handleColumnProfilePageChange = useCallback(
@@ -443,10 +456,10 @@ const ColumnProfileTable = () => {
   );
 
   useEffect(() => {
-    if (tableProfiler?.fullyQualifiedName) {
+    if (tableFqn) {
       fetchTableColumnWithProfiler(currentPage, searchText);
     }
-  }, [tableProfiler?.fullyQualifiedName, currentPage, searchText, pageSize]);
+  }, [tableFqn, currentPage, searchText, pageSize]);
 
   useEffect(() => {
     if (activeColumnFqn) {
@@ -477,6 +490,15 @@ const ColumnProfileTable = () => {
       onSearch: handleSearchAction,
     };
   }, [searchText, handleSearchAction]);
+
+  if (permissions && !permissions?.ViewDataProfile) {
+    return (
+      <ErrorPlaceHolder
+        permissionValue={Operation.ViewDataProfile}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
 
   return (
     <Row data-testid="column-profile-table-container" gutter={[16, 16]}>

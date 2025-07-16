@@ -1,5 +1,6 @@
 ---
-title: Azure SSO for Kubernetes
+title: Azure SSO for Kubernetes | Official Documentation
+description: Connect Kubernetes to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /deployment/security/azure/kubernetes
 collate: false
 ---
@@ -64,7 +65,9 @@ openmetadata:
       callbackUrl: "http://localhost:8585/callback"
       oidcConfiguration:
         oidcType: "azure"
-        oidcConfiguration.enabled: true
+        enabled: true
+        tenant: "{Tenant ID}"
+        scope: openid email profile offline_access
         clientId:
           secretRef: oidc-secrets
           secretKey: openmetadata-oidc-client-id  

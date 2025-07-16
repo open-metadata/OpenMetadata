@@ -1,5 +1,6 @@
 ---
-title: How to Classify Data Assets
+title: How to Classify Data Assets | Official Documentation
+description: Manage classification of assets such as tables and dashboards to enhance discoverability, quality, and trust in your data.
 slug: /how-to-guides/data-governance/classification/assets
 ---
 

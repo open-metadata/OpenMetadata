@@ -1,5 +1,6 @@
 ---
 title: userApprovalTask | OpenMetadata User Approval Task
+description: Get started with userapprovaltask. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/usertask/userapprovaltask
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Metadata Ingestion Filter Patterns
+description: Use metadata filter patterns to selectively include or exclude tables, schemas, and files during ingestion workflows.
 slug: /connectors/ingestion/workflows/metadata/filter-patterns
 noindex: true
 nofollow: true

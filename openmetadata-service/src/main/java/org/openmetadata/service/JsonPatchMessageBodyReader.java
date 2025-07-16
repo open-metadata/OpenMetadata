@@ -25,7 +25,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.ext.MessageBodyReader;
 import jakarta.ws.rs.ext.Provider;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.lang.annotation.Annotation;
@@ -49,7 +48,7 @@ public class JsonPatchMessageBodyReader implements MessageBodyReader<JsonPatch> 
       MediaType mediaType,
       MultivaluedMap<String, String> httpHeaders,
       InputStream entityStream)
-      throws IOException, WebApplicationException {
+      throws WebApplicationException {
     try {
       // Use Jackson to read the JSON content first to avoid JsonStructure deserialization issues
       ObjectMapper mapper = new ObjectMapper();

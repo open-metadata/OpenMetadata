@@ -757,7 +757,6 @@ export const getTableDetailPageBaseTabs = ({
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
-  viewProfilerPermission,
   editLineagePermission,
   fetchTableDetails,
   testCaseSummary,
@@ -771,7 +770,7 @@ export const getTableDetailPageBaseTabs = ({
           count={tableDetails?.columns.length}
           id={EntityTabs.SCHEMA}
           isActive={activeTab === EntityTabs.SCHEMA}
-          name={get(labelMap, EntityTabs.SCHEMA, t('label.schema'))}
+          name={get(labelMap, EntityTabs.SCHEMA, t('label.column-plural'))}
         />
       ),
       key: EntityTabs.SCHEMA,
@@ -874,22 +873,13 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.PROFILER,
-      children:
-        !isTourOpen && !viewProfilerPermission ? (
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.data-observability'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
-        ) : (
-          <TableProfiler
-            permissions={tablePermissions}
-            table={tableDetails}
-            testCaseSummary={testCaseSummary}
-          />
-        ),
+      children: (
+        <TableProfiler
+          permissions={tablePermissions}
+          table={tableDetails}
+          testCaseSummary={testCaseSummary}
+        />
+      ),
     },
     {
       label: (

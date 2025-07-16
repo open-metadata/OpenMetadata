@@ -411,6 +411,12 @@ site_menu:
     url: /connectors/dashboard/tableau/yaml
   - category: Connectors / Dashboard / Tableau / Troubleshooting
     url: /connectors/dashboard/tableau/troubleshooting
+  - category: Connectors / Dashboard / ThoughtSpot
+    url: /connectors/dashboard/thoughtspot
+  - category: Connectors / Dashboard / ThoughtSpot / Run Externally
+    url: /connectors/dashboard/thoughtspot/yaml
+  - category: Connectors / Dashboard / ThoughtSpot / Troubleshooting
+    url: /connectors/dashboard/thoughtspot/troubleshooting
 
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -751,6 +757,8 @@ site_menu:
     url: /applications/autopilot
   - category: Applications / Data Retention Application
     url: /applications/data-retention
+  - category: Applications / Slack Application
+    url: /applications/slack
 
   - category: How-to Guides
     url: /how-to-guides

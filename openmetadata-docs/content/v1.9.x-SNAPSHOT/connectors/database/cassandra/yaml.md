@@ -8,7 +8,7 @@ name="Cassandra"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures","Data Profiler"]
+unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures","Data Profiler", "Auto-Classification"]
 / %}
 
 In this section, we provide guides and references to use the Cassandra connector.

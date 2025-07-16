@@ -27,8 +27,10 @@ import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../../../constants/profiler.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { TableProfile } from '../../../../../generated/entity/data/table';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
@@ -37,6 +39,7 @@ import {
 } from '../../../../../rest/tableAPI';
 import { Transi18next } from '../../../../../utils/CommonUtils';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
@@ -48,6 +51,7 @@ import {
 } from '../../../../../utils/TableProfilerUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
+import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import PageHeader from '../../../../PageHeader/PageHeader.component';
@@ -86,7 +90,9 @@ const TableProfilerChart = ({
     [tableCustomMetric, tableDetails]
   );
 
-  const editDataProfile = permissions?.EditAll || permissions?.EditDataProfile;
+  const editDataProfile =
+    permissions &&
+    getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
     INITIAL_ROW_METRIC_VALUE
   );
@@ -244,6 +250,17 @@ const TableProfilerChart = ({
       </ProfilerStateWrapper>
     );
   }, [isSystemProfilerLoading, operationMetrics, noProfilerMessage]);
+
+  if (permissions && !permissions?.ViewDataProfile) {
+    return (
+      <ErrorPlaceHolder
+        permissionValue={t('label.view-entity', {
+          entity: t('label.data-observability'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
 
   return (
     <Row data-testid="table-profiler-chart-container" gutter={[16, 16]}>
