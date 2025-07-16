@@ -90,8 +90,8 @@ describe('MyDataWidget component', () => {
       1,
       10,
       '(owners.id:113)',
-      '',
-      '',
+      'updatedAt',
+      'desc',
       'all'
     );
   });

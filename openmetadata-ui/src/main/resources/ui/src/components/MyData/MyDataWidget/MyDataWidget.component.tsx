@@ -72,6 +72,62 @@ const MyDataWidgetInternal = ({
     [currentLayout, widgetKey]
   );
   const [selectedFilter, setSelectedFilter] = useState<string>('Latest');
+
+  const getSortField = useCallback((filterKey: string): string => {
+    switch (filterKey) {
+      case 'Latest':
+        return 'updatedAt';
+      case 'A to Z':
+        return 'name.keyword';
+      case 'Z to A':
+        return 'name.keyword';
+      default:
+        return 'updatedAt';
+    }
+  }, []);
+
+  const getSortOrder = useCallback((filterKey: string): 'asc' | 'desc' => {
+    switch (filterKey) {
+      case 'Latest':
+        return 'desc';
+      case 'A to Z':
+        return 'asc';
+      case 'Z to A':
+        return 'desc';
+      default:
+        return 'desc';
+    }
+  }, []);
+
+  // Client-side sorting as fallback
+  const applySortToData = useCallback(
+    (data: SourceType[], filterKey: string): SourceType[] => {
+      const sortedData = [...data];
+
+      switch (filterKey) {
+        case 'A to Z':
+          return sortedData.sort((a, b) => {
+            const aName = getEntityName(a).toLowerCase();
+            const bName = getEntityName(b).toLowerCase();
+
+            return aName.localeCompare(bName);
+          });
+        case 'Z to A':
+          return sortedData.sort((a, b) => {
+            const aName = getEntityName(a).toLowerCase();
+            const bName = getEntityName(b).toLowerCase();
+
+            return bName.localeCompare(aName);
+          });
+        case 'Latest':
+        default:
+          // For Latest sorting, rely on API sorting since SourceType doesn't have timestamp fields
+          return sortedData;
+      }
+    },
+    []
+  );
+
   const handleFilterChange = useCallback(({ key }: { key: string }) => {
     setSelectedFilter(key);
   }, []);
@@ -150,7 +206,7 @@ const MyDataWidgetInternal = ({
     return extraInfo;
   };
 
-  const fetchMyDataAssets = async () => {
+  const fetchMyDataAssets = useCallback(async () => {
     if (!isUndefined(currentUser)) {
       setIsLoading(true);
       try {
@@ -161,27 +217,43 @@ const MyDataWidgetInternal = ({
         ].join(' OR ');
 
         const queryFilter = `(${mergedIds})`;
+        const sortField = getSortField(selectedFilter);
+        const sortOrder = getSortOrder(selectedFilter);
+
         const res = await searchData(
           '',
           INITIAL_PAGING_VALUE,
           PAGE_SIZE,
           queryFilter,
-          '',
-          '',
+          sortField,
+          sortOrder,
           SearchIndex.ALL
         );
 
         // Extract useful details from the Response
         const ownedAssets = res?.data?.hits?.hits;
+        const sourceData = ownedAssets.map((hit) => hit._source).slice(0, 8);
 
-        setData(ownedAssets.map((hit) => hit._source).slice(0, 8));
+        // Apply client-side sorting as well to ensure consistent results
+        const sortedData = applySortToData(sourceData, selectedFilter);
+        setData(sortedData);
       } catch {
         setData([]);
       } finally {
         setIsLoading(false);
       }
     }
-  };
+  }, [
+    currentUser,
+    selectedFilter,
+    getSortField,
+    getSortOrder,
+    applySortToData,
+  ]);
+
+  useEffect(() => {
+    fetchMyDataAssets();
+  }, [fetchMyDataAssets]);
 
   const getEntityIcon = (item: any) => {
     if (item.serviceType) {
@@ -198,10 +270,6 @@ const MyDataWidgetInternal = ({
       return searchClassBase.getEntityIcon(item.entityType ?? '');
     }
   };
-
-  useEffect(() => {
-    fetchMyDataAssets();
-  }, [currentUser]);
 
   const emptyState = useMemo(
     () => (
@@ -296,7 +364,9 @@ const MyDataWidgetInternal = ({
               currentUser?.name ?? '',
               EntityTabs.ACTIVITY_FEED
             )}
-            moreButtonText={t('label.view-more-count', { count: data.length })}
+            moreButtonText={t('label.view-more-count', {
+              count: data.length > 0 ? data.length : '',
+            })} // if data is empty then show view more
             showMoreButton={Boolean(!isLoading)}
           />
         </div>

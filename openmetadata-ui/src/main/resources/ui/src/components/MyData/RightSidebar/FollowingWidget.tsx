@@ -11,18 +11,20 @@
  *  limitations under the License.
  */
 import { Button, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-folder-data.svg';
-import { ROUTES } from '../../../constants/constants';
+import { KNOWLEDGE_LIST_LENGTH, ROUTES } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { FOLLOWING_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -31,12 +33,14 @@ import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { searchQuery } from '../../../rest/searchAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getUsagePercentile } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -47,27 +51,111 @@ import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Widgets/Common/WidgetWrapper/WidgetWrapper';
 import './following-widget.less';
 
-export interface FollowingWidgetProps extends WidgetCommonProps {
-  followedData: SourceType[];
-  isLoadingOwnedData: boolean;
-}
-
 function FollowingWidget({
   isEditView,
-  followedData,
-  isLoadingOwnedData,
   handleRemoveWidget,
   widgetKey,
   handleLayoutUpdate,
   currentLayout,
-}: Readonly<FollowingWidgetProps>) {
+}: Readonly<WidgetCommonProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
     FOLLOWING_WIDGET_FILTER_OPTIONS[0].key
   );
+  const [followedData, setFollowedData] = useState<SourceType[]>([]);
+  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
 
+  const getSortField = (filterKey: string): string => {
+    switch (filterKey) {
+      case 'Latest':
+        return 'updatedAt';
+      case 'A to Z':
+        return 'name.keyword';
+      case 'Z to A':
+        return 'name.keyword';
+      default:
+        return 'updatedAt';
+    }
+  };
+
+  const getSortOrder = (filterKey: string): 'asc' | 'desc' => {
+    switch (filterKey) {
+      case 'Latest':
+        return 'desc';
+      case 'A to Z':
+        return 'asc';
+      case 'Z to A':
+        return 'desc';
+      default:
+        return 'desc';
+    }
+  };
+
+  // Client-side sorting as fallback
+  const applySortToData = (
+    data: SourceType[],
+    filterKey: string
+  ): SourceType[] => {
+    const sortedData = [...data];
+
+    switch (filterKey) {
+      case 'A to Z':
+        return sortedData.sort((a, b) => {
+          const aName = getEntityName(a).toLowerCase();
+          const bName = getEntityName(b).toLowerCase();
+
+          return aName.localeCompare(bName);
+        });
+      case 'Z to A':
+        return sortedData.sort((a, b) => {
+          const aName = getEntityName(a).toLowerCase();
+          const bName = getEntityName(b).toLowerCase();
+
+          return bName.localeCompare(aName);
+        });
+      case 'Latest':
+      default:
+        // For Latest sorting, rely on API sorting since SourceType doesn't have timestamp fields
+        return sortedData;
+    }
+  };
+
+  const fetchUserFollowedData = async () => {
+    if (!currentUser?.id) {
+      return;
+    }
+    setIsLoadingOwnedData(true);
+    try {
+      const sortField = getSortField(selectedEntityFilter);
+      const sortOrder = getSortOrder(selectedEntityFilter);
+
+      const res = await searchQuery({
+        pageSize: KNOWLEDGE_LIST_LENGTH,
+        searchIndex: SearchIndex.ALL,
+        query: '*',
+        filters: `followers:${currentUser.id}`,
+        sortField,
+        sortOrder,
+      });
+
+      const sourceData = res.hits.hits.map((hit) => hit._source);
+      // Apply client-side sorting as well to ensure consistent results
+      const sortedData = applySortToData(sourceData, selectedEntityFilter);
+      setFollowedData(sortedData);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoadingOwnedData(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchUserFollowedData();
+    }
+  }, [currentUser, selectedEntityFilter]);
   // Check if widget is in expanded form (full size)
   const isExpanded = useMemo(() => {
     const currentWidget = currentLayout?.find(
@@ -263,7 +351,7 @@ function FollowingWidget({
               EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
-              count: followedData.length,
+              count: followedData.length > 0 ? followedData.length : '',
             })}
             showMoreButton={Boolean(!isLoadingOwnedData)}
           />

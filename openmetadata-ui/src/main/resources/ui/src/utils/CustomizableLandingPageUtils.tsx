@@ -23,7 +23,6 @@ import {
 import { Layout } from 'react-grid-layout';
 import { AdvanceSearchProvider } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { SIZE } from '../enums/common.enum';
 import {
   LandingPageWidgetKeys,
@@ -195,12 +194,10 @@ const getAllWidgetsArray = (layout: WidgetConfig[]) => {
 export const getWidgetFromKey = ({
   announcements,
   currentLayout,
-  followedData,
   handleLayoutUpdate,
   handleOpenAddWidgetModal,
   handlePlaceholderWidgetKey,
   handleRemoveWidget,
-  isLoadingOwnedData,
   iconHeight,
   iconWidth,
   isEditView,
@@ -209,7 +206,6 @@ export const getWidgetFromKey = ({
 }: {
   announcements?: Thread[];
   currentLayout?: Array<WidgetConfig>;
-  followedData?: SourceType[];
   isAnnouncementLoading?: boolean;
   handleLayoutUpdate?: (layout: Layout[]) => void;
   handleOpenAddWidgetModal?: () => void;
@@ -218,7 +214,6 @@ export const getWidgetFromKey = ({
   iconHeight?: SIZE;
   iconWidth?: SIZE;
   isEditView?: boolean;
-  isLoadingOwnedData: boolean;
   widgetConfig: WidgetConfig;
 }) => {
   if (
@@ -247,12 +242,10 @@ export const getWidgetFromKey = ({
       <Widget
         announcements={announcements}
         currentLayout={currentLayout}
-        followedData={followedData ?? []}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
         isAnnouncementLoading={isAnnouncementLoading}
         isEditView={isEditView}
-        isLoadingOwnedData={isLoadingOwnedData}
         selectedGridSize={widgetConfig.w}
         widgetKey={widgetConfig.i}
       />

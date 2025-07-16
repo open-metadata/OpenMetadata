@@ -174,8 +174,6 @@ function CustomizeMyData({
       layout.map((widget) => (
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
-            followedData,
-            isLoadingOwnedData: isLoadingOwnedData,
             widgetConfig: widget,
             handleOpenAddWidgetModal: handleOpenAddWidgetModal,
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,

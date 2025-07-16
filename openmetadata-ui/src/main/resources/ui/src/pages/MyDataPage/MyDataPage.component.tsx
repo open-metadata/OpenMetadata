@@ -22,14 +22,9 @@ import Loader from '../../components/common/Loader/Loader';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import {
-  KNOWLEDGE_LIST_LENGTH,
-  LOGGED_IN_USER_STORAGE_KEY,
-} from '../../constants/constants';
+import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityType } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { PersonaPreferences } from '../../generated/type/personaPreferences';
@@ -39,7 +34,6 @@ import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
-import { searchQuery } from '../../rest/searchAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
@@ -56,8 +50,7 @@ const MyDataPage = () => {
   const { currentUser, selectedPersona, setCurrentUser } =
     useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
-  const [followedData, setFollowedData] = useState<Array<SourceType>>([]);
-  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
 
@@ -151,33 +144,6 @@ const MyDataPage = () => {
     return () => updateWelcomeScreen(false);
   }, []);
 
-  const fetchUserFollowedData = async () => {
-    if (!currentUser?.id) {
-      return;
-    }
-    setIsLoadingOwnedData(true);
-    try {
-      const res = await searchQuery({
-        pageSize: KNOWLEDGE_LIST_LENGTH,
-        searchIndex: SearchIndex.ALL,
-        query: '*',
-        filters: `followers:${currentUser.id}`,
-      });
-
-      setFollowedData(res.hits.hits.map((hit) => hit._source));
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoadingOwnedData(false);
-    }
-  };
-
-  useEffect(() => {
-    if (currentUser) {
-      fetchUserFollowedData();
-    }
-  }, [currentUser]);
-
   const widgets = useMemo(
     () =>
       // Adding announcement widget to the layout when announcements are present
@@ -192,20 +158,12 @@ const MyDataPage = () => {
         <div data-grid={widget} key={widget.i}>
           {getWidgetFromKey({
             announcements: announcements,
-            followedData,
-            isLoadingOwnedData: isLoadingOwnedData,
             widgetConfig: widget,
             currentLayout: layout,
           })}
         </div>
       )),
-    [
-      layout,
-      isAnnouncementLoading,
-      announcements,
-      followedData,
-      isLoadingOwnedData,
-    ]
+    [layout, isAnnouncementLoading, announcements]
   );
 
   const fetchAnnouncements = useCallback(async () => {

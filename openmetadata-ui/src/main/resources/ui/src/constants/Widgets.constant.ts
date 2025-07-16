@@ -99,14 +99,14 @@ export const FOLLOWING_WIDGET_FILTER_OPTIONS = [
     key: 'Latest',
   },
   {
-    label: 'a-z',
-    value: 'a-z',
-    key: 'a-z',
+    label: t('label.a-to-z'),
+    value: 'A to Z',
+    key: 'A to Z',
   },
   {
-    label: 'z-a',
-    value: 'z-a',
-    key: 'z-a',
+    label: t('label.z-to-a'),
+    value: 'Z to A',
+    key: 'Z to A',
   },
 ];
 
@@ -117,13 +117,13 @@ export const MY_DATA_WIDGET_FILTER_OPTIONS = [
     key: 'Latest',
   },
   {
-    label: 'a-z',
-    value: 'a-z',
-    key: 'a-z',
+    label: t('label.a-to-z'),
+    value: 'A to Z',
+    key: 'A to Z',
   },
   {
-    label: 'z-a',
-    value: 'z-a',
-    key: 'z-a',
+    label: t('label.z-to-a'),
+    value: 'Z to A',
+    key: 'Z to A',
   },
 ];

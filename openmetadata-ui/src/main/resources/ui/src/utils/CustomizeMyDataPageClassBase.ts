@@ -39,9 +39,7 @@ import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.com
 import AnnouncementsWidget, {
   AnnouncementsWidgetProps,
 } from '../components/MyData/RightSidebar/AnnouncementsWidget';
-import FollowingWidget, {
-  FollowingWidgetProps,
-} from '../components/MyData/RightSidebar/FollowingWidget';
+import FollowingWidget from '../components/MyData/RightSidebar/FollowingWidget';
 import CuratedAssetsWidget from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget';
 import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
 import DomainsWidget from '../components/MyData/Widgets/DomainsWidget/DomainsWidget';
@@ -200,7 +198,7 @@ class CustomizeMyDataPageClassBase {
    */
   public getWidgetsFromKey(
     widgetKey: string
-  ): FC<WidgetCommonProps & AnnouncementsWidgetProps & FollowingWidgetProps> {
+  ): FC<WidgetCommonProps & AnnouncementsWidgetProps> {
     if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
       return DataAssetsWidget;
     }
