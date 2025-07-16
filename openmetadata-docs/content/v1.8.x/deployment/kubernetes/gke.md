@@ -32,7 +32,7 @@ It is recommended to use GCP [Cloud SQL](https://cloud.google.com/sql/) services
 We support -
 - Cloud SQL (MySQL) engine version 8 or higher
 - Cloud SQL (postgreSQL) engine version 12 or higher
-- ElasticSearch Engine version 8.X (upto 8.10.X)
+- ElasticSearch Engine version 8.X (up to 8.10.X)
 
 We recommend -
 - CloudSQL to be Multi Zone Available
