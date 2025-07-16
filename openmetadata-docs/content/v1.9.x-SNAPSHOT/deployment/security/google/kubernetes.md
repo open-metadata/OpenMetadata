@@ -1,5 +1,6 @@
 ---
-title: Google SSO for Kubernetes
+title: Google SSO for Kubernetes | Official Documentation
+description: Configure Google OAuth in Kubernetes clusters to enable seamless user authentication and manage secure container-level access control.
 slug: /deployment/security/google/kubernetes
 collate: false
 ---

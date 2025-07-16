@@ -1,5 +1,6 @@
 ---
 title: Okta SSO (Docker) | OpenMetadata Deployment Guide
+description: Configure Okta Authorization Code Flow to handle secure user login through backend token validation and maintain session integrity in web platforms.
 slug: /deployment/security/okta/auth-code-flow
 collate: false
 ---
