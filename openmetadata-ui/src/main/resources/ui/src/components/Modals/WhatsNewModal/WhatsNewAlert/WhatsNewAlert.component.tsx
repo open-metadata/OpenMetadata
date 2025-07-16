@@ -84,7 +84,7 @@ const WhatsNewAlert = () => {
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">
             <Row gutter={0} wrap={false}>
-              <Col className="whats-new-alert-left" flex="160px">
+              <Col className="whats-new-alert-left" flex="210px">
                 <RocketIcon className="whats-new-alert-rocket-icon" />
                 <Typography.Text className="whats-new-alert-version">
                   {t('label.version-number', {
@@ -96,6 +96,10 @@ const WhatsNewAlert = () => {
                 <Typography.Text className="text-md font-semibold">
                   {t('label.new-update-announcement')}
                 </Typography.Text>
+                {/* eslint-disable-next-line i18next/no-literal-string */}
+                <Typography.Paragraph className="whats-new-alert-subtext">
+                  {t('label.to-learn-more-please-check-out')}
+                </Typography.Paragraph>
                 <div className="whats-new-alert-links">
                   <Button
                     className="p-0"
