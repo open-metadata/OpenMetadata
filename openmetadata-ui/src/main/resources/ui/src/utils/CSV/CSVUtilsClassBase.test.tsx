@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { textEditor } from 'react-data-grid';
 import { EntityType } from '../../enums/entity.enum';
 import csvUtilsClassBase from './CSVUtilsClassBase';
 
@@ -73,11 +74,11 @@ describe('CSV utils ClassBase', () => {
       expect(editor).toBeDefined();
     });
 
-    it('should return undefined for unknown columns', () => {
+    it('should return default textEditor for unknown columns', () => {
       const column = 'unknown';
       const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
 
-      expect(editor).toBeUndefined();
+      expect(editor).toBe(textEditor);
     });
 
     it('should return the editor component for the "description" column', () => {

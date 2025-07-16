@@ -1025,7 +1025,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     isRenderedInRightPanel ? '-right-panel' : ''
                   }`}
                   style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                  tabIndex={0}
                   onClick={onShowInput}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onShowInput();
+                    }
+                  }}
                 />
               </Tooltip>
             )}
@@ -1061,7 +1067,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               component={ArrowIconComponent}
               data-testid={`toggle-${propertyName}`}
               style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+              tabIndex={0}
               onClick={toggleExpand}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  toggleExpand();
+                }
+              }}
             />
           )}
         </div>

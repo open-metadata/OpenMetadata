@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TypeComputedProps } from '@inovua/reactdatagrid-community/types';
-import { MutableRefObject } from 'react';
+
+import { CopyEvent, PasteEvent } from 'react-data-grid';
 
 export interface TableTypePropertyEditTableProps {
   columns: string[];
   dataSource: Record<string, string>[];
-  gridRef: MutableRefObject<TypeComputedProps | null>;
-  handleEditGridRef: (ref: MutableRefObject<TypeComputedProps | null>) => void;
+  gridContainerRef: React.RefObject<HTMLDivElement>;
   handleEditDataSource: (data: Record<string, string>[]) => void;
+  handleCopy: (event: CopyEvent<Record<string, string>>) => void;
+  handlePaste: (event: PasteEvent<Record<string, string>>) => void;
+  pushToUndoStack: (dataSource: Record<string, string>[]) => void;
 }

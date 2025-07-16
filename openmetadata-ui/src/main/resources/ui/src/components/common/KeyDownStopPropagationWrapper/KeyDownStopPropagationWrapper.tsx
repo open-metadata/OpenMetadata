@@ -10,17 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@import url('../../../styles/components/om-rdg.less');
-
-.reserve-right-sidebar {
-  .import-footer {
-    // Right side padding 20 + 64 width of sidebar
-    padding-right: 84px;
+export const onKeyDownStopPropagation = (
+  e: React.KeyboardEvent<HTMLDivElement>,
+  keys = ['Enter', 'Tab']
+) => {
+  if (keys.includes(e.key)) {
+    e.stopPropagation();
   }
-}
+};
 
-.react-grid-select-dropdown {
-  width: 100%;
-  min-width: 12rem;
-}
+export const KeyDownStopPropagationWrapper = ({
+  keys,
+  children,
+}: {
+  keys?: string[];
+  children: React.ReactNode;
+}) => (
+  <div onKeyDown={(e) => onKeyDownStopPropagation(e, keys)}>{children}</div>
+);

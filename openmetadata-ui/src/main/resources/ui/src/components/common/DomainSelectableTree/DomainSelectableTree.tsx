@@ -247,6 +247,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   return (
     <div className="p-sm" data-testid="domain-selectable-tree">
       <Search
+        autoFocus
         data-testid="searchbar"
         placeholder="Search"
         style={{ marginBottom: 8 }}

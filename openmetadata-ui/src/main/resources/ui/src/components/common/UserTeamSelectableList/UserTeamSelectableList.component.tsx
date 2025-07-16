@@ -337,7 +337,7 @@ export const UserTeamSelectableList = ({
                     })}
                     selectedItems={defaultUsers}
                     onCancel={handleCancelSelectableList}
-                    onChange={handleChange}
+                    onChange={isMultiUser ? noop : handleChange}
                     onUpdate={handleUpdate}
                   />
                 ),

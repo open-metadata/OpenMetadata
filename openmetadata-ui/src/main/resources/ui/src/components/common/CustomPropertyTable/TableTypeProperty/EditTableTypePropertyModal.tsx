@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import '@inovua/reactdatagrid-community/index.css';
-import { TypeComputedProps } from '@inovua/reactdatagrid-community/types';
 import { Button, Modal, Typography } from 'antd';
 import { isEmpty, omit } from 'lodash';
-import { FC, MutableRefObject, useCallback, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useGridEditController } from '../../../../hooks/useGridEditController';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { KeyDownStopPropagationWrapper } from '../../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import { TableTypePropertyValueType } from '../CustomPropertyTable.interface';
 import './edit-table-type-property.less';
 import { EditTableTypePropertyModalProps } from './EditTableTypePropertyModal.interface';
@@ -38,16 +38,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
     TableTypePropertyValueType['rows']
   >(() => rows.map((row, index) => ({ ...row, id: index + '' })));
 
-  const [gridRef, setGridRef] = useState<
-    MutableRefObject<TypeComputedProps | null>
-  >({ current: null });
-
-  const handleEditGridRef = useCallback(
-    (ref: MutableRefObject<TypeComputedProps | null>) => {
-      setGridRef(ref);
-    },
-    []
-  );
+  const gridContainerRef = useRef<HTMLDivElement>(null);
 
   const handleEditDataSource = useCallback((data: Record<string, string>[]) => {
     setDataSource(data);
@@ -56,13 +47,16 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
   const handleAddRow = useCallback(() => {
     setDataSource((data) => {
       setTimeout(() => {
-        gridRef.current?.scrollToId(data.length + '');
-        gridRef.current?.focus();
+        // Select first cell of last newly added row
+        const rows = gridContainerRef.current?.querySelectorAll('.rdg-row');
+        const lastRow = rows?.[rows.length - 1];
+        const firstCell = lastRow?.querySelector('.rdg-cell');
+        (firstCell as HTMLElement).click();
       }, 1);
 
       return [...data, { id: data.length + '' }];
     });
-  }, [gridRef]);
+  }, [gridContainerRef]);
 
   const handleUpdate = useCallback(async () => {
     const modifiedRows = dataSource
@@ -72,6 +66,24 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
     await onSave({ rows: modifiedRows, columns });
   }, [onSave, dataSource, columns]);
 
+  useEffect(() => {
+    if (isEmpty(dataSource)) {
+      return;
+    }
+    const firstCell = gridContainerRef?.current?.querySelector(
+      '.rdg-cell[role="gridcell"]'
+    );
+    if (firstCell) {
+      (firstCell as HTMLElement).click();
+    }
+  }, [isEmpty(dataSource)]);
+
+  const { handleCopy, handlePaste, pushToUndoStack } = useGridEditController(
+    dataSource,
+    handleEditDataSource,
+    gridContainerRef
+  );
+
   return (
     <Modal
       centered
@@ -79,32 +91,34 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
       closable={false}
       data-testid="edit-table-type-property-modal"
       footer={
-        <div className="d-flex justify-between">
-          <Button
-            data-testid="add-new-row"
-            disabled={isUpdating}
-            type="primary"
-            onClick={handleAddRow}>
-            {t('label.add-entity', { entity: t('label.row') })}
-          </Button>
-
-          <div className="d-flex gap-2">
+        <KeyDownStopPropagationWrapper>
+          <div className="d-flex justify-between">
             <Button
-              data-testid="cancel-update-table-type-property"
+              data-testid="add-new-row"
               disabled={isUpdating}
-              onClick={onCancel}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              data-testid="update-table-type-property"
-              disabled={isUpdating}
-              loading={isUpdating}
               type="primary"
-              onClick={handleUpdate}>
-              {t('label.update')}
+              onClick={handleAddRow}>
+              {t('label.add-entity', { entity: t('label.row') })}
             </Button>
+
+            <div className="d-flex gap-2">
+              <Button
+                data-testid="cancel-update-table-type-property"
+                disabled={isUpdating}
+                onClick={onCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                data-testid="update-table-type-property"
+                disabled={isUpdating}
+                loading={isUpdating}
+                type="primary"
+                onClick={handleUpdate}>
+                {t('label.update')}
+              </Button>
+            </div>
           </div>
-        </div>
+        </KeyDownStopPropagationWrapper>
       }
       maskClosable={false}
       open={isVisible}
@@ -120,13 +134,17 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
       {isEmpty(dataSource) ? (
         <TableTypePropertyView columns={columns} rows={rows} />
       ) : (
-        <TableTypePropertyEditTable
-          columns={columns}
-          dataSource={dataSource}
-          gridRef={gridRef}
-          handleEditDataSource={handleEditDataSource}
-          handleEditGridRef={handleEditGridRef}
-        />
+        <KeyDownStopPropagationWrapper>
+          <TableTypePropertyEditTable
+            columns={columns}
+            dataSource={dataSource}
+            gridContainerRef={gridContainerRef}
+            handleCopy={handleCopy}
+            handleEditDataSource={handleEditDataSource}
+            handlePaste={handlePaste}
+            pushToUndoStack={pushToUndoStack}
+          />
+        </KeyDownStopPropagationWrapper>
       )}
     </Modal>
   );

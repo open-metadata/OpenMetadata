@@ -36,6 +36,7 @@ export interface TagSuggestionProps {
   hasNoActionButtons?: boolean;
   open?: boolean;
   autoFocus?: boolean;
+  dropdownContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
 const TagSuggestion: React.FC<TagSuggestionProps> = ({
@@ -49,6 +50,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
   hasNoActionButtons = false,
   open = true,
   autoFocus = false,
+  dropdownContainerRef,
 }) => {
   const isGlossaryType = useMemo(
     () => tagType === TagSource.Glossary,
@@ -106,6 +108,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
     value: value?.map((item) => item.tagFQN) ?? [],
     onChange: handleTagSelection,
     autoFocus,
+    dropdownContainerRef,
   };
 
   return isTreeSelect ? (

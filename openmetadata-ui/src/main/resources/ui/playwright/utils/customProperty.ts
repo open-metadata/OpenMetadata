@@ -70,10 +70,7 @@ export const fillTableColumnInputDetails = async (
   text: string,
   columnName: string
 ) => {
-  await page
-    .locator(`div[data-state-props-id="${columnName}"]`)
-    .last()
-    .dblclick();
+  await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
 
   await page
     .getByTestId('edit-table-type-property-modal')
@@ -81,7 +78,7 @@ export const fillTableColumnInputDetails = async (
     .fill(text);
 
   await page
-    .locator(`div[data-state-props-id="${columnName}"]`)
+    .locator(`div.rdg-cell-${columnName}`)
     .last()
     .press('Enter', { delay: 100 });
 };

@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  TypeColumn,
-  TypeComputedProps,
-} from '@inovua/reactdatagrid-community/types';
+import { Column, CopyEvent, PasteEvent } from 'react-data-grid';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { CSVImportResult } from '../../generated/type/csvImportResult';
 import { CSVImportJobType } from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
@@ -21,24 +18,22 @@ import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.
 
 export interface BulkEditEntityProps {
   dataSource: Record<string, string>[];
-  columns: TypeColumn[];
+  columns: Column<Record<string, string>>[];
   breadcrumbList: TitleBreadcrumbProps['titleLinks'];
   activeStep: VALIDATION_STEP;
   activeAsyncImportJob?: CSVImportJobType;
   isValidating: boolean;
   validationData?: CSVImportResult;
   validateCSVData?: {
-    columns: TypeColumn[];
+    columns: Column<Record<string, string>>[];
     dataSource: Record<string, string>[];
   };
   handleBack: () => void;
   handleValidate: () => Promise<void>;
-  setGridRef: React.Dispatch<
-    React.SetStateAction<React.MutableRefObject<TypeComputedProps | null>>
-  >;
-  onKeyDown: (event: KeyboardEvent) => void;
-  onEditStop: () => void;
-  onEditStart: () => void;
   onCSVReadComplete: (results: { data: string[][] }) => void;
-  onEditComplete: ({ value, columnId, rowId }: any) => void;
+  onEditComplete: (data: Record<string, string>[]) => void;
+  gridContainerRef: React.RefObject<HTMLDivElement>;
+  handleCopy: (event: CopyEvent<Record<string, string>>) => void;
+  handlePaste: (event: PasteEvent<Record<string, string>>) => void;
+  pushToUndoStack: (dataSource: Record<string, string>[]) => void;
 }
