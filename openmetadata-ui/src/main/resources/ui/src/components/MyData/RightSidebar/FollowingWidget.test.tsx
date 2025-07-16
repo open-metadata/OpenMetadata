@@ -57,20 +57,20 @@ describe('FollowingWidget', () => {
   it('should render Following Widget', () => {
     render(<FollowingWidget {...mockProps} />);
 
-    expect(screen.getByTestId('following-widget')).toBeInTheDocument();
+    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
     expect(screen.getByText('label.following-assets')).toBeInTheDocument();
   });
 
   it('should render loading state', () => {
     render(<FollowingWidget {...mockProps} isLoadingOwnedData />);
 
-    expect(screen.getByTestId('following-widget')).toBeInTheDocument();
+    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
   });
 
   it('should render empty state', () => {
     render(<FollowingWidget {...mockProps} followedData={[]} />);
 
-    expect(screen.getByTestId('following-widget')).toBeInTheDocument();
+    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
     expect(
       screen.getByText('message.not-following-any-assets-yet')
     ).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe('FollowingWidget', () => {
     render(<FollowingWidget {...mockProps} isEditView />);
 
     expect(screen.getByTestId('drag-widget-button')).toBeInTheDocument();
-    expect(screen.getByTestId('more-options-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('more-options-button')).toBeInTheDocument();
   });
 
   it('should render followed data items', () => {
@@ -96,6 +96,6 @@ describe('FollowingWidget', () => {
   it('should show view more link', () => {
     render(<FollowingWidget {...mockProps} />);
 
-    expect(screen.getByText('label.view-more-count')).toBeInTheDocument();
+    expect(screen.getByText('label.view-more')).toBeInTheDocument();
   });
 });

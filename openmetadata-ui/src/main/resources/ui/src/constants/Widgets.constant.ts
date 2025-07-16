@@ -12,7 +12,7 @@
  */
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { FeedFilter } from '../enums/mydata.enum';
-import i18n from '../utils/i18next/LocalUtil';
+import i18n, { t } from '../utils/i18next/LocalUtil';
 
 export const TAB_SUPPORTED_FILTER = [
   ActivityFeedTabs.ALL,
@@ -70,5 +70,60 @@ export const WIDGETS_MORE_MENU_OPTIONS = [
     label: i18n.t('label.remove-entity', {
       entity: i18n.t('label.widget'),
     }),
+  },
+];
+
+export const FEED_WIDGET_FILTER_OPTIONS = [
+  {
+    label: t('label.all-activity'),
+    value: FeedFilter.ALL,
+    key: FeedFilter.ALL,
+  },
+  {
+    label: t('label.my-data'),
+    value: FeedFilter.OWNER,
+    key: FeedFilter.OWNER,
+  },
+  {
+    label: t('label.following'),
+    value: FeedFilter.FOLLOWS,
+    key: FeedFilter.FOLLOWS,
+  },
+];
+
+// Filter options for entity types
+export const FOLLOWING_WIDGET_FILTER_OPTIONS = [
+  {
+    label: t('label.latest'),
+    value: 'Latest',
+    key: 'Latest',
+  },
+  {
+    label: 'a-z',
+    value: 'a-z',
+    key: 'a-z',
+  },
+  {
+    label: 'z-a',
+    value: 'z-a',
+    key: 'z-a',
+  },
+];
+
+export const MY_DATA_WIDGET_FILTER_OPTIONS = [
+  {
+    label: t('label.latest'),
+    value: 'Latest',
+    key: 'Latest',
+  },
+  {
+    label: 'a-z',
+    value: 'a-z',
+    key: 'a-z',
+  },
+  {
+    label: 'z-a',
+    value: 'z-a',
+    key: 'z-a',
   },
 ];
