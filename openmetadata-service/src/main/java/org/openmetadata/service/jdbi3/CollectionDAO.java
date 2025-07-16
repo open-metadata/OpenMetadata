@@ -3136,12 +3136,17 @@ public interface CollectionDAO {
       }
 
       if (filter.getQueryParam("provider") != null) {
-        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        String providerCondition =
+            String.format(" and %s", filter.getProviderCondition(getTableName()));
         condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
+      String provider = filter.getQueryParam("provider");
+      if (!nullOrEmpty(provider)) {
+        bindMap.put("provider", provider);
+      }
       if (!nullOrEmpty(serviceType)) {
 
         condition =
@@ -3177,12 +3182,17 @@ public interface CollectionDAO {
       }
 
       if (filter.getQueryParam("provider") != null) {
-        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        String providerCondition =
+            String.format(" and %s", filter.getProviderCondition(getTableName()));
         condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
+      String provider = filter.getQueryParam("provider");
+      if (!nullOrEmpty(provider)) {
+        bindMap.put("provider", provider);
+      }
       if (!nullOrEmpty(serviceType)) {
 
         condition =
@@ -3223,12 +3233,17 @@ public interface CollectionDAO {
       }
 
       if (filter.getQueryParam("provider") != null) {
-        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        String providerCondition =
+            String.format(" and %s", filter.getProviderCondition(getTableName()));
         condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
+      String provider = filter.getQueryParam("provider");
+      if (!nullOrEmpty(provider)) {
+        bindMap.put("provider", provider);
+      }
       if (!nullOrEmpty(serviceType)) {
         condition =
             String.format(
