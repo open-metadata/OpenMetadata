@@ -81,7 +81,7 @@ const AnnouncementCardV1 = ({
 
     return {
       announcementTitleSectionStyle: {
-        background: `linear-gradient(270deg, #ffffff -12.07%, ${currentBackgroundColor} 233.72%)`,
+        background: `linear-gradient(270deg, #ffffff -12.07%, ${currentBackgroundColor} 500.72%)`,
         color: `${currentBackgroundColor} !important`,
       },
       announcementTitleStyle: {
@@ -155,7 +155,6 @@ const AnnouncementCardV1 = ({
                 </span>
                 {entityFQN && entityType ? (
                   <Typography.Text
-                    className="announcement-entity-name"
                     ellipsis={{
                       tooltip: (
                         <div className="announcement-entity-name-tooltip">
@@ -167,6 +166,7 @@ const AnnouncementCardV1 = ({
                       color: currentBackgroundColor ?? 'inherit',
                     }}>
                     <Link
+                      className="announcement-entity-name"
                       data-testid="announcement-entity-link"
                       style={{
                         color: currentBackgroundColor ?? 'inherit',
