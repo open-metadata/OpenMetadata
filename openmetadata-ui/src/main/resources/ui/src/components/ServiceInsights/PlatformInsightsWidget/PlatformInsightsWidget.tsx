@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as ArrowUp } from '../../../assets/svg/ic-trend-up.svg';
 import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
-import { PLATFORM_INSIGHTS_CHART } from '../../../constants/ServiceInsightsTab.constants';
+import { PLATFORM_INSIGHTS_CHARTS } from '../../../constants/ServiceInsightsTab.constants';
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabUtils';
 import { getReadableCountString } from '../../../utils/ServiceUtils';
 import './platform-insights-widget.less';
@@ -58,7 +58,7 @@ function PlatformInsightsWidget({
         <Row className="export-platform-insights-chart" gutter={16}>
           <Col className="other-charts-container" span={24}>
             {isLoading
-              ? PLATFORM_INSIGHTS_CHART.map((chartType) => (
+              ? PLATFORM_INSIGHTS_CHARTS.map((chartType) => (
                   <Card
                     className="widget-info-card other-charts-card"
                     key={chartType}>

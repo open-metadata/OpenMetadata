@@ -91,6 +91,8 @@ export const getTitleByChartType = (chartType: SystemChartType) => {
       return t('label.entity-coverage', {
         entity: t('label.tier'),
       });
+    case SystemChartType.HealthyDataAssets:
+      return t('label.healthy-data-asset-plural');
     default:
       return '';
   }
@@ -100,13 +102,13 @@ export const getPlatformInsightsChartDataFormattingMethod =
   (chartsData: Record<SystemChartType, DataInsightCustomChartResult>) =>
   (chartType: SystemChartType) => {
     const summaryChartData = chartsData[chartType];
-    const lastDay = last(summaryChartData.results)?.day ?? 1;
+    const lastDay = last(summaryChartData?.results)?.day ?? 1;
 
-    const sortedResults = sortBy(summaryChartData.results, 'day');
+    const sortedResults = sortBy(summaryChartData?.results, 'day');
 
     let data = sortedResults.length >= 2 ? sortedResults : [];
 
-    if (summaryChartData.results.length === 1) {
+    if (summaryChartData?.results.length === 1) {
       const previousDay = sortedResults[0].day - 86400000; // 1 day in milliseconds
 
       data = [
@@ -144,7 +146,7 @@ export const getPlatformInsightsChartDataFormattingMethod =
       isIncreased,
       percentageChange: percentageChangeOverall,
       currentPercentage: round(lastDayData ?? 0, 2),
-      noRecords: summaryChartData.results.every((item) => isEmpty(item)),
+      noRecords: summaryChartData?.results.every((item) => isEmpty(item)),
       numberOfDays: data.length > 0 ? data.length - 1 : 0,
     };
   };

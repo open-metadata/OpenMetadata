@@ -13,7 +13,15 @@
 
 import { SystemChartType } from '../enums/DataInsight.enum';
 
-export const PLATFORM_INSIGHTS_CHART: SystemChartType[] = [
+export const PLATFORM_INSIGHTS_CHARTS: SystemChartType[] = [
+  SystemChartType.DescriptionCoverage,
+  SystemChartType.PIICoverage,
+  SystemChartType.TierCoverage,
+  SystemChartType.OwnersCoverage,
+  SystemChartType.HealthyDataAssets,
+];
+
+export const PLATFORM_INSIGHTS_DI_CHARTS: SystemChartType[] = [
   SystemChartType.DescriptionCoverage,
   SystemChartType.PIICoverage,
   SystemChartType.TierCoverage,
