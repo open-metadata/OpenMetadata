@@ -91,6 +91,36 @@
     padding: 20px;
   }
 
+  .service-insights-collapse-widget.ant-collapse-icon-position-end {
+    border: none;
+    border-radius: @border-radius-sm;
+
+    .ant-collapse-item:last-child {
+      background-color: @white;
+      border-radius: @border-radius-sm;
+      border: 1px solid @grey-15;
+      .ant-collapse-header {
+        border-radius: @border-radius-sm;
+        border-bottom: none;
+      }
+      .ant-collapse-content {
+        border-radius: @border-radius-sm;
+        border-top: none;
+      }
+    }
+
+    .ant-collapse-item {
+      .ant-collapse-header {
+        .ant-collapse-arrow.expand-icon-container {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+        }
+      }
+    }
+  }
+
   .widget-flex-col {
     height: 100%;
     display: flex;

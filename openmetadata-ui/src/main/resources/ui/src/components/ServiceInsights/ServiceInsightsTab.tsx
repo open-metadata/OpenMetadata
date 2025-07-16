@@ -123,7 +123,8 @@ const ServiceInsightsTab = ({
     { Widget: widgets.DataQualityWidget, name: 'DataQualityWidget' },
   ];
 
-  const { PlatformInsightsWidget, TotalDataAssetsWidget } = widgets;
+  const { PlatformInsightsWidget, TotalDataAssetsWidget, AgentsStatusWidget } =
+    widgets;
 
   const {
     Icon: StatusIcon,
@@ -237,13 +238,23 @@ const ServiceInsightsTab = ({
         />
       )}
       <Col span={18}>
-        <PlatformInsightsWidget
-          chartsData={getChartsDataFromWidgetName(
-            'PlatformInsightsWidget',
-            chartsResults
-          )}
-          isLoading={isLoading}
-        />
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <AgentsStatusWidget
+              serviceName={serviceName}
+              workflowStatesData={workflowStatesData}
+            />
+          </Col>
+          <Col span={24}>
+            <PlatformInsightsWidget
+              chartsData={getChartsDataFromWidgetName(
+                'PlatformInsightsWidget',
+                chartsResults
+              )}
+              isLoading={isLoading}
+            />
+          </Col>
+        </Row>
       </Col>
       <Col span={6}>
         <TotalDataAssetsWidget

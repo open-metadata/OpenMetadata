@@ -30,7 +30,8 @@ function PlatformInsightsWidget({
 
   return (
     <Collapse
-      className="platform-insights-card"
+      className="service-insights-collapse-widget platform-insights-card"
+      defaultActiveKey={['1']}
       expandIcon={() => (
         <div className="expand-icon-container">
           <Typography.Text className="text-primary text-xs">

@@ -497,6 +497,14 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Dbt,
 ];
 
+export const SERVICE_AUTOPILOT_AGENT_TYPES = [
+  PipelineType.Metadata,
+  PipelineType.Lineage,
+  PipelineType.Usage,
+  PipelineType.AutoClassification,
+  PipelineType.Profiler,
+];
+
 export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
   [PipelineServiceType.GluePipeline, 'Glue Pipeline'],
   [DatabaseServiceType.DomoDatabase, 'Domo Database'],
