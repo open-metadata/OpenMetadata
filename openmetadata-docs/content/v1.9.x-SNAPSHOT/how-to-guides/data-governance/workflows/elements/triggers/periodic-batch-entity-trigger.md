@@ -1,5 +1,6 @@
 ---
 title: Governance Workflows - Periodic Batch Entity Trigger
+description: Set up periodic triggers to execute workflows in batches, ideal for regular governance tasks like validations and syncs.
 slug: /how-to-guides/data-governance/workflows/elements/triggers/periodic-batch-entity-trigger
 collate: true
 ---

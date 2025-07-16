@@ -1,5 +1,6 @@
 ---
-title: Team Structure in OpenMetadata
+title: Team Structure in OpenMetadata | Official Documentation
+description: Understand team structure setup to align users, roles, and permissions in a way that supports secure and scalable collaboration.
 slug: /how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata
 ---
 
@@ -21,6 +22,12 @@ OpenMetadata supports a hierarchical team structure with **teamType** that can b
 - Once created, the teamType for `Group` **cannot be changed later**. 
 - Only the Teams of the type `Group` can **own data assets**.
 {% /note noteType="Warning" %}
+{% /note %}
+
+{% note %}
+
+OpenMetadata supports flexible nested team hierarchies under organizational structures such as Business Unit, Division, and Department. While there is no hardcoded limit to the depth of hierarchy, leaf nodes such as "Group" cannot have child teams. Additionally, certain team types like "Department" cannot be nested within "Group." To extend the hierarchy, consider using other team types where appropriate.
+
 {% /note %}
 
 {% image

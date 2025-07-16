@@ -1,5 +1,6 @@
 ---
-title: How to Request for Classification Tags
+title: How to Request for Classification Tags | Official Documentation
+description: Use request tags to improve collaboration and feedback on data assets by enabling users to flag and annotate classification needs.
 slug: /how-to-guides/data-governance/classification/request-tags
 ---
 

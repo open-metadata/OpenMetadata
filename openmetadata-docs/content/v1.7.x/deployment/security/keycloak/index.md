@@ -1,5 +1,6 @@
 ---
 title: Keycloak SSO | OpenMetadata Security Integration
+description: Use Keycloak as your authentication server to centralize identity management with support for OIDC and SSO integrations.
 slug: /deployment/security/keycloak
 collate: false
 ---

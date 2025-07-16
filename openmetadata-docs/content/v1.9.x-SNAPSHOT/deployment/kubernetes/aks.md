@@ -1,5 +1,6 @@
 ---
-title: Azure AKS Deployment
+title: Azure AKS Deployment | Official Documentation
+description: Configure deployment with Azure Kubernetes Service (AKS) using OpenMetadata-recommended Helm charts and scalable configuration templates.
 slug: /deployment/kubernetes/aks
 collate: false
 ---
