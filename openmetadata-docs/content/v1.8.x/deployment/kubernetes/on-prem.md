@@ -1,5 +1,6 @@
 ---
-title: Kubernetes On Premises Deployment
+title: Kubernetes On Premises Deployment | Official Documentation
+description: Set up the OpenMetadata on-premises with Kubernetes for full control over infrastructure, security, and compliance requirements.
 slug: /deployment/kubernetes/on-prem
 collate: false
 ---
