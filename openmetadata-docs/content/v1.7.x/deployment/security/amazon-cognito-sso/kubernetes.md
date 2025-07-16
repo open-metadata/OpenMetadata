@@ -1,5 +1,6 @@
 ---
-title: Amazon Cognito SSO for Kubernetes
+title: Amazon Cognito SSO for Kubernetes | Official Documentation
+description: Use Amazon Cognito with Kubernetes to secure user access across distributed containerized apps using token-based authentication workflows.
 slug: /deployment/security/amazon-cognito/kubernetes
 collate: false
 ---

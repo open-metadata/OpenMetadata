@@ -1,5 +1,6 @@
 ---
 title: How do the Upgrade & Backup work?
+description: Understand how the upgrade system works with a version-aware approach to safely migrate platform components and configurations.
 slug: /deployment/upgrade/how-does-it-work
 collate: false
 ---

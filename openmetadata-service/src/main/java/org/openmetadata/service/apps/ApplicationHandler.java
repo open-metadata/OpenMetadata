@@ -73,7 +73,11 @@ public class ApplicationHandler {
     try {
       AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
       app.setPreview(appPrivateConfig.getPreview());
-      app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
+
+      if (appPrivateConfig.getParameters() != null
+          && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
+        app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
+      }
     } catch (IOException e) {
       LOG.debug("Config file for app {} not found: ", app.getName(), e);
     } catch (ConfigurationException e) {
@@ -131,7 +135,7 @@ public class ApplicationHandler {
   public void uninstallApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     try {
-      runAppInit(app, daoCollection, searchRepository).uninstall();
+      runAppInit(app, daoCollection, searchRepository, true).uninstall();
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -196,7 +200,7 @@ public class ApplicationHandler {
   public void performCleanup(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String deletedBy) {
     try {
-      runAppInit(app, daoCollection, searchRepository).cleanup();
+      runAppInit(app, daoCollection, searchRepository, true).cleanup();
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -233,6 +237,16 @@ public class ApplicationHandler {
           InvocationTargetException,
           InstantiationException,
           IllegalAccessException {
+    return runAppInit(app, daoCollection, searchRepository, false);
+  }
+
+  public AbstractNativeApplication runAppInit(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository, boolean forDelete)
+      throws ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
     // add private runtime properties
     setAppRuntimeProperties(app);
     Class<? extends AbstractNativeApplication> clz =
@@ -241,7 +255,7 @@ public class ApplicationHandler {
         clz.getDeclaredConstructor(CollectionDAO.class, SearchRepository.class)
             .newInstance(daoCollection, searchRepository);
     // Raise preview message if the app is in Preview mode
-    if (Boolean.TRUE.equals(app.getPreview())) {
+    if (!forDelete && Boolean.TRUE.equals(app.getPreview())) {
       resource.raisePreviewMessage(app);
     }
 
