@@ -393,6 +393,7 @@
     "day": "Día",
     "day-left": "{{day}} restante",
     "days-change-lowercase": "cambio de {{days}} días",
+    "days-left": "Días restantes",
     "dbt-bucket-name": "Nome do cubo dbt",
     "dbt-catalog-file-path": "Ruta do ficheiro de catálogo dbt",
     "dbt-catalog-http-path": "Ruta HTTP do catálogo dbt",

@@ -393,6 +393,7 @@
     "day": "일",
     "day-left": "{{day}} 남음",
     "days-change-lowercase": "{{days}}일 변화",
+    "days-left": "일남음",
     "dbt-bucket-name": "dbt 버킷 이름",
     "dbt-catalog-file-path": "dbt 카탈로그 파일 경로",
     "dbt-catalog-http-path": "dbt 카탈로그 HTTP 경로",

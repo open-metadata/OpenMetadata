@@ -90,3 +90,10 @@ export const TOTAL_DATA_ASSETS_WIDGET_COLORS = [
   '#1570EF',
   '#2E90FA',
 ];
+
+export const KPI_WIDGET_GRAPH_COLORS = [
+  '#7262F6',
+  '#6AD2FF',
+  '#E7B85D',
+  '#416BB3',
+];

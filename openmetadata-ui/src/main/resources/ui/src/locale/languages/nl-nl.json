@@ -393,6 +393,7 @@
     "day": "Dag",
     "day-left": "{{day}} resterend",
     "days-change-lowercase": "{{days}}-dagen verandering",
+    "days-left": "Dagen over",
     "dbt-bucket-name": "dbt bucketnaam",
     "dbt-catalog-file-path": "dbt-catalogus bestandspad",
     "dbt-catalog-http-path": "dbt-catalogus HTTP-pad",

@@ -393,6 +393,7 @@
     "day": "יום",
     "day-left": "{{day}} נשאר.ו",
     "days-change-lowercase": "{{days}}-ימים שינוי",
+    "days-left": "ימים נשארו",
     "dbt-bucket-name": "dbt Bucket Name",
     "dbt-catalog-file-path": "dbt Catalog File Path",
     "dbt-catalog-http-path": "dbt Catalog HTTP Path",

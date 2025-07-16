@@ -81,6 +81,10 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<p>ErrorPlaceHolder.Component</p>)
 );
 
+jest.mock('./KPILegend/KPILegend', () =>
+  jest.fn().mockReturnValue(<p>KPILegend.Component</p>)
+);
+
 const mockHandleRemoveWidget = jest.fn();
 const mockHandleLayoutUpdate = jest.fn();
 
@@ -116,9 +120,7 @@ describe('KPIWidget', () => {
     });
 
     expect(screen.getByText('label.kpi-title')).toBeInTheDocument();
-    expect(
-      screen.getByText('KPILatestResultsV1.Component')
-    ).toBeInTheDocument();
+    expect(screen.getByText('KPILegend.Component')).toBeInTheDocument();
   });
 
   it('should render ErrorPlaceholder if no data there', async () => {

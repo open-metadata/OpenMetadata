@@ -393,6 +393,7 @@
     "day": "วัน",
     "day-left": "{{day}} วันเหลือ",
     "days-change-lowercase": "เปลี่ยนแปลง {{days}} วัน",
+    "days-left": "วันเหลือ",
     "dbt-bucket-name": "ชื่อถัง dbt",
     "dbt-catalog-file-path": "เส้นทางไฟล์ catalog ของ dbt",
     "dbt-catalog-http-path": "เส้นทาง HTTP ของ catalog ของ dbt",

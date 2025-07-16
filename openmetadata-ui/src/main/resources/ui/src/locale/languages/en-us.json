@@ -393,6 +393,7 @@
     "day": "Day",
     "day-left": "{{day}} left",
     "days-change-lowercase": "{{days}}-days change",
+    "days-left": "Days Left",
     "dbt-bucket-name": "dbt Bucket Name",
     "dbt-catalog-file-path": "dbt Catalog File Path",
     "dbt-catalog-http-path": "dbt Catalog HTTP Path",

@@ -393,6 +393,7 @@
     "day": "दिवस",
     "day-left": "{{day}} शिल्लक",
     "days-change-lowercase": "{{days}}-दिवस बदल",
+    "days-left": "दिवस शिल्लक",
     "dbt-bucket-name": "dbt बकेट नाव",
     "dbt-catalog-file-path": "dbt कॅटलॉग फाइल पथ",
     "dbt-catalog-http-path": "dbt कॅटलॉग HTTP पथ",

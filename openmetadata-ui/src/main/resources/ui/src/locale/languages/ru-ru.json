@@ -393,6 +393,7 @@
     "day": "День",
     "day-left": "{{day}} осталось",
     "days-change-lowercase": "изменено {{days}} дней назад",
+    "days-left": "Дней осталось",
     "dbt-bucket-name": "Имя корзины dbt",
     "dbt-catalog-file-path": "Путь к файлу каталога dbt",
     "dbt-catalog-http-path": "HTTP-путь каталога dbt",

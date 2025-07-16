@@ -393,6 +393,7 @@
     "day": "日",
     "day-left": "剩余{{day}}天",
     "days-change-lowercase": "{{days}}天更改",
+    "days-left": "剩余天数",
     "dbt-bucket-name": "dbt Bucket 名称",
     "dbt-catalog-file-path": "dbt Catalog 文件路径",
     "dbt-catalog-http-path": "dbt Catalog HTTP 路径",

@@ -393,6 +393,7 @@
     "day": "日",
     "day-left": "{{day}}経過",
     "days-change-lowercase": "{{days}}-days change",
+    "days-left": "残り",
     "dbt-bucket-name": "dbt Bucket Name",
     "dbt-catalog-file-path": "dbt Catalog File Path",
     "dbt-catalog-http-path": "dbt Catalog HTTP Path",

@@ -27,7 +27,7 @@ import {
 import { ReactComponent as KPIIcon } from '../../../../assets/svg/ic-kpi-widget.svg';
 import { ReactComponent as KPINoDataPlaceholder } from '../../../../assets/svg/no-search-placeholder.svg';
 import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
-import { DATA_INSIGHT_GRAPH_COLORS } from '../../../../constants/DataInsight.constants';
+import { KPI_WIDGET_GRAPH_COLORS } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Kpi, KpiResult } from '../../../../generated/dataInsight/kpi/kpi';
@@ -44,11 +44,11 @@ import {
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import KPILatestResultsV1 from '../../../DataInsight/KPILatestResultsV1';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './kpi-widget.less';
+import KPILegend from './KPILegend/KPILegend';
 import { KPIWidgetProps } from './KPIWidget.interface';
 
 const KPIWidget = ({
@@ -68,6 +68,10 @@ const KPIWidget = ({
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const isFullSizeWidget = useMemo(() => {
+    return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
+  }, [currentLayout, widgetKey]);
 
   const getKPIResult = async (kpi: Kpi) => {
     const response = await getListKpiResult(kpi.fullyQualifiedName ?? '', {
@@ -178,23 +182,15 @@ const KPIWidget = ({
 
   const kpiChartData = useMemo(() => {
     return (
-      <Row className="p-t-md p-x-md">
-        <Col className="kpi-chart-legend m-b-sm" span={24}>
-          <div className="d-flex gap-4 flex-wrap justify-center">
-            {kpiNames.map((key, i) => (
-              <div className="d-flex items-center gap-1 " key={key}>
-                <span
-                  className="h-2 w-2 d-inline-block"
-                  style={{
-                    borderRadius: '50%',
-                    backgroundColor: DATA_INSIGHT_GRAPH_COLORS[i],
-                  }}
-                />
-                <span className="font-regular text-xs">{key}</span>
-              </div>
-            ))}
-          </div>
-        </Col>
+      <Row className="p-t-xs p-x-md">
+        {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
+          <Col className="m-b-sm" span={24}>
+            <KPILegend
+              isFullSize={isFullSizeWidget}
+              kpiLatestResultsRecord={kpiLatestResults}
+            />
+          </Col>
+        )}
 
         <Col span={24}>
           <ResponsiveContainer debounce={1} height={300} width="100%">
@@ -216,12 +212,12 @@ const KPIWidget = ({
                     y2="1">
                     <stop
                       offset="0%"
-                      stopColor={DATA_INSIGHT_GRAPH_COLORS[i]}
+                      stopColor={KPI_WIDGET_GRAPH_COLORS[i]}
                       stopOpacity={0.4}
                     />
                     <stop
                       offset="100%"
-                      stopColor={DATA_INSIGHT_GRAPH_COLORS[i]}
+                      stopColor={KPI_WIDGET_GRAPH_COLORS[i]}
                       stopOpacity={0.05}
                     />
                   </linearGradient>
@@ -269,21 +265,21 @@ const KPIWidget = ({
                 <Area
                   activeDot={{
                     r: 5,
-                    fill: DATA_INSIGHT_GRAPH_COLORS[i],
+                    fill: KPI_WIDGET_GRAPH_COLORS[i],
                     stroke: '#fff',
                     strokeWidth: 2,
                   }}
                   data={kpiResults[key]}
                   dataKey="count"
                   dot={{
-                    stroke: DATA_INSIGHT_GRAPH_COLORS[i],
+                    stroke: KPI_WIDGET_GRAPH_COLORS[i],
                     strokeWidth: 2,
-                    fill: DATA_INSIGHT_GRAPH_COLORS[i],
+                    fill: KPI_WIDGET_GRAPH_COLORS[i],
                     r: 4,
                   }}
                   fill={`url(#gradient-${key})`}
                   key={key}
-                  stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
+                  stroke={KPI_WIDGET_GRAPH_COLORS[i]}
                   strokeWidth={2}
                   type="monotone"
                 />
@@ -291,11 +287,6 @@ const KPIWidget = ({
             </AreaChart>
           </ResponsiveContainer>
         </Col>
-        {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
-          <Col span={24}>
-            <KPILatestResultsV1 kpiLatestResultsRecord={kpiLatestResults} />
-          </Col>
-        )}
       </Row>
     );
   }, [kpiResults, kpiLatestResults, kpiNames]);

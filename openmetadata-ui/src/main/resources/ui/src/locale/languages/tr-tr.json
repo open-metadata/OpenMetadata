@@ -393,6 +393,7 @@
     "day": "Gün",
     "day-left": "{{day}} gün kaldı",
     "days-change-lowercase": "{{days}}-günlük değişim",
+    "days-left": "gün kaldı",
     "dbt-bucket-name": "dbt Kova Adı",
     "dbt-catalog-file-path": "dbt Katalog Dosya Yolu",
     "dbt-catalog-http-path": "dbt Katalog HTTP Yolu",

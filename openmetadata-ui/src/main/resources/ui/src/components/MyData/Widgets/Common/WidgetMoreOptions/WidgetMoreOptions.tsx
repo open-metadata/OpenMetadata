@@ -41,7 +41,6 @@ const WidgetMoreOptions = ({
     <Dropdown
       className={`widget-more-options ${className}`}
       data-testid={dataTestId}
-      getPopupContainer={(triggerNode: HTMLElement) => triggerNode}
       menu={{
         items: menuItems,
         selectable: false,

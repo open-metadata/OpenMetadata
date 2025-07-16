@@ -393,6 +393,7 @@
     "day": "روز",
     "day-left": "{{day}} مانده",
     "days-change-lowercase": "تغییر {{day}}-روزه",
+    "days-left": "روزمانده",
     "dbt-bucket-name": "نام سطل dbt",
     "dbt-catalog-file-path": "مسیر فایل کاتالوگ dbt",
     "dbt-catalog-http-path": "مسیر HTTP کاتالوگ dbt",
