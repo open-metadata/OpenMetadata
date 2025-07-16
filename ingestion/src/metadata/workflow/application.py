@@ -26,7 +26,6 @@ from metadata.ingestion.api.step import Step
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.importer import import_from_module
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secrets.external_secrets_manager import ExternalSecretsManager
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.workflow.base import BaseWorkflow
 
@@ -55,31 +54,34 @@ class AppRunner(Step, ABC):
         self.metadata = metadata
 
         # If private_config is None/empty and we have ingestion pipeline FQN,
-        # try to retrieve it from secrets manager (for external apps)
+        # try to retrieve it from secrets manager
         if (
             not self.private_config
             and config.ingestionPipelineFQN
-            and self._is_external_secrets_manager_available()
+            and self._is_secrets_manager_available()
         ):
-            self.private_config = self._retrieve_external_app_private_config(
+            self.private_config = self._retrieve_app_private_config(
                 config.ingestionPipelineFQN
             )
 
         super().__init__()
 
-    def _is_external_secrets_manager_available(self) -> bool:
-        """Check if external secrets manager is available and configured"""
+    def _is_secrets_manager_available(self) -> bool:
+        """Check if any secrets manager is available and configured"""
         try:
             secrets_manager = SecretsManagerFactory().get_secrets_manager()
-            return isinstance(secrets_manager, ExternalSecretsManager)
+            # Check if the secrets manager has the get_string_value method
+            return hasattr(secrets_manager, "get_string_value") and callable(
+                getattr(secrets_manager, "get_string_value")
+            )
         except Exception:
             return False
 
-    def _retrieve_external_app_private_config(
+    def _retrieve_app_private_config(
         self, pipeline_fqn: str
     ) -> Optional[Dict[str, Any]]:
         """
-        Retrieve private config from external secrets manager for external apps.
+        Retrieve private config from secrets manager for applications.
 
         Args:
             pipeline_fqn: Fully qualified name of the ingestion pipeline (e.g., "OpenMetadata.appName")
@@ -99,12 +101,12 @@ class AppRunner(Step, ABC):
 
             # Retrieve from secrets manager
             secrets_manager = SecretsManagerFactory().get_secrets_manager()
-            if isinstance(secrets_manager, ExternalSecretsManager):
+            if hasattr(secrets_manager, "get_string_value"):
                 private_config_json = secrets_manager.get_string_value(secret_id)
                 if private_config_json:
                     private_config = json.loads(private_config_json)
                     logger.info(
-                        f"Successfully retrieved private config from secrets manager for external app: {app_name}"
+                        f"Successfully retrieved private config from secrets manager for app: {app_name}"
                     )
                     return private_config
                 else:
@@ -113,14 +115,14 @@ class AppRunner(Step, ABC):
                     )
                     return None
             else:
-                logger.debug("External secrets manager not available")
+                logger.debug("Secrets manager does not support get_string_value method")
                 return None
 
         except Exception as exc:
             logger.error(
                 f"Failed to retrieve private config from secrets manager for FQN {pipeline_fqn}: {exc}"
             )
-            logger.debug(f"External app will run without private config")
+            logger.debug(f"App will run without private config")
             return None
 
     def _extract_app_name_from_fqn(self, pipeline_fqn: str) -> Optional[str]:
