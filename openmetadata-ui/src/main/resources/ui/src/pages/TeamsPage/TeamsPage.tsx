@@ -32,6 +32,7 @@ import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/policy';
 import { Team } from '../../generated/entity/teams/team';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -47,7 +48,10 @@ import {
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
@@ -79,7 +83,11 @@ const TeamsPage = () => {
     useState<boolean>(false);
 
   const hasViewPermission = useMemo(
-    () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
+    () =>
+      getPrioritizedViewPermission(
+        entityPermissions,
+        PermissionOperation.ViewBasic
+      ),
     [entityPermissions]
   );
 
@@ -466,7 +474,12 @@ const TeamsPage = () => {
         fqn
       );
       setEntityPermissions(teamPermissions);
-      if (teamPermissions.ViewAll || teamPermissions.ViewBasic) {
+      if (
+        getPrioritizedViewPermission(
+          teamPermissions,
+          PermissionOperation.ViewBasic
+        )
+      ) {
         await fetchTeamBasicDetails(fqn, true);
         loadAdvancedDetails();
       }

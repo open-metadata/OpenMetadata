@@ -20,6 +20,7 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -35,6 +36,7 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -186,13 +188,15 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   } = useMemo(
     () => ({
       editCustomAttributePermission:
-        (apiEndpointPermissions.EditAll ||
-          apiEndpointPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          apiEndpointPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editLineagePermission:
-        (apiEndpointPermissions.EditAll ||
-          apiEndpointPermissions.EditLineage) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          apiEndpointPermissions,
+          Operation.EditLineage
+        ) && !deleted,
       viewAllPermission: apiEndpointPermissions.ViewAll,
     }),
     [apiEndpointPermissions, deleted]

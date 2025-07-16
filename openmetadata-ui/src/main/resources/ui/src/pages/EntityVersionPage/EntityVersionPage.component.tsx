@@ -54,6 +54,7 @@ import { SearchIndex } from '../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
+import { Operation } from '../../generated/entity/policies/policy';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -115,7 +116,10 @@ import {
 } from '../../rest/topicsAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -210,7 +214,7 @@ const EntityVersionPage: FunctionComponent = () => {
   }, [entityType, fetchResourcePermission]);
 
   const viewVersionPermission = useMemo(
-    () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
+    () => getPrioritizedViewPermission(entityPermissions, Operation.ViewBasic),
     [entityPermissions]
   );
 
