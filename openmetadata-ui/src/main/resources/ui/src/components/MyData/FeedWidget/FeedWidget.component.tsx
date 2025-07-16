@@ -19,6 +19,7 @@ import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/n
 import { ROUTES } from '../../../constants/constants';
 import { FEED_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -159,9 +160,11 @@ const MyFeedWidgetInternal = ({
           <WidgetFooter
             moreButtonLink={getUserPath(
               currentUser?.name ?? '',
-              'activity_feed'
+              EntityTabs.ACTIVITY_FEED
             )}
-            moreButtonText={t('label.view-more')}
+            moreButtonText={t('label.view-more-count', {
+              count: entityThread.length,
+            })}
             showMoreButton={Boolean(!loading)}
           />
         </div>

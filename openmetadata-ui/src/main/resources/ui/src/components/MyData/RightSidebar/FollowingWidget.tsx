@@ -22,6 +22,7 @@ import { ROUTES } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { FOLLOWING_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -259,7 +260,7 @@ function FollowingWidget({
           <WidgetFooter
             moreButtonLink={getUserPath(
               currentUser?.name ?? '',
-              'activity_feed'
+              EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
               count: followedData.length,
