@@ -19,6 +19,8 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
@@ -318,6 +320,16 @@ public class SystemRepository {
         JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
       } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
         JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
+      } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+        AuthenticationConfiguration authConfig =
+            JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
+        JsonUtils.validateJsonSchema(authConfig, AuthenticationConfiguration.class);
+        setting.setConfigValue(authConfig);
+      } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
+        AuthorizerConfiguration authorizerConfig =
+            JsonUtils.convertValue(setting.getConfigValue(), AuthorizerConfiguration.class);
+        JsonUtils.validateJsonSchema(authorizerConfig, AuthorizerConfiguration.class);
+        setting.setConfigValue(authorizerConfig);
       }
       dao.insertSettings(
           setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));

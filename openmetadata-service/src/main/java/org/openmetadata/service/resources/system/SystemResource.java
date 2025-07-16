@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 
@@ -36,6 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.auth.EmailRequest;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.ValidationResponse;
@@ -55,8 +58,10 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -93,7 +98,9 @@ public class SystemResource {
             config.getPipelineServiceClientConfiguration());
 
     this.jwtFilter =
-        new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
+        new JwtFilter(
+            SecurityConfigurationManager.getInstance().getCurrentAuthConfig(),
+            SecurityConfigurationManager.getInstance().getCurrentAuthzConfig());
     this.isNlqEnabled =
         config.getElasticSearchConfiguration().getNaturalLanguageSearch() != null
             ? config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled()
@@ -447,5 +454,99 @@ public class SystemResource {
       })
   public ValidationResponse validate() {
     return systemRepository.validateSystem(applicationConfig, pipelineServiceClient, jwtFilter);
+  }
+
+  @GET
+  @Path("/security/config")
+  @Operation(
+      operationId = "getSecurityConfig",
+      summary = "Get complete security configuration",
+      description = "Get both authentication and authorization configuration",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Security Configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityConfiguration.class)))
+      })
+  public SecurityConfiguration getSecurityConfig(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    SecurityConfiguration config =
+        SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+
+    // Apply password masking if needed
+    if (authorizer.shouldMaskPasswords(securityContext)) {
+      // Mask OIDC configuration if present
+      if (config.getAuthenticationConfiguration() != null
+          && config.getAuthenticationConfiguration().getOidcConfiguration() != null) {
+        config
+            .getAuthenticationConfiguration()
+            .getOidcConfiguration()
+            .setSecret(PasswordEntityMasker.PASSWORD_MASK);
+      }
+
+      // Mask LDAP configuration if present
+      if (config.getAuthenticationConfiguration() != null
+          && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
+        config
+            .getAuthenticationConfiguration()
+            .getLdapConfiguration()
+            .setDnAdminPassword(PasswordEntityMasker.PASSWORD_MASK);
+      }
+    }
+    return config;
+  }
+
+  @PUT
+  @Path("/security/config")
+  @Operation(
+      operationId = "updateSecurityConfig",
+      summary = "Update complete security configuration",
+      description = "Update both authentication and authorization configuration atomically",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated Security Configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityConfiguration.class)))
+      })
+  public Response updateSecurityConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid SecurityConfiguration securityConfig) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      // Update both configurations in a transaction
+      Settings authSettings =
+          new Settings()
+              .withConfigType(AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(securityConfig.getAuthenticationConfiguration());
+
+      Settings authzSettings =
+          new Settings()
+              .withConfigType(AUTHORIZER_CONFIGURATION)
+              .withConfigValue(securityConfig.getAuthorizerConfiguration());
+
+      // Save both to database
+      systemRepository.createOrUpdate(authSettings);
+      systemRepository.createOrUpdate(authzSettings);
+
+      // Invalidate both caches
+      SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+      SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
+
+      // Reload entire security system
+      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+
+      return Response.ok(securityConfig).build();
+    } catch (Exception e) {
+      LOG.error("Failed to update security configuration", e);
+      throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
+    }
   }
 }

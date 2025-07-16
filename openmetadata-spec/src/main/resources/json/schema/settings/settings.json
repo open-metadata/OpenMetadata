@@ -35,7 +35,8 @@
         "assetCertificationSettings",
         "lineageSettings",
         "workflowSettings",
-        "scimConfiguration"
+        "scimConfiguration",
+        "securityConfiguration"
       ]
     }
   },
@@ -93,6 +94,9 @@
         },
         {
           "$ref": "../configuration/workflowSettings.json"
+        },
+        {
+          "$ref": "../configuration/securityConfiguration.json"
         }
       ]
     }

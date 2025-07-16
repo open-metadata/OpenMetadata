@@ -146,6 +146,7 @@ import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -182,7 +183,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final RoleRepository roleRepository;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
-  private final AuthenticatorHandler authHandler;
+  private final AuthenticatorHandler authHandlem;
   private boolean isSelfSignUpEnabled = false;
   static final String FIELDS =
       "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
@@ -207,7 +208,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     tokenRepository = Entity.getTokenRepository();
     roleRepository = Entity.getRoleRepository();
     UserTokenCache.initialize();
-    authHandler = authenticatorHandler;
+    authHandlem = authenticatorHandler;
   }
 
   @Override
@@ -219,7 +220,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
-    this.authenticationConfiguration = config.getAuthenticationConfiguration();
+    this.authenticationConfiguration =
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.repository.initializeUsers(config);
     this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
@@ -722,12 +724,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
     if (isBasicAuth() && getSmtpSettings().getEnableSmtpServer()) {
       try {
-        authHandler.sendInviteMailToUser(
-            uriInfo,
-            user,
-            String.format("Welcome to %s", EmailUtil.getSmtpSettings().getEmailingEntity()),
-            create.getCreatePasswordType(),
-            create.getPassword());
+        SecurityConfigurationManager.getInstance()
+            .getAuthenticatorHandler()
+            .sendInviteMailToUser(
+                uriInfo,
+                user,
+                String.format("Welcome to %s", EmailUtil.getSmtpSettings().getEmailingEntity()),
+                create.getCreatePasswordType(),
+                create.getPassword());
       } catch (Exception ex) {
         LOG.error("Error in sending invite to User" + ex.getMessage());
       }
@@ -1103,8 +1107,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create)
       throws IOException {
-    User registeredUser = authHandler.registerUser(create);
-    authHandler.sendEmailVerification(uriInfo, registeredUser);
+    User registeredUser =
+        SecurityConfigurationManager.getInstance().getAuthenticatorHandler().registerUser(create);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .sendEmailVerification(uriInfo, registeredUser);
     return Response.status(Response.Status.CREATED.getStatusCode(), "User Registration Successful.")
         .entity(registeredUser)
         .build();
@@ -1127,7 +1134,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("token")
           String token) {
-    authHandler.confirmEmailRegistration(uriInfo, token);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .confirmEmailRegistration(uriInfo, token);
     return Response.status(Response.Status.OK).entity("Email Verified Successfully").build();
   }
 
@@ -1153,7 +1162,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       return Response.status(Response.Status.OK).entity("Email Already Verified.").build();
     }
-    authHandler.resendRegistrationToken(uriInfo, registeredUser);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .resendRegistrationToken(uriInfo, registeredUser);
     return Response.status(Response.Status.OK)
         .entity("Email Verification Mail Sent. Please check your Mailbox.")
         .build();
@@ -1187,11 +1198,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     try {
       // send a mail to the User with the Update
-      authHandler.sendPasswordResetLink(
-          uriInfo,
-          registeredUser,
-          EmailUtil.getPasswordResetSubject(),
-          TemplateConstants.RESET_LINK_TEMPLATE);
+      SecurityConfigurationManager.getInstance()
+          .getAuthenticatorHandler()
+          .sendPasswordResetLink(
+              uriInfo,
+              registeredUser,
+              EmailUtil.getPasswordResetSubject(),
+              TemplateConstants.RESET_LINK_TEMPLATE);
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
@@ -1219,7 +1232,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response resetUserPassword(@Context UriInfo uriInfo, @Valid PasswordResetRequest request)
       throws IOException {
-    authHandler.resetUserPasswordWithToken(uriInfo, request);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .resetUserPasswordWithToken(uriInfo, request);
     return Response.status(200).entity("Password Changed Successfully").build();
   }
 
@@ -1245,11 +1260,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid ChangePasswordRequest request)
       throws IOException {
     if (request.getRequestType() == SELF) {
-      authHandler.changeUserPwdWithOldPwd(
-          uriInfo, securityContext.getUserPrincipal().getName(), request);
+      SecurityConfigurationManager.getInstance()
+          .getAuthenticatorHandler()
+          .changeUserPwdWithOldPwd(uriInfo, securityContext.getUserPrincipal().getName(), request);
     } else {
       authorizer.authorizeAdmin(securityContext);
-      authHandler.changeUserPwdWithOldPwd(uriInfo, request.getUsername(), request);
+      SecurityConfigurationManager.getInstance()
+          .getAuthenticatorHandler()
+          .changeUserPwdWithOldPwd(uriInfo, request.getUsername(), request);
     }
     return Response.status(OK).entity("Password Updated Successfully").build();
   }
@@ -1305,7 +1323,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("Password needs to be encoded in Base-64.");
     }
     loginRequest.withPassword(new String(decodedBytes));
-    return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();
+    return Response.status(Response.Status.OK)
+        .entity(
+            SecurityConfigurationManager.getInstance()
+                .getAuthenticatorHandler()
+                .loginUser(loginRequest))
+        .build();
   }
 
   @POST
@@ -1329,7 +1352,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Valid TokenRefreshRequest refreshRequest) {
     return Response.status(Response.Status.OK)
-        .entity(authHandler.getNewAccessToken(refreshRequest))
+        .entity(
+            SecurityConfigurationManager.getInstance()
+                .getAuthenticatorHandler()
+                .getNewAccessToken(refreshRequest))
         .build();
   }
 

@@ -109,7 +109,7 @@ import org.pac4j.oidc.config.PrivateKeyJWTClientAuthnMethodConfig;
 import org.pac4j.oidc.credentials.OidcCredentials;
 
 @Slf4j
-public class AuthenticationCodeFlowHandler {
+public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final Collection<ClientAuthenticationMethod> SUPPORTED_METHODS =
       Arrays.asList(
           ClientAuthenticationMethod.CLIENT_SECRET_POST,
@@ -121,17 +121,21 @@ public class AuthenticationCodeFlowHandler {
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
   public static final String REDIRECT_URI_KEY = "redirectUri";
-  private final OidcClient client;
-  private final List<String> claimsOrder;
-  private final Map<String, String> claimsMapping;
-  private final String serverUrl;
-  private final ClientAuthentication clientAuthentication;
-  private final String principalDomain;
-  private final int tokenValidity;
-  private final String maxAge;
-  private final String promptType;
+  private static volatile AuthenticationCodeFlowHandler instance;
 
-  public AuthenticationCodeFlowHandler(
+  private OidcClient client;
+  private List<String> claimsOrder;
+  private Map<String, String> claimsMapping;
+  private String serverUrl;
+  private ClientAuthentication clientAuthentication;
+  private String principalDomain;
+  private int tokenValidity;
+  private String maxAge;
+  private String promptType;
+  private AuthenticationConfiguration authenticationConfiguration;
+  private AuthorizerConfiguration authorizerConfiguration;
+
+  private AuthenticationCodeFlowHandler(
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConfiguration) {
     // Assert oidcConfig and Callback Url
@@ -143,9 +147,46 @@ public class AuthenticationCodeFlowHandler {
         "ServerUrl", authenticationConfiguration.getOidcConfiguration().getServerUrl());
 
     // Build Required Params
+    this.authenticationConfiguration = authenticationConfiguration;
+    this.authorizerConfiguration = authorizerConfiguration;
+    initializeFields();
+  }
+
+  public static AuthenticationCodeFlowHandler getInstance(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {
+    if (instance == null) {
+      synchronized (AuthenticationCodeFlowHandler.class) {
+        if (instance == null) {
+          instance =
+              new AuthenticationCodeFlowHandler(
+                  authenticationConfiguration, authorizerConfiguration);
+        }
+      }
+    }
+    return instance;
+  }
+
+  public static AuthenticationCodeFlowHandler getInstance() {
+    if (instance == null) {
+      throw new IllegalStateException(
+          "AuthenticationCodeFlowHandler is not initialized. Call getInstance() with configuration first.");
+    }
+    return instance;
+  }
+
+  public synchronized void updateConfiguration(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {
+    this.authenticationConfiguration = authenticationConfiguration;
+    this.authorizerConfiguration = authorizerConfiguration;
+    initializeFields();
+  }
+
+  private void initializeFields() {
     this.client = buildOidcClient(authenticationConfiguration.getOidcConfiguration());
     client.setCallbackUrl(authenticationConfiguration.getOidcConfiguration().getCallbackUrl());
-    this.clientAuthentication = getClientAuthentication(client.getConfiguration());
+
     this.serverUrl = authenticationConfiguration.getOidcConfiguration().getServerUrl();
     this.claimsOrder = authenticationConfiguration.getJwtPrincipalClaims();
     this.claimsMapping =
@@ -157,6 +198,7 @@ public class AuthenticationCodeFlowHandler {
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
+    this.clientAuthentication = getClientAuthentication(client.getConfiguration());
   }
 
   private OidcClient buildOidcClient(OidcClientConfig clientConfig) {

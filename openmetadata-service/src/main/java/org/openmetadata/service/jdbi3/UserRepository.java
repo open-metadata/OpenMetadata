@@ -79,6 +79,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -416,7 +417,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public void initializeUsers(OpenMetadataApplicationConfig config) {
-    AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+    AuthProvider authProvider =
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getProvider();
     // Create Admins
     Set<String> adminUsers =
         new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
