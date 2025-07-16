@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { groupBy, isEmpty, omit, reduce, sortBy } from 'lodash';
+import { groupBy, isEmpty, omit, reduce, sortBy, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -25,14 +25,13 @@ import {
 import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-total-data-assets.svg';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
 import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
+import { TOTAL_DATA_ASSETS_WIDGET_COLORS } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
-import { entityChartColor } from '../../../../utils/CommonUtils';
-import { getRandomHexColor } from '../../../../utils/DataInsightUtils';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -179,13 +178,17 @@ const TotalDataAssetsWidget = ({
                     })
                   )}
                   dataKey="value"
-                  innerRadius={100}
+                  innerRadius={90}
                   nameKey="name"
                   outerRadius={140}
                   paddingAngle={1}>
                   {rightSideEntityList.map((label, index) => (
                     <Cell
-                      fill={entityChartColor(index) ?? getRandomHexColor()}
+                      fill={
+                        TOTAL_DATA_ASSETS_WIDGET_COLORS[
+                          index % TOTAL_DATA_ASSETS_WIDGET_COLORS.length
+                        ]
+                      }
                       key={label}
                     />
                   ))}
@@ -218,14 +221,16 @@ const TotalDataAssetsWidget = ({
               {rightSideEntityList.map((label, index) => (
                 <div className="d-flex items-center gap-3 text-sm" key={label}>
                   <span
-                    className="h-2 w-2"
+                    className="h-3 w-3"
                     style={{
                       borderRadius: '50%',
                       backgroundColor:
-                        entityChartColor(index) ?? getRandomHexColor(),
+                        TOTAL_DATA_ASSETS_WIDGET_COLORS[
+                          index % TOTAL_DATA_ASSETS_WIDGET_COLORS.length
+                        ],
                     }}
                   />
-                  <span>{label}</span>
+                  <span>{startCase(label)}</span>
                   <span className="text-xs font-medium p-y-xss p-x-xs data-value">
                     {selectedDateData[label] ?? 0}
                   </span>

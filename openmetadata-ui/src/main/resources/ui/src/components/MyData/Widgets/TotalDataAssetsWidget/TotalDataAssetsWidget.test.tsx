@@ -64,18 +64,6 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   ),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
-  entityChartColor: jest.fn((index: number) => {
-    const colors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1'];
-
-    return colors[index % colors.length];
-  }),
-}));
-
-jest.mock('../../../../utils/DataInsightUtils', () => ({
-  getRandomHexColor: jest.fn(() => '#FF6B6B'),
-}));
-
 jest.mock('../Common/WidgetWrapper/WidgetWrapper', () => {
   return jest.fn().mockImplementation(({ children, loading, dataLength }) => (
     <div
@@ -332,9 +320,9 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Should show legend with entity types and counts
-      expect(screen.getByText('table')).toBeInTheDocument();
-      expect(screen.getByText('dashboard')).toBeInTheDocument();
-      expect(screen.getByText('pipeline')).toBeInTheDocument();
+      expect(screen.getByText('Table')).toBeInTheDocument();
+      expect(screen.getByText('Dashboard')).toBeInTheDocument();
+      expect(screen.getByText('Pipeline')).toBeInTheDocument();
     });
 
     it('should not render legend when widget is not full size', async () => {
