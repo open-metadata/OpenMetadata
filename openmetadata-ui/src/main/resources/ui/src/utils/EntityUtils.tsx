@@ -26,6 +26,7 @@ import QueryString from 'qs';
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
+import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -286,10 +287,16 @@ const getCommonOverview = (
         ]
       : []),
     {
-      name: i18next.t('label.domain'),
-      value: getEntityName(domains?.[0]) || NO_DATA,
-      isLink: Boolean(domains?.[0]),
-      url: getDomainPath(domains?.[0]?.fullyQualifiedName),
+      name: i18next.t('label.domain-plural'),
+      value: (
+        <DomainLabel
+          domains={domains}
+          entityFqn=""
+          entityId=""
+          entityType={EntityType.TABLE}
+          showDomainHeading={false}
+        />
+      ),
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
   ];

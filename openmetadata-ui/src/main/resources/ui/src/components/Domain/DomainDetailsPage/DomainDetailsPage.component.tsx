@@ -359,7 +359,7 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:"${encodedFqn}")`,
+          `(domains.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT

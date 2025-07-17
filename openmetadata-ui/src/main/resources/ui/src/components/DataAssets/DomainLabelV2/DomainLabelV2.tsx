@@ -108,7 +108,7 @@ export const DomainLabelV2 = <
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
             title={t('label.inherited-entity', {
-              entity: t('label.domain'),
+              entity: t('label.domain-plural'),
             })}>
             <InheritIcon className="inherit-icon cursor-pointer" width={14} />
           </Tooltip>
@@ -144,7 +144,7 @@ export const DomainLabelV2 = <
             props.textClassName
           )}
           data-testid="no-domain-text">
-          {t('label.no-entity', { entity: t('label.domain') })}
+          {t('label.no-entity', { entity: t('label.domain-plural') })}
         </Typography.Text>
       );
     }
@@ -175,7 +175,7 @@ export const DomainLabelV2 = <
             title: (
               <div className="d-flex items-center gap-1">
                 <Typography.Text className="text-sm font-medium">
-                  {t('label.domain')}
+                  {t('label.domain-plural')}
                 </Typography.Text>
                 {selectableList}
               </div>

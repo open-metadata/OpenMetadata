@@ -43,7 +43,7 @@ describe('AdvancedSearchClassBase', () => {
       EntityFields.NAME_KEYWORD,
       'deleted',
       EntityFields.OWNERS,
-      EntityFields.DOMAIN,
+      EntityFields.DOMAINS,
       'serviceType',
       EntityFields.TAG,
       EntityFields.TIER,

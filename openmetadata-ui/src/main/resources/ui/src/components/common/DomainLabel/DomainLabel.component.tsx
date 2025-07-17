@@ -111,7 +111,7 @@ export const DomainLabel = ({
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
             title={t('label.inherited-entity', {
-              entity: t('label.domain'),
+              entity: t('label.domain-plural'),
             })}>
             <InheritIcon className="inherit-icon cursor-pointer" width={14} />
           </Tooltip>
@@ -185,7 +185,7 @@ export const DomainLabel = ({
           textClassName
         )}
         data-testid="no-domain-text">
-        {t('label.no-entity', { entity: t('label.domain') })}
+        {t('label.no-entity', { entity: t('label.domain-plural') })}
       </Typography.Text>
     );
   }, [
@@ -220,13 +220,13 @@ export const DomainLabel = ({
             data-testid="header-domain-container">
             {!headerLayout ? (
               <Typography.Text className="right-panel-label m-r-xss">
-                {t('label.domain')}
+                {t('label.domain-plural')}
               </Typography.Text>
             ) : (
               <Typography.Text className="domain-link right-panel-label m-r-xss">
                 {activeDomain.length > 0
-                  ? t('label.domain')
-                  : t('label.no-entity', { entity: t('label.domain') })}
+                  ? t('label.domain-plural')
+                  : t('label.no-entity', { entity: t('label.domain-plural') })}
               </Typography.Text>
             )}
             {selectableList}
@@ -246,7 +246,7 @@ export const DomainLabel = ({
             className="d-flex text-sm gap-1 font-medium items-center "
             data-testid="header-domain-container">
             <Typography.Text className="domain-link right-panel-label m-r-xss">
-              {t('label.domain')}
+              {t('label.domain-plural')}
             </Typography.Text>
             {selectableList}
           </div>

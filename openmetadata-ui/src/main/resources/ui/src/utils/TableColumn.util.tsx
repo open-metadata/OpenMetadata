@@ -59,7 +59,7 @@ export const domainTableObject = <
   T extends { domains?: EntityReference[] }
 >(): ColumnsType<T> => [
   {
-    title: i18n.t('label.domain').toString(),
+    title: i18n.t('label.domain-plural').toString(),
     dataIndex: TABLE_COLUMNS_KEYS.DOMAINS,
     key: TABLE_COLUMNS_KEYS.DOMAINS,
     width: 200,
