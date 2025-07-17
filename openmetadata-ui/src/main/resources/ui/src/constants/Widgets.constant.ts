@@ -72,3 +72,10 @@ export const WIDGETS_MORE_MENU_OPTIONS = [
     }),
   },
 ];
+
+export const KPI_WIDGET_GRAPH_COLORS = [
+  '#7262F6',
+  '#6AD2FF',
+  '#E7B85D',
+  '#416BB3',
+];

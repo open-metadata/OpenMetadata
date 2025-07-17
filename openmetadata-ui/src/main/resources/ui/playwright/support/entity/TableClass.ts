@@ -63,6 +63,8 @@ export class TableClass extends EntityClass {
     `name${uuid()}`,
     `first_name${uuid()}`,
     `last_name${uuid()}`,
+    `address${uuid()}`,
+    `mail${uuid()}`,
     `email${uuid()}`,
   ];
   entityLinkColumnsName = [
@@ -71,7 +73,9 @@ export class TableClass extends EntityClass {
     this.columnsName[2],
     `${this.columnsName[2]}.${this.columnsName[3]}`,
     `${this.columnsName[2]}.${this.columnsName[4]}`,
-    this.columnsName[5],
+    `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
+    `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
+    this.columnsName[7],
   ];
 
   children = [
@@ -109,11 +113,27 @@ export class TableClass extends EntityClass {
           dataType: 'ARRAY',
           dataLength: 100,
           dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
+          children: [
+            {
+              name: this.columnsName[5],
+              dataType: 'STRUCT',
+              dataLength: 100,
+              dataTypeDisplay:
+                'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
+              description: 'First name of the staff member.',
+            },
+            {
+              name: this.columnsName[6],
+              dataType: 'ARRAY',
+              dataLength: 100,
+              dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
+            },
+          ],
         },
       ],
     },
     {
-      name: this.columnsName[5],
+      name: this.columnsName[7],
       dataType: 'VARCHAR',
       dataLength: 100,
       dataTypeDisplay: 'varchar',
