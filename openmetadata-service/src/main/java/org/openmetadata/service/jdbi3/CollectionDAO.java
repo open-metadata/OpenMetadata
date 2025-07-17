@@ -95,6 +95,8 @@ import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Directory;
+import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
@@ -103,9 +105,11 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.SearchIndex;
+import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -115,6 +119,7 @@ import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
@@ -321,7 +326,22 @@ public interface CollectionDAO {
   ApiServiceDAO apiServiceDAO();
 
   @CreateSqlObject
+  DriveServiceDAO driveServiceDAO();
+
+  @CreateSqlObject
   ContainerDAO containerDAO();
+
+  @CreateSqlObject
+  DirectoryDAO directoryDAO();
+
+  @CreateSqlObject
+  FileDAO fileDAO();
+
+  @CreateSqlObject
+  SpreadsheetDAO spreadsheetDAO();
+
+  @CreateSqlObject
+  WorksheetDAO worksheetDAO();
 
   @CreateSqlObject
   FeedDAO feedDAO();
@@ -719,6 +739,91 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "nameHash";
+    }
+  }
+
+  interface DriveServiceDAO extends EntityDAO<DriveService> {
+    @Override
+    default String getTableName() {
+      return "drive_service_entity";
+    }
+
+    @Override
+    default Class<DriveService> getEntityClass() {
+      return DriveService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface DirectoryDAO extends EntityDAO<Directory> {
+    @Override
+    default String getTableName() {
+      return "directory_entity";
+    }
+
+    @Override
+    default Class<Directory> getEntityClass() {
+      return Directory.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface FileDAO extends EntityDAO<File> {
+    @Override
+    default String getTableName() {
+      return "file_entity";
+    }
+
+    @Override
+    default Class<File> getEntityClass() {
+      return File.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface SpreadsheetDAO extends EntityDAO<Spreadsheet> {
+    @Override
+    default String getTableName() {
+      return "spreadsheet_entity";
+    }
+
+    @Override
+    default Class<Spreadsheet> getEntityClass() {
+      return Spreadsheet.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface WorksheetDAO extends EntityDAO<Worksheet> {
+    @Override
+    default String getTableName() {
+      return "worksheet_entity";
+    }
+
+    @Override
+    default Class<Worksheet> getEntityClass() {
+      return Worksheet.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
     }
   }
 
@@ -4088,6 +4193,87 @@ public interface CollectionDAO {
         return tagLabel;
       }
     }
+
+    /**
+     * Apply multiple tags in batch to improve performance
+     */
+    default void applyTagsBatch(List<TagLabel> tagLabels, String targetFQN) {
+      if (tagLabels == null || tagLabels.isEmpty()) {
+        return;
+      }
+
+      String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
+      List<Integer> sources = new ArrayList<>();
+      List<String> tagFQNs = new ArrayList<>();
+      List<String> tagFQNHashes = new ArrayList<>();
+      List<String> targetFQNHashes = new ArrayList<>();
+      List<Integer> labelTypes = new ArrayList<>();
+      List<Integer> states = new ArrayList<>();
+
+      for (TagLabel tagLabel : tagLabels) {
+        sources.add(tagLabel.getSource().ordinal());
+        tagFQNs.add(tagLabel.getTagFQN());
+        tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
+        targetFQNHashes.add(targetFQNHash);
+        labelTypes.add(tagLabel.getLabelType().ordinal());
+        states.add(tagLabel.getState().ordinal());
+      }
+
+      applyTagsBatchInternal(sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states);
+    }
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+        connectionType = POSTGRES)
+    void applyTagsBatchInternal(
+        @Bind("source") List<Integer> sources,
+        @Bind("tagFQN") List<String> tagFQNs,
+        @Bind("tagFQNHash") List<String> tagFQNHashes,
+        @Bind("targetFQNHash") List<String> targetFQNHashes,
+        @Bind("labelType") List<Integer> labelTypes,
+        @Bind("state") List<Integer> states);
+
+    /**
+     * Delete multiple tags in batch to improve performance
+     */
+    default void deleteTagsBatch(List<TagLabel> tagLabels, String targetFQN) {
+      if (tagLabels == null || tagLabels.isEmpty()) {
+        return;
+      }
+
+      String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
+      List<Integer> sources = new ArrayList<>();
+      List<String> tagFQNHashes = new ArrayList<>();
+      List<String> targetFQNHashes = new ArrayList<>();
+
+      for (TagLabel tagLabel : tagLabels) {
+        sources.add(tagLabel.getSource().ordinal());
+        tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
+        targetFQNHashes.add(targetFQNHash);
+      }
+
+      deleteTagsBatchInternal(sources, tagFQNHashes, targetFQNHashes);
+    }
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND targetFQNHash = :targetFQNHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND targetFQNHash = :targetFQNHash",
+        connectionType = POSTGRES)
+    void deleteTagsBatchInternal(
+        @Bind("source") List<Integer> sources,
+        @Bind("tagFQNHash") List<String> tagFQNHashes,
+        @Bind("targetFQNHash") List<String> targetFQNHashes);
   }
 
   interface RoleDAO extends EntityDAO<Role> {
@@ -5839,6 +6025,13 @@ public interface CollectionDAO {
             "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE stateId = :stateId ORDER BY timestamp DESC")
     List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM test_case_resolution_status_time_series "
+                + "WHERE entityFQNHash = :entityFQNHash ORDER BY timestamp DESC")
+    List<String> listTestCaseResolutionForEntityFQNHash(
+        @BindFQN("entityFQNHash") String entityFqnHas);
 
     @SqlQuery(
         value =

@@ -1,5 +1,6 @@
 ---
 title: Enable SSL with Nginx | OpenMetadata Security Setup
+description: Enable SSL using NGINX to encrypt traffic and protect sensitive metadata exchanges across service endpoints and UI access.
 slug: /deployment/security/enable-ssl/nginx
 collate: false
 ---

@@ -1,5 +1,6 @@
 ---
 title: Docker Deployment | OpenMetadata Container Setup
+description: Deploy the platform using Docker containers to simplify setup, scaling, and local testing without needing external dependencies.
 slug: /deployment/docker
 collate: false
 ---

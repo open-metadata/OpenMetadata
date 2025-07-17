@@ -1,5 +1,6 @@
 ---
 title: How to Request for Description
+description: Learn how to request data asset descriptions in OpenMetadata. Step-by-step guide for data users to collaborate and improve data documentation.
 slug: /how-to-guides/guide-for-data-users/request-description
 ---
 

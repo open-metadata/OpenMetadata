@@ -1,5 +1,6 @@
 ---
-title: removeDescriptionAction
+title: Removedescriptionaction | Official Documentation
+description: Get started with removedescriptionaction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/removedescriptionaction
 ---
 

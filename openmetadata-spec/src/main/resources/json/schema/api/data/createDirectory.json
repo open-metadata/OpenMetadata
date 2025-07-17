@@ -1,0 +1,100 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createDirectory.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateDirectoryRequest",
+  "description": "Create Directory entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateDirectory",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this directory.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this directory.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the directory.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "service": {
+      "description": "Link to the drive service fully qualified name where this directory is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "parent": {
+      "description": "Link to the parent directory fully qualified name. If not provided, this is a root directory.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "directoryType": {
+      "description": "Type of directory",
+      "$ref": "../../entity/data/directory.json#/definitions/directoryType"
+    },
+    "path": {
+      "description": "Full path to the directory",
+      "type": "string"
+    },
+    "isShared": {
+      "description": "Whether this directory is shared",
+      "type": "boolean",
+      "default": false
+    },
+    "numberOfFiles": {
+      "description": "Number of files in this directory",
+      "type": "integer"
+    },
+    "numberOfSubDirectories": {
+      "description": "Number of subdirectories",
+      "type": "integer"
+    },
+    "totalSize": {
+      "description": "Total size of all files in bytes",
+      "type": "integer"
+    },
+    "sourceUrl": {
+      "description": "Source URL of directory.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "tags": {
+      "description": "Tags for this Directory.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owners": {
+      "description": "Owners of this directory",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "dataProducts": {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "domain": {
+      "description": "Fully qualified name of the domain the Directory belongs to.",
+      "type": "string"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": ["name", "service"],
+  "additionalProperties": false
+}

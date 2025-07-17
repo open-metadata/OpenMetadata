@@ -1,5 +1,6 @@
 ---
-title: Matillion
+title: Matillion | Official Documentation
+description: Get started with matillion. Setup instructions, features, and configuration details inside.
 slug: /connectors/pipeline/matillion
 collate: true
 ---

@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Finance",
+    "displayName": "Finance Department",
+    "description": "Financial documents and reports",
+    "path": "/Finance",
+    "directoryType": "Folder",
+    "isShared": true,
+    "numberOfFiles": 342,
+    "numberOfSubDirectories": 12,
+    "totalSize": 524288000,
+    "tags": [],
+    "owners": []
+  },
+  {
+    "name": "Marketing",
+    "displayName": "Marketing Department",
+    "description": "Marketing materials and campaigns",
+    "path": "/Marketing",
+    "directoryType": "Folder",
+    "isShared": true,
+    "numberOfFiles": 567,
+    "numberOfSubDirectories": 23,
+    "totalSize": 1073741824,
+    "tags": [],
+    "owners": []
+  },
+  {
+    "name": "Q4_Reports",
+    "displayName": "Q4 2024 Reports",
+    "description": "Fourth quarter financial reports",
+    "parent": "Finance",
+    "path": "/Finance/Q4_Reports",
+    "directoryType": "Folder",
+    "isShared": false,
+    "numberOfFiles": 45,
+    "numberOfSubDirectories": 3,
+    "totalSize": 524288000,
+    "tags": []
+  },
+  {
+    "name": "Campaigns_2024",
+    "displayName": "2024 Marketing Campaigns",
+    "description": "All marketing campaigns for 2024",
+    "parent": "Marketing",
+    "path": "/Marketing/Campaigns_2024",
+    "directoryType": "Folder",
+    "isShared": true,
+    "numberOfFiles": 128,
+    "numberOfSubDirectories": 8,
+    "totalSize": 214748364
+  },
+  {
+    "name": "Social_Media",
+    "displayName": "Social Media Assets",
+    "description": "Images and videos for social media",
+    "parent": "Marketing.Campaigns_2024",
+    "path": "/Marketing/Campaigns_2024/Social_Media",
+    "directoryType": "Folder",
+    "isShared": true,
+    "numberOfFiles": 89,
+    "numberOfSubDirectories": 0,
+    "totalSize": 1073741824
+  }
+]

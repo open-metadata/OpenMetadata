@@ -1,5 +1,6 @@
 ---
 title: Backup Metadata | OpenMetadata Deployment Guide
+description: Back up and restore metadata to preserve lineage, classifications, descriptions, and governance data across updates or outages.
 slug: /deployment/backup-restore-metadata
 collate: false
 ---

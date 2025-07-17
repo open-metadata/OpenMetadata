@@ -31,19 +31,22 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 
 @Slf4j
 public class EntityRelationshipCleanup {
 
   private final CollectionDAO collectionDAO;
-  private final Map<String, EntityRepository<?>> entityRepositories;
+  private final Map<String, EntityRepository<?>> entityRepositories = new HashMap<>();
+  private final Map<String, EntityTimeSeriesRepository<?>> entityTimeSeriesRepositoy =
+      new HashMap<>();
   private final boolean dryRun;
 
   public EntityRelationshipCleanup(CollectionDAO collectionDAO, boolean dryRun) {
     this.collectionDAO = collectionDAO;
     this.dryRun = dryRun;
-    this.entityRepositories = new HashMap<>();
     initializeEntityRepositories();
+    initializeTimeSeriesRepositories();
   }
 
   @Data
@@ -78,6 +81,17 @@ public class EntityRelationshipCleanup {
       try {
         EntityRepository<?> repository = Entity.getEntityRepository(entityType);
         entityRepositories.put(entityType, repository);
+      } catch (EntityNotFoundException e) {
+        LOG.error("No repository found for entity type: {}", entityType);
+      }
+    }
+  }
+
+  private void initializeTimeSeriesRepositories() {
+    for (String entityType : Entity.getEntityList()) {
+      try {
+        EntityTimeSeriesRepository<?> repository = Entity.getEntityTimeSeriesRepository(entityType);
+        entityTimeSeriesRepositoy.put(entityType, repository);
       } catch (EntityNotFoundException e) {
         LOG.error("No repository found for entity type: {}", entityType);
       }
@@ -178,6 +192,23 @@ public class EntityRelationshipCleanup {
       UUID toId = UUID.fromString(relationship.getToId());
       String fromEntity = relationship.getFromEntity();
       String toEntity = relationship.getToEntity();
+
+      // Check if fromEntity has any repository
+      boolean fromEntityHasNoRepository = doEntityHaveAnyRepository(fromEntity);
+      if (!fromEntityHasNoRepository) {
+        LOG.error(
+            "No repository found for from entity type: {}, the entity will not be cleaned",
+            fromEntity);
+        return null;
+      }
+
+      boolean toEntityHasNoRepository = doEntityHaveAnyRepository(toEntity);
+      if (!toEntityHasNoRepository) {
+        LOG.error(
+            "No repository found for to entity type: {}, the entity will not be cleaned", toEntity);
+        return null;
+      }
+
       boolean fromExists = entityExists(fromId, fromEntity);
       boolean toExists = entityExists(toId, toEntity);
 
@@ -223,30 +254,39 @@ public class EntityRelationshipCleanup {
     }
   }
 
+  private boolean doEntityHaveAnyRepository(String entityType) {
+    return entityRepositories.containsKey(entityType)
+        || entityTimeSeriesRepositoy.containsKey(entityType);
+  }
+
   private boolean entityExists(UUID entityId, String entityType) {
+    boolean existsInEntityRepo = checkInEntityRepository(entityId, entityType);
+    boolean existsInTimeSeriesRepo = checkInEntityTimeSeriesRepository(entityId, entityType);
+    return existsInEntityRepo || existsInTimeSeriesRepo;
+  }
+
+  private boolean checkInEntityRepository(UUID entityId, String entityType) {
     try {
       EntityRepository<?> repository = entityRepositories.get(entityType);
-      if (repository == null) {
-        LOG.debug("No repository found for entity type: {}", entityType);
-        return false;
-      }
       repository.get(null, entityId, EntityUtil.Fields.EMPTY_FIELDS, ALL, false);
       return true;
     } catch (EntityNotFoundException e) {
-      LOG.debug("Entity {}:{} not found", entityType, entityId);
-      return false;
-    } catch (Exception e) {
-      LOG.debug(
-          "Error checking existence of entity {}:{}: {}", entityType, entityId, e.getMessage());
+      LOG.debug("Entity {}:{} not found in repository: {}", entityType, entityId, e.getMessage());
+    }
+    return false;
+  }
+
+  private boolean checkInEntityTimeSeriesRepository(UUID entityId, String entityType) {
+    EntityTimeSeriesRepository<?> repository = entityTimeSeriesRepositoy.get(entityType);
+    if (repository == null) {
+      LOG.debug("No repository found for entity type: {}", entityType);
       return false;
     }
+    return repository.getById(entityId) != null;
   }
 
   /**
    * Deletes orphaned relationships from the database
-   *
-   * @param orphanedRelationships List of orphaned relationships to delete
-   * @return Number of relationships successfully deleted
    */
   private int deleteOrphanedRelationships(List<OrphanedRelationship> orphanedRelationships) {
     LOG.info("Deleting {} orphaned relationships", orphanedRelationships.size());

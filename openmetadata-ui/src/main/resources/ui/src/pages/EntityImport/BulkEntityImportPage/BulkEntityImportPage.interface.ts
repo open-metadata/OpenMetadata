@@ -19,7 +19,7 @@ export type CSVImportAsyncResponse = {
 
 export type CSVImportAsyncWebsocketResponse = {
   jobId: string;
-  status: 'COMPLETED' | 'FAILED';
+  status: 'COMPLETED' | 'FAILED' | 'STARTED';
   result: CSVImportResult;
   error: string | null;
 };

@@ -1,5 +1,6 @@
 ---
-title: External Profiler Workflow
+title: External Profiler Workflow | Official Documentation
+description: Trigger external profiling workflows to capture custom metrics and analyze datasets based on business context.
 slug: /how-to-guides/data-quality-observability/profiler/external-workflow
 ---
 
@@ -42,7 +43,7 @@ pip install "openmetadata-ingestion[athena,datalake,trino]~=1.2.1"
 ```
 
 - The `athena` plugin will bring all the requirements to connect to the Athena Service
-- The `datalake` plugin helps us connect to S3 to manage the [sample data](/how-to-guides/data-quality-observability/profiler/external-sample-data)
+- The `datalake` plugin helps us connect to S3 to manage the sample data.
 - The `trino` plugin will only be needed temporarily
 
 ## 1. Define the YAML Config

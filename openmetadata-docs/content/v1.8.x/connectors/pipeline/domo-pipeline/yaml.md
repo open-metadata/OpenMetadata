@@ -1,5 +1,6 @@
 ---
 title: Run the Domo Pipeline Connector Externally
+description: Configure Domo pipeline ingestion via YAML to automate metadata flow from dashboards and datasets into your governance platform.
 slug: /connectors/pipeline/domo-pipeline/yaml
 ---
 

@@ -73,7 +73,7 @@ describe('ForgotPassword', () => {
 
     const { getByLabelText, getByText } = render(<ForgotPassword />);
     const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const submitButton = getByText('label.send-login-link');
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });
@@ -90,7 +90,7 @@ describe('ForgotPassword', () => {
       <ForgotPassword />
     );
     const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const submitButton = getByText('label.send-login-link');
 
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: '' } });
@@ -107,7 +107,7 @@ describe('ForgotPassword', () => {
       <ForgotPassword />
     );
     const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const submitButton = getByText('label.send-login-link');
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });
@@ -138,7 +138,7 @@ describe('ForgotPassword', () => {
       <ForgotPassword />
     );
     const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const submitButton = getByText('label.send-login-link');
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });
