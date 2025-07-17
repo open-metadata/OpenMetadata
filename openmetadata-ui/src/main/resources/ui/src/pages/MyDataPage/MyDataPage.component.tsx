@@ -246,7 +246,10 @@ const MyDataPage = () => {
   }
 
   return (
-    <PageLayoutV1 mainContainerClassName="p-t-0" pageTitle={t('label.my-data')}>
+    <PageLayoutV1
+      className="p-b-lg"
+      mainContainerClassName="p-t-0"
+      pageTitle={t('label.my-data')}>
       <div className="grid-wrapper">
         <CustomiseLandingPageHeader
           overlappedContainer

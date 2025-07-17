@@ -83,7 +83,7 @@ const WidgetHeader = ({
 
   return (
     <Row
-      className={`widget-header ${className}`}
+      className={`widget-header h-15 ${className}`}
       data-testid="widget-header"
       justify="space-between">
       <Col className="d-flex items-center h-full min-h-8">

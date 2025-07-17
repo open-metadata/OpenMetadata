@@ -103,7 +103,7 @@ export const CustomizablePageHeader = ({
 
   return (
     <Card
-      className="customize-page-header"
+      className="customize-page-header m-b-lg"
       data-testid="customize-landing-page-header">
       <div className="d-flex items-center justify-between">
         <div>
