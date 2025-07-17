@@ -162,7 +162,7 @@ const CustomiseLandingPageHeader = ({
                       'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
                     }
                   )}
-                  data-testid="domain-selector"
+                  data-testid="domain-dropdown"
                   onClick={() =>
                     setIsDomainDropdownOpen(!isDomainDropdownOpen)
                   }>
