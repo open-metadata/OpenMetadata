@@ -470,10 +470,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                         except:
                             pass
 
-                    # Cleanup runner dataset if needed
-                    if runner and hasattr(runner, "dataset"):
-                        del runner.dataset
-
                     # Force garbage collection
                     gc.collect()
 
