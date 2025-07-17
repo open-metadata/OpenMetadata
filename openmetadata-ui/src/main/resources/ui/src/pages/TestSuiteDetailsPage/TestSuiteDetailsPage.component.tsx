@@ -56,7 +56,10 @@ import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
-import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import {
+  DataQualityPageTabs,
+  DataQualitySubTabs,
+} from '../../pages/DataQuality/DataQualityPage.interface';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
   addTestCaseToLogicalTestSuite,
@@ -136,7 +139,10 @@ const TestSuiteDetailsPage = () => {
     return [
       {
         name: t('label.test-suite-plural'),
-        url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+        url: getDataQualityPagePath(
+          DataQualityPageTabs.TEST_SUITES,
+          DataQualitySubTabs.BUNDLE_SUITES
+        ),
       },
       {
         name: getEntityName(testSuite),
@@ -232,7 +238,10 @@ const TestSuiteDetailsPage = () => {
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+          url: getDataQualityPagePath(
+            DataQualityPageTabs.TEST_SUITES,
+            DataQualitySubTabs.BUNDLE_SUITES
+          ),
         },
         {
           name: getEntityName(response),

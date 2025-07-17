@@ -357,8 +357,7 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/column"
-          },
-          "default": null
+          }
         },
         "profile": {
           "description": "Latest Data profile for a Column.",

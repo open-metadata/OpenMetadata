@@ -1175,7 +1175,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
-      restoreEntity(updated.getUpdatedBy(), entityType, original.getId());
+      restoreEntity(updated.getUpdatedBy(), original.getId());
     }
 
     // Update the attributes and relationships of an entity
@@ -1199,7 +1199,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
-      restoreEntity(updated.getUpdatedBy(), entityType, original.getId());
+      restoreEntity(updated.getUpdatedBy(), original.getId());
     }
 
     // Update the attributes and relationships of an entity
@@ -1581,7 +1581,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  private void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
+  protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
     // If an entity being deleted contains other **non-deleted** children entities, it can't be
     // deleted
     List<EntityRelationshipRecord> childrenRecords =
@@ -2376,22 +2376,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final PutResponse<T> restoreEntity(String updatedBy, String entityType, UUID id) {
+  public final PutResponse<T> restoreEntity(String updatedBy, UUID id) {
     // If an entity being restored contains other **deleted** children entities, restore them
-    List<EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
-
-    if (!records.isEmpty()) {
-      // Restore all the contained entities
-      for (EntityRelationshipRecord entityRelationshipRecord : records) {
-        LOG.info(
-            "Recursively restoring {} {}",
-            entityRelationshipRecord.getType(),
-            entityRelationshipRecord.getId());
-        Entity.restoreEntity(
-            updatedBy, entityRelationshipRecord.getType(), entityRelationshipRecord.getId());
-      }
-    }
+    restoreChildren(id, updatedBy);
 
     // Finally set entity deleted flag to false
     LOG.info("Restoring the {} {}", entityType, id);
@@ -2408,6 +2395,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } catch (EntityNotFoundException e) {
       LOG.info("Entity is not in deleted state {} {}", entityType, id);
       return null;
+    }
+  }
+
+  @Transaction
+  protected void restoreChildren(UUID id, String updatedBy) {
+    // Restore deleted children entities
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
+    if (!records.isEmpty()) {
+      // Recursively restore all contained entities
+      for (CollectionDAO.EntityRelationshipRecord record : records) {
+        LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
+        Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+      }
     }
   }
 

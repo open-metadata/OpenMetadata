@@ -1,5 +1,6 @@
 ---
 title: Run the KafkaConnect Connector Externally
+description: Set up Kafka Connect YAML configuration to stream metadata and schema updates from real-time Kafka topics into your catalog.
 slug: /connectors/pipeline/kafkaconnect/yaml
 ---
 

@@ -44,6 +44,7 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
+import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
@@ -72,7 +73,11 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -155,8 +160,10 @@ const ContainerPage = () => {
       );
       setContainerPermissions(entityPermission);
 
-      const viewBasicPermission =
-        entityPermission.ViewAll || entityPermission.ViewBasic;
+      const viewBasicPermission = getPrioritizedViewPermission(
+        entityPermission,
+        Operation.ViewBasic
+      );
 
       if (viewBasicPermission) {
         await fetchContainerDetail(containerFQN);
@@ -206,25 +213,34 @@ const ContainerPage = () => {
   } = useMemo(
     () => ({
       editTagsPermission:
-        (containerPermissions.EditTags || containerPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          containerPermissions,
+          Operation.EditTags
+        ) && !deleted,
       editGlossaryTermsPermission:
-        (containerPermissions.EditGlossaryTerms ||
-          containerPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          containerPermissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (containerPermissions.EditDescription ||
-          containerPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          containerPermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (containerPermissions.EditAll ||
-          containerPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          containerPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editLineagePermission:
-        (containerPermissions.EditAll || containerPermissions.EditLineage) &&
-        !deleted,
-      viewBasicPermission:
-        containerPermissions.ViewAll || containerPermissions.ViewBasic,
+        getPrioritizedEditPermission(
+          containerPermissions,
+          Operation.EditLineage
+        ) && !deleted,
+      viewBasicPermission: getPrioritizedViewPermission(
+        containerPermissions,
+        Operation.ViewBasic
+      ),
       viewAllPermission: containerPermissions.ViewAll,
     }),
     [containerPermissions, deleted]

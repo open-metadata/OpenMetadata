@@ -46,7 +46,7 @@ public class DirectoryIndex implements SearchIndex {
     doc.put("numberOfFiles", directory.getNumberOfFiles());
     doc.put("numberOfSubDirectories", directory.getNumberOfSubDirectories());
     doc.put("totalSize", directory.getTotalSize());
-
+    doc.put("upstreamLineage", SearchIndex.getLineageData(directory.getEntityReference()));
     return doc;
   }
 

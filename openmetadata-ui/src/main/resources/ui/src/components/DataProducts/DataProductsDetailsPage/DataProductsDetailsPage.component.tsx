@@ -40,6 +40,7 @@ import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
@@ -48,7 +49,10 @@ import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+} from '../../../utils/PermissionsUtils';
 import {
   getDomainPath,
   getEntityDetailsPath,
@@ -164,13 +168,19 @@ const DataProductsDetailsPage = ({
     }
 
     return {
-      editDescriptionPermission:
-        dataProductPermission.EditDescription || dataProductPermission.EditAll,
-      editOwnerPermission:
-        dataProductPermission.EditOwners || dataProductPermission.EditAll,
+      editDescriptionPermission: getPrioritizedEditPermission(
+        dataProductPermission,
+        Operation.EditDescription
+      ),
+      editOwnerPermission: getPrioritizedEditPermission(
+        dataProductPermission,
+        Operation.EditOwners
+      ),
       editAllPermission: dataProductPermission.EditAll,
-      editDisplayNamePermission:
-        dataProductPermission.EditDisplayName || dataProductPermission.EditAll,
+      editDisplayNamePermission: getPrioritizedEditPermission(
+        dataProductPermission,
+        Operation.EditDisplayName
+      ),
       deleteDataProductPermission: dataProductPermission.Delete,
     };
   }, [dataProductPermission, isVersionsView]);
@@ -460,9 +470,10 @@ const DataProductsDetailsPage = ({
           <CustomPropertyTable<EntityType.DATA_PRODUCT>
             entityType={EntityType.DATA_PRODUCT}
             hasEditAccess={
-              (dataProductPermission.EditAll ||
-                dataProductPermission.EditCustomFields) &&
-              !isVersionsView
+              getPrioritizedEditPermission(
+                dataProductPermission,
+                Operation.EditCustomFields
+              ) && !isVersionsView
             }
             hasPermission={dataProductPermission.ViewAll}
             isVersionView={isVersionsView}

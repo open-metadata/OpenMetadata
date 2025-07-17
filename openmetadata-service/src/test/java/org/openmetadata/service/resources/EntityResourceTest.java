@@ -91,6 +91,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -5164,10 +5165,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .on(
             "csvImportChannel",
             args -> {
-              receivedMessage[0] = (String) args[0];
+              String[] msg = new String[1];
+              msg[0] = (String) args[0];
+              CSVImportMessage receivedCsvImportMessage =
+                  JsonUtils.readValue(msg[0], CSVImportMessage.class);
               System.out.println("Received message: " + receivedMessage[0]);
-              messageLatch.countDown();
-              socket.disconnect();
+              if (Objects.equals(receivedCsvImportMessage.getStatus(), "COMPLETED")
+                  || Objects.equals(receivedCsvImportMessage.getStatus(), "FAILED")) {
+                receivedMessage[0] = msg[0];
+                messageLatch.countDown();
+                socket.disconnect();
+              }
             })
         .on(
             Socket.EVENT_CONNECT_ERROR,

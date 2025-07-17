@@ -67,4 +67,5 @@ export interface FieldProp {
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;
   isBeta?: boolean;
+  newLook?: boolean;
 }

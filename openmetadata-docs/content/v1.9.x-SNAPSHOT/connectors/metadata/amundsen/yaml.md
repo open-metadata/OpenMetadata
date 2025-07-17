@@ -1,5 +1,6 @@
 ---
-title: Run the Amundsen Connector Externally
+title: Run the Amundsen Connector Externally | Official Documentation
+description: Configure Amundsen metadata ingestion with YAML to import glossary terms, assets, and user-generated metadata.
 slug: /connectors/metadata/amundsen/yaml
 ---
 
