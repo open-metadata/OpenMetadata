@@ -1,5 +1,6 @@
 ---
 title: Governance Workflows - Event Based Entity Trigger
+description: Trigger workflows using real-time entity changes to automate tasks like alerts, tagging, or governance updates upon system events.
 slug: /how-to-guides/data-governance/workflows/elements/triggers/event-based-entity-trigger
 collate: true
 ---

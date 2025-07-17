@@ -1,5 +1,6 @@
 ---
 title: Run the Wherescape Connector Externally
+description: Configure WhereScape ingestion via YAML to capture data pipeline metadata and lineage from ETL job orchestration.
 slug: /connectors/pipeline/wherescape/yaml
 ---
 

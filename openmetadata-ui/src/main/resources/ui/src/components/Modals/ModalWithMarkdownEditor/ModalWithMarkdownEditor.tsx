@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './modal-with-markdown-editor.less';
@@ -57,35 +58,39 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
         className="description-markdown-editor"
         closable={false}
         data-testid="markdown-editor"
-        footer={[
-          <Button
-            data-testid="cancel"
-            disabled={isLoading}
-            key="cancelButton"
-            type="link"
-            onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>,
-          <Button
-            data-testid="save"
-            key="saveButton"
-            loading={isLoading}
-            type="primary"
-            onClick={handleSaveData}>
-            {t('label.save')}
-          </Button>,
-        ]}
+        footer={
+          <KeyDownStopPropagationWrapper>
+            <Button
+              data-testid="cancel"
+              disabled={isLoading}
+              key="cancelButton"
+              type="link"
+              onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              data-testid="save"
+              key="saveButton"
+              loading={isLoading}
+              type="primary"
+              onClick={handleSaveData}>
+              {t('label.save')}
+            </Button>
+          </KeyDownStopPropagationWrapper>
+        }
         maskClosable={false}
         open={visible}
         title={<Typography.Text data-testid="header">{header}</Typography.Text>}
         width="90%"
         onCancel={onCancel}>
-        <RichTextEditor
-          autofocus
-          initialValue={value}
-          placeHolder={placeholder}
-          ref={markdownRef}
-        />
+        <KeyDownStopPropagationWrapper>
+          <RichTextEditor
+            autofocus
+            initialValue={value}
+            placeHolder={placeholder}
+            ref={markdownRef}
+          />
+        </KeyDownStopPropagationWrapper>
       </Modal>
     );
   };
