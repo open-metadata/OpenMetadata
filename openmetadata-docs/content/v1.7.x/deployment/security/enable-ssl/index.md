@@ -1,5 +1,6 @@
 ---
 title: Enable SSL | OpenMetadata Security Configuration
+description: Enable SSL to secure platform communication, data transfers, and authentication across endpoints and services.
 slug: /deployment/security/enable-ssl
 collate: false
 ---
