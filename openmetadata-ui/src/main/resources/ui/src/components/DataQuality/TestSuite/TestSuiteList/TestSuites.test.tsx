@@ -78,12 +78,17 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 jest.mock('react-router-dom', () => {
   return {
+    ...jest.requireActual('react-router-dom'),
     Link: jest
       .fn()
       .mockImplementation(({ children, ...rest }) => (
         <div {...rest}>{children}</div>
       )),
     useNavigate: jest.fn().mockReturnValue(jest.fn()),
+    useParams: jest.fn().mockReturnValue({
+      tab: 'test-cases',
+      subTab: 'table-suites',
+    }),
   };
 });
 jest.mock('../../../common/NextPrevious/NextPrevious', () => {
@@ -97,7 +102,7 @@ const mockDataQualityContext = {
     failed: 0,
     skipped: 0,
   },
-  activeTab: DataQualityPageTabs.TABLES,
+  activeTab: DataQualityPageTabs.TEST_CASES,
 };
 jest.mock('../../../../pages/DataQuality/DataQualityProvider', () => {
   return {
@@ -114,25 +119,26 @@ jest.mock(
       .mockImplementation(({ children }) => <div>{children}</div>),
   })
 );
-jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => {
-  return jest.fn().mockImplementation(() => <div>SearchBar.component</div>);
-});
-jest.mock('../../SummaryPannel/SummaryPanel.component', () => {
-  return {
-    SummaryPanel: jest
-      .fn()
-      .mockImplementation(() => <div>SummaryPanel.component</div>),
-  };
-});
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div>SearchBar.component</div>),
+}));
+jest.mock('../../SummaryPannel/PieChartSummaryPanel.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div>SummaryPanel.component</div>),
+}));
+jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(({ type }) => (
       <div data-testid={`error-placeholder-type-${type}`}>
         ErrorPlaceHolder.component
       </div>
-    ));
-});
+    )),
+}));
 
 jest.mock('../../../../utils/TableColumn.util', () => ({
   ownerTableObject: jest.fn().mockReturnValue([
@@ -227,16 +233,19 @@ describe('TestSuites component', () => {
   });
 
   // TestSuite type test
-  it('add test suite button should be visible, if type is testSuite', async () => {
-    mockDataQualityContext.activeTab = DataQualityPageTabs.TEST_SUITES;
+  it('should render radio buttons for table and bundle suites', async () => {
     render(<TestSuites />, { wrapper: MemoryRouter });
 
-    expect(await screen.findByTestId('add-test-suite-btn')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('table-suite-radio-btn')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('bundle-suite-radio-btn')
+    ).toBeInTheDocument();
   });
 
-  it('should send testSuiteType logical in api, if active tab is tables', async () => {
+  it('should send testSuiteType basic by default', async () => {
     mockLocation.search = '';
-    mockDataQualityContext.activeTab = DataQualityPageTabs.TEST_SUITES;
     const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
 
     render(<TestSuites />, { wrapper: MemoryRouter });
@@ -246,7 +255,7 @@ describe('TestSuites component', () => {
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
       fields: ['owners', 'summary'],
-      includeEmptyTestSuites: true,
+      includeEmptyTestSuites: false,
       limit: 15,
       offset: 0,
       owner: undefined,
@@ -255,13 +264,14 @@ describe('TestSuites component', () => {
       sortNestedMode: ['max'],
       sortNestedPath: 'testCaseResultSummary',
       sortType: 'desc',
-      testSuiteType: 'logical',
+      testSuiteType: 'basic',
     });
   });
 
   it('should render no data placeholder, if there is no permission', async () => {
-    mockDataQualityContext.activeTab = DataQualityPageTabs.TEST_SUITES;
+    // Reset permission for this test
     testSuitePermission.ViewAll = false;
+
     render(<TestSuites />, { wrapper: MemoryRouter });
 
     expect(

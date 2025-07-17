@@ -25,6 +25,7 @@ export type SelectOption = {
 
 export interface AsyncSelectListProps {
   mode?: 'multiple';
+  newLook?: boolean;
   optionClassName?: string;
   placeholder?: string;
   debounceTimeout?: number;

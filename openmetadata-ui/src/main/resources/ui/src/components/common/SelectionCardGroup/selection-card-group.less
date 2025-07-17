@@ -1,0 +1,170 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+.selection-card-group {
+  display: flex;
+  gap: @size-mlg;
+  width: 100%;
+
+  .selection-card {
+    flex: 1;
+    border: 1px solid @grey-300;
+    border-radius: @border-radius-xs;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: @white;
+
+    .ant-card-body {
+      padding: @size-md;
+
+      .selection-content {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+
+        .selection-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background-color: @grey-100;
+          border: 6px solid @grey-50;
+          transition: all 0.3s ease;
+          flex-shrink: 0;
+
+          svg {
+            width: @size-md;
+            height: @size-md;
+            color: @grey-600;
+          }
+        }
+
+        .selection-header {
+          flex: 1;
+        }
+
+        .selection-title {
+          color: @grey-700;
+          font-weight: @font-semibold;
+          line-height: 1.4;
+          margin-bottom: @size-xxs;
+        }
+
+        .selection-description {
+          color: @grey-600;
+          line-height: 1.4;
+        }
+
+        .custom-radio {
+          margin-left: @size-xxs;
+          flex-shrink: 0;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+
+          &.unchecked {
+            border: 1px solid @grey-300;
+            background-color: @white;
+          }
+
+          &.checked {
+            background-color: @primary-color;
+            border: none;
+            color: @white;
+
+            svg {
+              width: 10px;
+              height: 10px;
+            }
+          }
+        }
+      }
+    }
+
+    // Selected state styles
+    &.selected,
+    &:hover {
+      border-color: @primary-3;
+      background-color: @primary-50;
+
+      .selection-content {
+        .selection-icon {
+          background-color: @primary-1;
+          border: 6px solid @primary-50;
+
+          svg {
+            color: @primary-6;
+          }
+        }
+
+        .selection-title {
+          color: @primary-8;
+        }
+
+        .selection-description {
+          color: @primary-6;
+        }
+
+        .custom-radio.unchecked {
+          border-color: @primary-color;
+        }
+      }
+    }
+
+    // Disabled state styles
+    &.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      pointer-events: none;
+
+      &:hover {
+        border-color: @grey-300;
+        background-color: @grey-50;
+
+        .selection-content {
+          .selection-icon {
+            background-color: @grey-100;
+
+            svg {
+              color: @grey-500;
+            }
+          }
+
+          .selection-title {
+            color: @grey-800;
+          }
+
+          .selection-description {
+            color: @grey-400;
+          }
+
+          .custom-radio.unchecked {
+            border-color: @grey-300;
+          }
+        }
+      }
+    }
+  }
+
+  // Disabled group styles
+  &.selection-card-group-disabled {
+    opacity: 0.7;
+  }
+}

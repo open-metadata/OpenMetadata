@@ -17,3 +17,23 @@ export interface SummaryPanelProps {
   isLoading?: boolean;
   showAdditionalSummary?: boolean;
 }
+
+export interface ChartData {
+  name: string;
+  value: number;
+  color: string;
+}
+
+export interface SummaryPieChartCardProps {
+  title: string;
+  value: number;
+  percentage: number;
+  chartData: ChartData[];
+  isLoading?: boolean;
+  showLegends?: boolean;
+  paddingAngle?: number;
+  iconData?: {
+    icon: React.ReactNode;
+    className?: string;
+  };
+}

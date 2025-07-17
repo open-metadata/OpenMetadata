@@ -13,7 +13,6 @@
 
 import { map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
-import { StatusData } from '../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { SORT_ORDER } from '../enums/common.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
@@ -287,25 +286,6 @@ export const INITIAL_DATA_ASSETS_COVERAGE_STATES = {
   notCovered: 0,
   total: 0,
 };
-
-export const NO_DIMENSION = 'No Dimension';
-export const DIMENSIONS_DATA = [
-  ...Object.values(DataQualityDimensions),
-  NO_DIMENSION,
-];
-
-export const DEFAULT_DIMENSIONS_DATA = DIMENSIONS_DATA.reduce((acc, item) => {
-  return {
-    ...acc,
-    [item]: {
-      title: item,
-      success: 0,
-      failed: 0,
-      aborted: 0,
-      total: 0,
-    },
-  };
-}, {} as { [key: string]: StatusData });
 
 export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
   {

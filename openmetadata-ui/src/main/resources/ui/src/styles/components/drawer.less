@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../variables.less');
+@import (reference) url('../variables.less');
+@import (reference) url('../fonts.less');
 
 .feed-drawer {
   margin-top: 64px;
@@ -22,8 +23,8 @@
   }
   .ant-drawer-title {
     color: @text-color;
-    font-weight: 400;
-    font-size: 14px;
+    .text-sm(); // Using existing class: 14px font-size, 20px line-height
+    font-weight: @font-regular;
   }
   .ant-drawer-body {
     overflow-x: hidden;
@@ -32,4 +33,30 @@
 
 .ant-drawer-header {
   border-bottom: none;
+}
+
+.custom-drawer-style {
+  .ant-drawer-footer {
+    box-shadow: 0px -13px 16px -4px rgba(10, 13, 18, 0.08),
+      0px -4px 6px -2px rgba(10, 13, 18, 0.03);
+    z-index: 1;
+  }
+  .ant-drawer-header {
+    box-shadow: 0px 9px 16px -4px rgba(10, 13, 18, 0.08);
+    z-index: 1;
+    .text-xl(); // Using existing class: 20px font-size, 30px line-height
+    font-weight: @font-semibold;
+    color: @grey-800;
+    display: flex;
+    align-items: center;
+
+    .drawer-close-icon {
+      width: 16px;
+      height: 16px;
+      color: @grey-700;
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0;
+    }
+  }
 }

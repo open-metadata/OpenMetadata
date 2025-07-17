@@ -110,18 +110,17 @@ const Severity = ({
           NO_DATA_PLACEHOLDER
         )}
         {onSubmit && hasEditPermission && (
-          <Tooltip
+          <EditIconButton
+            newLook
+            className="flex-center"
+            data-testid="edit-severity-icon"
+            disabled={!hasEditPermission}
+            size="small"
             title={t('label.edit-entity', {
               entity: t('label.severity'),
-            })}>
-            <EditIconButton
-              data-testid="edit-severity-icon"
-              icon={<EditIcon width="14px" />}
-              newLook={newLook}
-              size="small"
-              onClick={onEditSeverity}
-            />
-          </Tooltip>
+            })}
+            onClick={onEditSeverity}
+          />
         )}
       </Space>
 

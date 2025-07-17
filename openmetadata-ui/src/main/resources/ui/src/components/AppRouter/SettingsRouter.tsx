@@ -65,8 +65,8 @@ import {
 } from '../../utils/RouterUtils';
 import EntitySearchSettings from '../SearchSettings/EntitySeachSettings/EntitySearchSettings';
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
-import AdminProtectedRoute from './AdminProtectedRoute';
 import AdminPermissionDebugger from '../Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.component';
+import AdminProtectedRoute from './AdminProtectedRoute';
 
 const NotificationAlertDetailsPage = () => (
   <AlertDetailsPage isNotificationAlert />
