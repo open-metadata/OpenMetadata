@@ -127,7 +127,7 @@ export const getColumnConfig = (
     renderCell: (data: any) =>
       renderColumnDataEditor(colType, {
         value: data.row[column],
-        data: { details: '' },
+        data: { details: '', glossaryStatus: '' },
       }),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
   } as Column<any>;
