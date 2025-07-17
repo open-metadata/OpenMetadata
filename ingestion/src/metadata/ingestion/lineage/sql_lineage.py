@@ -894,7 +894,7 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
 
 
 def get_lineage_by_graph(
-    graph: DiGraph,
+    graph: Optional[DiGraph],
     metadata: OpenMetadata,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
@@ -925,12 +925,15 @@ def get_lineage_by_graph(
 
 
 def get_lineage_by_procedure_graph(
-    procedure_graph_map: Dict,
+    procedure_graph_map: Optional[Dict],
     metadata: OpenMetadata,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     Generate lineage information from a directed graph.
     """
+    if procedure_graph_map is None:
+        return
+
     for procedure_and_procedure_graph in procedure_graph_map.values():
         for either_lineage in get_lineage_by_graph(
             graph=procedure_and_procedure_graph.graph,

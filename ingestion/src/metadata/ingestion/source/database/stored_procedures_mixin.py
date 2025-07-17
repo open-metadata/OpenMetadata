@@ -186,9 +186,9 @@ class StoredProcedureLineageMixin(ABC):
             if self.source_config.enableTempTableLineage:
                 if not self.procedure_graph_map.get(procedure.fullyQualifiedName.root):
                     # Map to store the directed graph for each procedure with its FQN as key
-                    self.procedure_graph_map[procedure.fullyQualifiedName.root] = (
-                        ProcedureAndProcedureGraph(procedure=procedure, graph=DiGraph())
-                    )
+                    self.procedure_graph_map[
+                        procedure.fullyQualifiedName.root
+                    ] = ProcedureAndProcedureGraph(procedure=procedure, graph=DiGraph())
 
                 graph = self.procedure_graph_map.get(
                     procedure.fullyQualifiedName.root
