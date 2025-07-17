@@ -1,5 +1,6 @@
 ---
-title: Ingest Descriptions from dbt
+title: Ingest Descriptions from dbt | Official Documentation
+description: Ingest dbt model and column descriptions to improve discoverability and context for analysts and developers.
 slug: /connectors/ingestion/workflows/dbt/ingest-dbt-descriptions
 ---
 

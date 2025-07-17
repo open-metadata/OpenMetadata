@@ -1,5 +1,6 @@
 ---
-title: Request for Description
+title: Request for Description | Official Documentation
+description: Request missing descriptions for datasets, dashboards, or pipelines to improve documentation and usability.
 slug: /how-to-guides/data-collaboration/request-description
 ---
 

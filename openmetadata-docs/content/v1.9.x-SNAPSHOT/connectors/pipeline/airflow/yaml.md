@@ -1,5 +1,6 @@
 ---
 title: Run the Airflow Connector Externally
+description: Use YAML to configure Airflow pipeline metadata ingestion including DAGs, tasks, scheduling, and lineage mapping.
 slug: /connectors/pipeline/airflow/yaml
 ---
 

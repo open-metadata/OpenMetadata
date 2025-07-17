@@ -1,5 +1,6 @@
 ---
 title: Run the Stitch Connector Externally
+description: Set up Stitch ingestion using YAML to automate metadata syncing from ELT sources to your central catalog.
 slug: /connectors/pipeline/stitch/yaml
 collate: true
 ---

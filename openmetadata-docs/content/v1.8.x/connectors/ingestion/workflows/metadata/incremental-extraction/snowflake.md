@@ -1,5 +1,6 @@
 ---
 title: Metadata Ingestion - Incremental Extraction - Snowflake
+description: Extract incremental Snowflake metadata to optimize ingestion frequency while preserving completeness and lineage context.
 slug: /connectors/ingestion/workflows/metadata/incremental-extraction/snowflake
 ---
 

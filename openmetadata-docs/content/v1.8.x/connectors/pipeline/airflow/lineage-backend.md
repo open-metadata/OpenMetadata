@@ -1,5 +1,6 @@
 ---
-title: Airflow Lineage Backend
+title: Airflow Lineage Backend | Official Documentation
+description: Integrate Airflow lineage backend to capture runtime metadata and execution traces for DAGs and tasks.
 slug: /connectors/pipeline/airflow/lineage-backend
 ---
 

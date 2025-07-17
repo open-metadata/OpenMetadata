@@ -1,5 +1,6 @@
 ---
 title: Metrics | OpenMetadata Profiler Metrics Guide
+description: Monitor profiling metrics such as completeness, distinct counts, min/max, and type inference to detect data quality issues.
 slug: /how-to-guides/data-quality-observability/profiler/metrics
 ---
 

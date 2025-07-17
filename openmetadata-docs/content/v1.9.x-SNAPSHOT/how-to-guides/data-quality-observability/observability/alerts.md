@@ -1,5 +1,6 @@
 ---
 title: Observability Alerts | OpenMetadata Alerting Guide
+description: Set up observability alerts to monitor data quality, detect anomalies, and trigger workflows for fast remediation.
 slug: /how-to-guides/data-quality-observability/observability/alerts
 ---
 

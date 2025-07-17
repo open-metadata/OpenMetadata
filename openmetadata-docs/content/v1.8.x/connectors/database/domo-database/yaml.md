@@ -1,5 +1,6 @@
 ---
 title: Run the Domo Database Connector Externally
+description: Configure YAML to ingest Domo database assets and track metadata like schema, usage, and dashboard relationships.
 slug: /connectors/database/domo-database/yaml
 ---
 

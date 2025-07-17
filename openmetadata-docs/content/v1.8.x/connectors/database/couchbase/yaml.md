@@ -1,5 +1,6 @@
 ---
 title: Run the Couchbase Connector Externally
+description: Configure Couchbase ingestion using YAML to extract document-based metadata and support NoSQL governance models.
 slug: /connectors/database/couchbase/yaml
 ---
 

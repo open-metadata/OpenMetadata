@@ -1,5 +1,6 @@
 ---
 title: Run the Iceberg Connector Externally
+description: Use YAML to ingest Iceberg table metadata, including partitions, columns, and associated lineage information.
 slug: /connectors/database/iceberg/yaml
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Usage Workflow Through Query Logs
+description: Query usage logs to analyze asset popularity, access patterns, and downstream dependencies for optimization.
 slug: /connectors/ingestion/workflows/usage/usage-workflow-query-logs
 ---
 

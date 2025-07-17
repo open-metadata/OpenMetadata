@@ -1,5 +1,6 @@
 ---
-title: Governance Workflows
+title: Governance Workflows | Official Documentation
+description: Explore available workflow types to automate data governance actions such as approvals, triggers, and term management.
 slug: /how-to-guides/data-governance/workflows
 collate: true
 ---

@@ -1,5 +1,6 @@
 ---
 title: Data Quality Tab | OpenMetadata Quality Interface
+description: Use the quality tab to review profiling results, detect issues, and verify test coverage for your datasets.
 slug: /how-to-guides/data-quality-observability/quality/tab
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Custom Tests | OpenMetadata Quality Testing Guide
+description: Build and manage custom data quality tests to validate schema, values, and distributions during ingestion.
 slug: /how-to-guides/data-quality-observability/quality/custom-tests
 ---
 

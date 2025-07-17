@@ -1,5 +1,6 @@
 ---
 title: Run the Ingestion Framework Externally
+description: Configure external ingestion endpoints to trigger metadata pipelines from orchestrators or custom scripts.
 slug: /deployment/ingestion/external
 collate: false
 ---

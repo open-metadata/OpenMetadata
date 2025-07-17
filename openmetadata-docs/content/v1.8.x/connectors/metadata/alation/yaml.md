@@ -1,5 +1,6 @@
 ---
 title: Run the Alation Connector Externally
+description: Use YAML to configure Alation metadata integration and capture glossary terms, classifications, and asset links.
 slug: /connectors/metadata/alation/yaml
 collate: true
 ---

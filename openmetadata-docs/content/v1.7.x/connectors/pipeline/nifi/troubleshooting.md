@@ -1,5 +1,6 @@
 ---
-title: Nifi Connector Troubleshooting
+title: Nifi Connector Troubleshooting | Official Documentation
+description: Troubleshoot NiFi ingestion problems including access errors, broken links, and metadata gaps in pipeline syncs.
 slug: /connectors/pipeline/nifi/troubleshooting
 ---
 

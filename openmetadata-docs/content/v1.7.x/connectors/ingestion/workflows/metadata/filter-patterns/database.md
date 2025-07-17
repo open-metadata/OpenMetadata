@@ -1,5 +1,6 @@
 ---
-title: Database Filter Patterns
+title: Database Filter Patterns | Official Documentation
+description: Filter metadata patterns at the database level using YAML configuration to fine-tune what assets are ingested.
 slug: /connectors/ingestion/workflows/metadata/filter-patterns/database
 ---
 

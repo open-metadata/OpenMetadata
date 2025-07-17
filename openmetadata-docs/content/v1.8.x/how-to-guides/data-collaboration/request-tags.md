@@ -1,5 +1,6 @@
 ---
 title: How to Request for Tags
+description: Use tag requests to suggest relevant labels for data assets and improve discoverability through collaborative tagging.
 slug: /how-to-guides/data-collaboration/request-tags
 ---
 

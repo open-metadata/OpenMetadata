@@ -1,5 +1,6 @@
 ---
-title: JWT validation Troubleshooting
+title: JWT validation Troubleshooting | Official Documentation
+description: Fix JWT-based authentication issues with deployment and ingestion by adjusting token validation and decoding settings.
 slug: /deployment/security/jwt-troubleshooting
 collate: false
 ---

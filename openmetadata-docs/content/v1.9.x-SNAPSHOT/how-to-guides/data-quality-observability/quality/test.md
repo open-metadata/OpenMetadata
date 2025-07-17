@@ -1,5 +1,6 @@
 ---
 title: How to Write and Deploy No-Code Test Cases
+description: Test ingestion rules using YAML-defined logic to enforce expectations across datasets and sources.
 slug: /how-to-guides/data-quality-observability/quality/test
 ---
 

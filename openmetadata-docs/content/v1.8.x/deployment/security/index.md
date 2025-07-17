@@ -1,5 +1,6 @@
 ---
 title: Enable Security | OpenMetadata Deployment Security
+description: Learn about authentication, encryption, secret management, and provider configurations for securing your platform deployment.
 slug: /deployment/security
 collate: false
 ---

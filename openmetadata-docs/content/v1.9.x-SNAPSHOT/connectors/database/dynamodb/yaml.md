@@ -1,5 +1,6 @@
 ---
 title: Run the Athena Connector Externally
+description: Use YAML to ingest metadata from DynamoDB, capturing key attributes and schema-less data insights for better governance.
 slug: /connectors/database/dynamodb/yaml
 ---
 

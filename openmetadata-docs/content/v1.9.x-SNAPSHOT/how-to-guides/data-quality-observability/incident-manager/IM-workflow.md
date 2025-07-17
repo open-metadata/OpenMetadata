@@ -1,5 +1,6 @@
 ---
-title: How to work with the Incident Manager
+title: How to work with the Incident Manager | Official Documentation
+description: Explore incident workflows that document, notify, and assign resolution steps for quality issues across assets.
 slug: /how-to-guides/data-quality-observability/incident-manager/workflow
 ---
 

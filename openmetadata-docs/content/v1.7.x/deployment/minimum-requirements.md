@@ -1,5 +1,6 @@
 ---
-title: Minimum Requirements
+title: Minimum Requirements | Official Documentation
+description: Review system requirements including OS, CPU, memory, and dependencies to ensure a successful and stable deployment.
 slug: /deployment/minimum-requirements
 collate: false
 ---
