@@ -2633,6 +2633,14 @@ public interface CollectionDAO {
     default boolean supportsSoftDelete() {
       return false;
     }
+
+    @SqlQuery("select json FROM domain_entity where fqnHash LIKE :concatFqnhash")
+    List<String> getNestedDomains(
+        @BindConcat(
+                value = "concatFqnhash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash);
   }
 
   interface DataProductDAO extends EntityDAO<DataProduct> {

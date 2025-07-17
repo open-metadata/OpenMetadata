@@ -83,6 +83,10 @@
       "description": "Data assets collection that is part of this domain.",
       "$ref" : "../../type/entityReferenceList.json"
     },
+    "allAssets": {
+      "description": "All assets belonging to this domain and its sub-domains.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "tags": {
       "description": "Tags associated with the Domain.",
       "type": "array",

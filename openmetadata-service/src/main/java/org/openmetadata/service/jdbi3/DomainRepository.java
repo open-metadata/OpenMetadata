@@ -22,9 +22,12 @@ import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -67,6 +70,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_ASSETS, this::fetchAndSetAssets);
+    fieldFetchers.put("allAssets", this::fetchAndSetAllAssets);
     fieldFetchers.put("parent", this::fetchAndSetParents);
     fieldFetchers.put("experts", this::fetchAndSetExperts);
   }
@@ -74,6 +78,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void setFields(Domain entity, Fields fields) {
     entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
+    entity.withAllAssets(fields.contains("allAssets") ? getAllAssets(entity) : null);
     entity.withParent(getParent(entity));
   }
 
@@ -90,6 +95,13 @@ public class DomainRepository extends EntityRepository<Domain> {
       return;
     }
     setFieldFromMap(true, domains, batchFetchAssets(domains), Domain::setAssets);
+  }
+
+  private void fetchAndSetAllAssets(List<Domain> domains, Fields fields) {
+    if (!fields.contains("allAssets") || domains == null || domains.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, domains, batchFetchAllAssets(domains), Domain::setAllAssets);
   }
 
   private void fetchAndSetParents(List<Domain> domains, Fields fields) {
@@ -146,8 +158,42 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
+  private List<EntityReference> filterAssetsByType(List<EntityReference> assets, String type) {
+    return assets.stream()
+        .filter(asset -> asset.getType().equals(type))
+        .collect(Collectors.toList());
+  }
+
   private List<EntityReference> getAssets(Domain entity) {
-    return findTo(entity.getId(), DOMAIN, Relationship.HAS, null);
+    List<EntityReference> assets = findTo(entity.getId(), DOMAIN, Relationship.HAS, null);
+    return filterAssetsByType(assets, DATA_PRODUCT); // filter dataProducts from assets list
+  }
+
+  private List<Domain> getNestedDomains(Domain domain) {
+    List<String> jsons = daoCollection.domainDAO().getNestedDomains(domain.getFullyQualifiedName());
+    return JsonUtils.readObjects(jsons, Domain.class);
+  }
+
+  private List<EntityReference> getAllAssets(Domain domain) {
+    List<Domain> domains = getNestedDomains(domain);
+    domains.add(domain);
+
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatchAllTypes(
+                entityListToStrings(domains), Relationship.HAS.ordinal(), Include.ALL);
+
+    List<EntityReference> allAssets =
+        records.stream()
+            .map(
+                record ->
+                    getEntityReferenceById(
+                        record.getToEntity(), UUID.fromString(record.getToId()), ALL))
+            .distinct()
+            .collect(Collectors.toList());
+
+    return filterAssetsByType(allAssets, DATA_PRODUCT);
   }
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
@@ -366,14 +412,70 @@ public class DomainRepository extends EntityRepository<Domain> {
     // Group assets by domain ID
     records.forEach(
         record -> {
-          var domainId = UUID.fromString(record.getFromId());
-          var assetRef =
-              getEntityReferenceById(
-                  record.getToEntity(), UUID.fromString(record.getToId()), NON_DELETED);
-          assetsMap.get(domainId).add(assetRef);
+          if (!DATA_PRODUCT.equals(record.getToEntity())) {
+            var domainId = UUID.fromString(record.getFromId());
+            var assetRef =
+                getEntityReferenceById(
+                    record.getToEntity(), UUID.fromString(record.getToId()), ALL);
+            assetsMap.get(domainId).add(assetRef);
+          }
         });
 
     return assetsMap;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchAllAssets(List<Domain> domains) {
+    if (domains == null || domains.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    // Compute parent→subdomain-ID sets
+    Map<UUID, Set<UUID>> domainToSubDomainIds = new HashMap<>();
+    Map<UUID, List<EntityReference>> result = new HashMap<>();
+
+    for (Domain parent : domains) {
+      UUID pid = parent.getId();
+      result.put(pid, new ArrayList<>());
+
+      Set<UUID> subDomains =
+          getNestedDomains(parent).stream()
+              .map(Domain::getId)
+              .collect(Collectors.toCollection(LinkedHashSet::new));
+      subDomains.add(pid); // add current domain
+
+      domainToSubDomainIds.put(pid, subDomains);
+    }
+
+    // Gather every domain ID (parent + nested) into one deduplicated list
+    List<String> allIdsToFetch =
+        domainToSubDomainIds.values().stream()
+            .flatMap(Set::stream)
+            .map(UUID::toString)
+            .distinct()
+            .collect(Collectors.toList());
+
+    // Single batch query to get all assets for all domains
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatchAllTypes(allIdsToFetch, Relationship.HAS.ordinal(), Include.ALL);
+
+    // For each record, look up which parent domain contains it
+    for (var rec : records) {
+      if (DATA_PRODUCT.equals(rec.getToEntity())) continue;
+      UUID subId = UUID.fromString(rec.getFromId());
+      EntityReference ref =
+          getEntityReferenceById(rec.getToEntity(), UUID.fromString(rec.getToId()), ALL);
+
+      domainToSubDomainIds.forEach(
+          (parentId, subDomainIds) -> {
+            if (subDomainIds.contains(subId)) {
+              result.get(parentId).add(ref);
+            }
+          });
+    }
+
+    return result;
   }
 
   private Map<UUID, EntityReference> batchFetchParents(List<Domain> domains) {
