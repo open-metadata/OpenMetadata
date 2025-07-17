@@ -12,7 +12,8 @@
  */
 import { Button, Modal, Typography } from 'antd';
 import { isEmpty, omit } from 'lodash';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
+import { Column, textEditor } from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
 import { useGridEditController } from '../../../../hooks/useGridEditController';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -22,6 +23,19 @@ import './edit-table-type-property.less';
 import { EditTableTypePropertyModalProps } from './EditTableTypePropertyModal.interface';
 import TableTypePropertyEditTable from './TableTypePropertyEditTable';
 import TableTypePropertyView from './TableTypePropertyView';
+
+export const getGridColumns = (columns: string[]) => {
+  return columns.map((column) => ({
+    key: column,
+    name: column,
+    sortable: false,
+    resizable: true,
+    cellClass: () => `rdg-cell-${column.replace(/[^a-zA-Z0-9-_]/g, '')}`,
+    editable: true,
+    renderEditCell: textEditor,
+    minWidth: 180,
+  })) as Column<Record<string, string>>[];
+};
 
 const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
   isVisible,
@@ -38,25 +52,19 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
     TableTypePropertyValueType['rows']
   >(() => rows.map((row, index) => ({ ...row, id: index + '' })));
 
-  const gridContainerRef = useRef<HTMLDivElement>(null);
+  const filterColumns = useMemo(() => getGridColumns(columns), [columns]);
 
-  const handleEditDataSource = useCallback((data: Record<string, string>[]) => {
-    setDataSource(data);
-  }, []);
-
-  const handleAddRow = useCallback(() => {
-    setDataSource((data) => {
-      setTimeout(() => {
-        // Select first cell of last newly added row
-        const rows = gridContainerRef.current?.querySelectorAll('.rdg-row');
-        const lastRow = rows?.[rows.length - 1];
-        const firstCell = lastRow?.querySelector('.rdg-cell');
-        (firstCell as HTMLElement).click();
-      }, 1);
-
-      return [...data, { id: data.length + '' }];
-    });
-  }, [gridContainerRef]);
+  const {
+    handleCopy,
+    handlePaste,
+    handleOnRowsChange,
+    setGridContainer,
+    handleAddRow,
+  } = useGridEditController({
+    dataSource,
+    setDataSource,
+    columns: filterColumns,
+  });
 
   const handleUpdate = useCallback(async () => {
     const modifiedRows = dataSource
@@ -65,24 +73,6 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
       .filter((row) => !isEmpty(row) && Object.values(row).some(Boolean));
     await onSave({ rows: modifiedRows, columns });
   }, [onSave, dataSource, columns]);
-
-  useEffect(() => {
-    if (isEmpty(dataSource)) {
-      return;
-    }
-    const firstCell = gridContainerRef?.current?.querySelector(
-      '.rdg-cell[role="gridcell"]'
-    );
-    if (firstCell) {
-      (firstCell as HTMLElement).click();
-    }
-  }, [isEmpty(dataSource)]);
-
-  const { handleCopy, handlePaste, pushToUndoStack } = useGridEditController(
-    dataSource,
-    handleEditDataSource,
-    gridContainerRef
-  );
 
   return (
     <Modal
@@ -136,13 +126,12 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
       ) : (
         <KeyDownStopPropagationWrapper>
           <TableTypePropertyEditTable
-            columns={columns}
+            columns={filterColumns}
             dataSource={dataSource}
-            gridContainerRef={gridContainerRef}
             handleCopy={handleCopy}
-            handleEditDataSource={handleEditDataSource}
+            handleOnRowsChange={handleOnRowsChange}
             handlePaste={handlePaste}
-            pushToUndoStack={pushToUndoStack}
+            setGridContainer={setGridContainer}
           />
         </KeyDownStopPropagationWrapper>
       )}

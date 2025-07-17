@@ -93,7 +93,6 @@ const BulkEntityImportPage = () => {
     dataSource: Record<string, string>[];
   }>();
 
-  const gridContainerRef = useRef<HTMLDivElement>(null);
   const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
 
   const filterColumns = useMemo(
@@ -104,6 +103,19 @@ const BulkEntityImportPage = () => {
       ),
     [columns]
   );
+
+  const {
+    handleCopy,
+    handlePaste,
+    pushToUndoStack,
+    handleOnRowsChange,
+    setGridContainer,
+    handleAddRow,
+  } = useGridEditController({
+    dataSource,
+    setDataSource,
+    columns: filterColumns,
+  });
 
   const fetchEntityData = useCallback(async () => {
     try {
@@ -146,15 +158,6 @@ const BulkEntityImportPage = () => {
     activeAsyncImportJobRef.current = undefined;
   }, [setActiveAsyncImportJob, activeAsyncImportJobRef]);
 
-  const focusToGrid = useCallback(() => {
-    const firstCell = gridContainerRef?.current?.querySelector(
-      '.rdg-cell[role="gridcell"]'
-    );
-    if (firstCell) {
-      (firstCell as HTMLElement).click();
-    }
-  }, []);
-
   const onCSVReadComplete = useCallback(
     (results: { data: string[][] }) => {
       // results.data is returning data with unknown type
@@ -168,9 +171,8 @@ const BulkEntityImportPage = () => {
       setColumns(columns);
 
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
-      setTimeout(focusToGrid, 500);
     },
-    [setDataSource, setColumns, handleActiveStepChange, focusToGrid]
+    [setDataSource, setColumns, handleActiveStepChange]
   );
 
   const handleLoadData = useCallback(
@@ -196,13 +198,6 @@ const BulkEntityImportPage = () => {
       }
     },
     [onCSVReadComplete, entityType, fqn]
-  );
-
-  const onEditComplete = useCallback(
-    (data: Record<string, string>[]) => {
-      setDataSource(data);
-    },
-    [setDataSource]
   );
 
   const handleBack = () => {
@@ -246,20 +241,6 @@ const BulkEntityImportPage = () => {
       setIsValidating(false);
     }
   };
-
-  const handleAddRow = useCallback(() => {
-    setDataSource((data) => {
-      setTimeout(() => {
-        // Select first cell of last newly added row
-        const rows = gridContainerRef?.current?.querySelectorAll('.rdg-row');
-        const lastRow = rows?.[rows.length - 1];
-        const firstCell = lastRow?.querySelector('.rdg-cell');
-        (firstCell as HTMLElement).click();
-      }, 1);
-
-      return [...data, { id: data.length + '' }];
-    });
-  }, [gridContainerRef]);
 
   const handleRetryCsvUpload = () => {
     setValidationData(undefined);
@@ -461,12 +442,6 @@ const BulkEntityImportPage = () => {
     };
   }, [socket]);
 
-  const { handleCopy, handlePaste, pushToUndoStack } = useGridEditController(
-    dataSource,
-    onEditComplete,
-    gridContainerRef
-  );
-
   /*
     Owner dropdown uses <ProfilePicture /> which uses useUserProfile hook
     useUserProfile hook uses useApplicationStore hook
@@ -475,25 +450,24 @@ const BulkEntityImportPage = () => {
   */
   const editDataGrid = useMemo(() => {
     return (
-      <DataGrid
-        className="rdg-light"
-        columns={filterColumns}
-        rows={dataSource}
-        onCopy={handleCopy}
-        onPaste={handlePaste}
-        onRowsChange={(updatedRows) => {
-          onEditComplete(updatedRows);
-          pushToUndoStack(dataSource);
-        }}
-      />
+      <div className="om-rdg" ref={setGridContainer}>
+        <DataGrid
+          className="rdg-light"
+          columns={filterColumns}
+          rows={dataSource}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          onRowsChange={handleOnRowsChange}
+        />
+      </div>
     );
   }, [
     columns,
     dataSource,
     handleCopy,
     handlePaste,
-    onEditComplete,
-    pushToUndoStack,
+    handleOnRowsChange,
+    setGridContainer,
   ]);
 
   return (
@@ -509,17 +483,17 @@ const BulkEntityImportPage = () => {
             breadcrumbList={breadcrumbList}
             columns={filterColumns as Column<any>[]}
             dataSource={dataSource}
-            gridContainerRef={gridContainerRef}
             handleBack={handleBack}
             handleCopy={handleCopy}
+            handleOnRowsChange={handleOnRowsChange}
             handlePaste={handlePaste}
             handleValidate={handleValidate}
             isValidating={isValidating}
             pushToUndoStack={pushToUndoStack}
+            setGridContainer={setGridContainer}
             validateCSVData={validateCSVData}
             validationData={validationData}
             onCSVReadComplete={onCSVReadComplete}
-            onEditComplete={onEditComplete}
           />
         ) : (
           <>
@@ -582,11 +556,7 @@ const BulkEntityImportPage = () => {
                   )}
                 </>
               )}
-              {activeStep === 1 && (
-                <div className="om-rdg" ref={gridContainerRef}>
-                  {editDataGrid}
-                </div>
-              )}
+              {activeStep === 1 && editDataGrid}
               {activeStep === 2 && validationData && (
                 <Row gutter={[16, 16]}>
                   <Col span={24}>
