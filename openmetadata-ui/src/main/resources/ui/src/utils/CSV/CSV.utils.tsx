@@ -357,7 +357,7 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
     }
 
     default:
-      return String(value);
+      return typeof value === 'object' ? JSON.stringify(value) : String(value);
   }
 };
 
