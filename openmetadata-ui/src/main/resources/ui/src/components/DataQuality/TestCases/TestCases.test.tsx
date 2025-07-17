@@ -69,23 +69,26 @@ jest.mock('react-router-dom', () => {
 jest.mock('../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock('../../common/SearchBarComponent/SearchBar.component', () => {
-  return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
-});
-jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => {
-  return jest
+jest.mock('../../common/SearchBarComponent/SearchBar.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div>Searchbar.component</div>),
+}));
+jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
+  __esModule: true,
+  default: jest
     .fn()
-    .mockImplementation(() => <div>DataQualityTab.component</div>);
-});
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest
+    .mockImplementation(() => <div>DataQualityTab.component</div>),
+}));
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(({ type }) => (
       <div data-testid={`error-placeholder-type-${type}`}>
         ErrorPlaceHolder.component
       </div>
-    ));
-});
+    )),
+}));
 const mockDataQualityContext = {
   isTestCaseSummaryLoading: false,
   testCaseSummary: {
@@ -103,34 +106,37 @@ jest.mock('../../../pages/DataQuality/DataQualityProvider', () => {
       .mockImplementation(() => mockDataQualityContext),
   };
 });
-jest.mock('../SummaryPannel/SummaryPanel.component', () => {
-  return {
-    SummaryPanel: jest
-      .fn()
-      .mockImplementation(() => <div>SummaryPanel.component</div>),
-  };
-});
+jest.mock('../SummaryPannel/PieChartSummaryPanel.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div>SummaryPanel.component</div>),
+}));
 
 describe('TestCases component', () => {
   it('component should render', async () => {
     render(<TestCases />);
 
+    // Check for the main container
     expect(
       await screen.findByTestId('test-case-container')
     ).toBeInTheDocument();
-    expect(await screen.findByText('Searchbar.component')).toBeInTheDocument();
-    expect(
-      await screen.findByText('SummaryPanel.component')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('DataQualityTab.component')
-    ).toBeInTheDocument();
+
+    // Check for the filter components
     expect(await screen.findByTestId('advanced-filter')).toBeInTheDocument();
     expect(
       await screen.findByTestId('status-select-filter')
     ).toBeInTheDocument();
     expect(
       await screen.findByTestId('test-case-type-select-filter')
+    ).toBeInTheDocument();
+
+    // Check for mocked components
+    expect(
+      await screen.findByText('DataQualityTab.component')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('SummaryPanel.component')
     ).toBeInTheDocument();
   });
 

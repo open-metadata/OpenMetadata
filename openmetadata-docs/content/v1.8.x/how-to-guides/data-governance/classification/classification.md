@@ -1,5 +1,6 @@
 ---
-title: Overview of Classification
+title: Overview of Classification | Official Documentation
+description: Get an overview of classification features to understand how data is organized, labeled, and governed across your OpenMetadata.
 slug: /how-to-guides/data-governance/classification/overview
 ---
 

@@ -46,33 +46,20 @@ test(
       await page.getByTestId('test-type').locator('div').click();
       await page.getByText('Table Column Count To Equal').click();
       await page.getByPlaceholder('Enter a Count').fill('13');
-      await page.getByTestId('submit-test').click();
-
-      await expect(page.getByTestId('add-ingestion-button')).toBeVisible();
-      await expect(page.getByTestId('add-ingestion-button')).toContainText(
-        'Add Ingestion'
+      const createTestCaseResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/dataQuality/testCases') &&
+          response.request().method() === 'POST'
       );
+      await page.getByTestId('create-btn').click();
+      await createTestCaseResponse;
 
-      await page.getByTestId('add-ingestion-button').click();
-      await page.getByTestId('select-all-test-cases').click();
-
-      await expect(
-        page.getByTestId('cron-type').getByText('Day')
-      ).toBeAttached();
-
-      await page.getByTestId('deploy-button').click();
-
-      await expect(page.getByTestId('view-service-button')).toBeVisible();
-
-      await page.waitForSelector('[data-testid="body-text"]', {
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
-      await expect(page.getByTestId('success-line')).toContainText(
-        /has been created and deployed successfully/
-      );
-
-      await page.getByTestId('view-service-button').click();
       await page.getByRole('menuitem', { name: 'Data Quality' }).click();
       await page.getByRole('tab', { name: 'Pipeline' }).click();
       await page.getByTestId('add-pipeline-button').click();
