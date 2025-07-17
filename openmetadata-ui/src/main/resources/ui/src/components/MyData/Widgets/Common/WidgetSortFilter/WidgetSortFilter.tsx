@@ -50,6 +50,7 @@ const WidgetSortFilter = ({
   return (
     <Dropdown
       className="widget-header-options"
+      getPopupContainer={(triggerNode: HTMLElement) => triggerNode}
       menu={{
         items: sortOptions,
         selectable: true,

@@ -21,7 +21,6 @@ import KPISmallImg from '../assets/img/kpi-widget.png';
 import KPIImg from '../assets/img/kpi.png';
 import MyDataImg from '../assets/img/my-data-widget.png';
 import MyTaskImg from '../assets/img/my-task-widget.png';
-import RecentViewsImg from '../assets/img/recent-views.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets-widget.png';
 import { ReactComponent as ActivityFeedIcon } from '../assets/svg/ic-activity-feed.svg';
@@ -42,7 +41,6 @@ import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/Data
 import DomainsWidget from '../components/MyData/Widgets/DomainsWidget/DomainsWidget';
 import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
 import MyTaskWidget from '../components/MyData/Widgets/MyTaskWidget/MyTaskWidget';
-import RecentlyViewed from '../components/MyData/Widgets/RecentlyViewed/RecentlyViewed';
 import TotalDataAssetsWidget from '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import {
   LandingPageWidgetKeys,
@@ -63,7 +61,6 @@ class CustomizeMyDataPageClassBase {
     activityFeed: 4,
     announcements: 4,
     following: 4,
-    recentlyViewed: 4,
     myData: 4,
     kpi: 4,
     totalAssets: 4,
@@ -152,14 +149,6 @@ class CustomizeMyDataPageClassBase {
       y: 8,
       static: false,
     },
-    {
-      h: this.landingPageWidgetDefaultHeights.recentlyViewed,
-      i: LandingPageWidgetKeys.RECENTLY_VIEWED,
-      w: 1,
-      x: 1,
-      y: 8,
-      static: false,
-    },
   ];
 
   protected updateDefaultLayoutLayout(layout: Array<WidgetConfig>) {
@@ -202,9 +191,6 @@ class CustomizeMyDataPageClassBase {
     if (widgetKey.startsWith(LandingPageWidgetKeys.FOLLOWING)) {
       return FollowingWidget;
     }
-    if (widgetKey.startsWith(LandingPageWidgetKeys.RECENTLY_VIEWED)) {
-      return RecentlyViewed;
-    }
     if (widgetKey.startsWith(LandingPageWidgetKeys.CURATED_ASSETS)) {
       return CuratedAssetsWidget;
     }
@@ -245,9 +231,6 @@ class CustomizeMyDataPageClassBase {
       }
       case LandingPageWidgetKeys.FOLLOWING: {
         return FollowingImg;
-      }
-      case LandingPageWidgetKeys.RECENTLY_VIEWED: {
-        return RecentViewsImg;
       }
       case LandingPageWidgetKeys.CURATED_ASSETS: {
         return CuratedAssetsImg;
@@ -309,8 +292,6 @@ class CustomizeMyDataPageClassBase {
         return this.landingPageWidgetDefaultHeights.announcements;
       case 'Following':
         return this.landingPageWidgetDefaultHeights.following;
-      case 'RecentlyViewed':
-        return this.landingPageWidgetDefaultHeights.recentlyViewed;
       case 'MyData':
         return this.landingPageWidgetDefaultHeights.myData;
       case 'KPI':
