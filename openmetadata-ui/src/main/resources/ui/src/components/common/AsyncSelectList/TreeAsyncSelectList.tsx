@@ -22,6 +22,7 @@ import {
   TreeSelectProps,
 } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import {
@@ -73,6 +74,7 @@ interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
   isMultiSelect?: boolean;
   isParentSelectable?: boolean;
+  newLook?: boolean;
   onSubmit?: () => void;
   dropdownContainerRef?: React.RefObject<HTMLDivElement>;
 }
@@ -88,6 +90,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   hasNoActionButtons,
   isMultiSelect = true, // default to true for backward compatibility
   isParentSelectable = false, // by default, only leaf nodes can be selected
+  newLook = false,
   onSubmit,
   dropdownContainerRef,
   ...props
@@ -212,6 +215,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     return (
       <TagsV1
         isEditTags
+        newLook={newLook}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         tagProps={tagProps}
@@ -404,7 +408,9 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         ? { treeCheckable: true, treeCheckStrictly: true }
         : {})}
       autoFocus={open}
-      className="async-select-list"
+      className={classNames('async-select-list', {
+        'new-chip-style': newLook,
+      })}
       data-testid="tag-selector"
       dropdownRender={
         hasNoActionButtons ? (menu: ReactElement) => menu : dropdownRender
