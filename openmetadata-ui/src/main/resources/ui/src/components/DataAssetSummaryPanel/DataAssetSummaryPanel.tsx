@@ -231,7 +231,7 @@ export const DataAssetSummaryPanel = ({
                 <Typography.Text
                   className="summary-panel-section-title"
                   data-testid="domain-header">
-                  {t('label.domain')}
+                  {t('label.domain-plural')}
                 </Typography.Text>
               </Col>
               <Col className="d-flex flex-wrap gap-2" span={24}>

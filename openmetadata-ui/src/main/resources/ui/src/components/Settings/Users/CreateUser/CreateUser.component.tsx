@@ -93,7 +93,7 @@ const CreateUser = ({
     name: 'domains',
     id: 'root/domains',
     required: false,
-    label: t('label.domain'),
+    label: t('label.domain-plural'),
     type: FieldTypes.DOMAIN_SELECT,
     props: {
       selectedDomain: activeDomainEntityRef

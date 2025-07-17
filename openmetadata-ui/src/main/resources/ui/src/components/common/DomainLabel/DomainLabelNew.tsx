@@ -116,7 +116,7 @@ export const DomainLabelNew = ({
               const inheritedIcon = domain?.inherited ? (
                 <Tooltip
                   title={t('label.inherited-entity', {
-                    entity: t('label.domain'),
+                    entity: t('label.domain-plural'),
                   })}>
                   <span className="inherit-icon-container d-flex items-center flex-center">
                     <InheritIcon className="inherit-icon" height={8} />
@@ -158,7 +158,7 @@ export const DomainLabelNew = ({
         <Typography.Text
           className={classNames('text-sm no-data-chip-placeholder')}
           data-testid="no-domain-text">
-          {t('label.no-entity', { entity: t('label.domain') })}
+          {t('label.no-entity', { entity: t('label.domain-plural') })}
         </Typography.Text>
       );
     }

@@ -200,7 +200,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       return (
         <Empty
           description={t('label.no-entity-available', {
-            entity: t('label.domain'),
+            entity: t('label.domain-plural'),
           })}
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />

@@ -45,7 +45,7 @@ export enum EntityFields {
   NAME_KEYWORD = 'name.keyword',
   GLOSSARY = 'glossary.name.keyword',
   CLASSIFICATION = 'classification.name.keyword',
-  DOMAIN = 'domains.displayName.keyword',
+  DOMAINS = 'domains.displayName.keyword',
   DATA_MODEL = 'dataModels.displayName.keyword',
   CONTAINER_COLUMN = 'dataModel.columns.name.keyword',
   PROJECT = 'project.keyword',
