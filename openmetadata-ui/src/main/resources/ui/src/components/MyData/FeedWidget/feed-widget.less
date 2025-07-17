@@ -10,23 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../../styles/variables.less');
-@import (reference) url('../../../../styles/fonts.less');
-
-.data-assets-widget-container {
+@import (reference) url('../../../styles/variables.less');
+@import (reference) url('../../../styles/fonts.less');
+.feed-widget-container {
   display: flex;
   flex-direction: column;
   height: 100%;
+  .activity-feed-user-name a {
+    color: @black;
+  }
 
   .ant-card-body {
     display: flex;
     flex-direction: column;
     flex: 1;
     padding: 0;
-    overflow: hidden;
   }
 
-  .widget-content {
+  .feed-content {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -36,36 +37,14 @@
 
   .entity-list-body {
     flex: 1;
-    padding: @size-mlg @size-mlg @size-xxs @size-mlg;
+    padding: 0 @size-mlg @size-xxs @size-mlg;
     margin: 0;
     overflow-y: auto;
     min-height: 0;
   }
-
-  .ant-dropdown-menu-item {
-    padding: 16px 24px !important;
-    height: 40px !important;
-
-    &:hover {
-      color: @blue-34 !important;
-      background-color: @blue-33 !important;
-      font-weight: 500 !important;
-    }
+  .activity-feed-tab-padding {
+    padding: 0;
   }
-
-  .ant-dropdown-menu-item-active {
-    color: @blue-34 !important;
-    background-color: @blue-33 !important;
-    font-weight: 500 !important;
-  }
-}
-
-.widget-footer {
-  flex-shrink: 0;
-  width: 100%;
-  background-color: @white;
-  border-bottom-right-radius: @size-sm;
-  border-bottom-left-radius: @size-sm;
 }
 
 .cards-scroll-container {
@@ -105,5 +84,11 @@
         }
       }
     }
+  }
+}
+
+.timestamp-tooltip {
+  .ant-tooltip-inner {
+    color: @grey-3;
   }
 }

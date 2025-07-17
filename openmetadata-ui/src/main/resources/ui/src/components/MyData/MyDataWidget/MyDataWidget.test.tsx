@@ -90,8 +90,8 @@ describe('MyDataWidget component', () => {
       1,
       10,
       '(owners.id:113)',
-      '',
-      '',
+      'updatedAt',
+      'desc',
       'all'
     );
   });
@@ -133,7 +133,7 @@ describe('MyDataWidget component', () => {
     });
 
     expect(
-      await screen.findByText('label.view-more-capital')
+      await screen.findByText('label.view-more-count')
     ).toBeInTheDocument();
   });
 

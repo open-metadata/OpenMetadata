@@ -30,7 +30,6 @@ import {
   uuid,
 } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
-import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
