@@ -90,21 +90,16 @@ public class SecurityConfigurationManager {
 
   public void reloadSecuritySystem() {
     try {
-      // Save previous config for rollback
       previousSecurityConfig = getCurrentSecurityConfig();
-
-      // Reload both configs from database
       currentAuthConfig =
           SettingsCache.getSetting(AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class);
       currentAuthzConfig =
           SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class);
 
-      // Update application config
       OpenMetadataApplicationConfig appConfig = this.config;
       appConfig.setAuthenticationConfiguration(currentAuthConfig);
       appConfig.setAuthorizerConfiguration(currentAuthzConfig);
 
-      // Reinitialize the entire auth system
       application.reinitializeAuthSystem(appConfig, environment);
 
       LOG.info("Successfully reloaded security system with new configuration");

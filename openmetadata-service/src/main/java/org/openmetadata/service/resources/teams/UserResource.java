@@ -183,7 +183,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final RoleRepository roleRepository;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
-  private final AuthenticatorHandler authHandlem;
+  private final AuthenticatorHandler authHandler;
   private boolean isSelfSignUpEnabled = false;
   static final String FIELDS =
       "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
@@ -208,7 +208,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     tokenRepository = Entity.getTokenRepository();
     roleRepository = Entity.getRoleRepository();
     UserTokenCache.initialize();
-    authHandlem = authenticatorHandler;
+    authHandler = authenticatorHandler;
   }
 
   @Override

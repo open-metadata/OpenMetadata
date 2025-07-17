@@ -1,11 +1,13 @@
 package org.openmetadata.service.security;
 
 import jakarta.ws.rs.container.ContainerRequestFilter;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ContainerRequestFilterManager {
   private static final ContainerRequestFilterManager INSTANCE = new ContainerRequestFilterManager();
-  private final AtomicReference<ContainerRequestFilter> currentFilter = new AtomicReference<>();
+  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+  private ContainerRequestFilter currentFilter;
 
   private ContainerRequestFilterManager() {}
 
@@ -14,14 +16,29 @@ public class ContainerRequestFilterManager {
   }
 
   public void registerFilter(ContainerRequestFilter filter) {
-    currentFilter.set(filter);
+    lock.writeLock().lock();
+    try {
+      currentFilter = filter;
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   public ContainerRequestFilter getFilter() {
-    return currentFilter.get();
+    lock.readLock().lock();
+    try {
+      return currentFilter;
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   public void updateFilter(ContainerRequestFilter newFilter) {
-    currentFilter.set(newFilter);
+    lock.writeLock().lock();
+    try {
+      currentFilter = newFilter;
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 }

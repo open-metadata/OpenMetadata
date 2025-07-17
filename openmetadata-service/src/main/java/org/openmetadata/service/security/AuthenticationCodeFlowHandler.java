@@ -121,7 +121,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
   public static final String REDIRECT_URI_KEY = "redirectUri";
-  private static volatile AuthenticationCodeFlowHandler instance;
+
+  private static class Holder {
+    private static AuthenticationCodeFlowHandler instance;
+
+    private static void initialize(
+        AuthenticationConfiguration authenticationConfiguration,
+        AuthorizerConfiguration authorizerConfiguration) {
+      instance =
+          new AuthenticationCodeFlowHandler(authenticationConfiguration, authorizerConfiguration);
+    }
+  }
 
   private OidcClient client;
   private List<String> claimsOrder;
@@ -155,24 +165,22 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public static AuthenticationCodeFlowHandler getInstance(
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConfiguration) {
-    if (instance == null) {
+    if (Holder.instance == null) {
       synchronized (AuthenticationCodeFlowHandler.class) {
-        if (instance == null) {
-          instance =
-              new AuthenticationCodeFlowHandler(
-                  authenticationConfiguration, authorizerConfiguration);
+        if (Holder.instance == null) {
+          Holder.initialize(authenticationConfiguration, authorizerConfiguration);
         }
       }
     }
-    return instance;
+    return Holder.instance;
   }
 
   public static AuthenticationCodeFlowHandler getInstance() {
-    if (instance == null) {
+    if (Holder.instance == null) {
       throw new IllegalStateException(
           "AuthenticationCodeFlowHandler is not initialized. Call getInstance() with configuration first.");
     }
-    return instance;
+    return Holder.instance;
   }
 
   public synchronized void updateConfiguration(
