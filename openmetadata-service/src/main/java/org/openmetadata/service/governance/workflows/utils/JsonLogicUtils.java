@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows.utils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.jamsesso.jsonlogic.JsonLogic;
 import java.util.ArrayList;
@@ -39,9 +40,10 @@ public class JsonLogicUtils {
       Map<String, Object> jsonLogicContext =
           buildCustomJsonLogicContext(requiredVars, entity, updatedBy);
 
+      String filterRule = unescapeFilter(filterLogic);
       Object result;
       try {
-        result = jsonLogic.apply(filterLogic, jsonLogicContext);
+        result = jsonLogic.apply(filterRule, jsonLogicContext);
       } catch (Exception e) {
         LOG.error("Error applying JsonLogic: {}", e.getMessage(), e);
         return false;
@@ -60,6 +62,15 @@ public class JsonLogicUtils {
       LOG.error("Error evaluating JSON Logic filter: {}", e.getMessage(), e);
       return false;
     }
+  }
+
+  // Done when the filter is double-escaped
+  private static String unescapeFilter(String filterLogic) throws JsonProcessingException {
+    Object ruleObj = JsonUtils.getObjectMapper().readValue(filterLogic, Object.class);
+    if (ruleObj instanceof String) {
+      ruleObj = JsonUtils.getObjectMapper().readValue((String) ruleObj, Object.class);
+    }
+    return JsonUtils.getObjectMapper().writeValueAsString(ruleObj);
   }
 
   /**
@@ -140,6 +151,10 @@ public class JsonLogicUtils {
     Set<String> variables = new HashSet<>();
     try {
       JsonNode jsonNode = JsonUtils.getObjectMapper().readTree(filterLogic);
+      // If the node is a string, it means the input was double-escaped, so parse again
+      if (jsonNode.isTextual()) {
+        jsonNode = JsonUtils.getObjectMapper().readTree(jsonNode.asText());
+      }
       extractVariablesRecursive(jsonNode, variables);
     } catch (Exception e) {
       LOG.debug("Could not parse JSON Logic to extract variables: {}", e.getMessage());

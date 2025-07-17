@@ -39,7 +39,7 @@ public class FilterEntityImpl implements JavaDelegate {
     if (filterExpr != null) {
       String filterLogic = (String) filterExpr.getValue(execution);
       if (filterLogic != null && !filterLogic.trim().isEmpty()) {
-        passesFilter = JsonLogicUtils.evaluateFilter(entityLinkStr, updatedBy, filterLogic);
+        passesFilter = !JsonLogicUtils.evaluateFilter(entityLinkStr, updatedBy, filterLogic);
       } else {
         passesFilter = true; // No filter means pass
       }
