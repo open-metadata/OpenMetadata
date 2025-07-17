@@ -26,6 +26,7 @@ import { useParams } from 'react-router-dom';
 import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-suggestions.svg';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   TagLabel,
@@ -40,6 +41,7 @@ import {
   getParameterValueDiffDisplay,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
+import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../../utils/TableUtils';
 import { createTagObject } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -85,14 +87,25 @@ const TestCaseResultTab = () => {
       : {
           hasEditPermission: testCasePermission?.EditAll,
           hasEditDescriptionPermission:
-            testCasePermission?.EditAll || testCasePermission?.EditDescription,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditDescription
+            ),
           hasEditTagsPermission:
-            testCasePermission?.EditAll || testCasePermission?.EditTags,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditTags
+            ),
           hasEditGlossaryTermsPermission:
-            testCasePermission?.EditAll ||
-            testCasePermission?.EditGlossaryTerms,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditGlossaryTerms
+            ),
         };
-  }, [testCasePermission, isVersionPage]);
+  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
 
   const { withSqlParams, withoutSqlParams } = useMemo(() => {
     const params = testCaseData?.parameterValues ?? [];

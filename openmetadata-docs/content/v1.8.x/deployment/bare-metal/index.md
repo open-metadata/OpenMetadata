@@ -1,5 +1,6 @@
 ---
-title: Bare Metal Deployment
+title: Bare Metal Deployment | Official Documentation
+description: Deploy the platform on bare-metal servers to maintain full control over infrastructure, authentication, and network configuration.
 slug: /deployment/bare-metal
 collate: false
 ---

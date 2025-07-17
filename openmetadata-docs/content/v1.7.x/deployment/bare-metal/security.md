@@ -1,5 +1,6 @@
 ---
 title: Enable Security | OpenMetadata Deployment Security Guide
+description: Secure bare-metal deployments with guidance on encryption, authentication, and secret management for non-cloud environments.
 slug: /deployment/bare-metal/security
 collate: false
 ---
