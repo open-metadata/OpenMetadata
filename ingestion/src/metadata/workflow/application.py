@@ -23,6 +23,7 @@ from metadata.generated.schema.metadataIngestion.application import (
     OpenMetadataApplicationConfig,
 )
 from metadata.ingestion.api.step import Step
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.importer import import_from_module
 from metadata.utils.logger import ingestion_logger
@@ -105,6 +106,12 @@ class AppRunner(Step, ABC):
                 private_config_json = secrets_manager.get_string_value(secret_id)
                 if private_config_json:
                     private_config = json.loads(private_config_json)
+                    if private_config.get("token") and isinstance(
+                        private_config["token"], str
+                    ):
+                        private_config["token"] = CustomSecretStr(
+                            private_config["token"]
+                        )
                     logger.info(
                         f"Successfully retrieved private config from secrets manager for app: {app_name}"
                     )
