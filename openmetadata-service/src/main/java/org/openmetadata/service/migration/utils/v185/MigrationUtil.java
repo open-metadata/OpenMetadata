@@ -286,25 +286,27 @@ public class MigrationUtil {
         for (Post post : thread.getPosts()) {
           if (post.getFrom() != null) {
             try {
-              UUID userId = UUID.fromString(post.getFrom());
+              String createdByUserId = thread.getCreatedBy();
+              EntityReference ref =
+                  Entity.getEntityReferenceByName(Entity.USER, createdByUserId, ALL);
 
               // Only create relationship if this user hasn't already replied
-              if (!repliedUsers.contains(userId)) {
+              if (!repliedUsers.contains(ref.getId())) {
                 collectionDAO
                     .relationshipDAO()
                     .insert(
-                        userId,
+                        ref.getId(),
                         thread.getId(),
                         Entity.USER,
                         Entity.THREAD,
                         Relationship.REPLIED_TO.ordinal(),
                         null);
-                repliedUsers.add(userId);
+                repliedUsers.add(ref.getId());
                 relationshipsCreated++;
                 LOG.debug(
                     "Created REPLIED_TO relationship for thread {} from user {}",
                     thread.getId(),
-                    userId);
+                    ref.getId());
               }
             } catch (Exception e) {
               LOG.error(
