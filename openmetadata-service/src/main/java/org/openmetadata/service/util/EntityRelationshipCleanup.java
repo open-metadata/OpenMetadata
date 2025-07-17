@@ -82,7 +82,7 @@ public class EntityRelationshipCleanup {
         EntityRepository<?> repository = Entity.getEntityRepository(entityType);
         entityRepositories.put(entityType, repository);
       } catch (EntityNotFoundException e) {
-        LOG.error("No repository found for entity type: {}", entityType);
+        LOG.debug("No repository found for entity type: {}", entityType);
       }
     }
   }
@@ -93,7 +93,7 @@ public class EntityRelationshipCleanup {
         EntityTimeSeriesRepository<?> repository = Entity.getEntityTimeSeriesRepository(entityType);
         entityTimeSeriesRepositoy.put(entityType, repository);
       } catch (EntityNotFoundException e) {
-        LOG.error("No repository found for entity type: {}", entityType);
+        LOG.debug("No repository found for entity type: {}", entityType);
       }
     }
   }
@@ -260,9 +260,15 @@ public class EntityRelationshipCleanup {
   }
 
   private boolean entityExists(UUID entityId, String entityType) {
-    boolean existsInEntityRepo = checkInEntityRepository(entityId, entityType);
-    boolean existsInTimeSeriesRepo = checkInEntityTimeSeriesRepository(entityId, entityType);
-    return existsInEntityRepo || existsInTimeSeriesRepo;
+    if (entityRepositories.get(entityType) != null) {
+      return checkInEntityRepository(entityId, entityType);
+    }
+
+    if (entityTimeSeriesRepositoy.get(entityType) != null) {
+      return checkInEntityTimeSeriesRepository(entityId, entityType);
+    }
+
+    return true;
   }
 
   private boolean checkInEntityRepository(UUID entityId, String entityType) {
@@ -272,17 +278,22 @@ public class EntityRelationshipCleanup {
       return true;
     } catch (EntityNotFoundException e) {
       LOG.debug("Entity {}:{} not found in repository: {}", entityType, entityId, e.getMessage());
+      return false;
+    } catch (Exception ex) {
+      LOG.debug("Entity {}:{} encountered exception: {}", entityType, entityId, ex.getMessage());
+      // If any other exception occurs, we assume the entity is not valid
+      return true;
     }
-    return false;
   }
 
   private boolean checkInEntityTimeSeriesRepository(UUID entityId, String entityType) {
-    EntityTimeSeriesRepository<?> repository = entityTimeSeriesRepositoy.get(entityType);
-    if (repository == null) {
-      LOG.debug("No repository found for entity type: {}", entityType);
-      return false;
+    try {
+      EntityTimeSeriesRepository<?> repository = entityTimeSeriesRepositoy.get(entityType);
+      return repository.getById(entityId) != null;
+    } catch (Exception ex) {
+      LOG.debug("Entity {}:{} encountered exception: {}", entityType, entityId, ex.getMessage());
+      return true;
     }
-    return repository.getById(entityId) != null;
   }
 
   /**

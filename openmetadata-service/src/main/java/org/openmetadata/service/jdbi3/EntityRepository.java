@@ -298,6 +298,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected final ChangeSummarizer<T> changeSummarizer;
 
+  public boolean isSupportsOwners() {
+    return supportsOwners;
+  }
+
   protected EntityRepository(
       String collectionPath,
       String entityType,
