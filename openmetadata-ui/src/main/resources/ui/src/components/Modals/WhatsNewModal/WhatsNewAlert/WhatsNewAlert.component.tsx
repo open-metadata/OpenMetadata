@@ -96,7 +96,6 @@ const WhatsNewAlert = () => {
                 <Typography.Text className="text-md font-semibold">
                   {t('label.new-update-announcement')}
                 </Typography.Text>
-                {/* eslint-disable-next-line i18next/no-literal-string */}
                 <Typography.Paragraph className="whats-new-alert-subtext">
                   {t('label.to-learn-more-please-check-out')}
                 </Typography.Paragraph>
