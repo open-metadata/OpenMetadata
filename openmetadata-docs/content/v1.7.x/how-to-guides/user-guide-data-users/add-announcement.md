@@ -1,5 +1,6 @@
 ---
-title: How to Create an Announcement
+title: How to Create an Announcement | Official Documentation
+description: Add announcements to communicate asset changes, certifications, deprecations, or important usage guidelines.
 slug: /how-to-guides/guide-for-data-users/add-announcement
 ---
 
