@@ -1,5 +1,6 @@
 ---
 title: Run the Cockroach Connector Externally
+description: Use YAML to ingest metadata from CockroachDB, including schemas, tables, columns, and constraints.
 slug: /connectors/database/cockroach/yaml
 ---
 

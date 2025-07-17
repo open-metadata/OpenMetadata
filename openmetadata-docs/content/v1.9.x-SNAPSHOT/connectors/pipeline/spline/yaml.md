@@ -1,5 +1,6 @@
 ---
-title: Run the Spline Connector Externally
+title: Run the Spline Connector Externally | Official Documentation
+description: Configure Spline ingestion with YAML to capture Spark lineage metadata and visualize transformation flows.
 slug: /connectors/pipeline/spline/yaml
 ---
 

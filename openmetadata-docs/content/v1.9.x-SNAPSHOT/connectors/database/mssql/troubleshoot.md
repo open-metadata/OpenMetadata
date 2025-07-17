@@ -1,5 +1,6 @@
 ---
-title: Troubleshooting for MSSQL
+title: Troubleshooting for MSSQL | Official Documentation
+description: Resolve MSSQL ingestion issues such as incorrect authentication, invalid queries, or schema incompatibilities.
 slug: /connectors/database/mssql/troubleshooting
 ---
 

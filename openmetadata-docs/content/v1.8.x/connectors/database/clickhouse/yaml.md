@@ -1,5 +1,6 @@
 ---
 title: Run the Clickhouse Connector Externally
+description: Use YAML to ingest metadata from ClickHouse including schemas, columns, and table properties for governance tracking.
 slug: /connectors/database/clickhouse/yaml
 ---
 

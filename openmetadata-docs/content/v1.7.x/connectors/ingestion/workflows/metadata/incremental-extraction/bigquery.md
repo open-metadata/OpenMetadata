@@ -1,5 +1,6 @@
 ---
 title: Metadata Ingestion - Incremental Extraction - BigQuery
+description: Configure incremental metadata extraction from BigQuery to sync only updated datasets, improving performance and accuracy.
 slug: /connectors/ingestion/workflows/metadata/incremental-extraction/bigquery
 ---
 

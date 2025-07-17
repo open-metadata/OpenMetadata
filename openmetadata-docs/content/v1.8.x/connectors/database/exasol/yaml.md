@@ -1,5 +1,6 @@
 ---
 title: Run the Exasol Connector Externally
+description: Use YAML to ingest metadata from Exasol databases including tables, indexes, and analytical structures.
 slug: /connectors/database/exasol/yaml
 ---
 

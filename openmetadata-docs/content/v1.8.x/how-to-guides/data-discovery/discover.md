@@ -1,5 +1,6 @@
 ---
 title: How to Discover Assets of Interest
+description: Discover datasets using advanced filters, tagging, and popularity metrics to find what matters most to your work.
 slug: /how-to-guides/data-discovery/discover
 ---
 

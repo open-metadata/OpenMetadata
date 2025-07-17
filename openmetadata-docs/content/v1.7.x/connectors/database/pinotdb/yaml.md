@@ -1,5 +1,6 @@
 ---
 title: Run the PinotDB Connector Externally
+description: Configure Pinot ingestion using YAML to extract metadata and schema from real-time OLAP data sources.
 slug: /connectors/database/pinotdb/yaml
 ---
 

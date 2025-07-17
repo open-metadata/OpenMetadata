@@ -1,5 +1,6 @@
 ---
 title: Detailed View of the Data Assets
+description: Dive into dataset details including lineage, profiling, ownership, and glossary context for complete understanding.
 slug: /how-to-guides/data-discovery/details
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Run the MariaDB Connector Externally
+description: Configure MariaDB ingestion using YAML to sync metadata, run profiling, and enable data discovery.
 slug: /connectors/database/mariadb/yaml
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Run the Sagemaker Connector Externally
+description: Configure SageMaker ingestion with YAML to extract model metadata, metrics, and lineage from ML pipelines.
 slug: /connectors/ml-model/sagemaker/yaml
 ---
 

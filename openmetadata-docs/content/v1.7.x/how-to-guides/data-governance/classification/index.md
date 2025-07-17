@@ -1,5 +1,6 @@
 ---
 title: Classification | OpenMetadata Data Classification Guide
+description: Learn how to classify data using tags, tiers, and rules to improve governance, discovery, and sensitivity tracking.
 slug: /how-to-guides/data-governance/classification
 ---
 

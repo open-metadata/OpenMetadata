@@ -1,5 +1,6 @@
 ---
 title: Run the GCS Datalake Connector Externally
+description: Configure YAML ingestion for GCS Datalake to extract metadata from structured and unstructured file-based storage.
 slug: /connectors/database/gcs-datalake/yaml
 ---
 
