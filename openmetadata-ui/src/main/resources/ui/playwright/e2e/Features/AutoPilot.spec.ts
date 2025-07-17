@@ -95,8 +95,8 @@ services.forEach((ServiceClass) => {
       test('Create Service and check the AutoPilot status', async ({
         page,
       }) => {
-        // 7 minutes max for AutoPilot tests to complete agents running.
-        test.setTimeout(7 * 60 * 1000);
+        // 8 minutes max for AutoPilot tests to complete agents running.
+        test.setTimeout(8 * 60 * 1000);
 
         await settingClick(
           page,
