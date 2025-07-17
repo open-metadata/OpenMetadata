@@ -1,5 +1,6 @@
 ---
-title: External Profiler Workflow
+title: External Profiler Workflow | Official Documentation
+description: Trigger external profiling workflows to capture custom metrics and analyze datasets based on business context.
 slug: /how-to-guides/data-quality-observability/profiler/external-workflow
 ---
 

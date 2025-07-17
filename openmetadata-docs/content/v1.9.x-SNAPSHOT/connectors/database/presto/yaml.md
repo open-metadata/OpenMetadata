@@ -1,5 +1,6 @@
 ---
 title: Run the Presto Connector Externally
+description: Use YAML to configure Presto ingestion, enabling structured metadata extraction for federated query engines.
 slug: /connectors/database/presto/yaml
 ---
 

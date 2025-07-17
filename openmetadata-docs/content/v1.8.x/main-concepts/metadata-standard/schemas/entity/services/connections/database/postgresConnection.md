@@ -1,5 +1,6 @@
 ---
 title: Postgres Connection | OpenMetadata Postgres
+description: Get started with postgresconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/postgresconnection
 ---
 

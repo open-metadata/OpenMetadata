@@ -1,5 +1,6 @@
 ---
-title: Lineage Workflow Through Query Logs
+title: Lineage Workflow Through Query Logs | Official Documentation
+description: Capture lineage from query logs to build detailed, query-driven data flow between tables, dashboards, and metrics.
 slug: /connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
 ---
 

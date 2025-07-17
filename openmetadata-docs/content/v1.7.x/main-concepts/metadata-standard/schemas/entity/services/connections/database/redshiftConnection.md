@@ -1,5 +1,6 @@
 ---
 title: Redshift Connection | OpenMetadata Redshift
+description: Get started with redshiftconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/redshiftconnection
 ---
 

@@ -4,18 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.type.MetadataOperation.ALL;
-import static org.openmetadata.schema.type.MetadataOperation.CREATE;
-import static org.openmetadata.schema.type.MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR;
-import static org.openmetadata.schema.type.MetadataOperation.DELETE;
-import static org.openmetadata.schema.type.MetadataOperation.DELETE_TEST_CASE_FAILED_ROWS_SAMPLE;
-import static org.openmetadata.schema.type.MetadataOperation.DEPLOY;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_CUSTOM_FIELDS;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DISPLAY_NAME;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_LINEAGE;
-import static org.openmetadata.schema.type.MetadataOperation.GENERATE_TOKEN;
-import static org.openmetadata.schema.type.MetadataOperation.KILL;
-import static org.openmetadata.schema.type.MetadataOperation.TRIGGER;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_QUERIES;
@@ -105,7 +97,6 @@ class PolicyEvaluatorTest {
         new ArrayList<>(List.of(ALL, VIEW_BASIC, VIEW_USAGE, EDIT_ALL));
 
     List<ResourcePermission> rpList = List.of(rp1, rp2);
-    PolicyEvaluator.trimResourcePermissions(rpList);
     assertEqualsPermissions(expectedOp1, rpList.get(0).getPermissions());
     assertEqualsPermissions(expectedOp2, rpList.get(1).getPermissions());
   }
@@ -116,52 +107,8 @@ class PolicyEvaluatorTest {
       ALL, VIEW_ALL, VIEW_BASIC, VIEW_QUERIES, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS
     };
     ResourcePermission rp = getResourcePermission("testResource", Access.ALLOW, operations);
-    ResourcePermission trimmedRp = PolicyEvaluator.trimResourcePermission(rp);
     List<MetadataOperation> expectedOperations = new ArrayList<>(List.of(ALL, VIEW_ALL, EDIT_ALL));
-    assertEqualsPermissions(expectedOperations, trimmedRp.getPermissions());
-  }
-
-  @Test
-  void trimPermissions_withAllowAccess_trimmed() {
-    List<Permission> permissions =
-        getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
-    // trim works only for permissions starting with "EDIT" or "VIEW"
-    List<MetadataOperation> expectedOperations =
-        Arrays.asList(
-            ALL,
-            DELETE,
-            CREATE,
-            CREATE_INGESTION_PIPELINE_AUTOMATOR,
-            VIEW_ALL,
-            EDIT_ALL,
-            DELETE_TEST_CASE_FAILED_ROWS_SAMPLE,
-            DEPLOY,
-            TRIGGER,
-            KILL,
-            GENERATE_TOKEN);
-    List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
-    assertEqualsPermissions(expectedOperations, actual);
-  }
-
-  @Test
-  void trimPermissions_withDenyAccess_trimmed() {
-    List<Permission> permissions = getPermissions(OperationContext.getAllOperations(), Access.DENY);
-    // trim works only for permissions starting with "EDIT" or "VIEW"
-    List<MetadataOperation> expectedOperations =
-        Arrays.asList(
-            ALL,
-            DELETE,
-            CREATE,
-            CREATE_INGESTION_PIPELINE_AUTOMATOR,
-            VIEW_ALL,
-            EDIT_ALL,
-            DELETE_TEST_CASE_FAILED_ROWS_SAMPLE,
-            DEPLOY,
-            TRIGGER,
-            KILL,
-            GENERATE_TOKEN);
-    List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
-    assertEqualsPermissions(expectedOperations, actual);
+    assertEqualsPermissions(expectedOperations, rp.getPermissions());
   }
 
   @Test

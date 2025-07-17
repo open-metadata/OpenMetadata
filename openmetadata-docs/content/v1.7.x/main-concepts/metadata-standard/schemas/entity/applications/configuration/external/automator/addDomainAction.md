@@ -1,5 +1,6 @@
 ---
 title: Add Domain Action | OpenMetadata Domain Actions
+description: Get started with adddomainaction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/adddomainaction
 ---
 
