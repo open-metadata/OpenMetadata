@@ -65,7 +65,7 @@ class OpenSearchBulkSinkSimpleTest {
   }
 
   @Test
-  void testContextDataHandling()  {
+  void testContextDataHandling() {
     Map<String, Object> contextData = new HashMap<>();
     contextData.put("entityType", "table");
     contextData.put("recreateIndex", true);

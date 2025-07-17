@@ -17,7 +17,6 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 
-
 @ExtendWith(MockitoExtension.class)
 class ElasticSearchBulkSinkSimpleTest {
 
@@ -65,7 +64,7 @@ class ElasticSearchBulkSinkSimpleTest {
   }
 
   @Test
-  void testContextDataHandling()  {
+  void testContextDataHandling() {
     Map<String, Object> contextData = new HashMap<>();
     contextData.put("entityType", "table");
     contextData.put("recreateIndex", true);
