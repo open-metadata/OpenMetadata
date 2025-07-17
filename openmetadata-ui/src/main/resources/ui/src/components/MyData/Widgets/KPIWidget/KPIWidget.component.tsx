@@ -250,7 +250,7 @@ const KPIWidget = ({
                   strokeDasharray: '3 3',
                 }}
                 dataKey="count"
-                domain={[0, 36]}
+                domain={[0, 60]}
                 padding={{ top: 0, bottom: 0 }}
                 tick={{ fill: '#888', fontSize: 12 }}
                 tickLine={{
@@ -258,7 +258,7 @@ const KPIWidget = ({
                   strokeWidth: 1,
                   strokeDasharray: '3 3',
                 }}
-                ticks={[0, 9, 18, 27, 36]}
+                ticks={[0, 15, 30, 45, 60]}
               />
 
               {kpiNames.map((key, i) => (

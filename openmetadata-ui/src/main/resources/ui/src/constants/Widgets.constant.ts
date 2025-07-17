@@ -73,24 +73,6 @@ export const WIDGETS_MORE_MENU_OPTIONS = [
   },
 ];
 
-export const TOTAL_DATA_ASSETS_WIDGET_COLORS = [
-  '#016AFB',
-  '#03A0FF',
-  '#63C4FF',
-  '#1D9EEB',
-  '#156EA3',
-  '#1A5477',
-  '#009EC0',
-  '#00D2FF',
-  '#0B4A6F',
-  '#0086C9',
-  '#0BA5EC',
-  '#1849A9',
-  '#175CD3',
-  '#1570EF',
-  '#2E90FA',
-];
-
 export const KPI_WIDGET_GRAPH_COLORS = [
   '#7262F6',
   '#6AD2FF',

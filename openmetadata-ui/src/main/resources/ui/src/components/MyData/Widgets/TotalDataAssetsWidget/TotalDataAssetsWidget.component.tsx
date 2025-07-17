@@ -24,13 +24,15 @@ import {
 } from 'recharts';
 import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-total-data-assets.svg';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
-import { TOTAL_DATA_ASSETS_WIDGET_COLORS } from '../../../../constants/Widgets.constant';
+import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
+import { generatePalette } from '../../../../styles/colorPallet';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -55,12 +57,27 @@ const TotalDataAssetsWidget = ({
   handleLayoutUpdate,
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
+  const { applicationConfig } = useApplicationStore();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [chartData, setChartData] = useState<DataInsightCustomChartResult>();
   const [selectedDate, setSelectedDate] = useState<number | undefined>();
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS
   );
+
+  const pieChartColors = useMemo(() => {
+    const primaryColor =
+      applicationConfig?.customTheme?.primaryColor ??
+      DEFAULT_THEME.primaryColor;
+
+    const fullPalette = generatePalette(primaryColor);
+    const reversed = fullPalette.slice().reverse();
+
+    const firstTwo = reversed.slice(0, 2);
+    const remaining = reversed.slice(2);
+
+    return [...remaining, ...firstTwo];
+  }, [applicationConfig?.customTheme?.primaryColor]);
 
   const isFullSizeWidget = useMemo(() => {
     return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
@@ -197,11 +214,7 @@ const TotalDataAssetsWidget = ({
                   paddingAngle={1}>
                   {rightSideEntityList.map((label, index) => (
                     <Cell
-                      fill={
-                        TOTAL_DATA_ASSETS_WIDGET_COLORS[
-                          index % TOTAL_DATA_ASSETS_WIDGET_COLORS.length
-                        ]
-                      }
+                      fill={pieChartColors[index % pieChartColors.length]}
                       key={label}
                     />
                   ))}
@@ -238,9 +251,7 @@ const TotalDataAssetsWidget = ({
                     style={{
                       borderRadius: '50%',
                       backgroundColor:
-                        TOTAL_DATA_ASSETS_WIDGET_COLORS[
-                          index % TOTAL_DATA_ASSETS_WIDGET_COLORS.length
-                        ],
+                        pieChartColors[index % pieChartColors.length],
                     }}
                   />
                   <span>{startCase(label)}</span>

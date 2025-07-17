@@ -52,7 +52,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
         if (isFullSize) {
           return (
             <Row
-              className="kpi-full-legend p-y-xs p-x-sm d-flex items-center border-radius-sm"
+              className="kpi-full-legend text-center p-y-xs p-x-sm d-flex items-center border-radius-sm"
               gutter={16}
               key={key}>
               <Col flex="auto">

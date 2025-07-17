@@ -69,19 +69,6 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   ),
 }));
 
-jest.mock('../../../../constants/Widgets.constant', () => ({
-  TOTAL_DATA_ASSETS_WIDGET_COLORS: [
-    '#1890ff',
-    '#52c41a',
-    '#faad14',
-    '#f5222d',
-    '#722ed1',
-    '#13c2c2',
-    '#eb2f96',
-    '#fa8c16',
-  ],
-}));
-
 jest.mock('../Common/WidgetWrapper/WidgetWrapper', () => {
   return jest.fn().mockImplementation(({ children, loading, dataLength }) => (
     <div
