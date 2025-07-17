@@ -403,14 +403,10 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
               }
             </Form.Item>
 
-            {!showOnlyParameter && (
-              <>
-                {generateFormFields(formField)}
-                {isComputeRowCountFieldVisible
-                  ? generateFormFields(formFields)
-                  : null}
-              </>
-            )}
+            {!showOnlyParameter && <>{generateFormFields(formField)}</>}
+            {isComputeRowCountFieldVisible
+              ? generateFormFields(formFields)
+              : null}
           </Form>
         )}
       </EntityAttachmentProvider>
