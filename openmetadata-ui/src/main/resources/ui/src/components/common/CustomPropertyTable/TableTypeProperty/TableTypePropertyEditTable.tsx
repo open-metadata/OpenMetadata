@@ -10,48 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import DataGrid, { Column, textEditor } from 'react-data-grid';
+import { useMemo } from 'react';
+import DataGrid from 'react-data-grid';
 import { TableTypePropertyEditTableProps } from './TableTypePropertyEditTable.interface';
 
 const TableTypePropertyEditTable = ({
   dataSource,
   columns,
-  handleEditDataSource,
-  gridContainerRef,
+  setGridContainer,
   handleCopy,
   handlePaste,
-  pushToUndoStack,
+  handleOnRowsChange,
 }: TableTypePropertyEditTableProps) => {
-  const filterColumns = columns.map((column) => ({
-    key: column,
-    name: column,
-    sortable: false,
-    resizable: true,
-    cellClass: () => `rdg-cell-${column.replace(/[^a-zA-Z0-9-_]/g, '')}`,
-    editable: true,
-    renderEditCell: textEditor,
-    minWidth: 180,
-  }));
-
-  const onEditComplete = (data: Record<string, string>[]) => {
-    handleEditDataSource(data);
-  };
-
-  return (
-    <div className="om-rdg" ref={gridContainerRef}>
-      <DataGrid
-        className="rdg-light"
-        columns={filterColumns as Column<any>[]}
-        rows={dataSource}
-        onCopy={handleCopy}
-        onPaste={handlePaste}
-        onRowsChange={(updatedRows) => {
-          onEditComplete(updatedRows);
-          pushToUndoStack(dataSource);
-        }}
-      />
-    </div>
-  );
+  return useMemo(() => {
+    return (
+      <div className="om-rdg" ref={setGridContainer}>
+        <DataGrid
+          className="rdg-light"
+          columns={columns}
+          rows={dataSource}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          onRowsChange={handleOnRowsChange}
+        />
+      </div>
+    );
+  }, [columns, dataSource, handleCopy, handlePaste, handleOnRowsChange]);
 };
 
 export default TableTypePropertyEditTable;
