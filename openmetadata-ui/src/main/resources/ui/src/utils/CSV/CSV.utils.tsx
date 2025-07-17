@@ -357,7 +357,7 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
     }
 
     default:
-      return value;
+      return String(value);
   }
 };
 
