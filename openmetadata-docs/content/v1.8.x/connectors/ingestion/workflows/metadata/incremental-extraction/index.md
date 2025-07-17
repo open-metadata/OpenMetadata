@@ -1,5 +1,6 @@
 ---
 title: Metadata Ingestion - Incremental Extraction
+description: Use incremental metadata extraction to reduce ingestion load and process only new or updated records across workflows.
 slug: /connectors/ingestion/workflows/metadata/incremental-extraction
 ---
 
