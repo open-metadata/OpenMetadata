@@ -565,8 +565,8 @@ test.describe('Bulk Edit Entity', () => {
       await page.click('[type="button"] >> text="Next"', { force: true });
 
       await validateImportStatus(page, {
-        passed: '7',
-        processed: '7',
+        passed: '9',
+        processed: '9',
         failed: '0',
       });
 
