@@ -586,7 +586,10 @@ export const assignTag = async (
   );
   await page.locator('#tagsForm_tags').fill(tag);
   await searchTags;
-  await page.getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`).click();
+  await page
+    .getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`)
+    .first()
+    .click();
 
   await page.waitForSelector(
     '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
