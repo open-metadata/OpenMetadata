@@ -1016,4 +1016,44 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     LOG.debug("Token response successful");
     return (OIDCTokenResponse) response;
   }
+
+  public static void validateConfig(
+      AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
+    try {
+      // Create a temporary handler just for validation
+      AuthenticationCodeFlowHandler tempHandler =
+          new AuthenticationCodeFlowHandler(authConfig, authzConfig);
+
+      // Validate required configurations
+      CommonHelper.assertNotNull("OidcConfiguration", authConfig.getOidcConfiguration());
+      CommonHelper.assertNotBlank(
+          "CallbackUrl", authConfig.getOidcConfiguration().getCallbackUrl());
+      CommonHelper.assertNotBlank("ServerUrl", authConfig.getOidcConfiguration().getServerUrl());
+
+      // Use the temporary handler's client to validate
+      if (tempHandler.client == null) {
+        throw new IllegalArgumentException("Failed to initialize OIDC client");
+      }
+
+      // Validate provider metadata
+      OIDCProviderMetadata providerMetadata =
+          tempHandler.client.getConfiguration().findProviderMetadata();
+      if (providerMetadata == null) {
+        throw new IllegalArgumentException("Failed to retrieve provider metadata from server URL");
+      }
+
+      // Validate required endpoints
+      if (providerMetadata.getAuthorizationEndpointURI() == null) {
+        throw new IllegalArgumentException("Authorization endpoint not found in provider metadata");
+      }
+
+      if (providerMetadata.getTokenEndpointURI() == null) {
+        throw new IllegalArgumentException("Token endpoint not found in provider metadata");
+      }
+
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          "OIDC configuration validation failed: " + e.getMessage(), e);
+    }
+  }
 }

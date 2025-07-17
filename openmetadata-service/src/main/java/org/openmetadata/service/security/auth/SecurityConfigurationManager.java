@@ -29,9 +29,12 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
 public class SecurityConfigurationManager {
-  private static SecurityConfigurationManager instance;
-  private AuthenticationConfiguration currentAuthConfig;
-  private AuthorizerConfiguration currentAuthzConfig;
+  private static class Holder {
+    private static final SecurityConfigurationManager INSTANCE = new SecurityConfigurationManager();
+  }
+
+  @Getter private AuthenticationConfiguration currentAuthConfig;
+  @Getter private AuthorizerConfiguration currentAuthzConfig;
   private SecurityConfiguration previousSecurityConfig;
   private OpenMetadataApplication application;
   private Environment environment;
@@ -43,10 +46,7 @@ public class SecurityConfigurationManager {
   }
 
   public static SecurityConfigurationManager getInstance() {
-    if (instance == null) {
-      instance = new SecurityConfigurationManager();
-    }
-    return instance;
+    return Holder.INSTANCE;
   }
 
   public void setAuthenticatorHandler(AuthenticatorHandler handler) {
