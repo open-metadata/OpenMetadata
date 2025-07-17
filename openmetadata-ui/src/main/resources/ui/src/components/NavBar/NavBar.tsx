@@ -311,6 +311,7 @@ const NavBar = () => {
       }
 
       const newVersion = await getVersion();
+      const cleanedVersion = newVersion.version?.replace('-SNAPSHOT', '');
 
       // Update the cache timestamp
       cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
@@ -318,7 +319,7 @@ const NavBar = () => {
       });
 
       // Compare version only if version is set previously to have fair comparison
-      if (version && version !== newVersion.version) {
+      if (version && version !== cleanedVersion) {
         setShowVersionMissMatchAlert(true);
       }
     };
