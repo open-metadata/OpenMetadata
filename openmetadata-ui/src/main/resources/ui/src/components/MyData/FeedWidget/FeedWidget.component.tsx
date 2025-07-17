@@ -13,9 +13,8 @@
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/ic-activity-feed.svg';
-import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-folder-data.svg';
+import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-conversations.svg';
 import { ROUTES } from '../../../constants/constants';
 import { FEED_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
@@ -41,7 +40,6 @@ const MyFeedWidgetInternal = ({
   handleLayoutUpdate,
   currentLayout,
 }: WidgetCommonProps) => {
-  const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
@@ -96,14 +94,13 @@ const MyFeedWidgetInternal = ({
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
-        showActionButton
-        actionButtonText={t('label.browse-assets')}
-        description={t('message.no-activity-feed-description')}
+        actionButtonLink={ROUTES.EXPLORE}
+        actionButtonText={t('label.get-started')}
+        description={t('message.activity-feed-no-data-placeholder')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
         }
-        title={t('message.no-activity-feed-title')}
-        onActionClick={() => navigate(ROUTES.EXPLORE)}
+        title={t('label.no-recent-activity')}
       />
     );
   }, []);
@@ -140,13 +137,16 @@ const MyFeedWidgetInternal = ({
   ]);
 
   return (
-    <WidgetWrapper data-testid="feed-widget" loading={loading}>
+    <WidgetWrapper
+      data-testid="feed-widget"
+      dataLength={entityThread.length > 0 ? entityThread.length : 10}
+      loading={loading}>
       <div className="feed-widget-container">
         <WidgetHeader
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<ActivityFeedIcon />}
+          icon={<ActivityFeedIcon height={24} width={24} />}
           isEditView={isEditView}
           selectedSortBy={selectedFilter}
           sortOptions={FEED_WIDGET_FILTER_OPTIONS}
@@ -165,7 +165,7 @@ const MyFeedWidgetInternal = ({
             moreButtonText={t('label.view-more-count', {
               count: entityThread.length > 0 ? entityThread.length : '',
             })}
-            showMoreButton={Boolean(!loading)}
+            showMoreButton={Boolean(!loading) && !isEmpty(entityThread)}
           />
         </div>
       </div>

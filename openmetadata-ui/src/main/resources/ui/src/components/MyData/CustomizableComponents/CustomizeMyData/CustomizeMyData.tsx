@@ -195,17 +195,6 @@ function CustomizeMyData({
     ]
   );
 
-  const handleReset = useCallback(() => {
-    // Get default layout with the empty widget added at the end
-    const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
-      customizeMyDataPageClassBase.defaultLayout,
-      2,
-      4
-    );
-    setLayout(newMainPanelLayout);
-    onSaveLayout();
-  }, []);
-
   useEffect(() => {
     fetchUserFollowedData();
   }, []);
@@ -220,9 +209,21 @@ function CustomizeMyData({
     });
   };
 
-  const handleBackgroundColorUpdate = async (color: string) => {
+  const handleBackgroundColorUpdate = async (color?: string) => {
     await onBackgroundColorUpdate?.(color);
   };
+
+  const handleReset = useCallback(() => {
+    // Get default layout with the empty widget added at the end
+    const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
+      customizeMyDataPageClassBase.defaultLayout,
+      2,
+      4
+    );
+    setLayout(newMainPanelLayout);
+    onSaveLayout();
+    handleBackgroundColorUpdate();
+  }, [handleBackgroundColorUpdate, onSaveLayout]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();

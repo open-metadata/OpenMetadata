@@ -199,14 +199,20 @@ const DomainsWidget = ({
 
   return (
     <WidgetWrapper
-      dataLength={domains.length !== 0 ? domains.length : 5}
+      dataLength={domains.length !== 0 ? domains.length : 10}
       loading={loading}>
       <div className="domains-widget-container">
         <WidgetHeader
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<DomainIcon className="domains-widget-globe" />}
+          icon={
+            <DomainIcon
+              className="domains-widget-globe"
+              height={24}
+              width={24}
+            />
+          }
           isEditView={isEditView}
           selectedSortBy={selectedSortBy}
           sortOptions={DOMAIN_SORT_BY_OPTIONS}

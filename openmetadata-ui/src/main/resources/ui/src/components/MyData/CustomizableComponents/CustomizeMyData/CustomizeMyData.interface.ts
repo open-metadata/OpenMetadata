@@ -20,5 +20,5 @@ export interface CustomizeMyDataProps {
   initialPageData: Page | null;
   backgroundColor?: string;
   onSaveLayout: (page?: Page) => Promise<void>;
-  onBackgroundColorUpdate?: (color: string) => Promise<void>;
+  onBackgroundColorUpdate?: (color?: string) => Promise<void>;
 }

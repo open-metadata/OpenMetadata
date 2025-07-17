@@ -141,10 +141,11 @@ const CustomiseLandingPageHeader = ({
           </div>
           <div className="mb-9 customise-search-container">
             <div className="d-flex items-center gap-4 mb-9">
-              <CustomiseSearchBar />
+              <CustomiseSearchBar disabled={!onHomePage} />
               <DomainSelectableList
                 hasPermission
                 showAllDomains
+                disabled={!onHomePage}
                 popoverProps={{
                   open: isDomainDropdownOpen,
                   onOpenChange: (open) => {
@@ -163,9 +164,9 @@ const CustomiseLandingPageHeader = ({
                     }
                   )}
                   data-testid="domain-selector"
-                  onClick={() =>
-                    setIsDomainDropdownOpen(!isDomainDropdownOpen)
-                  }>
+                  onClick={() => {
+                    setIsDomainDropdownOpen(!isDomainDropdownOpen);
+                  }}>
                   <DomainIcon
                     className="domain-icon"
                     data-testid="domain-icon"

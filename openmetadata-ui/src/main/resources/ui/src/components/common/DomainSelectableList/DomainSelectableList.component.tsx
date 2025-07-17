@@ -55,15 +55,16 @@ export const DomainListItemRenderer = (props: EntityReference) => {
 };
 
 const DomainSelectableList = ({
-  onUpdate,
   children,
+  disabled,
   hasPermission,
-  popoverProps,
-  selectedDomain,
   multiple = false,
   onCancel,
-  wrapInButton = true,
+  onUpdate,
+  popoverProps,
+  selectedDomain,
   showAllDomains = false,
+  wrapInButton = true,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -116,7 +117,7 @@ const DomainSelectableList = ({
               isMultiple={multiple}
               showAllDomains={showAllDomains}
               value={selectedDomainsList as string[]}
-              visible={popupVisible || Boolean(popoverProps?.open)}
+              visible={popupVisible || Boolean(popoverProps?.open) || !disabled}
               onCancel={handleCancel}
               onSubmit={handleUpdate}
             />
@@ -162,6 +163,7 @@ const DomainSelectableList = ({
     return (
       <Button
         className="remove-button-default-styling flex-center"
+        disabled={disabled}
         onClick={(e) => e.stopPropagation()}>
         {popoverContent}
       </Button>

@@ -15,8 +15,8 @@ import { isEmpty, orderBy, toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/ic-my-task.svg';
-import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/my-task-no-data-placeholder.svg';
 import { SIZE, SORT_ORDER } from '../../../../enums/common.enum';
 import { FeedFilter } from '../../../../enums/mydata.enum';
 import {
@@ -125,7 +125,7 @@ const MyTaskWidget = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<MyTaskIcon data-testid="task-icon" />}
+        icon={<MyTaskIcon data-testid="task-icon" height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}
         sortOptions={MY_TASK_SORT_BY_OPTIONS}
@@ -175,7 +175,7 @@ const MyTaskWidget = ({
             <WidgetFooter
               moreButtonLink={`users/${currentUser?.name}/task`}
               moreButtonText={t('label.view-more')}
-              showMoreButton={Boolean(!loading)}
+              showMoreButton={Boolean(!loading) && !isEmpty(sortedData)}
             />
           </>
         )}
@@ -184,7 +184,9 @@ const MyTaskWidget = ({
   );
 
   return (
-    <WidgetWrapper dataLength={sortedData.length || 5} loading={loading}>
+    <WidgetWrapper
+      dataLength={sortedData.length > 0 ? sortedData.length : 10}
+      loading={loading}>
       {widgetContent}
     </WidgetWrapper>
   );

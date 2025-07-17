@@ -69,6 +69,10 @@ const KPIWidget = ({
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const widgetData = useMemo(() => {
+    return currentLayout?.find((item) => item.i === widgetKey);
+  }, [currentLayout, widgetKey]);
+
   const isFullSizeWidget = useMemo(() => {
     return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
   }, [currentLayout, widgetKey]);
@@ -171,7 +175,7 @@ const KPIWidget = ({
     () => (
       <WidgetEmptyState
         actionButtonLink="/data-insights/kpi"
-        actionButtonText="Explore KPI"
+        actionButtonText={t('label.explore-metrics')}
         description={t('message.no-kpi')}
         icon={<KPINoDataPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />}
         title={t('label.no-kpis-yet')}
@@ -311,7 +315,7 @@ const KPIWidget = ({
 
   return (
     <WidgetWrapper
-      dataLength={kpiList.length}
+      dataLength={kpiList.length > 0 ? kpiList.length : 10}
       loading={isKPIListLoading || isLoading}>
       <div className="kpi-widget-container">
         <WidgetHeader
@@ -319,13 +323,13 @@ const KPIWidget = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<KPIIcon className="kpi-widget-icon" />}
+          icon={<KPIIcon className="kpi-widget-icon" height={24} width={24} />}
           isEditView={isEditView}
           title={t('label.kpi-title')}
           widgetKey={widgetKey}
-          widgetWidth={2}
+          widgetWidth={widgetData?.w}
         />
-        <div className="widget-content flex-1">
+        <div className="widget-content flex-1 h-full">
           {isEmpty(kpiList) || isEmpty(kpiResults) ? emptyState : kpiChartData}
         </div>
       </div>

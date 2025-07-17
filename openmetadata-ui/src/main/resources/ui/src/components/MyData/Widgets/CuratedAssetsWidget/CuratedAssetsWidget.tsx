@@ -289,6 +289,7 @@ const CuratedAssetsWidget = ({
       <WidgetEmptyState
         showActionButton
         actionButtonText={t('label.create')}
+        description={t('message.no-curated-assets')}
         icon={
           <CuratedAssetsEmptyIcon
             data-testid="curated-assets-empty-icon"
@@ -296,7 +297,6 @@ const CuratedAssetsWidget = ({
             width={SIZE.LARGE}
           />
         }
-        title={t('message.no-curated-assets')}
         onActionClick={handleModalOpen}
       />
     ),
@@ -381,7 +381,11 @@ const CuratedAssetsWidget = ({
           sourceIcon && title ? (
             sourceIcon
           ) : (
-            <StarOutlinedIcon data-testid="star-outlined-icon" />
+            <StarOutlinedIcon
+              data-testid="star-outlined-icon"
+              height={24}
+              width={24}
+            />
           )
         }
         isEditView={isEditView}
@@ -406,22 +410,21 @@ const CuratedAssetsWidget = ({
           ? emptyState
           : entityList}
       </div>
-      {!isEmpty(data) && (
-        <WidgetFooter
-          moreButtonLink={queryURL}
-          moreButtonText={t('label.view-more-count', {
-            count: viewMoreCount as unknown as number,
-          })}
-          showMoreButton={Boolean(!isLoading)}
-        />
-      )}
+
+      <WidgetFooter
+        moreButtonLink={queryURL}
+        moreButtonText={t('label.view-more-count', {
+          count: viewMoreCount as unknown as number,
+        })}
+        showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
+      />
     </div>
   );
 
   return (
     <>
       <WidgetWrapper
-        dataLength={data.length !== 0 ? data.length : 5}
+        dataLength={data.length !== 0 ? data.length : 10}
         loading={isLoading}>
         {widgetContent}
       </WidgetWrapper>

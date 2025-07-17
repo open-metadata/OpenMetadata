@@ -119,7 +119,7 @@ const DataAssetsWidget = ({
   );
 
   const getGridTemplateColumns = () => {
-    return isFullSize ? 'repeat(5, 1fr)' : 'repeat(2, 2fr)';
+    return isFullSize ? 'repeat(5, 1fr)' : 'repeat(3, 3fr)';
   };
 
   const dataAssetsContent = useMemo(
@@ -150,7 +150,7 @@ const DataAssetsWidget = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<DataAssetIcon />}
+          icon={<DataAssetIcon height={24} width={24} />}
           isEditView={isEditView}
           selectedSortBy={selectedSortBy}
           sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
@@ -164,7 +164,7 @@ const DataAssetsWidget = ({
           <WidgetFooter
             moreButtonLink={ROUTES.EXPLORE}
             moreButtonText={t('label.view-more')}
-            showMoreButton={Boolean(!loading)}
+            showMoreButton={Boolean(!loading) && !isEmpty(sortedServices)}
           />
         </div>
       </div>
@@ -186,7 +186,7 @@ const DataAssetsWidget = ({
 
   return (
     <WidgetWrapper
-      dataLength={sortedServices.length !== 0 ? sortedServices.length : 5}
+      dataLength={sortedServices.length !== 0 ? sortedServices.length : 10}
       loading={loading}>
       {widgetContent}
     </WidgetWrapper>
