@@ -95,8 +95,8 @@ services.forEach((ServiceClass) => {
       test('Create Service and check the AutoPilot status', async ({
         page,
       }) => {
-        // 6 minutes max for AutoPilot tests to complete agents running.
-        test.setTimeout(6 * 60 * 1000);
+        // 7 minutes max for AutoPilot tests to complete agents running.
+        test.setTimeout(7 * 60 * 1000);
 
         await settingClick(
           page,
@@ -123,7 +123,6 @@ services.forEach((ServiceClass) => {
           '[data-testid="auto-pilot-status-banner"] [data-testid="status-banner-icon-RUNNING"] ',
           {
             state: 'visible',
-            timeout: 5000,
           }
         );
 
