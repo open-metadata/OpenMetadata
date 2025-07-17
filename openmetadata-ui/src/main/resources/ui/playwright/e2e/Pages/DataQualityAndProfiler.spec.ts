@@ -1323,10 +1323,9 @@ test('Pagination functionality in test cases list', async ({ page }) => {
       // Verify dropdown options are visible
       await expect(dropdownMenu).toBeDefined();
       await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
-     });
-    } finally {
-      await paginationTable.delete(apiContext);
-      await afterAction();
-    }
+    });
+  } finally {
+    await paginationTable.delete(apiContext);
+    await afterAction();
   }
 });
