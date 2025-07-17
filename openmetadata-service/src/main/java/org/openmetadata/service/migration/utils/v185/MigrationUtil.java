@@ -9,7 +9,6 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
@@ -67,7 +66,7 @@ public class MigrationUtil {
           try {
             // Check if this test case has any test case resolution status records
             List<TestCaseResolutionStatus> resolutionStatuses =
-                JsonUtils.readObjects(
+                org.openmetadata.service.util.JsonUtils.readObjects(
                     collectionDAO
                         .testCaseResolutionStatusTimeSeriesDao()
                         .listTestCaseResolutionForEntityFQNHash(testCase.getFullyQualifiedName()),
