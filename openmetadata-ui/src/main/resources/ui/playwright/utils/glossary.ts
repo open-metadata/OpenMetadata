@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
+import { PolicyClass } from '../support/access-control/PoliciesClass';
+import { RolesClass } from '../support/access-control/RolesClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
@@ -25,6 +27,9 @@ import {
   UserTeamRef,
 } from '../support/glossary/Glossary.interface';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../support/tag/ClassificationClass';
+import { TagClass } from '../support/tag/TagClass';
+import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
@@ -36,6 +41,7 @@ import {
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
   toastNotification,
+  uuid,
 } from './common';
 import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
@@ -55,16 +61,21 @@ export const checkName = async (page: Page, name: string) => {
 
 export const selectActiveGlossary = async (
   page: Page,
-  glossaryName: string
+  glossaryName: string,
+  bWaitForResponse = true
 ) => {
   const menuItem = page.getByRole('menuitem', { name: glossaryName });
   const isSelected = await menuItem.evaluate((element) => {
     return element.classList.contains('ant-menu-item-selected');
   });
   if (!isSelected) {
-    const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
-    await menuItem.click();
-    await glossaryResponse;
+    if (bWaitForResponse) {
+      const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
+      await menuItem.click();
+      await glossaryResponse;
+    } else {
+      await menuItem.click();
+    }
   } else {
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -185,7 +196,7 @@ export const addTeamAsReviewer = async (
   isSelectableInsideForm = false
 ) => {
   const teamsResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index&sort_field=displayName.keyword&sort_order=asc'
+    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index&deleted=false&sort_field=displayName.keyword&sort_order=asc'
   );
 
   const teamsSearchResponse = page.waitForResponse(
@@ -685,17 +696,25 @@ export const addAssetToGlossaryTerm = async (
     const entityFqn = get(asset, 'entityResponseData.fullyQualifiedName');
     const entityName = get(asset, 'entityResponseData.name');
     const searchRes = page.waitForResponse('/api/v1/search/query*');
+    const entityDisplayName = get(asset, 'entityResponseData.displayName');
 
+    const visibleName = entityDisplayName ?? entityName;
     await page
       .locator(
         '[data-testid="asset-selection-modal"] [data-testid="searchbar"]'
       )
-      .fill(entityName);
+      .fill(visibleName);
 
     await searchRes;
     await page.click(
       `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
     );
+
+    await expect(
+      page.locator(
+        `[data-testid="table-data-card_${entityFqn}"] [data-testid="entity-header-name"]`
+      )
+    ).toContainText(visibleName);
   }
 
   await page.click('[data-testid="save-btn"]');
@@ -801,19 +820,38 @@ export const confirmationDragAndDropGlossary = async (
 
 export const changeTermHierarchyFromModal = async (
   page: Page,
-  dragElement: string,
-  dropElement: string
+  entityDisplayName: string,
+  entityFqn: string,
+  isGlossaryTerm = true
 ) => {
-  await selectActiveGlossaryTerm(page, dragElement);
   await page.getByTestId('manage-button').click();
   await page.getByTestId('change-parent-button').click();
+
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+
+  await page.getByLabel('Select Parent').click();
+  await page.waitForSelector('.async-tree-select-list-dropdown', {
+    state: 'visible',
+  });
+
+  if (isGlossaryTerm) {
+    const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
+    await page.getByLabel('Select Parent').fill(entityDisplayName);
+    await searchRes;
+  }
+
+  await page.getByTestId(`tag-${entityFqn}`).click();
+
+  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
   await page
-    .locator('[data-testid="change-parent-select"] > .ant-select-selector')
+    .locator('[data-testid="change-parent-hierarchy-modal"]')
+    .getByRole('button', { name: 'Save' })
     .click();
-  await page.getByTitle(dropElement).click();
-  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-  await page.getByRole('button', { name: 'Submit' }).click();
   await saveRes;
+
+  await expect(
+    page.locator('[role="dialog"].change-parent-hierarchy-modal')
+  ).toBeHidden();
 };
 
 export const deleteGlossaryOrGlossaryTerm = async (
@@ -984,7 +1022,7 @@ export const createDescriptionTaskForGlossary = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index*`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -997,6 +1035,7 @@ export const createDescriptionTaskForGlossary = async (
   }
 
   if (addDescription) {
+    await page.locator(descriptionBox).clear();
     await page
       .locator(descriptionBox)
       .fill(value.description ?? 'Updated description');
@@ -1039,7 +1078,7 @@ export const createTagTaskForGlossary = async (
     );
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index*`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -1477,4 +1516,94 @@ export const checkGlossaryTermDetails = async (
       '[data-testid="reviewers-container"] [data-testid="owner-link"]'
     )
   ).toContainText(reviewer.responseData.displayName);
+};
+
+export const setupGlossaryDenyPermissionTest = async (
+  apiContext: any,
+  isGlossary?: boolean
+) => {
+  // Create all necessary resources
+  const dataConsumerUser = new UserClass();
+  const id = uuid();
+  const glossary1 = new Glossary();
+  const glossaryTerm1 = new GlossaryTerm(glossary1);
+  await glossary1.create(apiContext);
+  await glossaryTerm1.create(apiContext);
+
+  const classification = new ClassificationClass({
+    provider: 'system',
+    mutuallyExclusive: true,
+  });
+  const tag = new TagClass({
+    classification: classification.data.name,
+  });
+
+  await dataConsumerUser.create(apiContext);
+  await classification.create(apiContext);
+  await tag.create(apiContext);
+
+  // Setup permissions
+  const dataConsumerPolicy = new PolicyClass();
+  const dataConsumerRole = new RolesClass();
+
+  // Create domain access policy
+  const matchTagRule = [
+    {
+      name: 'Hidden from Non Admins',
+      description: '',
+      resources: ['All'],
+      operations: ['All'],
+      effect: 'deny',
+      condition: `matchAllTags('${tag.responseData.fullyQualifiedName}')`,
+    },
+  ];
+
+  await dataConsumerPolicy.create(apiContext, matchTagRule);
+  await dataConsumerRole.create(apiContext, [
+    dataConsumerPolicy.responseData.name,
+  ]);
+
+  // Create team for the user
+  const dataConsumerTeam = new TeamClass({
+    name: `PW_data_consumer_team-${id}`,
+    displayName: `PW Data Consumer Team ${id}`,
+    description: 'playwright data consumer team description',
+    teamType: 'Group',
+    users: [dataConsumerUser.responseData.id ?? ''],
+    defaultRoles: [dataConsumerRole.responseData.id ?? ''],
+  });
+
+  await dataConsumerTeam.create(apiContext);
+
+  // Set domain ownership
+  await (isGlossary ? glossary1 : glossaryTerm1).patch(apiContext, [
+    {
+      op: 'add',
+      path: '/tags/0',
+      value: {
+        tagFQN: tag.responseData.fullyQualifiedName,
+        source: 'Classification',
+      },
+    },
+  ]);
+
+  // Return cleanup function and all created resources
+  const cleanup = async (apiContext1: APIRequestContext) => {
+    await glossaryTerm1.delete(apiContext);
+    await glossary1.delete(apiContext);
+    await dataConsumerUser.delete(apiContext1);
+    await dataConsumerTeam.delete(apiContext1);
+    await dataConsumerPolicy.delete(apiContext1);
+    await dataConsumerRole.delete(apiContext1);
+  };
+
+  return {
+    dataConsumerUser,
+    glossary1,
+    glossaryTerm1,
+    dataConsumerTeam,
+    dataConsumerPolicy,
+    dataConsumerRole,
+    cleanup,
+  };
 };

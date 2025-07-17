@@ -15,7 +15,6 @@ import { SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import i18next from 'i18next';
 import { isEmpty } from 'lodash';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
@@ -73,11 +72,8 @@ export const getSearchAPIQueryParams = (
     from: start,
     size,
     index: searchIndex,
+    deleted: onlyDeleted,
   };
-
-  if (onlyDeleted) {
-    params.deleted = onlyDeleted;
-  }
 
   if (!isEmpty(sortField)) {
     params.sort_field = sortField;

@@ -128,8 +128,8 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
               description = "Limit the number APIEndpoints returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description = "Returns list of APIEndpoints before this cursor",

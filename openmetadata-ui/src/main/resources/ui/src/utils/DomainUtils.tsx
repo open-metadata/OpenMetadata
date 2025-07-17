@@ -14,7 +14,7 @@ import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
@@ -41,6 +41,7 @@ import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { Domain } from '../generated/entity/domains/domain';
+import { Operation } from '../generated/entity/policies/policy';
 import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -50,7 +51,8 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
+import { getPrioritizedEditPermission } from './PermissionsUtils';
 import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
@@ -195,7 +197,7 @@ export const domainTypeTooltipDataRender = () => (
 export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
   const domainOptions: ItemType[] = [
     {
-      label: i18n.t('label.all-domain-plural'),
+      label: t('label.all-domain-plural'),
       key: DEFAULT_DOMAIN_VALUE,
     },
   ];
@@ -243,7 +245,7 @@ export const renderDomainLink = (
           'no-underline domain-link domain-link-text font-medium',
           {
             'text-sm': !showDomainHeading,
-            'text-truncate': trimLink,
+            'text-truncate truncate w-max-full': trimLink,
           },
           textClassName
         )}
@@ -386,7 +388,7 @@ export const getDomainDetailTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.DOCUMENTATION}
-          name={i18n.t('label.documentation')}
+          name={t('label.documentation')}
         />
       ),
       key: EntityTabs.DOCUMENTATION,
@@ -400,7 +402,7 @@ export const getDomainDetailTabs = ({
                 count={subDomains.length ?? 0}
                 id={EntityTabs.SUBDOMAINS}
                 isActive={activeTab === EntityTabs.SUBDOMAINS}
-                name={i18n.t('label.sub-domain-plural')}
+                name={t('label.sub-domain-plural')}
               />
             ),
             key: EntityTabs.SUBDOMAINS,
@@ -419,7 +421,7 @@ export const getDomainDetailTabs = ({
                 count={dataProductsCount ?? 0}
                 id={EntityTabs.DATA_PRODUCTS}
                 isActive={activeTab === EntityTabs.DATA_PRODUCTS}
-                name={i18n.t('label.data-product-plural')}
+                name={t('label.data-product-plural')}
               />
             ),
             key: EntityTabs.DATA_PRODUCTS,
@@ -437,7 +439,7 @@ export const getDomainDetailTabs = ({
                 count={assetCount ?? 0}
                 id={EntityTabs.ASSETS}
                 isActive={activeTab === EntityTabs.ASSETS}
-                name={i18n.t('label.asset-plural')}
+                name={t('label.asset-plural')}
               />
             ),
             key: EntityTabs.ASSETS,
@@ -465,7 +467,7 @@ export const getDomainDetailTabs = ({
                   flex: 0.87,
                 }}
                 hideSecondPanel={!previewAsset}
-                pageTitle={i18n.t('label.domain')}
+                pageTitle={t('label.domain')}
                 secondPanel={{
                   wrapInCard: false,
                   children: previewAsset && (
@@ -486,16 +488,17 @@ export const getDomainDetailTabs = ({
             label: (
               <TabsLabel
                 id={EntityTabs.CUSTOM_PROPERTIES}
-                name={i18n.t('label.custom-property-plural')}
+                name={t('label.custom-property-plural')}
               />
             ),
             key: EntityTabs.CUSTOM_PROPERTIES,
             children: (
               <CustomPropertyTable<EntityType.DOMAIN>
                 entityType={EntityType.DOMAIN}
-                hasEditAccess={
-                  domainPermission.EditAll || domainPermission.EditCustomFields
-                }
+                hasEditAccess={getPrioritizedEditPermission(
+                  domainPermission,
+                  Operation.EditCustomFields
+                )}
                 hasPermission={domainPermission.ViewAll}
               />
             ),

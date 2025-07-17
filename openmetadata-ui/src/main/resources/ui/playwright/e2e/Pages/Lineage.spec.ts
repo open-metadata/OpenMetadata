@@ -44,6 +44,7 @@ import {
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
   verifyExportLineagePNG,
+  verifyLineageConfig,
   verifyNodePresent,
   visitLineageTab,
 } from '../../utils/lineage';
@@ -117,6 +118,33 @@ for (const EntityClass of entities) {
           await verifyNodePresent(page, entity);
         }
         await page.click('[data-testid="edit-lineage"]');
+
+        // Check the Entity Drawer
+        await performZoomOut(page);
+        await page.getByTestId('full-screen').click();
+
+        for (const entity of entities) {
+          const toNodeFqn = get(
+            entity,
+            'entityResponseData.fullyQualifiedName'
+          );
+          await page
+            .locator(
+              `[data-testid="lineage-node-${toNodeFqn}"] .entity-button-icon`
+            )
+            .click();
+
+          await expect(
+            page.locator('.ant-drawer [data-testid="entity-header-title"]')
+          ).toHaveText(get(entity, 'entityResponseData.displayName'));
+
+          await page.getByTestId('entity-panel-close-icon').click();
+
+          // Drawer should not open after closing it
+          await expect(
+            page.locator('.ant-drawer-content-wrapper')
+          ).not.toBeVisible();
+        }
       });
 
       await test.step('Should create pipeline between entities', async () => {
@@ -159,6 +187,13 @@ for (const EntityClass of entities) {
           }
         }
       );
+
+      await test.step('Verify Lineage Config', async () => {
+        await redirectToHomePage(page);
+        await currentEntity.visitEntityPage(page);
+        await visitLineageTab(page);
+        await verifyLineageConfig(page);
+      });
     } finally {
       await cleanup();
     }
@@ -241,19 +276,12 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await redirectToHomePage(page);
   await table.visitEntityPage(page);
   await visitLineageTab(page);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="lineage-export"]');
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
   // Verify relation in platform lineage
   await sidebarClick(page, SidebarItem.LINEAGE);
-  const searchRes = page.waitForResponse('/api/v1/search/query?*');
-
-  await page.click('[data-testid="search-entity-select"]');
-  await page.keyboard.type(tableServiceFqn);
-  await searchRes;
-
-  await page.click(`[data-testid="node-suggestion-${tableServiceFqn}"]`);
-
-  await page.waitForLoadState('networkidle');
 
   const tableServiceNode = page.locator(
     `[data-testid="lineage-node-${tableServiceFqn}"]`
@@ -267,6 +295,7 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
 
   await table.visitEntityPage(page);
   await visitLineageTab(page);
+  await activateColumnLayer(page);
   await page.click('[data-testid="edit-lineage"]');
 
   await removeColumnLineage(page, sourceCol, targetCol);
@@ -380,6 +409,8 @@ test('Verify function data in edge drawer', async ({ browser }) => {
     const lineageReq = page.waitForResponse('/api/v1/lineage/getLineage?*');
     await page.reload();
     await lineageReq;
+
+    await activateColumnLayer(page);
 
     await page
       .locator(

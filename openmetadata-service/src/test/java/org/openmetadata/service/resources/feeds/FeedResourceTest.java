@@ -107,6 +107,7 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -121,7 +122,6 @@ import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -211,7 +211,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getName()).withAbout(null);
     assertResponse(
-        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[about must not be null]");
+        () -> createThread(create, USER_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param about must not be null]");
   }
 
   @Test
@@ -241,14 +243,18 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   void post_feedWithoutMessage_4xx() {
     CreateThread create = create().withFrom(USER.getName()).withMessage(null);
     assertResponseContains(
-        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[message must not be null]");
+        () -> createThread(create, USER_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param message must not be null]");
   }
 
   @Test
   void post_feedWithoutFrom_4xx() {
     CreateThread create = create().withFrom(null);
     assertResponseContains(
-        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[from must not be null]");
+        () -> createThread(create, USER_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param from must not be null]");
   }
 
   @Test
@@ -894,7 +900,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertResponseContains(
         () -> addPost(THREAD.getId(), createPost, USER_AUTH_HEADERS),
         BAD_REQUEST,
-        "[message must not be null]");
+        "[query param message must not be null]");
   }
 
   @Test
@@ -905,7 +911,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertResponseContains(
         () -> addPost(THREAD.getId(), createPost, USER_AUTH_HEADERS),
         BAD_REQUEST,
-        "[from must not be null]");
+        "[query param from must not be null]");
   }
 
   @Test

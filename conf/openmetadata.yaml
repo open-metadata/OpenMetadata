@@ -27,6 +27,7 @@ server:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
+      maxRequestHeaderSize: ${MAX_REQUEST_HEADER_SIZE:-8KiB}
   adminConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
@@ -224,6 +225,7 @@ authenticationConfiguration:
     customParams: ${OIDC_CUSTOM_PARAMS:-}
     maxAge: ${OIDC_MAX_AGE:-"0"}
     prompt: ${OIDC_PROMPT_TYPE:-"consent"}
+    sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} #7 days
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -439,10 +441,6 @@ web:
 operationalConfig:
   enable: ${OPERATIONAL_CONFIG_ENABLED:-true}
   operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}  
-
-mcpConfiguration:
-  enabled: ${MCP_ENABLED:-true}
-  path: ${MCP_PATH:-"/mcp"}
-  mcpServerVersion: ${MCP_SERVER_VERSION:-"1.0.0"}  
+    
     
   

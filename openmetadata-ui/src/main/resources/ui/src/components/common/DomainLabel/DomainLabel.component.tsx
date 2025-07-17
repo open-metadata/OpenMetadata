@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
@@ -243,7 +243,7 @@ export const DomainLabel = ({
     }
 
     return (
-      <div className="d-flex   flex-col gap-2 justify-start">
+      <div className="d-flex flex-col domain-label-container gap-2 justify-start">
         {headerLayout && (
           <div
             className="d-flex text-sm gap-1 font-medium items-center "

@@ -100,12 +100,16 @@ public final class SecurityUtil {
       List<String> jwtPrincipalClaimsOrder,
       Map<String, ?> claims) {
     String userName;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBotW(claims)) {
       // We have a mapping available so we will use that
       String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
       String userNameClaimValue = getClaimOrObject(claims.get(usernameClaim));
       if (!nullOrEmpty(userNameClaimValue)) {
-        userName = userNameClaimValue;
+        userName =
+            userNameClaimValue.contains("@")
+                ? userNameClaimValue.split("@")[0]
+                : userNameClaimValue;
       } else {
         throw new AuthenticationException("Invalid JWT token, 'username' claim is not present");
       }
@@ -122,7 +126,8 @@ public final class SecurityUtil {
       Map<String, ?> claims,
       String defaulPrincipalClaim) {
     String email;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBotW(claims)) {
       // We have a mapping available so we will use that
       String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
       String emailClaimValue = getClaimOrObject(claims.get(emailClaim));
@@ -192,7 +197,8 @@ public final class SecurityUtil {
       Set<String> allowedDomains,
       boolean enforcePrincipalDomain) {
     String domain = StringUtils.EMPTY;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBotW(claims)) {
       // We have a mapping available so we will use that
       String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
       String emailClaimValue = getClaimOrObject(claims.get(emailClaim));
@@ -240,5 +246,10 @@ public final class SecurityUtil {
 
   public static boolean isBot(Map<String, Claim> claims) {
     return claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean());
+  }
+
+  public static boolean isBotW(Map<String, ?> claims) {
+    Claim isBotClaim = (Claim) claims.get("isBot");
+    return isBotClaim != null && Boolean.TRUE.equals(isBotClaim.asBoolean());
   }
 }

@@ -421,22 +421,19 @@ class LookerUnitTest(TestCase):
         with patch.object(fqn, "build", return_value=None), patch.object(
             OpenMetadata, "get_by_name", return_value=table
         ):
-            self.assertEqual(
-                self.looker.build_lineage_request(
-                    source, db_service_name, to_entity
-                ).right,
-                AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=table.id.root, type="table"),
-                        toEntity=EntityReference(
-                            id=to_entity.id.root, type="dashboard"
-                        ),
-                        lineageDetails=LineageDetails(
-                            source=LineageSource.DashboardLineage
-                        ),
-                    )
-                ),
+            original_lineage = self.looker.build_lineage_request(
+                source, db_service_name, to_entity
+            ).right
+            expected_lineage = AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=table.id.root, type="table"),
+                    toEntity=EntityReference(id=to_entity.id.root, type="dashboard"),
+                    lineageDetails=LineageDetails(
+                        source=LineageSource.DashboardLineage, columnsLineage=[]
+                    ),
+                )
             )
+            self.assertEqual(original_lineage, expected_lineage)
 
     def test_yield_dashboard_chart(self):
         """

@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Input, Space, Tooltip, Typography } from 'antd';
+import { Card, Col, Input, Skeleton, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isUndefined, orderBy } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
@@ -75,10 +75,10 @@ const ActivityFeedCardNew = ({
   }, [feed.about]);
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { selectedThread, postFeed } = useActivityFeedProvider();
+  const { selectedThread, postFeed, updateFeed, isPostsLoading } =
+    useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
-  const { updateFeed } = useActivityFeedProvider();
   const [, , user] = useUserProfile({
     permission: true,
     name: feed.createdBy ?? '',
@@ -182,6 +182,38 @@ const ActivityFeedCardNew = ({
   const closeFeedEditor = () => {
     setShowFeedEditor(false);
   };
+
+  const posts = useMemo(() => {
+    if (!showThread) {
+      return null;
+    }
+
+    if (isPostsLoading) {
+      return (
+        <Space className="m-y-md" direction="vertical" size={16}>
+          <Skeleton active />
+          <Skeleton active />
+          <Skeleton active />
+        </Space>
+      );
+    }
+
+    const posts = orderBy(feed.posts, ['postTs'], ['desc']);
+
+    return (
+      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+        {posts.map((reply, index, arr) => (
+          <CommentCard
+            closeFeedEditor={closeFeedEditor}
+            feed={feed}
+            isLastReply={index === arr.length - 1}
+            key={reply.id}
+            post={reply}
+          />
+        ))}
+      </Col>
+    );
+  }, [feed, showThread, closeFeedEditor, isPostsLoading]);
 
   return (
     <Card
@@ -310,11 +342,11 @@ const ActivityFeedCardNew = ({
           ) : (
             <div className="d-flex gap-2">
               <div>
-                <UserPopOverCard userName={getEntityName(currentUser)}>
+                <UserPopOverCard userName={currentUser?.name ?? ''}>
                   <div className="d-flex items-center">
                     <ProfilePicture
                       key={feed.id}
-                      name={getEntityName(currentUser)}
+                      name={currentUser?.name ?? ''}
                       width="32"
                     />
                   </div>
@@ -330,22 +362,7 @@ const ActivityFeedCardNew = ({
             </div>
           )}
 
-          {showThread && feed?.posts && feed?.posts?.length > 0 && (
-            <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-              {feed?.posts
-                ?.slice()
-                .sort((a, b) => (b.postTs as number) - (a.postTs as number))
-                .map((reply, index, arr) => (
-                  <CommentCard
-                    closeFeedEditor={closeFeedEditor}
-                    feed={feed}
-                    isLastReply={index === arr.length - 1}
-                    key={reply.id}
-                    post={reply}
-                  />
-                ))}
-            </Col>
-          )}
+          {posts}
         </div>
       )}
     </Card>

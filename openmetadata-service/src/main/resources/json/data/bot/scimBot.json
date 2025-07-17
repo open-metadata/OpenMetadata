@@ -1,0 +1,11 @@
+{
+  "name": "scim-bot",
+  "displayName": "SCIM Bot",
+  "description": "Bot with SCIM-only access",
+  "fullyQualifiedName": "scim-bot",
+  "botUser": {
+    "name" : "scim-bot",
+    "type" : "user"
+  },
+  "provider": "system"
+}

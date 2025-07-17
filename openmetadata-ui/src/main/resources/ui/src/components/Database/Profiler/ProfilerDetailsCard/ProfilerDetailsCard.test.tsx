@@ -12,7 +12,7 @@
  */
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
-import React from 'react';
+import '../../../../test/unit/mocks/recharts.mock';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
 
@@ -39,6 +39,11 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 jest.mock('../../../../utils/DataInsightUtils', () => ({
   CustomTooltip: jest.fn(() => <div>CustomTooltip</div>),
 }));
+jest.mock('../../../../constants/profiler.constant', () => {
+  return {
+    PROFILER_CHART_DATA_SIZE: 500,
+  };
+});
 
 // Improve mock data to be minimal
 const mockProps: ProfilerDetailsCardProps = {
@@ -48,6 +53,11 @@ const mockProps: ProfilerDetailsCardProps = {
   },
   name: 'rowCount',
 };
+
+const mockData = Array.from({ length: 501 }, (_, index) => ({
+  name: `test ${index}`,
+  value: index,
+}));
 
 describe('ProfilerDetailsCard Test', () => {
   it('Component should render', async () => {
@@ -59,6 +69,21 @@ describe('ProfilerDetailsCard Test', () => {
     expect(
       queryByAttribute('id', container, `${mockProps.name}_graph`)
     ).toBeInTheDocument();
+    expect(screen.queryByText('Brush')).not.toBeInTheDocument();
+  });
+
+  it('Component should render brush when data length is greater than PROFILER_CHART_DATA_SIZE', async () => {
+    render(
+      <ProfilerDetailsCard
+        {...mockProps}
+        chartCollection={{
+          data: mockData,
+          information: mockProps.chartCollection.information,
+        }}
+      />
+    );
+
+    expect(screen.getByText('Brush')).toBeInTheDocument();
   });
 
   it('No data should be rendered', async () => {

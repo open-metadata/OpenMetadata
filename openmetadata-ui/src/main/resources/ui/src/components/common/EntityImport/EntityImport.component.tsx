@@ -13,13 +13,7 @@
 import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as SuccessBadgeIcon } from '../../../assets/svg/success-badge.svg';
 import { SOCKET_EVENTS } from '../../../constants/constants';
@@ -35,7 +29,7 @@ import {
 } from '../../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Stepper from '../../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
-import { UploadFile } from '../../UploadFile/UploadFile';
+import UploadFile from '../../UploadFile/UploadFile';
 import Banner from '../Banner/Banner';
 import './entity-import.style.less';
 import { EntityImportProps } from './EntityImport.interface';

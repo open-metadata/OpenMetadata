@@ -15,12 +15,17 @@ import { WidgetProps } from '@rjsf/utils';
 import { Button, UploadProps } from 'antd';
 import Upload, { UploadChangeParam, UploadFile } from 'antd/lib/upload';
 import { AxiosError } from 'axios';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileUploadEnum } from '../../../../../enums/File.enum';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 
-const FileUploadWidget: FC<WidgetProps> = ({ onChange, onFocus, ...rest }) => {
+const FileUploadWidget: FC<WidgetProps> = ({
+  onChange,
+  onFocus,
+  disabled,
+  ...rest
+}) => {
   const { t } = useTranslation();
 
   const defaultValue = useMemo((): UploadFile[] => {
@@ -79,7 +84,9 @@ const FileUploadWidget: FC<WidgetProps> = ({ onChange, onFocus, ...rest }) => {
       onChange={handleChange}>
       <Button
         data-testid="upload-file-widget-content"
+        disabled={disabled}
         icon={<UploadOutlined />}
+        size="small"
         onFocus={() => onFocus(rest.id, rest.value)}>
         {t('message.upload-file')}
       </Button>

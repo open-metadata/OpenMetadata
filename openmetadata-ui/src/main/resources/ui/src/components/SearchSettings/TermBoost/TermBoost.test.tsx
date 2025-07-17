@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
 import tagClassBase from '../../../utils/TagClassBase';
 import TermBoostComponent from './TermBoost';
@@ -24,6 +23,19 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../utils/TagClassBase', () => ({
   getTags: jest.fn(),
+}));
+
+jest.mock('../../common/AsyncSelect/AsyncSelect', () => ({
+  AsyncSelect: jest.fn().mockImplementation(({ api }) => (
+    <div>
+      <p>AsyncSelect</p>
+      <input
+        data-testid="term-boost-select"
+        type="text"
+        onClick={() => api('test')}
+      />
+    </div>
+  )),
 }));
 
 const mockTermBoost: TermBoost = {
@@ -48,6 +60,9 @@ const mockTagResponse = {
       },
     },
   ],
+  paging: {
+    total: 1,
+  },
 };
 
 describe('TermBoost Component', () => {
@@ -69,13 +84,11 @@ describe('TermBoost Component', () => {
     render(<TermBoostComponent {...mockProps} />);
 
     const select = screen.getByTestId('term-boost-select');
-    fireEvent.mouseDown(select);
+    fireEvent.click(select);
 
     await waitFor(() => {
-      expect(tagClassBase.getTags).toHaveBeenCalled();
+      expect(tagClassBase.getTags).toHaveBeenCalledWith('test', 1, true);
     });
-
-    expect(screen.getByText('PII.Sensitive')).toBeInTheDocument();
   });
 
   it('Should handle delete tag boost', () => {

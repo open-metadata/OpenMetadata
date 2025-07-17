@@ -14,7 +14,7 @@ import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Collapse, Input, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BORDER_COLOR } from '../../../../constants/constants';
 import {
@@ -115,6 +115,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
           getEntityName(column).toLowerCase().includes(value.toLowerCase())
         );
         setFilteredColumns(filtered);
+        setShowAllColumns(true);
       }
     },
     [children]
@@ -151,7 +152,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     try {
       const response = await getTestCaseExecutionSummary(testSuite.id);
       setSummary(response);
-    } catch (error) {
+    } catch {
       setSummary(undefined);
     } finally {
       setIsLoading(false);
@@ -286,7 +287,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
 
   // Pre-render column data outside of the return statement
   const renderedColumns = useMemo(() => {
-    return filteredColumns.map((column) => renderColumnsData(column as Column));
+    return filteredColumns
+      .map((column) => renderColumnsData(column as Column))
+      .filter(Boolean);
   }, [filteredColumns, renderColumnsData]);
 
   // Memoize the expand/collapse icon to prevent unnecessary re-renders
@@ -302,6 +305,15 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const entityIcon = useMemo(() => {
     return searchClassBase.getEntityIcon(node.entityType ?? '');
   }, [node.entityType]);
+
+  const shouldShowMoreButton = useMemo(() => {
+    return (
+      !showAllColumns &&
+      !isEmpty(children) &&
+      renderedColumns.length !== children.length &&
+      !searchValue
+    );
+  }, [showAllColumns, children, renderedColumns, searchValue]);
 
   // Memoize the expand/collapse click handler
   const handleExpandCollapseClick = useCallback((e: React.MouseEvent) => {
@@ -346,18 +358,21 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
               />
             </div>
 
-            <section className="m-t-md" id="table-columns">
-              <div
-                className={classNames('rounded-4 overflow-hidden', {
-                  border: !showAllColumns,
-                })}>
-                {renderedColumns}
-              </div>
-            </section>
+            {!isEmpty(renderedColumns) && (
+              <section className="m-t-md" id="table-columns">
+                <div
+                  className={classNames('rounded-4 overflow-hidden', {
+                    border: !showAllColumns,
+                  })}>
+                  {renderedColumns}
+                </div>
+              </section>
+            )}
 
-            {!showAllColumns && (
+            {shouldShowMoreButton && (
               <Button
                 className="m-t-xs text-primary"
+                data-testid="show-more-columns-btn"
                 type="text"
                 onClick={handleShowMoreClick}>
                 {t('label.show-more-entity', {

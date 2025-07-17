@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Team } from '../../../../../generated/entity/teams/team';
@@ -84,7 +83,7 @@ describe('UserTab', () => {
 
     expect(getUsers).toHaveBeenCalledWith({
       fields: 'roles',
-      limit: 25,
+      limit: 15,
       team: 'Marketing',
     });
     expect(

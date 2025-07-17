@@ -12,7 +12,8 @@
  */
 import { AxiosError } from 'axios';
 import { once } from 'lodash';
-import React, {
+import {
+  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -21,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import {
   CustomizeEntityType,
   ENTITY_PAGE_TYPE_MAP,
@@ -40,6 +40,7 @@ import {
   updateWidgetHeightRecursively,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 
@@ -66,10 +67,13 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   layout: WidgetConfig[];
   filterWidgets?: (widgets: string[]) => void;
   updateWidgetHeight: (widgetId: string, height: number) => void;
+  // Props to control the dropdown state of Tag/Glossary from the Generic Provider
+  activeTagDropdownKey: string | null;
+  updateActiveTagDropdownKey: (key: string | null) => void;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
-  React.createContext({} as GenericContextType<T>)
+  createContext({} as GenericContextType<T>)
 );
 
 export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
@@ -91,12 +95,15 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const expandedLayout = useRef<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetConfig[]>(
     getLayoutFromCustomizedPage(pageType, tab, customizedPage)
   );
   const [filteredKeys, setFilteredKeys] = useState<string[]>([]);
+  const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     setLayout(getLayoutFromCustomizedPage(pageType, tab, customizedPage));
@@ -137,6 +144,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     },
     [setFilteredKeys]
   );
+
+  const updateActiveTagDropdownKey = useCallback((key: string | null) => {
+    setActiveTagDropdownKey(key);
+  }, []);
 
   const updateWidgetHeight = useCallback((widgetId: string, height: number) => {
     setLayout((prev) => updateWidgetHeightRecursively(widgetId, height, prev));
@@ -215,6 +226,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       layout: filteredLayout,
       filterWidgets,
       updateWidgetHeight,
+      activeTagDropdownKey,
+      updateActiveTagDropdownKey,
     }),
     [
       data,
@@ -227,6 +240,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       filteredLayout,
       filterWidgets,
       updateWidgetHeight,
+      activeTagDropdownKey,
+      updateActiveTagDropdownKey,
     ]
   );
 

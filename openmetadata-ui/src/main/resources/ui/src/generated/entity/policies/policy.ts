@@ -240,9 +240,11 @@ export interface EntityReference {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }
@@ -298,10 +300,13 @@ export enum Operation {
     All = "All",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
+    CreateScim = "CreateScim",
     Delete = "Delete",
+    DeleteScim = "DeleteScim",
     DeleteTestCaseFailedRowsSample = "DeleteTestCaseFailedRowsSample",
     Deploy = "Deploy",
     EditAll = "EditAll",
+    EditCertification = "EditCertification",
     EditCustomFields = "EditCustomFields",
     EditDataProfile = "EditDataProfile",
     EditDescription = "EditDescription",
@@ -319,6 +324,7 @@ export enum Operation {
     EditReviewers = "EditReviewers",
     EditRole = "EditRole",
     EditSampleData = "EditSampleData",
+    EditScim = "EditScim",
     EditStatus = "EditStatus",
     EditTags = "EditTags",
     EditTeams = "EditTeams",
@@ -335,6 +341,7 @@ export enum Operation {
     ViewProfilerGlobalConfiguration = "ViewProfilerGlobalConfiguration",
     ViewQueries = "ViewQueries",
     ViewSampleData = "ViewSampleData",
+    ViewScim = "ViewScim",
     ViewTestCaseFailedRowsSample = "ViewTestCaseFailedRowsSample",
     ViewTests = "ViewTests",
     ViewUsage = "ViewUsage",

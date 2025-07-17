@@ -1,5 +1,6 @@
 ---
-title: How to Add Tags
+title: How to Add Tags | OpenMetadata User Tagging Guide
+description: Add metadata tags to datasets, columns, or dashboards for improved classification, search, and governance reporting.
 slug: /how-to-guides/guide-for-data-users/tags
 ---
 
@@ -65,8 +66,6 @@ src="/images/v1.7/how-to-guides/governance/auto3.png"
 alt="Column Data provides information"
 caption="Column Data provides information"
 /%}
-
-You can read more about [Auto PII Tagging](/how-to-guides/data-governance/classification/auto/auto-pii-tagging) here.
 
 {%inlineCallout
   color="violet-70"

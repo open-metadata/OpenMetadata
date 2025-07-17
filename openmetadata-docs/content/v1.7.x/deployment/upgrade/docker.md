@@ -1,5 +1,6 @@
 ---
-title: Upgrade on Docker
+title: Upgrade on Docker | OpenMetadata Deployment Upgrade Guide
+description: Perform upgrades for Docker-based deployments by managing image versions, environment variables, and service configurations.
 slug: /deployment/upgrade/docker
 collate: false
 ---

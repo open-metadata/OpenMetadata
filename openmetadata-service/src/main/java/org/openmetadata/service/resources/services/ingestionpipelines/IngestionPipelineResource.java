@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -219,8 +220,8 @@ public class IngestionPipelineResource
           String applicationType,
       @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -238,14 +239,20 @@ public class IngestionPipelineResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "List Ingestion Pipelines by provider..",
+              schema = @Schema(implementation = ProviderType.class))
+          @QueryParam("provider")
+          ProviderType provider) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
             .addQueryParam("pipelineType", pipelineType)
             .addQueryParam("serviceType", serviceType)
             .addQueryParam("testSuite", testSuiteParam)
-            .addQueryParam("applicationType", applicationType);
+            .addQueryParam("applicationType", applicationType)
+            .addQueryParam("provider", provider == null ? null : provider.value());
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -699,6 +706,9 @@ public class IngestionPipelineResource
     IngestionPipeline pipeline = repository.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the
     // IngestionPipeline
+    if (pipelineServiceClient == null) {
+      return Response.status(200).entity("Pipeline Client Disabled").build();
+    }
     decryptOrNullify(securityContext, pipeline, true);
     pipelineServiceClient.toggleIngestion(pipeline);
     Response response = createOrUpdate(uriInfo, securityContext, pipeline);
@@ -732,6 +742,11 @@ public class IngestionPipelineResource
     IngestionPipeline ingestionPipeline =
         getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     decryptOrNullify(securityContext, ingestionPipeline, true);
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
     return pipelineServiceClient.killIngestion(ingestionPipeline);
   }
 
@@ -748,6 +763,9 @@ public class IngestionPipelineResource
             content = @Content(mediaType = "application/json"))
       })
   public Response getHostIp(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    if (pipelineServiceClient == null) {
+      return Response.status(200).entity("Pipeline Client Disabled").build();
+    }
     return pipelineServiceClient.getHostIp();
   }
 
@@ -765,6 +783,11 @@ public class IngestionPipelineResource
       })
   public PipelineServiceClientResponse getRESTStatus(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
     return pipelineServiceClient.getServiceStatus();
   }
 
@@ -887,6 +910,9 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
+    if (pipelineServiceClient == null) {
+      return Response.status(200).entity("Pipeline Client Disabled").build();
+    }
     IngestionPipeline ingestionPipeline =
         getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     Map<String, String> lastIngestionLogs =

@@ -14,9 +14,14 @@
 package org.openmetadata.service.resources.tags;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -40,12 +45,13 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResource.ClassificationList;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 /** Tests not covered here: Classification and Tag usage counts are covered in TableResourceTest */
@@ -78,7 +84,7 @@ public class ClassificationResourceTest
     assertResponseContains(
         () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "name size must be between 1 and 256");
+        "query param name size must be between 1 and 256");
   }
 
   @Test
@@ -89,6 +95,54 @@ public class ClassificationResourceTest
         BAD_REQUEST,
         CatalogExceptionMessage.systemEntityDeleteNotAllowed(
             classification.getName(), Entity.CLASSIFICATION));
+  }
+
+  @Test
+  void test_classificationOwnerPermissions(TestInfo test) throws IOException {
+    // Create classification without owners
+    CreateClassification create = createRequest(getEntityName(test));
+    Classification classification = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        listOrEmpty(classification.getOwners()).isEmpty(),
+        "Classification should have no owners initially");
+
+    // Update classification owners as admin using PATCH
+    String json = JsonUtils.pojoToJson(classification);
+    classification.setOwners(List.of(USER1.getEntityReference()));
+    ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
+    fieldAdded(change, FIELD_OWNERS, List.of(USER1.getEntityReference()));
+    classification =
+        patchEntityAndCheck(classification, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertEquals(
+        1, listOrEmpty(classification.getOwners()).size(), "Classification should have one owner");
+    assertEquals(
+        USER1.getId(), classification.getOwners().get(0).getId(), "Owner should match USER1");
+
+    // Update owners as USER2 with USER2 credentials (should fail with 403)
+    String originalJson = JsonUtils.pojoToJson(classification);
+    classification.setOwners(List.of(USER2.getEntityReference()));
+    Classification finalClassification = classification;
+    assertResponse(
+        () ->
+            patchEntity(
+                finalClassification.getId(),
+                originalJson,
+                finalClassification,
+                authHeaders(USER2.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.EDIT_OWNERS)));
+
+    // Verify the above change did not change the owners, USER1 should still be the owner
+    Classification retrievedClassification =
+        getEntity(classification.getId(), "owners", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        1,
+        listOrEmpty(retrievedClassification.getOwners()).size(),
+        "Classification should still have one owner");
+    assertEquals(
+        USER1.getId(),
+        retrievedClassification.getOwners().get(0).getId(),
+        "Owner should still be USER1");
   }
 
   @Override
@@ -120,18 +174,20 @@ public class ClassificationResourceTest
   @Override
   public Classification validateGetWithDifferentFields(
       Classification classification, boolean byName) throws HttpResponseException {
+    String fields = "";
     classification =
         byName
-            ? getEntityByName(classification.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
-            : getEntity(classification.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(classification.getUsageCount());
+            ? getEntityByName(classification.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(classification.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNull(classification.getOwners());
 
-    String fields = "usageCount";
+    fields = "owners,usageCount";
     classification =
         byName
             ? getEntityByName(classification.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(classification.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(classification.getUsageCount());
+    assertListNotNull(classification.getOwners());
     return classification;
   }
 

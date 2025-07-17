@@ -66,6 +66,7 @@ import org.openmetadata.schema.type.SearchIndexDataType;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -76,7 +77,6 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -104,13 +104,13 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     assertResponse(
         () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
 
     // Partitions is required field
     assertResponse(
         () -> createEntity(createRequest(test).withFields(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[fields must not be null]");
+        "[query param fields must not be null]");
   }
 
   @Test

@@ -27,6 +27,8 @@ public class IngestionPipelineMapper
         .withSourceConfig(create.getSourceConfig())
         .withLoggerLevel(create.getLoggerLevel())
         .withRaiseOnError(create.getRaiseOnError())
-        .withService(create.getService());
+        .withProvider(create.getProvider())
+        .withService(create.getService())
+        .withProcessingEngine(create.getProcessingEngine());
   }
 }

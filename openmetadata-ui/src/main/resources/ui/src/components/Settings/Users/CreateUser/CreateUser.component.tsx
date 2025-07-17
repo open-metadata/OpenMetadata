@@ -25,7 +25,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { compact, isEmpty, isUndefined, map, trim } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
@@ -62,8 +62,6 @@ import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
-
-const { Option } = Select;
 
 const CreateUser = ({
   roles,
@@ -262,9 +260,7 @@ const CreateUser = ({
             className="w-full"
             data-testid="token-expiry"
             placeholder={t('message.select-token-expiration')}>
-            {getJWTTokenExpiryOptions().map((option) => (
-              <Option key={option.value}>{option.label}</Option>
-            ))}
+            {getJWTTokenExpiryOptions()}
           </Select>
         </Form.Item>
       )}
@@ -395,6 +391,7 @@ const CreateUser = ({
                   data-testid="roles-dropdown"
                   disabled={isEmpty(roles)}
                   filterOption={handleSearchFilterOption}
+                  getPopupContainer={(triggerNode) => triggerNode.parentElement}
                   mode="multiple"
                   options={roleOptions}
                   placeholder={t('label.please-select-entity', {

@@ -1,5 +1,6 @@
 ---
-title: How to Add a Team
+title: How to Add a Team | OpenMetadata Admin Guide
+description: Connect Add Team to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /how-to-guides/admin-guide/teams-and-users/add-team
 ---
 

@@ -30,12 +30,12 @@ import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.dataInsight.type.KpiTargetType;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -107,7 +107,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     assertResponse(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
   }
 
   @Test

@@ -45,10 +45,10 @@ import org.openmetadata.schema.system.ui.Page;
 import org.openmetadata.schema.system.ui.PageType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -440,7 +440,26 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
 
   private void assertDocData(Object expected, Object actual) {
     Data data = (Data) expected;
-    assertEquals(
-        data.getAdditionalProperties(), JsonUtils.getMap(JsonUtils.readJson(actual.toString())));
+    Map<String, Object> expectedMap = data.getAdditionalProperties();
+    Map<String, Object> actualMap = JsonUtils.getMap(JsonUtils.readJson(actual.toString()));
+
+    Map<String, Object> normalizedActualMap = new HashMap<>();
+    for (Map.Entry<String, Object> entry : actualMap.entrySet()) {
+      Object value = entry.getValue();
+      if (value instanceof Map) {
+        Map<String, Object> valueMap = (Map<String, Object>) value;
+        if (valueMap.containsKey("string")
+            && valueMap.containsKey("chars")
+            && valueMap.containsKey("valueType")) {
+          normalizedActualMap.put(entry.getKey(), valueMap.get("string"));
+        } else {
+          normalizedActualMap.put(entry.getKey(), value);
+        }
+      } else {
+        normalizedActualMap.put(entry.getKey(), value);
+      }
+    }
+
+    assertEquals(expectedMap, normalizedActualMap);
   }
 }

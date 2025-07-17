@@ -1,5 +1,6 @@
 ---
-title: Ingest Tags from dbt
+title: Ingest Tags from dbt | OpenMetadata Metadata Tagging Guide
+description: Ingest dbt tags to enhance metadata with labels that support classification, governance, and searchability.
 slug: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
 ---
 

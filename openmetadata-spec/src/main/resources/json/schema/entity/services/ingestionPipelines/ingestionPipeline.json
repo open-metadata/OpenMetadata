@@ -47,6 +47,10 @@
         "config": {
           "description": "Pipeline configuration for this particular execution.",
           "$ref": "../../../type/basic.json#/definitions/map"
+        },
+        "metadata": {
+          "description": "Metadata for the pipeline status.",
+          "$ref": "../../../type/basic.json#/definitions/map"
         }
       },
       "additionalProperties": false
@@ -237,6 +241,10 @@
     },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../../type/entityReference.json"
+    },
+    "processingEngine": {
+      "description": "The processing engine responsible for executing the ingestion pipeline logic.",
       "$ref": "../../../type/entityReference.json"
     }
   },

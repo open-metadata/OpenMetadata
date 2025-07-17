@@ -43,10 +43,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -89,13 +89,13 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     assertResponse(
         () -> createEntity(createRequest(test).withApiCollection(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[apiCollection must not be null]");
+        "[query param apiCollection must not be null]");
 
     // Partitions is required field
     assertResponse(
         () -> createEntity(createRequest(test).withEndpointURL(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[endpointURL must not be null]");
+        "[query param endpointURL must not be null]");
   }
 
   @Order(1)

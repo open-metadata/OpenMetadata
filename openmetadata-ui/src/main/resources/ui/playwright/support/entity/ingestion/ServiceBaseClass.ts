@@ -22,6 +22,7 @@ import {
 import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
   descriptionBox,
+  executeWithRetry,
   getApiContext,
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
@@ -276,7 +277,7 @@ class ServiceBaseClass {
 
     await expect(
       page.getByText(
-        'Error: Expression has only 4 parts. At least 5 parts are required.'
+        'Cron expression must have exactly 5 fields (minute hour day-of-month month day-of-week)'
       )
     ).toBeAttached();
 
@@ -642,11 +643,15 @@ class ServiceBaseClass {
 
   async deleteServiceByAPI(apiContext: APIRequestContext) {
     if (this.serviceResponseData.fullyQualifiedName) {
-      await apiContext.delete(
-        `/api/v1/services/dashboardServices/name/${encodeURIComponent(
-          this.serviceResponseData.fullyQualifiedName
-        )}?recursive=true&hardDelete=true`
-      );
+      await executeWithRetry(async () => {
+        await apiContext.delete(
+          `/api/v1/services/${getServiceCategoryFromService(
+            this.category
+          )}s/name/${encodeURIComponent(
+            this.serviceResponseData.fullyQualifiedName
+          )}?recursive=true&hardDelete=true`
+        );
+      }, 'delete service');
     }
   }
 }

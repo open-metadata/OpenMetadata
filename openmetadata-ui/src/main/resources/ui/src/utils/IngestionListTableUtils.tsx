@@ -15,9 +15,7 @@ import Icon from '@ant-design/icons';
 import { Col, Row, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
-import { t } from 'i18next';
 import { capitalize, isUndefined, startCase } from 'lodash';
-import React from 'react';
 import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
 import { ReactComponent as PausedIcon } from '../assets/svg/ic-pause.svg';
 import { ReactComponent as TimeDateIcon } from '../assets/svg/time-date.svg';
@@ -28,6 +26,7 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getEntityName, highlightSearchText } from './EntityUtils';
 import { getCurrentLocaleForConstrue } from './i18next/i18nextUtil';
+import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './StringsUtils';
 
 export const renderNameField =

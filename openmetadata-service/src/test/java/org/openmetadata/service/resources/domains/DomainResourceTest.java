@@ -35,13 +35,13 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.domains.DomainResource.DomainList;
 import org.openmetadata.service.util.EntityHierarchyList;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain> {
@@ -406,7 +406,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
         getDomain.getChildren(),
         getDomain.getOwners(),
         getDomain.getExperts());
-    String fields = "children,owners,parent,experts,tags";
+    String fields = "children,owners,parent,experts,tags,followers";
     getDomain =
         byName
             ? getEntityByName(getDomain.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

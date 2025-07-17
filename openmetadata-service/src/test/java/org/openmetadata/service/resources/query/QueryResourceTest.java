@@ -34,11 +34,11 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -145,7 +145,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         Response.Status.BAD_REQUEST,
-        "[query must not be null]");
+        "[query param query must not be null]");
   }
 
   @Test

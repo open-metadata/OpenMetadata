@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import DescriptionV1 from '../../../../components/common/EntityDescription/DescriptionV1';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
@@ -22,9 +22,11 @@ import {
   TagSource,
 } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
+import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
@@ -71,28 +73,29 @@ const DocumentationTab = ({
       };
     }
 
-    const editDescription = permissions?.EditDescription;
-
-    const editOwner = permissions?.EditOwners;
-
-    const editAll = permissions?.EditAll;
-
-    const editCustomAttribute = permissions?.EditCustomFields;
-
-    const viewAll = permissions?.ViewAll;
-
-    const editTags = permissions?.EditTags;
-
-    const editGlossaryTerms = permissions?.EditGlossaryTerms;
-
     return {
-      editDescriptionPermission: editAll || editDescription,
-      editOwnerPermission: editAll || editOwner,
-      editAllPermission: editAll,
-      editCustomAttributePermission: editAll || editCustomAttribute,
-      editTagsPermission: editAll || editTags,
-      editGlossaryTermsPermission: editAll || editGlossaryTerms,
-      viewAllPermission: viewAll,
+      editDescriptionPermission: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditDescription
+      ),
+      editOwnerPermission: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditOwners
+      ),
+      editAllPermission: permissions?.EditAll,
+      editCustomAttributePermission: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditCustomFields
+      ),
+      editTagsPermission: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditTags
+      ),
+      editGlossaryTermsPermission: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditGlossaryTerms
+      ),
+      viewAllPermission: permissions?.ViewAll,
     };
   }, [permissions, isVersionsView, resourceType]);
 

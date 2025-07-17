@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -59,7 +60,6 @@ import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.email.EmailUtil;
 
@@ -95,7 +95,9 @@ public class SystemResource {
     this.jwtFilter =
         new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
     this.isNlqEnabled =
-        config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled();
+        config.getElasticSearchConfiguration().getNaturalLanguageSearch() != null
+            ? config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled()
+            : false;
   }
 
   public static class SettingsList extends ResultList<Settings> {

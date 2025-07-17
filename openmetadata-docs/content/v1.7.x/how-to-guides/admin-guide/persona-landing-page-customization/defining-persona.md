@@ -14,18 +14,12 @@ In OpenMetadata, a **persona** represents an organization's specific role or fun
 
 ## Steps to Define a Persona:
 
-1. As an administrator, navigate to **Settings > Team & User Management > Persona settings** in OpenMetadata.
+1. As an administrator, navigate to **Settings > Personas** in OpenMetadata.
 
 {% image
 src="/images/v1.7/how-to-guides/admin-guide/persona-1.png"
-alt="Settings > Team & User Management"
-caption="Settings > Team & User Management"
-/%}
-
-{% image
-src="/images/v1.7/how-to-guides/admin-guide/persona-2.png"
-alt="Persona settings"
-caption="Persona settings"
+alt="Settings > Personas"
+caption="Settings > Personas"
 /%}
 
 2. **Create a new persona** or modify an existing one.

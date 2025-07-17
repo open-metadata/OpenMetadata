@@ -14,6 +14,7 @@ import { expect, Page, test as base } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
@@ -25,6 +26,7 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import { addMultiOwner, removeOwner } from '../../utils/entity';
 import {
   addAssetsToTag,
   editTagPageDescription,
@@ -38,6 +40,7 @@ import {
   verifyCertificationTagPageUI,
   verifyTagPageUI,
 } from '../../utils/tag';
+import { visitUserProfilePage } from '../../utils/user';
 
 const adminUser = new UserClass();
 const dataConsumerUser = new UserClass();
@@ -51,6 +54,12 @@ const classification = new ClassificationClass({
 const tag = new TagClass({
   classification: classification.data.name,
 });
+const classification1 = new ClassificationClass();
+const tag1 = new TagClass({
+  classification: classification1.data.name,
+});
+const user1 = new UserClass();
+const domain = new Domain();
 
 const test = base.extend<{
   adminPage: Page;
@@ -93,7 +102,11 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await dataStewardUser.setDataStewardRole(apiContext);
   await limitedAccessUser.create(apiContext);
   await classification.create(apiContext);
+  await classification1.create(apiContext);
   await tag.create(apiContext);
+  await tag1.create(apiContext);
+  await user1.create(apiContext);
+  await domain.create(apiContext);
   await afterAction();
 });
 
@@ -104,26 +117,16 @@ base.afterAll('Cleanup', async ({ browser }) => {
   await dataStewardUser.delete(apiContext);
   await limitedAccessUser.delete(apiContext);
   await classification.delete(apiContext);
+  await classification1.delete(apiContext);
   await tag.delete(apiContext);
+  await tag1.delete(apiContext);
+  await user1.delete(apiContext);
+  await domain.delete?.(apiContext);
   await afterAction();
 });
 
 test.describe('Tag Page with Admin Roles', () => {
   test.slow(true);
-
-  let domain: Domain;
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext } = await performAdminLogin(browser);
-    domain = new Domain();
-    await domain.create(apiContext);
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await domain.delete?.(apiContext);
-    await afterAction();
-  });
 
   test('Verify Tag UI', async ({ adminPage }) => {
     await verifyTagPageUI(adminPage, classification.data.name, tag);
@@ -137,9 +140,8 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Rename Tag name', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
+
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
@@ -156,16 +158,15 @@ test.describe('Tag Page with Admin Roles', () => {
 
     const updateName = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.getByTestId('save-button').click();
-    updateName;
+    await updateName;
 
     await expect(adminPage.getByText('TestDisplayName')).toBeVisible();
   });
 
   test('Restyle Tag', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
+
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
@@ -180,7 +181,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.locator('button[type="submit"]').click();
-    updateColor;
+    await updateColor;
 
     await adminPage.waitForLoadState('networkidle');
 
@@ -189,9 +190,8 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Edit Tag Description', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
+
     await adminPage.getByTestId('edit-description').click();
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
@@ -212,9 +212,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Delete a Tag', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
@@ -229,7 +227,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     const deleteTag = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.getByTestId('confirm-button').click();
-    deleteTag;
+    await deleteTag;
 
     await expect(
       adminPage.getByText(classification.data.description)
@@ -241,11 +239,11 @@ test.describe('Tag Page with Admin Roles', () => {
     const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
 
     await test.step('Add Asset ', async () => {
-      await addAssetsToTag(adminPage, assets, tag);
+      await addAssetsToTag(adminPage, assets, tag1);
     });
 
     await test.step('Delete Asset', async () => {
-      await removeAssetsFromTag(adminPage, assets, tag);
+      await removeAssetsFromTag(adminPage, assets, tag1);
       await assetCleanup();
     });
   });
@@ -284,6 +282,47 @@ test.describe('Tag Page with Admin Roles', () => {
       domain.data.displayName
     );
   });
+
+  test('Verify Owner Add Delete', async ({ adminPage }) => {
+    await tag1.visitPage(adminPage);
+    const OWNER1 = user1.getUserName();
+
+    await addMultiOwner({
+      page: adminPage,
+      ownerNames: [OWNER1],
+      activatorBtnDataTestId: 'add-owner',
+      resultTestId: 'tag-owner-name',
+      endpoint: EntityTypeEndpoint.Tag,
+      isSelectableInsideForm: false,
+      type: 'Users',
+    });
+
+    // Verify in My Data page
+    await visitUserProfilePage(adminPage, user1.responseData.name);
+    await adminPage.waitForLoadState('networkidle');
+
+    const myDataRes = adminPage.waitForResponse(
+      `/api/v1/search/query?q=*&index=all&from=0&size=15`
+    );
+    await adminPage.getByTestId('mydata').click();
+    await myDataRes;
+
+    await expect(
+      adminPage.getByTestId(
+        `table-data-card_${tag1?.responseData?.fullyQualifiedName}`
+      )
+    ).toBeVisible();
+
+    await tag1.visitPage(adminPage);
+
+    await removeOwner({
+      page: adminPage,
+      endpoint: EntityTypeEndpoint.Tag,
+      ownerName: OWNER1,
+      type: 'Users',
+      dataTestId: 'tag-owner-name',
+    });
+  });
 });
 
 test.describe('Tag Page with Data Consumer Roles', () => {
@@ -307,7 +346,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
   test('Edit Tag Description for Data Consumer', async ({
     dataConsumerPage,
   }) => {
-    await editTagPageDescription(dataConsumerPage, tag);
+    await editTagPageDescription(dataConsumerPage, tag1);
   });
 
   test('Add and Remove Assets for Data Consumer', async ({
@@ -342,7 +381,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
   });
 
   test('Edit Tag Description for Data Steward', async ({ dataStewardPage }) => {
-    await editTagPageDescription(dataStewardPage, tag);
+    await editTagPageDescription(dataStewardPage, tag1);
   });
 
   test('Add and Remove Assets for Data Steward', async ({

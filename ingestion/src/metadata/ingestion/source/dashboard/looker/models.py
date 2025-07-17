@@ -52,6 +52,7 @@ class LookMlView(BaseModel):
     derived_table: Optional[LookMlDerivedTableField] = Field(
         None, description="To track lineage with the source"
     )
+    tags: Optional[List[str]] = Field(None, description="Tags for the view")
 
 
 class LkmlFile(BaseModel):

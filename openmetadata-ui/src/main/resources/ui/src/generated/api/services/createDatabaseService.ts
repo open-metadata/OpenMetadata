@@ -147,8 +147,14 @@ export interface DatabaseConnection {
  * Exasol Database Connection Config
  *
  * Cockroach Database Connection Config
+ *
+ * SSAS Metadata Database Connection Config
  */
 export interface ConfigClass {
+    /**
+     * Billing Project ID
+     */
+    billingProjectId?: string;
     /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
@@ -393,6 +399,8 @@ export interface ConfigClass {
      * Password to connect to Azure Synapse.
      *
      * Password to connect to Exasol.
+     *
+     * Password
      */
     password?: string;
     /**
@@ -482,6 +490,8 @@ export interface ConfigClass {
      *
      * Username to connect to Cockroach. This user should have privileges to read all the
      * metadata in Cockroach.
+     *
+     * Username
      */
     username?: string;
     /**
@@ -541,6 +551,10 @@ export interface ConfigClass {
      * Generated Token to connect to Databricks.
      */
     token?: string;
+    /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?: string;
     /**
      * License to connect to DB2.
      */
@@ -807,6 +821,10 @@ export interface ConfigClass {
      * Client SSL/TLS settings.
      */
     tls?: SSLTLSSettings;
+    /**
+     * HTTP Link for SSAS ACCESS
+     */
+    httpConnection?: string;
 }
 
 /**
@@ -1937,6 +1955,7 @@ export enum ConfigType {
     SapHana = "SapHana",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
+    Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Trino = "Trino",
@@ -2057,6 +2076,7 @@ export enum DatabaseServiceType {
     SapHana = "SapHana",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
+    Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Trino = "Trino",

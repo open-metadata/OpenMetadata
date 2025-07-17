@@ -1,5 +1,6 @@
 ---
-title: OneLogin SSO
+title: OneLogin SSO | OpenMetadata Authentication Setup
+description: Configure OneLogin as your authentication source to manage user roles, sessions, and tokens across secure deployments.
 slug: /deployment/security/one-login
 collate: false
 ---

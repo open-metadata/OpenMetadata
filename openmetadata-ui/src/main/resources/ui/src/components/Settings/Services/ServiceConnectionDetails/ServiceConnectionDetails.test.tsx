@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineServiceType } from '../../../../generated/entity/data/pipeline';
 import { MetadataServiceType } from '../../../../generated/entity/services/metadataService';

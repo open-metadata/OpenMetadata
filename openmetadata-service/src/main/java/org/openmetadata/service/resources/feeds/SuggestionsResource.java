@@ -122,7 +122,7 @@ public class SuggestionsResource {
                   "Limit the number of suggestions returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(1)
-          @Max(1000000)
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -298,8 +298,7 @@ public class SuggestionsResource {
       dao.checkPermissionsForAcceptOrRejectSuggestion(
           suggestion, SuggestionStatus.Rejected, securityContext);
       dao.checkPermissionsForEditEntity(suggestion, suggestionType, securityContext, authorizer);
-      return dao.acceptSuggestionList(
-          uriInfo, suggestions, suggestionType, securityContext, authorizer);
+      return dao.acceptSuggestionList(uriInfo, suggestions, securityContext, authorizer);
     } else {
       // No suggestions found
       return new RestUtil.PutResponse<>(

@@ -24,6 +24,7 @@ import {
   getColumnConfig,
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
+  splitCSV,
 } from './CSV.utils';
 
 describe('CSVUtils', () => {
@@ -33,7 +34,7 @@ describe('CSVUtils', () => {
       const columnConfig = getColumnConfig(column, EntityType.GLOSSARY);
 
       expect(columnConfig).toBeDefined();
-      expect(columnConfig.name).toBe(column);
+      expect(columnConfig.key).toBe(column);
     });
   });
 
@@ -45,7 +46,8 @@ describe('CSVUtils', () => {
       ];
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
         csv,
-        EntityType.GLOSSARY
+        EntityType.GLOSSARY,
+        false
       );
 
       expect(columns).toHaveLength(2);
@@ -55,7 +57,10 @@ describe('CSVUtils', () => {
 
   describe('getCSVStringFromColumnsAndDataSource', () => {
     it('should return the CSV string from the columns and data source for non-quoted columns', () => {
-      const columns = [{ name: 'col1' }, { name: 'col2' }];
+      const columns = [
+        { name: 'col1', key: 'col1' },
+        { name: 'col2', key: 'col2' },
+      ];
       const dataSource = [{ col1: 'value1', col2: 'value2' }];
       const csvString = getCSVStringFromColumnsAndDataSource(
         columns,
@@ -67,10 +72,10 @@ describe('CSVUtils', () => {
 
     it('should return the CSV string from the columns and data source with quoted columns', () => {
       const columns = [
-        { name: 'tags' },
-        { name: 'glossaryTerms' },
-        { name: 'description' },
-        { name: 'domain' },
+        { name: 'tags', key: 'tags' },
+        { name: 'glossaryTerms', key: 'glossaryTerms' },
+        { name: 'description', key: 'description' },
+        { name: 'domain', key: 'domain' },
       ];
       const dataSource = [
         {
@@ -92,10 +97,10 @@ describe('CSVUtils', () => {
 
     it('should return quoted value if data contains comma', () => {
       const columns = [
-        { name: 'tags' },
-        { name: 'glossaryTerms' },
-        { name: 'description' },
-        { name: 'domain' },
+        { name: 'tags', key: 'tags' },
+        { name: 'glossaryTerms', key: 'glossaryTerms' },
+        { name: 'description', key: 'description' },
+        { name: 'domain', key: 'domain' },
       ];
       const dataSource = [
         {
@@ -172,6 +177,81 @@ describe('CSVUtils', () => {
       );
 
       expect(convertedCSVEntities).toStrictEqual(`dateCp:undefined`);
+    });
+  });
+
+  describe('splitCSV', () => {
+    it('should split simple CSV string correctly', () => {
+      const input = 'value1,value2,value3';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value1', 'value2', 'value3']);
+    });
+
+    it('should handle quoted values with commas', () => {
+      const input = 'value1,"value,2",value3';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value1', 'value,2', 'value3']);
+    });
+
+    it('should handle escaped quotes within quoted values', () => {
+      const input = 'value1,"value "quoted" here",value3';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value1', 'value "quoted" here', 'value3']);
+    });
+
+    it('should handle empty values', () => {
+      const input = 'value1,,value3';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value1', '', 'value3']);
+    });
+
+    it('should handle values with spaces', () => {
+      const input = ' value1 , value2 , value3 ';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value1', 'value2', 'value3']);
+    });
+
+    it('should handle empty string input', () => {
+      const input = '';
+      const result = splitCSV(input);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle complex quoted values with multiple commas', () => {
+      const input = '"value,1,2,3","another,value","last,value"';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value,1,2,3', 'another,value', 'last,value']);
+    });
+
+    it('should convert numbers to strings', () => {
+      const input = '1,2,3,4,5';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['1', '2', '3', '4', '5']);
+
+      // Verify each value is a string
+      result.forEach((value) => {
+        expect(typeof value).toBe('string');
+      });
+    });
+
+    it('should handle mixed number and string values', () => {
+      const input = '1,hello,3,world,5';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['1', 'hello', '3', 'world', '5']);
+
+      // Verify each value is a string
+      result.forEach((value) => {
+        expect(typeof value).toBe('string');
+      });
     });
   });
 });

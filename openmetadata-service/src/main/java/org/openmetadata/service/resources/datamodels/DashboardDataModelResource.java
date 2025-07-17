@@ -48,8 +48,10 @@ import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DashboardDataModelRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -57,6 +59,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/dashboard/datamodels")
@@ -85,6 +88,10 @@ public class DashboardDataModelResource
   }
 
   public static class DashboardDataModelList extends ResultList<DashboardDataModel> {
+    /* Required for serde */
+  }
+
+  public static class DataModelColumnList extends ResultList<org.openmetadata.schema.type.Column> {
     /* Required for serde */
   }
 
@@ -123,8 +130,8 @@ public class DashboardDataModelResource
                   "Limit the number dashboardDataModel returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description = "Returns list of dashboardDataModel before this cursor",
@@ -567,5 +574,240 @@ public class DashboardDataModelResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @GET
+  @Path("/{id}/columns")
+  @Operation(
+      operationId = "getDataModelColumns",
+      summary = "Get data model columns with pagination",
+      description =
+          "Get a paginated list of data model columns. This endpoint provides server-side pagination to handle data models with large numbers of columns efficiently.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of data model columns",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataModelColumnList.class)))
+      })
+  public DataModelColumnList getDataModelColumns(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of columns returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          int offsetParam,
+      @Parameter(
+              description = "Fields requested in the returned columns",
+              schema = @Schema(type = "string", example = "tags"))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+
+    ResultList<org.openmetadata.schema.type.Column> result =
+        repository.getDataModelColumns(id, limitParam, offsetParam, fieldsParam, include);
+    DataModelColumnList dataModelColumnList = new DataModelColumnList();
+    dataModelColumnList.setData(result.getData());
+    dataModelColumnList.setPaging(result.getPaging());
+    return dataModelColumnList;
+  }
+
+  @GET
+  @Path("/name/{fqn}/columns")
+  @Operation(
+      operationId = "getDataModelColumnsByFQN",
+      summary = "Get data model columns with pagination by FQN",
+      description =
+          "Get a paginated list of data model columns by fully qualified name. This endpoint provides server-side pagination to handle data models with large numbers of columns efficiently.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of data model columns",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataModelColumnList.class)))
+      })
+  public DataModelColumnList getDataModelColumnsByFQN(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the data model",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of columns returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          int offsetParam,
+      @Parameter(
+              description = "Fields requested in the returned columns",
+              schema = @Schema(type = "string", example = "tags"))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    // JAX-RS automatically URL-decodes path parameters, so fqn is already decoded
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+
+    ResultList<org.openmetadata.schema.type.Column> result =
+        repository.getDataModelColumnsByFQN(fqn, limitParam, offsetParam, fieldsParam, include);
+    DataModelColumnList dataModelColumnList = new DataModelColumnList();
+    dataModelColumnList.setData(result.getData());
+    dataModelColumnList.setPaging(result.getPaging());
+    return dataModelColumnList;
+  }
+
+  @GET
+  @Path("/{id}/columns/search")
+  @Operation(
+      operationId = "searchDataModelColumnsById",
+      summary = "Search data model columns with pagination by ID",
+      description =
+          "Search data model columns by name, description, or data type with server-side pagination. This endpoint provides efficient search functionality for data models with large numbers of columns.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of matching data model columns",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataModelColumnList.class)))
+      })
+  public DataModelColumnList searchDataModelColumnsById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data model", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Search query for column names, descriptions, or data types")
+          @QueryParam("q")
+          String query,
+      @Parameter(description = "Limit the number of columns returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          int offsetParam,
+      @Parameter(
+              description = "Fields requested in the returned columns",
+              schema = @Schema(type = "string", example = "tags"))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    ResultList<Column> result =
+        repository.searchDataModelColumnsById(
+            id, query, limitParam, offsetParam, fieldsParam, include);
+    DataModelColumnList dataModelColumnList = new DataModelColumnList();
+    dataModelColumnList.setData(result.getData());
+    dataModelColumnList.setPaging(result.getPaging());
+    return dataModelColumnList;
+  }
+
+  @GET
+  @Path("/name/{fqn}/columns/search")
+  @Operation(
+      operationId = "searchDataModelColumnsByFQN",
+      summary = "Search data model columns with pagination by FQN",
+      description =
+          "Search data model columns by name, description, or data type with server-side pagination. This endpoint provides efficient search functionality for data models with large numbers of columns.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of matching data model columns",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataModelColumnList.class)))
+      })
+  public DataModelColumnList searchDataModelColumnsByFQN(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the data model",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Search query for column names, descriptions, or data types")
+          @QueryParam("q")
+          String query,
+      @Parameter(description = "Limit the number of columns returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          int offsetParam,
+      @Parameter(
+              description = "Fields requested in the returned columns",
+              schema = @Schema(type = "string", example = "tags"))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    ResultList<org.openmetadata.schema.type.Column> result =
+        repository.searchDataModelColumnsByFQN(
+            fqn, query, limitParam, offsetParam, fieldsParam, include);
+    DataModelColumnList dataModelColumnList = new DataModelColumnList();
+    dataModelColumnList.setData(result.getData());
+    dataModelColumnList.setPaging(result.getPaging());
+    return dataModelColumnList;
   }
 }

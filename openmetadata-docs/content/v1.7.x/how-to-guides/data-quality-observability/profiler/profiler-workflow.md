@@ -1,5 +1,5 @@
 ---
-title: Profiler Workflow
+title: Profiler Workflow | OpenMetadata Profiling Workflow
 slug: /how-to-guides/data-quality-observability/profiler/workflow
 ---
 
@@ -83,10 +83,7 @@ This Flag is useful in scenarios when you have different schemas with same name 
 **Compute Metrics**  
 Set the Compute Metrics toggle off to not perform any metric computation during the profiler ingestion workflow. Used in combination with Ingest Sample Data toggle on allows you to only ingest sample data.
 
-**Advanced Configuration**  
-
-**PII Inference Confidence LevelConfidence (Optional)**  
-If `Auto PII Tagging` is enable, this confidence level will determine the threshold to use for OpenMetadata's NLP model to consider a column as containing PII data.
+**Advanced Configuration**
 
 **Sample Data Rows Count**  
 Set the number of rows to ingest when Ingest Sample Data toggle is on. Defaults to 50.
@@ -123,9 +120,6 @@ Set the sample to be use by the profiler for the specific table.
 - `Row Count`: The table will be sampled based on a number of rows (i.e. `1,000`, `2,000`), etc.
 
 ⚠️ This option is currently not support for Druid. Sampling leverage `RANDOM` functions in most database (some have specific sampling functions) and Druid provides neither of these option. We recommend using the partitioning or sample query option if you need to limit the amount of data scanned.
-
-**Profile Sample Query**
-Use a query to sample data for the profiler. This will overwrite any profle sample set.
 
 **Enable Column Profile**
 This setting allows user to exclude or include specific columns and metrics from the profiler.
@@ -198,15 +192,6 @@ This is a sample config for the profiler:
 
 {% codeInfoContainer %}
 
-{% codeInfo srNumber=10 %}
-#### Source Configuration - Source Config
-
-You can find all the definitions and types for the  `sourceConfig` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
-
-**generateSampleData**: Option to turn on/off generating sample data.
-
-{% /codeInfo %}
-
 {% codeInfo srNumber=22 %}
 
 **computeMetrics**: Option to turn on/off computing profiler metrics. This flag is useful when you want to only ingest the sample data with the profiler workflow and not any other information.
@@ -225,19 +210,6 @@ You can find all the definitions and types for the  `sourceConfig` [here](https:
 **threadCount**: Number of threads to use during metric computations.
 
 {% /codeInfo %}
-
-{% codeInfo srNumber=13 %}
-
-**processPiiSensitive**: Optional configuration to automatically tag columns that might contain sensitive information.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=14 %}
-
-**confidence**: Set the Confidence value for which you want the column to be marked
-
-{% /codeInfo %}
-
 
 {% codeInfo srNumber=15 %}
 
@@ -305,9 +277,6 @@ source:
       type: Profiler
 ```
 
-```yaml {% srNumber=10 %}
-      generateSampleData: true
-```
 ```yaml {% srNumber=22 %}
       computeMetrics: true
 ```
@@ -316,12 +285,6 @@ source:
 ```
 ```yaml {% srNumber=12 %}
       # threadCount: 5
-```
-```yaml {% srNumber=13 %}
-      processPiiSensitive: false
-```
-```yaml {% srNumber=14 %}
-      # confidence: 80
 ```
 ```yaml {% srNumber=15 %}
       # timeoutSeconds: 43200
@@ -362,8 +325,7 @@ processor:
     #   - fullyQualifiedName: <table fqn>
     #     profileSample: <number between 0 and 99> # default 
 
-    #     profileSample: <number between 0 and 99> # default will be 100 if omitted
-    #     profileQuery: <query to use for sampling data for the profiler>
+    #     profileSample: <number between 0 and 99> # default will be 100 if omitted 
     #     columnConfig:
     #       excludeColumns:
     #         - <column name>

@@ -157,6 +157,7 @@ public final class Entity {
   public static final String SEARCH_SERVICE = "searchService";
 
   public static final String API_SERVICE = "apiService";
+  public static final String DRIVE_SERVICE = "driveService";
   //
   // Data asset entities
   //
@@ -184,6 +185,10 @@ public final class Entity {
   public static final String CONTAINER = "container";
   public static final String QUERY = "query";
   public static final String QUERY_COST_RECORD = "queryCostRecord";
+  public static final String DIRECTORY = "directory";
+  public static final String FILE = "file";
+  public static final String SPREADSHEET = "spreadsheet";
+  public static final String WORKSHEET = "worksheet";
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
@@ -225,6 +230,7 @@ public final class Entity {
   //
   public static final String DOMAIN = "domain";
   public static final String DATA_PRODUCT = "dataProduct";
+  public static final String DATA_CONTRACT = "dataContract";
 
   //
   // Other entities
@@ -276,6 +282,7 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DRIVE, DRIVE_SERVICE);
 
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE, DATABASE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE_SCHEMA, DATABASE_SERVICE);
@@ -293,6 +300,10 @@ public final class Entity {
     ENTITY_SERVICE_TYPE_MAP.put(API_ENDPOINT, API_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(CONTAINER, STORAGE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(SEARCH_INDEX, SEARCH_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(DIRECTORY, DRIVE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(FILE, DRIVE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(SPREADSHEET, DRIVE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(WORKSHEET, DRIVE_SERVICE);
 
     PARENT_ENTITY_TYPES.addAll(
         listOf(
@@ -306,13 +317,16 @@ public final class Entity {
             STORAGE_SERVICE,
             METADATA_SERVICE,
             SEARCH_SERVICE,
+            DRIVE_SERVICE,
             DATABASE,
             DATABASE_SCHEMA,
             CLASSIFICATION,
             GLOSSARY,
             DOMAIN,
             TEST_SUITE,
-            TEAM));
+            TEAM,
+            DIRECTORY,
+            SPREADSHEET));
   }
 
   private Entity() {}
@@ -379,6 +393,11 @@ public final class Entity {
     // Set up entity operations for permissions
     Class<?> clazz = getEntityClassFromType(entity);
     ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
+  }
+
+  public static void registerResourceFieldViewMapping(
+      String entityType, Map<String, MetadataOperation> fieldToViewOperations) {
+    ResourceRegistry.entityFieldToViewOperation(entityType, fieldToViewOperations);
   }
 
   public static void registerTimeSeriesResourcePermissions(String entity) {
@@ -575,7 +594,7 @@ public final class Entity {
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId) {
     EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.restoreEntity(updatedBy, entityType, entityId);
+    dao.restoreEntity(updatedBy, entityId);
   }
 
   public static <T> String getEntityTypeFromClass(Class<T> clz) {
@@ -664,7 +683,28 @@ public final class Entity {
             .acceptPackages(PACKAGES.toArray(new String[0]))
             .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
-      return classList.loadClasses();
+
+      List<Class<?>> unnamedRepositories = new ArrayList<>();
+      Map<String, Class<?>> namedRepositories = new HashMap<>();
+
+      for (Class<?> clz : classList.loadClasses()) {
+        Repository annotation = clz.getAnnotation(Repository.class);
+        String name = annotation.name();
+
+        if (name.isEmpty()) {
+          unnamedRepositories.add(clz);
+        } else {
+          Class<?> existing = namedRepositories.get(name);
+          if (existing == null
+              || annotation.priority() < existing.getAnnotation(Repository.class).priority()) {
+            namedRepositories.put(name, clz);
+          }
+        }
+      }
+
+      List<Class<?>> result = new ArrayList<>(unnamedRepositories);
+      result.addAll(namedRepositories.values());
+      return result;
     }
   }
 

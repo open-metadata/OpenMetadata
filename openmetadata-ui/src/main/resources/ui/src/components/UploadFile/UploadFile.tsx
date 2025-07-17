@@ -13,23 +13,25 @@
 import { Space, Typography, UploadProps } from 'antd';
 import Dragger from 'antd/lib/upload/Dragger';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
-import React, { FC, useCallback, useState } from 'react';
+import type { UploadRequestOption } from 'rc-upload/lib/interface';
+import { FC, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-drag-drop.svg';
 import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import { UploadFileProps } from './UploadFile.interface';
 
-export const UploadFile: FC<UploadFileProps> = ({
+const UploadFile: FC<UploadFileProps> = ({
   fileType,
   beforeUpload,
   onCSVUploaded,
 }) => {
   const [uploading, setUploading] = useState(false);
+  const { t } = useTranslation();
 
   const handleUpload: UploadProps['customRequest'] = useCallback(
-    (options) => {
+    (options: UploadRequestOption) => {
       setUploading(true);
       try {
         const reader = new FileReader();
@@ -77,3 +79,5 @@ export const UploadFile: FC<UploadFileProps> = ({
     </Dragger>
   );
 };
+
+export default UploadFile;

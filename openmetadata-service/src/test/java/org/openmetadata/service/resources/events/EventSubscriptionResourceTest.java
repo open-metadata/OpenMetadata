@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.NotificationFilterOperation;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
@@ -72,7 +73,6 @@ import org.openmetadata.service.resources.events.subscription.EventSubscriptionR
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -93,6 +93,7 @@ public class EventSubscriptionResourceTest
         EventSubscriptionResource.FIELDS);
     supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
     supportsFieldsQueryParam = false;
+    supportsEtag = false;
   }
 
   @Test
@@ -441,7 +442,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
@@ -1456,7 +1457,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
@@ -1643,7 +1644,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);

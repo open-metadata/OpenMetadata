@@ -1,5 +1,6 @@
 ---
-title: How to Follow a Data Asset
+title: How to Follow a Data Asset | Official Documentation
+description: Follow data assets to stay informed about updates, ownership changes, and activity within your areas of interest.
 slug: /how-to-guides/guide-for-data-users/follow-data-asset
 ---
 
@@ -20,7 +21,7 @@ alt="Select a Data Asset"
 caption="Select a Data Asset"
 /%}
 
-- **Star** the data asset to start following it.
+- Click the **Follow** button to start following it.
 
 {% image
 src="/images/v1.7/how-to-guides/user-guide-for-data-stewards/data5.png"

@@ -29,9 +29,9 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionResultS
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.apiservices.APIServiceResource;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class APIServiceResourceTest extends ServiceResourceTest<ApiService, CreateApiService> {
@@ -75,7 +75,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<ApiService, Crea
     assertResponse(
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[serviceType must not be null]");
+        "[query param serviceType must not be null]");
   }
 
   @Test

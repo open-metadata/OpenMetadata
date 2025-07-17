@@ -12,13 +12,15 @@
  */
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
-import { default as React, useMemo } from 'react';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
@@ -34,11 +36,14 @@ export const DomainExpertWidget = () => {
     onUpdate,
     isVersionView,
   } = useGenericContext<Domain>();
+  const { t } = useTranslation();
 
   const { editOwnerPermission, editAllPermission } = useMemo(
     () => ({
-      editOwnerPermission: permissions.EditAll || permissions.EditOwners,
-      editAllPermission: permissions.EditAll,
+      editOwnerPermission:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditOwners),
+      editAllPermission: permissions?.EditAll,
     }),
     [permissions]
   );
@@ -70,7 +75,7 @@ export const DomainExpertWidget = () => {
         data-testid="domain-expert-heading-name">
         {t('label.expert-plural')}
       </Typography.Text>
-      {editOwnerPermission && (
+      {!isVersionView && editOwnerPermission && (
         <UserSelectableList
           hasPermission
           popoverProps={{ placement: 'topLeft' }}

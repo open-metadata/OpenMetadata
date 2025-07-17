@@ -1,5 +1,6 @@
 ---
-title: Athena
+title: Athena | OpenMetadata Database Connector Configuration
+description: Connect Amazon Athena to OpenMetadata effortlessly. Complete setup guide, configuration steps, and best practices for database metadata ingestion.
 slug: /connectors/database/athena
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/athena
 name="Athena"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Auto-Classification", "Data Quality", "Tags", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Stored Procedures"]
 / %}
 

@@ -12,8 +12,8 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Space, Typography } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
+
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
@@ -21,16 +21,16 @@ import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.int
 
 const SuggestionsSlider = () => {
   const {
-    suggestions,
     loading,
+    suggestionPendingCount,
     fetchSuggestions,
-    suggestionLimit,
     selectedUserSuggestions,
     acceptRejectAllSuggestions,
     loadingAccept,
     loadingReject,
     onUpdateActiveUser,
   } = useSuggestionsContext();
+  const { t } = useTranslation();
 
   return (
     <div className="d-flex items-center gap-2 m-r-md">
@@ -38,7 +38,7 @@ const SuggestionsSlider = () => {
         {t('label.suggested-description-plural')}
       </Typography.Text>
       <AvatarCarousel />
-      {suggestions.length !== 0 && suggestions.length !== suggestionLimit && (
+      {suggestionPendingCount > 0 && (
         <Button
           className="suggestion-pending-btn"
           data-testid="more-suggestion-button"
@@ -46,7 +46,7 @@ const SuggestionsSlider = () => {
           type="primary"
           onClick={() => fetchSuggestions()}>
           {t('label.plus-count-more', {
-            count: suggestionLimit - 10, // 10 is the default limit, and only show count of pending suggestions
+            count: suggestionPendingCount,
           })}
         </Button>
       )}
@@ -56,6 +56,7 @@ const SuggestionsSlider = () => {
             ghost
             className="text-xs text-primary font-medium"
             data-testid="accept-all-suggestions"
+            disabled={loadingAccept}
             icon={<CheckOutlined />}
             loading={loadingAccept}
             type="primary"
@@ -66,6 +67,7 @@ const SuggestionsSlider = () => {
             ghost
             className="text-xs text-primary font-medium"
             data-testid="reject-all-suggestions"
+            disabled={loadingReject}
             icon={<CloseOutlined />}
             loading={loadingReject}
             type="primary"
