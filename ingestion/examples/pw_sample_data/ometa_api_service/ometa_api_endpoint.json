@@ -1,0 +1,266 @@
+{
+    "endpoints": [
+        {
+            "name": "listTables",
+            "displayName": "List tables",
+            "description": "Get a list of tables",
+            "endpointURL": "https://docs.open-metadata.org/api/v1/tables",
+            "apiCollection": "ometa_api_service.tables",
+            "requestMethod": "GET",
+            "responseSchema": {
+                "schemaType": "JSON",
+                "schemaFields": [
+                    {
+                        "name": "data",
+                        "dataType": "RECORD",
+                        "description": "list of tables",
+                        "children": [
+                            {
+                                "name": "id",
+                                "dataType": "STRING",
+                                "description": "ID of table"
+                            },
+                            {
+                                "name": "name",
+                                "dataType": "STRING",
+                                "description": "name of table"
+                            },
+                            {
+                                "name": "columns",
+                                "dataType": "RECORD",
+                                "description": "columns of table",
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "name": "errors",
+                        "dataType": "RECORD",
+                        "description": "list of errors",
+                        "children": [
+                            {
+                                "name": "entity",
+                                "dataType": "RECORD",
+                                "description": "entity object",
+                                "children": []
+                            },
+                            {
+                                "name": "message",
+                                "dataType": "STRING",
+                                "description": "error message"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "paging",
+                        "dataType": "RECORD",
+                        "description": "paging",
+                        "children": [
+                            {
+                                "name": "total",
+                                "dataType": "INT",
+                                "description": "total pages"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "name": "createTable",
+            "displayName": "Create a table",
+            "description": "Create a new table under an existing database",
+            "endpointURL": "https://docs.open-metadata.org/api/v1/tables",
+            "apiCollection": "ometa_api_service.tables",
+            "requestMethod": "POST",
+            "requestSchema": {
+                "schemaType": "JSON",
+                "schemaFields": [
+                    {
+                        "name": "databaseSchema",
+                        "dataType": "STRING",
+                        "description": "db schema of new table"
+                    },
+                    {
+                        "name": "name",
+                        "dataType": "STRING",
+                        "description": "name of table"
+                    },
+                    {
+                        "name": "columns",
+                        "dataType": "RECORD",
+                        "description": "list of columns",
+                        "children": [
+                            {
+                                "name": "name",
+                                "dataType": "STRING",
+                                "description": "name of column"
+                            },
+                            {
+                                "name": "datatype",
+                                "dataType": "STRING",
+                                "description": "datatype of column"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "responseSchema": {
+                "schemaType": "JSON",
+                "schemaFields": [
+                    {
+                        "name": "id",
+                        "dataType": "STRING",
+                        "description": "id of created table"
+                    },
+                    {
+                        "name": "name",
+                        "dataType": "STRING",
+                        "description": "name of created table"
+                    },
+                    {
+                        "name": "columns",
+                        "dataType": "RECORD",
+                        "description": "list of columns",
+                        "children": [
+                            {
+                                "name": "name",
+                                "dataType": "STRING",
+                                "description": "name of column"
+                            },
+                            {
+                                "name": "datatype",
+                                "dataType": "STRING",
+                                "description": "datatype of column"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "name": "deleteTable",
+            "apiCollection": "ometa_api_service.tables",
+            "displayName": "Delete table by ID",
+            "description": "Delete table by ID",
+            "endpointURL": "https://docs.open-metadata.org/api/v1/tables/{id}",
+            "requestMethod": "DELETE"
+        },
+        {
+            "name": "listUsers",
+            "displayName": "List users",
+            "description": "Get a list of users",
+            "endpointURL": "https://docs.open-metadata.org/api/v1/users",
+            "apiCollection": "ometa_api_service.users",
+            "requestMethod": "GET",
+            "responseSchema": {
+                "schemaType": "JSON",
+                "schemaFields": [
+                    {
+                        "name": "data",
+                        "dataType": "RECORD",
+                        "description": "list of users",
+                        "children": [
+                            {
+                                "name": "id",
+                                "dataType": "STRING",
+                                "description": "ID of user"
+                            },
+                            {
+                                "name": "name",
+                                "dataType": "STRING",
+                                "description": "name of user"
+                            },
+                            {
+                                "name": "email",
+                                "dataType": "STRING",
+                                "description": "email id of user"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "errors",
+                        "dataType": "RECORD",
+                        "description": "list of errors",
+                        "children": [
+                            {
+                                "name": "entity",
+                                "dataType": "RECORD",
+                                "description": "entity object",
+                                "children": []
+                            },
+                            {
+                                "name": "message",
+                                "dataType": "STRING",
+                                "description": "error message"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "paging",
+                        "dataType": "RECORD",
+                        "description": "paging",
+                        "children": [
+                            {
+                                "name": "total",
+                                "dataType": "INT",
+                                "description": "total pages"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "name": "createUser",
+            "displayName": "Create a user",
+            "description": "Create a new user",
+            "endpointURL": "https://docs.open-metadata.org/api/v1/users",
+            "apiCollection": "ometa_api_service.users",
+            "requestMethod": "POST",
+            "requestSchema": {
+                "schemaType": "JSON",
+                "schemaFields": [
+                    {
+                        "name": "email",
+                        "dataType": "STRING",
+                        "description": "email of new user"
+                    },
+                    {
+                        "name": "name",
+                        "dataType": "STRING",
+                        "description": "name of new user"
+                    }
+                ]
+            },
+            "responseSchema": {
+                "schemaType": "JSON",
+                "schemaFields": [
+                    {
+                        "name": "id",
+                        "dataType": "STRING",
+                        "description": "ID of user"
+                    },
+                    {
+                        "name": "name",
+                        "dataType": "STRING",
+                        "description": "name of user"
+                    },
+                    {
+                        "name": "email",
+                        "dataType": "STRING",
+                        "description": "email id of user"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "deleteUser",
+            "apiCollection": "ometa_api_service.users",
+            "displayName": "Delete user by ID",
+            "description": "Delete user by ID",
+            "endpointURL": "https://docs.open-metadata.org/api/v1/users/{id}",
+            "requestMethod": "DELETE"
+        }
+    ]
+}
