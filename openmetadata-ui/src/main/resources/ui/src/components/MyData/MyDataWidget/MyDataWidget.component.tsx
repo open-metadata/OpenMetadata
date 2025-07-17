@@ -24,7 +24,6 @@ import {
   PAGE_SIZE,
   ROUTES,
 } from '../../../constants/constants';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import {
   applySortToData,
   getSortField,
@@ -35,7 +34,6 @@ import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/tests/testCase';
-import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import {
@@ -48,11 +46,9 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import { getUsagePercentile } from '../../../utils/TableUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
@@ -120,42 +116,6 @@ const MyDataWidgetInternal = ({
       });
     }
 
-    // Add tier info
-    if (item.tier) {
-      extraInfo.push({
-        key: 'Tier',
-        value: (
-          <TagsV1
-            startWith={TAG_START_WITH.SOURCE_ICON}
-            tag={item.tier as TagLabel}
-            tagProps={{
-              'data-testid': 'Tier',
-            }}
-          />
-        ),
-        isEntityDetails: true,
-      });
-    }
-
-    // Add table type info
-    if ('tableType' in item) {
-      extraInfo.push({
-        key: 'Type',
-        value: item.tableType,
-        showLabel: true,
-      });
-    }
-
-    // Add usage summary info
-    if ('usageSummary' in item) {
-      extraInfo.push({
-        key: 'Usage',
-        value: getUsagePercentile(
-          item.usageSummary?.weeklyStats?.percentileRank || 0
-        ),
-      });
-    }
-
     return extraInfo;
   };
 
@@ -208,8 +168,8 @@ const MyDataWidgetInternal = ({
     fetchMyDataAssets();
   }, [fetchMyDataAssets]);
 
-  const getEntityIcon = (item: any) => {
-    if (item.serviceType) {
+  const getEntityIcon = (item: SourceType) => {
+    if ('serviceType' in item && item.serviceType) {
       return (
         <img
           alt={item.name}

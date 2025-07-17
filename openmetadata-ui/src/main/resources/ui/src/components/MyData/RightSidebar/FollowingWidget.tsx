@@ -20,7 +20,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-folder-data.svg';
 import { KNOWLEDGE_LIST_LENGTH, ROUTES } from '../../../constants/constants';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import {
   applySortToData,
   FOLLOWING_WIDGET_FILTER_OPTIONS,
@@ -31,7 +30,6 @@ import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import {
@@ -44,12 +42,10 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import { getUsagePercentile } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
@@ -143,43 +139,6 @@ function FollowingWidget({
             owners={(item.owners as EntityReference[]) ?? []}
             showLabel={false}
           />
-        ),
-      });
-    }
-
-    // Add tier info
-    if (item.tier) {
-      extraInfo.push({
-        key: 'Tier',
-        value: (
-          <TagsV1
-            startWith={TAG_START_WITH.SOURCE_ICON}
-            tag={item.tier as TagLabel}
-            tagProps={{
-              'data-testid': 'Tier',
-            }}
-          />
-        ),
-        isEntityDetails: true,
-      });
-    }
-
-    // Add table type info
-    if ('tableType' in item) {
-      extraInfo.push({
-        key: 'Type',
-        value: item.tableType,
-        showLabel: true,
-      });
-    }
-
-    // Add usage summary info
-    if ('usageSummary' in item) {
-      extraInfo.push({
-        key: 'Usage',
-        value: getUsagePercentile(
-          item.usageSummary?.weeklyStats?.percentileRank || 0,
-          true
         ),
       });
     }
