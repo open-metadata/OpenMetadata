@@ -1,5 +1,6 @@
 ---
-title: Upgrade OpenMetadata
+title: Upgrade OpenMetadata | Official Documentation
+description: Upgrade the platform version with step-by-step instructions on migration, compatibility, and new feature adoption.
 slug: /deployment/upgrade
 collate: false
 ---

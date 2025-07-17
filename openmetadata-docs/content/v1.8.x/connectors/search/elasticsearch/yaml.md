@@ -1,5 +1,6 @@
 ---
 title: Run the Elasticsearch Connector Externally
+description: Use YAML to configure Elasticsearch metadata ingestion and track index schemas, mappings, and lineage paths.
 slug: /connectors/search/elasticsearch/yaml
 ---
 

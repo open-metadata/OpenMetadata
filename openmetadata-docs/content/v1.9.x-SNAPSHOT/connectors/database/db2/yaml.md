@@ -1,5 +1,6 @@
 ---
 title: Run the DB2 Connector Externally
+description: Configure DB2 connector with YAML to ingest structured metadata from enterprise databases into your catalog securely.
 slug: /connectors/database/db2/yaml
 ---
 
