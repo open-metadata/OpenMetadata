@@ -27,8 +27,8 @@ Configure and schedule Airflow metadata workflow from the OpenMetadata UI:
     link="/deployment/ingestion/external/mwaa"
   / %}
 {% tile
-    title="GCS Composer"
-    description="Run the ingestion from GCS Composer."
+    title="GCP Composer "
+    description="Run the ingestion from GCP Composer ."
     link="/deployment/ingestion/external/gcs-composer"
   / %}
 {% /tilesContainer %}
