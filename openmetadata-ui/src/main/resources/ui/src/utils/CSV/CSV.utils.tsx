@@ -79,7 +79,7 @@ const statusRenderer = (value: Status) => {
   );
 };
 
-const renderColumnDataEditor = (
+export const renderColumnDataEditor = (
   column: string,
   recordData: {
     value: string;
