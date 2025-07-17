@@ -1,5 +1,6 @@
 ---
-title: Ingest Lineage from dbt
+title: Ingest Lineage from dbt | Official Documentation
+description: Ingest dbt lineage to build upstream and downstream traceability for models, columns, and data products.
 slug: /connectors/ingestion/workflows/dbt/ingest-dbt-lineage
 ---
 

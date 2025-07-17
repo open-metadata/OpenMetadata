@@ -23,6 +23,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -44,7 +45,10 @@ import {
   SelectOption,
 } from './AsyncSelectList.interface';
 
-const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
+const AsyncSelectList: FC<
+  AsyncSelectListProps &
+    SelectProps & { dropdownContainerRef?: React.RefObject<HTMLDivElement> }
+> = ({
   mode,
   onChange,
   fetchOptions,
@@ -55,6 +59,8 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   tagType,
   onCancel,
   isSubmitLoading,
+  newLook = false,
+  dropdownContainerRef,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -169,7 +175,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   };
 
   const dropdownRender = (menu: React.ReactElement) => (
-    <>
+    <div ref={dropdownContainerRef}>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
       {onCancel && (
@@ -192,7 +198,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
           </Button>
         </Space>
       )}
-    </>
+    </div>
   );
 
   const customTagRender = (data: CustomTagProps) => {
@@ -244,6 +250,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     return (
       <TagsV1
         isEditTags
+        newLook={newLook}
         size={props.size}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
@@ -289,7 +296,9 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   return (
     <Select
       showSearch
-      className="async-select-list"
+      className={classNames('async-select-list', {
+        'new-chip-style': newLook,
+      })}
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
       filterOption={false}

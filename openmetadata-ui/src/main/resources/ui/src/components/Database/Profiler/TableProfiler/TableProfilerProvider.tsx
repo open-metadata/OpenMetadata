@@ -49,6 +49,8 @@ import {
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import TestCaseFormV1 from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';
+import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal/ProfilerSettingsModal';
 import {
@@ -83,6 +85,8 @@ export const TableProfilerProvider = ({
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+  const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] = useState(false);
+  const [testLevel, setTestLevel] = useState<TestLevel>();
 
   const isTableDeleted = useMemo(() => table?.deleted, [table]);
 
@@ -170,6 +174,16 @@ export const TableProfilerProvider = ({
     setDateRangeObject(data);
   };
 
+  const handleOpenTestCaseDrawer = (type: TestLevel) => {
+    setIsTestCaseDrawerOpen(true);
+    setTestLevel(type);
+  };
+
+  const handleCloseTestCaseDrawer = () => {
+    setIsTestCaseDrawerOpen(false);
+    setTestLevel(undefined);
+  };
+
   const onTestCaseUpdate = useCallback(
     (testCase?: TestCase) => {
       if (isUndefined(testCase)) {
@@ -191,6 +205,12 @@ export const TableProfilerProvider = ({
   };
   const handleUpdateCustomMetrics = (customMetric: Table) => {
     setCustomMetric(customMetric);
+  };
+
+  const onTestCaseSubmit = (testCase: TestCase) => {
+    setAllTestCases((prevTestCases) => {
+      return [testCase, ...prevTestCases];
+    });
   };
 
   const fetchLatestProfilerData = async () => {
@@ -292,6 +312,8 @@ export const TableProfilerProvider = ({
       testCasePaging,
       table,
       testCaseSummary,
+      onTestCaseDrawerOpen: handleOpenTestCaseDrawer,
+      isTestCaseDrawerOpen,
     };
   }, [
     isTestsLoading,
@@ -307,6 +329,8 @@ export const TableProfilerProvider = ({
     testCasePaging,
     table,
     testCaseSummary,
+    isTestCaseDrawerOpen,
+    handleOpenTestCaseDrawer,
   ]);
 
   return (
@@ -318,6 +342,17 @@ export const TableProfilerProvider = ({
           tableId={table?.id ?? ''}
           visible={settingModalVisible}
           onVisibilityChange={handleSettingModal}
+        />
+      )}
+      {isTestCaseDrawerOpen && (
+        <TestCaseFormV1
+          drawerProps={{
+            open: isTestCaseDrawerOpen,
+          }}
+          table={table}
+          testLevel={testLevel}
+          onCancel={handleCloseTestCaseDrawer}
+          onFormSubmit={onTestCaseSubmit}
         />
       )}
     </TableProfilerContext.Provider>

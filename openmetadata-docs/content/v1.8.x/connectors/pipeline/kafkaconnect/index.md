@@ -1,5 +1,6 @@
 ---
 title: KafkaConnect | OpenMetadata Messaging Pipeline Connector
+description: Configure Kafka Connect for metadata ingestion from real-time event streams, schema updates, and topic usage.
 slug: /connectors/pipeline/kafkaconnect
 ---
 
