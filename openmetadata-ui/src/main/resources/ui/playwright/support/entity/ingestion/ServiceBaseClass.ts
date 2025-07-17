@@ -645,7 +645,9 @@ class ServiceBaseClass {
     if (this.serviceResponseData.fullyQualifiedName) {
       await executeWithRetry(async () => {
         await apiContext.delete(
-          `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+          `/api/v1/services/${getServiceCategoryFromService(
+            this.category
+          )}s/name/${encodeURIComponent(
             this.serviceResponseData.fullyQualifiedName
           )}?recursive=true&hardDelete=true`
         );

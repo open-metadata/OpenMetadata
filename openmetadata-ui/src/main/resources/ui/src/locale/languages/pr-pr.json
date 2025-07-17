@@ -1955,6 +1955,7 @@
     "hex-color-validation": "ورودی کد HEX معتبر نیست.",
     "hi-user-welcome-to": "سلام {{user}}، خوش آمدید به",
     "image-upload-error": "بارگذاری تصویر پشتیبانی نمی‌شود. لطفاً از نحو Markdown برای تصاویری که از طریق URL در دسترس هستند استفاده کنید.",
+    "import-data-in-progress": "در حال وارد کردن.",
     "import-entity-help": "با بارگذاری یک فایل CSV که حاوی چندین {{entity}} است، در زمان و تلاش خود صرفه‌جویی کنید.",
     "in-this-database": "در این پایگاه داده",
     "include-assets-message": "استخراج {{assets}} از منبع داده را فعال کنید.",

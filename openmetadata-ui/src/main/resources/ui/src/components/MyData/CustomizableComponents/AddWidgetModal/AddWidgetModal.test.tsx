@@ -13,7 +13,6 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
-import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { mockWidgetsData } from '../../../../mocks/AddWidgetModal.mock';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import AddWidgetModal from './AddWidgetModal';
@@ -166,19 +165,5 @@ describe('AddWidgetModal component', () => {
     });
 
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
-  });
-
-  it('AddWidgetModal should not show announcement widget', async () => {
-    (getAllKnowledgePanels as jest.Mock).mockImplementation(() =>
-      Promise.resolve({
-        data: [{ fullyQualifiedName: LandingPageWidgetKeys.ANNOUNCEMENTS }],
-      })
-    );
-
-    await act(async () => {
-      render(<AddWidgetModal {...mockProps} />);
-    });
-
-    expect(screen.queryByTestId('Announcements-widget-tab-label')).toBeNull();
   });
 });

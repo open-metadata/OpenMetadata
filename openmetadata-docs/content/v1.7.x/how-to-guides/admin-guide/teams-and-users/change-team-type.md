@@ -1,5 +1,6 @@
 ---
-title: How to Change the Team Type
+title: How to Change the Team Type | Official Documentation
+description: Learn how to change team types to modify access levels and permissions for improved role-based collaboration and enterprise access control.
 slug: /how-to-guides/admin-guide/teams-and-users/change-team-type
 ---
 

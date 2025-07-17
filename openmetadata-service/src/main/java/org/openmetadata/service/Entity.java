@@ -395,6 +395,11 @@ public final class Entity {
     ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
   }
 
+  public static void registerResourceFieldViewMapping(
+      String entityType, Map<String, MetadataOperation> fieldToViewOperations) {
+    ResourceRegistry.entityFieldToViewOperation(entityType, fieldToViewOperations);
+  }
+
   public static void registerTimeSeriesResourcePermissions(String entity) {
     // Set up entity operations for permissions
     Class<?> clazz = getEntityTimeSeriesClassFromType(entity);
@@ -589,7 +594,7 @@ public final class Entity {
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId) {
     EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.restoreEntity(updatedBy, entityType, entityId);
+    dao.restoreEntity(updatedBy, entityId);
   }
 
   public static <T> String getEntityTypeFromClass(Class<T> clz) {
