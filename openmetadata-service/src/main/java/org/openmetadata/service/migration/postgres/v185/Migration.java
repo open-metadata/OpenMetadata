@@ -16,5 +16,7 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     MigrationUtil migrationUtil = new MigrationUtil(collectionDAO);
     migrationUtil.createTestCaseToTestCaseResolutionRelation();
+    migrationUtil.recreateTaskThreadsRelation();
+    migrationUtil.recreateOtherThreadRelation();
   }
 }
