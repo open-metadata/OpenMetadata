@@ -66,7 +66,7 @@ site_menu:
   - category: Deployment / Ingestion / External / MWAA
     url: /deployment/ingestion/external/mwaa
   - category: Deployment / Ingestion / External / GCP Composer 
-    url: /deployment/ingestion/external/gcs-composer
+    url: /deployment/ingestion/external/gcp-composer
   - category: Deployment / Ingestion / External / GitHub Actions
     url: /deployment/ingestion/external/github-actions
   - category: Deployment / Ingestion / External / Credentials
@@ -648,7 +648,7 @@ site_menu:
   - category: Connectors / Pipeline / Airflow / MWAA
     url: /connectors/pipeline/airflow/mwaa
   - category: Connectors / Pipeline / Airflow / GCP Composer 
-    url: /connectors/pipeline/airflow/gcs-composer
+    url: /connectors/pipeline/airflow/gcp-composer
   - category: Connectors / Pipeline / Dagster
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
