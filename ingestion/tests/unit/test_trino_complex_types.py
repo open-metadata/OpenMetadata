@@ -59,7 +59,7 @@ NO_DATA_LENGTH_TEST_CASES = [
 ]
 
 
-class SouceConnectionTest(TestCase):
+class SourceConnectionTest(TestCase):
     def test_array_datatype(self):
         for i in range(len(RAW_ARRAY_DATA_TYPES)):
             parsed_type = parse_array_data_type(RAW_ARRAY_DATA_TYPES[i])
