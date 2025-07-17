@@ -14,7 +14,7 @@ site_menu:
     url: /getting-started/day-1/hybrid-saas/airflow
   - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
     url: /getting-started/day-1/hybrid-saas/mwaa
-  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
+  - category: Getting Started / Day 1 / Hybrid SaaS / GCP Composer 
     url: /getting-started/day-1/hybrid-saas/gcs-composer
   - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
     url: /getting-started/day-1/hybrid-saas/github-actions
@@ -461,7 +461,7 @@ site_menu:
     url: /connectors/pipeline/airflow/configuring-lineage
   - category: Connectors / Pipeline / Airflow / MWAA
     url: /connectors/pipeline/airflow/mwaa
-  - category: Connectors / Pipeline / Airflow / GCS Composer
+  - category: Connectors / Pipeline / Airflow / GCP Composer 
     url: /connectors/pipeline/airflow/gcs-composer
   - category: Connectors / Pipeline / Azure Data Factory
     url: /connectors/pipeline/datafactory
