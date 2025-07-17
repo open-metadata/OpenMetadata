@@ -140,7 +140,7 @@ test.describe('Bulk Import Export', () => {
       const downloadPromise = page.waitForEvent('download');
 
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', dbService.entity.name);
       await page.click('#submit-button');
       const download = await downloadPromise;
@@ -152,9 +152,9 @@ test.describe('Bulk Import Export', () => {
     await test.step(
       'should import and edit with two additional database',
       async () => {
-        await dbService.visitEntityPageWithCustomSearchBox(page);
+        await dbService.visitEntityPage(page);
         await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = page.getByTestId('upload-file-widget');
         await fileInput?.setInputFiles([
           'downloads/' + dbService.entity.name + '.csv',
@@ -410,7 +410,7 @@ test.describe('Bulk Import Export', () => {
       const downloadPromise = page.waitForEvent('download');
 
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', dbEntity.entity.name);
       await page.click('#submit-button');
 
@@ -423,9 +423,9 @@ test.describe('Bulk Import Export', () => {
     await test.step(
       'should import and edit with two additional database schema',
       async () => {
-        await dbEntity.visitEntityPageWithCustomSearchBox(page);
+        await dbEntity.visitEntityPage(page);
         await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
           'downloads/' + dbEntity.entity.name + '.csv',
@@ -625,7 +625,7 @@ test.describe('Bulk Import Export', () => {
 
       const downloadPromise = page.waitForEvent('download');
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', dbSchemaEntity.entity.name);
       await page.click('#submit-button');
 
@@ -638,10 +638,10 @@ test.describe('Bulk Import Export', () => {
     await test.step(
       'should import and edit with two additional table',
       async () => {
-        await dbSchemaEntity.visitEntityPageWithCustomSearchBox(page);
+        await dbSchemaEntity.visitEntityPage(page);
 
         await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
           'downloads/' + dbSchemaEntity.entity.name + '.csv',
@@ -809,7 +809,7 @@ test.describe('Bulk Import Export', () => {
       const downloadPromise = page.waitForEvent('download');
 
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', tableEntity.entity.name);
       await page.click('#submit-button');
 
@@ -822,9 +822,9 @@ test.describe('Bulk Import Export', () => {
     await test.step(
       'should import and edit with two additional columns',
       async () => {
-        await tableEntity.visitEntityPageWithCustomSearchBox(page);
+        await tableEntity.visitEntityPage(page);
         await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
           'downloads/' + tableEntity.entity.name + '.csv',
