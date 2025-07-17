@@ -454,13 +454,13 @@ export const convertEntityExtensionToCustomPropertyString = (
         ) &&
         hasSeparator
       ) {
-        convertedString += `"${`${key}:${stringValue}`}"${endValue}`;
+        convertedString += `"${key}:${stringValue}"${endValue}`;
       } else if (
         // Check if the property type is table and add quotes around the value
         customPropertiesMapByName[key]?.propertyType?.name ===
         TABLE_TYPE_CUSTOM_PROPERTY
       ) {
-        convertedString += `"${`${key}:${stringValue}`}"${endValue}`;
+        convertedString += `"${key}:${stringValue}"${endValue}`;
       } else {
         convertedString += `${key}:${stringValue}${endValue}`;
       }
