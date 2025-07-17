@@ -16,6 +16,7 @@ supporting sqlalchemy abstraction layer
 """
 
 import concurrent.futures
+import gc
 import math
 import threading
 import time
@@ -461,6 +462,20 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     logger.error(error)
                     self.status.failed_profiler(error, traceback.format_exc())
                     break
+                finally:
+                    # CRITICAL: Always cleanup session
+                    if session:
+                        try:
+                            session.close()
+                        except:
+                            pass
+
+                    # Cleanup runner dataset if needed
+                    if runner and hasattr(runner, "dataset"):
+                        del runner.dataset
+
+                    # Force garbage collection
+                    gc.collect()
 
         # If we've exhausted all retries without success, return a tuple of None values
         return None, None, None

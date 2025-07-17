@@ -147,17 +147,17 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """
         # only sample the column if we are computing a column metric to limit the amount of data scaned
         selectable = self.set_tablesample(self.raw_dataset.__table__)
-        client = self.get_client()
 
-        entity = selectable if column is None else selectable.c.get(column.key)
-        if label is not None:
-            query = client.query(entity, label)
-        else:
-            query = client.query(entity)
+        with self.get_client_context() as client:
+            entity = selectable if column is None else selectable.c.get(column.key)
+            if label is not None:
+                query = client.query(entity, label)
+            else:
+                query = client.query(entity)
 
-        if self.partition_details:
-            query = self.get_partitioned_query(query)
-        return query
+            if self.partition_details:
+                query = self.get_partitioned_query(query)
+            return query
 
     def get_sampler_table_name(self) -> str:
         """Get the base name of the SQA table for sampling.
@@ -172,34 +172,34 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
-        client = self.get_client()
-        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
-            rnd = self._base_sample_query(
-                column,
-                (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
-            ).cte(f"{self.get_sampler_table_name()}_rnd")
-            session_query = client.query(rnd)
-            return session_query.where(
-                rnd.c.random <= self.sample_config.profileSample
-            ).cte(f"{self.get_sampler_table_name()}_sample")
+        with self.get_client_context() as client:
+            if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
+                rnd = self._base_sample_query(
+                    column,
+                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
+                ).cte(f"{self.get_sampler_table_name()}_rnd")
+                session_query = client.query(rnd)
+                return session_query.where(
+                    rnd.c.random <= self.sample_config.profileSample
+                ).cte(f"{self.get_sampler_table_name()}_sample")
 
-        table_query = client.query(self.raw_dataset)
-        if self.partition_details:
-            table_query = self.get_partitioned_query(table_query)
-        session_query = self._base_sample_query(
-            column,
-            (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
-            if self.sample_config.randomizedSample
-            else None,
-        )
-        query = (
-            session_query.order_by(RANDOM_LABEL)
-            if self.sample_config.randomizedSample
-            else session_query
-        )
-        return query.limit(self.sample_config.profileSample).cte(
-            f"{self.get_sampler_table_name()}_rnd"
-        )
+            table_query = client.query(self.raw_dataset)
+            if self.partition_details:
+                table_query = self.get_partitioned_query(table_query)
+            session_query = self._base_sample_query(
+                column,
+                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
+                if self.sample_config.randomizedSample
+                else None,
+            )
+            query = (
+                session_query.order_by(RANDOM_LABEL)
+                if self.sample_config.randomizedSample
+                else session_query
+            )
+            return query.limit(self.sample_config.profileSample).cte(
+                f"{self.get_sampler_table_name()}_rnd"
+            )
 
     def get_dataset(self, column=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
         """
@@ -316,11 +316,11 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         stmt = text(f"{self.sample_query}")
         stmt = stmt.columns(*list(inspect(self.raw_dataset).c))
-        return (
-            self.get_client()
-            .query(stmt.subquery())
-            .cte(f"{self.get_sampler_table_name()}_user_sampled")
-        )
+
+        with self.get_client_context() as client:
+            return client.query(stmt.subquery()).cte(
+                f"{self.get_sampler_table_name()}_user_sampled"
+            )
 
     def _partitioned_table(self) -> Query:
         """Return the Query object for partitioned tables"""
@@ -337,7 +337,9 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         )
         if query is not None:
             return query.filter(partition_filter)
-        return self.get_client().query(self.raw_dataset).filter(partition_filter)
+
+        with self.get_client_context() as client:
+            return client.query(self.raw_dataset).filter(partition_filter)
 
     def get_columns(self):
         """get columns from entity"""
@@ -345,6 +347,26 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def close(self):
         """Close the connection"""
-        for session in self._active_sessions:
-            session.close()
-        self.connection.pool.dispose()
+        # Create a copy of the set to avoid modification during iteration
+        sessions_to_close = list(self._active_sessions)
+        for session in sessions_to_close:
+            try:
+                session.close()
+                self._active_sessions.discard(session)
+            except Exception as e:
+                logger.warning(f"Error closing session: {e}")
+                # Remove from tracking even if close fails
+                self._active_sessions.discard(session)
+
+        try:
+            self.connection.pool.dispose()
+        except Exception as e:
+            logger.warning(f"Error disposing connection pool: {e}")
+
+    def __del__(self):
+        """Destructor to ensure cleanup when object is garbage collected"""
+        try:
+            self.close()
+        except Exception:
+            # Ignore errors during cleanup in destructor
+            pass

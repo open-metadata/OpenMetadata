@@ -91,5 +91,6 @@ class SnowflakeSampler(SQASampler):
         rnd = self._base_sample_query(column).cte(
             f"{self.get_sampler_table_name()}_rnd"
         )
-        query = self.get_client().query(rnd)
+        with self.get_client_context() as client:
+            query = client.query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")
