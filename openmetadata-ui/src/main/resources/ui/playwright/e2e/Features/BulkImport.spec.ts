@@ -867,12 +867,14 @@ test.describe('Bulk Import Export', () => {
         await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
-          passed: '9',
-          processed: '9',
+          passed: '11',
+          processed: '11',
           failed: '0',
         });
 
         const rowStatus = [
+          'Entity updated',
+          'Entity updated',
           'Entity updated',
           'Entity updated',
           'Entity updated',

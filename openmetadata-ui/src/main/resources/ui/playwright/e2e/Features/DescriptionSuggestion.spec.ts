@@ -88,7 +88,7 @@ test.describe('Description Suggestions Table Entity', () => {
       // All Column Suggestions Card should be visible
       await expect(
         page.getByTestId('suggested-SuggestDescription-card')
-      ).toHaveCount(6);
+      ).toHaveCount(8);
 
       // Close the suggestions
       await page.getByTestId('close-suggestion').click();
@@ -116,11 +116,54 @@ test.describe('Description Suggestions Table Entity', () => {
 
       await singleResolveResponse;
 
-      await expect(page.locator('.ant-badge [title="5"]')).toBeVisible();
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(page.locator('.ant-badge [title="7"]')).toBeVisible();
 
       await expect(
         page.locator(
           `[data-row-key*=${table.columnsName[0]}] [data-testid="description"]`
+        )
+      ).toContainText('this is suggested data description');
+    });
+
+    await test.step('Accept Nested Suggestion', async () => {
+      const allAvatarSuggestion = page
+        .getByTestId('asset-description-container')
+        .getByTestId('profile-avatar');
+
+      // Click the first avatar
+      await allAvatarSuggestion.nth(0).click();
+
+      const singleResolveResponse = page.waitForResponse(
+        '/api/v1/suggestions/*/accept'
+      );
+
+      await page
+        .locator(
+          `[data-row-key*=${table.columnsName[5]}] [data-testid="accept-suggestion"]`
+        )
+        .click();
+
+      await singleResolveResponse;
+
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(page.locator('.ant-badge .ant-badge-count')).toContainText(
+        '6'
+      );
+
+      await expect(
+        page.locator(
+          `[data-row-key*=${table.columnsName[5]}] [data-testid="description"]`
         )
       ).toContainText('this is suggested data description');
     });
@@ -145,7 +188,7 @@ test.describe('Description Suggestions Table Entity', () => {
 
       await singleResolveResponse;
 
-      await expect(page.locator('.ant-badge [title="4"]')).toBeVisible();
+      await expect(page.locator('.ant-badge [title="5"]')).toBeVisible();
 
       await expect(
         page.locator(
