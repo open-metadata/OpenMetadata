@@ -173,7 +173,7 @@ public class MigrationUtil {
           }
         }
 
-        LOG.info("Processed {} task threads so far", processedCount);
+        LOG.info("Processed {} threads so far", processedCount);
 
         offset += taskThreads.size();
 
