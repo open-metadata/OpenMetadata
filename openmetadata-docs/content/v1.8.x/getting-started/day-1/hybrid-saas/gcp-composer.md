@@ -1,12 +1,12 @@
 ---
-title: Run the ingestion from GCS Composer
-slug: /getting-started/day-1/hybrid-saas/gcs-composer
+title: Run the ingestion from GCP Composer 
+slug: /getting-started/day-1/hybrid-saas/gcp-composer
 collate: true
 ---
 
 {% partial file="/v1.8/deployment/external-ingestion.md" /%}
 
-# Run the ingestion from GCS Composer
+# Run the ingestion from GCP Composer 
 
 ## Requirements
 
@@ -18,7 +18,7 @@ It also requires the ingestion package to be at least `openmetadata-ingestion==1
 
 ## Using the Python Operator
 
-The most comfortable way to run the metadata workflows from GCS Composer is directly via a `PythonOperator`. Note that
+The most comfortable way to run the metadata workflows from GCP Composer  is directly via a `PythonOperator`. Note that
 it will require you to install the packages and plugins directly on the host.
 
 ### Install the Requirements
@@ -97,7 +97,7 @@ with DAG(
 
 ## Using the Kubernetes Pod Operator
 
-In this second approach we won't need to install absolutely anything to the GCS Composer environment. Instead,
+In this second approach we won't need to install absolutely anything to the GCP Composer  environment. Instead,
 we will rely on the `KubernetesPodOperator` to use the underlying k8s cluster of Composer.
 
 Then, the code won't directly run using the hosts' environment, but rather inside a container that we created
