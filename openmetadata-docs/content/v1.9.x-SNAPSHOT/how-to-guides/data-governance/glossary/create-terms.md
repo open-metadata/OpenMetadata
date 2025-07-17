@@ -1,5 +1,6 @@
 ---
-title: How to Create Glossary Terms
+title: How to Create Glossary Terms | Official Documentation
+description: Learn to create terms within glossary hierarchies and assign owners, reviewers, and asset relationships.
 slug: /how-to-guides/data-governance/glossary/create-terms
 ---
 

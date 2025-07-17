@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import url('../../../styles/components/om-rdg.less');
+
 .reserve-right-sidebar {
   .import-footer {
     // Right side padding 20 + 64 width of sidebar
@@ -20,11 +23,4 @@
 .react-grid-select-dropdown {
   width: 100%;
   min-width: 12rem;
-}
-
-// Custom styles for ReactDataGrid to avoid the issue of the row height
-.InovuaReactDataGrid__row,
-.InovuaReactDataGrid__cell {
-  min-height: 40px !important;
-  height: auto !important;
 }

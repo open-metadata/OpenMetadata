@@ -1,5 +1,6 @@
 ---
 title: How to Bulk Import a Glossary
+description: Import glossary terms in bulk using templates to streamline setup, migration, and cross-system integration.
 slug: /how-to-guides/data-governance/glossary/import
 ---
 
