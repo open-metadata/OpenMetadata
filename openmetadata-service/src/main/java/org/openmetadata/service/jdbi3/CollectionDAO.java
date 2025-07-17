@@ -1841,6 +1841,18 @@ public interface CollectionDAO {
         @Bind("username") String username, @Define("condition") String condition);
 
     @SqlQuery(
+        "SELECT json FROM thread_entity where type = 'Task' LIMIT :limit OFFSET :paginationOffset")
+    List<String> listTaskThreadWithOffset(
+        @Bind("limit") int limit, @Bind("paginationOffset") int paginationOffset);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity where type != 'Task' AND createdAt > :cutoffMillis ORDER BY createdAt LIMIT :limit OFFSET :paginationOffset")
+    List<String> listOtherConversationThreadWithOffset(
+        @Bind("cutoffMillis") long cutoffMillis,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") int paginationOffset);
+
+    @SqlQuery(
         "SELECT json FROM thread_entity <condition> AND "
             // Entity for which the thread is about is owned by the user or his teams
             + "(entityId in (SELECT toId FROM entity_relationship WHERE "
@@ -6025,6 +6037,13 @@ public interface CollectionDAO {
             "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE stateId = :stateId ORDER BY timestamp DESC")
     List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM test_case_resolution_status_time_series "
+                + "WHERE entityFQNHash = :entityFQNHash ORDER BY timestamp DESC")
+    List<String> listTestCaseResolutionForEntityFQNHash(
+        @BindFQN("entityFQNHash") String entityFqnHas);
 
     @SqlQuery(
         value =

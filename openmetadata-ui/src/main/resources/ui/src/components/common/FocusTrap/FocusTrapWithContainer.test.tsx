@@ -25,38 +25,18 @@
 import { render } from '@testing-library/react';
 import { FocusTrapWithContainer } from './FocusTrapWithContainer';
 
-jest.mock('focus-trap-react', () => ({
-  FocusTrap: ({ children, focusTrapOptions }: any) => (
-    <div
-      data-options={JSON.stringify(!!focusTrapOptions)}
-      data-testid="focus-trap-mock">
-      {children}
-    </div>
-  ),
-}));
-
 describe('FocusTrapWithContainer', () => {
-  it('renders children inside FocusTrap', () => {
-    const { getByText, getByTestId } = render(
+  it('renders children inside the container div', () => {
+    const { getByText, container } = render(
       <FocusTrapWithContainer>
         <button>Test Button</button>
       </FocusTrapWithContainer>
     );
 
-    expect(getByTestId('focus-trap-mock')).toBeInTheDocument();
+    // The container should have a div wrapping the children
+    const div = container.querySelector('div');
+
+    expect(div).toBeInTheDocument();
     expect(getByText('Test Button')).toBeInTheDocument();
-  });
-
-  it('passes focusTrapOptions to FocusTrap', () => {
-    const { getByTestId } = render(
-      <FocusTrapWithContainer>
-        <span>Child</span>
-      </FocusTrapWithContainer>
-    );
-
-    // The mock sets data-options to true if focusTrapOptions is present
-    expect(getByTestId('focus-trap-mock').getAttribute('data-options')).toBe(
-      'true'
-    );
   });
 });

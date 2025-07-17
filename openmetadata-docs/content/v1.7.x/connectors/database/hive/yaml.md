@@ -1,5 +1,6 @@
 ---
 title: Run the Hive Connector Externally
+description: Use YAML to ingest metadata from Hive including tables, partitions, and schema structure for governance and discovery.
 slug: /connectors/database/hive/yaml
 ---
 
