@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Button, Card, Col, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
@@ -20,7 +21,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';

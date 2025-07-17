@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -21,7 +22,6 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import Reactions from '../../Reactions/Reactions';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
@@ -90,6 +90,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
       ) : (
         <RichTextEditorPreviewerV1
           className="activity-feed-card-text"
+          i18n={t}
           markdown={getFrontEndFormat(postMessage)}
         />
       ),
@@ -120,6 +121,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
             </Typography.Text>
             <RichTextEditorPreviewerV1
               className="activity-feed-card-text"
+              i18n={t}
               markdown={announcementDetails.description || ''}
             />
           </Space>

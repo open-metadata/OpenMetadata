@@ -13,6 +13,7 @@
 
 import { EllipsisOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import {
   Button,
   Card,
@@ -38,7 +39,6 @@ import DescriptionV1 from '../../../components/common/EntityDescription/Descript
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';

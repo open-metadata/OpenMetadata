@@ -12,6 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
@@ -21,7 +22,6 @@ import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
-import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   ResourceEntity,

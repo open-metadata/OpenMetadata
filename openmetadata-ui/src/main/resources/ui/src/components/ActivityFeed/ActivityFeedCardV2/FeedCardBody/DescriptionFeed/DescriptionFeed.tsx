@@ -13,16 +13,19 @@
 
 import { Col, Row } from 'antd';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { EntityField } from '../../../../../constants/Feeds.constants';
 import {
   getFeedChangeFieldLabel,
   getFieldOperationIcon,
   getFrontEndFormat,
 } from '../../../../../utils/FeedUtils';
-import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionFeedProps } from './DescriptionFeed.interface';
 
 function DescriptionFeed({ feed }: Readonly<DescriptionFeedProps>) {
+  const { t } = useTranslation();
   const { message, fieldOperation } = useMemo(() => {
     return {
       message: (feed.feedInfo?.entitySpecificInfo?.diffMessage ?? '')
@@ -47,6 +50,7 @@ function DescriptionFeed({ feed }: Readonly<DescriptionFeedProps>) {
       <Col>
         <RichTextEditorPreviewerV1
           className="text-wrap"
+          i18n={t}
           markdown={getFrontEndFormat(message)}
         />
       </Col>

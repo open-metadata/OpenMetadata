@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { isEmpty, isNil } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { FunctionComponent } from 'react';
@@ -18,7 +19,6 @@ import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTagValue } from '../../../utils/CommonUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 
 type Props = {

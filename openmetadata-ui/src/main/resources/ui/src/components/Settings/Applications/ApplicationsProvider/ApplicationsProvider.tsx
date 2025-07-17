@@ -27,6 +27,7 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import axiosClient from '../../../../rest';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
+import { getWidgets } from '../../../../utils/ApplicationUtils';
 import Loader from '../../../common/Loader/Loader';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import { ApplicationsContextType } from './ApplicationsProvider.interface';
@@ -74,7 +75,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       const PluginModule = await applicationsClassBase.getPlugin(appName);
 
       // Initialize and activate the plugin with axiosClient
-      const plugin = new PluginModule.default(axiosClient);
+      const plugin = new PluginModule.default(axiosClient, getWidgets());
       pluginStore.install(plugin);
       if (plugin.routes) {
         setApplicationRoutes([...applicationRoutes, ...plugin.routes]);

@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getTextDiffCustomProperty } from '../../../../../utils/EntityVersionUtils';
-import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { CustomPropertyFeedProps } from './CustomPropertyFeed.interface';
 
 function CustomPropertyFeed({ feed }: Readonly<CustomPropertyFeedProps>) {
+  const { t } = useTranslation();
   const message = useMemo(
     () =>
       getTextDiffCustomProperty(
@@ -30,6 +32,7 @@ function CustomPropertyFeed({ feed }: Readonly<CustomPropertyFeedProps>) {
   return (
     <RichTextEditorPreviewerV1
       className="text-wrap text-grey-muted"
+      i18n={t}
       markdown={message}
     />
   );

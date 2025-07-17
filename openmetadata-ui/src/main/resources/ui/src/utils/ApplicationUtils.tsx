@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { upperFirst } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { EntityStatsData } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
+import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import {
   Status,
   StepStats,
@@ -80,4 +82,8 @@ export const getEntityStatsData = (data: {
   return result.sort((a: EntityStatsData, b: EntityStatsData) =>
     a.name.localeCompare(b.name)
   );
+};
+
+export const getWidgets = () => {
+  return [RichTextEditorPreviewerV1, TagsViewer];
 };

@@ -39,6 +39,7 @@
     "generate:app-docs": "node generateApplicationDocs.js"
   },
   "dependencies": {
+    "@openmetadata/common-ui": "file:../../../../../openmetadata-common-ui/src/main/resources/ui/dist",
     "@analytics/session-utils": "^0.1.17",
     "@ant-design/icons": "^4.8.3",
     "@apidevtools/json-schema-ref-parser": "^9.0.9",

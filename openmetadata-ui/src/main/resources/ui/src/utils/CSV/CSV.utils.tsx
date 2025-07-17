@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { TypeColumn } from '@inovua/reactdatagrid-community/types';
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import {
   compact,
   get,
@@ -23,7 +24,6 @@ import { parse } from 'papaparse';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
   ExtensionDataProps,
   ExtensionDataTypes,

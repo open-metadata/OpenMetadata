@@ -12,6 +12,7 @@
  */
 
 import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -20,7 +21,6 @@ import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';

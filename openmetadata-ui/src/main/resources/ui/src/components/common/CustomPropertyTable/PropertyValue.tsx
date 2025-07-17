@@ -12,6 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import {
   Button,
   Card,
@@ -70,7 +71,6 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import DatePicker from '../DatePicker/DatePicker';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import {
   PropertyValueProps,
   PropertyValueType,

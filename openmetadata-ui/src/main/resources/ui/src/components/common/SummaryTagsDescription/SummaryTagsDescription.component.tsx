@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Col, Row, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
-import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 
 export interface EntityWithDescription {
   description?: string;

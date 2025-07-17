@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -29,7 +30,6 @@ import {
 import { getUserPath } from '../../../utils/RouterUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Carousel } from 'antd';
 import { uniqueId } from 'lodash';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FeaturesCarouselProps } from './FeaturesCarousel.interface';
 
 const FeaturesCarousel = ({ data }: FeaturesCarouselProps) => {

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import classNames from 'classnames';
 import { Change } from 'diff';
 import { uniqueId } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import RichTextEditorPreviewerV1 from '../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import './diff-view.less';
 
 const DiffView = ({

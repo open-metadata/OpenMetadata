@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Col, Row, Space, Steps, Typography } from 'antd';
 import { isEmpty, isUndefined, last, toLower } from 'lodash';
 import { ReactNode, useMemo } from 'react';
@@ -22,7 +23,6 @@ import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import './task-tab-incident-manager-header.style.less';
 

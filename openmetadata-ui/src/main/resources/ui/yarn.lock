@@ -2968,6 +2968,9 @@
     "@babel/runtime" "^7.11.2"
     compare-versions "^4.1.2"
 
+"@openmetadata/common-ui@file:../../../../../openmetadata-common-ui/src/main/resources/ui/dist":
+  version "0.0.0"
+
 "@peculiar/asn1-schema@^2.3.6":
   version "2.3.8"
   resolved "https://registry.npmjs.org/@peculiar/asn1-schema/-/asn1-schema-2.3.8.tgz"

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
@@ -49,7 +50,6 @@ import {
   updateFieldTags,
 } from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';

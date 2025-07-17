@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import classNames from 'classnames';
 import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
 import { PropertyValue } from '../../components/common/CustomPropertyTable/PropertyValue';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagButton from '../../components/common/TagButton/TagButton.component';
 import ContainerChildren from '../../components/Container/ContainerChildren/ContainerChildren';
 import { ContainerWidget } from '../../components/Container/ContainerWidget/ContainerWidget';

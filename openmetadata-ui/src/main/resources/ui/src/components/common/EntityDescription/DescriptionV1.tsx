@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
@@ -37,7 +38,6 @@ import {
   EditIconButton,
   RequestIconButton,
 } from '../IconButtons/EditIconButton';
-import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './description-v1.less';
 import { DescriptionProps } from './Description.interface';
 import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
@@ -210,6 +210,7 @@ const DescriptionV1 = ({
         <RichTextEditorPreviewerV1
           className={reduceDescription ? 'max-two-lines' : ''}
           enableSeeMoreVariant={!removeBlur}
+          i18n={t}
           isDescriptionExpanded={isDescriptionExpanded}
           markdown={description}
         />
