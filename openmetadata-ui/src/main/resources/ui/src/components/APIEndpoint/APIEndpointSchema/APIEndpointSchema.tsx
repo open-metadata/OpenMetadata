@@ -32,10 +32,12 @@ import {
   Field,
   TagSource,
 } from '../../../generated/entity/data/apiEndpoint';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -308,9 +310,10 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             }}
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
-            hasEditPermission={
-              permissions.EditDescription || permissions.EditAll
-            }
+            hasEditPermission={getPrioritizedEditPermission(
+              permissions,
+              Operation.EditDescription
+            )}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             onClick={() => setEditFieldDescription(record)}
@@ -328,7 +331,10 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={permissions.EditTags || permissions.EditAll}
+            hasTagEditAccess={getPrioritizedEditPermission(
+              permissions,
+              Operation.EditTags
+            )}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}
@@ -351,9 +357,10 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={
-              permissions.EditGlossaryTerms || permissions.EditAll
-            }
+            hasTagEditAccess={getPrioritizedEditPermission(
+              permissions,
+              Operation.EditGlossaryTerms
+            )}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}

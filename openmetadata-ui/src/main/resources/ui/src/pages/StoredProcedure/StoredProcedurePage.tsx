@@ -41,6 +41,7 @@ import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../generated/entity/data/storedProcedure';
+import { Operation } from '../../generated/entity/policies/policy';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
@@ -63,7 +64,11 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
   getStoredProcedureDetailsPageTabs,
@@ -415,29 +420,35 @@ const StoredProcedurePage = () => {
   } = useMemo(
     () => ({
       editTagsPermission:
-        (storedProcedurePermissions.EditTags ||
-          storedProcedurePermissions.EditAll) &&
-        !storedProcedure?.deleted,
+        getPrioritizedEditPermission(
+          storedProcedurePermissions,
+          Operation.EditTags
+        ) && !storedProcedure?.deleted,
       editGlossaryTermsPermission:
-        (storedProcedurePermissions.EditGlossaryTerms ||
-          storedProcedurePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          storedProcedurePermissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (storedProcedurePermissions.EditDescription ||
-          storedProcedurePermissions.EditAll) &&
-        !storedProcedure?.deleted,
+        getPrioritizedEditPermission(
+          storedProcedurePermissions,
+          Operation.EditDescription
+        ) && !storedProcedure?.deleted,
       editCustomAttributePermission:
-        (storedProcedurePermissions.EditAll ||
-          storedProcedurePermissions.EditCustomFields) &&
-        !storedProcedure?.deleted,
+        getPrioritizedEditPermission(
+          storedProcedurePermissions,
+          Operation.EditCustomFields
+        ) && !storedProcedure?.deleted,
       editLineagePermission:
-        (storedProcedurePermissions.EditAll ||
-          storedProcedurePermissions.EditLineage) &&
-        !storedProcedure?.deleted,
+        getPrioritizedEditPermission(
+          storedProcedurePermissions,
+          Operation.EditLineage
+        ) && !storedProcedure?.deleted,
       viewAllPermission: storedProcedurePermissions.ViewAll,
-      viewBasicPermission:
-        storedProcedurePermissions.ViewAll ||
-        storedProcedurePermissions.ViewBasic,
+      viewBasicPermission: getPrioritizedViewPermission(
+        storedProcedurePermissions,
+        Operation.ViewBasic
+      ),
     }),
     [storedProcedurePermissions, storedProcedure]
   );
