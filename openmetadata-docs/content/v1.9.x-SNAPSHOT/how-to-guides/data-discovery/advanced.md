@@ -1,5 +1,6 @@
 ---
 title: Add Complex Queries using Advanced Search
+description: Use advanced search and filtering to discover data across sources, owners, and business domains with high precision.
 slug: /how-to-guides/data-discovery/advanced
 ---
 
