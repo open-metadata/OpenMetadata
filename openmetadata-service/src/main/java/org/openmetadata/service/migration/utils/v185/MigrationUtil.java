@@ -164,7 +164,7 @@ public class MigrationUtil {
 
         for (String threadJson : taskThreads) {
           try {
-            Thread thread = JsonUtils.readValue(threadJson, Thread.class);
+            Thread thread = org.openmetadata.service.util.JsonUtils.readValue(threadJson, Thread.class);
             recreateThreadRelationships(thread);
             processedCount++;
           } catch (Exception e) {
