@@ -319,19 +319,94 @@ class OpenMetadataValidationAction1xx(ValidationAction):
         Returns:
             TestCaseResult: a test case result object
         """
-        try:
-            test_result_value = TestResultValue(
-                name="observed_value",
-                value=str(result["result"]["observed_value"]),
-            )
-        except KeyError:
-            unexpected_percent_total = result["result"].get("unexpected_percent_total")
-            test_result_value = TestResultValue(
-                name="unexpected_percentage_total",
-                value=str(unexpected_percent_total),
-            )
+        test_result_values = []
+        result_data = result.get("result", {})
 
-        return [test_result_value]
+        numeric_fields = [
+            "unexpected_percent",
+            "unexpected_percent_total",
+            "missing_percent",
+            "unexpected_count",
+            "missing_count",
+            "element_count",
+            "observed_value",
+            "success_rate",
+        ]
+
+        for field in numeric_fields:
+            if field in result_data:
+                value = result_data[field]
+
+                if isinstance(value, (int, float)):
+                    test_result_values.append(
+                        TestResultValue(
+                            name=field,
+                            value=str(value),
+                            predictedValue=None,
+                        )
+                    )
+                elif field == "observed_value":
+                    test_result_values.extend(
+                        self._extract_complex_value_from_observed_value(value)
+                    )
+
+        return test_result_values
+
+    def _extract_complex_value_from_observed_value(
+        self, observed_value
+    ) -> List[TestResultValue]:
+        """Extract complex value from observed value
+
+        Args:
+            observed_value: observed value
+        Returns:
+            str: complex value
+        """
+        if isinstance(observed_value, list):
+            return [
+                TestResultValue(
+                    name="element_count",
+                    value=str(len(observed_value)),
+                    predictedValue=None,
+                )
+            ]
+
+        if isinstance(observed_value, dict):
+            if "quantiles" in observed_value:
+                result_values = []
+                quantiles = observed_value["quantiles"]
+                values = observed_value["values"]
+                for quantile, value in zip(quantiles, values):
+                    result_values.append(
+                        TestResultValue(
+                            name=f"quantile_{str(quantile)}",
+                            value=str(value),
+                            predictedValue=None,
+                        )
+                    )
+                return result_values
+
+            # catch all other cases that are not a quantile
+            for k, v in observed_value.items():
+                if isinstance(v, (int, float)):
+                    return [
+                        TestResultValue(
+                            name=k,
+                            value=str(v),
+                            predictedValue=None,
+                        )
+                    ]
+
+        if isinstance(observed_value, str):
+            return [
+                TestResultValue(
+                    name="observed_value",
+                    value=str(1),
+                    predictedValue=None,
+                )
+            ]
+
+        return []
 
     def _handle_test_case(self, result: Dict, table_entity: Table):
         """Handle adding test to table entity based on the test case.
