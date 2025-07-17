@@ -46,6 +46,8 @@ In this configuration we will be fetching the dbt `manifest.json`, `catalog.json
 - **dbtConfigType**: s3
 {% /codeInfo %}
 
+{% partial file="/v1.8/connectors/yaml/common/dbt-service-name-def.md" /%}
+
 {% partial file="/v1.8/connectors/yaml/common/aws-config-def.md" /%}
 
 {% partial file="/v1.8/connectors/yaml/dbt/dbt-prefix-def.md" /%}
@@ -63,7 +65,7 @@ In this configuration we will be fetching the dbt `manifest.json`, `catalog.json
 ```yaml {% isCodeBlock=true %}
 source:
   type: dbt
-  serviceName: service_name
+{% partial file="/v1.8/connectors/yaml/common/dbt-service-name.md" /%}
   sourceConfig:
     config:
       type: DBT
