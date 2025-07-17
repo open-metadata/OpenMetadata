@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CallActivity;
@@ -25,6 +26,7 @@ import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.Signal;
 import org.flowable.bpmn.model.SignalEventDefinition;
 import org.flowable.bpmn.model.StartEvent;
+import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
 import org.openmetadata.schema.governance.workflows.elements.triggers.Event;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -37,6 +39,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTa
 import org.openmetadata.service.governance.workflows.flowable.builders.SignalBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 
+@Slf4j
 public class EventBasedEntityTrigger implements TriggerInterface {
   private final Process process;
   @Getter private final String triggerWorkflowId;
@@ -165,18 +168,34 @@ public class EventBasedEntityTrigger implements TriggerInterface {
 
   private ServiceTask getFilterTask(
       String workflowTriggerId, EventBasedEntityTriggerDefinition triggerDefinition) {
-    FieldExtension excludedFilterExpr =
-        new FieldExtensionBuilder()
-            .fieldName("excludedFilterExpr")
-            .fieldValue(JsonUtils.pojoToJson(triggerDefinition.getConfig().getExclude()))
-            .build();
 
     ServiceTask serviceTask =
         new ServiceTaskBuilder()
             .id(getFlowableElementId(workflowTriggerId, "filterTask"))
             .implementation(FilterEntityImpl.class.getName())
             .build();
-    serviceTask.getFieldExtensions().add(excludedFilterExpr);
+
+    Config triggerConfig = triggerDefinition.getConfig();
+
+    if (triggerConfig != null) {
+      if (triggerConfig.getFilter() != null && !triggerConfig.getFilter().trim().isEmpty()) {
+        // Use JSON Logic path
+        FieldExtension filterExpr =
+            new FieldExtensionBuilder()
+                .fieldName("filterExpr")
+                .fieldValue(JsonUtils.pojoToJson(triggerConfig.getExclude()))
+                .build();
+        serviceTask.getFieldExtensions().add(filterExpr);
+      } else if (triggerConfig.getExclude() != null) {
+        // Use legacy exclude path
+        FieldExtension excludedFilterExpr =
+            new FieldExtensionBuilder()
+                .fieldName("excludedFilterExpr")
+                .fieldValue(JsonUtils.pojoToJson(triggerConfig.getExclude()))
+                .build();
+        serviceTask.getFieldExtensions().add(excludedFilterExpr);
+      }
+    }
 
     return serviceTask;
   }

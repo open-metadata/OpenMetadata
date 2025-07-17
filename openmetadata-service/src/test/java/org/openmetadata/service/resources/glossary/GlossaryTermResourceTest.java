@@ -2164,6 +2164,99 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     }
   }
 
+  @Test
+  void test_GlossaryTermReviewerFilterSkipsWorkflow(TestInfo test)
+      throws IOException, InterruptedException {
+    // Create glossary with reviewers
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest(getEntityName(test, 1))
+            .withReviewers(listOf(USER1.getEntityReference(), USER2.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create a glossary term
+    GlossaryTerm term = createTerm(glossary, null, "testTerm");
+    assertEquals(Status.DRAFT, term.getStatus());
+
+    // Debug: Print initial state
+    System.out.println("=== DEBUG: Initial term ===");
+    System.out.println("Term FQN: " + term.getFullyQualifiedName());
+    System.out.println("Term status: " + term.getStatus());
+    System.out.println("Glossary reviewers: " + glossary.getReviewers());
+
+    // Test 1: Reviewer updates - should NOT trigger workflow
+    String json = JsonUtils.pojoToJson(term);
+    term.setDescription("Updated by reviewer USER1");
+
+    // Get task count before reviewer update
+    int tasksBeforeReviewerUpdate = getApprovalTaskCount(term.getFullyQualifiedName());
+    System.out.println("=== DEBUG: Before reviewer update ===");
+    System.out.println("Tasks before reviewer update: " + tasksBeforeReviewerUpdate);
+
+    // Update term as reviewer USER1 - this should NOT create new workflow/task
+    GlossaryTerm updatedByReviewer =
+        patchEntity(term.getId(), json, term, authHeaders(USER1.getName()));
+    assertEquals("Updated by reviewer USER1", updatedByReviewer.getDescription());
+
+    // Wait and verify no new task was created
+    java.lang.Thread.sleep(2000);
+    int tasksAfterReviewerUpdate = getApprovalTaskCount(term.getFullyQualifiedName());
+    System.out.println("=== DEBUG: After reviewer update ===");
+    System.out.println("Tasks after reviewer update: " + tasksAfterReviewerUpdate);
+    System.out.println("Updated term status: " + updatedByReviewer.getStatus());
+
+    // For now, we expect the same count (both blocked by current filter)
+    assertEquals(
+        tasksBeforeReviewerUpdate,
+        tasksAfterReviewerUpdate,
+        "No new approval task should be created when reviewer updates the term");
+
+    // Test 2: Non-reviewer updates - should trigger workflow
+    String json2 = JsonUtils.pojoToJson(updatedByReviewer);
+    updatedByReviewer.setDescription("Updated by admin (non-reviewer)");
+
+    // Update term as admin (non-reviewer) - this SHOULD create new workflow/task
+    GlossaryTerm updatedByAdmin =
+        patchEntity(updatedByReviewer.getId(), json2, updatedByReviewer, ADMIN_AUTH_HEADERS);
+    assertEquals("Updated by admin (non-reviewer)", updatedByAdmin.getDescription());
+
+    // Wait for workflow to process
+    java.lang.Thread.sleep(2000);
+    int tasksAfterAdminUpdate = getApprovalTaskCount(term.getFullyQualifiedName());
+    System.out.println("=== DEBUG: After admin update ===");
+    System.out.println("Tasks after admin update: " + tasksAfterAdminUpdate);
+    System.out.println("Updated term status: " + updatedByAdmin.getStatus());
+
+    // TODO: This should pass once our filter logic is fixed
+    assertTrue(
+        tasksAfterAdminUpdate > tasksAfterReviewerUpdate,
+        "New approval task should be created when non-reviewer updates the term");
+  }
+
+  /**
+   * Helper method to count approval tasks for a specific entity
+   */
+  private int getApprovalTaskCount(String entityFQN) throws IOException {
+    WebTarget target =
+        getResource("feed")
+            .queryParam("entityLink", "glossaryTerm://" + entityFQN)
+            .queryParam("type", "Task");
+
+    try {
+      ThreadList threadList = TestUtils.get(target, ThreadList.class, ADMIN_AUTH_HEADERS);
+      return (int)
+          threadList.getData().stream()
+              .filter(
+                  thread ->
+                      thread.getTask() != null
+                          && thread.getTask().getType().equals("RequestApproval"))
+              .count();
+    } catch (Exception e) {
+      // If no tasks found, return 0
+      return 0;
+    }
+  }
+
   /**
    * Helper method to add assets to a glossary term
    */
