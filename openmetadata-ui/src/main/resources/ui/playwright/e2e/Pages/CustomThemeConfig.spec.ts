@@ -84,9 +84,10 @@ test.describe('Custom Theme Config Page', () => {
     expect(updatedConfigResponse.status()).toBe(200);
 
     // Verify the updated theme color
+
     await expect(page.getByTestId('save-btn')).toHaveCSS(
       'background-color',
-      'rgb(21, 112, 239)'
+      'rgb(104, 9, 220)'
     );
 
     const defaultConfigResponsePromise = page.waitForResponse(
