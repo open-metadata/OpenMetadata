@@ -31,6 +31,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   isForFeedTab = false,
   isOpenInDrawer = false,
   hideCardBorder = false,
+  isFeedWidget = false,
 }) => {
   const mainFeed = useMemo(
     () =>
@@ -70,6 +71,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         <ActivityFeedCardNew
           feed={feed}
           isActive={isActive}
+          isFeedWidget={isFeedWidget}
           isForFeedTab={isForFeedTab}
           isPost={false}
           post={mainFeed}

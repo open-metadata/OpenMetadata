@@ -68,6 +68,7 @@ interface TaskFeedCardProps {
   isForFeedTab?: boolean;
   isOpenInDrawer?: boolean;
   hideCardBorder?: boolean;
+  isFeedWidget?: boolean;
 }
 
 const TaskFeedCard = ({

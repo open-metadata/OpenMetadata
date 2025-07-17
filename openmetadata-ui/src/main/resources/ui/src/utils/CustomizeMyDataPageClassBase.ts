@@ -32,10 +32,9 @@ import { ReactComponent as KPIIcon } from '../assets/svg/ic-kpi-widget.svg';
 import { ReactComponent as MyDataIcon } from '../assets/svg/ic-my-data.svg';
 import { ReactComponent as MyTaskIcon } from '../assets/svg/ic-my-task.svg';
 import { ReactComponent as TotalAssetsIcon } from '../assets/svg/ic-total-data-assets.svg';
+import { MyFeedWidget } from '../components/MyData/FeedWidget/FeedWidget.component';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
-import FollowingWidget, {
-  FollowingWidgetProps,
-} from '../components/MyData/RightSidebar/FollowingWidget';
+import FollowingWidget from '../components/MyData/RightSidebar/FollowingWidget';
 import CuratedAssetsWidget from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget';
 import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
 import DomainsWidget from '../components/MyData/Widgets/DomainsWidget/DomainsWidget';
@@ -173,14 +172,15 @@ class CustomizeMyDataPageClassBase {
     }
   >
    */
-  public getWidgetsFromKey(
-    widgetKey: string
-  ): FC<WidgetCommonProps & FollowingWidgetProps> {
+  public getWidgetsFromKey(widgetKey: string): FC<WidgetCommonProps> {
     if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
       return DataAssetsWidget;
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.MY_DATA)) {
       return MyDataWidget;
+    }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
+      return MyFeedWidget;
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.KPI)) {
       return KPIWidget;

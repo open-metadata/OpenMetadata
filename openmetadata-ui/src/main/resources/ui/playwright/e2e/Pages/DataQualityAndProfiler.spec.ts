@@ -34,7 +34,6 @@ import {
   visitDataQualityTabWithCustomSearchBox,
 } from '../../utils/dataQualityAndProfiler';
 import { getCurrentMillis } from '../../utils/dateTime';
-import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { deleteTestCase } from '../../utils/testCases';
 import { test } from '../fixtures/pages';

@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { CURATED_ASSETS_SORT_BY_KEYS } from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget.constants';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { FeedFilter } from '../enums/mydata.enum';
-import i18n from '../utils/i18next/LocalUtil';
+import { getEntityName } from '../utils/EntityUtils';
+import { t } from '../utils/i18next/LocalUtil';
 
 export const TAB_SUPPORTED_FILTER = [
   ActivityFeedTabs.ALL,
@@ -21,32 +24,32 @@ export const TAB_SUPPORTED_FILTER = [
 
 export const TASK_FEED_FILTER_LIST = [
   {
-    title: i18n.t('label.all'),
+    title: t('label.all'),
     key: FeedFilter.OWNER,
-    description: i18n.t('message.feed-filter-all'),
+    description: t('message.feed-filter-all'),
   },
   {
-    title: i18n.t('label.assigned'),
+    title: t('label.assigned'),
     key: FeedFilter.ASSIGNED_TO,
-    description: i18n.t('message.feed-filter-owner'),
+    description: t('message.feed-filter-owner'),
   },
   {
-    title: i18n.t('label.created-by'),
+    title: t('label.created-by'),
     key: FeedFilter.ASSIGNED_BY,
-    description: i18n.t('message.feed-filter-following'),
+    description: t('message.feed-filter-following'),
   },
 ];
 
 export const ACTIVITY_FEED_FILTER_LIST = [
   {
-    title: i18n.t('label.my-data'),
+    title: t('label.my-data'),
     key: FeedFilter.OWNER,
-    description: i18n.t('message.feed-filter-owner'),
+    description: t('message.feed-filter-owner'),
   },
   {
-    title: i18n.t('label.following'),
+    title: t('label.following'),
     key: FeedFilter.FOLLOWS,
-    description: i18n.t('message.feed-filter-following'),
+    description: t('message.feed-filter-following'),
   },
 ];
 
@@ -59,19 +62,128 @@ export const WIDGETS_MORE_MENU_KEYS = {
 export const WIDGETS_MORE_MENU_OPTIONS = [
   {
     key: WIDGETS_MORE_MENU_KEYS.HALF_SIZE,
-    label: i18n.t('label.half-size'),
+    label: t('label.half-size'),
   },
   {
     key: WIDGETS_MORE_MENU_KEYS.FULL_SIZE,
-    label: i18n.t('label.full-size'),
+    label: t('label.full-size'),
   },
   {
     key: WIDGETS_MORE_MENU_KEYS.REMOVE_WIDGET,
-    label: i18n.t('label.remove-entity', {
-      entity: i18n.t('label.widget'),
+    label: t('label.remove-entity', {
+      entity: t('label.widget'),
     }),
   },
 ];
+
+export const FEED_WIDGET_FILTER_OPTIONS = [
+  {
+    label: t('label.all-activity'),
+    value: FeedFilter.ALL,
+    key: FeedFilter.ALL,
+  },
+  {
+    label: t('label.my-data'),
+    value: FeedFilter.OWNER,
+    key: FeedFilter.OWNER,
+  },
+  {
+    label: t('label.following'),
+    value: FeedFilter.FOLLOWS,
+    key: FeedFilter.FOLLOWS,
+  },
+];
+
+// Filter options for entity types
+export const FOLLOWING_WIDGET_FILTER_OPTIONS = [
+  {
+    label: t('label.latest'),
+    value: CURATED_ASSETS_SORT_BY_KEYS.LATEST,
+    key: CURATED_ASSETS_SORT_BY_KEYS.LATEST,
+  },
+  {
+    label: t('label.a-to-z'),
+    value: CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z,
+    key: CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z,
+  },
+  {
+    label: t('label.z-to-a'),
+    value: CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A,
+    key: CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A,
+  },
+];
+
+export const MY_DATA_WIDGET_FILTER_OPTIONS = [
+  {
+    label: t('label.latest'),
+    value: CURATED_ASSETS_SORT_BY_KEYS.LATEST,
+    key: CURATED_ASSETS_SORT_BY_KEYS.LATEST,
+  },
+  {
+    label: t('label.a-to-z'),
+    value: CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z,
+    key: CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z,
+  },
+  {
+    label: t('label.z-to-a'),
+    value: CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A,
+    key: CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A,
+  },
+];
+export const getSortField = (filterKey: string): string => {
+  switch (filterKey) {
+    case CURATED_ASSETS_SORT_BY_KEYS.LATEST:
+      return 'updatedAt';
+    case CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z:
+      return 'name.keyword';
+    case CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A:
+      return 'name.keyword';
+    default:
+      return 'updatedAt';
+  }
+};
+
+export const getSortOrder = (filterKey: string): 'asc' | 'desc' => {
+  switch (filterKey) {
+    case CURATED_ASSETS_SORT_BY_KEYS.LATEST:
+      return 'desc';
+    case CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z:
+      return 'asc';
+    case 'Z to A':
+      return 'desc';
+    default:
+      return 'desc';
+  }
+};
+
+// Client-side sorting as fallback
+export const applySortToData = (
+  data: SourceType[],
+  filterKey: string
+): SourceType[] => {
+  const sortedData = [...data];
+
+  switch (filterKey) {
+    case CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z:
+      return sortedData.sort((a, b) => {
+        const aName = getEntityName(a).toLowerCase();
+        const bName = getEntityName(b).toLowerCase();
+
+        return aName.localeCompare(bName);
+      });
+    case CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A:
+      return sortedData.sort((a, b) => {
+        const aName = getEntityName(a).toLowerCase();
+        const bName = getEntityName(b).toLowerCase();
+
+        return bName.localeCompare(aName);
+      });
+    case CURATED_ASSETS_SORT_BY_KEYS.LATEST:
+    default:
+      // For Latest sorting, rely on API sorting since SourceType doesn't have timestamp fields
+      return sortedData;
+  }
+};
 
 export const KPI_WIDGET_GRAPH_COLORS = [
   '#7262F6',
