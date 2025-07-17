@@ -30,6 +30,16 @@ import {
   splitCSV,
 } from './CSV.utils';
 
+jest.mock(
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ markdown }) => (
+        <div data-testid="rich-text-editor-previewer">{markdown}</div>
+      ))
+);
+
 describe('CSVUtils', () => {
   describe('getColumnConfig', () => {
     it('should return the column configuration object', () => {
@@ -302,6 +312,9 @@ describe('CSVUtils', () => {
 
       render(<div>{result}</div>);
 
+      expect(
+        screen.getByTestId('rich-text-editor-previewer')
+      ).toBeInTheDocument();
       expect(screen.getByText(description)).toBeInTheDocument();
     });
 
