@@ -12,11 +12,13 @@
  */
 @import (reference) url('../../../styles/variables.less');
 @import (reference) url('../../../styles/fonts.less');
-
 .feed-widget-container {
   display: flex;
   flex-direction: column;
   height: 100%;
+  .activity-feed-user-name a {
+    color: @black;
+  }
 
   .ant-card-body {
     display: flex;
@@ -82,5 +84,11 @@
         }
       }
     }
+  }
+}
+
+.timestamp-tooltip {
+  .ant-tooltip-inner {
+    color: @grey-3;
   }
 }

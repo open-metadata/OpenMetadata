@@ -25,7 +25,12 @@ import {
   ROUTES,
 } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { MY_DATA_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
+import {
+  applySortToData,
+  getSortField,
+  getSortOrder,
+  MY_DATA_WIDGET_FILTER_OPTIONS,
+} from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -52,6 +57,7 @@ import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyStat
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Widgets/Common/WidgetWrapper/WidgetWrapper';
+import { CURATED_ASSETS_SORT_BY_KEYS } from '../Widgets/CuratedAssetsWidget/CuratedAssetsWidget.constants';
 import './my-data-widget.less';
 
 const MyDataWidgetInternal = ({
@@ -71,61 +77,8 @@ const MyDataWidgetInternal = ({
     () => currentLayout?.find((w) => w.i === widgetKey),
     [currentLayout, widgetKey]
   );
-  const [selectedFilter, setSelectedFilter] = useState<string>('Latest');
-
-  const getSortField = useCallback((filterKey: string): string => {
-    switch (filterKey) {
-      case 'Latest':
-        return 'updatedAt';
-      case 'A to Z':
-        return 'name.keyword';
-      case 'Z to A':
-        return 'name.keyword';
-      default:
-        return 'updatedAt';
-    }
-  }, []);
-
-  const getSortOrder = useCallback((filterKey: string): 'asc' | 'desc' => {
-    switch (filterKey) {
-      case 'Latest':
-        return 'desc';
-      case 'A to Z':
-        return 'asc';
-      case 'Z to A':
-        return 'desc';
-      default:
-        return 'desc';
-    }
-  }, []);
-
-  // Client-side sorting as fallback
-  const applySortToData = useCallback(
-    (data: SourceType[], filterKey: string): SourceType[] => {
-      const sortedData = [...data];
-
-      switch (filterKey) {
-        case 'A to Z':
-          return sortedData.sort((a, b) => {
-            const aName = getEntityName(a).toLowerCase();
-            const bName = getEntityName(b).toLowerCase();
-
-            return aName.localeCompare(bName);
-          });
-        case 'Z to A':
-          return sortedData.sort((a, b) => {
-            const aName = getEntityName(a).toLowerCase();
-            const bName = getEntityName(b).toLowerCase();
-
-            return bName.localeCompare(aName);
-          });
-        case 'Latest':
-        default:
-          // For Latest sorting, rely on API sorting since SourceType doesn't have timestamp fields
-          return sortedData;
-      }
-    },
-    []
+  const [selectedFilter, setSelectedFilter] = useState<string>(
+    CURATED_ASSETS_SORT_BY_KEYS.LATEST
   );
 
   const handleFilterChange = useCallback(({ key }: { key: string }) => {
@@ -297,7 +250,7 @@ const MyDataWidgetInternal = ({
                 className="my-data-widget-list-item card-wrapper w-full p-xs border-radius-sm"
                 data-testid={`Recently Viewed-${getEntityName(item)}`}
                 key={item.id}>
-                <div className="d-flex items-center justify-between w-full overflow-hidden">
+                <div className="d-flex items-center justify-between ">
                   <Link
                     className="item-link w-min-0"
                     to={entityUtilClassBase.getEntityLink(
@@ -305,18 +258,27 @@ const MyDataWidgetInternal = ({
                       item.fullyQualifiedName as string
                     )}>
                     <Button
-                      className="entity-button flex-center gap-2 p-0 w-full"
+                      className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
-                        <div className="entity-button-icon d-flex items-center justify-center flex-shrink-0">
+                        <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
                           {getEntityIcon(item)}
                         </div>
                       }
                       type="text">
-                      <Typography.Text
-                        className="text-left text-sm font-regular"
-                        ellipsis={{ tooltip: true }}>
-                        {getEntityName(item)}
-                      </Typography.Text>
+                      <div className="d-flex w-max-full w-min-0 flex-column gap-1">
+                        {'serviceType' in item && item.serviceType && (
+                          <Typography.Text
+                            className="text-left text-sm font-regular"
+                            ellipsis={{ tooltip: true }}>
+                            {item.serviceType}
+                          </Typography.Text>
+                        )}
+                        <Typography.Text
+                          className="text-left text-sm font-semibold"
+                          ellipsis={{ tooltip: true }}>
+                          {getEntityName(item)}
+                        </Typography.Text>
+                      </div>
                     </Button>
                   </Link>
                   {isExpanded && (

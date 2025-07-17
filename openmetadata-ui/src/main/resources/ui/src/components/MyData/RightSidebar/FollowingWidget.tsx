@@ -21,7 +21,12 @@ import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-fo
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-folder-data.svg';
 import { KNOWLEDGE_LIST_LENGTH, ROUTES } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { FOLLOWING_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
+import {
+  applySortToData,
+  FOLLOWING_WIDGET_FILTER_OPTIONS,
+  getSortField,
+  getSortOrder,
+} from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -49,6 +54,7 @@ import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyStat
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Widgets/Common/WidgetWrapper/WidgetWrapper';
+import { CURATED_ASSETS_SORT_BY_KEYS } from '../Widgets/CuratedAssetsWidget/CuratedAssetsWidget.constants';
 import './following-widget.less';
 
 function FollowingWidget({
@@ -62,65 +68,10 @@ function FollowingWidget({
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
-    FOLLOWING_WIDGET_FILTER_OPTIONS[0].key
+    CURATED_ASSETS_SORT_BY_KEYS.LATEST
   );
   const [followedData, setFollowedData] = useState<SourceType[]>([]);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
-
-  const getSortField = (filterKey: string): string => {
-    switch (filterKey) {
-      case 'Latest':
-        return 'updatedAt';
-      case 'A to Z':
-        return 'name.keyword';
-      case 'Z to A':
-        return 'name.keyword';
-      default:
-        return 'updatedAt';
-    }
-  };
-
-  const getSortOrder = (filterKey: string): 'asc' | 'desc' => {
-    switch (filterKey) {
-      case 'Latest':
-        return 'desc';
-      case 'A to Z':
-        return 'asc';
-      case 'Z to A':
-        return 'desc';
-      default:
-        return 'desc';
-    }
-  };
-
-  // Client-side sorting as fallback
-  const applySortToData = (
-    data: SourceType[],
-    filterKey: string
-  ): SourceType[] => {
-    const sortedData = [...data];
-
-    switch (filterKey) {
-      case 'A to Z':
-        return sortedData.sort((a, b) => {
-          const aName = getEntityName(a).toLowerCase();
-          const bName = getEntityName(b).toLowerCase();
-
-          return aName.localeCompare(bName);
-        });
-      case 'Z to A':
-        return sortedData.sort((a, b) => {
-          const aName = getEntityName(a).toLowerCase();
-          const bName = getEntityName(b).toLowerCase();
-
-          return bName.localeCompare(aName);
-        });
-      case 'Latest':
-      default:
-        // For Latest sorting, rely on API sorting since SourceType doesn't have timestamp fields
-        return sortedData;
-    }
-  };
 
   const fetchUserFollowedData = async () => {
     if (!currentUser?.id) {
@@ -290,18 +241,27 @@ function FollowingWidget({
                       item.fullyQualifiedName as string
                     )}>
                     <Button
-                      className="entity-button flex-center gap-2 p-0 w-full"
+                      className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
-                        <div className="entity-button-icon d-flex items-center justify-center">
+                        <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
                           {getEntityIcon(item)}
                         </div>
                       }
                       type="text">
-                      <Typography.Text
-                        className="text-left text-sm font-regular"
-                        ellipsis={{ tooltip: true }}>
-                        {getEntityName(item)}
-                      </Typography.Text>
+                      <div className="d-flex w-max-full w-min-0 flex-column gap-1">
+                        {'serviceType' in item && item.serviceType && (
+                          <Typography.Text
+                            className="text-left text-sm font-regular"
+                            ellipsis={{ tooltip: true }}>
+                            {item.serviceType}
+                          </Typography.Text>
+                        )}
+                        <Typography.Text
+                          className="text-left text-sm font-semibold"
+                          ellipsis={{ tooltip: true }}>
+                          {getEntityName(item)}
+                        </Typography.Text>
+                      </div>
                     </Button>
                   </Link>
                   {isExpanded && (

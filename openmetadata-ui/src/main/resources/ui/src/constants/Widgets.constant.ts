@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { CURATED_ASSETS_SORT_BY_KEYS } from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget.constants';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { FeedFilter } from '../enums/mydata.enum';
+import { getEntityName } from '../utils/EntityUtils';
 import { t } from '../utils/i18next/LocalUtil';
 
 export const TAB_SUPPORTED_FILTER = [
@@ -95,35 +98,89 @@ export const FEED_WIDGET_FILTER_OPTIONS = [
 export const FOLLOWING_WIDGET_FILTER_OPTIONS = [
   {
     label: t('label.latest'),
-    value: 'Latest',
-    key: 'Latest',
+    value: CURATED_ASSETS_SORT_BY_KEYS.LATEST,
+    key: CURATED_ASSETS_SORT_BY_KEYS.LATEST,
   },
   {
     label: t('label.a-to-z'),
-    value: 'A to Z',
-    key: 'A to Z',
+    value: CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z,
+    key: CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z,
   },
   {
     label: t('label.z-to-a'),
-    value: 'Z to A',
-    key: 'Z to A',
+    value: CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A,
+    key: CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A,
   },
 ];
 
 export const MY_DATA_WIDGET_FILTER_OPTIONS = [
   {
     label: t('label.latest'),
-    value: 'Latest',
-    key: 'Latest',
+    value: CURATED_ASSETS_SORT_BY_KEYS.LATEST,
+    key: CURATED_ASSETS_SORT_BY_KEYS.LATEST,
   },
   {
     label: t('label.a-to-z'),
-    value: 'A to Z',
-    key: 'A to Z',
+    value: CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z,
+    key: CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z,
   },
   {
     label: t('label.z-to-a'),
-    value: 'Z to A',
-    key: 'Z to A',
+    value: CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A,
+    key: CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A,
   },
 ];
+export const getSortField = (filterKey: string): string => {
+  switch (filterKey) {
+    case CURATED_ASSETS_SORT_BY_KEYS.LATEST:
+      return 'updatedAt';
+    case CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z:
+      return 'name.keyword';
+    case CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A:
+      return 'name.keyword';
+    default:
+      return 'updatedAt';
+  }
+};
+
+export const getSortOrder = (filterKey: string): 'asc' | 'desc' => {
+  switch (filterKey) {
+    case CURATED_ASSETS_SORT_BY_KEYS.LATEST:
+      return 'desc';
+    case CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z:
+      return 'asc';
+    case 'Z to A':
+      return 'desc';
+    default:
+      return 'desc';
+  }
+};
+
+// Client-side sorting as fallback
+export const applySortToData = (
+  data: SourceType[],
+  filterKey: string
+): SourceType[] => {
+  const sortedData = [...data];
+
+  switch (filterKey) {
+    case CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z:
+      return sortedData.sort((a, b) => {
+        const aName = getEntityName(a).toLowerCase();
+        const bName = getEntityName(b).toLowerCase();
+
+        return aName.localeCompare(bName);
+      });
+    case CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A:
+      return sortedData.sort((a, b) => {
+        const aName = getEntityName(a).toLowerCase();
+        const bName = getEntityName(b).toLowerCase();
+
+        return bName.localeCompare(aName);
+      });
+    case CURATED_ASSETS_SORT_BY_KEYS.LATEST:
+    default:
+      // For Latest sorting, rely on API sorting since SourceType doesn't have timestamp fields
+      return sortedData;
+  }
+};
