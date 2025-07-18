@@ -52,18 +52,10 @@ export const visitEntityPage = async (data: {
   await waitForSearchResponse;
 
   // Wait for the entity to be visible and clickable
-  await page
-    .waitForSelector(`[data-testid="${dataTestId}"]`, {
-      state: 'visible',
-      timeout: 15000,
-    })
-    .catch(async () => {
-      await page.getByTestId('next').click();
-      await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
-        state: 'visible',
-        timeout: 15000,
-      });
-    });
+  await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
+    state: 'visible',
+    timeout: 15000,
+  });
 
   // Try different ways to click on the entity
   const entityElement = page.getByTestId(dataTestId);
@@ -109,18 +101,10 @@ export const visitEntityPageWithCustomSearchBox = async (data: {
   await customSearchBox.press('Enter');
   await waitForSearchResponse;
   // Wait for the entity to be visible and clickable
-  await page
-    .waitForSelector(`[data-testid="${dataTestId}"]`, {
-      state: 'visible',
-      timeout: 15000,
-    })
-    .catch(async () => {
-      await page.getByTestId('next').click();
-      await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
-        state: 'visible',
-        timeout: 15000,
-      });
-    });
+  await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
+    state: 'visible',
+    timeout: 15000,
+  });
 
   // Try different ways to click on the entity
   const entityElement = page.getByTestId(dataTestId);
