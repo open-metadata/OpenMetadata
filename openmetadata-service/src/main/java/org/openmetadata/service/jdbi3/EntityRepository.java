@@ -1330,7 +1330,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Validate and populate domain
     List<EntityReference> validatedDomains = getValidatedDomains(updated.getDomains());
     updated.setDomains(validatedDomains);
-
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -1346,6 +1345,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entityUpdater.update();
     }
     if (entityUpdater.fieldsChanged()) {
+      // Refresh the entity fields from the database after the update
+      setFieldsInternal(updated, patchFields);
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
