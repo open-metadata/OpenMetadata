@@ -197,9 +197,7 @@ const TotalDataAssetsWidget = ({
       <div className="total-data-assets-widget-content">
         <div className={isFullSizeWidget ? 'd-flex gap-6' : ''}>
           {/* Donut Chart */}
-          <div
-            className="flex-1 donut-chart-wrapper"
-            style={{ position: 'relative' }}>
+          <div className="flex-1 donut-chart-wrapper">
             <ResponsiveContainer height={300} width="100%">
               <PieChart>
                 <Pie
@@ -248,7 +246,7 @@ const TotalDataAssetsWidget = ({
 
           {/* Right-side Legend */}
           {isFullSizeWidget && (
-            <div className="legend-list p-md">
+            <div className="flex-1 legend-list p-md">
               {rightSideEntityList.map((label, index) => (
                 <div className="d-flex items-center gap-3 text-sm" key={label}>
                   <span
@@ -259,7 +257,9 @@ const TotalDataAssetsWidget = ({
                         pieChartColors[index % pieChartColors.length],
                     }}
                   />
-                  <span>{startCase(label)}</span>
+                  <Typography.Text ellipsis={{ tooltip: true }}>
+                    {startCase(label)}
+                  </Typography.Text>
                   <span className="text-xs font-medium p-y-xss p-x-xs data-value">
                     {selectedDateData[label] ?? 0}
                   </span>
@@ -270,8 +270,8 @@ const TotalDataAssetsWidget = ({
         </div>
 
         {/* Date Selector */}
-        <div className="date-selector-wrapper m-t-xs overflow-auto-x whitespace-nowrap">
-          <div className="d-flex items-center justify-center gap-3 p-x-sm">
+        <div className="date-selector-wrapper m-t-xs">
+          <div className="date-selector-container">
             {availableDates.map(({ day, dayString }) => (
               <div
                 className={`date-box ${selectedDate === day ? 'selected' : ''}`}

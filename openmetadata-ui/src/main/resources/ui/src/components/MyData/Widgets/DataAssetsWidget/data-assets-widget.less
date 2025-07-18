@@ -52,12 +52,12 @@
 }
 
 .cards-scroll-container {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: @size-sm;
 
   .card-wrapper {
-    width: 100%;
-    height: 100%;
+    height: fit-content;
   }
 
   .service-card.ant-card {

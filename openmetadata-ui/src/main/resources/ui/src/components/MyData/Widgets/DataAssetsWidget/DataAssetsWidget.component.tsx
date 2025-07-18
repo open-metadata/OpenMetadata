@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -118,29 +119,28 @@ const DataAssetsWidget = ({
     [t, navigate]
   );
 
-  const getGridTemplateColumns = () => {
-    return isFullSize ? 'repeat(5, 1fr)' : 'repeat(3, 3fr)';
-  };
-
   const dataAssetsContent = useMemo(
     () => (
       <div className="entity-list-body">
         <div
-          className="cards-scroll-container flex-1 overflow-y-auto"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: getGridTemplateColumns(),
-            gap: '16px',
-          }}>
+          className={classNames(
+            'cards-scroll-container flex-1 overflow-y-auto',
+            isFullSize ? 'justify-start' : 'justify-center'
+          )}>
           {sortedServices.map((service) => (
-            <div className="card-wrapper" key={service.key}>
+            <div
+              className="card-wrapper"
+              key={service.key}
+              style={{
+                width: isFullSize ? '125px' : '110px',
+              }}>
               <DataAssetCard service={service} />
             </div>
           ))}
         </div>
       </div>
     ),
-    [sortedServices, isFullSize]
+    [sortedServices]
   );
 
   const widgetContent = useMemo(
