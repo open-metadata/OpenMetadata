@@ -1,5 +1,6 @@
 ---
-title: Service Insights Overview
+title: Service Insights Overview | Official Documentation
+description: Explore service-level insights including ownership, usage, and performance metrics from data assets.
 slug: /how-to-guides/data-insights/service-insights
 ---
 

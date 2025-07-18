@@ -1,5 +1,6 @@
 ---
-title: Key Performance Indicators (KPI)
+title: Key Performance Indicators (KPI) | Official Documentation
+description: Track key KPIs and data quality signals for datasets, services, and domains through governance dashboards.
 slug: /how-to-guides/data-insights/kpi
 ---
 

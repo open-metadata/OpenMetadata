@@ -1,5 +1,6 @@
 ---
 title: Configure the Data Insights Report 
+description: Set up email-based delivery of data insight reports for stakeholders and teams.
 slug: /how-to-guides/data-insights/email-report
 ---
 

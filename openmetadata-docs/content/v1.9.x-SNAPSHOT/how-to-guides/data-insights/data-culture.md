@@ -1,5 +1,6 @@
 ---
 title: How to Transform the Data Culture of Your Company
+description: Promote a data-driven culture with trust signals, ownership indicators, and contribution activity.
 slug: /how-to-guides/data-insights/data-culture
 ---
 

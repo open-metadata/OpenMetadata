@@ -1,5 +1,6 @@
 ---
 title: Run the Impala Connector Externally
+description: Use YAML to configure Impala ingestion and extract schema, lineage, and profiling metadata.
 slug: /connectors/database/impala/yaml
 ---
 
