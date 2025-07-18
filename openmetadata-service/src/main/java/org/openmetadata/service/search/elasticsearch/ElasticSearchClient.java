@@ -366,6 +366,13 @@ public class ElasticSearchClient implements SearchClient {
   public Response doSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {
+    // Override with domain query
+    if (request.getDomains().stream().findFirst().isPresent()) {
+      String domain = request.getDomains().get(0).getFullyQualifiedName();
+      String newQuery = request.getQuery() + " AND (domain.fullyQualifiedName:\""+domain+"\")";
+      request.setQuery(newQuery);
+    }
+
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
     ElasticSearchSourceBuilderFactory searchBuilderFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
