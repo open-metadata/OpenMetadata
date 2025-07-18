@@ -11,5 +11,9 @@
  *  limitations under the License.
  */
 
-export { default as RichTextEditorPreviewerV1 } from './components/common/RichTextEditor/RichTextEditorPreviewerV1';
-export type { PreviewerProp } from './components/common/RichTextEditor/RichTextEditor.interface'; 
+export { default as RichTextEditorPreviewerV1 } from "./components/common/RichTextEditor/RichTextEditorPreviewerV1";
+export type { PreviewerProp } from "./components/common/RichTextEditor/RichTextEditor.interface";
+export {
+  ServiceLogo,
+  getServiceTypeLogo,
+} from "./components/common/ServiceLogo";

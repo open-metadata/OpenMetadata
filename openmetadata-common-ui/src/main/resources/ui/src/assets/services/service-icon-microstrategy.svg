@@ -1,0 +1,11 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1556 1556" width="1556" height="1556">
+	<title>microstrategy-m-icon-circle-svg</title>
+	<style>
+		.s0 { fill: #d9232e } 
+		.s1 { fill: #ffffff } 
+	</style>
+	<path id="Layer" class="s0" d="m777.6 1555.9c-430 0-777.5-347.5-777.5-777.5 0-429.9 347.5-777.5 777.5-777.5 429.9 0 777.5 347.6 777.5 777.5 0 430-347.6 777.5-777.5 777.5z"/>
+	<path id="Layer" fill-rule="evenodd" class="s1" d="m971.2 473.7l195.3 193.9v415.5h-195.3z"/>
+	<path id="Layer" fill-rule="evenodd" class="s1" d="m679.9 473.7h195.3v609.4h-195.3z"/>
+	<path id="Layer" fill-rule="evenodd" class="s1" d="m388.7 473.7h195.3v609.4h-195.3z"/>
+</svg>

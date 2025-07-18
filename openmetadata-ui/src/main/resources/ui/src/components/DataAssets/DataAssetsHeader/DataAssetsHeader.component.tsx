@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { ServiceLogo } from '@openmetadata/common-ui';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -46,7 +47,6 @@ import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { SearchSourceAlias } from '../../../interface/search.interface';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
@@ -64,7 +64,6 @@ import {
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
@@ -139,13 +138,7 @@ export const DataAssetsHeader = ({
     const serviceType = get(dataAsset, 'serviceType', '');
 
     return serviceType ? (
-      <img
-        alt={get(dataAsset, 'service.displayName', '')}
-        className="header-icon"
-        src={serviceUtilClassBase.getServiceTypeLogo(
-          dataAsset as SearchSourceAlias
-        )}
-      />
+      <ServiceLogo className="header-icon" serviceType={serviceType} />
     ) : null;
   }, [dataAsset]);
 
