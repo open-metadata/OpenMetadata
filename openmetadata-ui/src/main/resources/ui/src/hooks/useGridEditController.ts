@@ -37,25 +37,47 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
   columns: Column<RowType>[];
 }) {
   const [gridContainer, setGridContainer] = useState<HTMLElement | null>(null);
-  const isShiftArrow = useRef(false);
+  const [isSelecting, setIsSelecting] = useState(false);
 
   // Undo/redo stacks
   const undoStack = useRef<RowType[][]>([]);
   const redoStack = useRef<RowType[][]>([]);
 
+  const isShiftArrow = useRef(false);
+  const selectionStart = useRef<{ row: number; col: number } | null>(null);
+  const selectionAnchor = useRef<{ row: number; col: number } | null>(null);
+  const selectionFocus = useRef<{ row: number; col: number } | null>(null);
+
   // Range selection state
   const [selectedRange, setSelectedRange] = useState<Range | null>(null);
 
-  const getCellsInRange = useCallback(() => {
+  const getFinalSelectedRange = useCallback(() => {
     if (!selectedRange) {
+      return null;
+    }
+    if (selectedRange.startRow === -1) {
+      return {
+        startRow: 0,
+        endRow: dataSource.length - 1,
+        startCol: selectedRange.startCol,
+        endCol: selectedRange.endCol,
+      };
+    } else {
+      return selectedRange;
+    }
+  }, [selectedRange]);
+
+  const getCellsInRange = useCallback(() => {
+    const finalSelectedRange = getFinalSelectedRange();
+    if (!finalSelectedRange) {
       return [];
     }
     const cells: HTMLElement[] = [];
-    const { startRow, endRow, startCol, endCol } = selectedRange;
+    const { startRow, endRow, startCol, endCol } = finalSelectedRange;
     for (let row = startRow; row <= endRow; row++) {
       for (let col = startCol; col <= endCol; col++) {
         const cell = gridContainer
-          ?.querySelector<HTMLElement>(`[aria-rowindex="${row + 2}"]`)
+          ?.querySelector<HTMLElement>(`[aria-rowindex="${row + 2}"]`) // +2 because of a header row
           ?.querySelector<HTMLElement>(`[aria-colindex="${col + 1}"]`);
         if (cell) {
           cells.push(cell);
@@ -64,25 +86,22 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
     }
 
     return cells;
-  }, [selectedRange]);
+  }, [getFinalSelectedRange]);
 
-  const focusFirstSelectedCell = useCallback(() => {
-    const cells = getCellsInRange();
-    if (cells.length > 0) {
-      setTimeout(() => {
-        cells[0].click();
-      }, 1);
-    }
-  }, [getCellsInRange]);
-
-  const [isSelecting, setIsSelecting] = useState(false);
-
-  useEffect(() => {
-    focusFirstSelectedCell();
-  }, [isSelecting, focusFirstSelectedCell]);
+  /* 
+    Focus cell used,
+    because when a range is selected and the user extends the range using Shift+click on another cell, 
+    the clicked cell automatically receives focus. which is not desired behavior.
+  */
+  const focusCell = useCallback((cell: HTMLElement) => {
+    setTimeout(() => {
+      cell.click();
+    }, 1);
+  }, []);
 
   const highlightSelectedRange = useCallback(() => {
-    if (selectedRange && gridContainer) {
+    const finalSelectedRange = getFinalSelectedRange();
+    if (finalSelectedRange && gridContainer) {
       // First, reset all cell backgrounds to inherit
       gridContainer
         .querySelectorAll<HTMLElement>('[aria-rowindex]')
@@ -90,25 +109,23 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
           rowElem
             .querySelectorAll<HTMLElement>('[aria-colindex]')
             .forEach((cellElem) => {
-              cellElem.style.backgroundColor = 'inherit';
+              cellElem.classList.remove('rdg-cell-range-selections');
             });
         });
 
       const cells = getCellsInRange();
       if (cells.length > 1) {
         cells.forEach((cell) => {
-          cell.style.backgroundColor = 'lightblue';
+          cell.classList.add('rdg-cell-range-selections');
         });
       }
     }
-  }, [selectedRange]);
+  }, [getFinalSelectedRange]);
 
+  // Highlight selected range on selectedRange change and on grid scroll
   useEffect(() => {
     highlightSelectedRange();
-  }, [highlightSelectedRange]);
 
-  // highlightSelectedRange on grid scroll
-  useEffect(() => {
     if (gridContainer) {
       gridContainer
         .querySelector('.rdg')
@@ -123,13 +140,6 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
 
     return;
   }, [highlightSelectedRange]);
-
-  // Helper: clamp value between min and max
-  const clamp = (val: number, min: number, max: number) =>
-    Math.max(min, Math.min(max, val));
-
-  // Range selection logic
-  const selectionStart = useRef<{ row: number; col: number } | null>(null);
 
   // Undo/redo logic
   const pushToUndoStack = useCallback(
@@ -197,26 +207,43 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
     function onMouseDown(e: MouseEvent) {
       const indices = getCellIndices(e.target);
       if (indices) {
-        setIsSelecting(true);
-        selectionStart.current = indices;
-        if (indices.row === -1) {
-          // select all cells in the column
-          setSelectedRange({
-            startRow: 0,
-            endRow: dataSource.length - 1,
-            startCol: indices.col,
-            endCol: indices.col,
-          });
+        if (isShiftArrow.current) {
+          const activeCell = document.activeElement as HTMLElement;
+          const indicesOfFocusedCell = getCellIndices(activeCell);
+          const indicesOfMouseDownCell = getCellIndices(
+            e.target as HTMLElement
+          );
+          if (indicesOfFocusedCell && indicesOfMouseDownCell) {
+            setSelectedRange({
+              startRow: Math.min(
+                indicesOfFocusedCell.row,
+                indicesOfMouseDownCell.row
+              ),
+              endRow: Math.max(
+                indicesOfFocusedCell.row,
+                indicesOfMouseDownCell.row
+              ),
+              startCol: Math.min(
+                indicesOfFocusedCell.col,
+                indicesOfMouseDownCell.col
+              ),
+              endCol: Math.max(
+                indicesOfFocusedCell.col,
+                indicesOfMouseDownCell.col
+              ),
+            });
+            focusCell(activeCell);
+          }
         } else {
+          setIsSelecting(true);
+          selectionStart.current = indices;
           setSelectedRange({
             startRow: indices.row,
             startCol: indices.col,
             endRow: indices.row,
             endCol: indices.col,
           });
-        }
-        if (gridContainer) {
-          e.preventDefault();
+          focusCell(e.target as HTMLElement);
         }
       }
     }
@@ -227,40 +254,21 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
       }
       const indices = getCellIndices(e.target);
       if (indices) {
-        const start = selectionStart.current!;
-        if (start.row === -1) {
-          setSelectedRange(() => {
-            return {
-              startRow: 0,
-              startCol: Math.min(start.col, indices.col),
-              endRow: dataSource.length - 1,
-              endCol: Math.max(start.col, indices.col),
-            };
-          });
-        } else if (indices.row === -1) {
-          return;
-        } else {
-          setSelectedRange(() => {
-            const start = selectionStart.current!;
-
-            return {
-              startRow: Math.min(start.row, indices.row),
-              startCol: Math.min(start.col, indices.col),
-              endRow: Math.max(start.row, indices.row),
-              endCol: Math.max(start.col, indices.col),
-            };
-          });
-        }
+        const start = selectionStart.current;
+        setSelectedRange(() => {
+          return {
+            startRow: Math.min(start.row, indices.row),
+            startCol: Math.min(start.col, indices.col),
+            endRow: Math.max(start.row, indices.row),
+            endCol: Math.max(start.col, indices.col),
+          };
+        });
       }
     }
 
-    function onMouseUp(e: MouseEvent) {
+    function onMouseUp() {
       setIsSelecting(false);
       selectionStart.current = null;
-      const indices = getCellIndices(e.target);
-      if (!indices) {
-        setSelectedRange(null);
-      }
     }
 
     gridContainer.addEventListener('mousedown', onMouseDown);
@@ -271,9 +279,6 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
       gridContainer.removeEventListener('mousedown', onMouseDown);
       gridContainer.removeEventListener('mouseover', onMouseOver);
       window.removeEventListener('mouseup', onMouseUp);
-      if (gridContainer) {
-        gridContainer.style.userSelect = '';
-      }
     };
     // eslint-disable-next-line
   }, [gridContainer, isSelecting]);
@@ -285,9 +290,13 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
     }
 
     function keyHandler(e: KeyboardEvent) {
+      if (e.shiftKey) {
+        isShiftArrow.current = true;
+      }
+
       // Only handle undo/redo, select all, etc.
       // Do NOT handle Arrow keys or Tab for cell movement!
-      // Let the grid/browser handle navigation and focus.
+      // Let the grid handle navigation and focus.
 
       // Only respond if the event target is a cell
       if (
@@ -298,6 +307,7 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
       ) {
         return;
       }
+
       // Undo/Redo
       const isUndo =
         (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey;
@@ -335,45 +345,93 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
 
         return;
       }
-      // Shift+Arrow for range selection
+
+      // Shift+Arrow for range selection (Excel-like)
       if (
         selectedRange &&
         e.shiftKey &&
         ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
       ) {
-        isShiftArrow.current = true;
-        const { startRow, startCol, endRow, endCol } = selectedRange;
-        let newEndRow = endRow;
-        let newEndCol = endCol;
-        if (e.key === 'ArrowUp') {
-          newEndRow = clamp(endRow - 1, 0, dataSource.length - 1);
-        } else if (e.key === 'ArrowDown') {
-          newEndRow = clamp(endRow + 1, 0, dataSource.length - 1);
-        } else if (e.key === 'ArrowLeft') {
-          newEndCol = clamp(endCol - 1, 0, columns.length - 1);
-        } else if (e.key === 'ArrowRight') {
-          newEndCol = clamp(endCol + 1, 0, columns.length - 1);
+        const clamp = (val: number, min: number, max: number) =>
+          Math.max(min, Math.min(max, val));
+
+        // Use getCellIndices(document.activeElement) as the anchor if not set
+        if (!selectionAnchor.current || !selectionFocus.current) {
+          const anchorIndices = getCellIndices(document.activeElement);
+          if (anchorIndices) {
+            selectionAnchor.current = anchorIndices;
+            selectionFocus.current = anchorIndices;
+          } else {
+            // fallback: use start of current selection
+            selectionAnchor.current = {
+              row: selectedRange.startRow,
+              col: selectedRange.startCol,
+            };
+            selectionFocus.current = {
+              row: selectedRange.startRow,
+              col: selectedRange.startCol,
+            };
+          }
         }
+        // Get anchor (fixed)
+        const anchor = selectionAnchor.current;
+        const focus = { ...selectionFocus.current };
+
+        // Move focus in the arrow direction
+        if (e.key === 'ArrowUp') {
+          focus.row = clamp(focus.row - 1, 0, dataSource.length - 1);
+        } else if (e.key === 'ArrowDown') {
+          focus.row = clamp(focus.row + 1, 0, dataSource.length - 1);
+        } else if (e.key === 'ArrowLeft') {
+          focus.col = clamp(focus.col - 1, 0, columns.length - 1);
+        } else if (e.key === 'ArrowRight') {
+          focus.col = clamp(focus.col + 1, 0, columns.length - 1);
+        }
+        selectionFocus.current = focus;
+
+        // Update selection from anchor to new focus
         setSelectedRange({
-          startRow,
-          startCol,
-          endRow: newEndRow,
-          endCol: newEndCol,
+          startRow: Math.min(anchor.row, focus.row),
+          endRow: Math.max(anchor.row, focus.row),
+          startCol: Math.min(anchor.col, focus.col),
+          endCol: Math.max(anchor.col, focus.col),
         });
+
         e.preventDefault();
+        e.stopImmediatePropagation();
 
         return;
       } else if (
+        !e.shiftKey &&
         ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
       ) {
+        setSelectedRange(null);
+        selectionAnchor.current = null;
+        selectionFocus.current = null;
+      }
+    }
+
+    function keyUpHandler(e: KeyboardEvent) {
+      if (e.key === 'Shift') {
         isShiftArrow.current = false;
       }
     }
 
     gridContainer.addEventListener('keydown', keyHandler as EventListener);
+    gridContainer.addEventListener('keyup', keyUpHandler as EventListener);
 
-    return () =>
-      gridContainer.removeEventListener('keydown', keyHandler as EventListener);
+    return () => {
+      if (gridContainer) {
+        gridContainer.removeEventListener(
+          'keydown',
+          keyHandler as EventListener
+        );
+        gridContainer.removeEventListener(
+          'keyup',
+          keyUpHandler as EventListener
+        );
+      }
+    };
   }, [undo, redo, gridContainer, dataSource, selectedRange, columns]);
 
   useEffect(() => {
@@ -382,8 +440,8 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
     }
 
     function onCellFocus(e: FocusEvent) {
-      // Only update selectedRange if Shift is NOT pressed
-      if (isShiftArrow.current) {
+      // Only update selectedRange if Shift is NOT pressed, because shift + cell click should extend the selection
+      if (isShiftArrow.current || selectedRange) {
         return;
       }
       const target = e.target as HTMLElement;
@@ -411,7 +469,7 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
     return () => {
       gridContainer.removeEventListener('focusin', onCellFocus);
     };
-  }, [gridContainer, setSelectedRange]);
+  }, [gridContainer, setSelectedRange, selectedRange]);
 
   // Column/row header selection
   const handleColumnSelect = useCallback(
@@ -445,7 +503,7 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
   // Copy selected range as TSV
   const handleCopy = useCallback(() => {
     if (selectedRange && dataSource.length > 0) {
-      const { startRow, endRow, startCol, endCol } = selectedRange;
+      const { startRow, endRow, startCol, endCol } = getFinalSelectedRange();
       const minRow = Math.min(startRow, endRow);
       const maxRow = Math.max(startRow, endRow);
       const minCol = Math.min(startCol, endCol);
@@ -486,7 +544,7 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
     const newRows = dataSource.map((row) => ({ ...row }));
     if (selectedRange && dataSource.length > 0) {
       return navigator.clipboard.readText().then((clipText) => {
-        const { startRow, endRow, startCol, endCol } = selectedRange;
+        const { startRow, endRow, startCol, endCol } = getFinalSelectedRange();
         const minRow = Math.min(startRow, endRow);
         const minCol = Math.min(startCol, endCol);
         const lines = clipText.split('\n');
