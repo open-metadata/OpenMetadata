@@ -1613,36 +1613,38 @@ public interface CollectionDAO {
       deleteAllFrom(id, entity);
       deleteAllTo(id, entity);
     }
-    
+
     @SqlUpdate("DELETE FROM entity_relationship WHERE fromId = :id AND fromEntity = :entity")
     void deleteAllFrom(@BindUUID("id") UUID id, @Bind("entity") String entity);
-    
+
     @SqlUpdate("DELETE FROM entity_relationship WHERE toId = :id AND toEntity = :entity")
     void deleteAllTo(@BindUUID("id") UUID id, @Bind("entity") String entity);
-    
+
     // Batch deletion methods for improved performance
     @Transaction
     default void batchDeleteRelationships(List<UUID> entityIds, String entityType) {
       if (entityIds == null || entityIds.isEmpty()) {
         return;
       }
-      
+
       // Process in chunks of 500 to avoid hitting database query limits
       int batchSize = 500;
       for (int i = 0; i < entityIds.size(); i += batchSize) {
         int endIndex = Math.min(i + batchSize, entityIds.size());
-        List<String> batch = entityIds.subList(i, endIndex).stream()
-            .map(UUID::toString)
-            .collect(Collectors.toList());
-        
+        List<String> batch =
+            entityIds.subList(i, endIndex).stream()
+                .map(UUID::toString)
+                .collect(Collectors.toList());
+
         batchDeleteFrom(batch, entityType);
         batchDeleteTo(batch, entityType);
       }
     }
-    
-    @SqlUpdate("DELETE FROM entity_relationship WHERE fromId IN (<ids>) AND fromEntity = :entityType")
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE fromId IN (<ids>) AND fromEntity = :entityType")
     void batchDeleteFrom(@BindList("ids") List<String> ids, @Bind("entityType") String entityType);
-    
+
     @SqlUpdate("DELETE FROM entity_relationship WHERE toId IN (<ids>) AND toEntity = :entityType")
     void batchDeleteTo(@BindList("ids") List<String> ids, @Bind("entityType") String entityType);
 
