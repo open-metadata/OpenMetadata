@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.resources;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;

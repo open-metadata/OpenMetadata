@@ -85,6 +85,8 @@ export interface ServiceConnections {
  * Storage Connection.
  *
  * search Connection.
+ *
+ * Security Connection.
  */
 export interface ServiceConnection {
     config?: ConfigClass;
@@ -303,6 +305,8 @@ export interface ServiceConnection {
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
+ *
+ * Apache Ranger Connection Config
  */
 export interface ConfigClass {
     /**
@@ -358,7 +362,7 @@ export interface ConfigClass {
      *
      * Custom search service type
      */
-    type?: RESTType;
+    type?: ConfigType;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -499,6 +503,8 @@ export interface ConfigClass {
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
+     *
+     * Apache Ranger Admin URL.
      */
     hostPort?: string;
     /**
@@ -753,6 +759,8 @@ export interface ConfigClass {
      * Choose Auth Config Type.
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
     /**
@@ -776,6 +784,8 @@ export interface ConfigClass {
      * SSL Configuration details.
      *
      * SSL Configuration for OpenMetadata Server
+     *
+     * SSL Configuration for Apache Ranger
      */
     sslConfig?: SSLConfigObject;
     /**
@@ -783,6 +793,8 @@ export interface ConfigClass {
      *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
+     *
+     * Flag to verify SSL Certificate for Apache Ranger.
      */
     verifySSL?: boolean | VerifySSL;
     /**
@@ -1820,6 +1832,8 @@ export enum AuthProvider {
  * SSL Certificates By Path
  *
  * AWS credentials configs.
+ *
+ * Authentication type to connect to Apache Ranger.
  */
 export interface AuthenticationTypeForTableau {
     /**
@@ -1828,12 +1842,17 @@ export interface AuthenticationTypeForTableau {
      * Password to connect to source.
      *
      * Elastic Search Password for Login
+     *
+     * Password to connect to Apache Ranger.
      */
     password?: string;
     /**
      * Username to access the service.
      *
      * Elastic Search Username for Login
+     *
+     * Username to connect to Apache Ranger. This user should have privileges to read all
+     * policies and metadata in Ranger.
      */
     username?: string;
     /**
@@ -1910,6 +1929,14 @@ export interface AuthenticationTypeForTableau {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+    /**
+     * Path to the keytab file for Kerberos authentication.
+     */
+    keytabPath?: string;
+    /**
+     * Kerberos principal for authentication. Used with keytab file.
+     */
+    principal?: string;
 }
 
 /**
@@ -2291,6 +2318,8 @@ export interface QlikCertificatesBy {
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL Configuration for Apache Ranger
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -2911,6 +2940,8 @@ export enum ConnectionScheme {
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL Configuration for Apache Ranger
  */
 export interface ConnectionSSLConfig {
     /**
@@ -2956,6 +2987,8 @@ export enum ConnectionType {
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
  * Flag to verify SSL Certificate for OpenMetadata Server.
+ *
+ * Flag to verify SSL Certificate for Apache Ranger.
  */
 export enum VerifySSL {
     Ignore = "ignore",
@@ -3606,6 +3639,8 @@ export enum SpaceType {
  *
  * SSL Configuration for OpenMetadata Server
  *
+ * SSL Configuration for Apache Ranger
+ *
  * OpenMetadata Client configured to validate SSL certificates.
  *
  * SSL Config
@@ -3764,8 +3799,10 @@ export enum TransactionMode {
  * OpenSearch service type
  *
  * Custom search service type
+ *
+ * Apache Ranger service type
  */
-export enum RESTType {
+export enum ConfigType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -3842,6 +3879,7 @@ export enum RESTType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     REST = "Rest",
+    Ranger = "Ranger",
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
