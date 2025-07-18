@@ -65,7 +65,7 @@ test('search dropdown should work properly for quick filters', async ({
 }) => {
   const items = [
     {
-      label: 'Domain',
+      label: 'Domains',
       key: 'domains.displayName.keyword',
       value: domain.responseData.displayName,
     },
@@ -91,7 +91,7 @@ test('should search for empty or null filters', async ({ page }) => {
   const items = [
     { label: 'Owners', key: 'owners.displayName.keyword' },
     { label: 'Tag', key: 'tags.tagFQN' },
-    { label: 'Domain', key: 'domains.displayName.keyword' },
+    { label: 'Domains', key: 'domains.displayName.keyword' },
     { label: 'Tier', key: 'tier.tagFQN' },
   ];
 
@@ -110,7 +110,7 @@ test('should search for multiple values along with null filters', async ({
       value: 'PersonalData.Personal',
     },
     {
-      label: 'Domain',
+      label: 'Domains',
       key: 'domains.displayName.keyword',
       value: domain.responseData.displayName,
     },

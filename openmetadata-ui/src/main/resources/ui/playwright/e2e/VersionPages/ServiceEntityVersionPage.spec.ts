@@ -108,13 +108,15 @@ test.describe('Service Version pages', () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.id,
-            type: 'domain',
-            name: domain.name,
-            description: domain.description,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.id,
+              type: 'domain',
+              name: domain.name,
+              description: domain.description,
+            },
+          ],
         },
       ]);
     }

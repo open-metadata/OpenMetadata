@@ -81,8 +81,8 @@ test.describe('Explore Tree scenarios ', () => {
 
     await test.step('Check the quick filters', async () => {
       await expect(
-        page.getByTestId('search-dropdown-Domain').locator('span')
-      ).toContainText('Domain');
+        page.getByTestId('search-dropdown-Domains').locator('span')
+      ).toContainText('Domains');
       await expect(page.getByTestId('search-dropdown-Owners')).toContainText(
         'Owners'
       );
