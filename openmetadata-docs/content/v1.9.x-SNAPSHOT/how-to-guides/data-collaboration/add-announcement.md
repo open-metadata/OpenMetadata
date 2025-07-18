@@ -1,5 +1,6 @@
 ---
 title: How to Create an Announcement
+description: Add announcements to asset pages to communicate updates, ownership changes, or data quality notes to users.
 slug: /how-to-guides/data-collaboration/add-announcement
 ---
 
