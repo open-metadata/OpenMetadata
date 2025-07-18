@@ -1,5 +1,6 @@
 ---
 title: Governance Workflows - Dashboard Certification Workflow (Default)
+description: Automate dashboard certification workflows to approve, verify, and label trusted insights for wider consumption.
 slug: /how-to-guides/data-governance/workflows/default-workflows/dashboard-certification
 collate: true
 ---

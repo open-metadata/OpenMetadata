@@ -1,5 +1,6 @@
 ---
 title: How to Manually Add or Edit Lineage
+description: Manually build lineage by defining upstream and downstream relationships between datasets and transformations.
 slug: /how-to-guides/data-lineage/manual
 ---
 

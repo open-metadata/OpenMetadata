@@ -1,5 +1,6 @@
 ---
 title: Run the Redpanda Connector Externally
+description: Use YAML to configure Redpanda metadata ingestion and track streaming data topics, schema evolution, and system events.
 slug: /connectors/messaging/redpanda/yaml
 ---
 

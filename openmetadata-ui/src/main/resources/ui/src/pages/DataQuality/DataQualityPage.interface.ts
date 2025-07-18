@@ -17,9 +17,13 @@ import { TestCaseType } from '../../rest/testAPI';
 
 export enum DataQualityPageTabs {
   TEST_SUITES = 'test-suites',
-  TABLES = 'tables',
   TEST_CASES = 'test-cases',
   DASHBOARD = 'dashboard',
+}
+
+export enum DataQualitySubTabs {
+  TABLE_SUITES = 'table-suites',
+  BUNDLE_SUITES = 'bundle-suites',
 }
 
 export interface DataQualityContextInterface {
