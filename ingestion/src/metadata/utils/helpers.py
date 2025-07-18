@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import itertools
+import pprint
 import re
 import shutil
 import sys
@@ -568,3 +569,10 @@ def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
         f"Invalid threshold: {threshold}, "
         "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
     )
+
+
+def pprint_format_object(data: Any) -> str:
+    """
+    Pretty print an object in a format that is easy to read
+    """
+    return pprint.pformat(data, width=150)
