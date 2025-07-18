@@ -21,6 +21,7 @@ export interface WidgetWrapperProps {
   className?: string;
   dataLength?: number;
   loading?: boolean;
+  testId?: string;
 }
 
 const WidgetWrapper = ({
@@ -28,11 +29,12 @@ const WidgetWrapper = ({
   className = '',
   dataLength = 5,
   loading = false,
+  testId = 'widget-wrapper',
 }: WidgetWrapperProps) => {
   return (
     <Card
       className={`widget-wrapper-container card-widget ${className}`}
-      data-testid="widget-wrapper">
+      data-testid={testId}>
       <EntityListSkeleton
         dataLength={dataLength}
         loading={loading}

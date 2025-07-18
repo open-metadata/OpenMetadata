@@ -15,7 +15,12 @@ import { GlobalSettingOptions } from '../constant/settings';
 import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
-import { descriptionBox, toastNotification, uuid } from './common';
+import {
+  descriptionBox,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from './common';
 import { addOwner } from './entity';
 import { validateFormNameFieldInput } from './form';
 import { settingClick } from './sidebar';
@@ -275,6 +280,7 @@ export const addTeamOwnerToEntity = async (
   table: TableClass,
   team: TeamClass
 ) => {
+  await redirectToHomePage(page);
   await table.visitEntityPageWithCustomSearchBox(page);
   await addOwner({
     page,
@@ -292,6 +298,7 @@ export const verifyAssetsInTeamsPage = async (
   assetCount: number
 ) => {
   const fullyQualifiedName = table.entityResponseData?.['fullyQualifiedName'];
+  await redirectToHomePage(page);
   await table.visitEntityPageWithCustomSearchBox(page);
 
   await expect(
