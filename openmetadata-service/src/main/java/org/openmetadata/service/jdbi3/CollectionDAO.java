@@ -2914,7 +2914,12 @@ public interface CollectionDAO {
       return App.class;
     }
 
-    @SqlQuery("SELECT id, name from installed_apps")
+    @ConnectionAwareSqlQuery(
+        value = "SELECT id, name, JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) as displayName from installed_apps",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT id, name, json ->> 'displayName' as displayName from installed_apps",
+        connectionType = POSTGRES)
     @RegisterRowMapper(AppEntityReferenceMapper.class)
     List<EntityReference> listAppsRef();
 
@@ -2922,14 +2927,18 @@ public interface CollectionDAO {
       @Override
       public EntityReference map(ResultSet rs, StatementContext ctx) throws SQLException {
         String fqn = rs.getString("name");
+        String displayName = rs.getString("displayName");
+
         return new EntityReference()
             .withId(UUID.fromString(rs.getString("id")))
             .withName(fqn)
+            .withDisplayName(displayName)
             .withFullyQualifiedName(fqn)
             .withType(APPLICATION);
       }
     }
   }
+  
 
   interface ApplicationMarketPlaceDAO extends EntityDAO<AppMarketPlaceDefinition> {
     @Override
