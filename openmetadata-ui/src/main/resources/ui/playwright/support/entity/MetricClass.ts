@@ -64,7 +64,7 @@ export class MetricClass extends EntityClass {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `explore-card-${this.entityResponseData?.['fullyQualifiedName']}`,
+      dataTestId: `${this.entity.name}-${this.entity.name}`,
     });
   }
 
