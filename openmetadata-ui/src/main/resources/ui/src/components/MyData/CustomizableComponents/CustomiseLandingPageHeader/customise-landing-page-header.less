@@ -106,11 +106,10 @@
 
   .wrap-text {
     display: -webkit-box;
-    display: box; /* fallback for older spec, does nothing in modern browsers */
     -webkit-line-clamp: 2;
-    line-clamp: 2; /* Standard property (not yet widely supported without prefix) */
+    line-clamp: 2;
     -webkit-box-orient: vertical;
-    box-orient: vertical; /* old spec, harmless fallback */
+    box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: normal;
