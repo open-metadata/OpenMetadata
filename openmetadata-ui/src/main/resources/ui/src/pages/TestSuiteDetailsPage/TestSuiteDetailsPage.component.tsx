@@ -509,6 +509,7 @@ const TestSuiteDetailsPage = () => {
             <Col span={24}>
               <div className="d-flex flex-wrap gap-2">
                 <DomainLabel
+                  multiple
                   domains={testSuite?.domains}
                   entityFqn={testSuite?.fullyQualifiedName ?? ''}
                   entityId={testSuite?.id ?? ''}

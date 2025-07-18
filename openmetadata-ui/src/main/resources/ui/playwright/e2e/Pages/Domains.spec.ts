@@ -367,7 +367,7 @@ test.describe('Domains', () => {
     const qParam = queryParams.get('q');
     const fqn = (domain.data.fullyQualifiedName ?? '').replace(/"/g, '\\"');
 
-    expect(qParam).toContain(`(domain.fullyQualifiedName:"${fqn}")`);
+    expect(qParam).toContain(`(domains.fullyQualifiedName:"${fqn}")`);
 
     await domain.delete(apiContext);
     await afterAction();
