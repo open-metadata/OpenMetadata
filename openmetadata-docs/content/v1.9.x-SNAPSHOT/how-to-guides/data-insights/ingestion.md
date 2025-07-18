@@ -1,5 +1,6 @@
 ---
-title: Set Up Data Insights Ingestion 
+title: Set Up Data Insights Ingestion | Official Documentation
+description: Monitor ingestion metrics, failures, and progress from scheduled and triggered ingestion workflows.
 slug: /how-to-guides/data-insights/ingestion
 ---
 
