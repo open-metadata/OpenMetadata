@@ -1,5 +1,6 @@
 ---
 title: Set up Data Observability Alerts and Notifications
+description: Set up alerts for data quality failures, ingestion issues, or governance rule violations.
 slug: /how-to-guides/admin-guide/alerts
 ---
 
