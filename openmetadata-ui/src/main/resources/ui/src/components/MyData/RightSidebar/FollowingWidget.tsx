@@ -66,7 +66,7 @@ function FollowingWidget({
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
   );
   const [followedData, setFollowedData] = useState<SourceType[]>([]);
-  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
+  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(true);
 
   const fetchUserFollowedData = async () => {
     if (!currentUser?.id) {

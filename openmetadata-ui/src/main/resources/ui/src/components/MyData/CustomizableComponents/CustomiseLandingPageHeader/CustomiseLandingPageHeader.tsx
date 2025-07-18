@@ -58,7 +58,7 @@ const CustomiseLandingPageHeader = ({
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<Thread[]>([]);
-  const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(false);
+  const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(true);
   const [showAnnouncements, setShowAnnouncements] = useState(true);
   const bgColor = backgroundColor ?? DEFAULT_HEADER_BG_COLOR;
 

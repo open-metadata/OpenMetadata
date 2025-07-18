@@ -44,7 +44,7 @@ const DataAssetsWidget = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [services, setServices] = useState<Bucket[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     DATA_ASSETS_SORT_BY_KEYS.LATEST

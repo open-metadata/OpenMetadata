@@ -50,7 +50,7 @@ const DomainsWidget = ({
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     DOMAIN_SORT_BY_KEYS.LATEST
   );
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDomains = async () => {

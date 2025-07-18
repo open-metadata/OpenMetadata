@@ -61,7 +61,7 @@ const KPIWidget = ({
 }: KPIWidgetProps) => {
   const { t } = useTranslation();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
-  const [isKPIListLoading, setIsKPIListLoading] = useState<boolean>(false);
+  const [isKPIListLoading, setIsKPIListLoading] = useState<boolean>(true);
   const [kpiResults, setKpiResults] = useState<
     Record<string, DataInsightCustomChartResult['results']>
   >({});
