@@ -20,10 +20,15 @@ jest.mock('../../../../constants/DataInsight.constants', () => ({
   DATA_INSIGHT_GRAPH_COLORS: ['#E7B85D'],
 }));
 
-jest.mock('../../../../constants/constants', () => ({
-  CHART_WIDGET_DAYS_DURATION: 14,
-  GRAPH_BACKGROUND_COLOR: '#000000',
-}));
+jest.mock('../../../../constants/constants', () => {
+  const actualConstants = jest.requireActual('../../../../constants/constants');
+
+  return {
+    ...actualConstants,
+    CHART_WIDGET_DAYS_DURATION: 14,
+    GRAPH_BACKGROUND_COLOR: '#000000',
+  };
+});
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   customFormatDateTime: jest.fn().mockReturnValue('Dec 05, 11:54'),
