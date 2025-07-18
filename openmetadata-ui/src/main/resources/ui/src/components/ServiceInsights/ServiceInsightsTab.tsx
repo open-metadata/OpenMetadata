@@ -55,6 +55,7 @@ const ServiceInsightsTab = ({
   serviceDetails,
   workflowStatesData,
   isWorkflowStatusLoading,
+  collateAIagentsList,
 }: ServiceInsightsTabProps) => {
   const { serviceCategory } =
     useRequiredParams<{ serviceCategory: ServiceTypes }>();
@@ -241,6 +242,7 @@ const ServiceInsightsTab = ({
         <Row gutter={[16, 16]}>
           <Col span={24}>
             <AgentsStatusWidget
+              collateAIagentsList={collateAIagentsList}
               serviceDetails={serviceDetails}
               workflowStatesData={workflowStatesData}
             />

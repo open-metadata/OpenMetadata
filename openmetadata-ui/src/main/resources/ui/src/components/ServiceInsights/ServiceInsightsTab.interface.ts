@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { App } from '../../generated/entity/applications/app';
 import { WorkflowInstance } from '../../generated/governance/workflows/workflowInstance';
 import { WorkflowInstanceState } from '../../generated/governance/workflows/workflowInstanceState';
 import { ServicesType } from '../../interface/service.interface';
@@ -23,6 +24,7 @@ export interface ServiceInsightsTabProps {
   serviceDetails: ServicesType;
   workflowStatesData?: WorkflowStatesData;
   isWorkflowStatusLoading: boolean;
+  collateAIagentsList?: App[];
 }
 export interface WorkflowStatesData {
   mainInstanceState: WorkflowInstance;
