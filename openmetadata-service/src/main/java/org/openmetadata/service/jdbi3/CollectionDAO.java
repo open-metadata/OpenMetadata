@@ -2915,7 +2915,8 @@ public interface CollectionDAO {
     }
 
     @ConnectionAwareSqlQuery(
-        value = "SELECT id, name, JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) as displayName from installed_apps",
+        value =
+            "SELECT id, name, JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) as displayName from installed_apps",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value = "SELECT id, name, json ->> 'displayName' as displayName from installed_apps",
@@ -2938,7 +2939,6 @@ public interface CollectionDAO {
       }
     }
   }
-  
 
   interface ApplicationMarketPlaceDAO extends EntityDAO<AppMarketPlaceDefinition> {
     @Override
