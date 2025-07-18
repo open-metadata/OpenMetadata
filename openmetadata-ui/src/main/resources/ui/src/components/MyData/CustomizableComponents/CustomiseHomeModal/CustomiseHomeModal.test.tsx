@@ -103,8 +103,8 @@ describe('CustomiseHomeModal Component', () => {
       expect(
         screen.getByTestId('sidebar-option-all-widgets')
       ).toBeInTheDocument();
-      expect(screen.getByText('Label Header Theme')).toBeInTheDocument();
-      expect(screen.getByText('Label All Widgets')).toBeInTheDocument();
+      expect(screen.getByText('label.header-theme')).toBeInTheDocument();
+      expect(screen.getByText('label.all-widgets')).toBeInTheDocument();
     });
 
     it('should have header-theme selected by default', () => {

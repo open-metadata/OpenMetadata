@@ -13,7 +13,6 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Modal, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
@@ -182,7 +181,7 @@ const CustomiseHomeModal = ({
               data-testid={`sidebar-option-${item.key}`}
               key={item.key}
               onClick={() => handleSidebarClick(item.key)}>
-              <span>{startCase(item.label)}</span>
+              <span>{item.label}</span>
               {isAllWidgets && (
                 <span className="widget-count text-xs border-radius-md m-l-sm">
                   {widgets.length}
