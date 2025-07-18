@@ -185,8 +185,11 @@ public class JsonLogicUtils {
    */
   private static Map<String, Object> buildCustomJsonLogicContext(
       Set<String> requiredVars, EntityInterface entity, String updatedBy) {
-    Map<String, Object> rules = new HashMap<>();
-    // Variables needed for JsonLogic Evaluator
+
+    // Add all entity fields as top-level keys
+    Map<String, Object> rules = new HashMap<>(JsonUtils.getMap(entity));
+
+    // Variables needed for JsonLogic Evaluator, if in case we send entity.field
     if (requiredVars.contains("entity")) {
       rules.put("entity", JsonUtils.getMap(entity));
     }
