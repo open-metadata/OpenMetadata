@@ -147,7 +147,6 @@ public interface SearchIndex {
           nullOrEmpty(cloneEntity.getDisplayName())
               ? cloneEntity.getName()
               : cloneEntity.getDisplayName());
-      cloneEntity.setFullyQualifiedName(cloneEntity.getFullyQualifiedName().replace("\"", "\\'"));
       clone.add(cloneEntity);
     }
     return clone;
