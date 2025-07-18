@@ -1,9 +1,9 @@
 ---
-title: Extract Metadata from GCS Composer
-slug: /connectors/pipeline/airflow/gcs-composer
+title: Extract Metadata from GCP Composer 
+slug: /connectors/pipeline/airflow/gcp-composer
 ---
 
-# Extract Metadata from GCS Composer
+# Extract Metadata from GCP Composer 
 
 ## Requirements
 
@@ -20,7 +20,7 @@ Feel free to choose whatever approach adapts best to your current architecture a
 
 ## Using the Python Operator
 
-The most comfortable way to extract metadata out of GCS Composer is by directly creating a DAG in there
+The most comfortable way to extract metadata out of GCP Composer  is by directly creating a DAG in there
 that will handle the connection to the metadata database automatically and push the contents
 to your OpenMetadata server.
 
@@ -129,7 +129,7 @@ with DAG(
 
 ## Using the Kubernetes Pod Operator
 
-In this second approach we won't need to install absolutely anything to the GCS Composer environment. Instead,
+In this second approach we won't need to install absolutely anything to the GCP Composer  environment. Instead,
 we will rely on the `KubernetesPodOperator` to use the underlying k8s cluster of Composer.
 
 Then, the code won't directly run using the hosts' environment, but rather inside a container that we created
