@@ -335,7 +335,7 @@ test.describe('User with Data Consumer Roles', () => {
       dataTestId: 'data-assets-header',
     });
 
-    await tableEntity.visitEntityPage(dataConsumerPage);
+    await tableEntity.visitEntityPageWithCustomSearchBox(dataConsumerPage);
 
     await checkDataConsumerPermissions(dataConsumerPage);
   });
