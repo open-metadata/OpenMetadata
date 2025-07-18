@@ -47,6 +47,7 @@ from metadata.utils.filters import (
     filter_by_schema,
     filter_by_stored_procedure,
 )
+from metadata.utils.helpers import pprint_format_object
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.stored_procedures import get_procedure_name_from_call
 from metadata.utils.time_utils import datetime_to_timestamp
@@ -152,6 +153,17 @@ class StoredProcedureLineageMixin(ABC):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+        queries_count_per_procedure = {
+            procedure_name: len(queries)
+            for procedure_name, queries in queries_dict.items()
+        }
+        logger.info(
+            f"Count of queries executed for stored procedures: {sum(queries_count_per_procedure.values())}"
+        )
+        logger.info(
+            f"Count of queries per stored procedure: {pprint_format_object(queries_count_per_procedure)}"
+        )
 
         return queries_dict
 
@@ -324,11 +336,11 @@ class StoredProcedureLineageMixin(ABC):
                         self.source_config.databaseFilterPattern,
                         procedure.database.name,
                     )
-                    and filter_by_schema(
+                    or filter_by_schema(
                         self.source_config.schemaFilterPattern,
                         procedure.databaseSchema.name,
                     )
-                    and filter_by_stored_procedure(
+                    or filter_by_stored_procedure(
                         self.source_config.storedProcedureFilterPattern,
                         procedure.name.root,
                     )

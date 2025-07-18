@@ -320,11 +320,11 @@ class LineageSource(QueryParserSource, ABC):
                         self.source_config.databaseFilterPattern,
                         view.db_name,
                     )
-                    and filter_by_schema(
+                    or filter_by_schema(
                         self.source_config.schemaFilterPattern,
                         view.schema_name,
                     )
-                    and filter_by_table(
+                    or filter_by_table(
                         self.source_config.tableFilterPattern,
                         view.table_name,
                     )
