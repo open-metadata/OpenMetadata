@@ -37,6 +37,7 @@ import {
   fillRecursiveEntityTypeFQNDetails,
   fillRowDetails,
   fillStoredProcedureCode,
+  firstTimeGridAddRowAction,
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
@@ -172,14 +173,7 @@ test.describe('Bulk Import Export', () => {
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
-
-        // click on last row first cell
-        const rows = await page.$$('.rdg-row');
-        const lastRow = rows[rows.length - 1];
-
-        const firstCell = await lastRow.$('.rdg-cell');
-        await firstCell?.click();
+        await firstTimeGridAddRowAction(page);
 
         // Add first database details
         await fillRowDetails(
@@ -441,17 +435,8 @@ test.describe('Bulk Import Export', () => {
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
-        await page.waitForTimeout(1000);
+        await firstTimeGridAddRowAction(page);
 
-        // click on last row first cell
-        const rows = await page.$$('.rdg-row');
-        const lastRow = rows[rows.length - 1];
-
-        const firstCell = await lastRow.$('.rdg-cell');
-        await firstCell?.click();
-
-        // Click on first cell and edit
         await fillRowDetails(
           {
             ...databaseSchemaDetails1,
@@ -659,14 +644,7 @@ test.describe('Bulk Import Export', () => {
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
-
-        // click on last row first cell
-        const rows = await page.$$('.rdg-row');
-        const lastRow = rows[rows.length - 1];
-
-        const firstCell = await lastRow.$('.rdg-cell');
-        await firstCell?.click();
+        await firstTimeGridAddRowAction(page);
 
         // First Table Details with one Column
         await fillRowDetails(
@@ -840,14 +818,7 @@ test.describe('Bulk Import Export', () => {
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
-
-        // click on last row first cell
-        const rows = await page.$$('.rdg-row');
-        const lastRow = rows[rows.length - 1];
-
-        const firstCell = await lastRow.$('.rdg-cell');
-        await firstCell?.click();
+        await firstTimeGridAddRowAction(page);
 
         // Click on first cell and edit
         await fillColumnDetails(columnDetails1, page);
@@ -867,12 +838,14 @@ test.describe('Bulk Import Export', () => {
         await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
-          passed: '9',
-          processed: '9',
+          passed: '11',
+          processed: '11',
           failed: '0',
         });
 
         const rowStatus = [
+          'Entity updated',
+          'Entity updated',
           'Entity updated',
           'Entity updated',
           'Entity updated',
