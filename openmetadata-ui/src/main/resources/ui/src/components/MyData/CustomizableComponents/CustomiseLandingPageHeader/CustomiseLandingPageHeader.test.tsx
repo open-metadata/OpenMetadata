@@ -73,7 +73,7 @@ describe('CustomiseLandingPageHeader', () => {
 
     expect(screen.getByText('label.welcome')).toBeInTheDocument();
     expect(screen.getByTestId('customise-header-btn')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-dropdown')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
   });
 
   it('should display welcome message with user name when displayName is not available', () => {
@@ -95,7 +95,7 @@ describe('CustomiseLandingPageHeader', () => {
   it('should render the domain selector', () => {
     render(<CustomiseLandingPageHeader />);
 
-    expect(screen.getByTestId('domain-dropdown')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
     expect(screen.getByTestId('domain-icon')).toBeInTheDocument();
     expect(screen.getByTestId('dropdown-icon')).toBeInTheDocument();
   });
