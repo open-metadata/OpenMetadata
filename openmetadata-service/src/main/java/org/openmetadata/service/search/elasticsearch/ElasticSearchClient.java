@@ -382,11 +382,11 @@ public class ElasticSearchClient implements SearchClient {
     buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
 
     // Log the actual query being sent to Elasticsearch
-    LOG.info(
-        "Elasticsearch query for index '{}' with query '{}': {}",
+    LOG.debug(
+        "Elasticsearch query for index '{}' with sanitized query '{}': {}",
         request.getIndex(),
         request.getQuery(),
-        searchSourceBuilder.toString());
+        sanitizeQuery(searchSourceBuilder.toString()));
 
     if (!nullOrEmpty(request.getPostFilter())) {
       try {
