@@ -46,7 +46,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
-import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
+import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
@@ -119,11 +119,11 @@ function CustomizeMyData({
     [layout]
   );
 
-  const handleOpenAddWidgetModal = useCallback(() => {
+  const handleOpenCustomiseHomeModal = useCallback(() => {
     setIsWidgetModalOpen(true);
   }, []);
 
-  const handleCloseAddWidgetModal = useCallback(() => {
+  const handleCloseCustomiseHomeModal = useCallback(() => {
     setIsWidgetModalOpen(false);
   }, []);
 
@@ -175,7 +175,7 @@ function CustomizeMyData({
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
             widgetConfig: widget,
-            handleOpenAddWidgetModal: handleOpenAddWidgetModal,
+            handleOpenAddWidgetModal: handleOpenCustomiseHomeModal,
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
             handleRemoveWidget: handleRemoveWidget,
             isEditView: true,
@@ -188,7 +188,7 @@ function CustomizeMyData({
       layout,
       followedData,
       isLoadingOwnedData,
-      handleOpenAddWidgetModal,
+      handleOpenCustomiseHomeModal,
       handlePlaceholderWidgetKey,
       handleRemoveWidget,
       handleLayoutUpdate,
@@ -213,7 +213,7 @@ function CustomizeMyData({
     await onBackgroundColorUpdate?.(color);
   };
 
-  const handleReset = useCallback(() => {
+  const handleReset = useCallback(async () => {
     // Get default layout with the empty widget added at the end
     const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
       customizeMyDataPageClassBase.defaultLayout,
@@ -221,8 +221,8 @@ function CustomizeMyData({
       4
     );
     setLayout(newMainPanelLayout);
-    onSaveLayout();
-    handleBackgroundColorUpdate();
+    await handleBackgroundColorUpdate();
+    await onSaveLayout();
   }, [handleBackgroundColorUpdate, onSaveLayout]);
 
   // call the hook to set the direction of the grid layout
@@ -267,16 +267,15 @@ function CustomizeMyData({
       </PageLayoutV1>
 
       {isWidgetModalOpen && (
-        <AddWidgetModal
+        <CustomiseHomeModal
           addedWidgetsList={addedWidgetsList}
+          currentBackgroundColor={backgroundColor}
           handleAddWidget={handleMainPanelAddWidget}
-          handleCloseAddWidgetModal={handleCloseAddWidgetModal}
-          handleLayoutUpdate={handleLayoutUpdate}
-          maxGridSizeSupport={
-            customizeMyDataPageClassBase.landingPageMaxGridSize
-          }
           open={isWidgetModalOpen}
           placeholderWidgetKey={placeholderWidgetKey}
+          onBackgroundColorUpdate={onBackgroundColorUpdate}
+          onClose={handleCloseCustomiseHomeModal}
+          onHomePage={false}
         />
       )}
     </>

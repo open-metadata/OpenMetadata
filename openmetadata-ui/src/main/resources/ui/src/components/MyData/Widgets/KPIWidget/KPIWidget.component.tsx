@@ -175,7 +175,7 @@ const KPIWidget = ({
     () => (
       <WidgetEmptyState
         actionButtonLink="/data-insights/kpi"
-        actionButtonText={t('label.explore-metrics')}
+        actionButtonText={t('label.explore-metric-plural')}
         description={t('message.no-kpi')}
         icon={<KPINoDataPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />}
         title={t('label.no-kpis-yet')}

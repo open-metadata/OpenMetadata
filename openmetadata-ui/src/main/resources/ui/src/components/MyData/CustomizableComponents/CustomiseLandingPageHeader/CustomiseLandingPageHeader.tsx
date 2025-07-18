@@ -161,6 +161,7 @@ const CustomiseLandingPageHeader = ({
                     'd-flex items-center gap-2 border-radius-sm p-y-md p-x-md bg-white domain-selector',
                     {
                       'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
+                      disabled: !onHomePage,
                     }
                   )}
                   data-testid="domain-selector"
@@ -206,8 +207,8 @@ const CustomiseLandingPageHeader = ({
           </div>
         </div>
 
-        {announcements.length > 0 && showAnnouncements && (
-          <div className="announcements-container">
+        <div className="announcements-container">
+          {announcements.length > 0 && showAnnouncements && (
             <AnnouncementsWidgetV1
               announcements={announcements}
               currentBackgroundColor={bgColor}
@@ -216,8 +217,8 @@ const CustomiseLandingPageHeader = ({
                 setShowAnnouncements(false);
               }}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
       {overlappedContainer && <div className="overlapped-container" />}
 

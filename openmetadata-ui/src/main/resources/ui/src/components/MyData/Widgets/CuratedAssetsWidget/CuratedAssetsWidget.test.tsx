@@ -261,7 +261,7 @@ describe('CuratedAssetsWidget', () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
     const skeleton = screen.getByTestId('loading-skeleton');
 
-    expect(skeleton).toHaveAttribute('data-length', '5');
+    expect(skeleton).toHaveAttribute('data-length', '10');
   });
 
   it('renders widget title from config', async () => {

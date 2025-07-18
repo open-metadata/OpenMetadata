@@ -111,31 +111,37 @@ const DomainSelectableList = ({
       <Popover
         destroyTooltipOnHide
         content={
-          <FocusTrapWithContainer active={popoverProps?.open || false}>
-            <DomainSelectablTree
-              initialDomains={initialDomains}
-              isMultiple={multiple}
-              showAllDomains={showAllDomains}
-              value={selectedDomainsList as string[]}
-              visible={popupVisible || Boolean(popoverProps?.open) || !disabled}
-              onCancel={handleCancel}
-              onSubmit={handleUpdate}
-            />
-          </FocusTrapWithContainer>
+          !disabled && (
+            <FocusTrapWithContainer active={popoverProps?.open || false}>
+              <DomainSelectablTree
+                initialDomains={initialDomains}
+                isMultiple={multiple}
+                showAllDomains={showAllDomains}
+                value={selectedDomainsList as string[]}
+                visible={popupVisible || Boolean(popoverProps?.open)}
+                onCancel={handleCancel}
+                onSubmit={handleUpdate}
+              />
+            </FocusTrapWithContainer>
+          )
         }
         open={popupVisible}
         overlayClassName="domain-select-popover w-400"
         placement="bottomRight"
         showArrow={false}
         trigger="click"
-        onOpenChange={setPopupVisible}
+        onOpenChange={(visible) => {
+          if (!disabled) {
+            setPopupVisible(visible);
+          }
+        }}
         {...popoverProps}>
         {children ??
           (!isVersionView && (
             <EditIconButton
               newLook
               data-testid="add-domain"
-              disabled={!hasPermission}
+              disabled={!hasPermission || disabled}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
               title={t('label.edit-entity', {
