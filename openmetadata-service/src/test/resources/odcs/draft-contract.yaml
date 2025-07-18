@@ -1,0 +1,51 @@
+apiVersion: v3.0.1
+kind: DataContract
+id: "dc-draft-001"
+name: "Product Catalog Contract (Draft)"
+version: "0.1.0"
+status: "draft"
+domain: "catalog"
+dataProduct: "product_master"
+
+description:
+  purpose: "Product catalog master data"
+  limitations: "Draft version - schema may change"
+
+schema:
+  - name: "products"
+    properties:
+      - name: "product_id"
+        logicalType: "string"
+        primaryKey: true
+        required: true
+        
+      - name: "name"
+        logicalType: "string"
+        required: true
+        
+      - name: "category"
+        logicalType: "string"
+        required: true
+        
+      - name: "price"
+        logicalType: "decimal"
+        precision: 10
+        scale: 2
+        required: true
+        
+      - name: "in_stock"
+        logicalType: "boolean"
+        required: true
+
+quality:
+  - type: "text"
+    description: "Price must be non-negative"
+    rule: "price >= 0"
+    
+  - type: "text"
+    description: "Product name cannot be empty"
+    rule: "TRIM(name) != ''"
+
+team:
+  - username: "product.manager"
+    role: "Data Owner"

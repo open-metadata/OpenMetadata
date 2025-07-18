@@ -1,0 +1,48 @@
+apiVersion: v3.0.0
+kind: DataContract
+id: "dc-dynamic-test"
+version: "1.0.0"
+status: "active"
+
+description:
+  purpose: "Dynamic test contract for unit tests"
+  limitations: "Test data only"
+  usage: "Use for unit testing"
+
+schema:
+  - name: "test_table"
+    properties:
+      - name: "id"
+        logicalType: "integer"
+        description: "Unique identifier"
+        primaryKey: true
+        required: true
+        
+      - name: "name"
+        logicalType: "string"
+        description: "Name field"
+        required: true
+        
+      - name: "description"  
+        logicalType: "text"
+        description: "Description field"
+        
+      - name: "email"
+        logicalType: "string"
+        description: "Email address"
+        maxLength: 255
+        classification: "PII"
+
+quality:
+  - type: "text"
+    description: "ID must be positive"
+    rule: "id > 0"
+    
+  - type: "text"
+    description: "Name must not be empty"
+    rule: "name != ''"
+
+slaProperties:
+  - property: "refreshFrequency"
+    value: "12"
+    unit: "hours"

@@ -1,0 +1,114 @@
+apiVersion: v3.0.2
+kind: DataContract
+id: "dc-complex-001"
+name: "Complex Data Types Contract"
+version: "1.0.0"
+status: "active"
+
+description:
+  purpose: "Showcase various data type mappings"
+
+schema:
+  - name: "data_types_showcase"
+    properties:
+      # String types
+      - name: "string_col"
+        logicalType: "string"
+        
+      - name: "varchar_col"
+        logicalType: "varchar"
+        maxLength: 100
+        
+      - name: "char_col"
+        logicalType: "char"
+        maxLength: 10
+        
+      - name: "text_col"
+        logicalType: "text"
+        
+      # Numeric types
+      - name: "integer_col"
+        logicalType: "integer"
+        
+      - name: "int_col"
+        logicalType: "int"
+        
+      - name: "bigint_col"
+        logicalType: "bigint"
+        
+      - name: "smallint_col"
+        logicalType: "smallint"
+        
+      - name: "tinyint_col"
+        logicalType: "tinyint"
+        
+      - name: "long_col"
+        logicalType: "long"
+        
+      - name: "decimal_col"
+        logicalType: "decimal"
+        precision: 18
+        scale: 4
+        
+      - name: "numeric_col"
+        logicalType: "numeric"
+        precision: 10
+        scale: 2
+        
+      - name: "float_col"
+        logicalType: "float"
+        
+      - name: "double_col"
+        logicalType: "double"
+        
+      - name: "real_col"
+        logicalType: "real"
+        
+      # Boolean type
+      - name: "boolean_col"
+        logicalType: "boolean"
+        
+      - name: "bool_col"
+        logicalType: "bool"
+        
+      # Date/Time types
+      - name: "date_col"
+        logicalType: "date"
+        
+      - name: "datetime_col"
+        logicalType: "datetime"
+        
+      - name: "timestamp_col"
+        logicalType: "timestamp"
+        
+      - name: "time_col"
+        logicalType: "time"
+        
+      # Binary types
+      - name: "binary_col"
+        logicalType: "binary"
+        
+      - name: "bytes_col"
+        logicalType: "bytes"
+        
+      # Complex types
+      - name: "array_col"
+        logicalType: "array"
+        items:
+          type: "string"
+          
+      - name: "object_col"
+        logicalType: "object"
+        properties:
+          - name: "nested_field"
+            logicalType: "string"
+            
+      - name: "map_col"
+        logicalType: "map"
+        
+      - name: "json_col"
+        logicalType: "json"
+        
+      # Unknown type (for testing fallback)
+      - name: "custom_type_col"
+        logicalType: "custom_type"

@@ -1,0 +1,16 @@
+apiVersion: v2.0.0
+kind: DataContract
+id: "dc-invalid-001"
+name: "Invalid Version Contract"
+version: "1.0.0"
+status: "active"
+
+description:
+  purpose: "This contract uses an unsupported ODCS version"
+
+schema:
+  - name: "test_table"
+    properties:
+      - name: "id"
+        logicalType: "integer"
+        primaryKey: true
