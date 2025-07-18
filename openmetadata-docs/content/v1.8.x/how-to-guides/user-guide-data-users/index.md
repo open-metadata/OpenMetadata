@@ -1,5 +1,6 @@
 ---
 title: Guide for Data Users | OpenMetadata User Guide
+description: Browse user-focused how-to guides covering tags, glossary, descriptions, and asset tracking.
 slug: /how-to-guides/guide-for-data-users
 ---
 
