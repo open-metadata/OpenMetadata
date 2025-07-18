@@ -1,5 +1,6 @@
 ---
 title: Run the Azure Data Factory Connector Externally
+description: Configure Azure Data Factory ingestion via YAML to extract ETL job metadata, lineage, and schedule logic.
 slug: /connectors/pipeline/datafactory/yaml
 collate: true
 ---

@@ -1,5 +1,6 @@
 ---
 title: Run the Salesforce Connector Externally
+description: Use YAML to configure Salesforce connector for metadata extraction from objects, fields, and dashboards.
 slug: /connectors/database/salesforce/yaml
 ---
 

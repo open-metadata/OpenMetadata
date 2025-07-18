@@ -1,5 +1,6 @@
 ---
 title: MongoDB Troubleshooting Guide | OpenMetadata Support
+description: Troubleshoot MongoDB integration errors such as connection failures, schema fetch issues, or metadata mismatches.
 slug: /connectors/database/mongodb/troubleshooting
 ---
 
