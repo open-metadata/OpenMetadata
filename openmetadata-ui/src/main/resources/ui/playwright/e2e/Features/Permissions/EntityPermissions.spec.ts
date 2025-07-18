@@ -40,11 +40,6 @@ import {
   testTableSpecificOperations,
   testTopicSpecificOperations,
 } from '../../../utils/entityPermissionUtils';
-import {
-  getEntityClass,
-  getEntityResources,
-  hasEntityClass,
-} from '../../../utils/resourcePermissionConfig';
 
 const entities = [
   ApiEndpointClass,
@@ -97,18 +92,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.setAdminRole(apiContext);
   await testUser.create(apiContext);
   await dataConsumerUser.create(apiContext);
-
-  // Create entities for all entity resources
-  const entityResources = getEntityResources();
-  for (const resourceName of entityResources) {
-    if (hasEntityClass(resourceName)) {
-      const entityClass = getEntityClass(resourceName);
-      const entity = new entityClass();
-      await entity.create(apiContext);
-      createdEntities.push({ name: resourceName, entity });
-    }
-  }
-
   await afterAction();
 });
 
