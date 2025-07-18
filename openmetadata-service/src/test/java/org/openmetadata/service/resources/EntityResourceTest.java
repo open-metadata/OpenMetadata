@@ -1195,7 +1195,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       LOG.info("Skipping delete_recursiveTest - container reuse is enabled");
       return;
     }
-    
+
     // Finally, delete the container that contains the entities created for this test
     EntityReference container = getContainer();
     if (container != null) {
