@@ -48,7 +48,7 @@ type Fields =
   | 'displayName'
   | 'deleted'
   | 'service'
-  | 'domain';
+  | 'domains';
 
 export type SourceType = (
   | Pick<
@@ -71,7 +71,7 @@ export type SourceType = (
       | 'description'
       | 'displayName'
       | 'deleted'
-      | 'domain'
+      | 'domains'
     >
   | Pick<
       Exclude<

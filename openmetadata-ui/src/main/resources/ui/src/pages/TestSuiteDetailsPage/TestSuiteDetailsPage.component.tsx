@@ -232,7 +232,7 @@ const TestSuiteDetailsPage = () => {
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAIN],
+        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
         include: Include.All,
       });
       setSlashedBreadCrumb([
@@ -509,7 +509,8 @@ const TestSuiteDetailsPage = () => {
             <Col span={24}>
               <div className="d-flex flex-wrap gap-2">
                 <DomainLabel
-                  domain={testSuite?.domain}
+                  multiple
+                  domains={testSuite?.domains}
                   entityFqn={testSuite?.fullyQualifiedName ?? ''}
                   entityId={testSuite?.id ?? ''}
                   entityType={EntityType.TEST_SUITE}

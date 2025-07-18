@@ -297,7 +297,7 @@ class CSVUtilsClassBase {
             </Certification>
           );
         };
-      case 'domain':
+      case 'domains':
         return ({
           row,
           onRowChange,
@@ -332,6 +332,7 @@ class CSVUtilsClassBase {
           return (
             <DomainSelectableList
               hasPermission
+              multiple
               popoverProps={{ open: true }}
               selectedDomain={
                 value

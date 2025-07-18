@@ -138,7 +138,7 @@ const DomainSelectableList = ({
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
               title={t('label.edit-entity', {
-                entity: t('label.domain'),
+                entity: t('label.domain-plural'),
               })}
               onClick={(e) => e.stopPropagation()}
             />

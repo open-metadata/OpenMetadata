@@ -357,7 +357,7 @@ public class DatabaseSchemaResourceTest
             .withService(DATABASE.getService().getFullyQualifiedName())
             .withOwners(
                 List.of(databaseOwner1.getEntityReference(), databaseOwner2.getEntityReference()))
-            .withDomain(domain.getFullyQualifiedName());
+            .withDomains(List.of(domain.getFullyQualifiedName()));
     Database database = databaseResourceTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
 
     // Create multiple schemas - some with their own owners/domains, some without
@@ -391,7 +391,7 @@ public class DatabaseSchemaResourceTest
                     .withDomainType(DomainType.AGGREGATE)
                     .withDescription("Schema specific domain"),
                 ADMIN_AUTH_HEADERS);
-        createSchema.withDomain(schemaDomain.getFullyQualifiedName());
+        createSchema.withDomains(List.of(schemaDomain.getFullyQualifiedName()));
       }
 
       DatabaseSchema schema = createEntity(createSchema, ADMIN_AUTH_HEADERS);
@@ -411,7 +411,7 @@ public class DatabaseSchemaResourceTest
     // Test 1: Fetch schemas with pagination including inherited fields
     ResultList<DatabaseSchema> resultList =
         listEntities(
-            Map.of("database", database.getFullyQualifiedName(), "fields", "owners,domain"),
+            Map.of("database", database.getFullyQualifiedName(), "fields", "owners,domains"),
             ADMIN_AUTH_HEADERS);
 
     // Verify inheritance behavior
@@ -422,22 +422,23 @@ public class DatabaseSchemaResourceTest
           Integer.parseInt(fetchedSchema.getName().substring(fetchedSchema.getName().length() - 1));
 
       // Verify domain inheritance
-      assertNotNull(fetchedSchema.getDomain());
+      assertListNotNull(fetchedSchema.getDomains());
       if (index == 2) {
         // Schema 2 has its own domain
         assert schemaDomain != null;
         assertEquals(
             schemaDomain.getFullyQualifiedName(),
-            fetchedSchema.getDomain().getFullyQualifiedName());
+            fetchedSchema.getDomains().get(0).getFullyQualifiedName());
         assertNull(
-            fetchedSchema.getDomain().getInherited(),
+            fetchedSchema.getDomains().get(0).getInherited(),
             "Own domain should not be marked as inherited");
       } else {
         // Other schemas inherit from database
         assertEquals(
-            domain.getFullyQualifiedName(), fetchedSchema.getDomain().getFullyQualifiedName());
+            domain.getFullyQualifiedName(),
+            fetchedSchema.getDomains().get(0).getFullyQualifiedName());
         assertTrue(
-            fetchedSchema.getDomain().getInherited(),
+            fetchedSchema.getDomains().get(0).getInherited(),
             "Domain should be marked as inherited from database");
       }
 
@@ -472,13 +473,14 @@ public class DatabaseSchemaResourceTest
       Table table =
           tableResourceTest.getEntityByName(
               schemas.getFirst().getFullyQualifiedName() + ".inherit_test_table",
-              "owners,domain",
+              "owners,domains",
               ADMIN_AUTH_HEADERS);
 
       // Table should inherit domain from database (schema 0 doesn't have its own domain)
-      assertNotNull(table.getDomain());
-      assertEquals(domain.getFullyQualifiedName(), table.getDomain().getFullyQualifiedName());
-      assertTrue(table.getDomain().getInherited(), "Table domain should be inherited");
+      assertListNotNull(table.getDomains());
+      assertEquals(
+          domain.getFullyQualifiedName(), table.getDomains().get(0).getFullyQualifiedName());
+      assertTrue(table.getDomains().get(0).getInherited(), "Table domain should be inherited");
 
       // Table should inherit owners from database (schema 0 doesn't have its own owners)
       assertListNotNull(table.getOwners());
@@ -613,7 +615,8 @@ public class DatabaseSchemaResourceTest
     assertTrue(listOrEmpty(updatedTable.getOwners()).isEmpty(), "Owner should be cleared");
     assertTrue(
         listOrEmpty(updatedTable.getTags()).isEmpty(), "Tags should be empty after clearing");
-    assertNull(updatedTable.getDomain(), "Domain should be null after clearing");
+    assertTrue(
+        listOrEmpty(updatedTable.getDomains()).isEmpty(), "Domain should be null after clearing");
   }
 
   @Test
@@ -631,7 +634,7 @@ public class DatabaseSchemaResourceTest
             .withDescription("Initial Table Description");
 
     // Set column description
-    createTable.getColumns().getFirst().setDescription("Initial Column Description");
+    createTable.getColumns().get(0).setDescription("Initial Column Description");
 
     Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
@@ -642,7 +645,7 @@ public class DatabaseSchemaResourceTest
     List<String> csvLines = List.of(exportedCsv.split(CsvUtil.LINE_SEPARATOR));
     assertTrue(csvLines.size() > 1, "Export should contain schema, table, and column");
 
-    String header = csvLines.getFirst();
+    String header = csvLines.get(0);
     List<String> modified = new ArrayList<>();
     modified.add(header);
 

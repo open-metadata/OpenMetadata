@@ -69,10 +69,10 @@ export interface AppMarketPlaceDefinition {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Event subscriptions that will be created when the application is installed.
      */
@@ -496,9 +496,6 @@ export interface Action {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
- * it belongs to.
  */
 export interface EntityReference {
     /**
@@ -987,9 +984,9 @@ export interface CreateEventSubscription {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Event Subscription belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Is the alert enabled.
      */
