@@ -1,5 +1,6 @@
 ---
 title: Run the GCS Connector Externally
+description: Use YAML to configure GCS storage ingestion for metadata visibility into cloud buckets.
 slug: /connectors/storage/gcs/yaml
 ---
 

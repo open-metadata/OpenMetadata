@@ -1,5 +1,6 @@
 ---
 title: S3 Datalake Connector Troubleshooting
+description: Fix S3 Datalake ingestion problems like IAM permission errors, schema discovery, or format issues.
 slug: /connectors/database/s3-datalake/troubleshooting
 ---
 

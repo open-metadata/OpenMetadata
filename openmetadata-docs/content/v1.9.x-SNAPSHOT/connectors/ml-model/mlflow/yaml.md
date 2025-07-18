@@ -1,5 +1,6 @@
 ---
 title: Run the MLflow Connector Externally
+description: Use YAML to configure MLflow ingestion and sync model runs, metrics, tags, and parameters.
 slug: /connectors/ml-model/mlflow/yaml
 ---
 

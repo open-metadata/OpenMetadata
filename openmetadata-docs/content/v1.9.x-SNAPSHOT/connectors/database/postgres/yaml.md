@@ -1,5 +1,6 @@
 ---
 title: Run the PostgreSQL Connector Externally
+description: Use YAML to configure Postgres metadata ingestion with profiling and schema extraction.
 slug: /connectors/database/postgres/yaml
 ---
 

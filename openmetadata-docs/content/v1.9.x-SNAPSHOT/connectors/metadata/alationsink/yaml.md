@@ -1,5 +1,6 @@
 ---
 title: Run the Alation Sink Connector Externally
+description: Use YAML to configure AlationSink metadata ingestion and push terms to Alation catalogs.
 slug: /connectors/metadata/alationsink/yaml
 ---
 

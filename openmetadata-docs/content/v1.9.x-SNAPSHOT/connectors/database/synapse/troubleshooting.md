@@ -1,5 +1,6 @@
 ---
 title: Synapse Connector Troubleshooting
+description: Troubleshoot Synapse connector issues like permission denial, query errors, or slow ingestion.
 slug: /connectors/database/synapse/troubleshooting
 collate: true
 ---

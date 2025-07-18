@@ -1,5 +1,6 @@
 ---
 title: Data Observability | OpenMetadata Observability Guide
+description: Learn how to track data observability metrics including freshness, volume, and row quality.
 slug: /how-to-guides/data-quality-observability/observability
 ---
 

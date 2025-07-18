@@ -1,5 +1,6 @@
 ---
 title: Run the Fivetran Connector Externally
+description: Use YAML to configure Fivetran connector for ingestion of pipeline and destination metadata.
 slug: /connectors/pipeline/fivetran/yaml
 ---
 

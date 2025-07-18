@@ -1,5 +1,6 @@
 ---
 title: Run the S3 Datalake Connector Externally
+description: Use YAML to extract metadata from S3 Datalake for file-level lineage and governance.
 slug: /connectors/database/s3-datalake/yaml
 ---
 

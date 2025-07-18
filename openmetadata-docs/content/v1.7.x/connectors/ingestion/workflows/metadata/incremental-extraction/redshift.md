@@ -1,5 +1,6 @@
 ---
 title: Metadata Ingestion - Incremental Extraction - Redshift
+description: Configure incremental metadata ingestion from Redshift to capture changes efficiently.
 slug: /connectors/ingestion/workflows/metadata/incremental-extraction/redshift
 ---
 

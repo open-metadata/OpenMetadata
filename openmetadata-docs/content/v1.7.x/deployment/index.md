@@ -1,5 +1,6 @@
 ---
 title: Deployment | OpenMetadata Installation & Setup Guide
+description: Deploy, configure, and manage OpenMetadata across environments with security and scaling guidance.
 slug: /deployment
 collate: false
 ---

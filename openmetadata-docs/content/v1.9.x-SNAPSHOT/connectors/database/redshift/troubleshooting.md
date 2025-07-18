@@ -1,5 +1,6 @@
 ---
 title: Redshift Connector Troubleshooting
+description: Troubleshoot Redshift ingestion errors like driver issues, throttling, or missing table metadata.
 slug: /connectors/database/redshift/troubleshooting
 ---
 

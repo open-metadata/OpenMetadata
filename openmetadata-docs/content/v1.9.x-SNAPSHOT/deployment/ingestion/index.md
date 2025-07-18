@@ -1,5 +1,6 @@
 ---
-title: Ingestion Framework Deployment
+title: Ingestion Framework Deployment | Official Documentation
+description: Configure ingestion from external, cloud-native, or hybrid environments using deployment guides.
 slug: /deployment/ingestion
 collate: false
 ---

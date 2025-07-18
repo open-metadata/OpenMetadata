@@ -1,5 +1,6 @@
 ---
 title: ML Model Services | OpenMetadata Machine Learning Guide
+description: Explore supported ML model metadata connectors including MLflow, SageMaker, and VertexAI.
 slug: /connectors/ml-model
 ---
 

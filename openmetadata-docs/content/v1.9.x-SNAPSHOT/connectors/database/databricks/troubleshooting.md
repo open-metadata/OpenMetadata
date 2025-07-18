@@ -1,5 +1,6 @@
 ---
 title: Databricks Connector Troubleshooting
+description: Troubleshoot Databricks connector issues including schema extraction errors or driver failures.
 slug: /connectors/database/databricks/troubleshooting
 ---
 

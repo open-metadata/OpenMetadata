@@ -1,5 +1,6 @@
 ---
 title: Data Quality | OpenMetadata Quality Management Guide
+description: Ensure observability through alerts, test results, and profiler signals for better data quality.
 slug: /how-to-guides/data-quality-observability/quality
 ---
 

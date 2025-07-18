@@ -1,5 +1,6 @@
 ---
 title: PostgreSQL Connector Troubleshooting
+description: Troubleshoot Postgres connector for issues like access denial, column mismatch, or timeouts.
 slug: /connectors/database/postgres/troubleshooting
 ---
 

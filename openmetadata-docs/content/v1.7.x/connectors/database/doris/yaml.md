@@ -1,5 +1,6 @@
 ---
 title: Run the Doris Connector Externally
+description: Use YAML to ingest metadata from Doris, including tables, partitions, and profiling.
 slug: /connectors/database/doris/yaml
 ---
 

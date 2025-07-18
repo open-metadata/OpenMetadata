@@ -1,5 +1,6 @@
 ---
 title: Run the Matillion Connector Externally
+description: Use YAML to configure Matillion ingestion and extract transformation job metadata and lineage.
 slug: /connectors/pipeline/matillion/yaml
 collate: true
 ---

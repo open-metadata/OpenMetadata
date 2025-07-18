@@ -1,5 +1,6 @@
 ---
 title: Admin Guide | OpenMetadata Administration Documentation
+description: Browse all administrative how-to guides for onboarding, team management, and policy creation.
 slug: /how-to-guides/admin-guide
 ---
 

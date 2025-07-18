@@ -1,5 +1,6 @@
 ---
 title: Run the Greenplum Connector Externally
+description: Use YAML to ingest Greenplum database metadata including profiling and schema lineage.
 slug: /connectors/database/greenplum/yaml
 ---
 
