@@ -346,7 +346,7 @@ export const verifyDomainPropagation = async (
   await expect(
     page
       .getByTestId(`table-data-card_${childFqnSearchTerm}`)
-      .getByTestId('domain-link')
+      .getByTestId('domains-link')
   ).toContainText(domain.displayName);
 };
 
