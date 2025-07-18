@@ -2086,7 +2086,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L);
     Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
     int taskId = approvalTask.getTask().getId();
-    taskTest.resolveTask(taskId, new ResolveTask().withNewValue("approved"), authHeaders(USER1.getName()));
+    taskTest.resolveTask(
+        taskId, new ResolveTask().withNewValue("approved"), authHeaders(USER1.getName()));
 
     // 3. Update as reviewer (should NOT trigger workflow)
     String jsonReviewer = JsonUtils.pojoToJson(term);
