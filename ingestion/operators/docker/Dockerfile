@@ -84,7 +84,7 @@ ENV PIP_QUIET=1
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="1.8.6.0"
+ARG RI_VERSION="1.8.7.0"
 RUN pip install --upgrade pip
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
