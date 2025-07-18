@@ -230,7 +230,15 @@ export const removeDomain = async (
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
-  await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('no-domain-text')).toContainText('No Domains');
 };
 
 export const assignDataProduct = async (
