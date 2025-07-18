@@ -138,11 +138,6 @@ describe('AnnouncementCardV1', () => {
     expect(
       screen.getByText('Alberto updated dim_address_table')
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'We will be deprecating a column, please change accordingly.'
-      )
-    ).toBeInTheDocument();
     expect(screen.getByText('label.column-name:')).toBeInTheDocument();
     expect(screen.getByText('PARTNER_NAME')).toBeInTheDocument();
   });
@@ -152,11 +147,6 @@ describe('AnnouncementCardV1', () => {
 
     expect(screen.getByTestId('announcement-card-v1-2')).toBeInTheDocument();
     expect(screen.getByText('Total Data Assets')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit.'
-      )
-    ).toBeInTheDocument();
     expect(
       screen.queryByText('label.updated-lowercase')
     ).not.toBeInTheDocument();

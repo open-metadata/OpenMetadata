@@ -16,9 +16,9 @@ import { isEmpty } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
-import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-folder-data.svg';
+import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
 import { KNOWLEDGE_LIST_LENGTH, ROUTES } from '../../../constants/constants';
 import {
   applySortToData,
@@ -62,12 +62,11 @@ function FollowingWidget({
 }: Readonly<WidgetCommonProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const navigate = useNavigate();
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
   );
   const [followedData, setFollowedData] = useState<SourceType[]>([]);
-  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
+  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(true);
 
   const fetchUserFollowedData = async () => {
     if (!currentUser?.id) {
@@ -169,13 +168,13 @@ function FollowingWidget({
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
+        actionButtonLink={ROUTES.EXPLORE}
         actionButtonText={t('label.browse-assets')}
         description={t('message.not-followed-anything')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
         }
         title={t('message.not-following-any-assets-yet')}
-        onActionClick={() => navigate(ROUTES.EXPLORE)}
       />
     ),
     []
@@ -253,7 +252,7 @@ function FollowingWidget({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<FollowingAssetsIcon />}
+          icon={<FollowingAssetsIcon height={24} width={24} />}
           isEditView={isEditView}
           selectedSortBy={selectedEntityFilter}
           sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
@@ -272,7 +271,9 @@ function FollowingWidget({
             moreButtonText={t('label.view-more-count', {
               count: followedData.length > 0 ? followedData.length : '',
             })}
-            showMoreButton={Boolean(!isLoadingOwnedData)}
+            showMoreButton={
+              Boolean(!isLoadingOwnedData) && !isEmpty(followedData)
+            }
           />
         </div>
       </div>
@@ -293,7 +294,7 @@ function FollowingWidget({
 
   return (
     <WidgetWrapper
-      dataLength={followedData.length !== 0 ? followedData.length : 5}
+      dataLength={followedData.length !== 0 ? followedData.length : 10}
       loading={isLoadingOwnedData}>
       {WidgetContent}
     </WidgetWrapper>

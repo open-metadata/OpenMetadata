@@ -12,22 +12,24 @@
  */
 @import (reference) url('../../../../../styles/variables.less');
 
-.widget-more-options {
+.widget-more-options-container {
   .widget-more-options-button {
-    border: none !important;
-    background: transparent;
-    transition: color 0.3s ease;
+    width: 37px;
+  }
+}
+
+.widget-more-options-menu {
+  width: 168px;
+  padding: 12px !important;
+
+  .ant-dropdown-menu-item {
+    padding: 10px 16px;
+    border-radius: 8px;
+    color: @grey-13;
 
     &:hover {
-      color: @primary-color;
-    }
-  }
-
-  .widget-more-options-menu {
-    .ant-dropdown-menu-item {
-      padding: 8px 16px;
-      font-size: 14px;
-      line-height: 20px;
+      background-color: @primary-50;
+      color: @primary-7;
     }
   }
 }

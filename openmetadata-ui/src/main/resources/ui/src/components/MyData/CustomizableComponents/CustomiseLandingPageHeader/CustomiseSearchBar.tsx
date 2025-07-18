@@ -37,7 +37,7 @@ import SearchOptions from '../../../AppBar/SearchOptions';
 import Suggestions from '../../../AppBar/Suggestions';
 import './customise-search-bar.less';
 
-export const CustomiseSearchBar = () => {
+export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { currentUser, searchCriteria } = useApplicationStore();
   const { isNLPEnabled, isNLPActive, setNLPActive, setNLPEnabled } =
@@ -219,6 +219,7 @@ export const CustomiseSearchBar = () => {
           bordered={false}
           className="rounded-4 appbar-search"
           data-testid="customise-searchbox"
+          disabled={disabled}
           id="customise-searchbox"
           placeholder={t('label.search-for-type', {
             type: 'Tables, Database, Schema...',

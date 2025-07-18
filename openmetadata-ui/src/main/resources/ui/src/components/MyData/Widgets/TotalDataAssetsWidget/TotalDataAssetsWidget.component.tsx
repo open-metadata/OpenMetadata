@@ -58,7 +58,7 @@ const TotalDataAssetsWidget = ({
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
   const { applicationConfig } = useApplicationStore();
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [chartData, setChartData] = useState<DataInsightCustomChartResult>();
   const [selectedDate, setSelectedDate] = useState<number | undefined>();
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
@@ -78,6 +78,10 @@ const TotalDataAssetsWidget = ({
 
     return [...remaining, ...firstTwo];
   }, [applicationConfig?.customTheme?.primaryColor]);
+
+  const widgetData = useMemo(() => {
+    return currentLayout?.find((item) => item.i === widgetKey);
+  }, [currentLayout, widgetKey]);
 
   const isFullSizeWidget = useMemo(() => {
     return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
@@ -221,9 +225,10 @@ const TotalDataAssetsWidget = ({
                 </Pie>
                 <RechartsTooltip
                   formatter={(value: number, name: string) => [
-                    `${value}`,
-                    `${name}`,
+                    `(${value})`,
+                    startCase(name),
                   ]}
+                  separator={' '}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -302,23 +307,25 @@ const TotalDataAssetsWidget = ({
   }, [graphData]);
 
   return (
-    <WidgetWrapper dataLength={graphData.length} loading={isLoading}>
+    <WidgetWrapper
+      dataLength={graphData.length > 0 ? graphData.length : 10}
+      loading={isLoading}>
       <div className="total-data-assets-widget-container">
         <WidgetHeader
           className="items-center"
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<TotalAssetsWidgetIcon />}
+          icon={<TotalAssetsWidgetIcon height={24} width={24} />}
           isEditView={isEditView}
           selectedSortBy={selectedSortBy}
           sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
           title={t('label.data-insight-total-entity-summary')}
           widgetKey={widgetKey}
-          widgetWidth={2}
+          widgetWidth={widgetData?.w}
           onSortChange={(key) => setSelectedSortBy(key)}
         />
-        <div className="widget-content flex-1">
+        <div className="widget-content flex-1 h-full">
           {isEmpty(graphData) ? emptyState : totalDataAssetsContent}
         </div>
       </div>

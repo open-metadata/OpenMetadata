@@ -38,23 +38,25 @@ const WidgetMoreOptions = ({
   dataTestId = 'widget-more-options',
 }: WidgetMoreOptionsProps) => {
   return (
-    <Dropdown
-      className={`widget-more-options ${className}`}
-      data-testid={dataTestId}
-      menu={{
-        items: menuItems,
-        selectable: false,
-        onClick: onMenuClick,
-        className: 'widget-more-options-menu',
-      }}
-      placement="bottomLeft"
-      trigger={['click']}>
-      <Button
-        className="widget-more-options-button"
-        data-testid="more-options-button"
-        icon={<MoreOutlined size={20} />}
-      />
-    </Dropdown>
+    <div className="widget-more-options-container">
+      <Dropdown
+        className={`widget-more-options ${className}`}
+        data-testid={dataTestId}
+        menu={{
+          items: menuItems,
+          selectable: false,
+          onClick: onMenuClick,
+          className: 'widget-more-options-menu',
+        }}
+        placement="bottomLeft"
+        trigger={['click']}>
+        <Button
+          className="widget-more-options-button"
+          data-testid="more-options-button"
+          icon={<MoreOutlined size={20} />}
+        />
+      </Dropdown>
+    </div>
   );
 };
 

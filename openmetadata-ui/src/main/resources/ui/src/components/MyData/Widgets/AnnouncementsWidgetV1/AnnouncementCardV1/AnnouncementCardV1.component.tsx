@@ -24,7 +24,6 @@ import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getEntityFQN, getEntityType } from '../../../../../utils/FeedUtils';
 import { getUserPath } from '../../../../../utils/RouterUtils';
 import { getEntityIcon } from '../../../../../utils/TableUtils';
-import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import './announcement-card-v1.less';
 
 interface AnnouncementCardV1Props {
@@ -42,7 +41,6 @@ const AnnouncementCardV1 = ({
 
   const {
     title,
-    description,
     userName,
     timestamp,
     entityName,
@@ -212,16 +210,6 @@ const AnnouncementCardV1 = ({
             }}>
             {title}
           </Typography.Text>
-        )}
-
-        {description && (
-          <RichTextEditorPreviewerV1
-            className="text-grey-muted m-0 text-xss"
-            data-testid="announcement-message"
-            markdown={description}
-            maxLength={200}
-            showReadMoreBtn={false}
-          />
         )}
 
         {columnName && (

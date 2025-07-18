@@ -57,7 +57,7 @@ const WidgetSortFilter = ({
         multiple: false,
         activeKey: selectedSortBy,
         onClick: handleSortByClick,
-        className: 'widget-header-menu',
+        className: 'widget-sort-filter-menu',
       }}
       open={isOpen}
       trigger={['click']}

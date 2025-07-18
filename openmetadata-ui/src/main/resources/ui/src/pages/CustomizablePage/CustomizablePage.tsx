@@ -173,7 +173,7 @@ export const CustomizablePage = () => {
     }
   };
 
-  const handleBackgroundColorUpdate = async (color: string) => {
+  const handleBackgroundColorUpdate = async (color?: string) => {
     if (!document) {
       return;
     }

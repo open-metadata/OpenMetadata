@@ -22,7 +22,10 @@ import RGL, {
 } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
-import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
+import {
+  CustomiseHomeModalSelectedKey,
+  LandingPageWidgetKeys,
+} from '../../../../enums/CustomizablePage.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { Page } from '../../../../generated/system/ui/page';
@@ -46,7 +49,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
-import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
+import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
@@ -119,11 +122,11 @@ function CustomizeMyData({
     [layout]
   );
 
-  const handleOpenAddWidgetModal = useCallback(() => {
+  const handleOpenCustomiseHomeModal = useCallback(() => {
     setIsWidgetModalOpen(true);
   }, []);
 
-  const handleCloseAddWidgetModal = useCallback(() => {
+  const handleCloseCustomiseHomeModal = useCallback(() => {
     setIsWidgetModalOpen(false);
   }, []);
 
@@ -175,7 +178,7 @@ function CustomizeMyData({
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
             widgetConfig: widget,
-            handleOpenAddWidgetModal: handleOpenAddWidgetModal,
+            handleOpenAddWidgetModal: handleOpenCustomiseHomeModal,
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
             handleRemoveWidget: handleRemoveWidget,
             isEditView: true,
@@ -188,23 +191,12 @@ function CustomizeMyData({
       layout,
       followedData,
       isLoadingOwnedData,
-      handleOpenAddWidgetModal,
+      handleOpenCustomiseHomeModal,
       handlePlaceholderWidgetKey,
       handleRemoveWidget,
       handleLayoutUpdate,
     ]
   );
-
-  const handleReset = useCallback(() => {
-    // Get default layout with the empty widget added at the end
-    const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
-      customizeMyDataPageClassBase.defaultLayout,
-      2,
-      4
-    );
-    setLayout(newMainPanelLayout);
-    onSaveLayout();
-  }, []);
 
   useEffect(() => {
     fetchUserFollowedData();
@@ -220,9 +212,21 @@ function CustomizeMyData({
     });
   };
 
-  const handleBackgroundColorUpdate = async (color: string) => {
+  const handleBackgroundColorUpdate = async (color?: string) => {
     await onBackgroundColorUpdate?.(color);
   };
+
+  const handleReset = useCallback(async () => {
+    // Get default layout with the empty widget added at the end
+    const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
+      customizeMyDataPageClassBase.defaultLayout,
+      2,
+      4
+    );
+    setLayout(newMainPanelLayout);
+    await handleBackgroundColorUpdate();
+    await onSaveLayout();
+  }, [handleBackgroundColorUpdate, onSaveLayout]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
@@ -266,16 +270,16 @@ function CustomizeMyData({
       </PageLayoutV1>
 
       {isWidgetModalOpen && (
-        <AddWidgetModal
+        <CustomiseHomeModal
           addedWidgetsList={addedWidgetsList}
+          currentBackgroundColor={backgroundColor}
+          defaultSelectedKey={CustomiseHomeModalSelectedKey.ALL_WIDGETS}
           handleAddWidget={handleMainPanelAddWidget}
-          handleCloseAddWidgetModal={handleCloseAddWidgetModal}
-          handleLayoutUpdate={handleLayoutUpdate}
-          maxGridSizeSupport={
-            customizeMyDataPageClassBase.landingPageMaxGridSize
-          }
           open={isWidgetModalOpen}
           placeholderWidgetKey={placeholderWidgetKey}
+          onBackgroundColorUpdate={onBackgroundColorUpdate}
+          onClose={handleCloseCustomiseHomeModal}
+          onHomePage={false}
         />
       )}
     </>

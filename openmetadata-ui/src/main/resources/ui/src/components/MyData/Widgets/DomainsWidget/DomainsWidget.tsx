@@ -50,7 +50,7 @@ const DomainsWidget = ({
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     DOMAIN_SORT_BY_KEYS.LATEST
   );
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDomains = async () => {
@@ -199,14 +199,20 @@ const DomainsWidget = ({
 
   return (
     <WidgetWrapper
-      dataLength={domains.length !== 0 ? domains.length : 5}
+      dataLength={domains.length !== 0 ? domains.length : 10}
       loading={loading}>
       <div className="domains-widget-container">
         <WidgetHeader
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<DomainIcon className="domains-widget-globe" />}
+          icon={
+            <DomainIcon
+              className="domains-widget-globe"
+              height={24}
+              width={24}
+            />
+          }
           isEditView={isEditView}
           selectedSortBy={selectedSortBy}
           sortOptions={DOMAIN_SORT_BY_OPTIONS}

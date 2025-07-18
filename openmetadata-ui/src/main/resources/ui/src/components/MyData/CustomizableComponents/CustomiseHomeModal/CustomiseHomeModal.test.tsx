@@ -103,8 +103,8 @@ describe('CustomiseHomeModal Component', () => {
       expect(
         screen.getByTestId('sidebar-option-all-widgets')
       ).toBeInTheDocument();
-      expect(screen.getByText('label.header-theme')).toBeInTheDocument();
-      expect(screen.getByText('label.all-widgets')).toBeInTheDocument();
+      expect(screen.getByText('Label Header Theme')).toBeInTheDocument();
+      expect(screen.getByText('Label All Widgets')).toBeInTheDocument();
     });
 
     it('should have header-theme selected by default', () => {
@@ -315,13 +315,28 @@ describe('CustomiseHomeModal Component', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should show all widgets content when all-widgets option is clicked', () => {
+    it('should show all widgets content when all-widgets option is clicked', async () => {
+      jest.mock('../../../../rest/DocStoreAPI', () => ({
+        getAllKnowledgePanels: jest.fn().mockResolvedValue({
+          data: [
+            {
+              id: '1',
+              name: 'Test Knowledge Panel',
+            },
+          ],
+        }),
+      }));
+
       render(<CustomiseHomeModal {...defaultProps} />);
 
       const allWidgetsOption = screen.getByTestId('sidebar-option-all-widgets');
-      fireEvent.click(allWidgetsOption);
+      await act(async () => {
+        fireEvent.click(allWidgetsOption);
+      });
 
-      expect(screen.getByTestId('all-widgets-content')).toBeInTheDocument();
+      expect(
+        await screen.findByTestId('all-widgets-content')
+      ).toBeInTheDocument();
       expect(
         screen.queryByTestId('header-theme-component')
       ).not.toBeInTheDocument();

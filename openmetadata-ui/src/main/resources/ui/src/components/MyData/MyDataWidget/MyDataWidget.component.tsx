@@ -16,9 +16,9 @@ import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
-import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-folder-data.svg';
+import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
@@ -63,7 +63,6 @@ const MyDataWidgetInternal = ({
   handleLayoutUpdate,
   currentLayout,
 }: WidgetCommonProps) => {
-  const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
@@ -187,13 +186,15 @@ const MyDataWidgetInternal = ({
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
+        actionButtonLink={ROUTES.MY_DATA}
         actionButtonText={t('label.get-started')}
-        description={t('message.nothing-saved-here-yet')}
+        description={`${t('message.nothing-saved-yet')} ${t(
+          'message.no-owned-data'
+        )}`}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
         }
         title={t('message.curate-your-data-view')}
-        onActionClick={() => navigate(ROUTES.EXPLORE)}
       />
     ),
     []
@@ -270,7 +271,7 @@ const MyDataWidgetInternal = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<MyDataIcon />}
+          icon={<MyDataIcon height={24} width={24} />}
           isEditView={isEditView}
           selectedSortBy={selectedFilter}
           sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
@@ -289,7 +290,7 @@ const MyDataWidgetInternal = ({
             moreButtonText={t('label.view-more-count', {
               count: data.length > 0 ? data.length : '',
             })} // if data is empty then show view more
-            showMoreButton={Boolean(!isLoading)}
+            showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
           />
         </div>
       </div>
@@ -308,7 +309,7 @@ const MyDataWidgetInternal = ({
 
   return (
     <WidgetWrapper
-      dataLength={data.length !== 0 ? data.length : 5}
+      dataLength={data.length > 0 ? data.length : 10}
       loading={isLoading}>
       {widgetContent}
     </WidgetWrapper>

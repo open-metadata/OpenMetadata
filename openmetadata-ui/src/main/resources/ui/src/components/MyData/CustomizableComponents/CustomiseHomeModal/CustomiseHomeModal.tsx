@@ -13,15 +13,20 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Modal, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { startCase } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
-import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
+import {
+  CustomiseHomeModalSelectedKey,
+  LandingPageWidgetKeys,
+} from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
 import HeaderTheme from '../../HeaderTheme/HeaderTheme';
 import AllWidgetsContent from '../AllWidgetsContent/AllWidgetsContent';
 import './customise-home-modal.less';
@@ -36,6 +41,7 @@ const CustomiseHomeModal = ({
   currentBackgroundColor,
   placeholderWidgetKey,
   onHomePage,
+  defaultSelectedKey = CustomiseHomeModalSelectedKey.HEADER_THEME,
 }: CustomiseHomeModalProps) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -45,11 +51,13 @@ const CustomiseHomeModal = ({
 
   const [widgets, setWidgets] = useState<Document[]>([]);
   const [selectedWidgets, setSelectedWidgets] = useState<string[]>([]);
-  const [selectedKey, setSelectedKey] = useState('header-theme');
+  const [selectedKey, setSelectedKey] = useState(defaultSelectedKey);
+  const [isFetchingWidgets, setIsFetchingWidgets] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const fetchWidgets = async () => {
     try {
+      setIsFetchingWidgets(true);
       const { data } = await getAllKnowledgePanels({
         fqnPrefix: 'KnowledgePanel',
         limit: PAGE_SIZE_MEDIUM,
@@ -62,6 +70,8 @@ const CustomiseHomeModal = ({
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsFetchingWidgets(false);
     }
   };
 
@@ -96,8 +106,13 @@ const CustomiseHomeModal = ({
   };
 
   const handleSidebarClick = (key: string) => {
-    if (key === 'header-theme' || key === 'all-widgets') {
-      setSelectedKey(key);
+    if (
+      [
+        CustomiseHomeModalSelectedKey.HEADER_THEME,
+        CustomiseHomeModalSelectedKey.ALL_WIDGETS,
+      ].includes(key as CustomiseHomeModalSelectedKey)
+    ) {
+      setSelectedKey(key as CustomiseHomeModalSelectedKey);
     } else {
       const target = contentRef.current?.querySelector(
         `[data-widget-key="${key}"]`
@@ -111,7 +126,7 @@ const CustomiseHomeModal = ({
   const customiseOptions = useMemo(() => {
     return [
       {
-        key: 'header-theme',
+        key: CustomiseHomeModalSelectedKey.HEADER_THEME,
         label: t('label.header-theme'),
         component: (
           <HeaderTheme
@@ -123,7 +138,7 @@ const CustomiseHomeModal = ({
       ...(!onHomePage
         ? [
             {
-              key: 'all-widgets',
+              key: CustomiseHomeModalSelectedKey.ALL_WIDGETS,
               label: t('label.all-widgets'),
               component: (
                 <AllWidgetsContent
@@ -168,20 +183,22 @@ const CustomiseHomeModal = ({
     return (
       <>
         {sidebarItems.map((item) => {
-          const isWidgetItem =
-            item.key !== 'header-theme' && item.key !== 'all-widgets';
+          const isWidgetItem = ![
+            CustomiseHomeModalSelectedKey.HEADER_THEME,
+            CustomiseHomeModalSelectedKey.ALL_WIDGETS,
+          ].includes(item.key as CustomiseHomeModalSelectedKey);
 
           const isAllWidgets = item.key === 'all-widgets';
 
           return (
             <div
-              className={`sidebar-option text-md font-semibold border-radius-xs cursor-pointer d-flex flex-wrap items-center
+              className={`sidebar-option text-md font-medium border-radius-xs cursor-pointer d-flex flex-wrap items-center
           ${isWidgetItem ? 'sidebar-widget-item' : ''}
           ${selectedKey === item.key ? 'active' : ''}`}
               data-testid={`sidebar-option-${item.key}`}
               key={item.key}
               onClick={() => handleSidebarClick(item.key)}>
-              <span>{item.label}</span>
+              <span>{startCase(item.label)}</span>
               {isAllWidgets && (
                 <span className="widget-count text-xs border-radius-md m-l-sm">
                   {widgets.length}
@@ -258,7 +275,16 @@ const CustomiseHomeModal = ({
           className="customise-home-modal-divider h-auto self-stretch"
           type="vertical"
         />
-        <Col className="content p-box">{selectedComponent}</Col>
+        <Col className="content p-box">
+          {selectedKey === CustomiseHomeModalSelectedKey.ALL_WIDGETS &&
+          isFetchingWidgets ? (
+            <div className="d-flex justify-center items-center h-100">
+              <Loader />
+            </div>
+          ) : (
+            selectedComponent
+          )}
+        </Col>
       </Row>
       <Row className="customise-home-modal-footer p-box d-flex justify-end gap-3 bg-white sticky bottom-0">
         <Col className="d-flex items-center gap-4">
