@@ -1,5 +1,6 @@
 ---
 title: Run the VertexAI Connector Externally
+description: Use YAML to ingest VertexAI metadata including models, inputs, tags, and monitoring logs.
 slug: /connectors/ml-model/vertexai/yaml
 collate: true
 ---

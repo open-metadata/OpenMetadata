@@ -1,5 +1,6 @@
 ---
 title: Profiler Workflow | OpenMetadata Profiling Workflow
+description: Use profiler workflows to extract row stats, distribution, null percentages, and data health.
 slug: /how-to-guides/data-quality-observability/profiler/workflow
 ---
 
