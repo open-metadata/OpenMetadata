@@ -259,8 +259,8 @@ public interface SearchIndex {
             entity.getFullyQualifiedName(), tableConstraint.getColumns().get(columnIndex));
 
     Map<String, Object> columnMap = new HashMap<>();
-    columnMap.put("columnFQN", columnFQN);
-    columnMap.put("relatedColumnFQN", referredColumn);
+    columnMap.put("columnFQN", referredColumn); // Upstream column
+    columnMap.put("relatedColumnFQN", columnFQN); // Downstream column
     columnMap.put("relationshipType", tableConstraint.getRelationshipType());
     columns.add(columnMap);
 
@@ -291,8 +291,8 @@ public interface SearchIndex {
             entity.getFullyQualifiedName(), tableConstraint.getColumns().get(columnIndex));
 
     Map<String, Object> columnMap = new HashMap<>();
-    columnMap.put("columnFQN", columnFQN);
-    columnMap.put("relatedColumnFQN", referredColumn);
+    columnMap.put("columnFQN", referredColumn); // Upstream column
+    columnMap.put("relatedColumnFQN", columnFQN); // Downstream column
     columnMap.put("relationshipType", tableConstraint.getRelationshipType());
 
     List<Map<String, Object>> existingColumns =
