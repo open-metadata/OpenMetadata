@@ -98,7 +98,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void test_cleanupAfterDeletingEntity_shouldDetectOrphans() {
-    Table tableToDelete = testTables.get(0);
+    Table tableToDelete = testTables.getFirst();
     UUID tableId = tableToDelete.getId();
     collectionDAO.tableDAO().delete(tableId);
     cleanup = new EntityRelationshipCleanup(collectionDAO, true);
@@ -485,7 +485,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   void test_entityWithTimeSeriesRepository_shouldNotBeCleanedWhenExists() {
     UUID testCaseId = UUID.randomUUID();
     UUID testCaseResolutionId = UUID.randomUUID();
-    UUID tableId = testTables.get(0).getId();
+    UUID tableId = testTables.getFirst().getId();
 
     collectionDAO
         .relationshipDAO()
@@ -540,7 +540,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   void test_entityWithoutAnyRepository_shouldNotBeCleanedUpEvenIfRelationshipExists() {
     UUID nonExistentId1 = UUID.randomUUID();
     UUID nonExistentId2 = UUID.randomUUID();
-    UUID tableId = testTables.get(0).getId();
+    UUID tableId = testTables.getFirst().getId();
 
     collectionDAO
         .relationshipDAO()
@@ -590,7 +590,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
     UUID queryCostId = UUID.randomUUID();
     UUID workflowInstanceId = UUID.randomUUID();
     UUID invalidEntityId = UUID.randomUUID();
-    UUID tableId = testTables.get(0).getId();
+    UUID tableId = testTables.getFirst().getId();
 
     collectionDAO
         .relationshipDAO()
@@ -665,5 +665,9 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
     assertFalse(
         foundInvalidEntityOrphan,
         "Should NOT find orphaned relationship for invalid entity type without repository");
+
+    // Clean up the orphans created by this test
+    EntityRelationshipCleanup endCleanup = new EntityRelationshipCleanup(collectionDAO, false);
+    endCleanup.performCleanup(100);
   }
 }
