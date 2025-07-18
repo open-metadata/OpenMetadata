@@ -12,7 +12,7 @@
  */
 import { expect, test } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -20,7 +20,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe('Frequently Joined', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
-    await visitEntityPage({
+    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: 'sample_data.ecommerce_db.shopify.fact_sale',
       dataTestId: 'sample_data-fact_sale',

@@ -14,7 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { uuid } from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../utils/common';
 import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
@@ -257,6 +257,7 @@ export class ApiCollectionClass extends EntityClass {
   }
 
   async verifyOwnerPropagation(page: Page, owner: string) {
+    await redirectToHomePage(page);
     await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: this.apiEndpointResponseData?.['fullyQualifiedName'],
