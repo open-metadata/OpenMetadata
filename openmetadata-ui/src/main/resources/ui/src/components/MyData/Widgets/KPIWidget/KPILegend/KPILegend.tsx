@@ -69,7 +69,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
                   strokeColor={color}
                 />
 
-                <div className="d-flex justify-space-between">
+                <div className="d-flex justify-between">
                   <Typography.Text className="text-xs">
                     {current.toFixed(2)}
                     {suffix}
