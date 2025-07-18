@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CustomiseHomeModalSelectedKey } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 
 export interface CustomiseHomeModalProps {
@@ -25,4 +26,5 @@ export interface CustomiseHomeModalProps {
   ) => void;
   placeholderWidgetKey?: string;
   onHomePage?: boolean;
+  defaultSelectedKey?: CustomiseHomeModalSelectedKey;
 }

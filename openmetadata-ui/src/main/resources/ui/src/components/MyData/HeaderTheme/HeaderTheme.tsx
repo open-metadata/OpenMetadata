@@ -59,7 +59,9 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
               />
             </div>
             <div className="color-hex-code p-xs text-md font-regular border-radius-xs">
-              {selectedColor}
+              {!selectedColor.includes('linear-gradient')
+                ? selectedColor
+                : 'Default'}
             </div>
           </div>
           <div className="d-flex flex-wrap items-center gap-2">

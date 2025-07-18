@@ -30,3 +30,8 @@ export enum LandingPageWidgetKeys {
   RECENTLY_VIEWED = 'KnowledgePanel.RecentlyViewed',
   TOTAL_DATA_ASSETS = 'KnowledgePanel.TotalAssets',
 }
+
+export enum CustomiseHomeModalSelectedKey {
+  HEADER_THEME = 'header-theme',
+  ALL_WIDGETS = 'all-widgets',
+}

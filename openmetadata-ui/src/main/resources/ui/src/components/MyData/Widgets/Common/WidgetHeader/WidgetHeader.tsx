@@ -104,13 +104,13 @@ const WidgetHeader = ({
           {isEditView ? (
             <>
               <DragOutlined
-                className="drag-widget-icon cursor-pointer widget-header-options"
+                className="drag-widget-icon cursor-pointer widget-header-options widget-header-drag-button"
                 data-testid="drag-widget-button"
                 size={20}
               />
               {onEditClick && (
                 <Button
-                  className="widget-header-options"
+                  className="widget-header-options widget-header-edit-button"
                   data-testid="edit-widget-button"
                   icon={<EditIcon height={20} width={20} />}
                   onClick={onEditClick}

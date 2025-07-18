@@ -12,12 +12,13 @@
  */
 @import (reference) url('../../../styles/variables.less');
 @import (reference) url('../../../styles/fonts.less');
+
 .feed-widget-container {
   display: flex;
   flex-direction: column;
   height: 100%;
   .activity-feed-user-name a {
-    color: @black;
+    color: @grey-900;
   }
 
   .ant-card-body {
@@ -42,8 +43,18 @@
     overflow-y: auto;
     min-height: 0;
   }
+
   .activity-feed-tab-padding {
     padding: 0;
+  }
+
+  .feed-card-header-v2-timestamp {
+    color: @grey-500;
+    font-size: @size-sm;
+  }
+
+  .header-link {
+    color: @primary-7;
   }
 }
 

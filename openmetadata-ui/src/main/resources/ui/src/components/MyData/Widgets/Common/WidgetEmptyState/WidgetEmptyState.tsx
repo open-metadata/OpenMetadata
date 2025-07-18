@@ -72,12 +72,12 @@ const WidgetEmptyState = ({
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <div className="d-flex flex-col items-center">
           {title && (
-            <Typography.Text className="text-md font-semibold m-b-sm">
+            <Typography.Text className="empty-state-title text-md font-semibold m-b-sm">
               {title}
             </Typography.Text>
           )}
           {description && (
-            <Typography.Text className="placeholder-text text-sm font-regular">
+            <Typography.Text className="empty-state-placeholder text-sm font-regular">
               {description}
             </Typography.Text>
           )}

@@ -58,7 +58,7 @@ const CustomiseLandingPageHeader = ({
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<Thread[]>([]);
-  const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(false);
+  const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(true);
   const [showAnnouncements, setShowAnnouncements] = useState(true);
   const bgColor = backgroundColor ?? DEFAULT_HEADER_BG_COLOR;
 
@@ -141,10 +141,11 @@ const CustomiseLandingPageHeader = ({
           </div>
           <div className="mb-9 customise-search-container">
             <div className="d-flex items-center gap-4 mb-9">
-              <CustomiseSearchBar />
+              <CustomiseSearchBar disabled={!onHomePage} />
               <DomainSelectableList
                 hasPermission
                 showAllDomains
+                disabled={!onHomePage}
                 popoverProps={{
                   open: isDomainDropdownOpen,
                   onOpenChange: (open) => {
@@ -160,12 +161,13 @@ const CustomiseLandingPageHeader = ({
                     'd-flex items-center gap-2 border-radius-sm p-y-md p-x-md bg-white domain-selector',
                     {
                       'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
+                      disabled: !onHomePage,
                     }
                   )}
                   data-testid="domain-selector"
-                  onClick={() =>
-                    setIsDomainDropdownOpen(!isDomainDropdownOpen)
-                  }>
+                  onClick={() => {
+                    setIsDomainDropdownOpen(!isDomainDropdownOpen);
+                  }}>
                   <DomainIcon
                     className="domain-icon"
                     data-testid="domain-icon"
@@ -205,8 +207,8 @@ const CustomiseLandingPageHeader = ({
           </div>
         </div>
 
-        {announcements.length > 0 && showAnnouncements && (
-          <div className="announcements-container">
+        <div className="announcements-container">
+          {announcements.length > 0 && showAnnouncements && (
             <AnnouncementsWidgetV1
               announcements={announcements}
               currentBackgroundColor={bgColor}
@@ -215,8 +217,8 @@ const CustomiseLandingPageHeader = ({
                 setShowAnnouncements(false);
               }}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
       {overlappedContainer && <div className="overlapped-container" />}
 

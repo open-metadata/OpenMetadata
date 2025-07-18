@@ -12,11 +12,12 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import { Badge, Button, Typography } from 'antd';
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MegaphoneIcon } from '../../../../assets/svg/announcements-v1.svg';
+import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { Thread } from '../../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   getEntityFQN,
   getEntityType,
@@ -41,6 +42,10 @@ const AnnouncementsWidgetV1 = ({
 }: AnnouncementsWidgetV1Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { applicationConfig } = useApplicationStore();
+  const bgColor = currentBackgroundColor?.includes('linear-gradient')
+    ? applicationConfig?.customTheme?.primaryColor ?? DEFAULT_THEME.primaryColor
+    : currentBackgroundColor;
 
   const handleClose = () => {
     onClose();
@@ -57,24 +62,11 @@ const AnnouncementsWidgetV1 = ({
     }
   };
 
-  const announcementCards = useMemo(
-    () => (
-      <div className="announcement-cards-container">
-        {announcements.map((announcement) => (
-          <AnnouncementCardV1
-            announcement={announcement}
-            currentBackgroundColor={currentBackgroundColor}
-            key={announcement.id}
-            onClick={() => handleAnnouncementClick(announcement)}
-          />
-        ))}
-      </div>
-    ),
-    [announcements, handleAnnouncementClick, currentBackgroundColor]
-  );
-
-  const widgetContent = useMemo(
-    () => (
+  return (
+    <WidgetWrapper
+      className="announcements-widget-v1-wrapper"
+      dataLength={announcements.length !== 0 ? announcements.length : 5}
+      loading={loading}>
       <div className="announcements-widget-v1-container">
         <div className="announcements-widget-v1-header">
           <div className="header-left">
@@ -91,7 +83,7 @@ const AnnouncementsWidgetV1 = ({
               className="announcement-count-badge"
               count={announcements.length}
               data-testid="announcement-count-badge"
-              style={{ color: currentBackgroundColor }}
+              style={{ color: bgColor }}
             />
           </div>
           <Button
@@ -104,19 +96,18 @@ const AnnouncementsWidgetV1 = ({
         </div>
 
         <div className="announcements-widget-v1-content">
-          {announcementCards}
+          <div className="announcement-cards-container">
+            {announcements.map((announcement) => (
+              <AnnouncementCardV1
+                announcement={announcement}
+                currentBackgroundColor={bgColor}
+                key={announcement.id}
+                onClick={() => handleAnnouncementClick(announcement)}
+              />
+            ))}
+          </div>
         </div>
       </div>
-    ),
-    [announcements, announcementCards, t, handleClose]
-  );
-
-  return (
-    <WidgetWrapper
-      className="announcements-widget-v1-wrapper"
-      dataLength={announcements.length !== 0 ? announcements.length : 3}
-      loading={loading}>
-      {widgetContent}
     </WidgetWrapper>
   );
 };

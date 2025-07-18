@@ -13,9 +13,9 @@
 import Icon from '@ant-design/icons';
 import { Button, Input, Popover, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { debounce, isString } from 'lodash';
+import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
@@ -25,6 +25,7 @@ import { CurrentTourPageType } from '../../../../enums/tour.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
+import { getNLPEnabledStatus } from '../../../../rest/searchAPI';
 import { addToRecentSearched } from '../../../../utils/CommonUtils';
 import {
   getExplorePath,
@@ -36,10 +37,11 @@ import SearchOptions from '../../../AppBar/SearchOptions';
 import Suggestions from '../../../AppBar/Suggestions';
 import './customise-search-bar.less';
 
-export const CustomiseSearchBar = () => {
+export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
-  const { searchCriteria } = useApplicationStore();
-  const { isNLPEnabled, isNLPActive, setNLPActive } = useSearchStore();
+  const { currentUser, searchCriteria } = useApplicationStore();
+  const { isNLPEnabled, isNLPActive, setNLPActive, setNLPEnabled } =
+    useSearchStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
@@ -160,6 +162,18 @@ export const CustomiseSearchBar = () => {
     handleSearchChange,
   ]);
 
+  const fetchNLPEnabledStatus = useCallback(() => {
+    if (!isEmpty(currentUser)) {
+      getNLPEnabledStatus().then((enabled) => {
+        setNLPEnabled(enabled);
+      });
+    }
+  }, [setNLPEnabled, currentUser]);
+
+  useEffect(() => {
+    fetchNLPEnabledStatus();
+  }, [fetchNLPEnabledStatus]);
+
   return (
     <div
       className="flex-center search-input"
@@ -206,6 +220,7 @@ export const CustomiseSearchBar = () => {
           bordered={false}
           className="rounded-4 appbar-search"
           data-testid="customise-searchbox"
+          disabled={disabled}
           id="customise-searchbox"
           placeholder={t('label.search-for-type', {
             type: 'Tables, Database, Schema...',

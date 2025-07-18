@@ -13,21 +13,20 @@
 @import (reference) url('../../../../styles/variables.less');
 
 .customise-landing-page {
-  margin: 0 0 @margin-mlg 0;
+  margin: 0;
   padding: @padding-mlg;
   border-radius: @border-radius-xl;
 }
 
 .header-container {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: @size-mlg;
   width: 100%;
 }
 
 .dashboardHeader {
-  flex: 2.5;
+  flex: 3.5;
   min-width: 0;
   padding: 4.25rem 4.375rem 1.25rem 2.75rem;
 
@@ -66,6 +65,7 @@
 .domain-selector {
   flex-shrink: 0;
   white-space: nowrap;
+  cursor: pointer;
 
   .domain-icon,
   .dropdown-icon {
@@ -74,6 +74,14 @@
 
   .domain-title {
     color: @grey-700;
+  }
+
+  &.disabled {
+    cursor: not-allowed;
+  }
+
+  &:hover {
+    background-color: @grey-25;
   }
 }
 
@@ -121,8 +129,9 @@
 }
 
 .announcements-container {
+  flex: 2;
   margin: @size-xl 0;
-  width: 32.5%;
+  min-width: 0;
 }
 
 .overlapped-container {
