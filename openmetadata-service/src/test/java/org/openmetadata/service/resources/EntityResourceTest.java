@@ -1189,6 +1189,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
   private void delete_recursiveTest() throws IOException {
+    // Skip recursive delete test when container reuse is enabled
+    // as entities from previous test runs may still reference the container
+    if (Boolean.parseBoolean(System.getProperty("testcontainers.reuse.enable", "false"))) {
+      LOG.info("Skipping delete_recursiveTest - container reuse is enabled");
+      return;
+    }
+    
     // Finally, delete the container that contains the entities created for this test
     EntityReference container = getContainer();
     if (container != null) {
