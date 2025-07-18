@@ -354,6 +354,10 @@ export const closeFirstPopupAlert = async (page: Page) => {
 export const reloadAndWaitForNetworkIdle = async (page: Page) => {
   await page.reload();
   await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
 
 /**
