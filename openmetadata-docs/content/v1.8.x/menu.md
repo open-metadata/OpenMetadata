@@ -65,8 +65,8 @@ site_menu:
     url: /deployment/ingestion/external/airflow
   - category: Deployment / Ingestion / External / MWAA
     url: /deployment/ingestion/external/mwaa
-  - category: Deployment / Ingestion / External / GCS Composer
-    url: /deployment/ingestion/external/gcs-composer
+  - category: Deployment / Ingestion / External / GCP Composer 
+    url: /deployment/ingestion/external/gcp-composer
   - category: Deployment / Ingestion / External / GitHub Actions
     url: /deployment/ingestion/external/github-actions
   - category: Deployment / Ingestion / External / Credentials
@@ -647,8 +647,8 @@ site_menu:
     url: /connectors/pipeline/airflow/configuring-lineage
   - category: Connectors / Pipeline / Airflow / MWAA
     url: /connectors/pipeline/airflow/mwaa
-  - category: Connectors / Pipeline / Airflow / GCS Composer
-    url: /connectors/pipeline/airflow/gcs-composer
+  - category: Connectors / Pipeline / Airflow / GCP Composer 
+    url: /connectors/pipeline/airflow/gcp-composer
   - category: Connectors / Pipeline / Dagster
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
@@ -1144,6 +1144,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.8.3 Release
+    url: /releases/all-releases/#1.8.3-releases
   - category: Releases / All Releases / 1.8.2 Release
     url: /releases/all-releases/#1.8.2-releases
   - category: Releases / All Releases / 1.8.1 Release

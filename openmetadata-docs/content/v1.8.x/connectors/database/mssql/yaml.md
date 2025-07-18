@@ -1,5 +1,6 @@
 ---
 title: Run the MSSQL Connector Externally
+description: Configure MSSQL metadata ingestion using YAML for profiling, table structure extraction, and lineage syncing.
 slug: /connectors/database/mssql/yaml
 ---
 
