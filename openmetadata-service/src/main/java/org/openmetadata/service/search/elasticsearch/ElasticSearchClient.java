@@ -386,7 +386,7 @@ public class ElasticSearchClient implements SearchClient {
         "Elasticsearch query for index '{}' with sanitized query '{}': {}",
         request.getIndex(),
         request.getQuery(),
-        sanitizeQuery(searchSourceBuilder.toString()));
+        searchSourceBuilder.toString());
 
     if (!nullOrEmpty(request.getPostFilter())) {
       try {
