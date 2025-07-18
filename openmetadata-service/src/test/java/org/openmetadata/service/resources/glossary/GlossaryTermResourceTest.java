@@ -2082,6 +2082,11 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // 2. Create a glossary term
     GlossaryTerm term = createTerm(glossary, null, "testTerm");
     assertEquals(Status.DRAFT, term.getStatus());
+    // 2a. Approve the term, now we know, a new workflow is created for non reviewers
+    waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L);
+    Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+    int taskId = approvalTask.getTask().getId();
+    taskTest.resolveTask(taskId, new ResolveTask().withNewValue("approved"), authHeaders(USER1.getName()));
 
     // 3. Update as reviewer (should NOT trigger workflow)
     String jsonReviewer = JsonUtils.pojoToJson(term);
