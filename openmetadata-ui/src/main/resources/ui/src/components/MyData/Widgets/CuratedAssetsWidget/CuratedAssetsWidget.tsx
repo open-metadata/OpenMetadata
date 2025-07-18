@@ -325,21 +325,19 @@ const CuratedAssetsWidget = ({
                 item as unknown as SearchSourceAlias
               )}
             />
-            <div className="flex items-center">
-              <div className="flex flex-col">
-                <Typography.Text
-                  className="entity-list-item-title"
-                  ellipsis={{ tooltip: true }}>
-                  {title}
-                </Typography.Text>
-                {description && (
-                  <Typography.Paragraph
-                    className="entity-list-item-description"
-                    ellipsis={{ rows: 2 }}>
-                    {description}
-                  </Typography.Paragraph>
-                )}
-              </div>
+            <div className="flex flex-col curated-assets-list-item-content">
+              <Typography.Text
+                className="entity-list-item-title"
+                ellipsis={{ tooltip: true }}>
+                {title}
+              </Typography.Text>
+              {description && (
+                <Typography.Paragraph
+                  className="entity-list-item-description"
+                  ellipsis={{ rows: 2 }}>
+                  {description}
+                </Typography.Paragraph>
+              )}
             </div>
           </div>
         </Link>
