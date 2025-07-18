@@ -463,7 +463,7 @@ entities.forEach((EntityClass) => {
     }) => {
       await redirectToHomePage(page);
 
-      await entity.visitEntityPage(page);
+      await entity.visitEntityPageWithCustomSearchBox(page);
 
       const { apiContext } = await getApiContext(page);
 
@@ -501,7 +501,7 @@ entities.forEach((EntityClass) => {
         ],
       });
 
-      await entity.visitEntityPage(dataConsumerPage);
+      await entity.visitEntityPageWithCustomSearchBox(dataConsumerPage);
 
       // Check if edit description button is not visible
       await expect(
@@ -523,7 +523,7 @@ entities.forEach((EntityClass) => {
       }) => {
         await redirectToHomePage(page);
 
-        await tableEntity.visitEntityPage(page);
+        await tableEntity.visitEntityPageWithCustomSearchBox(page);
 
         const { apiContext } = await getApiContext(page);
 
