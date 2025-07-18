@@ -23,6 +23,7 @@ import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.g
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -54,9 +55,12 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -437,6 +441,20 @@ public class SubscriptionUtil {
     return targets;
   }
 
+  public static List<Invocation.Builder> getTargetsForWebhookAlert(
+      Webhook webhook,
+      SubscriptionDestination.SubscriptionCategory category,
+      SubscriptionDestination.SubscriptionType type,
+      Client client,
+      ChangeEvent event) {
+    List<Invocation.Builder> targets = new ArrayList<>();
+    for (String url : getTargetsForAlert(webhook, category, type, event)) {
+      targets.add(
+          appendHeadersAndQueryParamsToTarget(client, url, webhook, JsonUtils.pojoToJson(event)));
+    }
+    return targets;
+  }
+
   public static Invocation.Builder appendHeadersToTarget(Client client, String uri) {
     // Validate the URI to prevent SSRF attacks
     URLValidator.validateURL(uri);
@@ -445,8 +463,51 @@ public class SubscriptionUtil {
     return SecurityUtil.addHeaders(client.target(uri), authHeaders);
   }
 
+  public static Invocation.Builder appendHeadersAndQueryParamsToTarget(
+      Client client, String uri, Webhook webhook, String json) {
+    // Validate the URI to prevent SSRF attacks
+    URLValidator.validateURL(uri);
+
+    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+    WebTarget target = client.target(uri);
+
+    // Add query parameters if they exist
+    if (webhook.getQueryParams() != null && !webhook.getQueryParams().isEmpty()) {
+      for (Map.Entry<String, String> entry : webhook.getQueryParams().entrySet()) {
+        target = target.queryParam(entry.getKey(), entry.getValue());
+      }
+    }
+
+    Invocation.Builder result = SecurityUtil.addHeaders(target, authHeaders);
+    // Prepare webhook headers, including HMAC signature if secret key is provided
+    prepareWebhookHeaders(result, webhook, json);
+    return SecurityUtil.addHeaders(target, authHeaders);
+  }
+
+  public static void prepareWebhookHeaders(
+      Invocation.Builder target, Webhook webhook, String json) {
+    if (!nullOrEmpty(webhook.getSecretKey())) {
+      String hmac =
+          "sha256="
+              + CommonUtil.calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
+      target.header("X-OM-Signature", hmac);
+    }
+
+    if (webhook.getHeaders() != null && !webhook.getHeaders().isEmpty()) {
+      webhook.getHeaders().forEach(target::header);
+    }
+  }
+
+  public static String decryptWebhookSecretKey(String encryptedSecretkey) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      encryptedSecretkey = Fernet.getInstance().decryptIfApplies(encryptedSecretkey);
+    }
+    return encryptedSecretkey;
+  }
+
   public static void postWebhookMessage(
-      Destination<ChangeEvent> destination, Invocation.Builder target, Object message) {
+      Destination<ChangeEvent> destination, Invocation.Builder target, Object message)
+      throws EventPublisherException {
     postWebhookMessage(destination, target, message, Webhook.HttpMethod.POST);
   }
 
@@ -454,7 +515,8 @@ public class SubscriptionUtil {
       Destination<ChangeEvent> destination,
       Invocation.Builder target,
       Object message,
-      Webhook.HttpMethod httpMethod) {
+      Webhook.HttpMethod httpMethod)
+      throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     Response response =
         (httpMethod == Webhook.HttpMethod.PUT)
@@ -471,6 +533,16 @@ public class SubscriptionUtil {
 
     StatusContext statusContext = createStatusContext(response);
     handleStatus(destination, attemptTime, statusContext);
+
+    // Throw exception for non-2xx responses to ensure proper error handling
+    int statusCode = statusContext.getStatusCode();
+    if (statusCode < 200 || statusCode >= 300) {
+      String errorMessage =
+          String.format(
+              "Webhook delivery failed with HTTP %d: %s",
+              statusCode, statusContext.getStatusInfo());
+      throw new EventPublisherException(errorMessage);
+    }
   }
 
   public static void deliverTestWebhookMessage(
@@ -496,8 +568,9 @@ public class SubscriptionUtil {
 
   private static void handleTestDestinationStatus(
       Destination<ChangeEvent> destination, StatusContext statusContext) {
+    int statusCode = statusContext.getStatusCode();
     TestDestinationStatus.Status testStatus =
-        (statusContext.getStatusCode() == 200)
+        (statusCode >= 200 && statusCode < 300)
             ? TestDestinationStatus.Status.SUCCESS
             : TestDestinationStatus.Status.FAILED;
 
@@ -509,11 +582,12 @@ public class SubscriptionUtil {
     int statusCode = statusContext.getStatusCode();
     String statusInfo = statusContext.getStatusInfo();
 
-    if (statusCode >= 300 && statusCode < 400) {
+    if (statusCode >= 200 && statusCode < 300) {
+      // 2xx response codes are considered successful
+      destination.setSuccessStatus(System.currentTimeMillis());
+    } else if (statusCode >= 300 && statusCode < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
       destination.setErrorStatus(attemptTime, statusCode, statusInfo);
-    } else if (statusCode == 200) {
-      destination.setSuccessStatus(System.currentTimeMillis());
     } else {
       // 4xx, 5xx response retry delivering events after timeout
       destination.setAwaitingRetry(attemptTime, statusCode, statusInfo);
@@ -540,5 +614,23 @@ public class SubscriptionUtil {
     clientBuilder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
     clientBuilder.readTimeout(readTimeout, TimeUnit.SECONDS);
     return clientBuilder.build();
+  }
+
+  public static Invocation.Builder getTarget(Client client, Webhook webhook, String json) {
+    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+    WebTarget target = client.target(webhook.getEndpoint());
+    target = addQueryParams(target, webhook.getQueryParams());
+    Invocation.Builder result = SecurityUtil.addHeaders(target, authHeaders);
+    prepareWebhookHeaders(result, webhook, json);
+    return result;
+  }
+
+  public static WebTarget addQueryParams(WebTarget target, Map<String, String> queryParams) {
+    if (!CommonUtil.nullOrEmpty(queryParams)) {
+      for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+        target = target.queryParam(entry.getKey(), entry.getValue());
+      }
+    }
+    return target;
   }
 }

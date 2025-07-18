@@ -22,6 +22,7 @@ import {
 
 export interface ModifiedWebhookConfig extends Webhook {
   headers?: { key: string; value: string }[];
+  queryParams?: { key: string; value: string }[];
 }
 
 export interface ModifiedDestination extends Destination {
