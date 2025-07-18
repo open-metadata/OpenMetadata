@@ -315,10 +315,9 @@ const KPIWidget = ({
 
   return (
     <WidgetWrapper
-      data-testid="kpi-widget"
       dataLength={kpiList.length > 0 ? kpiList.length : 10}
       loading={isKPIListLoading || isLoading}>
-      <div className="kpi-widget-container">
+      <div className="kpi-widget-container" data-testid="kpi-widget">
         <WidgetHeader
           className="items-center"
           currentLayout={currentLayout}
