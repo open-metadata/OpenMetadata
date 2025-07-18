@@ -25,4 +25,5 @@ export interface AgentsStatusWidgetProps
 export interface AgentsInfo {
   label: string;
   status?: PipelineState | Status;
+  isCollateAgent: boolean;
 }

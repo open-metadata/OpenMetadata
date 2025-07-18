@@ -60,11 +60,13 @@ export const getFormattedAgentsList = (
   const formattedAgentsList = agentsList.map((agent) => ({
     label: getAgentLabelFromType(agent.pipelineType),
     status: agent.pipelineStatuses?.pipelineState,
+    isCollateAgent: false,
   }));
 
   const collateAIagents = collateAIagentsList?.map((agent) => ({
     label: getAgentLabelFromType(agent.name),
     status: recentRunStatuses?.[agent.name]?.[0]?.status,
+    isCollateAgent: true,
   }));
 
   return [...formattedAgentsList, ...(collateAIagents ?? [])];

@@ -142,6 +142,7 @@
     "auto-classification": "自动分类",
     "auto-pii-confidence-score": "自动计算 PII 信任值",
     "auto-tag-pii-uppercase": "自动标记 PII",
+    "auto-tier": "自动层级",
     "automated": "自动",
     "automatically-generate": "自动生成",
     "average-daily-active-users-on-the-platform": "Average Daily Active Users on the Platform",

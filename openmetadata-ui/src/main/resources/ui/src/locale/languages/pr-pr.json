@@ -142,6 +142,7 @@
     "auto-classification": "طبقه‌بندی خودکار",
     "auto-pii-confidence-score": "امتیاز اعتماد PII خودکار",
     "auto-tag-pii-uppercase": "برچسب PII خودکار",
+    "auto-tier": "سطح خودکار",
     "automated": "خودکار",
     "automatically-generate": "تولید خودکار",
     "average-daily-active-users-on-the-platform": "Average Daily Active Users on the Platform",

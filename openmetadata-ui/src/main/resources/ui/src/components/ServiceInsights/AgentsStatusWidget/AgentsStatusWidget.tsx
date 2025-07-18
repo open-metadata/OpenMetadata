@@ -183,7 +183,11 @@ function AgentsStatusWidget({
                 ))
             : agentsList.map((agent) => (
                 <Col key={agent.label} span={6}>
-                  <Card className="agent-status-card">
+                  <Card
+                    className={classNames(
+                      'agent-status-card',
+                      agent.isCollateAgent ? 'collate-agent' : ''
+                    )}>
                     <Typography.Text>{agent.label}</Typography.Text>
                   </Card>
                 </Col>

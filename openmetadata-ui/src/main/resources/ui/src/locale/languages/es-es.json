@@ -142,6 +142,7 @@
     "auto-classification": "Clasificación automática",
     "auto-pii-confidence-score": "Nivel de Confianza de Auto PII",
     "auto-tag-pii-uppercase": "Etiqueta de información personal identificable automática",
+    "auto-tier": "Nivel Automático",
     "automated": "Automatizado",
     "automatically-generate": "Generar automáticamente",
     "average-daily-active-users-on-the-platform": "Average Daily Active Users on the Platform",

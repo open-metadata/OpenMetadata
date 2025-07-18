@@ -142,6 +142,7 @@
     "auto-classification": "자동 분류",
     "auto-pii-confidence-score": "자동 PII 신뢰도 점수",
     "auto-tag-pii-uppercase": "PII 자동 태그",
+    "auto-tier": "자동 계층",
     "automated": "자동",
     "automatically-generate": "자동 생성",
     "average-daily-active-users-on-the-platform": "플랫폼의 일일 평균 활성 사용자 수",
