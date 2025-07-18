@@ -54,7 +54,3 @@ ingestionPipelineFQN: my_service.my_pipeline
 {% connectorInfoCard name="Snowflake" stage="BETA" href="/connectors/ingestion/workflows/metadata/incremental-extraction/snowflake" platform="OpenMetadata" / %}
 
 {% /connectorsListContainer %}
-
-<!-- [**BigQuery**](/connectors/ingestion/workflows/metadata/incremental-extraction/bigquery) -->
-<!-- [**Redshift**](/connectors/ingestion/workflows/metadata/incremental-extraction/redshift) -->
-<!-- [**Snowflake**](/connectors/ingestion/workflows/metadata/incremental-extraction/snowflake) -->

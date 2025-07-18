@@ -1,5 +1,6 @@
 ---
 title: Run the Databricks Connector Externally
+description: Use YAML to ingest Databricks metadata including notebook lineage, schema, and profiling.
 slug: /connectors/database/databricks/yaml
 ---
 
