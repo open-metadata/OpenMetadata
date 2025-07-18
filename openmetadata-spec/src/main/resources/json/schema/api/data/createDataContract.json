@@ -76,10 +76,6 @@
     "sourceUrl": {
       "description": "Source URL of the data contract.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
-    },
-    "scheduleConfig": {
-      "description": "Configuration for scheduling data contract validation checks.",
-      "$ref": "../../entity/data/dataContract.json#/properties/scheduleConfig"
     }
   },
   "required": [

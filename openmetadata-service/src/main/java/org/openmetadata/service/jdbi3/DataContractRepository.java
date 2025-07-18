@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -154,6 +155,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
     return fieldNames;
+  }
+
+  public DataContractResult validateContract(DataContract dataContract) {
+    return null;
   }
 
   public DataContract loadEntityDataContract(EntityReference entity) {
