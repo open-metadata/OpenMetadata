@@ -529,5 +529,5 @@ export const getDomainIcon = (iconURL?: string) => {
     return <img alt="domain icon" className="domain-icon-url" src={iconURL} />;
   }
 
-  return <DomainIcon className="text-black" />;
+  return <DomainIcon className="domain-default-icon" />;
 };

@@ -22,7 +22,10 @@ import RGL, {
 } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
-import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
+import {
+  CustomiseHomeModalSelectedKey,
+  LandingPageWidgetKeys,
+} from '../../../../enums/CustomizablePage.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { Page } from '../../../../generated/system/ui/page';
@@ -270,6 +273,7 @@ function CustomizeMyData({
         <CustomiseHomeModal
           addedWidgetsList={addedWidgetsList}
           currentBackgroundColor={backgroundColor}
+          defaultSelectedKey={CustomiseHomeModalSelectedKey.ALL_WIDGETS}
           handleAddWidget={handleMainPanelAddWidget}
           open={isWidgetModalOpen}
           placeholderWidgetKey={placeholderWidgetKey}

@@ -224,16 +224,11 @@ const TotalDataAssetsWidget = ({
                   ))}
                 </Pie>
                 <RechartsTooltip
-                  contentStyle={{
-                    backgroundColor: '#343a3f',
-                    borderRadius: '12px',
-                    padding: '8px 12px',
-                    border: 'none',
-                  }}
                   formatter={(value: number, name: string) => [
-                    `${value}`,
-                    `${name}`,
+                    `(${value})`,
+                    startCase(name),
                   ]}
+                  separator={' '}
                 />
               </PieChart>
             </ResponsiveContainer>
