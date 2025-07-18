@@ -92,7 +92,7 @@ const ClassificationDetails = forwardRef(
     const { fqn: tagCategoryName } = useFqn();
     const navigate = useNavigate();
     const [tags, setTags] = useState<Tag[]>([]);
-    const [isTagsLoading, setIsTagsLoading] = useState(false);
+    const [isTagsLoading, setIsTagsLoading] = useState(true);
     const {
       currentPage,
       paging,
