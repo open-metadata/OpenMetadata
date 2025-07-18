@@ -66,7 +66,6 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Chart } from '../generated/entity/data/chart';
 import { TestSuite } from '../generated/tests/testCase';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
@@ -76,6 +75,7 @@ import {
   getEntityName,
 } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { getChartDetailsPath } from './RouterUtils';
 import { getEntityIcon, getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
@@ -568,15 +568,7 @@ class SearchClassBase {
     }
 
     if (entity.entityType === EntityType.CHART) {
-      const dashboard = (entity as Chart).dashboards?.[0];
-
-      return dashboard
-        ? getEntityLinkFromType(
-            dashboard.fullyQualifiedName ?? '',
-            EntityType.DASHBOARD,
-            dashboard as SourceType
-          )
-        : '';
+      return getChartDetailsPath(entity.fullyQualifiedName ?? '');
     }
 
     if (entity.fullyQualifiedName && entity.entityType) {

@@ -60,6 +60,8 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
       return GlobalSettingOptions.DATABASE_SCHEMA;
     case EntityType.GLOSSARY_TERM:
       return GlobalSettingOptions.GLOSSARY_TERM;
+    case EntityType.CHART:
+      return GlobalSettingOptions.CHARTS;
 
     case EntityType.TABLE:
     default:

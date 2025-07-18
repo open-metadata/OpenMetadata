@@ -47,6 +47,10 @@ export interface Chart {
      */
     domain?: EntityReference;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Followers of this chart.
      */
     followers?: EntityReference[];

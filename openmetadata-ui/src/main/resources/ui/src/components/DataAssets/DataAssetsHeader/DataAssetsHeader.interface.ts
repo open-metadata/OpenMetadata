@@ -17,6 +17,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
+import { Chart } from '../../../generated/entity/data/chart';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -68,7 +69,8 @@ export type DataAssetsType =
   | APIService
   | APICollection
   | APIEndpoint
-  | Metric;
+  | Metric
+  | Chart;
 
 export type DataAssetsWithoutServiceField =
   | DatabaseService
@@ -93,7 +95,8 @@ export type DataAssetsWithFollowersField =
   | DashboardDataModel
   | StoredProcedure
   | APIEndpoint
-  | Metric;
+  | Metric
+  | Chart;
 
 export type DataAssetsWithServiceField =
   | Table
@@ -108,7 +111,8 @@ export type DataAssetsWithServiceField =
   | StoredProcedure
   | DatabaseSchema
   | APICollection
-  | APIEndpoint;
+  | APIEndpoint
+  | Chart;
 
 export type DataAssetWithDomains =
   | Exclude<DataAssetsType, MetadataService>
@@ -164,6 +168,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetAPICollection
   | DataAssetAPIEndpoint
   | DataAssetMetric
+  | DataAssetChart
 );
 
 export interface DataAssetTable {
@@ -270,6 +275,11 @@ export interface DataAssetAPIEndpoint {
 export interface DataAssetMetric {
   dataAsset: Metric;
   entityType: EntityType.METRIC;
+}
+
+export interface DataAssetChart {
+  dataAsset: Chart;
+  entityType: EntityType.CHART;
 }
 
 export interface DataAssetHeaderInfo {
