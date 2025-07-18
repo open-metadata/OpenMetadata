@@ -59,7 +59,6 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     ? parsedQueryString.search
     : '';
   const [searchValue, setSearchValue] = useState<string>(searchQuery);
-
   const handleSelectOption = useCallback(
     (text: string) => {
       navigate(

@@ -406,7 +406,7 @@ test.describe('Description Suggestions Table Entity', () => {
     const suggestionFetchCallResponse2 = page.waitForResponse(
       '/api/v1/suggestions?entityFQN=*&limit=10'
     );
-    await table.visitEntityPageWithCustomSearchBox(page);
+    await table.visitEntityPage(page);
     await suggestionFetchCallResponse2;
 
     await afterAction();

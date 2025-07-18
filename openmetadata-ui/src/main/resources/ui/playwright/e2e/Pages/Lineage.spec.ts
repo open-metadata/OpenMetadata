@@ -293,7 +293,7 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await expect(tableServiceNode).toBeVisible();
   await expect(topicServiceNode).toBeVisible();
 
-  await table.visitEntityPageWithCustomSearchBox(page);
+  await table.visitEntityPage(page);
   await visitLineageTab(page);
   await activateColumnLayer(page);
   await page.click('[data-testid="edit-lineage"]');

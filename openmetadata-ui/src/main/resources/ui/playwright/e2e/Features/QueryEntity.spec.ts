@@ -58,7 +58,7 @@ test('Query Entity', async ({ page }) => {
   test.slow(true);
 
   await redirectToHomePage(page);
-  await table1.visitEntityPage(page);
+  await table1.visitEntityPageWithCustomSearchBox(page);
 
   await test.step('Create a new query entity', async () => {
     const queryResponse = page.waitForResponse(
@@ -102,7 +102,10 @@ test('Query Entity', async ({ page }) => {
     await createQueryResponse;
     await page.waitForURL('**/table_queries**');
 
-    await expect(page.locator(`text=${queryData.query}`)).toBeVisible();
+    await page.waitForSelector(`text=${queryData.query}`, {
+      state: 'visible',
+      timeout: 10000,
+    });
   });
 
   await test.step('Update owner, description and tag', async () => {
@@ -159,7 +162,7 @@ test('Query Entity', async ({ page }) => {
     await page.getByTestId('add-tag').click();
     await page.locator('#tagsForm_tags').click();
     await page.locator('#tagsForm_tags').fill(queryData.tagFqn);
-    await page.getByTestId(`tag-${queryData.tagFqn}`).click();
+    await page.getByTestId(`tag-${queryData.tagFqn}`).first().click();
     const updateTagResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
@@ -262,7 +265,7 @@ test('Query Entity', async ({ page }) => {
 
 test('Verify query duration', async ({ page }) => {
   await redirectToHomePage(page);
-  await table2.visitEntityPage(page);
+  await table2.visitEntityPageWithCustomSearchBox(page);
   const queryResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=query_search_index*'
   );

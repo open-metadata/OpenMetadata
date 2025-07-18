@@ -561,7 +561,7 @@ entities.forEach((EntityClass) => {
           ],
         });
 
-        await tableEntity.visitEntityPage(dataConsumerPage);
+        await tableEntity.visitEntityPageWithCustomSearchBox(dataConsumerPage);
 
         // check if queries tab is visible
         await dataConsumerPage.locator('[data-testid="table_queries"]').click();

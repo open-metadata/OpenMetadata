@@ -347,7 +347,7 @@ test.describe('Domains', () => {
     const domain = new Domain();
     await domain.create(apiContext);
     await page.reload();
-    await page.getByTestId('domain-selector').click();
+    await page.getByTestId('domain-dropdown').click();
 
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
@@ -837,6 +837,15 @@ test.describe('Domains Rbac', () => {
     });
 
     await test.step('User with access to multiple domains', async () => {
+      const isWelcomeScreenVisible = await userPage
+        .waitForSelector('[data-testid="welcome-screen-img"]', {
+          state: 'visible',
+          timeout: 5000,
+        })
+        .catch(() => false);
+      if (isWelcomeScreenVisible) {
+        await userPage.getByTestId('welcome-screen-close-btn').click();
+      }
       await userPage
         .getByTestId('domain-dropdown')
         .getByRole('img')
