@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
@@ -33,6 +32,7 @@ import {
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';

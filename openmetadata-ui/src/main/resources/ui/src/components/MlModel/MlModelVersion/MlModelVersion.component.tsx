@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import {
   Card,
   Col,
@@ -44,6 +43,7 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
@@ -51,6 +50,7 @@ import {
 } from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';

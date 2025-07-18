@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { upperFirst } from 'lodash';
+import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { EntityStatsData } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';

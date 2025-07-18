@@ -25,7 +25,6 @@ import {
 import { AxiosError } from 'axios';
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -35,6 +34,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import Loader from '../Loader/Loader';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './tier-card.style.less';
 import { CardWithListItems, TierCardProps } from './TierCard.interface';
 
@@ -183,7 +183,6 @@ const TierCard = ({
                         <RichTextEditorPreviewerV1
                           className="tier-card-description"
                           enableSeeMoreVariant={false}
-                          i18n={t}
                           markdown={card.data}
                         />
                       </div>

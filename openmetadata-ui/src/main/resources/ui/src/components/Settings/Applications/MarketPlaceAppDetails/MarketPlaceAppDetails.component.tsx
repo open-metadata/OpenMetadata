@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { LeftOutlined } from '@ant-design/icons';
-import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import {
   Alert,
   Button,
@@ -40,6 +39,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogo from '../AppLogo/AppLogo.component';

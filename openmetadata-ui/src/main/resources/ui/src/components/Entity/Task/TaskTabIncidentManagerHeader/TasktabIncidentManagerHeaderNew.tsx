@@ -27,10 +27,10 @@ import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 
-import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import './task-tab-incident-manager-header.style.less';
 

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Card, Space, Typography } from 'antd';
 import { FC, useMemo } from 'react';
 import { ReactComponent as AnnouncementIcon } from '../../../../assets/svg/announcements-v1.svg';
 import { Thread } from '../../../../generated/entity/feed/thread';
+import RichTextEditorPreviewerV1 from '../../RichTextEditor/RichTextEditorPreviewerV1';
 import './AnnouncementCard.less';
 
 interface Props {

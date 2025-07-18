@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Space, SpaceProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC } from 'react';
 import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './airflow-message-banner.less';
 
 const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {

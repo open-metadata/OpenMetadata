@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -34,6 +33,7 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
@@ -120,7 +120,6 @@ const FeedCardBodyV1 = ({
     return (
       <RichTextEditorPreviewerV1
         className="text-wrap"
-        i18n={t}
         markdown={getFrontEndFormat(message)}
       />
     );
@@ -192,7 +191,6 @@ const FeedCardBodyV1 = ({
               <Col span={24}>
                 <RichTextEditorPreviewerV1
                   className="text-wrap"
-                  i18n={t}
                   markdown={announcement.description ?? ''}
                 />
               </Col>

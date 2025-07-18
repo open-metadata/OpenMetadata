@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { RichTextEditorPreviewerV1 } from '@openmetadata/common-ui';
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
@@ -66,6 +65,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
