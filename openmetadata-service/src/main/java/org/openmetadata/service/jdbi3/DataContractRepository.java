@@ -36,9 +36,9 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,scheduleConfig";
+      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,scheduleConfig";
+      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics";
 
   public DataContractRepository() {
     super(
