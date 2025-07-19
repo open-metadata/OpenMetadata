@@ -124,7 +124,7 @@ describe('KPIWidget', () => {
       render(<KPIWidget {...widgetProps} />);
     });
 
-    expect(screen.getByText('label.kpi-title')).toBeInTheDocument();
+    expect(screen.getByText('label.kpi')).toBeInTheDocument();
     expect(screen.getByText('KPILegend.Component')).toBeInTheDocument();
   });
 

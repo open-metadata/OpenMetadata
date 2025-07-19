@@ -138,8 +138,9 @@ describe('AnnouncementCardV1', () => {
     expect(
       screen.getByText('Alberto updated dim_address_table')
     ).toBeInTheDocument();
-    expect(screen.getByText('label.column-name:')).toBeInTheDocument();
-    expect(screen.getByText('PARTNER_NAME')).toBeInTheDocument();
+    expect(
+      screen.getByText('label.column-name: PARTNER_NAME')
+    ).toBeInTheDocument();
   });
 
   it('should render general announcement card v1 correctly', () => {
