@@ -25,7 +25,7 @@ import {
   addOwner,
   removeOwner,
   updateOwner,
-  visitEntityPageWithCustomSearchBox,
+  visitEntityPage,
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { Domain } from '../domain/Domain';
@@ -249,7 +249,7 @@ export class DatabaseClass extends EntityClass {
     await page.getByTestId(this.schema.name).click();
     await databaseSchemaResponse;
 
-    await visitEntityPageWithCustomSearchBox({
+    await visitEntityPage({
       page,
       searchTerm: this.tableResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.table.name}`,

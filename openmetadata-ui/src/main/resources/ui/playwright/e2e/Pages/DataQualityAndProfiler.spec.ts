@@ -34,6 +34,7 @@ import {
   visitDataQualityTabWithCustomSearchBox,
 } from '../../utils/dataQualityAndProfiler';
 import { getCurrentMillis } from '../../utils/dateTime';
+import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { deleteTestCase } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
@@ -368,7 +369,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '/api/v1/dataQuality/testCases/*'
     );
 
-    await page.locator('button').getByText('Submit').click();
+    await page.locator('button').getByText('Update').click();
     await page.getByTestId('update-btn').click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');

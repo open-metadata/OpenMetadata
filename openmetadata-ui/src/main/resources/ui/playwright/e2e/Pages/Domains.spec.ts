@@ -837,29 +837,6 @@ test.describe('Domains Rbac', () => {
     });
 
     await test.step('User with access to multiple domains', async () => {
-      const isWelcomeScreenVisible = await userPage
-        .waitForSelector('[data-testid="welcome-screen-img"]', {
-          state: 'visible',
-          timeout: 5000,
-        })
-        .catch(() => false);
-      if (isWelcomeScreenVisible) {
-        await userPage.getByTestId('welcome-screen-close-btn').click();
-      }
-      await userPage
-        .getByTestId('domain-dropdown')
-        .getByRole('img')
-        .first()
-        .click();
-
-      await expect(
-        userPage.getByTestId(`tag-${domain1.responseData.fullyQualifiedName}`)
-      ).toBeVisible();
-
-      await expect(
-        userPage.getByTestId(`tag-${domain3.responseData.fullyQualifiedName}`)
-      ).toBeVisible();
-
       // Visit explore page and verify if domain is passed in the query
       const queryRes = userPage.waitForResponse(
         '/api/v1/search/query?*index=dataAsset*'

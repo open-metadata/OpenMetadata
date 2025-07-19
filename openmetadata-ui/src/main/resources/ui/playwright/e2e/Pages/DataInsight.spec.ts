@@ -174,6 +174,8 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
+    await page.waitForLoadState('networkidle');
+
     expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
   });
 
