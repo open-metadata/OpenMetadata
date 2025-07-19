@@ -45,11 +45,10 @@ const BulkEditEntity = ({
   validateCSVData,
   activeAsyncImportJob,
   onCSVReadComplete,
-  onEditComplete,
-  gridContainerRef,
+  setGridContainer,
   handleCopy,
   handlePaste,
-  pushToUndoStack,
+  handleOnRowsChange,
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -96,26 +95,18 @@ const BulkEditEntity = ({
   */
   const editDataGrid = useMemo(() => {
     return (
-      <DataGrid
-        className="rdg-light"
-        columns={columns}
-        rows={dataSource}
-        onCopy={handleCopy}
-        onPaste={handlePaste}
-        onRowsChange={(updatedRows) => {
-          onEditComplete(updatedRows);
-          pushToUndoStack(dataSource);
-        }}
-      />
+      <div className="om-rdg" ref={setGridContainer}>
+        <DataGrid
+          className="rdg-light"
+          columns={columns}
+          rows={dataSource}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          onRowsChange={handleOnRowsChange}
+        />
+      </div>
     );
-  }, [
-    columns,
-    dataSource,
-    handleCopy,
-    handlePaste,
-    onEditComplete,
-    pushToUndoStack,
-  ]);
+  }, [columns, dataSource, handleCopy, handlePaste, handleOnRowsChange]);
 
   return (
     <>
@@ -148,11 +139,7 @@ const BulkEditEntity = ({
       ) : (
         <>
           <Col span={24}>
-            {activeStep === 1 && (
-              <div className="om-rdg" ref={gridContainerRef}>
-                {editDataGrid}
-              </div>
-            )}
+            {activeStep === 1 && editDataGrid}
 
             {activeStep === 2 && validationData && (
               <Row gutter={[16, 16]}>
