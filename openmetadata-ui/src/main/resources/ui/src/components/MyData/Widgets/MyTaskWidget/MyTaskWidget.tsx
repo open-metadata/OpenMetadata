@@ -139,7 +139,7 @@ const MyTaskWidget = ({
       <div className="widget-content flex-1">
         {isEmpty(sortedData) ? (
           <WidgetEmptyState
-            showActionButton
+            actionButtonLink={`users/${currentUser?.name}/task`}
             actionButtonText={t('label.view-all-task-plural')}
             dataTestId="my-task-empty-state"
             description={t('message.my-task-no-data-placeholder')}
@@ -151,7 +151,6 @@ const MyTaskWidget = ({
               />
             }
             title={t('label.no-tasks-yet')}
-            onActionClick={() => navigate(`users/${currentUser?.name}/task`)}
           />
         ) : (
           <>

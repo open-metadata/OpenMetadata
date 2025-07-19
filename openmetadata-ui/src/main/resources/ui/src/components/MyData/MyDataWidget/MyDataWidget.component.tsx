@@ -19,11 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  ROUTES,
-} from '../../../constants/constants';
+import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
 import {
   applySortToData,
   getSortField,
@@ -186,7 +182,7 @@ const MyDataWidgetInternal = ({
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonLink={ROUTES.MY_DATA}
+        actionButtonLink={`users/${currentUser?.name}/mydata`}
         actionButtonText={t('label.get-started')}
         description={`${t('message.nothing-saved-yet')} ${t(
           'message.no-owned-data'
@@ -288,7 +284,7 @@ const MyDataWidgetInternal = ({
               EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
-              count: data.length > 0 ? data.length : '',
+              count: String(data.length > 0 ? data.length : ''),
             })} // if data is empty then show view more
             showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
           />
