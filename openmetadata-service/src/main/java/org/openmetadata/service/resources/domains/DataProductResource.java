@@ -288,12 +288,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @RequestBody(
-          description = "CreateDataProduct request",
-          content =
-              @Content(
-                  mediaType = "application/json",
-                  schema = @Schema(implementation = CreateDataProduct.class)))
-      @Valid CreateDataProduct create) {
+              description = "CreateDataProduct request",
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema = @Schema(implementation = CreateDataProduct.class)))
+          @Valid
+          CreateDataProduct create) {
     DataProduct dataProduct =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dataProduct);
@@ -319,12 +320,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @RequestBody(
-          description = "CreateDataProduct request",
-          content =
-              @Content(
-                  mediaType = "application/json",
-                  schema = @Schema(implementation = CreateDataProduct.class)))
-      @Valid CreateDataProduct create) {
+              description = "CreateDataProduct request",
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema = @Schema(implementation = CreateDataProduct.class)))
+          @Valid
+          CreateDataProduct create) {
     DataProduct dataProduct =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataProduct);

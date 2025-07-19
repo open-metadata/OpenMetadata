@@ -268,12 +268,13 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @RequestBody(
-          description = "CreateDomain request",
-          content =
-              @Content(
-                  mediaType = "application/json",
-                  schema = @Schema(implementation = CreateDomain.class)))
-      @Valid CreateDomain create) {
+              description = "CreateDomain request",
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema = @Schema(implementation = CreateDomain.class)))
+          @Valid
+          CreateDomain create) {
     Domain domain = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, domain);
   }
@@ -298,12 +299,13 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @RequestBody(
-          description = "CreateDomain request",
-          content =
-              @Content(
-                  mediaType = "application/json",
-                  schema = @Schema(implementation = CreateDomain.class)))
-      @Valid CreateDomain create) {
+              description = "CreateDomain request",
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema = @Schema(implementation = CreateDomain.class)))
+          @Valid
+          CreateDomain create) {
     Domain domain = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, domain);
   }
