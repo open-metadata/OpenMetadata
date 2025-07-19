@@ -80,6 +80,7 @@ import {
 } from './ProfilerUtils';
 import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
+import {getSanitizeContent} from "./sanitize.utils";
 
 export const getEntityType = (entityLink: string) => {
   return EntityLink.getEntityType(entityLink);
@@ -308,7 +309,7 @@ const getEntityLinkDetail = (item: string) => {
 };
 
 export const getBackendFormat = (message: string) => {
-  let updatedMessage = message;
+  let updatedMessage = getSanitizeContent(message);
   const mentionList = [...new Set(getMentionList(message) ?? [])];
   const hashtagList = [...new Set(getHashTagList(message) ?? [])];
   const mentionDetails = mentionList.map((m) => getEntityDetail(m) ?? []);
@@ -333,7 +334,7 @@ export const getBackendFormat = (message: string) => {
 };
 
 export const getFrontEndFormat = (message: string) => {
-  let updatedMessage = message;
+  let updatedMessage = getSanitizeContent(message);
   const entityLinkList = [...new Set(getEntityLinkList(message) ?? [])];
   const entityLinkDetails = entityLinkList.map(
     (m) => getEntityLinkDetail(m) ?? []
