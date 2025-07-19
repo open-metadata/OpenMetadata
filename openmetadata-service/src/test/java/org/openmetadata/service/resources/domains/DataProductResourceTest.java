@@ -47,6 +47,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         DataProductList.class,
         "dataProducts",
         DataProductResource.FIELDS);
+    supportsPatchDomains = false; // we can't change the domain of a data product
   }
 
   public void setupDataProducts(TestInfo test) throws HttpResponseException {
