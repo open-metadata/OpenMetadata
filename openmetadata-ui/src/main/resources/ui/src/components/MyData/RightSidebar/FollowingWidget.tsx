@@ -247,7 +247,9 @@ function FollowingWidget({
 
   const WidgetContent = useMemo(() => {
     return (
-      <div className="following-widget-container">
+      <div
+        className="following-widget-container"
+        data-testId="following-widget">
         <WidgetHeader
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}

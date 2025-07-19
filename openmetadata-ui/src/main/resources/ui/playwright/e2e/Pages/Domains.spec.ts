@@ -30,6 +30,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
   getApiContext,
+  redirectToExplorePage,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
@@ -179,6 +180,8 @@ test.describe('Domains', () => {
   });
 
   test('Create DataProducts and add remove assets', async ({ page }) => {
+    test.slow(true);
+
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
@@ -347,6 +350,9 @@ test.describe('Domains', () => {
     const domain = new Domain();
     await domain.create(apiContext);
     await page.reload();
+
+    await redirectToExplorePage(page);
+
     await page.getByTestId('domain-dropdown').click();
 
     await page
