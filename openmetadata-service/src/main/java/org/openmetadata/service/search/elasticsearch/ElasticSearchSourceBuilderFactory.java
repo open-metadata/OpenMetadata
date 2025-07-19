@@ -151,9 +151,10 @@ public class ElasticSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
+    Map<String, Float> allFields = getAllSearchFieldsFromSettings(searchSettings);
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .fields(SearchIndex.getAllFields())
+            .fields(allFields)
             .fuzziness(Fuzziness.AUTO)
             .fuzzyMaxExpansions(10);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
@@ -197,32 +198,6 @@ public class ElasticSearchSourceBuilderFactory
     BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
       baseQuery.must(QueryBuilders.matchAllQuery());
-    } else if (containsQuerySyntax(query)) {
-      QueryStringQueryBuilder fuzzyQueryBuilder =
-          QueryBuilders.queryStringQuery(query)
-              .fields(fuzzyFields)
-              .defaultOperator(Operator.AND)
-              .type(MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
-              .fuzzyMaxExpansions(10)
-              .fuzzyPrefixLength(1)
-              .tieBreaker(0.3f);
-
-      MultiMatchQueryBuilder nonFuzzyQueryBuilder =
-          QueryBuilders.multiMatchQuery(query)
-              .fields(nonFuzzyFields)
-              .type(MOST_FIELDS)
-              .operator(Operator.AND)
-              .tieBreaker(0.3f)
-              .fuzziness(Fuzziness.ZERO);
-
-      BoolQueryBuilder combinedQuery =
-          QueryBuilders.boolQuery()
-              .should(fuzzyQueryBuilder)
-              .should(nonFuzzyQueryBuilder)
-              .minimumShouldMatch(1);
-
-      baseQuery.must(combinedQuery);
     } else {
       BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
 
@@ -319,6 +294,7 @@ public class ElasticSearchSourceBuilderFactory
 
     addConfiguredAggregations(searchSourceBuilder, assetConfig);
     searchSourceBuilder.explain(explain);
+
     return searchSourceBuilder;
   }
 
