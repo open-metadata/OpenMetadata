@@ -142,21 +142,21 @@ You can modify these scopes if you need different levels of access.
 $$
 
 $$section
-### Sheet Filter Pattern $(id="sheetFilterPattern")
-Regex pattern to include/exclude Google Sheets that match the pattern. This allows you to selectively process only the sheets you're interested in.
+### Schema Filter Pattern $(id="schemaFilterPattern")
+Regex pattern to include/exclude schemas that match the pattern. In the context of Google Sheets, this helps you selectively process spreadsheets based on their organization.
 
 Examples:
-- `.*sales.*` - Include sheets with "sales" in the name
-- `^(?!temp).*` - Exclude sheets starting with "temp"
+- `.*sales.*` - Include schemas with "sales" in the name
+- `^(?!temp).*` - Exclude schemas starting with "temp"
 $$
 
 $$section
-### Folder Filter Pattern $(id="folderFilterPattern")
-Regex pattern to include/exclude Google Drive folders that match the pattern. This helps you organize which folders to scan for spreadsheets.
+### Table Filter Pattern $(id="tableFilterPattern")
+Regex pattern to include/exclude tables that match the pattern. In the context of Google Sheets, this allows you to selectively process specific sheets within spreadsheets.
 
 Examples:
-- `.*reports.*` - Include folders with "reports" in the name
-- `^(?!archive).*` - Exclude folders starting with "archive"
+- `.*report.*` - Include sheets with "report" in the name
+- `^(?!draft).*` - Exclude sheets starting with "draft"
 $$
 
 $$section
@@ -164,16 +164,6 @@ $$section
 Enable this option to include sheets from Google Workspace shared drives (Team Drives). When enabled, OpenMetadata will scan shared drives that the service account has access to, in addition to regular Google Drive files.
 
 Default: `true`
-$$
-
-$$section
-### Connection Options $(id="connectionOptions")
-Additional connection options to build the URL that can be sent to service during the connection.
-$$
-
-$$section
-### Connection Arguments $(id="connectionArguments")
-Additional connection arguments such as security or protocol configs that can be sent to service during connection.
 $$
 
 $$section

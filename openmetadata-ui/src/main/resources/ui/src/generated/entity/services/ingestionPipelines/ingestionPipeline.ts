@@ -532,10 +532,6 @@ export enum AuthProvider {
  *
  * Regex to only fetch api collections with names matching the pattern.
  *
- * Regex to include/exclude Google Drive folders that match the pattern.
- *
- * Regex to include/exclude Google Sheets that match the pattern.
- *
  * Regex to only fetch tags that matches the pattern.
  */
 export interface FilterPattern {
@@ -3739,10 +3735,6 @@ export interface ConfigClass {
      */
     httpConnection?: string;
     /**
-     * Regex to include/exclude Google Drive folders that match the pattern.
-     */
-    folderFilterPattern?: FilterPattern;
-    /**
      * Include sheets from shared drives
      */
     includeSharedDrives?: boolean;
@@ -3750,10 +3742,6 @@ export interface ConfigClass {
      * Google Sheets API scopes
      */
     scopes?: string[];
-    /**
-     * Regex to include/exclude Google Sheets that match the pattern.
-     */
-    sheetFilterPattern?: FilterPattern;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.

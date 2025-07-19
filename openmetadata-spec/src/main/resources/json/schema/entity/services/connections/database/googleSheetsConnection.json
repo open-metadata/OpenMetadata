@@ -59,14 +59,14 @@
           "https://www.googleapis.com/auth/drive.readonly"
         ]
       },
-      "sheetFilterPattern": {
-        "title": "Sheet Filter Pattern",
-        "description": "Regex to include/exclude Google Sheets that match the pattern.",
+      "schemaFilterPattern": {
+        "title": "Default Schema Filter Pattern",
+        "description": "Regex to only include/exclude schemas that matches the pattern.",
         "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
       },
-      "folderFilterPattern": {
-        "title": "Folder Filter Pattern",
-        "description": "Regex to include/exclude Google Drive folders that match the pattern.",
+      "tableFilterPattern": {
+        "title": "Default Table Filter Pattern",
+        "description": "Regex to only include/exclude tables that matches the pattern.",
         "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
       },
       "includeSharedDrives": {
@@ -75,29 +75,9 @@
         "type": "boolean",
         "default": true
       },
-      "connectionOptions": {
-        "title": "Connection Options",
-        "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
-      },
-      "connectionArguments": {
-        "title": "Connection Arguments",
-        "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
-      },
       "supportsMetadataExtraction": {
         "title": "Supports Metadata Extraction",
         "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-      },
-      "supportsIncrementalMetadataExtraction": {
-        "title": "Supports Incremental Metadata Extraction",
-        "$ref": "../connectionBasicType.json#/definitions/supportsIncrementalMetadataExtraction"
-      },
-      "supportsProfiler": {
-        "title": "Supports Profiler",
-        "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
-      },
-      "sampleDataStorageConfig": {
-        "title": "Storage Config for Sample Data",
-        "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
       }
     },
     "additionalProperties": false,

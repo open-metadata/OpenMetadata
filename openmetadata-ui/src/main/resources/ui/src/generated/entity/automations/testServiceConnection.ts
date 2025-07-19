@@ -1133,10 +1133,6 @@ export interface ConfigClass {
      */
     httpConnection?: string;
     /**
-     * Regex to include/exclude Google Drive folders that match the pattern.
-     */
-    folderFilterPattern?: FilterPattern;
-    /**
      * Include sheets from shared drives
      */
     includeSharedDrives?: boolean;
@@ -1144,10 +1140,6 @@ export interface ConfigClass {
      * Google Sheets API scopes
      */
     scopes?: string[];
-    /**
-     * Regex to include/exclude Google Sheets that match the pattern.
-     */
-    sheetFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -1730,10 +1722,6 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
- *
- * Regex to include/exclude Google Drive folders that match the pattern.
- *
- * Regex to include/exclude Google Sheets that match the pattern.
  *
  * Regex exclude or include charts that matches the pattern.
  *
