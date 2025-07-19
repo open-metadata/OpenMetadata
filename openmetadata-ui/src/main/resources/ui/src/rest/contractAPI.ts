@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
 import { DataContract } from '../generated/entity/data/dataContract';
 import { ListParams } from '../interface/API.interface';
@@ -67,6 +68,17 @@ export const updateContract = async (
 
 export const deleteContract = async (fqn: string) => {
   const response = await APIClient.delete<void>(`/data-contracts/${fqn}`);
+
+  return response.data;
+};
+
+export const getContractByEntityId = async (
+  entityId: string,
+  entityType: EntityType = EntityType.TABLE
+) => {
+  const response = await APIClient.get<DataContract>(
+    `/dataContracts/entity?entityId=${entityId}&entityType=${entityType}`
+  );
 
   return response.data;
 };

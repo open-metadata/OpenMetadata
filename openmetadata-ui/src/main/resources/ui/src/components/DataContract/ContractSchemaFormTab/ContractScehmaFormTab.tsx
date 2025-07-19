@@ -10,35 +10,94 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import SchemaTable from '../../Database/SchemaTable/SchemaTable.component';
+import { Button, Col, Row } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { DataContract } from '../../../generated/entity/data/dataContract';
+import { Column } from '../../../generated/entity/data/table';
+import { useFqn } from '../../../hooks/useFqn';
+import { getTableColumnsByFQN } from '../../../rest/tableAPI';
+import Table from '../../common/Table/Table';
 
-export const ContractSchemaFormTab: React.FC = () => {
-  //   const { t } = useTranslation();
-  //   const columns = useMemo(
-  //     () => [
-  //       {
-  //         title: t('label.name'),
-  //         dataIndex: 'name',
-  //       },
-  //       {
-  //         title: t('label.type'),
-  //         dataIndex: 'type',
-  //       },
-  //       {
-  //         title: t('label.tag-plural'),
-  //         dataIndex: 'tags',
-  //       },
-  //       {
-  //         title: t('label.glossary-term-plural'),
-  //         dataIndex: 'glossaryTerms',
-  //       },
-  //       {
-  //         title: t('label.constraint-plural'),
-  //         dataIndex: 'contraints',
-  //       },
-  //     ],
-  //     [t]
-  //   );
+export const ContractSchemaFormTab: React.FC<{
+  selectedSchema: string[];
+  onNext: (data: Partial<DataContract>) => void;
+  onPrev: () => void;
+}> = ({ selectedSchema, onNext, onPrev }) => {
+  const { t } = useTranslation();
+  const { fqn } = useFqn();
+  const [schema, setSchema] = useState<Column[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
-  return <SchemaTable />;
+  const fetchTableColumns = useCallback(async () => {
+    const response = await getTableColumnsByFQN(fqn);
+    setSchema(response.data);
+  }, [fqn]);
+
+  useEffect(() => {
+    setSelectedKeys(selectedSchema);
+  }, [selectedSchema]);
+
+  useEffect(() => {
+    fetchTableColumns();
+  }, [fqn]);
+
+  const columns = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+      },
+      {
+        title: t('label.type'),
+        dataIndex: 'type',
+      },
+      {
+        title: t('label.tag-plural'),
+        dataIndex: 'tags',
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'glossaryTerms',
+      },
+      {
+        title: t('label.constraint-plural'),
+        dataIndex: 'contraints',
+      },
+    ],
+    [t]
+  );
+
+  return (
+    <Row className="h-full">
+      <Col span={24}>
+        <Table
+          columns={columns}
+          dataSource={schema}
+          rowSelection={{
+            selectedRowKeys: selectedKeys,
+            onChange: (selectedRowKeys) => {
+              setSelectedKeys(selectedRowKeys as string[]);
+            },
+          }}
+        />
+      </Col>
+      <Col className="d-flex justify-end">
+        <Button
+          type="primary"
+          onClick={() =>
+            onNext({
+              schema: schema.filter((column) =>
+                selectedKeys.includes(column.name)
+              ),
+            })
+          }>
+          {t('label.next')}
+        </Button>
+        <Button type="default" onClick={onPrev}>
+          {t('label.prev')}
+        </Button>
+      </Col>
+    </Row>
+  );
 };

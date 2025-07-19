@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Typography } from 'antd';
+import { Button, Form, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
   FieldProp,
   FieldTypes,
@@ -20,29 +21,42 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
 
-export const ContractDetailFormTab: React.FC = () => {
+export const ContractDetailFormTab: React.FC<{
+  initialValues?: Partial<DataContract>;
+  onNext: (formData: Partial<DataContract>) => Promise<void>;
+}> = ({ initialValues, onNext }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
   const fields: FieldProp[] = [
     {
       label: t('label.contract-title'),
-      id: 'contractTitle',
-      name: 'contractTitle',
+      id: 'name',
+      name: 'name',
       type: FieldTypes.TEXT,
       required: true,
+      props: {
+        defaultValue: initialValues?.name ?? '',
+      },
     },
     {
       label: t('label.description'),
       id: 'contractDescription',
       name: 'contractDescription',
       type: FieldTypes.DESCRIPTION,
-      required: true,
+      required: false,
+      props: {
+        'data-testid': 'description',
+        initialValue: initialValues?.description ?? '',
+        style: {
+          margin: 0,
+        },
+      },
     },
     {
-      label: t('label.owner'),
-      id: 'owner',
-      name: 'owner',
+      label: t('label.owner-plural'),
+      id: 'owners',
+      name: 'owners',
       type: FieldTypes.USER_TEAM_SELECT,
       required: false,
       props: {
@@ -63,13 +77,6 @@ export const ContractDetailFormTab: React.FC = () => {
         trigger: 'onUpdate',
       },
     },
-    {
-      label: t('label.enable-incident-management'),
-      id: 'enableIncidentManagement',
-      name: 'enableIncidentManagement',
-      type: FieldTypes.CHECK_BOX,
-      required: true,
-    },
   ];
 
   return (
@@ -82,11 +89,19 @@ export const ContractDetailFormTab: React.FC = () => {
           {t('message.contract-detail-plural-description')}
         </Typography.Paragraph>
       </div>
-      <Card>
-        <Form form={form} layout="vertical" name="contract-detail-form">
+      <div className="h-full">
+        <Form form={form} layout="vertical">
           {generateFormFields(fields)}
+
+          <div className="d-flex justify-end m-t-md">
+            <Button
+              type="primary"
+              onClick={() => onNext(form.getFieldsValue())}>
+              {t('label.next')}
+            </Button>
+          </div>
         </Form>
-      </Card>
+      </div>
     </div>
   );
 };
