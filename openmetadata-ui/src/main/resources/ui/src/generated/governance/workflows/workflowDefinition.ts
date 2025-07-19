@@ -153,6 +153,14 @@ export interface FieldChange {
 
 export interface WorkflowConfiguration {
     /**
+     * Maximum number of stages to retain per workflow instance. Older stages will be dropped.
+     */
+    maxStagesPerInstance?: number;
+    /**
+     * Maximum number of retries for optimistic locking on workflow instance updates.
+     */
+    optimisticLockMaxRetries?: number;
+    /**
      * If True, all the stage status will be stored in the database.
      */
     storeStageStatus: boolean;

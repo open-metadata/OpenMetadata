@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.Stage;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
@@ -18,6 +19,7 @@ import org.openmetadata.service.resources.governance.WorkflowInstanceStateResour
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 
+@Slf4j
 public class WorkflowInstanceStateRepository
     extends EntityTimeSeriesRepository<WorkflowInstanceState> {
   public WorkflowInstanceStateRepository() {
@@ -127,9 +129,15 @@ public class WorkflowInstanceStateRepository
 
   public void updateStage(
       UUID workflowInstanceStateId, Long endedAt, Map<String, Object> variables) {
+    String json = timeSeriesDao.getById(workflowInstanceStateId);
+    if (json == null) {
+      // State not found, log and return (or throw exception if preferred)
+      LOG.warn(
+          "WorkflowInstanceState with id {} not found. Skipping update.", workflowInstanceStateId);
+      return;
+    }
     WorkflowInstanceState workflowInstanceState =
-        JsonUtils.readValue(
-            timeSeriesDao.getById(workflowInstanceStateId), WorkflowInstanceState.class);
+        JsonUtils.readValue(json, WorkflowInstanceState.class);
 
     Stage stage = workflowInstanceState.getStage();
     stage.setEndedAt(endedAt);
@@ -167,5 +175,65 @@ public class WorkflowInstanceStateRepository
   private String buildWorkflowInstanceFqn(
       String workflowDefinitionName, String workflowInstanceId) {
     return FullyQualifiedName.build(workflowDefinitionName, workflowInstanceId);
+  }
+
+  // Smart method to fetch stages from the right place based on config
+  public ResultList<WorkflowInstanceState> listWorkflowInstanceStatesForInstance(
+      String workflowDefinitionName,
+      UUID workflowInstanceId,
+      String offset,
+      long startTs,
+      long endTs,
+      int limitParam,
+      boolean latest) {
+    // Fetch workflow definition to check config
+    WorkflowDefinitionRepository workflowDefinitionRepository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    org.openmetadata.schema.governance.workflows.WorkflowDefinition workflowDefinition =
+        workflowDefinitionRepository.getByName(
+            null,
+            workflowDefinitionName,
+            org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS);
+    boolean storeStageStatus = workflowDefinition.getConfig().getStoreStageStatus();
+
+    if (storeStageStatus) {
+      // Use the existing logic (state table)
+      return listWorkflowInstanceStateForInstance(
+          workflowDefinitionName, workflowInstanceId, offset, startTs, endTs, limitParam, latest);
+    } else {
+      // Fetch the instance and return its stages array
+      WorkflowInstanceRepository workflowInstanceRepository =
+          (WorkflowInstanceRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+      org.openmetadata.schema.governance.workflows.WorkflowInstance instance =
+          workflowInstanceRepository.getById(workflowInstanceId);
+      java.util.List<WorkflowInstanceState> stages =
+          instance.getStages() != null ? instance.getStages() : new java.util.ArrayList<>();
+      // Optionally filter by startTs/endTs if needed
+      java.util.List<WorkflowInstanceState> filtered = new java.util.ArrayList<>();
+      for (WorkflowInstanceState s : stages) {
+        long ts = s.getTimestamp() != null ? s.getTimestamp() : 0L;
+        if (ts >= startTs && ts <= endTs) {
+          filtered.add(s);
+        }
+      }
+      // Proper offset/limit pagination
+      int startIndex = 0;
+      if (offset != null) {
+        try {
+          String decoded = org.openmetadata.service.util.RestUtil.decodeCursor(offset);
+          startIndex = Integer.parseInt(decoded);
+        } catch (Exception e) {
+          startIndex = 0;
+        }
+      }
+      int endIndex = Math.min(startIndex + limitParam, filtered.size());
+      java.util.List<WorkflowInstanceState> paged = filtered.subList(startIndex, endIndex);
+      // Compute cursors
+      String beforeCursor =
+          (startIndex > 0) ? String.valueOf(Math.max(0, startIndex - limitParam)) : null;
+      String afterCursor = (endIndex < filtered.size()) ? String.valueOf(endIndex) : null;
+      return getResultList(paged, beforeCursor, afterCursor, filtered.size());
+    }
   }
 }

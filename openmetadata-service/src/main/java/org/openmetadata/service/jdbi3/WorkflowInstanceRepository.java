@@ -109,4 +109,16 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
 
     getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstance), workflowInstanceId);
   }
+
+  public boolean updateIfVersionMatches(WorkflowInstance instance, int expectedVersion) {
+    WorkflowInstance current = getById(instance.getId());
+    if (current == null) return false;
+    if (current.getVersion() == null) current.setVersion(0);
+    if (current.getVersion() != expectedVersion) {
+      return false;
+    }
+    instance.setVersion(expectedVersion + 1);
+    getTimeSeriesDao().update(JsonUtils.pojoToJson(instance), instance.getId());
+    return true;
+  }
 }
