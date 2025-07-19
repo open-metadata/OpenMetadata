@@ -98,7 +98,7 @@ for (const EntityClass of entities) {
     try {
       await test.step('Should create lineage for the entity', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await verifyColumnLayerInactive(page);
         await editLineage(page);
@@ -109,7 +109,7 @@ for (const EntityClass of entities) {
         }
 
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await page.click('[data-testid="edit-lineage"]');
         await page.getByTestId('fit-screen').click();
@@ -149,7 +149,7 @@ for (const EntityClass of entities) {
 
       await test.step('Should create pipeline between entities', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await editLineage(page);
         await page.getByTestId('fit-screen').click();
@@ -161,14 +161,14 @@ for (const EntityClass of entities) {
 
       await test.step('Verify Lineage Export CSV', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
       });
 
       await test.step('Verify Lineage Export PNG', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await verifyExportLineagePNG(page);
       });
@@ -177,7 +177,7 @@ for (const EntityClass of entities) {
         'Remove lineage between nodes for the entity',
         async () => {
           await redirectToHomePage(page);
-          await currentEntity.visitEntityPage(page);
+          await currentEntity.visitEntityPageWithCustomSearchBox(page);
           await visitLineageTab(page);
           await editLineage(page);
           await performZoomOut(page);
@@ -190,7 +190,7 @@ for (const EntityClass of entities) {
 
       await test.step('Verify Lineage Config', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await verifyLineageConfig(page);
       });
@@ -274,7 +274,7 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
 
   // Verify column lineage
   await redirectToHomePage(page);
-  await table.visitEntityPage(page);
+  await table.visitEntityPageWithCustomSearchBox(page);
   await visitLineageTab(page);
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="lineage-export"]');

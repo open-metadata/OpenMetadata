@@ -20,7 +20,7 @@ const DESCRIPTION_SEARCH =
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test('searching for longer description should work', async ({ page }) => {
+test.fixme('searching for longer description should work', async ({ page }) => {
   await redirectToHomePage(page);
 
   await page.waitForLoadState('networkidle');

@@ -26,7 +26,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -35,11 +34,13 @@ import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
@@ -55,6 +56,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -100,23 +102,18 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000; // 2 seconds
+  private ReindexingJobLogger jobLogger;
+  private SlackWebApiClient slackClient;
+  private String entitiesDisplayString;
 
-  // Throughput monitoring
-  private final AtomicLong lastThroughputCheck = new AtomicLong(0);
-  private final AtomicLong lastThroughputCount = new AtomicLong(0);
-  private static final long THROUGHPUT_CHECK_INTERVAL_MS = 30000; // 30 seconds
-
-  // Backpressure handling
   private volatile int consecutiveErrors = 0;
   private volatile int consecutiveSuccesses = 0;
   private volatile long lastBackpressureTime = 0;
   private static final int MAX_CONSECUTIVE_ERRORS = 5;
-  private static final int BATCH_SIZE_INCREASE_THRESHOLD =
-      50; // Increase after 50 successful batches
-  private static final long BACKPRESSURE_WAIT_MS = 5000; // 5 seconds
-  private int originalBatchSize = 0; // Store original batch size
+  private static final int BATCH_SIZE_INCREASE_THRESHOLD = 50;
+  private static final long BACKPRESSURE_WAIT_MS = 5000;
+  private int originalBatchSize = 0;
 
-  // Producer-Consumer queue
   private BlockingQueue<IndexingTask<?>> taskQueue;
   private final AtomicBoolean producersDone = new AtomicBoolean(false);
 
@@ -163,8 +160,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
 
     try {
-      if (jobData.getEntities().contains(ALL)) {
+      boolean containsAll = jobData.getEntities().contains(ALL);
+      if (containsAll) {
+        entitiesDisplayString = "All";
         jobData.setEntities(getAll());
+      } else {
+        entitiesDisplayString = String.join(", ", jobData.getEntities());
       }
 
       LOG.info(
@@ -175,7 +176,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
       SearchClusterMetrics clusterMetrics = initializeJob(jobExecutionContext);
 
       if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
-        LOG.info("Recreating indices for entities: {}", jobData.getEntities());
+        if (jobLogger != null) {
+          jobLogger.addInitDetail("Recreating indices", "Yes");
+        }
         reCreateIndexes(jobData.getEntities());
       }
 
@@ -191,10 +194,35 @@ public class SearchIndexApp extends AbstractNativeApplication {
       if (stopped) {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
       } else {
-        updateJobStatus(EventPublisherJob.Status.COMPLETED);
+        boolean hasIncompleteProcessing = false;
+        if (jobData != null
+            && jobData.getStats() != null
+            && jobData.getStats().getJobStats() != null) {
+          long failed =
+              jobData.getStats().getJobStats().getFailedRecords() != null
+                  ? jobData.getStats().getJobStats().getFailedRecords()
+                  : 0;
+          long processed =
+              jobData.getStats().getJobStats().getSuccessRecords() != null
+                  ? jobData.getStats().getJobStats().getSuccessRecords()
+                  : 0;
+          long total =
+              jobData.getStats().getJobStats().getTotalRecords() != null
+                  ? jobData.getStats().getJobStats().getTotalRecords()
+                  : 0;
+
+          hasIncompleteProcessing = failed > 0 || (total > 0 && processed < total);
+        }
+
+        if (hasIncompleteProcessing) {
+          updateJobStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+          LOG.warn("Reindexing completed with errors - some entities were not fully indexed");
+        } else {
+          updateJobStatus(EventPublisherJob.Status.COMPLETED);
+        }
       }
 
-      handleJobSuccess();
+      handleJobCompletion();
     } catch (Exception ex) {
       if (searchIndexSink != null) {
         try {
@@ -230,12 +258,51 @@ public class SearchIndexApp extends AbstractNativeApplication {
   /**
    * Cleans up stale jobs from previous runs.
    */
+  private String getInstanceUrl() {
+    try {
+      SystemRepository systemRepository = Entity.getSystemRepository();
+      if (systemRepository != null) {
+        Settings settings = systemRepository.getOMBaseUrlConfigInternal();
+        if (settings != null && settings.getConfigValue() != null) {
+          OpenMetadataBaseUrlConfiguration urlConfig =
+              (OpenMetadataBaseUrlConfiguration) settings.getConfigValue();
+          if (urlConfig != null && urlConfig.getOpenMetadataUrl() != null) {
+            return urlConfig.getOpenMetadataUrl();
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not get instance URL from SystemSettings", e);
+    }
+    return "http://localhost:8585";
+  }
+
+  private boolean detectSmartReindexing() {
+    // Smart reindexing is detected when:
+    // 1. Not all entities are being reindexed (subset)
+    // 2. Recreate index is true
+    // 3. Force flag is false (or null)
+    if (jobData == null) return false;
+
+    boolean isSubset =
+        jobData.getEntities() != null
+            && !jobData.getEntities().contains("all")
+            && jobData.getEntities().size() < 20; // Assume < 20 entities is a subset
+    boolean isRecreate = Boolean.TRUE.equals(jobData.getRecreateIndex());
+    boolean isNotForced = !Boolean.TRUE.equals(jobData.getForce());
+
+    return isSubset && isRecreate && isNotForced;
+  }
+
   private void cleanUpStaleJobsFromRuns() {
     try {
-      collectionDAO
-          .appExtensionTimeSeriesDao()
-          .markStaleEntriesStopped(getApp().getId().toString());
-      LOG.debug("Cleaned up stale jobs.");
+      App app = getApp();
+      if (app != null && app.getId() != null) {
+        collectionDAO.appExtensionTimeSeriesDao().markStaleEntriesStopped(app.getId().toString());
+        LOG.debug("Cleaned up stale jobs.");
+      } else {
+        LOG.debug("App not initialized, skipping stale job cleanup");
+      }
     } catch (Exception ex) {
       LOG.error("Failed in marking stale entries as stopped.", ex);
     }
@@ -243,18 +310,34 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private SearchClusterMetrics initializeJob(JobExecutionContext jobExecutionContext) {
     cleanUpStaleJobsFromRuns();
+    boolean isSmartReindexing = detectSmartReindexing();
+    jobLogger = new ReindexingJobLogger(jobData, isSmartReindexing);
 
-    LOG.info("Executing Reindexing Job with JobData: {}", jobData);
+    if (jobData.getSlackBotToken() != null
+        && !jobData.getSlackBotToken().isEmpty()
+        && jobData.getSlackChannel() != null
+        && !jobData.getSlackChannel().isEmpty()) {
+      String instanceUrl = getInstanceUrl();
+      slackClient =
+          new SlackWebApiClient(jobData.getSlackBotToken(), jobData.getSlackChannel(), instanceUrl);
 
+      if (entitiesDisplayString == null) {
+        boolean isAllEntities = jobData.getEntities().contains(ALL);
+        entitiesDisplayString = isAllEntities ? "All" : String.join(", ", jobData.getEntities());
+      }
+      slackClient.sendStartNotification(
+          entitiesDisplayString, isSmartReindexing, jobData.getEntities().size());
+    }
+
+    LOG.debug("Executing Reindexing Job with JobData: {}", jobData);
     updateJobStatus(EventPublisherJob.Status.RUNNING);
-
     LOG.debug("Initializing job statistics.");
     searchIndexStats.set(initializeTotalRecords(jobData.getEntities()));
     jobData.setStats(searchIndexStats.get());
 
     SearchClusterMetrics clusterMetrics = null;
     if (Boolean.TRUE.equals(jobData.getAutoTune())) {
-      LOG.info("Auto-tune enabled, analyzing cluster and adjusting parameters...");
+      LOG.debug("Auto-tune enabled, analyzing cluster and adjusting parameters...");
       clusterMetrics =
           SearchClusterMetrics.fetchClusterMetrics(
               searchRepository,
@@ -267,13 +350,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobData.setConsumerThreads(clusterMetrics.getRecommendedConsumerThreads());
       jobData.setQueueSize(clusterMetrics.getRecommendedQueueSize());
 
-      LOG.info(
-          "Auto-tune recommendations - Batch: {}, Concurrent requests: {}, Payload: {} MB, Consumers: {}, Queue: {}",
-          jobData.getBatchSize(),
-          jobData.getMaxConcurrentRequests(),
-          jobData.getPayLoadSize() / (1024 * 1024),
-          jobData.getConsumerThreads(),
-          jobData.getQueueSize());
+      jobLogger.addInitDetail("Auto-tune", "Enabled");
+      jobLogger.addInitDetail("Batch size", jobData.getBatchSize());
+      jobLogger.addInitDetail("Concurrent requests", jobData.getMaxConcurrentRequests());
+      jobLogger.addInitDetail("Payload size", (jobData.getPayLoadSize() / (1024 * 1024)) + " MB");
+      jobLogger.addInitDetail("Consumer threads", jobData.getConsumerThreads());
+      jobLogger.addInitDetail("Queue size", jobData.getQueueSize());
     }
 
     batchSize.set(jobData.getBatchSize());
@@ -281,7 +363,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     sendUpdates(jobExecutionContext, true);
 
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
-    LOG.info("Initializing searchIndexSink with search type: {}", searchType);
+    jobLogger.addInitDetail("Search type", searchType);
 
     if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.searchIndexSink =
@@ -290,7 +372,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
               jobData.getBatchSize(),
               jobData.getMaxConcurrentRequests(),
               jobData.getPayLoadSize());
-      LOG.info("Initialized OpenSearchBulkSink with batch size: {}", jobData.getBatchSize());
+      LOG.debug("Initialized OpenSearchBulkSink with batch size: {}", jobData.getBatchSize());
     } else {
       this.searchIndexSink =
           new ElasticSearchBulkSink(
@@ -298,7 +380,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
               jobData.getBatchSize(),
               jobData.getMaxConcurrentRequests(),
               jobData.getPayLoadSize());
-      LOG.info("Initialized ElasticSearchBulkSink with batch size: {}", jobData.getBatchSize());
+      LOG.debug("Initialized ElasticSearchBulkSink with batch size: {}", jobData.getBatchSize());
     }
 
     return clusterMetrics;
@@ -333,7 +415,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       throws InterruptedException {
     long totalEntities = searchIndexStats.get().getJobStats().getTotalRecords();
 
-    // Calculate thread counts with strict limits to prevent exhaustion
     int numConsumers =
         jobData.getConsumerThreads() != null
             ? Math.min(jobData.getConsumerThreads(), MAX_CONSUMER_THREADS)
@@ -341,35 +422,31 @@ public class SearchIndexApp extends AbstractNativeApplication {
     int numProducers = Math.clamp((int) (totalEntities / 10000), 2, MAX_PRODUCER_THREADS);
 
     if (clusterMetrics != null) {
-      // Apply strict limits even for auto-tuned values
       numConsumers = Math.min(clusterMetrics.getRecommendedConsumerThreads(), MAX_CONSUMER_THREADS);
       numProducers = Math.min(clusterMetrics.getRecommendedProducerThreads(), MAX_PRODUCER_THREADS);
-      LOG.info("Using auto-tuned consumer threads (limited): {}", numConsumers);
-      LOG.info("Using auto-tuned producer threads (limited): {}", numProducers);
+      jobLogger.addInitDetail("Auto-tuned consumer threads", numConsumers);
+      jobLogger.addInitDetail("Auto-tuned producer threads", numProducers);
     }
 
-    // Ensure total threads don't exceed limit
     int totalThreads = numProducers + numConsumers + jobData.getEntities().size();
     if (totalThreads > MAX_TOTAL_THREADS) {
-      LOG.warn(
+      jobLogger.logWarning(
           "Total thread count {} exceeds limit {}, reducing...", totalThreads, MAX_TOTAL_THREADS);
-      // Proportionally reduce threads
       double ratio = (double) MAX_TOTAL_THREADS / totalThreads;
       numProducers = Math.max(1, (int) (numProducers * ratio));
       numConsumers = Math.max(1, (int) (numConsumers * ratio));
-      LOG.info("Adjusted to {} producers and {} consumers", numProducers, numConsumers);
+      jobLogger.addInitDetail(
+          "Adjusted threads",
+          String.format("%d producers, %d consumers", numProducers, numConsumers));
     }
 
-    LOG.info(
-        "Starting reindexing with {} producers and {} consumers for {} total entities",
-        numProducers,
-        numConsumers,
-        totalEntities);
+    jobLogger.addInitDetail("Producer threads", numProducers);
+    jobLogger.addInitDetail("Consumer threads", numConsumers);
+    jobLogger.addInitDetail("Total entities", totalEntities);
 
-    // Use a reasonable queue size
     int queueSize = jobData.getQueueSize() != null ? jobData.getQueueSize() : DEFAULT_QUEUE_SIZE;
-    LOG.info("Using queue size: {}", queueSize);
-
+    jobLogger.addInitDetail("Queue size", queueSize);
+    jobLogger.logInitialization();
     taskQueue = new ArrayBlockingQueue<>(queueSize);
     producersDone.set(false);
     // Use fixed thread pool to prevent thread explosion
@@ -394,7 +471,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       final int consumerId = i;
       consumerExecutor.submit(
           () -> {
-            LOG.info("Consumer {} started", consumerId);
+            jobLogger.logConsumerLifecycle(consumerId, true);
             try {
               while (!stopped && (!producersDone.get() || !taskQueue.isEmpty())) {
                 try {
@@ -408,7 +485,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
                 }
               }
             } finally {
-              LOG.info("Consumer {} finished", consumerId);
+              jobLogger.logConsumerLifecycle(consumerId, false);
               consumerLatch.countDown();
             }
           });
@@ -436,7 +513,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
       throw e;
     } catch (Exception e) {
       if (!stopped) {
-        LOG.error("Error during reindexing process.", e);
+        if (jobLogger != null) {
+          jobLogger.logError("reindexing process", e);
+        } else {
+          LOG.error("Error during reindexing process.", e);
+        }
       }
       throw e;
     } finally {
@@ -474,6 +555,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobExecutor.submit(
           () -> {
             try {
+              // Notify logger that we're starting this entity
+              if (jobLogger != null) {
+                jobLogger.markEntityStarted(entityType);
+              }
+
               int totalEntityRecords = getTotalEntityRecords(entityType);
               int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
               if (totalEntityRecords > 0) {
@@ -502,7 +588,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
                               currentOffset,
                               producerLatch.getCount());
                           Source<?> source = createSource(entityType);
-                          processReadTask(jobExecutionContext, entityType, source, currentOffset);
+                          processReadTask(entityType, source, currentOffset);
                         } catch (Exception e) {
                           // Don't log errors if we're stopping
                           if (!stopped) {
@@ -519,6 +605,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
                         }
                       });
                 }
+              }
+              // Notify logger that this entity is complete
+              if (jobLogger != null) {
+                jobLogger.markEntityCompleted(entityType);
               }
             } catch (Exception e) {
               LOG.error("Error processing entity type {}", entityType, e);
@@ -630,14 +720,47 @@ public class SearchIndexApp extends AbstractNativeApplication {
             .withMessage(
                 String.format("Reindexing Job Has Encountered an Exception: %s", ex.getMessage()));
     LOG.error("Reindexing Job Failed", ex);
+
+    // Send Slack error notification
+    if (slackClient != null) {
+      slackClient.sendErrorNotification(ex.getMessage());
+    }
+
     if (jobData != null) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(indexingError);
     }
   }
 
-  private void handleJobSuccess() {
-    if (jobData != null) {
+  private void handleJobCompletion() {
+    if (jobLogger != null && jobData != null && jobData.getStats() != null) {
+      jobLogger.logCompletion(jobData.getStats());
+
+      if (slackClient != null) {
+        long elapsedSeconds = 0;
+        boolean hasErrors = false;
+        if (jobData.getStats().getJobStats() != null) {
+          long failed =
+              jobData.getStats().getJobStats().getFailedRecords() != null
+                  ? jobData.getStats().getJobStats().getFailedRecords()
+                  : 0;
+          long processed =
+              jobData.getStats().getJobStats().getSuccessRecords() != null
+                  ? jobData.getStats().getJobStats().getSuccessRecords()
+                  : 0;
+          long total =
+              jobData.getStats().getJobStats().getTotalRecords() != null
+                  ? jobData.getStats().getJobStats().getTotalRecords()
+                  : 0;
+          hasErrors = failed > 0 || (total > 0 && processed < total);
+        }
+
+        if (jobData.getTimestamp() != null) {
+          elapsedSeconds = (System.currentTimeMillis() - jobData.getTimestamp()) / 1000;
+        }
+        slackClient.sendCompletionNotification(jobData.getStats(), elapsedSeconds, hasErrors);
+      }
+    } else if (jobData != null) {
       LOG.info("Search Index Job Completed for Entities: {}", jobData.getEntities());
     } else {
       LOG.info("Search Index Job Completed");
@@ -687,7 +810,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private int getEntityTotal(String entityType) {
     try {
-      // Handle incorrect entity type name for query cost
       String correctedEntityType = entityType;
       if ("queryCostResult".equals(entityType)) {
         LOG.warn("Found incorrect entity type 'queryCostResult', correcting to 'queryCostRecord'");
@@ -719,39 +841,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void logThroughputIfNeeded() {
-    long currentTime = System.currentTimeMillis();
-    long lastCheck = lastThroughputCheck.get();
-
-    if (currentTime - lastCheck >= THROUGHPUT_CHECK_INTERVAL_MS) {
+    if (jobLogger != null) {
       Stats stats = searchIndexStats.get();
-      if (stats != null && stats.getJobStats() != null) {
-        long currentCount =
-            stats.getJobStats().getSuccessRecords() != null
-                ? stats.getJobStats().getSuccessRecords()
-                : 0;
-        long lastCount = lastThroughputCount.get();
-        long timeDelta = currentTime - lastCheck;
-        long recordsDelta = currentCount - lastCount;
+      if (stats != null) {
+        jobLogger.logProgress(stats);
 
-        if (timeDelta > 0) {
-          double throughput = (recordsDelta * 1000.0) / timeDelta;
-          double recordsPerMinute = throughput * 60;
-          LOG.info("=== Indexing Throughput ===");
-          LOG.info("Records processed: {} in {}s", recordsDelta, timeDelta / 1000);
-          LOG.info(
-              "Current throughput: {} records/second ({} records/minute)",
-              String.format("%.2f", throughput),
-              String.format("%.0f", recordsPerMinute));
-          LOG.info(
-              "Total processed: {}/{}",
-              currentCount,
-              stats.getJobStats().getTotalRecords() != null
-                  ? stats.getJobStats().getTotalRecords()
-                  : "unknown");
-          LOG.info("=========================");
-
-          lastThroughputCheck.set(currentTime);
-          lastThroughputCount.set(currentCount);
+        // Also send Slack update if client is initialized
+        if (slackClient != null) {
+          slackClient.sendProgressUpdate(stats);
         }
       }
     }
@@ -800,7 +897,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
       searchRepository.deleteIndex(indexType);
       searchRepository.createIndex(indexType);
-      LOG.info("Recreated index for entityType '{}'.", entityType);
+      LOG.debug("Recreated index for entityType '{}'.", entityType);
     }
   }
 
@@ -1152,8 +1249,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
         jobStats.getTotalRecords());
   }
 
-  private void processReadTask(
-      JobExecutionContext jobExecutionContext, String entityType, Source<?> source, int offset) {
+  private void processReadTask(String entityType, Source<?> source, int offset) {
     try {
       // Exit early if stopped
       if (stopped) {
@@ -1224,8 +1320,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private int getRemainingRecordsToProcess(String entityType) {
     StepStats entityStats =
-        ((StepStats)
-            searchIndexStats.get().getEntityStats().getAdditionalProperties().get(entityType));
+        searchIndexStats.get().getEntityStats().getAdditionalProperties().get(entityType);
     return entityStats.getTotalRecords()
         - entityStats.getFailedRecords()
         - entityStats.getSuccessRecords();

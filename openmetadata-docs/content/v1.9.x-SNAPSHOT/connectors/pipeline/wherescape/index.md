@@ -1,5 +1,6 @@
 ---
-title: Wherescape
+title: Wherescape Connector | Official Documentation
+description: Ingest metadata from WhereScape pipelines including task details, schedules, and lineage paths.
 slug: /connectors/pipeline/wherescape
 ---
 
