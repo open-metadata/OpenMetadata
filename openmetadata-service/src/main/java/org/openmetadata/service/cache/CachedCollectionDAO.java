@@ -329,9 +329,16 @@ public class CachedCollectionDAO implements CollectionDAO {
   }
 
   @Override
+  public SecurityServiceDAO securityServiceDAO() {
+    return delegate.securityServiceDAO();
+  }
+
+  @Override
   public ApiServiceDAO apiServiceDAO() {
     return delegate.apiServiceDAO();
   }
+
+
 
   @Override
   public ContainerDAO containerDAO() {
