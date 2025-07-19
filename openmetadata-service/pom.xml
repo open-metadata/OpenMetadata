@@ -25,7 +25,7 @@
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
     <quartz.version>2.5.0-rc2</quartz.version>
-    <pac4j.version>5.7.0</pac4j.version>
+    <pac4j.version>6.1.2</pac4j.version>
     <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <socket.io-client.version>2.1.1</socket.io-client.version>
@@ -118,7 +118,7 @@
     <dependency>
       <groupId>com.nimbusds</groupId>
       <artifactId>nimbus-jose-jwt</artifactId>
-      <version>9.42</version>
+      <version>10.0.2</version>
     </dependency>
     <dependency>
       <groupId>org.pac4j</groupId>
