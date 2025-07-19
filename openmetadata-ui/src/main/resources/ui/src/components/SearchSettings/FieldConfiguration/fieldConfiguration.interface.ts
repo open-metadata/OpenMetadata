@@ -20,6 +20,7 @@ export interface FieldConfigurationProps {
   field: {
     fieldName: string;
     weight: number;
+    matchType?: 'exact' | 'phrase' | 'fuzzy' | 'standard';
   };
   searchSettings: EntitySearchSettingsState;
   index: number;
@@ -27,6 +28,10 @@ export interface FieldConfigurationProps {
   initialOpen?: boolean;
   onHighlightFieldsChange: (fieldName: string) => void;
   onFieldWeightChange: (fieldName: string, value: number) => void;
+  onMatchTypeChange: (
+    fieldName: string,
+    matchType: 'exact' | 'phrase' | 'fuzzy' | 'standard'
+  ) => void;
   onValueBoostChange?: (fieldName: string, boost: FieldValueBoost) => void;
   onDeleteBoost?: (fieldName: string) => void;
   onDeleteSearchField: (fieldName: string) => void;

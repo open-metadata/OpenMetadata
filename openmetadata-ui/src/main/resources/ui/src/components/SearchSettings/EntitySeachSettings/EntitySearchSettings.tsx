@@ -121,6 +121,7 @@ const EntitySearchSettings = () => {
     return searchSettings.searchFields.map((field) => ({
       fieldName: field.field,
       weight: field.boost ?? 0,
+      matchType: field.matchType || 'standard',
     }));
   }, [searchSettings.searchFields]);
 
@@ -312,6 +313,23 @@ const EntitySearchSettings = () => {
     setSearchSettings((prev) => {
       const updatedFields = prev.searchFields?.map((field) =>
         field.field === fieldName ? { ...field, boost: value } : field
+      );
+
+      return {
+        ...prev,
+        searchFields: updatedFields,
+        isUpdated: true,
+      };
+    });
+  };
+
+  const handleMatchTypeChange = (
+    fieldName: string,
+    matchType: 'exact' | 'phrase' | 'fuzzy' | 'standard'
+  ) => {
+    setSearchSettings((prev) => {
+      const updatedFields = prev.searchFields?.map((field) =>
+        field.field === fieldName ? { ...field, matchType } : field
       );
 
       return {
@@ -597,6 +615,7 @@ const EntitySearchSettings = () => {
                         onDeleteSearchField={handleDeleteSearchField}
                         onFieldWeightChange={handleFieldWeightChange}
                         onHighlightFieldsChange={handleHighlightFieldsChange}
+                        onMatchTypeChange={handleMatchTypeChange}
                       />
                     </Col>
                   ))}

@@ -183,9 +183,9 @@ migrationConfiguration:
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
-  adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+  adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin,harsha]}
   allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
-  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"getcollate.io"}
   allowedDomains: ${AUTHORIZER_ALLOWED_DOMAINS:-[]}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}

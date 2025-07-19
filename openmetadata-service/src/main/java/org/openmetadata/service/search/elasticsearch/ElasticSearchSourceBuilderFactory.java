@@ -201,7 +201,83 @@ public class ElasticSearchSourceBuilderFactory
     } else {
       BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
 
-      if (!fuzzyFields.isEmpty()) {
+      // Get boost multipliers from configuration
+      float exactMatchMultiplier = 2.0f;
+      float phraseMatchMultiplier = 1.5f;
+      float fuzzyMatchMultiplier = 1.0f;
+
+      if (assetConfig.getMatchTypeBoostMultipliers() != null) {
+        if (assetConfig.getMatchTypeBoostMultipliers().getExactMatchMultiplier() != null) {
+          exactMatchMultiplier =
+              assetConfig.getMatchTypeBoostMultipliers().getExactMatchMultiplier().floatValue();
+        }
+        if (assetConfig.getMatchTypeBoostMultipliers().getPhraseMatchMultiplier() != null) {
+          phraseMatchMultiplier =
+              assetConfig.getMatchTypeBoostMultipliers().getPhraseMatchMultiplier().floatValue();
+        }
+        if (assetConfig.getMatchTypeBoostMultipliers().getFuzzyMatchMultiplier() != null) {
+          fuzzyMatchMultiplier =
+              assetConfig.getMatchTypeBoostMultipliers().getFuzzyMatchMultiplier().floatValue();
+        }
+      }
+
+      // Group fields by match type
+      Map<String, Float> exactMatchFields = new HashMap<>();
+      Map<String, Float> phraseMatchFields = new HashMap<>();
+      Map<String, Float> fuzzyMatchFields = new HashMap<>();
+      Map<String, Float> standardMatchFields = new HashMap<>();
+
+      if (assetConfig.getSearchFields() != null) {
+        for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
+          String matchType =
+              fieldBoost.getMatchType() != null ? fieldBoost.getMatchType().value() : "standard";
+          float boost = fieldBoost.getBoost().floatValue();
+
+          switch (matchType) {
+            case "exact":
+              exactMatchFields.put(fieldBoost.getField(), boost);
+              break;
+            case "phrase":
+              phraseMatchFields.put(fieldBoost.getField(), boost);
+              break;
+            case "fuzzy":
+              fuzzyMatchFields.put(fieldBoost.getField(), boost);
+              break;
+            case "standard":
+            default:
+              standardMatchFields.put(fieldBoost.getField(), boost);
+              break;
+          }
+        }
+      }
+
+      // Add exact match queries
+      if (!exactMatchFields.isEmpty()) {
+        BoolQueryBuilder exactMatchQuery = QueryBuilders.boolQuery();
+        exactMatchFields.forEach(
+            (field, boost) -> {
+              exactMatchQuery.should(
+                  QueryBuilders.termQuery(field, query.toLowerCase()).boost(boost));
+            });
+        if (exactMatchQuery.hasClauses()) {
+          combinedQuery.should(exactMatchQuery.boost(exactMatchMultiplier));
+        }
+      }
+
+      // Add phrase match queries
+      if (!phraseMatchFields.isEmpty()) {
+        BoolQueryBuilder phraseMatchQuery = QueryBuilders.boolQuery();
+        phraseMatchFields.forEach(
+            (field, boost) -> {
+              phraseMatchQuery.should(QueryBuilders.matchPhraseQuery(field, query).boost(boost));
+            });
+        if (phraseMatchQuery.hasClauses()) {
+          combinedQuery.should(phraseMatchQuery.boost(phraseMatchMultiplier));
+        }
+      }
+
+      // Add fuzzy match queries
+      if (!fuzzyMatchFields.isEmpty()) {
         MultiMatchQueryBuilder fuzzyQueryBuilder =
             QueryBuilders.multiMatchQuery(query)
                 .type(MOST_FIELDS)
@@ -210,19 +286,45 @@ public class ElasticSearchSourceBuilderFactory
                 .prefixLength(1)
                 .operator(Operator.AND)
                 .tieBreaker(0.3f);
-        fuzzyFields.forEach(fuzzyQueryBuilder::field);
-        combinedQuery.should(fuzzyQueryBuilder);
+        fuzzyMatchFields.forEach(fuzzyQueryBuilder::field);
+        combinedQuery.should(fuzzyQueryBuilder.boost(fuzzyMatchMultiplier));
       }
 
-      if (!nonFuzzyFields.isEmpty()) {
-        MultiMatchQueryBuilder nonFuzzyQueryBuilder =
-            QueryBuilders.multiMatchQuery(query)
-                .type(MOST_FIELDS)
-                .operator(Operator.AND)
-                .tieBreaker(0.3f)
-                .fuzziness(Fuzziness.ZERO);
-        nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
-        combinedQuery.should(nonFuzzyQueryBuilder);
+      // Add standard match queries (combination of existing fuzzy and non-fuzzy logic)
+      if (!standardMatchFields.isEmpty()) {
+        Map<String, Float> standardFuzzyFields =
+            standardMatchFields.entrySet().stream()
+                .filter(entry -> isFuzzyField(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        Map<String, Float> standardNonFuzzyFields =
+            standardMatchFields.entrySet().stream()
+                .filter(entry -> isNonFuzzyField(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        if (!standardFuzzyFields.isEmpty()) {
+          MultiMatchQueryBuilder fuzzyQueryBuilder =
+              QueryBuilders.multiMatchQuery(query)
+                  .type(MOST_FIELDS)
+                  .fuzziness(Fuzziness.AUTO)
+                  .maxExpansions(10)
+                  .prefixLength(1)
+                  .operator(Operator.AND)
+                  .tieBreaker(0.3f);
+          standardFuzzyFields.forEach(fuzzyQueryBuilder::field);
+          combinedQuery.should(fuzzyQueryBuilder);
+        }
+
+        if (!standardNonFuzzyFields.isEmpty()) {
+          MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+              QueryBuilders.multiMatchQuery(query)
+                  .type(MOST_FIELDS)
+                  .operator(Operator.AND)
+                  .tieBreaker(0.3f)
+                  .fuzziness(Fuzziness.ZERO);
+          standardNonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
+          combinedQuery.should(nonFuzzyQueryBuilder);
+        }
       }
 
       combinedQuery.minimumShouldMatch(1);
