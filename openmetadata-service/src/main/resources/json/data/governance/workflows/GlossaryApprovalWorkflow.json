@@ -4,7 +4,7 @@
   "displayName": "Glossary Approval Workflow",
   "description": "When a Glossary Term is Created or Updated, this Workflow will be triggered for the Term to be Approved.",
   "config": {
-    "storeStageStatus": false
+    "storeStageStatus": true
   },
   "trigger": {
     "type": "eventBasedEntity",
