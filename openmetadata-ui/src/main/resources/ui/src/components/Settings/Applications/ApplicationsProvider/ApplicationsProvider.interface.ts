@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RouteProps } from 'react-router-dom';
 import { EntityReference } from '../../../../generated/entity/type';
 
 export type ApplicationsContextType = {
   applications: EntityReference[];
+  applicationRoutes: RouteProps[];
 };

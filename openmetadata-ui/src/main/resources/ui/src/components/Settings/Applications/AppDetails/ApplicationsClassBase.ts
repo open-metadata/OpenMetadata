@@ -56,6 +56,12 @@ class ApplicationsClassBase {
     return import(`../../../../assets/img/appScreenshots/${screenshotName}`);
   }
 
+  public getPlugin(appName: string) {
+    const pluginPath = `../../../../../public/plugins/${appName}`;
+
+    return import(pluginPath);
+  }
+
   public getScheduleOptionsForApp(
     app: string,
     appType: AppType,

@@ -30,7 +30,8 @@
     "forceConsistentCasingInFileNames": true,
     "allowUnreachableCode": false,
     "skipLibCheck": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "baseUrl": "."
   },
   "include": ["src"]
 }
