@@ -2070,6 +2070,53 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     tableResourceTest.deleteEntity(table4.getId(), ADMIN_AUTH_HEADERS);
   }
 
+  @Test
+  void test_GlossaryTermReviewerFilterSkipsWorkflow(TestInfo test) throws Exception {
+    // 1. Create glossary with reviewers
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest(getEntityName(test, 1))
+            .withReviewers(listOf(USER1.getEntityReference(), USER2.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // 2. Create a glossary term
+    GlossaryTerm term = createTerm(glossary, null, "testTerm");
+    assertEquals(Status.DRAFT, term.getStatus());
+    // 2a. Approve the term, now we know, a new workflow is created for non reviewers
+    waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L);
+    Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+    int taskId = approvalTask.getTask().getId();
+    taskTest.resolveTask(
+        taskId, new ResolveTask().withNewValue("approved"), authHeaders(USER1.getName()));
+
+    // 3. Update as reviewer (should NOT trigger workflow)
+    String jsonReviewer = JsonUtils.pojoToJson(term);
+    term.setDescription("Updated by reviewer USER1 " + System.currentTimeMillis());
+    patchEntity(term.getId(), jsonReviewer, term, authHeaders(USER1.getName()));
+
+    // Wait a short period and assert NO approval task is created
+    boolean taskCreatedByReviewer = false;
+    try {
+      waitForTaskToBeCreated(term.getFullyQualifiedName(), 5000L); // 5s timeout
+      taskCreatedByReviewer = true;
+    } catch (Exception e) {
+      // Expected: timeout means no task was created
+    }
+    assertFalse(
+        taskCreatedByReviewer, "No approval task should be created when reviewer updates the term");
+
+    // 4. Update as non-reviewer (admin) (should trigger workflow)
+    String jsonAdmin = JsonUtils.pojoToJson(term);
+    term.setDescription("Updated by admin (non-reviewer) " + System.currentTimeMillis());
+    patchEntity(term.getId(), jsonAdmin, term, ADMIN_AUTH_HEADERS);
+
+    // Wait for approval task to be created (should succeed)
+    waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L); // 30s timeout
+
+    // Assert the approval task is present and open, that means the workflow was triggered
+    assertApprovalTask(term, TaskStatus.Open);
+  }
+
   /**
    * Helper method to receive move entity message via WebSocket
    */
