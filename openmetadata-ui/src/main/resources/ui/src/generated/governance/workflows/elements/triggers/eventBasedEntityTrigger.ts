@@ -29,11 +29,6 @@ export interface TriggerConfiguration {
     entityType: string;
     events:     Event[];
     /**
-     * Deprecated: Use 'filter' instead. Select fields that should not trigger the workflow if
-     * only them are modified.
-     */
-    exclude?: string[];
-    /**
      * JSON Logic expression to determine if the workflow should be triggered. The expression
      * has access to: entity (current entity), changeDescription (what changed), updatedBy (user
      * who made the change), changedFields (array of field names that changed).
