@@ -1044,7 +1044,7 @@ test.describe('Glossary tests', () => {
       await table.create(apiContext);
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
-      await table.visitEntityPage(page);
+      await table.visitEntityPageWithCustomSearchBox(page);
       await assignGlossaryTerm(page, glossaryTerm1.responseData);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
