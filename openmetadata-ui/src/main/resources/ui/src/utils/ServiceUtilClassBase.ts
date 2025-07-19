@@ -164,6 +164,7 @@ class ServiceUtilClassBase {
     DashboardServiceType.ThoughtSpot,
     PipelineServiceType.Ssis,
     PipelineServiceType.Wherescape,
+    DatabaseServiceType.GoogleSheets,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<

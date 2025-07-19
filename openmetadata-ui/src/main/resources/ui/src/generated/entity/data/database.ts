@@ -562,6 +562,7 @@ export enum DatabaseServiceType {
     DynamoDB = "DynamoDB",
     Exasol = "Exasol",
     Glue = "Glue",
+    GoogleSheets = "GoogleSheets",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",

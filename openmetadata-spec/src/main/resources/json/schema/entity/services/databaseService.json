@@ -61,7 +61,8 @@
         "Synapse",
         "Exasol",
         "Cockroach",
-        "SSAS"
+        "SSAS",
+        "GoogleSheets"
       ],
       "javaEnums": [
         {
@@ -204,6 +205,9 @@
         },
         {
           "name": "SSAS"
+        },
+        {
+          "name": "GoogleSheets"
         }
       ]
     },
@@ -351,6 +355,9 @@
             },
             {
               "$ref": "./connections/database/ssasConnection.json"
+            },
+            {
+              "$ref": "./connections/database/googleSheetsConnection.json"
             }
           ]
         }
