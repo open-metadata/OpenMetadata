@@ -129,6 +129,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -141,6 +146,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -192,6 +202,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -204,6 +219,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -250,6 +270,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -262,6 +287,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -358,6 +388,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -370,6 +405,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -427,6 +467,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -439,6 +484,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -501,6 +551,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -513,6 +568,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -585,6 +645,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -597,6 +662,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -705,6 +775,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -717,6 +792,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -790,6 +870,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -802,6 +887,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -866,6 +956,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -878,6 +973,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -942,6 +1042,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -954,6 +1059,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -1018,6 +1128,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -1030,6 +1145,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -1100,6 +1220,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -1112,6 +1237,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -1204,6 +1334,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -1216,6 +1351,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -1268,6 +1408,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -1280,6 +1425,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -1326,6 +1476,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -1338,6 +1493,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -1394,6 +1554,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -1406,6 +1571,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -1488,6 +1658,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -1500,6 +1675,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -1546,6 +1726,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -1558,6 +1743,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -1621,6 +1811,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -1633,6 +1828,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -1711,6 +1911,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -1723,6 +1928,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {
@@ -1786,6 +1996,11 @@
           "matchType": "fuzzy"
         },
         {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
           "field": "displayName",
           "boost": 10.0,
           "matchType": "phrase"
@@ -1798,6 +2013,11 @@
         {
           "field": "description",
           "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
           "matchType": "standard"
         },
         {

@@ -112,6 +112,8 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   S buildCommonSearchBuilder(String query, int from, int size);
 
+  S buildEntitySpecificAggregateSearchBuilder(String query, int from, int size);
+
   S buildUserOrTeamSearchBuilder(String query, int from, int size);
 
   S buildAggregateSearchBuilder(String query, int from, int size);

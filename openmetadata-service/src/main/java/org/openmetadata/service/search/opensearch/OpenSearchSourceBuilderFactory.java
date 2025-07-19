@@ -7,6 +7,7 @@ import static os.org.opensearch.index.query.MultiMatchQueryBuilder.Type.MOST_FIE
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -150,13 +151,59 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    Map<String, Float> allFields = getAllSearchFieldsFromSettings(searchSettings);
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(allFields)
-            .fuzziness(Fuzziness.AUTO)
-            .fuzzyMaxExpansions(10);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
+    // Use a composite configuration that includes all asset types
+    AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
+
+    // Build the query using the same logic as buildDataAssetSearchBuilder
+    QueryBuilder baseQuery = buildQueryWithMatchTypes(query, compositeConfig);
+
+    // Apply function scoring for term boosts and field value boosts
+    List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
+    if (searchSettings.getGlobalSettings().getTermBoosts() != null) {
+      for (TermBoost tb : searchSettings.getGlobalSettings().getTermBoosts()) {
+        functions.add(buildTermBoostFunction(tb));
+      }
+    }
+    if (compositeConfig.getTermBoosts() != null) {
+      for (TermBoost tb : compositeConfig.getTermBoosts()) {
+        functions.add(buildTermBoostFunction(tb));
+      }
+    }
+    if (searchSettings.getGlobalSettings().getFieldValueBoosts() != null) {
+      for (FieldValueBoost fvb : searchSettings.getGlobalSettings().getFieldValueBoosts()) {
+        functions.add(buildFieldValueBoostFunction(fvb));
+      }
+    }
+    if (compositeConfig.getFieldValueBoosts() != null) {
+      for (FieldValueBoost fvb : compositeConfig.getFieldValueBoosts()) {
+        functions.add(buildFieldValueBoostFunction(fvb));
+      }
+    }
+
+    QueryBuilder finalQuery = baseQuery;
+    if (!functions.isEmpty()) {
+      float functionBoostFactor = 0.3f;
+      FunctionScoreQueryBuilder functionScore =
+          QueryBuilders.functionScoreQuery(
+              baseQuery, functions.toArray(new FunctionScoreQueryBuilder.FilterFunctionBuilder[0]));
+
+      if (compositeConfig.getScoreMode() != null) {
+        functionScore.scoreMode(toScoreMode(compositeConfig.getScoreMode().value()));
+      } else {
+        functionScore.scoreMode(FunctionScoreQuery.ScoreMode.SUM);
+      }
+
+      if (compositeConfig.getBoostMode() != null) {
+        functionScore.boostMode(toCombineFunction(compositeConfig.getBoostMode().value()));
+      } else {
+        functionScore.boostMode(CombineFunction.SUM);
+      }
+
+      functionScore.boost(functionBoostFactor);
+      finalQuery = functionScore;
+    }
+
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(finalQuery, null, from, size);
     return addAggregation(searchSourceBuilder);
   }
 
@@ -170,33 +217,57 @@ public class OpenSearchSourceBuilderFactory
   public SearchSourceBuilder buildDataAssetSearchBuilder(
       String indexName, String query, int from, int size, boolean explain) {
     AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
-    Map<String, Float> fuzzyFields;
-    Map<String, Float> nonFuzzyFields;
-
-    if (assetConfig.getSearchFields() != null && !assetConfig.getSearchFields().isEmpty()) {
-      fuzzyFields =
-          assetConfig.getSearchFields().stream()
-              .filter(fieldBoost -> isFuzzyField(fieldBoost.getField()))
-              .collect(Collectors.toMap(FieldBoost::getField, fb -> fb.getBoost().floatValue()));
-      nonFuzzyFields =
-          assetConfig.getSearchFields().stream()
-              .filter(fieldBoost -> isNonFuzzyField(fieldBoost.getField()))
-              .collect(Collectors.toMap(FieldBoost::getField, fb -> fb.getBoost().floatValue()));
-    } else {
-      Map<String, Float> defaultFields = SearchIndex.getDefaultFields();
-      fuzzyFields =
-          defaultFields.entrySet().stream()
-              .filter(entry -> isFuzzyField(entry.getKey()))
-              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-      nonFuzzyFields =
-          defaultFields.entrySet().stream()
-              .filter(entry -> isNonFuzzyField(entry.getKey()))
-              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    }
 
     BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
       baseQuery.must(QueryBuilders.matchAllQuery());
+    } else if (containsQuerySyntax(query)) {
+      // Extract fields from assetConfig for complex query syntax
+      Map<String, Float> allFields = new HashMap<>();
+      Map<String, Float> fuzzyFields = new HashMap<>();
+      Map<String, Float> nonFuzzyFields = new HashMap<>();
+
+      if (assetConfig.getSearchFields() != null) {
+        for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
+          String field = fieldBoost.getField();
+          float boost = fieldBoost.getBoost() != null ? fieldBoost.getBoost().floatValue() : 1.0f;
+          allFields.put(field, boost);
+
+          // Classify fields as fuzzy or non-fuzzy
+          if (isFuzzyField(field)) {
+            fuzzyFields.put(field, boost);
+          }
+          if (isNonFuzzyField(field)) {
+            nonFuzzyFields.put(field, boost);
+          }
+        }
+      }
+
+      QueryStringQueryBuilder fuzzyQueryBuilder =
+          QueryBuilders.queryStringQuery(query)
+              .fields(fuzzyFields)
+              .defaultOperator(Operator.AND)
+              .type(MOST_FIELDS)
+              .fuzziness(Fuzziness.AUTO)
+              .fuzzyMaxExpansions(10)
+              .fuzzyPrefixLength(1)
+              .tieBreaker(0.3f);
+
+      MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+          QueryBuilders.multiMatchQuery(query)
+              .fields(nonFuzzyFields)
+              .type(MOST_FIELDS)
+              .operator(Operator.AND)
+              .tieBreaker(0.3f)
+              .fuzziness(Fuzziness.ZERO);
+
+      BoolQueryBuilder combinedQuery =
+          QueryBuilders.boolQuery()
+              .should(fuzzyQueryBuilder)
+              .should(nonFuzzyQueryBuilder)
+              .minimumShouldMatch(1);
+
+      baseQuery.must(combinedQuery);
     } else {
       BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
 
@@ -230,7 +301,7 @@ public class OpenSearchSourceBuilderFactory
         for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
           String matchType =
               fieldBoost.getMatchType() != null ? fieldBoost.getMatchType().value() : "standard";
-          float boost = fieldBoost.getBoost().floatValue();
+          float boost = fieldBoost.getBoost() != null ? fieldBoost.getBoost().floatValue() : 1.0f;
 
           switch (matchType) {
             case "exact":
@@ -308,7 +379,8 @@ public class OpenSearchSourceBuilderFactory
                   .fuzziness(Fuzziness.AUTO)
                   .maxExpansions(10)
                   .prefixLength(1)
-                  .operator(Operator.AND)
+                  .operator(Operator.OR)
+                  .minimumShouldMatch("2<70%")
                   .tieBreaker(0.3f);
           standardFuzzyFields.forEach(fuzzyQueryBuilder::field);
           combinedQuery.should(fuzzyQueryBuilder);
@@ -518,8 +590,11 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildCommonSearchBuilder(String query, int from, int size) {
-    QueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, getAllSearchFieldsFromSettings(searchSettings));
+    // Create a composite configuration that includes all asset types
+    AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
+
+    // Build the query using matchType support
+    QueryBuilder baseQuery = buildQueryWithMatchTypes(query, compositeConfig);
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
 
@@ -537,12 +612,11 @@ public class OpenSearchSourceBuilderFactory
       }
     }
 
-    QueryBuilder finalQuery = queryStringBuilder;
+    QueryBuilder finalQuery = baseQuery;
     if (!functions.isEmpty()) {
       FunctionScoreQueryBuilder functionScore =
           QueryBuilders.functionScoreQuery(
-              queryStringBuilder,
-              functions.toArray(new FunctionScoreQueryBuilder.FilterFunctionBuilder[0]));
+              baseQuery, functions.toArray(new FunctionScoreQueryBuilder.FilterFunctionBuilder[0]));
       functionScore.scoreMode(FunctionScoreQuery.ScoreMode.SUM);
       functionScore.boostMode(CombineFunction.MULTIPLY);
       finalQuery = functionScore;
@@ -569,5 +643,329 @@ public class OpenSearchSourceBuilderFactory
     AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
     addConfiguredAggregations(searchSourceBuilder, assetConfig);
     return searchSourceBuilder;
+  }
+
+  @Override
+  public SearchSourceBuilder buildEntitySpecificAggregateSearchBuilder(
+      String query, int from, int size) {
+    // Instead of building separate queries for each entity type,
+    // use a composite configuration but apply entity-type specific boosts
+
+    // Build composite configuration from all asset types
+    AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
+
+    // Build the base query using the composite configuration
+    QueryBuilder baseQuery = buildQueryWithMatchTypes(query, compositeConfig);
+
+    // Apply global function scoring
+    List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
+
+    // Add global term boosts
+    if (searchSettings.getGlobalSettings().getTermBoosts() != null) {
+      for (TermBoost tb : searchSettings.getGlobalSettings().getTermBoosts()) {
+        functions.add(buildTermBoostFunction(tb));
+      }
+    }
+
+    // Add global field value boosts
+    if (searchSettings.getGlobalSettings().getFieldValueBoosts() != null) {
+      for (FieldValueBoost fvb : searchSettings.getGlobalSettings().getFieldValueBoosts()) {
+        functions.add(buildFieldValueBoostFunction(fvb));
+      }
+    }
+
+    // Add entity-type specific boosts as function score queries
+    // This provides entity-specific scoring without creating separate queries
+    List<String> dataAssetTypes =
+        List.of(
+            "table",
+            "dashboard",
+            "topic",
+            "pipeline",
+            "mlmodel",
+            "container",
+            "searchIndex",
+            "dashboardDataModel",
+            "storedProcedure",
+            "dataProduct");
+
+    for (String assetType : dataAssetTypes) {
+      AssetTypeConfiguration assetConfig =
+          searchSettings.getAssetTypeConfigurations().stream()
+              .filter(config -> config.getAssetType().equals(assetType))
+              .findFirst()
+              .orElse(null);
+
+      if (assetConfig != null) {
+        // Add entity-specific term boosts with entity type filter
+        if (assetConfig.getTermBoosts() != null) {
+          for (TermBoost tb : assetConfig.getTermBoosts()) {
+            functions.add(
+                new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+                    QueryBuilders.boolQuery()
+                        .must(QueryBuilders.termQuery("entityType", assetType))
+                        .must(QueryBuilders.termQuery(tb.getField(), tb.getValue())),
+                    ScoreFunctionBuilders.weightFactorFunction(tb.getBoost().floatValue())));
+          }
+        }
+
+        // Add entity-specific field value boosts with entity type filter
+        if (assetConfig.getFieldValueBoosts() != null) {
+          for (FieldValueBoost fvb : assetConfig.getFieldValueBoosts()) {
+            QueryBuilder condition =
+                QueryBuilders.boolQuery().must(QueryBuilders.termQuery("entityType", assetType));
+
+            if (fvb.getCondition() != null && fvb.getCondition().getRange() != null) {
+              BoolQueryBuilder rangeQuery = QueryBuilders.boolQuery();
+              if (fvb.getCondition().getRange().getGt() != null) {
+                rangeQuery.filter(
+                    QueryBuilders.rangeQuery(fvb.getField())
+                        .gt(fvb.getCondition().getRange().getGt()));
+              }
+              if (fvb.getCondition().getRange().getGte() != null) {
+                rangeQuery.filter(
+                    QueryBuilders.rangeQuery(fvb.getField())
+                        .gte(fvb.getCondition().getRange().getGte()));
+              }
+              if (fvb.getCondition().getRange().getLt() != null) {
+                rangeQuery.filter(
+                    QueryBuilders.rangeQuery(fvb.getField())
+                        .lt(fvb.getCondition().getRange().getLt()));
+              }
+              if (fvb.getCondition().getRange().getLte() != null) {
+                rangeQuery.filter(
+                    QueryBuilders.rangeQuery(fvb.getField())
+                        .lte(fvb.getCondition().getRange().getLte()));
+              }
+              ((BoolQueryBuilder) condition).must(rangeQuery);
+            }
+
+            functions.add(
+                new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+                    condition, buildFieldValueBoostFunction(fvb).getScoreFunction()));
+          }
+        }
+      }
+    }
+
+    QueryBuilder finalQuery = baseQuery;
+    if (!functions.isEmpty()) {
+      float functionBoostFactor = 0.3f;
+      FunctionScoreQueryBuilder functionScore =
+          QueryBuilders.functionScoreQuery(
+              baseQuery, functions.toArray(new FunctionScoreQueryBuilder.FilterFunctionBuilder[0]));
+
+      functionScore.scoreMode(FunctionScoreQuery.ScoreMode.SUM);
+      functionScore.boostMode(CombineFunction.SUM);
+      functionScore.boost(functionBoostFactor);
+      finalQuery = functionScore;
+    }
+
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(finalQuery, null, from, size);
+    return addAggregation(searchSourceBuilder);
+  }
+
+  private AssetTypeConfiguration buildCompositeAssetConfig(SearchSettings searchSettings) {
+    AssetTypeConfiguration compositeConfig = new AssetTypeConfiguration();
+    compositeConfig.setAssetType("all");
+
+    List<FieldBoost> allFields = new ArrayList<>();
+    List<TermBoost> allTermBoosts = new ArrayList<>();
+    List<FieldValueBoost> allFieldValueBoosts = new ArrayList<>();
+
+    for (AssetTypeConfiguration config : searchSettings.getAssetTypeConfigurations()) {
+      if (config.getSearchFields() != null) {
+        allFields.addAll(config.getSearchFields());
+      }
+      if (config.getTermBoosts() != null) {
+        allTermBoosts.addAll(config.getTermBoosts());
+      }
+      if (config.getFieldValueBoosts() != null) {
+        allFieldValueBoosts.addAll(config.getFieldValueBoosts());
+      }
+    }
+
+    // Remove duplicates by field name, keeping the first occurrence
+    Map<String, FieldBoost> uniqueFields = new LinkedHashMap<>();
+    for (FieldBoost field : allFields) {
+      uniqueFields.putIfAbsent(field.getField(), field);
+    }
+
+    compositeConfig.setSearchFields(new ArrayList<>(uniqueFields.values()));
+    compositeConfig.setTermBoosts(allTermBoosts);
+    compositeConfig.setFieldValueBoosts(allFieldValueBoosts);
+    compositeConfig.setScoreMode(AssetTypeConfiguration.ScoreMode.SUM);
+    compositeConfig.setBoostMode(AssetTypeConfiguration.BoostMode.SUM);
+
+    return compositeConfig;
+  }
+
+  private QueryBuilder buildQueryWithMatchTypes(String query, AssetTypeConfiguration assetConfig) {
+    BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
+    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
+      baseQuery.must(QueryBuilders.matchAllQuery());
+      return baseQuery;
+    }
+
+    // Check if query contains complex syntax like wildcards, AND/OR, field queries, etc.
+    if (containsQuerySyntax(query)) {
+      // Use QueryStringQueryBuilder for complex queries to support wildcards and boolean operators
+      Map<String, Float> allFields = new HashMap<>();
+      if (assetConfig.getSearchFields() != null) {
+        for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
+          float boost = fieldBoost.getBoost() != null ? fieldBoost.getBoost().floatValue() : 1.0f;
+          allFields.put(fieldBoost.getField(), boost);
+        }
+      }
+
+      // Use query string for complex syntax support
+      QueryStringQueryBuilder queryStringBuilder =
+          QueryBuilders.queryStringQuery(query)
+              .fields(allFields)
+              .type(MOST_FIELDS)
+              .defaultOperator(Operator.AND)
+              .analyzeWildcard(true)
+              .allowLeadingWildcard(true)
+              .fuzzyMaxExpansions(50)
+              .tieBreaker(0.5f);
+
+      baseQuery.must(queryStringBuilder);
+      return baseQuery;
+    }
+
+    BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
+
+    // Get boost multipliers from configuration
+    float exactMatchMultiplier = 2.0f;
+    float phraseMatchMultiplier = 1.5f;
+    float fuzzyMatchMultiplier = 1.0f;
+
+    if (assetConfig.getMatchTypeBoostMultipliers() != null) {
+      if (assetConfig.getMatchTypeBoostMultipliers().getExactMatchMultiplier() != null) {
+        exactMatchMultiplier =
+            assetConfig.getMatchTypeBoostMultipliers().getExactMatchMultiplier().floatValue();
+      }
+      if (assetConfig.getMatchTypeBoostMultipliers().getPhraseMatchMultiplier() != null) {
+        phraseMatchMultiplier =
+            assetConfig.getMatchTypeBoostMultipliers().getPhraseMatchMultiplier().floatValue();
+      }
+      if (assetConfig.getMatchTypeBoostMultipliers().getFuzzyMatchMultiplier() != null) {
+        fuzzyMatchMultiplier =
+            assetConfig.getMatchTypeBoostMultipliers().getFuzzyMatchMultiplier().floatValue();
+      }
+    }
+
+    // Group fields by match type
+    Map<String, Float> exactMatchFields = new HashMap<>();
+    Map<String, Float> phraseMatchFields = new HashMap<>();
+    Map<String, Float> fuzzyMatchFields = new HashMap<>();
+    Map<String, Float> standardMatchFields = new HashMap<>();
+
+    if (assetConfig.getSearchFields() != null) {
+      for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
+        String matchType =
+            fieldBoost.getMatchType() != null ? fieldBoost.getMatchType().value() : "standard";
+        float boost = fieldBoost.getBoost() != null ? fieldBoost.getBoost().floatValue() : 1.0f;
+
+        switch (matchType) {
+          case "exact":
+            exactMatchFields.put(fieldBoost.getField(), boost);
+            break;
+          case "phrase":
+            phraseMatchFields.put(fieldBoost.getField(), boost);
+            break;
+          case "fuzzy":
+            fuzzyMatchFields.put(fieldBoost.getField(), boost);
+            break;
+          case "standard":
+          default:
+            standardMatchFields.put(fieldBoost.getField(), boost);
+            break;
+        }
+      }
+    }
+
+    // Add exact match queries
+    if (!exactMatchFields.isEmpty()) {
+      BoolQueryBuilder exactMatchQuery = QueryBuilders.boolQuery();
+      exactMatchFields.forEach(
+          (field, boost) -> {
+            exactMatchQuery.should(
+                QueryBuilders.termQuery(field, query.toLowerCase()).boost(boost));
+          });
+      if (exactMatchQuery.hasClauses()) {
+        combinedQuery.should(exactMatchQuery.boost(exactMatchMultiplier));
+      }
+    }
+
+    // Add phrase match queries
+    if (!phraseMatchFields.isEmpty()) {
+      BoolQueryBuilder phraseMatchQuery = QueryBuilders.boolQuery();
+      phraseMatchFields.forEach(
+          (field, boost) -> {
+            phraseMatchQuery.should(QueryBuilders.matchPhraseQuery(field, query).boost(boost));
+          });
+      if (phraseMatchQuery.hasClauses()) {
+        combinedQuery.should(phraseMatchQuery.boost(phraseMatchMultiplier));
+      }
+    }
+
+    // Add fuzzy match queries
+    if (!fuzzyMatchFields.isEmpty()) {
+      MultiMatchQueryBuilder fuzzyQueryBuilder =
+          QueryBuilders.multiMatchQuery(query)
+              .type(MOST_FIELDS)
+              .fuzziness(Fuzziness.AUTO)
+              .maxExpansions(10)
+              .prefixLength(1)
+              .operator(Operator.OR)
+              .minimumShouldMatch("2<70%")
+              .tieBreaker(0.3f);
+      fuzzyMatchFields.forEach(fuzzyQueryBuilder::field);
+      combinedQuery.should(fuzzyQueryBuilder.boost(fuzzyMatchMultiplier));
+    }
+
+    // Add standard match queries
+    if (!standardMatchFields.isEmpty()) {
+      Map<String, Float> standardFuzzyFields =
+          standardMatchFields.entrySet().stream()
+              .filter(entry -> isFuzzyField(entry.getKey()))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+      Map<String, Float> standardNonFuzzyFields =
+          standardMatchFields.entrySet().stream()
+              .filter(entry -> isNonFuzzyField(entry.getKey()))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+      if (!standardFuzzyFields.isEmpty()) {
+        MultiMatchQueryBuilder fuzzyQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MOST_FIELDS)
+                .fuzziness(Fuzziness.AUTO)
+                .maxExpansions(10)
+                .prefixLength(1)
+                .operator(Operator.OR)
+                .minimumShouldMatch("2<70%")
+                .tieBreaker(0.3f);
+        standardFuzzyFields.forEach(fuzzyQueryBuilder::field);
+        combinedQuery.should(fuzzyQueryBuilder);
+      }
+
+      if (!standardNonFuzzyFields.isEmpty()) {
+        MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MOST_FIELDS)
+                .operator(Operator.AND)
+                .tieBreaker(0.3f)
+                .fuzziness(Fuzziness.ZERO);
+        standardNonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
+        combinedQuery.should(nonFuzzyQueryBuilder);
+      }
+    }
+
+    combinedQuery.minimumShouldMatch(1);
+    baseQuery.must(combinedQuery);
+
+    return baseQuery;
   }
 }
