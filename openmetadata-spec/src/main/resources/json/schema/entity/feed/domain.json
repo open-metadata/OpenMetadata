@@ -6,13 +6,13 @@
   "description": "This schema defines the schema for Assets addition/deletion Updates.",
   "type": "object",
   "properties": {
-    "previousDomain": {
-      "description": "Previous Domain.",
-      "$ref": "../../type/entityReference.json"
+    "previousDomains": {
+      "description": "Previous Domains.",
+      "$ref": "../../type/entityReferenceList.json"
     },
-    "updatedDomain": {
-      "description": "Updated Domain.",
-      "$ref": "../../type/entityReference.json"
+    "updatedDomains": {
+      "description": "Updated Domains.",
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "additionalProperties": false

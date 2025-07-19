@@ -121,7 +121,6 @@ export enum TabSpecificField {
   SCHEMA_DEFINITION = 'schemaDefinition',
   FIELDS = 'fields',
   VOTES = 'votes',
-  DOMAIN = 'domain',
   DOMAINS = 'domains',
   DATA_PRODUCTS = 'dataProducts',
   REVIEWERS = 'reviewers',
@@ -222,6 +221,7 @@ export enum EntityTabs {
   DOCUMENTATION = 'documentation',
   DATA_PRODUCTS = 'data_products',
   SUBDOMAINS = 'subdomains',
+  CONTRACT = 'contract',
 }
 
 export enum EntityAction {

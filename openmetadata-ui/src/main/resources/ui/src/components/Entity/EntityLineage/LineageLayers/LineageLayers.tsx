@@ -13,7 +13,7 @@
 import { Button, Popover, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import classNames from 'classnames';
-
+import { isEmpty } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
@@ -122,7 +122,7 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
         {(isPlatformLineage ||
           (entityType &&
             entityType !== EntityType.DOMAIN &&
-            entity?.domain)) && (
+            !isEmpty(entity?.domains))) && (
           <LayerButton
             icon={<DomainIcon />}
             isActive={platformView === LineagePlatformView.Domain}

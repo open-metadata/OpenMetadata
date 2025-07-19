@@ -66,12 +66,12 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
   const { fqn: entityFQN } = useFqn();
   const { data } = useGenericContext<{
-    domain: EntityReference;
+    domains: EntityReference[];
     dataProducts: EntityReference[];
     id: string;
   }>();
 
-  const { domain, dataProducts, id: entityId } = data ?? {};
+  const { domains, dataProducts, id: entityId } = data ?? {};
 
   return (
     <>
@@ -81,7 +81,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
           <div data-testid="KnowledgePanel.DataProducts">
             <DataProductsContainer
               newLook
-              activeDomain={domain}
+              activeDomains={domains}
               dataProducts={dataProducts}
               hasPermission={editDataProductPermission ?? false}
               onSave={onDataProductUpdate}

@@ -59,7 +59,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
-  domain,
+  domains,
   dataProducts,
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
@@ -76,9 +76,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const handleTabChange = (activeKey: string) => {
@@ -209,7 +209,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />

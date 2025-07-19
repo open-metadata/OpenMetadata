@@ -51,6 +51,14 @@ export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await searchDomain;
   await page.getByRole('listitem', { name: domain.displayName }).click();
 
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
   );
@@ -555,7 +563,7 @@ export const verifyDataProductAssetsAfterDelete = async (
   }
 ) => {
   const { apiContext } = await getApiContext(page);
-  const newDataProduct1 = new DataProduct(domain, 'PW_DataProduct_Sales');
+  const newDataProduct1 = new DataProduct([domain], 'PW_DataProduct_Sales');
 
   await test.step('Add assets to DataProduct Sales', async () => {
     await redirectToHomePage(page);
@@ -702,7 +710,7 @@ export const setupDomainOwnershipTest = async (apiContext: any) => {
     fullyQualifiedName: `PW_Domain_Owner_Rule_Testing-${id}`,
   });
   const dataProductForTest = new DataProduct(
-    domainForTest,
+    [domainForTest],
     `PW_DataProduct_Owner_Rule-${id}`
   );
 

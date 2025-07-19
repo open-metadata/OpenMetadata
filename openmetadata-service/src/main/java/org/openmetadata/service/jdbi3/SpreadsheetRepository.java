@@ -15,11 +15,13 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.service.Entity.DIRECTORY;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 import static org.openmetadata.service.Entity.WORKSHEET;
 
@@ -140,15 +142,15 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   @Override
   public void setInheritedFields(Spreadsheet spreadsheet, EntityUtil.Fields fields) {
     // Inherit domain from directory if available, otherwise from service
-    if (spreadsheet.getDomain() == null) {
+    if (nullOrEmpty(spreadsheet.getDomains())) {
       if (spreadsheet.getDirectory() != null) {
         Directory directory =
-            Entity.getEntity(spreadsheet.getDirectory(), "domain", Include.NON_DELETED);
-        spreadsheet.withDomain(directory.getDomain());
+            Entity.getEntity(spreadsheet.getDirectory(), "domains,service", Include.NON_DELETED);
+        inheritDomains(spreadsheet, fields, directory);
       } else {
         DriveService service =
-            Entity.getEntity(spreadsheet.getService(), "domain", Include.NON_DELETED);
-        spreadsheet.withDomain(service.getDomain());
+            Entity.getEntity(spreadsheet.getService(), FIELD_DOMAINS, Include.NON_DELETED);
+        inheritDomains(spreadsheet, fields, service);
       }
     }
   }
@@ -336,7 +338,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                   List.of(
                       Pair.of(9, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(10, TagLabel.TagSource.GLOSSARY))))
-          .withDomain(getEntityReference(printer, csvRecord, 11, Entity.DOMAIN))
+          .withDomains(getDomains(printer, csvRecord, 11))
           .withDataProducts(getDataProducts(printer, csvRecord, 12));
 
       if (processRecord) {
@@ -358,11 +360,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
       addOwners(recordList, entity.getOwners());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
-      addField(
-          recordList,
-          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
-              ? ""
-              : entity.getDomain().getFullyQualifiedName());
+      addDomains(recordList, entity.getDomains());
       addField(
           recordList,
           entity.getDataProducts() != null

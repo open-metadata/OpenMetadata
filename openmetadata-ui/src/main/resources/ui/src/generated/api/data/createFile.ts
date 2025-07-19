@@ -35,9 +35,9 @@ export interface CreateFile {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the File belongs to.
+     * Fully qualified names of the domains the File belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Direct download link
      */

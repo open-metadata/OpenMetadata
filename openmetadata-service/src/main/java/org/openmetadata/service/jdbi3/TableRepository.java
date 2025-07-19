@@ -307,9 +307,9 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void setInheritedFields(Table table, Fields fields) {
     DatabaseSchema schema =
-        Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owners,domain", ALL);
+        Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owners,domains", ALL);
     inheritOwners(table, fields, schema);
-    inheritDomain(table, fields, schema);
+    inheritDomains(table, fields, schema);
     // If table does not have retention period, then inherit it from parent databaseSchema
     table.withRetentionPeriod(
         table.getRetentionPeriod() == null
@@ -1000,7 +1000,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     // Validate table
-    Table table = getByName(null, name, new Fields(allowedFields, "owners,domain,tags,columns"));
+    Table table = getByName(null, name, new Fields(allowedFields, "owners,domains,tags,columns"));
     return new TableCsv(table, user).exportCsv(listOf(table));
   }
 
@@ -1091,7 +1091,7 @@ public class TableRepository extends EntityRepository<Table> {
             null,
             name,
             new Fields(
-                allowedFields, "owners,domain,tags,columns,database,service,databaseSchema"));
+                allowedFields, "owners,domains,tags,columns,database,service,databaseSchema"));
     return new TableCsv(table, user).importCsv(csv, dryRun);
   }
 

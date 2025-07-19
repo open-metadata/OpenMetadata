@@ -329,9 +329,9 @@
       "description": "Input for the Filters.",
       "$ref": "#/definitions/alertFilteringInput"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReferenceList.json"
     },
     "config": {
       "$ref": "../type/basic.json#/definitions/map"

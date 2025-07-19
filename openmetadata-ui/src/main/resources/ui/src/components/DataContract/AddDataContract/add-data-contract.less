@@ -1,0 +1,166 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+.ant-tabs.ant-tabs-left.contract-tabs {
+  .ant-tabs-content-holder {
+    background: #fff;
+    border-radius: 0 8px 8px 8px;
+    border: 1px solid #e5e7eb;
+    border-left: none;
+    margin-left: 0;
+    flex: 1;
+
+    .ant-tabs-tabpane {
+      margin-top: 0;
+      border: none;
+    }
+  }
+
+  .ant-tabs-left-content {
+    height: 100%;
+  }
+
+  .ant-tabs-nav {
+    width: 180px;
+    height: initial;
+    border: none;
+    padding: 0;
+    background: transparent;
+
+    .ant-tabs-nav-list {
+      width: 100%;
+
+      .ant-tabs-tab {
+        width: 100%;
+        padding: 16px 20px;
+        margin: 0;
+        border: none;
+        border-radius: 8px 0 0 8px;
+        background: transparent;
+        color: #6b7280;
+        font-weight: 500;
+        transition: all 0.2s ease;
+
+        & + .ant-tabs-tab {
+          margin-top: 8px;
+        }
+
+        &:hover {
+          background: #f3f4f6;
+          color: #374151;
+        }
+
+        &.ant-tabs-tab-active {
+          background: #ebf5ff;
+          color: #1d4ed8;
+          border-right: 3px solid #1d4ed8;
+
+          .ant-tabs-tab-btn {
+            color: #1d4ed8;
+            font-weight: 600;
+          }
+        }
+
+        .ant-tabs-tab-btn {
+          width: 100%;
+          text-align: left;
+          font-size: 14px;
+          line-height: 20px;
+
+          &:focus {
+            color: inherit;
+          }
+        }
+      }
+    }
+
+    .ant-tabs-ink-bar {
+      display: none;
+    }
+  }
+
+  .ant-tabs-tabpane {
+    padding: 24px;
+    background: #fff;
+  }
+
+  // Content area styling
+  .ant-tabs-content {
+    background: #fff;
+    min-height: 500px;
+    border-radius: 0 8px 8px 8px;
+  }
+}
+
+// Additional styling for the contract form container
+.container.bg-grey {
+  background: transparent;
+  padding: 0;
+  height: 100%;
+
+  & > div:first-child {
+    background: transparent;
+    padding: 0 0 20px 0;
+
+    .ant-typography {
+      margin: 0;
+
+      &.ant-typography-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 4px !important;
+      }
+
+      &.ant-typography-paragraph {
+        font-size: 14px;
+        color: #6b7280;
+        margin: 0 !important;
+      }
+    }
+  }
+
+  // Form styling within tabs
+  .ant-form {
+    .ant-form-item {
+      margin-bottom: 20px;
+
+      .ant-form-item-label {
+        padding-bottom: 8px;
+
+        label {
+          font-size: 14px;
+          font-weight: 500;
+          color: #374151;
+
+          &.ant-form-item-required::before {
+            color: #ef4444;
+          }
+        }
+      }
+
+      .ant-form-item-control {
+        .ant-input,
+        .ant-select-selector,
+        .ant-mentions {
+          border-radius: 6px;
+          border: 1px solid #d1d5db;
+
+          &:focus,
+          &:hover {
+            border-color: #3b82f6;
+          }
+        }
+      }
+    }
+  }
+}

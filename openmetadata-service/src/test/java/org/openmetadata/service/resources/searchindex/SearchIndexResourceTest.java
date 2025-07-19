@@ -374,12 +374,12 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     // When domain is not set for a searchIndex, carry it forward from the search service
     SearchServiceResourceTest serviceTest = new SearchServiceResourceTest();
     CreateSearchService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     SearchService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a searchIndex without domain and ensure it inherits domain from the parent
     CreateSearchIndex create = createRequest("user").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test

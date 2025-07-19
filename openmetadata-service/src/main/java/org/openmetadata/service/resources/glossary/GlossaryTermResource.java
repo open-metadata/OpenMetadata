@@ -104,7 +104,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   private final GlossaryMapper glossaryMapper = new GlossaryMapper();
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
   static final String FIELDS =
-      "children,relatedTerms,reviewers,owners,tags,usageCount,domain,extension,childrenCount";
+      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {

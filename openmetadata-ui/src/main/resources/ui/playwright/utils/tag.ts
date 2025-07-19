@@ -226,8 +226,8 @@ export const setupAssetsForTag = async (page: Page) => {
 };
 
 export async function submitForm(page: Page) {
-  await page.locator('button[type="submit"]').scrollIntoViewIfNeeded();
-  await page.locator('button[type="submit"]').click();
+  await page.getByRole('button', { name: 'Save' }).scrollIntoViewIfNeeded();
+  await page.getByRole('button', { name: 'Save' }).click();
 }
 
 export async function validateForm(page: Page) {
@@ -497,4 +497,6 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage
     .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
     .click();
+
+  await adminPage.getByTestId('saveAssociatedTag').click();
 };

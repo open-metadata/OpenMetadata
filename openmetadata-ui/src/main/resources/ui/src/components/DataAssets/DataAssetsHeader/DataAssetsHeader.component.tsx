@@ -121,8 +121,9 @@ export const DataAssetsHeader = ({
   isAutoPilotWorkflowStatusLoading = false,
   onCertificationUpdate,
 }: DataAssetsHeaderProps) => {
-  const { serviceCategory } =
-    useRequiredParams<{ serviceCategory: ServiceCategory }>();
+  const { serviceCategory } = useRequiredParams<{
+    serviceCategory: ServiceCategory;
+  }>();
   const { currentUser } = useApplicationStore();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
@@ -607,8 +608,9 @@ export const DataAssetsHeader = ({
               <>
                 <DomainLabel
                   headerLayout
+                  multiple
                   afterDomainUpdateAction={afterDomainUpdateAction}
-                  domain={(dataAsset as EntitiesWithDomainField).domain}
+                  domains={(dataAsset as EntitiesWithDomainField).domains}
                   entityFqn={dataAsset.fullyQualifiedName ?? ''}
                   entityId={dataAsset.id ?? ''}
                   entityType={entityType}

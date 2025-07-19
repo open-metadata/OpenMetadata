@@ -46,10 +46,10 @@ export interface TestSuite {
      */
     displayName?: string;
     /**
-     * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
+     * Domains the test Suite belongs to. When not set, the test Suite inherits the domain from
      * the table it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * DEPRECATED in 1.6.2: Use 'basic'
      */
@@ -136,17 +136,15 @@ export interface TestSuite {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
+ * Domains the test Suite belongs to. When not set, the test Suite inherits the domain from
  * the table it belongs to.
- *
- * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
- *
- * Owners of this TestCase definition.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
  */
 export interface EntityReference {
     /**

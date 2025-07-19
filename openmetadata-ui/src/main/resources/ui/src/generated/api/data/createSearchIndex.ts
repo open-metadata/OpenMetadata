@@ -27,9 +27,9 @@ export interface CreateSearchIndex {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the SearchIndex belongs to.
+     * Fully qualified names of the domains the SearchIndex belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */

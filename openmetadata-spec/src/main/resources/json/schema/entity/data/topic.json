@@ -162,9 +162,9 @@
       "description": "Source URL of topic.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain" : {
-      "description": "Domain the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts" : {
       "description": "List of data products this entity is part of.",

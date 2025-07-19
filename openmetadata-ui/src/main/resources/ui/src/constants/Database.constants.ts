@@ -51,14 +51,16 @@ export const DATABASE_DUMMY_DATA: Database = {
   serviceType: DatabaseServiceType.BigQuery,
   default: false,
   deleted: false,
-  domain: {
-    id: '31c2b84e-b87a-4e47-934f-9c5309fbb7c3',
-    type: 'domain',
-    name: 'Engineering',
-    fullyQualifiedName: 'Engineering',
-    description: 'Domain related engineering development.',
-    displayName: 'Engineering',
-  },
+  domains: [
+    {
+      id: '31c2b84e-b87a-4e47-934f-9c5309fbb7c3',
+      type: 'domain',
+      name: 'Engineering',
+      fullyQualifiedName: 'Engineering',
+      description: 'Domain related engineering development.',
+      displayName: 'Engineering',
+    },
+  ],
   votes: {
     upVotes: 0,
     downVotes: 0,
@@ -173,14 +175,16 @@ export const DATABASE_SCHEMA_DUMMY_DATA: DatabaseSchema = {
   },
   tags: [],
   deleted: false,
-  domain: {
-    id: '31c2b84e-b87a-4e47-934f-9c5309fbb7c3',
-    type: 'domain',
-    name: 'Engineering',
-    fullyQualifiedName: 'Engineering',
-    description: 'Domain related engineering development.',
-    displayName: 'Engineering',
-  },
+  domains: [
+    {
+      id: '31c2b84e-b87a-4e47-934f-9c5309fbb7c3',
+      type: 'domain',
+      name: 'Engineering',
+      fullyQualifiedName: 'Engineering',
+      description: 'Domain related engineering development.',
+      displayName: 'Engineering',
+    },
+  ],
   votes: {
     upVotes: 0,
     downVotes: 1,

@@ -31,9 +31,9 @@ export interface CreateContainer {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Container belongs to.
+     * Fully qualified names of the domains the Container belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */

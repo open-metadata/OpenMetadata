@@ -90,11 +90,11 @@
       ]
     },
     {
-      "name": "domain",
+      "name": "domains",
       "required": false,
-      "description": "Fully qualified name of the domain the spreadsheet belongs to.",
+      "description": "Fully qualified names of the domains the spreadsheet belongs to, separated by ';'.",
       "examples": [
-        "Finance", "Analytics"
+        "Finance", "Analytics;Operations"
       ]
     },
     {

@@ -171,7 +171,7 @@ class RuleEvaluatorTest {
     Domain domain = new Domain().withId(UUID.randomUUID()).withName("testDomain");
     DataProduct dataProduct =
         new DataProduct().withId(UUID.randomUUID()).withName("testDataProduct");
-    dataProduct.setDomain(domain.getEntityReference());
+    dataProduct.setDomains(List.of(domain.getEntityReference()));
     domain.setOwners(List.of(ownerRef));
     EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.DOMAIN, domain.getId()), domain);
     EntityRepository.CACHE_WITH_ID.put(

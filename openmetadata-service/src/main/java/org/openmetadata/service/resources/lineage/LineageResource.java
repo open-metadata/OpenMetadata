@@ -743,7 +743,7 @@ public class LineageResource {
     }
 
     @Override
-    public EntityReference getDomain() {
+    public List<EntityReference> getDomains() {
       return null;
     }
   }

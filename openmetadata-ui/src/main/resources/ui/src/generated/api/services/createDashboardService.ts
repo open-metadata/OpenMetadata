@@ -28,9 +28,9 @@ export interface CreateDashboardService {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Dashboard Service belongs to.
+     * Fully qualified names of the domains the Dashboard Service belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */

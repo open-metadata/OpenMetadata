@@ -129,8 +129,10 @@ const DomainDetailsPage = ({
   const [form] = useForm();
   const { getEntityPermission, permissions } = usePermissionProvider();
   const navigate = useNavigate();
-  const { tab: activeTab, version } =
-    useRequiredParams<{ tab: EntityTabs; version: string }>();
+  const { tab: activeTab, version } = useRequiredParams<{
+    tab: EntityTabs;
+    version: string;
+  }>();
   const { fqn: domainFqn } = useFqn();
   const { currentUser } = useApplicationStore();
 
@@ -305,13 +307,17 @@ const DomainDetailsPage = ({
 
   const addDataProduct = useCallback(
     async (formData: CreateDataProduct | CreateDomain) => {
+      if (!domain.fullyQualifiedName) {
+        return;
+      }
+
       const data = {
         ...formData,
-        domain: domain.fullyQualifiedName,
+        domains: [domain.fullyQualifiedName],
       };
 
       try {
-        const res = await addDataProducts(data as CreateDataProduct);
+        const res = await addDataProducts(data);
         navigate(
           getEntityDetailsPath(
             EntityType.DATA_PRODUCT,
@@ -353,7 +359,7 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:"${encodedFqn}")`,
+          `(domains.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT

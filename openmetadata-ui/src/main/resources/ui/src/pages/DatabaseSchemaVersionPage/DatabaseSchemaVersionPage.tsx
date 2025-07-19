@@ -100,7 +100,7 @@ function DatabaseSchemaVersionPage() {
     [servicePermissions]
   );
 
-  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domains } =
     useMemo(
       () =>
         getBasicEntityInfoFromVersionData(
@@ -117,9 +117,9 @@ function DatabaseSchemaVersionPage() {
           currentVersionData.changeDescription as ChangeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [currentVersionData.changeDescription, owners, tier, domain]
+      [currentVersionData.changeDescription, owners, tier, domains]
     );
 
   const fetchResourcePermission = useCallback(async () => {
@@ -269,7 +269,7 @@ function DatabaseSchemaVersionPage() {
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={currentVersionData.dataProducts ?? []}
                   hasPermission={false}
                 />

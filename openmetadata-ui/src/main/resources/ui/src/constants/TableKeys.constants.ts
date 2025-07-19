@@ -13,7 +13,7 @@
 export const TABLE_COLUMNS_KEYS = {
   NAME: 'name',
   TAGS: 'tags',
-  DOMAIN: 'domain',
+  DOMAINS: 'domains',
   OWNERS: 'owners',
   GLOSSARY: 'glossary',
   DATA_TYPE: 'dataType',

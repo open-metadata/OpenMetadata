@@ -240,7 +240,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           Entity.<TestSuite>getEntity(
                   TEST_SUITE,
                   UUID.fromString(record.getFromId()),
-                  "owners,domain",
+                  "owners,domains",
                   Include.ALL,
                   false)
               .withInherited(true)
@@ -359,9 +359,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public void setInheritedFields(TestCase testCase, Fields fields) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "owners,domain,tags,columns", ALL);
+    Table table = Entity.getEntity(entityLink, "owners,domains,tags,columns", ALL);
     inheritOwners(testCase, fields, table);
-    inheritDomain(testCase, fields, table);
+    inheritDomains(testCase, fields, table);
     inheritTags(testCase, fields, table);
   }
 
@@ -489,7 +489,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .map(
             testSuiteId ->
                 Entity.<TestSuite>getEntity(
-                        TEST_SUITE, testSuiteId.getId(), "owners,domain", Include.ALL, false)
+                        TEST_SUITE, testSuiteId.getId(), "owners,domains", Include.ALL, false)
                     .withInherited(true)
                     .withChangeDescription(null))
         .toList();

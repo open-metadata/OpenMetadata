@@ -1010,12 +1010,12 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     // Create a children team without domain and ensure it inherits domain from the parent
     createTeam = createRequest("team1").withParents(listOf(team.getId()));
-    assertDomainInheritance(createTeam, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(createTeam, DOMAIN.getEntityReference());
   }
 
-  public Team assertDomainInheritance(CreateTeam createRequest, EntityReference expectedDomain)
-      throws IOException {
-    Team entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+  public Team assertSingleDomainInheritance(
+      CreateTeam createRequest, EntityReference expectedDomain) throws IOException {
+    Team entity = createEntity(createRequest.withDomains(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner

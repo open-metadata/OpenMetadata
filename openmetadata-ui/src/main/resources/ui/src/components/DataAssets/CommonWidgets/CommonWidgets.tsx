@@ -68,7 +68,7 @@ interface GenericEntity
       | 'deleted'
       | 'description'
       | 'owners'
-      | 'domain'
+      | 'domains'
       | 'dataProducts'
       | 'extension'
       | 'tags'
@@ -133,7 +133,7 @@ export const CommonWidgets = ({
     tags,
     deleted,
     owners,
-    domain,
+    domains,
     dataProducts,
     description,
     entityName,
@@ -267,13 +267,18 @@ export const CommonWidgets = ({
     return (
       <DataProductsContainer
         newLook
-        activeDomain={domain as EntityReference}
+        activeDomains={domains}
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
         onSave={handleDataProductsSave}
       />
     );
-  }, [dataProducts, domain, editDataProductPermission, handleDataProductsSave]);
+  }, [
+    dataProducts,
+    domains,
+    editDataProductPermission,
+    handleDataProductsSave,
+  ]);
 
   const tagsWidget = useMemo(() => {
     return (
@@ -383,7 +388,7 @@ export const CommonWidgets = ({
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
       return <OwnerLabelV2<GenericEntity> />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
-      return <DomainLabelV2 showDomainHeading />;
+      return <DomainLabelV2 multiple showDomainHeading />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
       return (
         <LeftPanelContainer

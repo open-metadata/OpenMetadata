@@ -125,120 +125,55 @@ MOCK_TABLE = Table(
     columns=[
         Column(
             name="customer_id",
-            displayName=None,
             dataType="INT",
-            arrayDataType=None,
             dataLength=1,
-            precision=None,
-            scale=None,
             dataTypeDisplay="INTEGER",
-            description=None,
-            fullyQualifiedName=None,
-            tags=None,
             constraint="PRIMARY_KEY",
-            ordinalPosition=None,
-            jsonSchema=None,
-            children=None,
-            profile=None,
-            customMetrics=None,
         ),
         Column(
             name="first_name",
-            displayName=None,
             dataType="STRING",
-            arrayDataType=None,
             dataLength=1,
-            precision=None,
-            scale=None,
             dataTypeDisplay="VARCHAR",
-            description=None,
-            fullyQualifiedName=None,
-            tags=None,
             constraint="NULL",
-            ordinalPosition=None,
-            jsonSchema=None,
-            children=None,
-            profile=None,
-            customMetrics=None,
         ),
         Column(
             name="last_name",
-            displayName=None,
             dataType="STRING",
-            arrayDataType=None,
             dataLength=1,
-            precision=None,
-            scale=None,
             dataTypeDisplay="VARCHAR",
-            description=None,
-            fullyQualifiedName=None,
-            tags=None,
             constraint="NULL",
-            ordinalPosition=None,
-            jsonSchema=None,
-            children=None,
-            profile=None,
-            customMetrics=None,
         ),
     ],
     tableConstraints=[],
-    tablePartition=None,
-    tableProfilerConfig=None,
-    owners=None,
     databaseSchema=EntityReference(
         id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"
     ),
     tags=[],
-    schemaDefinition=None,
-    retentionPeriod=None,
-    extension=None,
     sourceUrl=SourceUrl(
         "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
     ),
-    domain=None,
-    dataProducts=None,
-    fileFormat=None,
-    lifeCycle=None,
-    sourceHash=None,
 )
 
 EXPECTED_DATABASE = [
     CreateDatabaseRequest(
         name=EntityName("random-project-id"),
-        displayName=None,
-        description=None,
         tags=[],
-        owners=None,
         service=FullyQualifiedEntityName("bigquery_source_test"),
-        dataProducts=None,
         default=False,
-        retentionPeriod=None,
-        extension=None,
         sourceUrl=SourceUrl(
             "https://console.cloud.google.com/bigquery?project=random-project-id"
         ),
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 EXPTECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
         name=EntityName("sample_schema"),
-        displayName=None,
         description="Some description with it's own\nnew line",
-        owners=None,
         database=FullyQualifiedEntityName("bigquery_source_test.random-project-id"),
-        dataProducts=None,
-        tags=None,
-        retentionPeriod=None,
-        extension=None,
         sourceUrl=SourceUrl(
             "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m4!1m3!3m2!1srandom-project-id!2ssample_schema"
         ),
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 
@@ -354,151 +289,72 @@ EXPECTED_TABLE = [
     [
         CreateTableRequest(
             name=EntityName("customers"),
-            displayName=None,
             tableType="Regular",
             columns=[
                 Column(
                     name="customer_id",
-                    displayName=None,
                     dataType="INT",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="INTEGER",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="PRIMARY_KEY",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
                 Column(
                     name="first_name",
-                    displayName=None,
                     dataType="STRING",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="VARCHAR",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="NULL",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
                 Column(
                     name="last_name",
-                    displayName=None,
                     dataType="STRING",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="VARCHAR",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="NULL",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
             ],
             tableConstraints=[],
-            tablePartition=None,
-            tableProfilerConfig=None,
-            owners=None,
             databaseSchema=FullyQualifiedEntityName(
                 root="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-            schemaDefinition=None,
-            retentionPeriod=None,
-            extension=None,
             sourceUrl=SourceUrl(
                 "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
             ),
-            domain=None,
-            dataProducts=None,
-            fileFormat=None,
-            lifeCycle=None,
-            sourceHash=None,
         )
     ],
     [
         CreateTableRequest(
             name=EntityName("orders"),
-            displayName=None,
             description="description\nwith new line",
             tableType="Regular",
             columns=[
                 Column(
                     name="order_id",
-                    displayName=None,
                     dataType="INT",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="INTEGER",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="NULL",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
                 Column(
                     name="customer_id",
-                    displayName=None,
                     dataType="INT",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="INTEGER",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="NULL",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
                 Column(
                     name="status",
-                    displayName=None,
                     dataType="STRING",
-                    arrayDataType=None,
                     dataLength=1,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="VARCHAR",
-                    description=None,
-                    fullyQualifiedName=None,
-                    tags=None,
                     constraint="NULL",
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
+                    tags=None,
                 ),
             ],
             tableConstraints=[
@@ -512,24 +368,13 @@ EXPECTED_TABLE = [
                     ],
                 )
             ],
-            tablePartition=None,
-            tableProfilerConfig=None,
-            owners=None,
             databaseSchema=FullyQualifiedEntityName(
                 root="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-            schemaDefinition=None,
-            retentionPeriod=None,
-            extension=None,
             sourceUrl=SourceUrl(
                 "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
             ),
-            domain=None,
-            dataProducts=None,
-            fileFormat=None,
-            lifeCycle=None,
-            sourceHash=None,
         )
     ],
 ]
@@ -687,6 +532,11 @@ class BigqueryUnitTest(TestCase):
             self.bq_source.inspector.get_table_comment = lambda table_name, schema: {
                 "text": table[2]
             }  # pylint: disable=cell-var-from-loop
+
+            # Mock the BigQuery client get_table method for clustering fields
+            mock_table = Mock()
+            mock_table.clustering_fields = []  # Empty list to avoid constraint creation
+            self.bq_source.client.get_table = lambda fqn: mock_table
             assert EXPECTED_TABLE[i] == [
                 either.right
                 for either in self.bq_source.yield_table((table[0], table[1]))

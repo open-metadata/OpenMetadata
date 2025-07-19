@@ -31,9 +31,9 @@ export interface CreateDataInsightChart {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Data Insight Chart belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Metrics of the chart
      */

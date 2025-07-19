@@ -21,7 +21,7 @@ export interface MetricVersionProp {
   currentVersionData: Metric;
   isVersionLoading: boolean;
   owners: Metric['owners'];
-  domain: Metric['domain'];
+  domains: Metric['domains'];
   tier: TagLabel;
   slashedMetricName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

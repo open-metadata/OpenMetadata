@@ -19,7 +19,7 @@ import { EntityReference } from '../../../generated/entity/type';
 export type DomainLabelProps = {
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   hasPermission?: boolean;
-  domain: EntityReference | EntityReference[] | undefined;
+  domains: EntityReference[] | undefined;
   domainDisplayName?: ReactNode;
   entityType: EntityType;
   entityFqn: string;

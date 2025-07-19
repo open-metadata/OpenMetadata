@@ -49,9 +49,9 @@ export interface File {
      */
     displayName?: string;
     /**
-     * Domain the file belongs to.
+     * Domains the File belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Direct download link
      */
@@ -354,8 +354,6 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  *
  * Parent directory containing this file
- *
- * Domain the file belongs to.
  *
  * User who last modified the file
  *

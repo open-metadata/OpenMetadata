@@ -38,9 +38,9 @@ export interface DatabaseService {
      */
     displayName?: string;
     /**
-     * Domain the Database service belongs to.
+     * Domains the Database service belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Followers of this entity.
      */
@@ -2103,8 +2103,6 @@ export enum VerifySSL {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the Database service belongs to.
  *
  * The ingestion agent responsible for executing the ingestion pipeline.
  */

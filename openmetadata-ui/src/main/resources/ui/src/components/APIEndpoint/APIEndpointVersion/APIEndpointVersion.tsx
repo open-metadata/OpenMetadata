@@ -50,7 +50,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
-  domain,
+  domains,
 }: APIEndpointVersionProp) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -66,9 +66,9 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   useEffect(() => {
@@ -136,7 +136,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />
