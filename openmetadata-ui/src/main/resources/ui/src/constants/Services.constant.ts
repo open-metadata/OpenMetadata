@@ -431,6 +431,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Ssis,
   DatabaseServiceType.Ssas,
   DashboardServiceType.ThoughtSpot,
+  DatabaseServiceType.GoogleSheets,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

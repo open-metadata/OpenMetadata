@@ -1,0 +1,19 @@
+{
+    "name": "GoogleSheets",
+    "displayName": "GoogleSheets Test Connection",
+    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+    "steps": [
+      {
+        "name": "check_access",
+        "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
+        "errorMessage": "Failed to connect to Cockroach, please validate the credentials",
+        "mandatory": true
+      },
+      {
+        "name": "get_spreadsheets",
+        "description": "List all the databases available to the user.",
+        "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
+        "mandatory": true
+      }
+    ]
+  }

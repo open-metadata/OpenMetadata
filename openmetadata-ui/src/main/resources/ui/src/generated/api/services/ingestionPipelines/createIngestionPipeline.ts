@@ -1613,6 +1613,8 @@ export interface DBTPrefixConfig {
  * GCP credentials configs.
  *
  * GCP Credentials
+ *
+ * GCP Credentials to connect to Google Sheets API
  */
 export interface DbtSecurityConfigClass {
     /**
@@ -2117,6 +2119,8 @@ export interface ServiceConnection {
  * Cockroach Database Connection Config
  *
  * SSAS Metadata Database Connection Config
+ *
+ * Google Sheets Connection Config
  *
  * Kafka Connection Config
  *
@@ -2811,6 +2815,8 @@ export interface ConfigClass {
     /**
      * GCP Credentials
      *
+     * GCP Credentials to connect to Google Sheets API
+     *
      * Azure Credentials
      */
     credentials?: GCPCredentials;
@@ -2867,6 +2873,9 @@ export interface ConfigClass {
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use
+     * 'default'.
      */
     databaseName?: string;
     /**
@@ -3217,6 +3226,14 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Include sheets from shared drives
+     */
+    includeSharedDrives?: boolean;
+    /**
+     * Google Sheets API scopes
+     */
+    scopes?: string[];
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -4685,6 +4702,8 @@ export enum InitialConsumerOffsets {
  *
  * GCP Credentials
  *
+ * GCP Credentials to connect to Google Sheets API
+ *
  * Azure Cloud Credentials
  *
  * Available sources to fetch metadata.
@@ -5202,6 +5221,7 @@ export enum ConfigScheme {
     Doris = "doris",
     Druid = "druid",
     ExaWebsocket = "exa+websocket",
+    Googlesheets = "googlesheets",
     Hana = "hana",
     Hive = "hive",
     HiveHTTP = "hive+http",
@@ -5509,6 +5529,7 @@ export enum RESTType {
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    GoogleSheets = "GoogleSheets",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
