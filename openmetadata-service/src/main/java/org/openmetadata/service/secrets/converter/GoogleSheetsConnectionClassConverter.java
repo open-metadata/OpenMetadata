@@ -35,4 +35,4 @@ public class GoogleSheetsConnectionClassConverter extends ClassConverter {
 
     return googleSheetsConnection;
   }
-} 
+}
