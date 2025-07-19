@@ -869,6 +869,15 @@ public class IngestionPipelineResourceTest
     ResultList<IngestionPipeline> resultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(1, resultList.getData().size());
     assertEquals(ingestionPipeline.getId(), resultList.getData().get(0).getId());
+
+    Map<String, String> multipleQueryParams = new HashMap<>();
+    multipleQueryParams.put("provider", ProviderType.AUTOMATION.value());
+    multipleQueryParams.put("serviceType", "databaseService");
+    multipleQueryParams.put("pipelineType", "metadata");
+    ResultList<IngestionPipeline> multipleParamsResult =
+        listEntities(multipleQueryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, multipleParamsResult.getData().size());
+    assertEquals(ingestionPipeline.getId(), multipleParamsResult.getData().get(0).getId());
   }
 
   private IngestionPipeline updateIngestionPipeline(
