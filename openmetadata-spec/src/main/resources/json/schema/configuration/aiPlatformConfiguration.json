@@ -1,0 +1,66 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/aiPlatformConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AiPlatformConfiguration",
+  "description": "This schema defines the JWT Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.AiPlatformConfiguration",
+  "definitions": {
+    "grpcConfiguration": {
+        "javaType": "org.openmetadata.schema.configuration.GrpcConfiguration",
+        "type": "object",
+        "properties": {
+          "port": {
+            "description": "Host for the gRPC server",
+            "type": "integer"
+          },
+          "maxInboundMessageSize": {
+            "description": "Port for the gRPC server",
+            "type": "integer"
+          },
+          "keepAliveTime": {
+            "description": "Keep alive time for the gRPC server",
+            "type": "integer"
+          },
+          "keepAliveTimeout": {
+              "description": "Keep alive timeout for the gRPC server",
+              "type": "integer"
+          }
+        },
+        "required": ["port"]
+    }
+  },
+  "properties": {
+    "enabled": {
+      "description": "Indicates whether the AI Platform is enabled",
+      "type": "boolean",
+      "default": false
+    },
+    "host": {
+      "description": "Host for the AI Platform server",
+      "type": "string"
+    },
+    "port": {
+      "description": "Port for the AI Platform server",
+      "type": "integer"
+    },
+    "tlsCertPath": {
+      "description": "Path to the TLS certificate for the AI Platform server",
+      "type": "string"
+    },
+    "tlsKeyPath": {
+      "description": "Path to the TLS key for the AI Platform server",
+      "type": "string"
+    },
+    "trustedCertsPath": {
+      "description": "Path to the trusted CA certificate for the AI Platform server",
+      "type": "string"
+    },
+    "grpc": {
+      "description": "gRPC configuration for the AI Platform server",
+      "$ref": "#/definitions/grpcConfiguration"
+    }
+  },
+  "required": ["host", "port", "grpc"],
+  "additionalProperties": false
+}
