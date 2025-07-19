@@ -1385,12 +1385,8 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.from(0);
       searchSourceBuilder.trackTotalHits(true);
 
-      // Add entityType aggregation
-      TermsAggregationBuilder entityTypeAgg =
-          AggregationBuilders.terms("entityType")
-              .field("entityType")
-              .size(100); // Support up to 100 entity types
-      searchSourceBuilder.aggregation(entityTypeAgg);
+      // The entityType aggregation is already added by the search builder factory
+      // from the global aggregations configuration, so we don't need to add it again
 
       // Resolve the index alias properly to ensure we're searching across all appropriate indexes
       String resolvedIndex =
@@ -1402,9 +1398,9 @@ public class ElasticSearchClient implements SearchClient {
       LOG.debug("Sending entity type counts request to ElasticSearch: {}", searchSourceBuilder);
       SearchResponse searchResponse = client.search(esSearchRequest, RequestOptions.DEFAULT);
 
-      // Convert to API response
-      String jsonResponse = JsonUtils.pojoToJson(searchResponse);
-      return Response.status(OK).entity(jsonResponse).build();
+      // Convert to API response using toString() which returns proper JSON
+      // (not JsonUtils.pojoToJson which fails on internal ES objects)
+      return Response.status(OK).entity(searchResponse.toString()).build();
     } catch (Exception e) {
       LOG.error(
           "Error executing entity type counts search for index: {}, query: {}",
@@ -2681,7 +2677,6 @@ public class ElasticSearchClient implements SearchClient {
       for (com.fasterxml.jackson.databind.JsonNode indexNode : indices) {
         String indexName = indexNode.get("index").asText();
         try {
-          // 2. Remove ILM policy by updating settings
           Request putSettings = new Request("PUT", "/" + indexName + "/_settings");
           putSettings.setJsonEntity("{\"index.lifecycle.name\": null}");
           es.org.elasticsearch.client.Response putResponse =

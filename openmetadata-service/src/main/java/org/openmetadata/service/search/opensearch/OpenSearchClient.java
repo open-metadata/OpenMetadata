@@ -1470,22 +1470,8 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.from(0);
       searchSourceBuilder.trackTotalHits(true);
 
-      // Check if entityType aggregation already exists from the search builder
-      boolean hasEntityTypeAgg = false;
-      if (searchSourceBuilder.aggregations() != null) {
-        hasEntityTypeAgg =
-            searchSourceBuilder.aggregations().getAggregatorFactories().stream()
-                .anyMatch(agg -> agg.getName().equals("entityType"));
-      }
-
-      // Only add entityType aggregation if it doesn't already exist
-      if (!hasEntityTypeAgg) {
-        TermsAggregationBuilder entityTypeAgg =
-            AggregationBuilders.terms("entityType")
-                .field("entityType")
-                .size(100); // Support up to 100 entity types
-        searchSourceBuilder.aggregation(entityTypeAgg);
-      }
+      // The entityType aggregation is already added by the search builder factory
+      // from the global aggregations configuration, so we don't need to add it again
 
       // Resolve the index alias properly to ensure we're searching across all appropriate indexes
       String resolvedIndex =
