@@ -1,5 +1,6 @@
 ---
 title: Run the ADLS Connector Externally
+description: Use YAML to ingest metadata from Azure Data Lake Storage including file paths, structures, and governance rules.
 slug: /connectors/storage/adls/yaml
 collate: true
 ---

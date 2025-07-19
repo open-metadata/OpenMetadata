@@ -66,7 +66,7 @@ test.describe('Description Suggestions Table Entity', () => {
 
     await test.step('View and Open the Suggestions', async () => {
       await redirectToHomePage(page);
-      await table.visitEntityPage(page);
+      await table.visitEntityPageWithCustomSearchBox(page);
 
       await expect(page.getByText('Suggested Descriptions')).toBeVisible();
 
@@ -237,7 +237,7 @@ test.describe('Description Suggestions Table Entity', () => {
     const { page, afterAction } = await performAdminLogin(browser);
 
     await redirectToHomePage(page);
-    await table.visitEntityPage(page);
+    await table.visitEntityPageWithCustomSearchBox(page);
 
     const allAvatarSuggestion = page
       .getByTestId('asset-description-container')
@@ -287,7 +287,7 @@ test.describe('Description Suggestions Table Entity', () => {
     }
 
     await redirectToHomePage(page);
-    await table.visitEntityPage(page);
+    await table.visitEntityPageWithCustomSearchBox(page);
 
     const avatarSuggestion = page.waitForResponse(
       `/api/v1/suggestions?entityFQN=*userId=*`
@@ -339,7 +339,7 @@ test.describe('Description Suggestions Table Entity', () => {
     }
 
     await redirectToHomePage(page);
-    await table.visitEntityPage(page);
+    await table.visitEntityPageWithCustomSearchBox(page);
 
     for (let index = 0; index < 3; index++) {
       const avatarSuggestion = page.waitForResponse(
@@ -400,7 +400,7 @@ test.describe('Description Suggestions Table Entity', () => {
     const suggestionFetchCallResponse = page.waitForResponse(
       '/api/v1/suggestions?entityFQN=*&limit=10'
     );
-    await table2.visitEntityPage(page);
+    await table2.visitEntityPageWithCustomSearchBox(page);
     await suggestionFetchCallResponse;
 
     const suggestionFetchCallResponse2 = page.waitForResponse(

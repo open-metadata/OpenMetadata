@@ -200,6 +200,9 @@ public interface CollectionDAO {
   ProfilerDataTimeSeriesDAO profilerDataTimeSeriesDao();
 
   @CreateSqlObject
+  IndexMappingVersionDAO indexMappingVersionDAO();
+
+  @CreateSqlObject
   DataQualityDataTimeSeriesDAO dataQualityDataTimeSeriesDao();
 
   @CreateSqlObject
@@ -1839,6 +1842,18 @@ public interface CollectionDAO {
     @SqlQuery("SELECT count(id) FROM thread_entity <condition> AND createdBy = :username")
     int listCountTasksAssignedBy(
         @Bind("username") String username, @Define("condition") String condition);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity where type = 'Task' LIMIT :limit OFFSET :paginationOffset")
+    List<String> listTaskThreadWithOffset(
+        @Bind("limit") int limit, @Bind("paginationOffset") int paginationOffset);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity where type != 'Task' AND createdAt > :cutoffMillis ORDER BY createdAt LIMIT :limit OFFSET :paginationOffset")
+    List<String> listOtherConversationThreadWithOffset(
+        @Bind("cutoffMillis") long cutoffMillis,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") int paginationOffset);
 
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> AND "
