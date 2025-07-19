@@ -21,6 +21,7 @@ import {
   uniqueId,
 } from 'lodash';
 import { Layout } from 'react-grid-layout';
+import { AdvanceSearchProvider } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../enums/common.enum';
 import {
@@ -28,8 +29,6 @@ import {
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
-import { Thread } from '../generated/entity/feed/thread';
-import { EntityReference } from '../generated/entity/type';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 
@@ -125,20 +124,6 @@ export const getAddWidgetHandler =
     }
   };
 
-const getEmptyWidgetHeight = (
-  widget: WidgetConfig,
-  minHeight: number,
-  maxHeight: number
-) => {
-  if (minHeight <= widget.h && widget.h <= maxHeight) {
-    return widget.h;
-  } else if (minHeight > widget.h) {
-    return minHeight;
-  } else {
-    return maxHeight;
-  }
-};
-
 export const moveEmptyWidgetToTheEnd = (layout: Array<WidgetConfig>) =>
   layout.map((widget) =>
     widget.i === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
@@ -147,23 +132,10 @@ export const moveEmptyWidgetToTheEnd = (layout: Array<WidgetConfig>) =>
   );
 
 export const getRemoveWidgetHandler =
-  (widgetKey: string, minHeight: number, maxHeight: number) =>
-  (currentLayout: Array<WidgetConfig>) => {
-    if (widgetKey.endsWith('.EmptyWidgetPlaceholder')) {
-      return currentLayout.filter(
-        (widget: WidgetConfig) => widget.i !== widgetKey
-      );
-    } else {
-      return currentLayout.map((widget: WidgetConfig) =>
-        widget.i === widgetKey
-          ? {
-              ...widget,
-              i: widgetKey + '.EmptyWidgetPlaceholder',
-              h: getEmptyWidgetHeight(widget, minHeight, maxHeight),
-            }
-          : widget
-      );
-    }
+  (widgetKey: string) => (currentLayout: Array<WidgetConfig>) => {
+    return currentLayout.filter(
+      (widget: WidgetConfig) => widget.i !== widgetKey
+    );
   };
 
 export const getLayoutUpdateHandler =
@@ -219,31 +191,25 @@ const getAllWidgetsArray = (layout: WidgetConfig[]) => {
 };
 
 export const getWidgetFromKey = ({
-  widgetConfig,
+  currentLayout,
+  handleLayoutUpdate,
   handleOpenAddWidgetModal,
   handlePlaceholderWidgetKey,
   handleRemoveWidget,
-  announcements,
-  followedDataCount,
-  followedData,
-  isLoadingOwnedData,
   iconHeight,
   iconWidth,
   isEditView,
-  isAnnouncementLoading,
+  widgetConfig,
 }: {
-  widgetConfig: WidgetConfig;
+  currentLayout?: Array<WidgetConfig>;
+  handleLayoutUpdate?: (layout: Layout[]) => void;
   handleOpenAddWidgetModal?: () => void;
   handlePlaceholderWidgetKey?: (key: string) => void;
   handleRemoveWidget?: (key: string) => void;
-  announcements?: Thread[];
-  followedData?: EntityReference[];
-  followedDataCount: number;
-  isLoadingOwnedData: boolean;
   iconHeight?: SIZE;
   iconWidth?: SIZE;
   isEditView?: boolean;
-  isAnnouncementLoading?: boolean;
+  widgetConfig: WidgetConfig;
 }) => {
   if (
     widgetConfig.i.endsWith('.EmptyWidgetPlaceholder') &&
@@ -267,17 +233,16 @@ export const getWidgetFromKey = ({
   const Widget = customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig.i);
 
   return (
-    <Widget
-      announcements={announcements}
-      followedData={followedData ?? []}
-      followedDataCount={followedDataCount}
-      handleRemoveWidget={handleRemoveWidget}
-      isAnnouncementLoading={isAnnouncementLoading}
-      isEditView={isEditView}
-      isLoadingOwnedData={isLoadingOwnedData}
-      selectedGridSize={widgetConfig.w}
-      widgetKey={widgetConfig.i}
-    />
+    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
+      <Widget
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        isEditView={isEditView}
+        selectedGridSize={widgetConfig.w}
+        widgetKey={widgetConfig.i}
+      />
+    </AdvanceSearchProvider>
   );
 };
 

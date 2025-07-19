@@ -169,7 +169,7 @@ export const SettingsNavigationPage = ({
 
   return (
     <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
-      <Row className="p-x-lg" gutter={[0, 20]}>
+      <Row gutter={[0, 20]}>
         <Col span={24}>
           <Card
             bodyStyle={{ padding: 0 }}

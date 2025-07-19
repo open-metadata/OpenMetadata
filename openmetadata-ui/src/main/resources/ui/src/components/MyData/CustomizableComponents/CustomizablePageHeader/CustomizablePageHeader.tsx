@@ -26,10 +26,12 @@ export const CustomizablePageHeader = ({
   onReset,
   onSave,
   personaName,
+  disableSave,
 }: {
   onSave: () => Promise<void>;
   onReset: () => void;
   personaName: string;
+  disableSave?: boolean;
 }) => {
   const { t } = useTranslation();
   const { fqn: personaFqn } = useFqn();
@@ -101,7 +103,7 @@ export const CustomizablePageHeader = ({
 
   return (
     <Card
-      className="customize-page-header"
+      className="customize-page-header m-b-lg"
       data-testid="customize-landing-page-header">
       <div className="d-flex items-center justify-between">
         <div>
@@ -138,6 +140,7 @@ export const CustomizablePageHeader = ({
           </Button>
           <Button
             data-testid="save-button"
+            disabled={disableSave}
             icon={<SaveOutlined />}
             loading={saving}
             type="primary"

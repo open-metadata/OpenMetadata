@@ -114,7 +114,7 @@ entities.forEach((EntityClass) => {
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
-      await entity.visitEntityPage(page);
+      await entity.visitEntityPageWithCustomSearchBox(page);
     });
 
     test('Domain Add, Update and Remove', async ({ page }) => {
@@ -463,7 +463,7 @@ entities.forEach((EntityClass) => {
     }) => {
       await redirectToHomePage(page);
 
-      await entity.visitEntityPage(page);
+      await entity.visitEntityPageWithCustomSearchBox(page);
 
       const { apiContext } = await getApiContext(page);
 
@@ -501,7 +501,7 @@ entities.forEach((EntityClass) => {
         ],
       });
 
-      await entity.visitEntityPage(dataConsumerPage);
+      await entity.visitEntityPageWithCustomSearchBox(dataConsumerPage);
 
       // Check if edit description button is not visible
       await expect(
@@ -523,7 +523,7 @@ entities.forEach((EntityClass) => {
       }) => {
         await redirectToHomePage(page);
 
-        await tableEntity.visitEntityPage(page);
+        await tableEntity.visitEntityPageWithCustomSearchBox(page);
 
         const { apiContext } = await getApiContext(page);
 
@@ -561,7 +561,7 @@ entities.forEach((EntityClass) => {
           ],
         });
 
-        await tableEntity.visitEntityPage(dataConsumerPage);
+        await tableEntity.visitEntityPageWithCustomSearchBox(dataConsumerPage);
 
         // check if queries tab is visible
         await dataConsumerPage.locator('[data-testid="table_queries"]').click();
@@ -615,7 +615,7 @@ entities.forEach((EntityClass) => {
     const apiContext = await getAuthContext(token);
     await deleteEntity.create(apiContext);
     await redirectToHomePage(page);
-    await deleteEntity.visitEntityPage(page);
+    await deleteEntity.visitEntityPageWithCustomSearchBox(page);
 
     await test.step('Soft delete', async () => {
       await deleteEntity.softDeleteEntity(

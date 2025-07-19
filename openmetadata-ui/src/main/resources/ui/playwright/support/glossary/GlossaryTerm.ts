@@ -54,6 +54,10 @@ export class GlossaryTerm extends EntityClass {
     await this.visitPage(page);
   }
 
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await this.visitPage(page);
+  }
+
   async visitPage(page: Page) {
     await visitGlossaryPage(page, this.responseData.glossary.displayName);
     const expandCollapseButtonText = await page

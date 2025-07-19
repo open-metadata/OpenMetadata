@@ -28,4 +28,5 @@ export interface FeedCardBodyV1Props {
   onEditCancel?: () => void;
   showThread?: boolean;
   isForFeedTab?: boolean;
+  isFeedWidget?: boolean;
 }

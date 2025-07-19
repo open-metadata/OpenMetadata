@@ -25,14 +25,19 @@ import {
   clickOutside,
   descriptionBox,
   getApiContext,
+  redirectToExplorePage,
   redirectToHomePage,
   toastNotification,
   uuid,
 } from '../../utils/common';
+import {
+  visitDataQualityTab,
+  visitDataQualityTabWithCustomSearchBox,
+} from '../../utils/dataQualityAndProfiler';
 import { getCurrentMillis } from '../../utils/dateTime';
 import { visitEntityPage } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
+import { deleteTestCase } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
@@ -104,7 +109,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     field: 'testCase',
     description: 'New table test case for TableColumnNameToExist',
   };
-  await visitDataQualityTab(page, table1);
+  await visitDataQualityTabWithCustomSearchBox(page, table1);
 
   await page.click('[data-testid="profiler-add-table-test-btn"]');
   await page.click('[data-testid="table"]');
@@ -212,6 +217,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
+
     await page.getByTestId('update-btn').click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');
@@ -252,7 +258,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     description: 'New table test case for columnValueLengthsToBeBetween',
   };
 
-  await visitDataQualityTab(page, table1);
+  await visitDataQualityTabWithCustomSearchBox(page, table1);
   await page.click('[data-testid="profiler-add-table-test-btn"]');
   await page.click('[data-testid="column"]');
 
@@ -363,6 +369,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
+
     await page.getByTestId('update-btn').click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');
@@ -401,6 +408,7 @@ test(
 
     const runProfilerTest = async (page: Page) => {
       await redirectToHomePage(page);
+      await redirectToExplorePage(page);
       await visitEntityPage({
         page,
         searchTerm: DATA_QUALITY_TABLE.term,
@@ -499,7 +507,7 @@ test(
 
     const testCase = table2.testCasesResponseData[0];
     const testCaseName = testCase?.['name'];
-    await visitDataQualityTab(page, table2);
+    await visitDataQualityTabWithCustomSearchBox(page, table2);
 
     await test.step(
       'Array params value should be visible while editing the test case',
@@ -550,6 +558,7 @@ test(
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
+
       await page.getByTestId('update-btn').click();
       const updateResponse1 = await updateTestCaseResponse;
       const body1 = await updateResponse1.request().postData();
@@ -576,6 +585,7 @@ test(
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
+
       await page.getByTestId('update-btn').click();
       const updateResponse2 = await updateTestCaseResponse2;
       const body2 = await updateResponse2.request().postData();
@@ -603,6 +613,7 @@ test(
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
+
       await page.getByTestId('update-btn').click();
       const updateResponse3 = await updateTestCaseResponse3;
       const body3 = await updateResponse3.request().postData();
@@ -651,6 +662,7 @@ test(
 
         await page.locator('#tableTestForm_displayName').clear();
         await page.fill('#tableTestForm_displayName', 'Updated display name');
+
         await page.getByTestId('update-btn').click();
         await toastNotification(page, 'Test case updated successfully.');
 
@@ -677,7 +689,7 @@ test(
       partitionValues: 'test',
     };
 
-    await table1.visitEntityPage(page);
+    await table1.visitEntityPageWithCustomSearchBox(page);
     await page.getByTestId('profiler').click();
     await page
       .getByTestId('profiler-tab-left-panel')
@@ -841,7 +853,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await domain.create(apiContext);
 
   // Add domain to table
-  await filterTable1.visitEntityPage(page);
+  await filterTable1.visitEntityPageWithCustomSearchBox(page);
   await assignDomain(page, domain.responseData);
   const testCases = [
     `pw_first_table_column_count_to_be_between_${uuid()}`,
@@ -1304,8 +1316,13 @@ test('Pagination functionality in test cases list', async ({ page }) => {
 
       await page.click('[data-testid="page-size-selection-dropdown"]');
 
+      const dropdownMenu = page.waitForSelector('.ant-dropdown-menu', {
+        state: 'visible',
+        timeout: 5000,
+      });
+
       // Verify dropdown options are visible
-      await expect(page.locator('.ant-dropdown-menu')).toBeVisible();
+      await expect(dropdownMenu).toBeDefined();
       await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
     });
   } finally {

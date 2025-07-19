@@ -89,6 +89,17 @@ export class PipelineServiceClass extends EntityClass {
     );
   }
 
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.entity.name,
+        type: SERVICE_TYPE.Pipeline,
+      },
+      false
+    );
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/pipelineServices/name/${encodeURIComponent(

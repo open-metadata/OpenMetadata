@@ -12,6 +12,7 @@
  */
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { LabelType } from '../generated/type/tagLabel';
 import { t } from '../utils/i18next/LocalUtil';
@@ -326,3 +327,23 @@ export const TAG_LABEL_TYPE_LIST_VALUES = {
   [LabelType.Automated]: t('label.automated'),
   [LabelType.Generated]: t('label.generated'),
 };
+
+export const CURATED_ASSETS_LIST = [
+  EntityType.ALL,
+  EntityType.API_COLLECTION,
+  EntityType.API_ENDPOINT,
+  EntityType.CHART,
+  EntityType.CONTAINER,
+  EntityType.DASHBOARD,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.DATABASE,
+  EntityType.DATABASE_SCHEMA,
+  EntityType.GLOSSARY_TERM,
+  EntityType.METRIC,
+  EntityType.MLMODEL,
+  EntityType.PIPELINE,
+  EntityType.SEARCH_INDEX,
+  EntityType.STORED_PROCEDURE,
+  EntityType.TABLE,
+  EntityType.TOPIC,
+];

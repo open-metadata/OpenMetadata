@@ -15,13 +15,14 @@ import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
 
 export interface DomainSelectableListProps {
-  onUpdate: (domain: EntityReference | EntityReference[]) => Promise<void>;
   children?: ReactNode;
+  disabled?: boolean;
   hasPermission: boolean;
-  popoverProps?: PopoverProps;
-  selectedDomain?: EntityReference | EntityReference[];
   multiple?: boolean;
   onCancel?: () => void;
-  wrapInButton?: boolean;
+  onUpdate: (domain: EntityReference | EntityReference[]) => Promise<void>;
+  popoverProps?: PopoverProps;
+  selectedDomain?: EntityReference | EntityReference[];
   showAllDomains?: boolean;
+  wrapInButton?: boolean;
 }

@@ -15,8 +15,11 @@ import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { fullUuid, uuid } from '../../utils/common';
+import {
+  visitEntityPage,
+  visitEntityPageWithCustomSearchBox,
+} from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -139,8 +142,8 @@ export class TableClass extends EntityClass {
   ];
 
   entity = {
-    name: `pw-table-${uuid()}`,
-    displayName: `pw table ${uuid()}`,
+    name: `pw-table-${fullUuid()}`,
+    displayName: `pw table ${fullUuid()}`,
     description: 'description',
     columns: this.children,
     tableType: 'SecureView',
@@ -248,6 +251,14 @@ export class TableClass extends EntityClass {
 
   async visitEntityPage(page: Page, searchTerm?: string) {
     await visitEntityPage({
+      page,
+      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
+      dataTestId: `${this.service.name}-${this.entity.name}`,
+    });
+  }
+
+  async visitEntityPageWithCustomSearchBox(page: Page, searchTerm?: string) {
+    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,

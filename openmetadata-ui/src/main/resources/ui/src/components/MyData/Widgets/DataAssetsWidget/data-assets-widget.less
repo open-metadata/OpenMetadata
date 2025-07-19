@@ -11,47 +11,80 @@
  *  limitations under the License.
  */
 @import (reference) url('../../../../styles/variables.less');
+@import (reference) url('../../../../styles/fonts.less');
 
-.data-assets-explore-widget-container {
+.data-assets-widget-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
   .ant-card-body {
-    overflow-y: hidden !important;
-    max-height: none !important;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 0;
+    overflow: hidden;
   }
-  .data-assets-explore-widget-body {
-    height: 265px;
-    overflow-x: hidden;
-    scrollbar-width: none;
 
-    &::-webkit-scrollbar {
-      display: none;
+  .widget-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .entity-list-body {
+    flex: 1;
+    padding: @size-mlg @size-mlg @size-xxs @size-mlg;
+    margin: 0;
+    overflow-y: auto;
+    min-height: 0;
+  }
+}
+
+.widget-footer {
+  flex-shrink: 0;
+  width: 100%;
+  background-color: @white;
+  border-bottom-right-radius: @size-sm;
+  border-bottom-left-radius: @size-sm;
+}
+
+.cards-scroll-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: @size-sm;
+
+  .card-wrapper {
+    height: fit-content;
+  }
+
+  .service-card.ant-card {
+    height: 100%;
+    border: none;
+    cursor: pointer;
+    transition: 0.3s ease-in-out;
+
+    &:hover {
+      background: @grey-1;
     }
 
-    .service-card.ant-card {
-      height: 100%;
-      border: none;
-      cursor: pointer;
-      transition: 0.3s ease-in-out;
+    .ant-card-body {
+      display: flex;
+      flex-direction: column;
+      text-align: center;
+      align-items: center;
+      padding: @size-sm @size-mlg;
+      max-height: 100%;
 
-      &:hover {
-        background: @grey-1;
-      }
-
-      .ant-card-body {
-        display: flex;
-        flex-direction: column;
-        text-align: center;
-        align-items: center;
-        padding: 10px 0;
-        max-height: 100%;
-
-        .data-asset-badge {
-          width: max-content;
-          padding: 6px 14px;
-          background-color: @blue-1;
-          .ant-typography {
-            color: @primary-color;
-            font-size: 12px;
-          }
+      .data-asset-badge {
+        width: max-content;
+        padding: @size-xs @size-sm;
+        background-color: @blue-1;
+        .ant-typography {
+          color: @primary-color;
+          font-size: @size-sm;
         }
       }
     }

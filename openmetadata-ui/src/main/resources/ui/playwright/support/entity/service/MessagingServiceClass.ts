@@ -90,6 +90,17 @@ export class MessagingServiceClass extends EntityClass {
     );
   }
 
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.entity.name,
+        type: SERVICE_TYPE.Messaging,
+      },
+      false
+    );
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/messagingServices/name/${encodeURIComponent(

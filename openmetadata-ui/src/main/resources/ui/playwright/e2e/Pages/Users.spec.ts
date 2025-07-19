@@ -325,7 +325,7 @@ test.describe('User with Data Consumer Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
 
-    await tableEntity.visitEntityPage(adminPage);
+    await tableEntity.visitEntityPageWithCustomSearchBox(adminPage);
 
     await addOwner({
       page: adminPage,
@@ -335,7 +335,7 @@ test.describe('User with Data Consumer Roles', () => {
       dataTestId: 'data-assets-header',
     });
 
-    await tableEntity.visitEntityPage(dataConsumerPage);
+    await tableEntity.visitEntityPageWithCustomSearchBox(dataConsumerPage);
 
     await checkDataConsumerPermissions(dataConsumerPage);
   });
@@ -429,7 +429,7 @@ test.describe('User with Data Steward Roles', () => {
 
     await checkStewardServicesPermissions(dataStewardPage);
 
-    await tableEntity2.visitEntityPage(adminPage);
+    await tableEntity2.visitEntityPageWithCustomSearchBox(adminPage);
 
     await addOwner({
       page: adminPage,
