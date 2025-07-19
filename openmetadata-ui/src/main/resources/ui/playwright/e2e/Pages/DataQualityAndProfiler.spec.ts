@@ -369,7 +369,6 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '/api/v1/dataQuality/testCases/*'
     );
 
-    await page.locator('button').getByText('Update').click();
     await page.getByTestId('update-btn').click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');
@@ -401,7 +400,7 @@ test(
     test.slow();
 
     const DATA_QUALITY_TABLE = {
-      term: 'dim_address',
+      term: 'dim___reserved__colon____reserved__arrow__address',
       serviceName: 'sample_data',
       testCaseName: 'column_value_max_to_be_between',
     };
