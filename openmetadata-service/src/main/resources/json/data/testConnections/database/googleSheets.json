@@ -1,18 +1,18 @@
 {
     "name": "GoogleSheets",
     "displayName": "GoogleSheets Test Connection",
-    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+    "description": "This Test Connection validates access to Google Sheets and the ability to retrieve spreadsheet metadata.",
     "steps": [
       {
         "name": "check_access",
-        "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
-        "errorMessage": "Failed to connect to Cockroach, please validate the credentials",
+        "description": "Validate that we can connect to Google Sheets and authenticate using the provided credentials.",
+        "errorMessage": "Failed to connect to Google Sheets. Please verify your credentials and API access.",
         "mandatory": true
       },
       {
         "name": "get_spreadsheets",
-        "description": "List all the databases available to the user.",
-        "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
+        "description": "List all Google Sheets accessible to the authenticated user.",
+        "errorMessage": "Failed to fetch Google Sheets. Please ensure the user has the necessary permissions to access the spreadsheets.",
         "mandatory": true
       }
     ]
