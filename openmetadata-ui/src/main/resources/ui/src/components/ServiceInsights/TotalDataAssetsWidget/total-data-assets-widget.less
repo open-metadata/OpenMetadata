@@ -30,24 +30,14 @@
     background-color: @grey-2;
   }
 
-  .chart-container {
-    position: relative;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex: 0.6;
-  }
-
   .assets-list-container {
-    flex: 0.5;
     padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
     background-color: @grey-1;
     border-radius: @border-radius-xs;
-    height: fit-content;
+    height: 100%;
   }
 
   .tooltip-container {
@@ -63,14 +53,6 @@
     z-index: 10;
     pointer-events: none;
     text-align: center;
-  }
-
-  .total-data-assets-info {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    height: 100%;
   }
 
   .ant-card-body {

@@ -37,4 +37,5 @@ export enum SystemChartType {
   TagSourceBreakdown = 'tag_source_breakdown',
   TierSourceBreakdown = 'tier_source_breakdown',
   DataQualityTestBreakdown = 'data_quality_test_breakdown',
+  HealthyDataAssets = 'healthy_data_assets',
 }

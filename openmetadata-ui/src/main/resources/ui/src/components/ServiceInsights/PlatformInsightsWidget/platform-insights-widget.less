@@ -15,9 +15,20 @@
 .platform-insights-card {
   .other-charts-container {
     display: grid;
-    grid-template-rows: repeat(2, 1fr);
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 16px;
+  }
+
+  .percent-change-tag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background-color: @green-9;
+    border: 1px solid @green-16;
+    border-radius: 6px;
+    width: fit-content;
+    padding: 0px 6px;
   }
 
   .other-charts-card.ant-card {
@@ -26,6 +37,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      padding: 12px;
 
       &::before,
       &::after {

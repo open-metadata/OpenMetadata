@@ -10,26 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { SystemChartType } from '../../../enums/DataInsight.enum';
+import { App } from '../../../generated/entity/applications/app';
+import { Status } from '../../../generated/entity/applications/appRunRecord';
+import { PipelineState } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ServicesType } from '../../../interface/service.interface';
 import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
 
-export interface ChartData {
-  day: number;
-  count: number;
-}
-
-export interface ChartSeriesData {
-  chartType: SystemChartType;
-  percentageChange?: number;
-  currentPercentage: number;
-  isIncreased?: boolean;
-  noRecords?: boolean;
-  numberOfDays: number;
-}
-
-export interface PlatformInsightsWidgetProps
+export interface AgentsStatusWidgetProps
   extends ServiceInsightWidgetCommonProps {
-  chartsData: ChartSeriesData[];
-  isLoading: boolean;
+  collateAIagentsList: App[];
+  serviceDetails: ServicesType;
+}
+
+export interface AgentsInfo {
+  label: string;
+  status?: PipelineState | Status;
+  isCollateAgent: boolean;
 }
