@@ -91,6 +91,7 @@ import es.org.elasticsearch.search.sort.NestedSortBuilder;
 import es.org.elasticsearch.search.sort.SortBuilders;
 import es.org.elasticsearch.search.sort.SortMode;
 import es.org.elasticsearch.search.sort.SortOrder;
+import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.XContentLocation;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
@@ -1312,6 +1313,107 @@ public class ElasticSearchClient implements SearchClient {
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
+  }
+
+  @Override
+  public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
+    try {
+      // Use the EXACT same search building logic as the regular search method
+      // to ensure consistency across all endpoints
+      SearchSettings searchSettings =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      ElasticSearchSourceBuilderFactory searchBuilderFactory =
+          new ElasticSearchSourceBuilderFactory(searchSettings);
+
+      // Build the search exactly as doSearch does
+      SearchSourceBuilder searchSourceBuilder =
+          searchBuilderFactory.getSearchSourceBuilder(
+              index,
+              request.getQuery() != null ? request.getQuery() : "*",
+              0, // from
+              0, // size - we only need aggregations
+              false); // explain
+
+      // No RBAC for now as per user's comment about it being disabled
+
+      // Apply deleted filter if specified
+      if (request.getDeleted() != null && request.getDeleted()) {
+        QueryBuilder currentQuery = searchSourceBuilder.query();
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        if (currentQuery != null) {
+          boolQuery.must(currentQuery);
+        }
+        boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
+        searchSourceBuilder.query(boolQuery);
+      }
+
+      // Apply query filter if specified
+      if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
+        try {
+          // Parse the query filter as JSON
+          XContentParser filterParser =
+              XContentType.JSON
+                  .xContent()
+                  .createParser(
+                      NamedXContentRegistry.EMPTY,
+                      LoggingDeprecationHandler.INSTANCE,
+                      request.getQueryFilter());
+          QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+          if (filter != null) {
+            QueryBuilder currentQuery = searchSourceBuilder.query();
+            BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+            if (currentQuery != null) {
+              boolQuery.must(currentQuery);
+            }
+            boolQuery.must(filter);
+            searchSourceBuilder.query(boolQuery);
+          }
+        } catch (Exception ex) {
+          LOG.warn(
+              "Error parsing query_filter from query parameters, ignoring filter: {}",
+              request.getQueryFilter(),
+              ex);
+        }
+      }
+
+      if (!nullOrEmpty(request.getPostFilter())) {
+        QueryBuilder postFilter = QueryBuilders.queryStringQuery(request.getPostFilter());
+        searchSourceBuilder.postFilter(postFilter);
+      }
+
+      searchSourceBuilder.size(0);
+      searchSourceBuilder.from(0);
+      searchSourceBuilder.trackTotalHits(true);
+
+      // Add entityType aggregation
+      TermsAggregationBuilder entityTypeAgg =
+          AggregationBuilders.terms("entityType")
+              .field("entityType")
+              .size(100); // Support up to 100 entity types
+      searchSourceBuilder.aggregation(entityTypeAgg);
+
+      // Resolve the index alias properly to ensure we're searching across all appropriate indexes
+      String resolvedIndex =
+          Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+      es.org.elasticsearch.action.search.SearchRequest esSearchRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(resolvedIndex);
+      esSearchRequest.source(searchSourceBuilder);
+
+      LOG.debug("Sending entity type counts request to ElasticSearch: {}", searchSourceBuilder);
+      SearchResponse searchResponse = client.search(esSearchRequest, RequestOptions.DEFAULT);
+
+      // Convert to API response
+      String jsonResponse = JsonUtils.pojoToJson(searchResponse);
+      return Response.status(OK).entity(jsonResponse).build();
+    } catch (Exception e) {
+      LOG.error(
+          "Error executing entity type counts search for index: {}, query: {}",
+          index,
+          request.getQuery(),
+          e);
+      throw new SearchException(
+          String.format("Failed to get entity type counts: %s", e.getMessage()));
+    }
   }
 
   @Override

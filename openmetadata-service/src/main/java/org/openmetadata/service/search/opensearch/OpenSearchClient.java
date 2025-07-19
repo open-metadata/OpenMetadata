@@ -1401,6 +1401,123 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
+    try {
+      // Use the EXACT same search building logic as the regular search method
+      // to ensure consistency across all endpoints
+      SearchSettings searchSettings =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      OpenSearchSourceBuilderFactory searchBuilderFactory =
+          new OpenSearchSourceBuilderFactory(searchSettings);
+
+      // Build the search exactly as doSearch does
+      SearchSourceBuilder searchSourceBuilder =
+          searchBuilderFactory.getSearchSourceBuilder(
+              index,
+              request.getQuery() != null ? request.getQuery() : "*",
+              0, // from
+              0, // size - we only need aggregations
+              false); // explain
+
+      // No RBAC for now as per user's comment about it being disabled
+
+      // Apply query filter - use the same method as regular search
+      buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
+
+      // Apply post filter if specified
+      if (!nullOrEmpty(request.getPostFilter())) {
+        try {
+          XContentParser filterParser =
+              XContentType.JSON
+                  .xContent()
+                  .createParser(
+                      OsUtils.osXContentRegistry,
+                      LoggingDeprecationHandler.INSTANCE,
+                      request.getPostFilter());
+          QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+          searchSourceBuilder.postFilter(filter);
+        } catch (Exception ex) {
+          LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
+        }
+      }
+
+      // Apply deleted filter - use the same logic as regular search
+      if (!nullOrEmpty(request.getDeleted())) {
+        String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
+        if (indexName.equals(GLOBAL_SEARCH_ALIAS) || indexName.equals(DATA_ASSET_SEARCH_ALIAS)) {
+          BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+
+          boolQueryBuilder.should(
+              QueryBuilders.boolQuery()
+                  .must(searchSourceBuilder.query())
+                  .must(QueryBuilders.existsQuery("deleted"))
+                  .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+          boolQueryBuilder.should(
+              QueryBuilders.boolQuery()
+                  .must(searchSourceBuilder.query())
+                  .mustNot(QueryBuilders.existsQuery("deleted")));
+          searchSourceBuilder.query(boolQueryBuilder);
+        } else {
+          searchSourceBuilder.query(
+              QueryBuilders.boolQuery()
+                  .must(searchSourceBuilder.query())
+                  .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+        }
+      }
+
+      // We only want aggregations, not search results
+      searchSourceBuilder.size(0);
+      searchSourceBuilder.from(0);
+      searchSourceBuilder.trackTotalHits(true);
+
+      // Check if entityType aggregation already exists from the search builder
+      boolean hasEntityTypeAgg = false;
+      if (searchSourceBuilder.aggregations() != null) {
+        hasEntityTypeAgg =
+            searchSourceBuilder.aggregations().getAggregatorFactories().stream()
+                .anyMatch(agg -> agg.getName().equals("entityType"));
+      }
+
+      // Only add entityType aggregation if it doesn't already exist
+      if (!hasEntityTypeAgg) {
+        TermsAggregationBuilder entityTypeAgg =
+            AggregationBuilders.terms("entityType")
+                .field("entityType")
+                .size(100); // Support up to 100 entity types
+        searchSourceBuilder.aggregation(entityTypeAgg);
+      }
+
+      // Resolve the index alias properly to ensure we're searching across all appropriate indexes
+      String resolvedIndex =
+          Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+
+      // Execute the search
+      os.org.opensearch.action.search.SearchRequest osSearchRequest =
+          new os.org.opensearch.action.search.SearchRequest(resolvedIndex);
+      osSearchRequest.source(searchSourceBuilder);
+
+      LOG.info("Entity type counts query for index '{}' (resolved: '{}')", index, resolvedIndex);
+      LOG.info(
+          "Query string: '{}', Query builder: {}",
+          request.getQuery(),
+          searchSourceBuilder.toString());
+      SearchResponse searchResponse = client.search(osSearchRequest, RequestOptions.DEFAULT);
+
+      // Convert to API response
+      String jsonResponse = searchResponse.toString();
+      return Response.status(OK).entity(jsonResponse).build();
+    } catch (Exception e) {
+      LOG.error(
+          "Error executing entity type counts search for index: {}, query: {}",
+          index,
+          request.getQuery(),
+          e);
+      throw new SearchException(
+          String.format("Failed to get entity type counts: %s", e.getMessage()));
+    }
+  }
+
+  @Override
   public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 

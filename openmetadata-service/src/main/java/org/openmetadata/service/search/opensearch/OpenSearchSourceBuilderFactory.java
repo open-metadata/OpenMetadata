@@ -11,12 +11,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.*;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
@@ -36,6 +38,7 @@ import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
 
+@Slf4j
 public class OpenSearchSourceBuilderFactory
     implements SearchSourceBuilderFactory<
         SearchSourceBuilder, QueryBuilder, HighlightBuilder, FunctionScoreQueryBuilder> {
@@ -216,7 +219,18 @@ public class OpenSearchSourceBuilderFactory
   @Override
   public SearchSourceBuilder buildDataAssetSearchBuilder(
       String indexName, String query, int from, int size, boolean explain) {
-    AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
+    AssetTypeConfiguration assetConfig;
+
+    // For dataAsset and all indexes, we need to use a composite configuration
+    // that includes fields from all entity types to ensure consistent results
+    String resolvedIndex = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
+    if (resolvedIndex.equals("all") || resolvedIndex.equals("dataAsset")) {
+      // Build composite configuration for cross-entity searches
+      assetConfig = buildCompositeAssetConfig(searchSettings);
+    } else {
+      // For specific entity types, use their specific configuration
+      assetConfig = findAssetTypeConfig(indexName, searchSettings);
+    }
 
     BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
@@ -590,11 +604,24 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildCommonSearchBuilder(String query, int from, int size) {
-    // Create a composite configuration that includes all asset types
-    AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
+    // For dataAsset/all searches, use the default configuration instead of composite
+    // to avoid including entity-specific fields that cause inconsistent results
+    AssetTypeConfiguration defaultConfig = searchSettings.getDefaultConfiguration();
 
-    // Build the query using matchType support
-    QueryBuilder baseQuery = buildQueryWithMatchTypes(query, compositeConfig);
+    // If no default configuration exists, create a minimal one with common fields
+    if (defaultConfig == null) {
+      defaultConfig = new AssetTypeConfiguration();
+      defaultConfig.setAssetType("all");
+      // This will use only common fields from the search
+    }
+
+    LOG.debug(
+        "buildCommonSearchBuilder called with query: '{}', using config: {}",
+        query,
+        defaultConfig != null ? defaultConfig.getAssetType() : "null");
+
+    // Build the query using the default configuration
+    QueryBuilder baseQuery = buildQueryWithMatchTypes(query, defaultConfig);
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
 

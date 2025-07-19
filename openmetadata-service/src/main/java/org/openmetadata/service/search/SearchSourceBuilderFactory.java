@@ -93,7 +93,9 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     }
 
     if (indexName.equals("all") || indexName.equals("dataAsset")) {
-      return buildCommonSearchBuilder(searchQuery, fromOffset, size);
+      // For consistency, use entity-specific search builder for dataAsset searches
+      // This ensures both /search/query and /search/entityTypeCounts use the same logic
+      return buildDataAssetSearchBuilder(indexName, searchQuery, fromOffset, size, includeExplain);
     }
 
     return switch (indexName) {

@@ -34,6 +34,7 @@ import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.*;
 
@@ -217,7 +218,18 @@ public class ElasticSearchSourceBuilderFactory
   @Override
   public SearchSourceBuilder buildDataAssetSearchBuilder(
       String indexName, String query, int from, int size, boolean explain) {
-    AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
+    AssetTypeConfiguration assetConfig;
+
+    // For dataAsset and all indexes, we need to use a composite configuration
+    // that includes fields from all entity types to ensure consistent results
+    String resolvedIndex = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
+    if (resolvedIndex.equals("all") || resolvedIndex.equals("dataAsset")) {
+      // Build composite configuration for cross-entity searches
+      assetConfig = buildCompositeAssetConfig(searchSettings);
+    } else {
+      // For specific entity types, use their specific configuration
+      assetConfig = findAssetTypeConfig(indexName, searchSettings);
+    }
 
     BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
@@ -606,11 +618,19 @@ public class ElasticSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildCommonSearchBuilder(String query, int from, int size) {
-    // Use a composite configuration that includes all asset types
-    AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
+    // For dataAsset/all searches, use the default configuration instead of composite
+    // to avoid including entity-specific fields that cause inconsistent results
+    AssetTypeConfiguration defaultConfig = searchSettings.getDefaultConfiguration();
 
-    // Build the query using the same logic as buildDataAssetSearchBuilder
-    QueryBuilder baseQuery = buildQueryWithMatchTypes(query, compositeConfig);
+    // If no default configuration exists, create a minimal one with common fields
+    if (defaultConfig == null) {
+      defaultConfig = new AssetTypeConfiguration();
+      defaultConfig.setAssetType("all");
+      // This will use only common fields from the search
+    }
+
+    // Build the query using the default configuration
+    QueryBuilder baseQuery = buildQueryWithMatchTypes(query, defaultConfig);
 
     // Apply function scoring for term boosts and field value boosts
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
@@ -619,8 +639,8 @@ public class ElasticSearchSourceBuilderFactory
         functions.add(buildTermBoostFunction(tb));
       }
     }
-    if (compositeConfig.getTermBoosts() != null) {
-      for (TermBoost tb : compositeConfig.getTermBoosts()) {
+    if (defaultConfig.getTermBoosts() != null) {
+      for (TermBoost tb : defaultConfig.getTermBoosts()) {
         functions.add(buildTermBoostFunction(tb));
       }
     }
@@ -629,8 +649,8 @@ public class ElasticSearchSourceBuilderFactory
         functions.add(buildFieldValueBoostFunction(fvb));
       }
     }
-    if (compositeConfig.getFieldValueBoosts() != null) {
-      for (FieldValueBoost fvb : compositeConfig.getFieldValueBoosts()) {
+    if (defaultConfig.getFieldValueBoosts() != null) {
+      for (FieldValueBoost fvb : defaultConfig.getFieldValueBoosts()) {
         functions.add(buildFieldValueBoostFunction(fvb));
       }
     }
@@ -642,14 +662,14 @@ public class ElasticSearchSourceBuilderFactory
           QueryBuilders.functionScoreQuery(
               baseQuery, functions.toArray(new FunctionScoreQueryBuilder.FilterFunctionBuilder[0]));
 
-      if (compositeConfig.getScoreMode() != null) {
-        functionScore.scoreMode(toScoreMode(compositeConfig.getScoreMode().value()));
+      if (defaultConfig.getScoreMode() != null) {
+        functionScore.scoreMode(toScoreMode(defaultConfig.getScoreMode().value()));
       } else {
         functionScore.scoreMode(FunctionScoreQuery.ScoreMode.SUM);
       }
 
-      if (compositeConfig.getBoostMode() != null) {
-        functionScore.boostMode(toCombineFunction(compositeConfig.getBoostMode().value()));
+      if (defaultConfig.getBoostMode() != null) {
+        functionScore.boostMode(toCombineFunction(defaultConfig.getBoostMode().value()));
       } else {
         functionScore.boostMode(CombineFunction.SUM);
       }
