@@ -194,6 +194,9 @@ public interface CollectionDAO {
   ProfilerDataTimeSeriesDAO profilerDataTimeSeriesDao();
 
   @CreateSqlObject
+  IndexMappingVersionDAO indexMappingVersionDAO();
+
+  @CreateSqlObject
   DataQualityDataTimeSeriesDAO dataQualityDataTimeSeriesDao();
 
   @CreateSqlObject
