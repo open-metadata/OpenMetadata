@@ -238,6 +238,7 @@
     "column-level-lineage": "ลำดับชั้นของคอลัมน์",
     "column-lowercase": "คอลัมน์",
     "column-lowercase-plural": "คอลัมน์หลายรายการ",
+    "column-name": "ชื่อคอลัมน์",
     "column-plural": "คอลัมน์หลายรายการ",
     "column-profile": "โปรไฟล์คอลัมน์",
     "comment": "ความคิดเห็น",

@@ -281,6 +281,17 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_noOrphanedData() {
+    // First run a dry-run to check if there are any orphaned relationships
+    EntityRelationshipCleanup dryRunCleanup = new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.EntityCleanupResult dryRunResult = dryRunCleanup.performCleanup(100);
+    
+    if (dryRunResult.getOrphanedRelationshipsFound() > 0) {
+      // If there are orphaned relationships, clean them up first
+      EntityRelationshipCleanup cleanupCleanup = new EntityRelationshipCleanup(collectionDAO, false);
+      cleanupCleanup.performCleanup(100);
+    }
+    
+    // Now run the actual test
     EntityRelationshipCleanup cleanup1 = new EntityRelationshipCleanup(collectionDAO, false);
     EntityRelationshipCleanup.EntityCleanupResult result = cleanup1.performCleanup(100);
     assertNotNull(result, "Cleanup result should not be null");

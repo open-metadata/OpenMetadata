@@ -25,6 +25,7 @@ import {
   clickOutside,
   descriptionBox,
   getApiContext,
+  redirectToExplorePage,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -34,7 +35,7 @@ import {
   visitDataQualityTabWithCustomSearchBox,
 } from '../../utils/dataQualityAndProfiler';
 import { getCurrentMillis } from '../../utils/dateTime';
-import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
+import { visitEntityPage } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { deleteTestCase } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
@@ -400,14 +401,15 @@ test(
     test.slow();
 
     const DATA_QUALITY_TABLE = {
-      term: 'dim___reserved__colon____reserved__arrow__address',
+      term: 'dim_address',
       serviceName: 'sample_data',
       testCaseName: 'column_value_max_to_be_between',
     };
 
     const runProfilerTest = async (page: Page) => {
       await redirectToHomePage(page);
-      await visitEntityPageWithCustomSearchBox({
+      await redirectToExplorePage(page);
+      await visitEntityPage({
         page,
         searchTerm: DATA_QUALITY_TABLE.term,
         dataTestId: `${DATA_QUALITY_TABLE.serviceName}-${DATA_QUALITY_TABLE.term}`,

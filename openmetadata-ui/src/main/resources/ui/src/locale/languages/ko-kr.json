@@ -238,6 +238,7 @@
     "column-level-lineage": "열 수준 계보",
     "column-lowercase": "열",
     "column-lowercase-plural": "열들",
+    "column-name": "열 이름",
     "column-plural": "열들",
     "column-profile": "열 프로필",
     "comment": "댓글",

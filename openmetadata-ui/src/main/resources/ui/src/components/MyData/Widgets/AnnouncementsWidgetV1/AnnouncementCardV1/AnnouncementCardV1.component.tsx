@@ -24,6 +24,7 @@ import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getEntityFQN, getEntityType } from '../../../../../utils/FeedUtils';
 import { getUserPath } from '../../../../../utils/RouterUtils';
 import { getEntityIcon } from '../../../../../utils/TableUtils';
+import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import './announcement-card-v1.less';
 
 interface AnnouncementCardV1Props {
@@ -40,14 +41,15 @@ const AnnouncementCardV1 = ({
   const { t } = useTranslation();
 
   const {
-    title,
-    userName,
-    timestamp,
+    columnName,
+    description,
+    entityFQN,
     entityName,
     entityType,
-    entityFQN,
     fieldOperation,
-    columnName,
+    timestamp,
+    title,
+    userName,
   } = useMemo(() => {
     const fqn = getEntityFQN(announcement.about);
     const entityName = fqn.split('::').pop() || '';
@@ -120,13 +122,13 @@ const AnnouncementCardV1 = ({
       data-testid={`announcement-card-v1-${announcement.id}`}
       onClick={handleCardClick}>
       <div className="announcement-card-v1-content">
-        <div className="announcement-header">
+        <div className="announcement-header-container">
           <div
             className="announcement-title-section"
             style={announcementTitleSectionStyle}>
             {fieldOperation && fieldOperation !== FieldOperation.None ? (
               <div
-                className="announcement-title"
+                className="announcement-header"
                 style={announcementTitleStyle}>
                 <Link
                   className="user-name"
@@ -190,7 +192,7 @@ const AnnouncementCardV1 = ({
               </div>
             ) : (
               <Typography.Text
-                className="announcement-title"
+                className="announcement-header"
                 style={announcementTitleStyle}>
                 {title}
               </Typography.Text>
@@ -202,23 +204,26 @@ const AnnouncementCardV1 = ({
         </div>
 
         {fieldOperation && fieldOperation !== FieldOperation.None && (
-          <Typography.Text
+          <Typography.Paragraph
             className="announcement-title"
-            style={{
-              fontWeight: 600,
-              margin: '0 0 4px 0',
-            }}>
+            ellipsis={{ tooltip: true, rows: 2 }}>
             {title}
-          </Typography.Text>
+            {columnName && (
+              <Typography.Text>
+                {`${t('label.column-name')}: ${columnName}`}
+              </Typography.Text>
+            )}
+          </Typography.Paragraph>
         )}
 
-        {columnName && (
-          <Typography.Paragraph className="column-info">
-            {t('label.column-name')}:{' '}
-            <Typography.Text className="column-name">
-              {columnName}
-            </Typography.Text>
-          </Typography.Paragraph>
+        {description && (
+          <RichTextEditorPreviewerV1
+            className="announcement-description"
+            data-testid="announcement-description"
+            markdown={description}
+            maxLength={200}
+            showReadMoreBtn={false}
+          />
         )}
       </div>
     </Card>

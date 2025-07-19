@@ -238,6 +238,7 @@
     "column-level-lineage": "Sütun Seviyesi Veri Soyu",
     "column-lowercase": "sütun",
     "column-lowercase-plural": "sütunlar",
+    "column-name": "Sütun adı",
     "column-plural": "Sütunlar",
     "column-profile": "Sütun Profili",
     "comment": "Yorum",

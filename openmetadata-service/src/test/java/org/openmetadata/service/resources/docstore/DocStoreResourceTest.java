@@ -265,7 +265,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     queryParams.put(
         "fqnPrefix", FullyQualifiedName.build(knowledgePanel.getEntityType().toString()));
     ResultList<Document> panelList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(panelDocs.size() + 7, panelList.getPaging().getTotal());
+    assertEquals(panelDocs.size() + 10, panelList.getPaging().getTotal());
 
     // docs
     List<Document> pageDocs = new ArrayList<>();

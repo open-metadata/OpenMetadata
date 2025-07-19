@@ -238,6 +238,7 @@
     "column-level-lineage": "Column Level Lineage",
     "column-lowercase": "столбец",
     "column-lowercase-plural": "столбцы",
+    "column-name": "Имя столбца",
     "column-plural": "Столбцы",
     "column-profile": "Профиль столбца",
     "comment": "Комментарий",

@@ -33,7 +33,7 @@
     background: transparent !important;
     position: relative;
 
-    .announcement-header {
+    .announcement-header-container {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
@@ -105,7 +105,7 @@
           color: @white;
         }
 
-        .announcement-title {
+        .announcement-header {
           font-weight: @font-semibold;
           font-size: @size-md;
           line-height: 1.4;
@@ -113,11 +113,12 @@
           overflow: hidden;
           text-overflow: ellipsis;
           display: flex;
+          align-items: center;
           border-left: 3px solid @primary-color;
           padding: @size-xxs 0 @size-xxs @size-xxs;
           gap: @size-xxs;
           flex: 1;
-          flex-wrap: wrap;
+          min-width: 0;
         }
       }
 
@@ -130,11 +131,23 @@
       }
     }
 
-    .announcement-message {
-      color: @text-color;
+    .announcement-title {
+      font-size: @font-size-base;
+      font-weight: @font-medium;
+      line-height: 1.4;
+      margin: 0 0 @size-xxs 0;
+    }
+
+    .announcement-description {
+      color: @grey-600;
       font-size: @size-sm;
       line-height: 1.5;
-      margin: @padding-xs 0 0 0;
+      margin: @size-xs 0 0 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .column-info {
