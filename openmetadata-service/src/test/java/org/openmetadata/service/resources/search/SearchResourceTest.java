@@ -14,8 +14,12 @@
 package org.openmetadata.service.resources.search;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.OpenMetadataApplicationTest.APP;
+import static org.openmetadata.service.OpenMetadataApplicationTest.ELASTIC_SEARCH_CLUSTER_ALIAS;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.C2;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -50,15 +54,13 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class SearchResourceTest extends OpenMetadataApplicationTest {
+class SearchResourceTest extends OpenMetadataApplicationTest {
 
-  private Table testTableWithManyColumns;
-  private Topic testTopicWithManyFields;
   private TableResourceTest tableResourceTest;
   private TopicResourceTest topicResourceTest;
 
   @BeforeAll
-  public void setup(TestInfo test) {
+  void setup(TestInfo test) {
     tableResourceTest = new TableResourceTest();
     topicResourceTest = new TopicResourceTest();
 
@@ -71,7 +73,7 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  public void testLongTableNameWithManyColumnsDoesNotCauseClauseExplosion() throws IOException {
+  void testLongTableNameWithManyColumnsDoesNotCauseClauseExplosion() throws IOException {
     String longTableName = "int_snowplow_experiment_evaluation_detailed_analytics_processing";
     List<Column> manyColumns = createManyTableColumns();
 
@@ -82,36 +84,34 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
             .withName(longTableName + "_" + System.currentTimeMillis())
             .withColumns(manyColumns);
 
-    testTableWithManyColumns = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    Table testTableWithManyColumns =
+        tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     assertNotNull(testTableWithManyColumns);
 
     String problematicQuery = "int_snowplow_experiment_evaluation";
-    // waitForIndexingCompletion("table_search_index", problematicQuery, 3000);
-
     assertDoesNotThrow(
         () -> {
           Response response = searchWithQuery(problematicQuery, "table_search_index");
 
-          assertTrue(
-              response.getStatus() == 200,
+          assertEquals(
+              200,
+              response.getStatus(),
               "Search should succeed without too_many_nested_clauses error");
 
           String responseBody = (String) response.getEntity();
           assertNotNull(responseBody);
-          assertTrue(responseBody.length() > 0);
+          assertFalse(responseBody.isEmpty());
         });
   }
 
   @Test
-  public void testTopicWithManySchemaFieldsDoesNotCauseClauseExplosion()
-      throws IOException, InterruptedException {
+  void testTopicWithManySchemaFieldsDoesNotCauseClauseExplosion() throws IOException {
     String longTopicName = "snowplow_experiment_evaluation_events_detailed_schema";
     List<Field> manySchemaFields = createManyTopicSchemaFields();
 
     MessageSchema messageSchema =
         new MessageSchema().withSchemaType(SchemaType.JSON).withSchemaFields(manySchemaFields);
 
-    // Use timestamp to make test names unique
     String uniqueTestName = "fuzzySearchTopicClauseTest_" + System.currentTimeMillis();
     CreateTopic createTopic =
         topicResourceTest
@@ -119,65 +119,60 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
             .withName(longTopicName + "_" + System.currentTimeMillis())
             .withMessageSchema(messageSchema);
 
-    testTopicWithManyFields = topicResourceTest.createEntity(createTopic, ADMIN_AUTH_HEADERS);
+    Topic testTopicWithManyFields = topicResourceTest.createEntity(createTopic, ADMIN_AUTH_HEADERS);
     assertNotNull(testTopicWithManyFields);
 
-    Thread.sleep(3000);
+    TestUtils.simulateWork(3000);
     String problematicQuery = "snowplow_experiment_evaluation";
 
     assertDoesNotThrow(
         () -> {
           Response response = searchWithQuery(problematicQuery, "topic_search_index");
 
-          assertTrue(
-              response.getStatus() == 200,
+          assertEquals(
+              200,
+              response.getStatus(),
               "Topic search should succeed without too_many_nested_clauses error");
 
           String responseBody = (String) response.getEntity();
           assertNotNull(responseBody);
-          assertTrue(responseBody.length() > 0);
+          assertFalse(responseBody.isEmpty());
         });
   }
 
   @Test
-  public void testVeryLongQueryWithSpecialCharacters() throws InterruptedException {
-    Thread.sleep(2000);
-
+  void testVeryLongQueryWithSpecialCharacters() {
+    TestUtils.simulateWork(2000);
     String veryLongQuery =
         "int_snowplow_experiment_evaluation_detailed_analytics_processing_with_special_characters_and_numbers_12345_test";
 
     assertDoesNotThrow(
         () -> {
           Response response = searchWithQuery(veryLongQuery, "table_search_index");
-
-          assertTrue(
-              response.getStatus() == 200, "Very long query search should succeed without errors");
-
+          assertEquals(
+              200, response.getStatus(), "Very long query search should succeed without errors");
           String responseBody = (String) response.getEntity();
           assertNotNull(responseBody);
         });
   }
 
   @Test
-  public void testSearchAcrossMultipleIndexes() throws InterruptedException {
-    Thread.sleep(2000);
+  void testSearchAcrossMultipleIndexes() {
+    TestUtils.simulateWork(2000);
     String query = "experiment_evaluation";
-
     String[] indexes = {"table_search_index", "topic_search_index", "all"};
-
     for (String index : indexes) {
       assertDoesNotThrow(
           () -> {
             Response response = searchWithQuery(query, index);
-
-            assertTrue(
-                response.getStatus() == 200, "Search in index '" + index + "' should succeed");
+            assertEquals(
+                200, response.getStatus(), "Search in index '" + index + "' should succeed");
           });
     }
   }
 
   @Test
-  public void testListMapping(TestInfo test) {
+  void testListMapping() {
     IndexMappingLoader indexMappingLoader = IndexMappingLoader.getInstance();
     Map<String, IndexMapping> indexMapping = indexMappingLoader.getIndexMapping();
 
@@ -381,5 +376,121 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
     }
 
     return fields;
+  }
+
+  @Test
+  void testSearchWithClusterAlias() throws IOException {
+    // This test verifies that search works correctly with the cluster alias
+    // configured in OpenMetadataApplicationTest (ELASTIC_SEARCH_CLUSTER_ALIAS = "openmetadata")
+
+    // Create a test table
+    String testTableName = "cluster_alias_test_table_" + System.currentTimeMillis();
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest("clusterAliasTest")
+            .withName(testTableName)
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING)))
+            .withTableConstraints(null);
+
+    Table testTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    assertNotNull(testTable);
+
+    TestUtils.simulateWork(2000);
+
+    // Search for the table
+    Response response = searchWithQuery(testTableName, "table_search_index");
+    assertEquals(200, response.getStatus(), "Search should succeed");
+
+    String responseBody = (String) response.getEntity();
+    assertNotNull(responseBody);
+    assertTrue(
+        responseBody.contains(testTableName), "Search results should contain the test table");
+    // Clean up
+    tableResourceTest.deleteEntity(testTable.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testGlobalSearchWithClusterAlias() throws IOException {
+    String uniquePrefix = "global_search_test_" + System.currentTimeMillis();
+
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest("globalSearchTable")
+            .withName(uniquePrefix + "_table")
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)))
+            .withTableConstraints(null);
+    Table testTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    CreateTopic createTopic =
+        topicResourceTest
+            .createRequest("globalSearchTopic")
+            .withName(uniquePrefix + "_topic")
+            .withMessageSchema(
+                new MessageSchema()
+                    .withSchemaType(SchemaType.Avro)
+                    .withSchemaFields(
+                        List.of(new Field().withName("id").withDataType(FieldDataType.INT))));
+    Topic testTopic = topicResourceTest.createEntity(createTopic, ADMIN_AUTH_HEADERS);
+
+    // Wait for indexing
+    TestUtils.simulateWork(2000);
+    // Search globally for the unique prefix
+    Response response = searchWithQuery(uniquePrefix, "all");
+    assertEquals(200, response.getStatus(), "Global search should succeed");
+
+    String responseBody = (String) response.getEntity();
+    assertNotNull(responseBody);
+    assertTrue(responseBody.contains(uniquePrefix + "_table"), "Should find the table");
+    assertTrue(responseBody.contains(uniquePrefix + "_topic"), "Should find the topic");
+
+    // Clean up
+    tableResourceTest.deleteEntity(testTable.getId(), ADMIN_AUTH_HEADERS);
+    topicResourceTest.deleteEntity(testTopic.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testSearchOperationsWithClusterAlias() {
+    // This test verifies that various search operations work correctly with cluster alias
+
+    // Test that the search repository has the expected cluster alias
+    assertEquals(
+        ELASTIC_SEARCH_CLUSTER_ALIAS,
+        APP.getApplication().getSearchRepository().getClusterAlias(),
+        "Search repository should have the configured cluster alias");
+
+    // Test index mapping retrieval
+    IndexMapping tableMapping = APP.getApplication().getSearchRepository().getIndexMapping("table");
+    assertNotNull(tableMapping, "Table index mapping should exist");
+
+    // Verify index name includes cluster alias
+    String tableIndexName = tableMapping.getIndexName(ELASTIC_SEARCH_CLUSTER_ALIAS);
+    assertEquals(
+        ELASTIC_SEARCH_CLUSTER_ALIAS + "_table_search_index",
+        tableIndexName,
+        "Table index name should include cluster alias");
+
+    // Test the search repository's index name resolution
+    String resolvedIndexName =
+        APP.getApplication().getSearchRepository().getIndexOrAliasName("table_search_index");
+    assertEquals(
+        ELASTIC_SEARCH_CLUSTER_ALIAS + "_table_search_index",
+        resolvedIndexName,
+        "Resolved index name should include cluster alias");
+
+    // Test multiple index resolution
+    String multipleIndexes =
+        APP.getApplication()
+            .getSearchRepository()
+            .getIndexOrAliasName("table_search_index,dashboard_search_index,pipeline_search_index");
+    String[] resolvedIndexes = multipleIndexes.split(",");
+    assertEquals(3, resolvedIndexes.length, "Should resolve 3 indexes");
+    for (String index : resolvedIndexes) {
+      assertTrue(
+          index.startsWith(ELASTIC_SEARCH_CLUSTER_ALIAS + "_"),
+          "Each resolved index should start with cluster alias: " + index);
+    }
   }
 }

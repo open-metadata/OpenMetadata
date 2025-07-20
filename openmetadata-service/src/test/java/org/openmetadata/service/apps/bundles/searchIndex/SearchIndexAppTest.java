@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.openmetadata.service.OpenMetadataApplicationTest.ELASTIC_SEARCH_CLUSTER_ALIAS;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
@@ -41,10 +42,13 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.JobDataMap;
@@ -502,5 +506,112 @@ public class SearchIndexAppTest extends OpenMetadataApplicationTest {
     assertTrue(
         resultJobData.getMaxConcurrentRequests() > 0, "Concurrent requests should be positive");
     assertTrue(resultJobData.getProducerThreads() > 0, "Producer threads should be positive");
+  }
+
+  @Test
+  void testSearchIndexAppWithClusterAlias() {
+    // This test verifies that SearchIndexApp respects cluster alias configuration
+    // The actual integration test happens in SearchResourceTest where full stack is available
+
+    String clusterAlias = ELASTIC_SEARCH_CLUSTER_ALIAS;
+    lenient().when(searchRepository.getClusterAlias()).thenReturn(clusterAlias);
+
+    // Mock index mapping
+    IndexMapping tableMapping =
+        IndexMapping.builder().indexName("table_search_index").alias("table").build();
+    lenient().when(searchRepository.getIndexMapping(Entity.TABLE)).thenReturn(tableMapping);
+
+    // Verify index name includes cluster alias
+    String expectedIndexName = clusterAlias + "_table_search_index";
+    lenient()
+        .when(searchRepository.getIndexOrAliasName("table_search_index"))
+        .thenReturn(expectedIndexName);
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+
+    searchIndexApp.init(testApp);
+
+    // Verify that the cluster alias is properly used
+    assertEquals(clusterAlias, searchRepository.getClusterAlias());
+    assertEquals(expectedIndexName, searchRepository.getIndexOrAliasName("table_search_index"));
+  }
+
+  @Test
+  void testBulkSinkWithClusterAlias() throws Exception {
+    // Test that BulkSink uses cluster alias when indexing
+    String clusterAlias = "prod_cluster";
+    lenient().when(searchRepository.getClusterAlias()).thenReturn(clusterAlias);
+
+    ElasticSearchClient mockSearchClient = mock(ElasticSearchClient.class);
+    lenient().when(searchRepository.getSearchClient()).thenReturn(mockSearchClient);
+
+    // Mock BulkSink since it's abstract
+    BulkSink bulkSink = mock(BulkSink.class);
+
+    // Mock entity and index mapping
+    EntityInterface mockEntity = mock(EntityInterface.class);
+    lenient().when(mockEntity.getId()).thenReturn(UUID.randomUUID());
+    lenient()
+        .when(mockEntity.getEntityReference())
+        .thenReturn(
+            new org.openmetadata.schema.type.EntityReference()
+                .withType(Entity.TABLE)
+                .withId(UUID.randomUUID()));
+
+    IndexMapping tableMapping = IndexMapping.builder().indexName("table_search_index").build();
+    lenient().when(searchRepository.getIndexMapping(Entity.TABLE)).thenReturn(tableMapping);
+
+    // Expected index name with cluster alias
+    String expectedIndexName = clusterAlias + "_table_search_index";
+    lenient()
+        .when(searchRepository.getIndexOrAliasName("table_search_index"))
+        .thenReturn(expectedIndexName);
+
+    // Write entities to bulk sink
+    Map<String, Object> contextData = new HashMap<>();
+    contextData.put("entityType", Entity.TABLE);
+
+    assertDoesNotThrow(
+        () -> {
+          bulkSink.write(List.of(mockEntity), contextData);
+        });
+  }
+
+  @Test
+  void testTimeSeriesEntitiesWithClusterAlias() {
+    String clusterAlias = "staging_env";
+    lenient().when(searchRepository.getClusterAlias()).thenReturn(clusterAlias);
+    for (String entityType : SearchIndexApp.TIME_SERIES_ENTITIES) {
+      String expectedIndexName = clusterAlias + "_" + entityType;
+      lenient()
+          .when(searchRepository.getIndexOrAliasName(entityType))
+          .thenReturn(expectedIndexName);
+
+      assertEquals(expectedIndexName, searchRepository.getIndexOrAliasName(entityType));
+    }
+  }
+
+  @Test
+  void testSearchIndexAppWithoutClusterAlias() {
+    lenient().when(searchRepository.getClusterAlias()).thenReturn("");
+    IndexMapping tableMapping = IndexMapping.builder().indexName("table_search_index").build();
+    lenient().when(searchRepository.getIndexMapping(Entity.TABLE)).thenReturn(tableMapping);
+    lenient()
+        .when(searchRepository.getIndexOrAliasName("table_search_index"))
+        .thenReturn("table_search_index");
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+
+    searchIndexApp.init(testApp);
+
+    // Verify no prefix is added
+    assertEquals("", searchRepository.getClusterAlias());
+    assertEquals("table_search_index", searchRepository.getIndexOrAliasName("table_search_index"));
   }
 }

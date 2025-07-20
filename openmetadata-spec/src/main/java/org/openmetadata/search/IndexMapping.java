@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 public class IndexMapping {
   private static final Logger LOG = LoggerFactory.getLogger(IndexMapping.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  @Getter String indexName;
+  private final String indexName;
   String indexMappingFile;
   String alias;
   List<String> parentAliases;
