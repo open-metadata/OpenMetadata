@@ -217,4 +217,30 @@ public class ClassificationResourceTest
       assertTrue(child.getFullyQualifiedName().startsWith(ret.getFullyQualifiedName()));
     }
   }
+
+  @Test
+  void testClassificationTermCount(TestInfo test) throws IOException {
+    // Create a new classification
+    CreateClassification create = createRequest(getEntityName(test));
+    Classification classification = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    
+    // Initially, termCount should be 0 when requested with termCount field
+    Classification withTermCount = 
+        getEntity(classification.getId(), "termCount", ADMIN_AUTH_HEADERS);
+    assertEquals(0, withTermCount.getTermCount(), "New classification should have 0 tags");
+    
+    // Create tags under this classification
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    for (int i = 1; i <= 3; i++) {
+      tagResourceTest.createTag(
+          "tag" + i,
+          classification.getName(),
+          null);
+    }
+    
+    // Now check termCount again
+    withTermCount = 
+        getEntity(classification.getId(), "termCount", ADMIN_AUTH_HEADERS);
+    assertEquals(3, withTermCount.getTermCount(), "Classification should have 3 tags");
+  }
 }
