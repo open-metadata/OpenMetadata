@@ -154,6 +154,7 @@ test.describe('User with different Roles', () => {
     await adminPage.getByTestId('add-domain').click();
 
     await domainResponse;
+    await adminPage.getByTestId('loader').waitFor({ state: 'detached' });
 
     await adminPage.getByText(domain.responseData.displayName).click();
 
