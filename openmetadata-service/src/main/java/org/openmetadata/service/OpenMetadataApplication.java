@@ -183,6 +183,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected Limits limits;
 
   protected Jdbi jdbi;
+  private SearchRepository searchRepository;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -441,7 +442,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     LOG.info(
         "AUTO-TUNE INIT: Initializing SearchRepository with database max pool size: {}",
         databaseMaxSize);
-    SearchRepository searchRepository =
+    searchRepository =
         new SearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
     Entity.setSearchRepository(searchRepository);
@@ -496,6 +497,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     LOG.info("Using original CollectionDAO without caching");
     return originalDAO;
+  }
+
+  /**
+   * Get the SearchRepository instance for testing purposes.
+   * @return the SearchRepository instance
+   */
+  public SearchRepository getSearchRepository() {
+    return searchRepository;
   }
 
   private void registerSamlServlets(

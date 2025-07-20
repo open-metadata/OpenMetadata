@@ -53,9 +53,9 @@ class DataInsightsAppTest extends OpenMetadataApplicationTest {
       String actualDataStreamName =
           DataInsightsApp.getDataStreamName(ELASTIC_SEARCH_CLUSTER_ALIAS, assetType);
       Assertions.assertEquals(
+          expectedDataStreamName,
           actualDataStreamName,
-          "Data stream name should include cluster alias for " + assetType,
-          expectedDataStreamName);
+          "Data stream name should include cluster alias for " + assetType);
       LOG.info("Data stream for {}: {}", assetType, actualDataStreamName);
     }
 
@@ -63,9 +63,10 @@ class DataInsightsAppTest extends OpenMetadataApplicationTest {
       String expectedDataStreamName = "di-data-assets-" + assetType.toLowerCase();
       String actualDataStreamName = DataInsightsApp.getDataStreamName("", assetType);
       Assertions.assertEquals(
+          expectedDataStreamName,
           actualDataStreamName,
-          "Data stream name should not include prefix when cluster alias is empty for " + assetType,
-          expectedDataStreamName);
+          "Data stream name should not include prefix when cluster alias is empty for "
+              + assetType);
     }
 
     for (String assetType : dataAssetTypes) {
@@ -73,9 +74,9 @@ class DataInsightsAppTest extends OpenMetadataApplicationTest {
       String actualDataStreamName = DataInsightsApp.getDataStreamName(null, assetType);
 
       Assertions.assertEquals(
+          expectedDataStreamName,
           actualDataStreamName,
-          "Data stream name should not include prefix when cluster alias is null for " + assetType,
-          expectedDataStreamName);
+          "Data stream name should not include prefix when cluster alias is null for " + assetType);
     }
   }
 
@@ -105,14 +106,14 @@ class DataInsightsAppTest extends OpenMetadataApplicationTest {
     for (String clusterAlias : testAliases) {
       String tableDataStream = DataInsightsApp.getDataStreamName(clusterAlias, "table");
       Assertions.assertEquals(
+          clusterAlias + "-di-data-assets-table",
           tableDataStream,
-          "Data stream should have correct prefix for cluster alias: " + clusterAlias,
-          clusterAlias + "-di-data-assets-table");
+          "Data stream should have correct prefix for cluster alias: " + clusterAlias);
       String dashboardDataStream = DataInsightsApp.getDataStreamName(clusterAlias, "dashboard");
       Assertions.assertEquals(
+          clusterAlias + "-di-data-assets-dashboard",
           dashboardDataStream,
-          "Dashboard data stream should have correct prefix for cluster alias: " + clusterAlias,
-          clusterAlias + "-di-data-assets-dashboard");
+          "Dashboard data stream should have correct prefix for cluster alias: " + clusterAlias);
     }
   }
 
@@ -142,7 +143,6 @@ class DataInsightsAppTest extends OpenMetadataApplicationTest {
 
     for (String alias : specialAliases) {
       String dataStream = DataInsightsApp.getDataStreamName(alias, "table");
-      Assertions.assertNotNull("Should handle cluster alias: " + alias, dataStream);
       assertTrue(
           dataStream.startsWith(alias + "-"),
           "Should preserve special characters in cluster alias: " + alias);

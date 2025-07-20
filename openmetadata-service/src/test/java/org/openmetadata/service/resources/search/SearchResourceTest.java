@@ -18,8 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.OpenMetadataApplicationTest.APP;
-import static org.openmetadata.service.OpenMetadataApplicationTest.ELASTIC_SEARCH_CLUSTER_ALIAS;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.C2;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -47,6 +45,7 @@ import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
@@ -458,11 +457,14 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
     // Test that the search repository has the expected cluster alias
     assertEquals(
         ELASTIC_SEARCH_CLUSTER_ALIAS,
-        APP.getApplication().getSearchRepository().getClusterAlias(),
+        ((OpenMetadataApplication) APP.getApplication()).getSearchRepository().getClusterAlias(),
         "Search repository should have the configured cluster alias");
 
     // Test index mapping retrieval
-    IndexMapping tableMapping = APP.getApplication().getSearchRepository().getIndexMapping("table");
+    IndexMapping tableMapping =
+        ((OpenMetadataApplication) APP.getApplication())
+            .getSearchRepository()
+            .getIndexMapping("table");
     assertNotNull(tableMapping, "Table index mapping should exist");
 
     // Verify index name includes cluster alias
@@ -474,7 +476,9 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
 
     // Test the search repository's index name resolution
     String resolvedIndexName =
-        APP.getApplication().getSearchRepository().getIndexOrAliasName("table_search_index");
+        ((OpenMetadataApplication) APP.getApplication())
+            .getSearchRepository()
+            .getIndexOrAliasName("table_search_index");
     assertEquals(
         ELASTIC_SEARCH_CLUSTER_ALIAS + "_table_search_index",
         resolvedIndexName,
@@ -482,7 +486,7 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
 
     // Test multiple index resolution
     String multipleIndexes =
-        APP.getApplication()
+        ((OpenMetadataApplication) APP.getApplication())
             .getSearchRepository()
             .getIndexOrAliasName("table_search_index,dashboard_search_index,pipeline_search_index");
     String[] resolvedIndexes = multipleIndexes.split(",");
