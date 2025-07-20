@@ -23,14 +23,7 @@ import { redirectToUserPage } from '../../utils/userDetails';
 const user1 = new UserClass();
 const user2 = new UserClass();
 const admin = new AdminClass();
-const domain = new Domain({
-  name: `PW%domain`,
-  displayName: `PWDomain`,
-  description: 'playwright domain description',
-  domainType: 'Aggregate',
-  // eslint-disable-next-line no-useless-escape
-  fullyQualifiedName: `PW%domain`,
-});
+const domain = new Domain();
 const team = new TeamClass({
   name: `a-new-team-${uuid()}`,
   displayName: `A New Team ${uuid()}`,
@@ -154,7 +147,10 @@ test.describe('User with different Roles', () => {
     await adminPage.getByTestId('add-domain').click();
 
     await domainResponse;
-    await adminPage.getByTestId('loader').waitFor({ state: 'detached' });
+    await adminPage
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
 
     await adminPage.getByText(domain.responseData.displayName).click();
 
@@ -227,7 +223,7 @@ test.describe('User with different Roles', () => {
     const searchPromise = adminPage.waitForResponse('/api/v1/search/query?q=*');
     await adminPage
       .locator('.custom-domain-edit-select .ant-select-selection-search-input')
-      .fill('PWDomain');
+      .fill(domain.responseData.displayName);
 
     await searchPromise;
 
@@ -237,7 +233,7 @@ test.describe('User with different Roles', () => {
 
     await expect(
       adminPage.locator('.domain-custom-dropdown-class')
-    ).toContainText('PWDomain');
+    ).toContainText(domain.responseData.displayName);
   });
 
   test('Admin user can get all the roles hierarchy and edit roles', async ({
