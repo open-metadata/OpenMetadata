@@ -115,7 +115,7 @@
       "searchFields": [
         {
           "field": "displayName.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -183,12 +183,12 @@
       "searchFields": [
         {
           "field": "displayName.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -374,7 +374,7 @@
       "searchFields": [
         {
           "field": "displayName.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -453,7 +453,7 @@
       "searchFields": [
         {
           "field": "displayName.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -537,7 +537,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -631,7 +631,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -761,7 +761,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -811,7 +811,7 @@
         },
         {
           "field": "columns.name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -856,7 +856,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -942,7 +942,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1028,7 +1028,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1114,7 +1114,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1169,7 +1169,7 @@
         },
         {
           "field": "dataModel.columns.name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1206,7 +1206,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1320,7 +1320,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1394,7 +1394,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1411,6 +1411,11 @@
           "field": "name.compound",
           "boost": 8.0,
           "matchType": "standard"
+        },
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "displayName",
@@ -1462,7 +1467,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1540,7 +1545,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1644,7 +1649,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1712,7 +1717,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1797,7 +1802,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1897,7 +1902,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -1982,7 +1987,7 @@
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0,
+          "boost": 20.0,
           "matchType": "exact"
         },
         {
@@ -2084,7 +2089,7 @@
     "searchFields": [
       {
         "field": "name.keyword",
-        "boost": 10.0,
+        "boost": 20.0,
         "matchType": "exact"
       },
       {
