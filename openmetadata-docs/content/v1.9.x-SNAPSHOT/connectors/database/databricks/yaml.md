@@ -1,5 +1,6 @@
 ---
 title: Run the Databricks Connector Externally
+description: Use YAML to ingest Databricks metadata including notebook lineage, schema, and profiling.
 slug: /connectors/database/databricks/yaml
 ---
 
@@ -7,8 +8,8 @@ slug: /connectors/database/databricks/yaml
 name="Databricks"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
-unavailableFeatures=["Owners", "Stored Procedures"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
+unavailableFeatures=["Stored Procedures", "Tags", "Owners"]
 / %}
 
 {% note %}

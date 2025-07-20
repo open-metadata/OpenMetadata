@@ -37,6 +37,7 @@ import {
   fillRecursiveEntityTypeFQNDetails,
   fillRowDetails,
   fillStoredProcedureCode,
+  firstTimeGridAddRowAction,
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
@@ -136,12 +137,12 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database service details', async () => {
-      await dbService.visitEntityPage(page);
+      await dbService.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
 
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', dbService.entity.name);
       await page.click('#submit-button');
       const download = await downloadPromise;
@@ -155,7 +156,7 @@ test.describe('Bulk Import Export', () => {
       async () => {
         await dbService.visitEntityPage(page);
         await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = page.getByTestId('upload-file-widget');
         await fileInput?.setInputFiles([
           'downloads/' + dbService.entity.name + '.csv',
@@ -172,14 +173,7 @@ test.describe('Bulk Import Export', () => {
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
-
-        // click on last row first cell
-        const rows = await page.$$('.rdg-row');
-        const lastRow = rows[rows.length - 1];
-
-        const firstCell = await lastRow.$('.rdg-cell');
-        await firstCell?.click();
+        await firstTimeGridAddRowAction(page);
 
         // Add first database details
         await fillRowDetails(
@@ -404,12 +398,12 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database details', async () => {
-      await dbEntity.visitEntityPage(page);
+      await dbEntity.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
 
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', dbEntity.entity.name);
       await page.click('#submit-button');
 
@@ -424,7 +418,7 @@ test.describe('Bulk Import Export', () => {
       async () => {
         await dbEntity.visitEntityPage(page);
         await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
           'downloads/' + dbEntity.entity.name + '.csv',
@@ -441,17 +435,8 @@ test.describe('Bulk Import Export', () => {
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
-        await page.waitForTimeout(1000);
+        await firstTimeGridAddRowAction(page);
 
-        // click on last row first cell
-        const rows = await page.$$('.rdg-row');
-        const lastRow = rows[rows.length - 1];
-
-        const firstCell = await lastRow.$('.rdg-cell');
-        await firstCell?.click();
-
-        // Click on first cell and edit
         await fillRowDetails(
           {
             ...databaseSchemaDetails1,
@@ -622,11 +607,11 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database schema details', async () => {
-      await dbSchemaEntity.visitEntityPage(page);
+      await dbSchemaEntity.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', dbSchemaEntity.entity.name);
       await page.click('#submit-button');
 
@@ -642,7 +627,7 @@ test.describe('Bulk Import Export', () => {
         await dbSchemaEntity.visitEntityPage(page);
 
         await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
           'downloads/' + dbSchemaEntity.entity.name + '.csv',
@@ -659,14 +644,7 @@ test.describe('Bulk Import Export', () => {
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
-
-        // click on last row first cell
-        const rows = await page.$$('.rdg-row');
-        const lastRow = rows[rows.length - 1];
-
-        const firstCell = await lastRow.$('.rdg-cell');
-        await firstCell?.click();
+        await firstTimeGridAddRowAction(page);
 
         // First Table Details with one Column
         await fillRowDetails(
@@ -803,12 +781,12 @@ test.describe('Bulk Import Export', () => {
     await tableEntity.create(apiContext);
 
     await test.step('should export data table details', async () => {
-      await tableEntity.visitEntityPage(page);
+      await tableEntity.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
 
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', tableEntity.entity.name);
       await page.click('#submit-button');
 
@@ -823,7 +801,7 @@ test.describe('Bulk Import Export', () => {
       async () => {
         await tableEntity.visitEntityPage(page);
         await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
           'downloads/' + tableEntity.entity.name + '.csv',
@@ -840,14 +818,7 @@ test.describe('Bulk Import Export', () => {
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
-
-        // click on last row first cell
-        const rows = await page.$$('.rdg-row');
-        const lastRow = rows[rows.length - 1];
-
-        const firstCell = await lastRow.$('.rdg-cell');
-        await firstCell?.click();
+        await firstTimeGridAddRowAction(page);
 
         // Click on first cell and edit
         await fillColumnDetails(columnDetails1, page);
@@ -867,12 +838,14 @@ test.describe('Bulk Import Export', () => {
         await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
-          passed: '9',
-          processed: '9',
+          passed: '11',
+          processed: '11',
           failed: '0',
         });
 
         const rowStatus = [
+          'Entity updated',
+          'Entity updated',
           'Entity updated',
           'Entity updated',
           'Entity updated',

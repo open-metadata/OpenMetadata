@@ -509,7 +509,7 @@ test.describe('Bulk Edit Entity', () => {
     await tableEntity.create(apiContext);
 
     await test.step('Perform bulk edit action', async () => {
-      await tableEntity.visitEntityPage(page);
+      await tableEntity.visitEntityPageWithCustomSearchBox(page);
 
       await page.click('[data-testid="bulk-edit-table"]');
 
@@ -550,8 +550,8 @@ test.describe('Bulk Edit Entity', () => {
       await page.click('[type="button"] >> text="Next"', { force: true });
 
       await validateImportStatus(page, {
-        passed: '7',
-        processed: '7',
+        passed: '9',
+        processed: '9',
         failed: '0',
       });
 

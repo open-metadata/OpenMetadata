@@ -1,5 +1,6 @@
 ---
 title: Run the MySQL Connector Externally
+description: Configure MySQL ingestion using YAML to automate schema, column, and profiling data collection.
 slug: /connectors/database/mysql/yaml
 ---
 

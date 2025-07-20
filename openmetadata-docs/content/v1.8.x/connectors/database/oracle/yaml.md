@@ -1,5 +1,6 @@
 ---
 title: Run the Oracle Connector Externally
+description: Configure Oracle connector with YAML to ingest schemas, tables, and column metadata with access control.
 slug: /connectors/database/oracle/yaml
 ---
 
