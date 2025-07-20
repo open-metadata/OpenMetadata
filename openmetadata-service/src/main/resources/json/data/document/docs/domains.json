@@ -1,0 +1,10 @@
+{
+    "name": "Domains",
+    "displayName": "Domains",
+    "description": "Discover and access domains that have been set up in OpenMetadata.",
+    "entityType": "KnowledgePanel",
+    "fullyQualifiedName": "KnowledgePanel.Domains",
+    "data": {
+        "gridSizes": ["small", "medium"]
+    }
+}

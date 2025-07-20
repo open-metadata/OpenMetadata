@@ -1224,7 +1224,8 @@ export const getFilteredDestinationOptions = (
 export const getSourceOptionsFromResourceList = (
   resources: Array<string>,
   showCheckbox?: boolean,
-  selectedResource?: string[]
+  selectedResource?: string[],
+  showIcon?: boolean
 ) =>
   resources.map((resource) => {
     const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
@@ -1237,7 +1238,9 @@ export const getSourceOptionsFromResourceList = (
           {showCheckbox && (
             <Checkbox checked={selectedResource?.includes(resource)} />
           )}
-          {sourceIcon && <div className="d-flex h-4 w-4">{sourceIcon}</div>}
+          {sourceIcon && showIcon && (
+            <div className="d-flex h-4 w-4">{sourceIcon}</div>
+          )}
           <span>{getEntityNameLabel(resource ?? '')}</span>
         </div>
       ),
