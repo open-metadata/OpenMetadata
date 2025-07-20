@@ -19,7 +19,7 @@ import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.compon
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 
-interface Props {
+export interface Props {
   breadcrumb: TitleBreadcrumbProps['titleLinks'];
   entityData: {
     displayName?: string;

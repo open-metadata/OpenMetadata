@@ -210,6 +210,9 @@ export const ROUTES = {
 
   // New experience routes
   DOMAINS: '/domains',
+  DOMAINS_DETAILS: `/domains/${PLACEHOLDER_ROUTE_FQN}`,
+  DOMAINS_DETAILS_WITH_TAB: `/domains/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DOMAINS_VERSION: `/domains/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   DATA_PRODUCTS: '/data-products',
 
   ADD_DOMAIN: '/domain/add',

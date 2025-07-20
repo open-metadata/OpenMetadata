@@ -1,0 +1,277 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+// EntityTableFilter Component Styles
+.entity-table-filter {
+  .etf-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .etf-header-filters {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .etf-action-buttons {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .etf-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border: 1px solid #d5d7da;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0px 1px 2px rgba(10, 13, 18, 0.05);
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+    color: #181d27;
+
+    &:hover {
+      border-color: #1570ef;
+      color: #1570ef;
+    }
+
+    .etf-filter-label {
+      font-weight: 500;
+    }
+
+    .etf-filter-count {
+      color: #1570ef;
+      font-weight: 600;
+    }
+  }
+
+  .etf-clear-all {
+    color: #1570ef;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 0;
+    height: auto;
+    border: none;
+    background: transparent;
+
+    &:hover {
+      color: #0e5fd8;
+      text-decoration: underline;
+    }
+  }
+
+  .etf-pills-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .etf-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #f0f5fa;
+    border: 1px solid #d2dbec;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #404040;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #e8f0f7;
+      border-color: #c5d1e3;
+    }
+
+    .etf-pill-label {
+      font-weight: 500;
+      color: #181d27;
+    }
+
+    .etf-pill-values {
+      color: #404040;
+    }
+  }
+}
+
+// === EntityTableFilter Popover Styles (based on Figma design, readable LESS) ===
+.etf-popover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  // padding: 14.5px 16px;
+  padding: 14.5px 0px;
+  gap: 12px;
+  width: 326px;
+  height: 328px;
+  background: #ffffff;
+  border: 0px solid #d5d7da;
+  border-radius: 12px;
+
+  .entity-search-input {
+    width: 294px;
+    height: 40px;
+    margin-bottom: 0;
+  }
+
+  .etf-options-list {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0;
+    gap: 16px;
+    width: 100%;
+    height: 224px;
+    overflow-y: auto;
+  }
+
+  .etf-option-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0px 16px;
+    gap: 9px;
+    width: 100%;
+    height: 20px;
+
+    .etf-option-checkbox {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      padding: 0;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .ant-checkbox-wrapper {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      padding: 0;
+      gap: 6px;
+      height: 20px;
+
+      .ant-checkbox {
+        width: 20px;
+        height: 20px;
+        .ant-checkbox-inner {
+          box-sizing: border-box;
+          border: 1px solid #d5d7da;
+          border-radius: 6px;
+          width: 20px;
+          height: 20px;
+        }
+      }
+      .etf-option-label {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 500;
+        font-size: 14px;
+        line-height: 20px;
+        color: #181d27;
+        width: auto;
+        height: 20px;
+        flex-grow: 0;
+      }
+    }
+    .etf-option-count {
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      padding: 3px 11px;
+      gap: 4px;
+      width: 43px;
+      height: 20px;
+      background: #eff4fa;
+      border: 1px solid #d2dbeb;
+      border-radius: 4px;
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 400;
+      font-size: 12px;
+      line-height: 22px;
+      color: #404040;
+      justify-content: center;
+      margin: 0 auto;
+    }
+  }
+
+  .no-filter-row {
+    background: #fafafa;
+    border-width: 1px 0px;
+    border-style: solid;
+    border-color: #e9eaeb;
+    min-height: 44px;
+  }
+
+  .ant-space {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 0px 16px;
+    gap: 8px;
+    width: 100%;
+    height: 36px;
+    margin-top: 0;
+    .ant-btn-primary {
+      width: 78px;
+      height: 36px;
+      background: #1570ef;
+      border: 1px solid #1570ef;
+      border-radius: 8px;
+      font-family: 'Inter';
+      font-weight: 600;
+      font-size: 14px;
+      line-height: 20px;
+      color: #fff;
+      padding: 8px 14px;
+    }
+    .ant-btn:not(.ant-btn-primary) {
+      width: 67px;
+      height: 36px;
+      border-radius: 8px;
+      font-family: 'Inter';
+      font-weight: 600;
+      font-size: 14px;
+      line-height: 20px;
+      color: #1570ef;
+      background: transparent;
+      border: none;
+      padding: 8px 14px;
+      filter: drop-shadow(0px 1px 2px rgba(10, 13, 18, 0.05));
+    }
+  }
+}
+// === End Figma popover styles ===
+
+// Ant Design Popover Override for EntityTableFilter
+.ant-popover {
+  &.entity-table-filter-popover {
+    .ant-popover-inner {
+      padding: 0;
+      border-radius: 12px;
+
+      .ant-popover-inner-content {
+        padding: 0;
+      }
+    }
+  }
+}

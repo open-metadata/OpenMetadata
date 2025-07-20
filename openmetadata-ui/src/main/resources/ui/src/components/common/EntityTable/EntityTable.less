@@ -1,0 +1,593 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import '../../../styles/variables.less';
+
+.entity-table {
+  // Checkbox styling
+  .entity-table-checkbox {
+    .ant-checkbox {
+      .ant-checkbox-inner {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px !important; // Force square corners, prevent circle
+        border: 1px solid var(--Colors-Border-border-primary, #d5d7da);
+        opacity: 1;
+
+        // Prevent circular hover state
+        &:hover {
+          border-radius: 4px !important;
+        }
+
+        // Ensure checked state maintains square shape
+        &.ant-checkbox-inner-checked {
+          border-radius: 4px !important;
+        }
+      }
+
+      // Fix the checkbox wrapper hover state
+      &:hover .ant-checkbox-inner {
+        border-radius: 4px !important;
+        border-color: #1890ff;
+      }
+
+      // Ensure checked state styling
+      &.ant-checkbox-checked .ant-checkbox-inner {
+        background-color: #1890ff;
+        border-color: #1890ff;
+        border-radius: 4px !important;
+      }
+
+      // Focus state
+      &.ant-checkbox-focused .ant-checkbox-inner {
+        border-radius: 4px !important;
+      }
+    }
+  }
+
+  // Entity name cell styling
+  .entity-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    height: auto;
+
+    .entity-icon-container {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      position: relative;
+
+      .entity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+      }
+
+      .entity-icon-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #1470ef;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      .entity-icon-layers {
+        width: 21px;
+        height: 21px;
+        color: #ffffff;
+        stroke: #ffffff;
+        stroke-width: 2;
+        flex-shrink: 0;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    .entity-info {
+      flex: 1;
+      min-width: 0;
+
+      .entity-name {
+        font-weight: 500;
+        font-size: 14px;
+        line-height: 20px;
+        color: #1f2937;
+        margin-bottom: 4px;
+      }
+
+      .entity-description {
+        font-size: 12px;
+        line-height: 16px;
+        color: #6b7280;
+        display: -webkit-box;
+        max-height: auto;
+      }
+    }
+  }
+
+  // Owner cell styling
+  .owner-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .owner-name {
+      font-size: 14px;
+      line-height: 20px;
+      color: #1f2937;
+    }
+  }
+
+  // Text utilities
+  .text-grey-muted {
+    color: #9ca3af;
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  .mr-1 {
+    margin-right: 4px;
+  }
+
+  // Generic badge styling for entity tables
+  .entity-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 2px 8px 2px 6px; // spacing-xxs top, spacing-sm right, spacing-xxs bottom, 6px left
+    border-radius: 4px; // radius-sm
+    border: 1px solid;
+    gap: @size-xxs; // spacing-xs
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    white-space: nowrap;
+
+    // Domain type badge variants
+    &.aggregate-domain-type {
+      background-color: @violet-50;
+      border-color: @violet-200;
+      color: @violet-600;
+      svg path {
+        stroke: @violet-600;
+      }
+    }
+
+    &.consumer-aligned-domain-type {
+      background-color: @blue-light-50;
+      border-color: @blue-200;
+      color: @blue-700;
+      svg path {
+        stroke: @blue-700;
+      }
+    }
+
+    &.source-aligned-domain-type {
+      background-color: @indigo-50;
+      border-color: @indigo-200;
+      color: @indigo-600;
+      svg path {
+        stroke: @indigo-600;
+      }
+    }
+
+    .entity-type-dropdown-icon {
+      width: @size-sm;
+      height: @size-sm;
+      color: @dark-grey;
+    }
+  }
+
+  .tags-container {
+    gap: @size-xs;
+  }
+
+  // First column header styling (checkbox + title)
+  .first-column-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+
+    .column-title {
+      text-align: left;
+    }
+  }
+
+  // First column content styling (checkbox + content)
+  .first-column-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .column-content {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .entity-table-header {
+    .entity-table-header-row {
+      align-items: center;
+      gap: @size-md;
+
+      .header-info {
+        display: flex;
+        align-items: center;
+        gap: @size-xxs;
+        margin-right: @size-xs;
+        border-radius: @size-md;
+
+        h4 {
+          margin-bottom: 0;
+          margin-right: @size-xs;
+        }
+
+        .header-count {
+          color: #175cd3;
+        }
+      }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: @size-md;
+        flex: 1;
+      }
+    }
+
+    .header-search {
+      border: 1px solid #dfdfdf;
+      border-radius: 10px;
+      height: 38px;
+      width: 354px;
+
+      &:focus,
+      &.ant-input-affix-wrapper-focused {
+        box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+      }
+
+      .ant-input {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+
+        &::placeholder {
+          color: #8c8c8c;
+        }
+      }
+    }
+  }
+
+  .table-container {
+    .pagination-container {
+      display: flex;
+      justify-content: space-between;
+    }
+  }
+
+  // Table wrapper styles - force left alignment for all content
+  .ant-table-wrapper {
+    .ant-table {
+      .ant-table-thead {
+        .ant-table-cell {
+          background: #f8fafc;
+          border-bottom: 1px solid #e5e7eb;
+          font-weight: 500;
+          color: #374151;
+          padding: 12px 16px;
+          text-align: left !important;
+          vertical-align: middle;
+        }
+      }
+
+      .ant-table-tbody {
+        .ant-table-row {
+          &:hover {
+            background: #f9fafb;
+          }
+
+          .ant-table-cell {
+            border-bottom: 1px solid #f3f4f6;
+            padding: 12px 16px;
+            text-align: left !important;
+            vertical-align: middle;
+          }
+        }
+      }
+    }
+  }
+
+  // Force all table headers to be left-aligned with higher specificity
+  .ant-table-thead > tr > th,
+  .ant-table-thead > tr > th.ant-table-cell {
+    text-align: left !important;
+    justify-content: flex-start !important;
+
+    .ant-table-column-title {
+      justify-content: flex-start !important;
+      text-align: left !important;
+    }
+
+    .ant-table-column-sorters {
+      justify-content: flex-start !important;
+    }
+  }
+
+  // Force all table cell content to be left-aligned with higher specificity
+  .ant-table-tbody > tr > td,
+  .ant-table-tbody > tr > td.ant-table-cell {
+    text-align: left !important;
+
+    .ant-table-cell-content {
+      justify-content: flex-start !important;
+      text-align: left !important;
+    }
+  }
+
+  // Ensure content wrapper elements are also left-aligned
+  .ant-table-cell-content,
+  .ant-table-cell-content > div,
+  .ant-table-cell-content > span {
+    text-align: left !important;
+    justify-content: flex-start !important;
+  }
+
+  .first-column-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+
+    .column-title {
+      text-align: left;
+    }
+  }
+
+  // Ensure all cell content is left-aligned
+  .entity-name-cell,
+  .owner-cell {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: @size-sm;
+  }
+
+  // Force badge containers to be left-aligned
+  .entity-badge {
+    text-align: left !important;
+  }
+
+  // Force any span or div content to be left-aligned
+  .ant-table-cell {
+    > span,
+    > div {
+      text-align: left !important;
+      justify-content: flex-start !important;
+    }
+  }
+
+  // Override any flex centering
+  .ant-table-cell-content {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+
+  // Most specific selectors to force left alignment
+  &.entity-table {
+    .ant-table-wrapper {
+      .ant-table-container {
+        .ant-table-content {
+          table {
+            .ant-table-thead {
+              tr {
+                th {
+                  text-align: left !important;
+
+                  .ant-table-column-title {
+                    text-align: left !important;
+                    justify-content: flex-start !important;
+                  }
+                }
+              }
+            }
+
+            .ant-table-tbody {
+              tr {
+                td {
+                  text-align: left !important;
+
+                  .ant-table-cell-content {
+                    text-align: left !important;
+                    justify-content: flex-start !important;
+                    display: flex !important;
+                    align-items: center !important;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Remove shadow from table
+  .ant-table-wrapper {
+    box-shadow: none !important;
+
+    .ant-table {
+      box-shadow: none !important;
+    }
+  }
+
+  // Remove shadow from table container
+  .table-container {
+    box-shadow: none !important;
+  }
+}
+
+// Domain type clickable badge styles
+.domain-type-clickable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    opacity: 0.8;
+    transform: translateY(-1px);
+  }
+}
+
+.badge-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+// Domain type popover styles
+.entity-type-popover {
+  max-width: 184px;
+  .popover-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #262626;
+  }
+
+  .popover-options {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .popover-option {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px;
+    transition: all 0.2s ease;
+    color: @grey-500;
+
+    svg path {
+      stroke-width: 0.5px;
+    }
+
+    &.selected,
+    &:hover {
+      background-color: #f5faff;
+      color: @blue-600;
+      font-weight: 500;
+      svg path {
+        stroke: @blue-600;
+      }
+    }
+
+    .option-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: @grey-500;
+    }
+
+    .option-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: inherit;
+    }
+  }
+}
+
+// Enhanced entity badge styles
+.entity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+
+  &.aggregate-domain-type {
+    background-color: #f0f0ff;
+    color: #4c4cff;
+    border: 1px solid #e0e0ff;
+  }
+
+  &.consumer-aligned-domain-type {
+    background-color: #fff0f0;
+    color: #ff4c4c;
+    border: 1px solid #ffe0e0;
+  }
+
+  &.source-aligned-domain-type {
+    background-color: #f0fff0;
+    color: #4cff4c;
+    border: 1px solid #e0ffe0;
+  }
+
+  &.badge-secondary {
+    background-color: #f6f6f6;
+    color: @tag-text;
+    border: 1px solid #e0e0e0;
+  }
+
+  &.tags-badge {
+    background-color: #f0f5fa;
+    border: 1px solid #d2dbec;
+    border-radius: 8px;
+    color: #404040;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 30px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: #e8f0f7;
+      border-color: #c5d1e3;
+    }
+
+    .tag-icon {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
+      color: #404040;
+    }
+
+    .tag-text {
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 16px;
+      color: #404040;
+    }
+  }
+}

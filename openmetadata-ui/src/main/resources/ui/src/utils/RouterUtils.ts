@@ -471,6 +471,36 @@ export const getDomainVersionsPath = (domainFqn: string, version: string) => {
   return path;
 };
 
+export const getDomainsPath = (fqn?: string) => {
+  let path = ROUTES.DOMAINS;
+  if (fqn) {
+    path = ROUTES.DOMAINS_DETAILS;
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+  }
+
+  return path;
+};
+
+export const getDomainsDetailsPath = (fqn: string, tab?: string) => {
+  let path = tab ? ROUTES.DOMAINS_DETAILS_WITH_TAB : ROUTES.DOMAINS_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getDomainsVersionsPath = (domainFqn: string, version: string) => {
+  let path = ROUTES.DOMAINS_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(domainFqn))
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
 export const getGlossaryVersionsPath = (id: string, version: string) => {
   let path = ROUTES.GLOSSARY_VERSION;
   path = path
