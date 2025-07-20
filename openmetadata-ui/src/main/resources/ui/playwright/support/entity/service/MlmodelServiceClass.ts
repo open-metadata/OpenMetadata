@@ -88,6 +88,17 @@ export class MlmodelServiceClass extends EntityClass {
     );
   }
 
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.entity.name,
+        type: SERVICE_TYPE.MLModels,
+      },
+      false
+    );
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/mlmodelServices/name/${encodeURIComponent(
