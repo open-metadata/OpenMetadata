@@ -27,6 +27,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -938,5 +940,269 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
       }
     }
     return ids;
+  }
+
+  @Test
+  void testHierarchicalFilteringOnDataAssetIndex() throws IOException {
+    // This test verifies that when filtering by a parent entity field (like database.displayName)
+    // on the dataAsset index, only entity types that can have that parent are returned in
+    // aggregations
+
+    // First test - simple case: search in dataAsset without any filter
+    Response noFilterResponse = searchWithQuery("*", "dataAsset");
+    assertEquals(200, noFilterResponse.getStatus());
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode noFilterJson = mapper.readTree((String) noFilterResponse.getEntity());
+
+    // Check what entity types we get without filter
+    JsonNode aggregations = noFilterJson.path("aggregations");
+    JsonNode entityTypeAgg = null;
+
+    // Handle different possible aggregation field names
+    if (aggregations.has("entityType")) {
+      entityTypeAgg = aggregations.path("entityType");
+    } else if (aggregations.has("sterms#entityType")) {
+      entityTypeAgg = aggregations.path("sterms#entityType");
+    }
+
+    assertNotNull(entityTypeAgg, "Should have entityType aggregation");
+    JsonNode buckets = entityTypeAgg.path("buckets");
+
+    Set<String> allEntityTypes = new HashSet<>();
+    for (JsonNode bucket : buckets) {
+      allEntityTypes.add(bucket.path("key").asText());
+    }
+    LOG.info("Entity types in dataAsset index without filter: {}", allEntityTypes);
+
+    // Test case 1: Filter by database field - should only show database-related entities
+    String databaseFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"exists\":{\"field\":\"database\"}}]}}]}}}",
+            StandardCharsets.UTF_8);
+
+    WebTarget databaseFilterTarget =
+        getResource("search/query")
+            .queryParam("q", "")
+            .queryParam("index", "dataAsset")
+            .queryParam("from", "0")
+            .queryParam("size", "0")
+            .queryParam("deleted", "false")
+            .queryParam("query_filter", databaseFilter)
+            .queryParam("track_total_hits", "true");
+
+    String databaseFilterResult =
+        TestUtils.get(databaseFilterTarget, String.class, ADMIN_AUTH_HEADERS);
+    JsonNode databaseFilterJson = mapper.readTree(databaseFilterResult);
+
+    // Check aggregations with database filter
+    JsonNode dbFilterAggregations = databaseFilterJson.path("aggregations");
+    JsonNode dbFilterEntityTypeAgg = null;
+
+    if (dbFilterAggregations.has("entityType")) {
+      dbFilterEntityTypeAgg = dbFilterAggregations.path("entityType");
+    } else if (dbFilterAggregations.has("sterms#entityType")) {
+      dbFilterEntityTypeAgg = dbFilterAggregations.path("sterms#entityType");
+    }
+
+    if (dbFilterEntityTypeAgg != null && !dbFilterEntityTypeAgg.isMissingNode()) {
+      JsonNode dbFilterBuckets = dbFilterEntityTypeAgg.path("buckets");
+
+      // Verify only database-related entity types are in the aggregation
+      Set<String> allowedEntityTypes =
+          Set.of("database", "databaseSchema", "table", "storedProcedure");
+      Set<String> foundEntityTypes = new HashSet<>();
+
+      for (JsonNode bucket : dbFilterBuckets) {
+        String entityType = bucket.path("key").asText();
+        long count = bucket.path("doc_count").asLong();
+        foundEntityTypes.add(entityType);
+
+        LOG.info(
+            "Found entity type '{}' with count {} in database field filter aggregations",
+            entityType,
+            count);
+
+        // This is the key assertion - when filtering by database field,
+        // we should only see database-related entity types
+        assertTrue(
+            allowedEntityTypes.contains(entityType),
+            String.format(
+                "Entity type '%s' should not appear when filtering by database field. "
+                    + "Only database-related types should appear: %s",
+                entityType, allowedEntityTypes));
+      }
+
+      LOG.info("Found entity types with database field filter: {}", foundEntityTypes);
+    }
+
+    // Test case 2: Filter by dashboard field - should only show dashboard-related entities
+    String dashboardFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"exists\":{\"field\":\"dashboard\"}}]}}]}}}",
+            StandardCharsets.UTF_8);
+
+    WebTarget dashboardFilterTarget =
+        getResource("search/query")
+            .queryParam("q", "")
+            .queryParam("index", "dataAsset")
+            .queryParam("from", "0")
+            .queryParam("size", "0")
+            .queryParam("deleted", "false")
+            .queryParam("query_filter", dashboardFilter)
+            .queryParam("track_total_hits", "true");
+
+    String dashboardFilterResult =
+        TestUtils.get(dashboardFilterTarget, String.class, ADMIN_AUTH_HEADERS);
+    JsonNode dashboardFilterJson = mapper.readTree(dashboardFilterResult);
+
+    // Check aggregations with dashboard filter
+    JsonNode dashFilterAggregations = dashboardFilterJson.path("aggregations");
+    JsonNode dashFilterEntityTypeAgg = null;
+
+    if (dashFilterAggregations.has("entityType")) {
+      dashFilterEntityTypeAgg = dashFilterAggregations.path("entityType");
+    } else if (dashFilterAggregations.has("sterms#entityType")) {
+      dashFilterEntityTypeAgg = dashFilterAggregations.path("sterms#entityType");
+    }
+
+    if (dashFilterEntityTypeAgg != null && !dashFilterEntityTypeAgg.isMissingNode()) {
+      JsonNode dashFilterBuckets = dashFilterEntityTypeAgg.path("buckets");
+
+      // Verify only dashboard-related entity types are in the aggregation
+      Set<String> dashboardAllowedTypes = Set.of("dashboard", "chart", "dashboardDataModel");
+      Set<String> dashboardFoundTypes = new HashSet<>();
+
+      for (JsonNode bucket : dashFilterBuckets) {
+        String entityType = bucket.path("key").asText();
+        long count = bucket.path("doc_count").asLong();
+        dashboardFoundTypes.add(entityType);
+
+        LOG.info(
+            "Found entity type '{}' with count {} in dashboard field filter aggregations",
+            entityType,
+            count);
+
+        // When filtering by dashboard field, we should only see dashboard-related entity types
+        assertTrue(
+            dashboardAllowedTypes.contains(entityType),
+            String.format(
+                "Entity type '%s' should not appear when filtering by dashboard field. "
+                    + "Only dashboard-related types should appear: %s",
+                entityType, dashboardAllowedTypes));
+      }
+
+      LOG.info("Found entity types with dashboard field filter: {}", dashboardFoundTypes);
+    }
+
+    // Test case 3: The real issue - filter by serviceType at service level
+    // This simulates what happens when user selects a database service in the UI
+    String serviceTypeFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"serviceType\":\"databaseService\"}}]}}]}}}",
+            StandardCharsets.UTF_8);
+
+    WebTarget serviceFilterTarget =
+        getResource("search/query")
+            .queryParam("q", "")
+            .queryParam("index", "dataAsset")
+            .queryParam("from", "0")
+            .queryParam("size", "0")
+            .queryParam("deleted", "false")
+            .queryParam("query_filter", serviceTypeFilter)
+            .queryParam("track_total_hits", "true");
+
+    String serviceFilterResult =
+        TestUtils.get(serviceFilterTarget, String.class, ADMIN_AUTH_HEADERS);
+    JsonNode serviceFilterJson = mapper.readTree(serviceFilterResult);
+
+    // Check aggregations with service type filter
+    JsonNode serviceFilterAggregations = serviceFilterJson.path("aggregations");
+    JsonNode serviceFilterEntityTypeAgg = null;
+
+    if (serviceFilterAggregations.has("entityType")) {
+      serviceFilterEntityTypeAgg = serviceFilterAggregations.path("entityType");
+    } else if (serviceFilterAggregations.has("sterms#entityType")) {
+      serviceFilterEntityTypeAgg = serviceFilterAggregations.path("sterms#entityType");
+    }
+
+    if (serviceFilterEntityTypeAgg != null && !serviceFilterEntityTypeAgg.isMissingNode()) {
+      JsonNode serviceFilterBuckets = serviceFilterEntityTypeAgg.path("buckets");
+
+      Set<String> serviceFoundTypes = new HashSet<>();
+
+      for (JsonNode bucket : serviceFilterBuckets) {
+        String entityType = bucket.path("key").asText();
+        long count = bucket.path("doc_count").asLong();
+        serviceFoundTypes.add(entityType);
+
+        LOG.info(
+            "Found entity type '{}' with count {} in serviceType filter aggregations",
+            entityType,
+            count);
+      }
+
+      LOG.info("Found entity types with serviceType=databaseService filter: {}", serviceFoundTypes);
+
+      // When filtering by serviceType=databaseService, we expect to see all entity types
+      // because the dataAsset index includes all types and serviceType field exists on all
+      // This is likely where the issue comes from
+    }
+
+    // Test case 4: The real problem - composite filter that might be causing issues
+    // This tests what happens when we filter by both service and a parent entity
+    String compositeFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":["
+                + "{\"bool\":{\"should\":[{\"term\":{\"serviceType\":\"BigQuery\"}}]}},"
+                + "{\"bool\":{\"should\":[{\"term\":{\"service.displayName.keyword\":\"sample-data\"}}]}}"
+                + "]}}}",
+            StandardCharsets.UTF_8);
+
+    WebTarget compositeFilterTarget =
+        getResource("search/query")
+            .queryParam("q", "")
+            .queryParam("index", "dataAsset")
+            .queryParam("from", "0")
+            .queryParam("size", "0")
+            .queryParam("deleted", "false")
+            .queryParam("query_filter", compositeFilter)
+            .queryParam("track_total_hits", "true");
+
+    String compositeFilterResult =
+        TestUtils.get(compositeFilterTarget, String.class, ADMIN_AUTH_HEADERS);
+    JsonNode compositeFilterJson = mapper.readTree(compositeFilterResult);
+
+    // Check aggregations with composite filter
+    JsonNode compFilterAggregations = compositeFilterJson.path("aggregations");
+    JsonNode compFilterEntityTypeAgg = null;
+
+    if (compFilterAggregations.has("entityType")) {
+      compFilterEntityTypeAgg = compFilterAggregations.path("entityType");
+    } else if (compFilterAggregations.has("sterms#entityType")) {
+      compFilterEntityTypeAgg = compFilterAggregations.path("sterms#entityType");
+    }
+
+    if (compFilterEntityTypeAgg != null && !compFilterEntityTypeAgg.isMissingNode()) {
+      JsonNode compFilterBuckets = compFilterEntityTypeAgg.path("buckets");
+
+      Set<String> compFoundTypes = new HashSet<>();
+
+      for (JsonNode bucket : compFilterBuckets) {
+        String entityType = bucket.path("key").asText();
+        long count = bucket.path("doc_count").asLong();
+        compFoundTypes.add(entityType);
+
+        LOG.info(
+            "Found entity type '{}' with count {} in composite filter aggregations",
+            entityType,
+            count);
+      }
+
+      LOG.info("Found entity types with composite filter: {}", compFoundTypes);
+
+      // This is where we might see the issue - when filtering by a database service,
+      // we might still see dashboard/chart entities if they happen to have the same
+      // service.displayName field
+    }
   }
 }
