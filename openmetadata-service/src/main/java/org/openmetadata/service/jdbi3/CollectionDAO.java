@@ -3661,41 +3661,47 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-    
+
     @ConnectionAwareSqlQuery(
-        value = "SELECT SUBSTRING_INDEX(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
-            + "FROM tag t "
-            + "WHERE t.deleted = FALSE "
-            + "AND t.fqnHash LIKE CONCAT(:classificationHash, '.%') "
-            + "GROUP BY SUBSTRING_INDEX(t.fqnHash, '.', 1)",
+        value =
+            "SELECT SUBSTRING_INDEX(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
+                + "FROM tag t "
+                + "WHERE t.deleted = FALSE "
+                + "AND t.fqnHash LIKE CONCAT(:classificationHash, '.%') "
+                + "GROUP BY SUBSTRING_INDEX(t.fqnHash, '.', 1)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
-        value = "SELECT SPLIT_PART(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
-            + "FROM tag t "
-            + "WHERE t.deleted = FALSE "
-            + "AND t.fqnHash LIKE CONCAT(:classificationHash, '.%') "
-            + "GROUP BY SPLIT_PART(t.fqnHash, '.', 1)",
+        value =
+            "SELECT SPLIT_PART(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
+                + "FROM tag t "
+                + "WHERE t.deleted = FALSE "
+                + "AND t.fqnHash LIKE CONCAT(:classificationHash, '.%') "
+                + "GROUP BY SPLIT_PART(t.fqnHash, '.', 1)",
         connectionType = POSTGRES)
     @RegisterRowMapper(TermCountMapper.class)
-    List<Pair<String, Integer>> getTermCounts(@Bind("classificationHash") String classificationHash);
-    
+    List<Pair<String, Integer>> getTermCounts(
+        @Bind("classificationHash") String classificationHash);
+
     @ConnectionAwareSqlQuery(
-        value = "SELECT SUBSTRING_INDEX(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
-            + "FROM tag t "
-            + "WHERE t.deleted = FALSE "
-            + "AND t.fqnHash REGEXP :classificationHashPattern "
-            + "GROUP BY SUBSTRING_INDEX(t.fqnHash, '.', 1)",
+        value =
+            "SELECT SUBSTRING_INDEX(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
+                + "FROM tag t "
+                + "WHERE t.deleted = FALSE "
+                + "AND t.fqnHash REGEXP :classificationHashPattern "
+                + "GROUP BY SUBSTRING_INDEX(t.fqnHash, '.', 1)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
-        value = "SELECT SPLIT_PART(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
-            + "FROM tag t "
-            + "WHERE t.deleted = FALSE "
-            + "AND t.fqnHash ~ :classificationHashPattern "
-            + "GROUP BY SPLIT_PART(t.fqnHash, '.', 1)",
+        value =
+            "SELECT SPLIT_PART(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
+                + "FROM tag t "
+                + "WHERE t.deleted = FALSE "
+                + "AND t.fqnHash ~ :classificationHashPattern "
+                + "GROUP BY SPLIT_PART(t.fqnHash, '.', 1)",
         connectionType = POSTGRES)
     @RegisterRowMapper(TermCountMapper.class)
-    List<Pair<String, Integer>> bulkGetTermCounts(@Bind("classificationHashPattern") String classificationHashPattern);
-    
+    List<Pair<String, Integer>> bulkGetTermCounts(
+        @Bind("classificationHashPattern") String classificationHashPattern);
+
     class TermCountMapper implements RowMapper<Pair<String, Integer>> {
       @Override
       public Pair<String, Integer> map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -3723,7 +3729,7 @@ public interface CollectionDAO {
     @Override
     default int listCount(ListFilter filter) {
       String parent = filter.getQueryParam("parent");
-      
+
       // If parent parameter is provided, filter tags by parent classification FQN
       if (parent != null) {
         String parentFqnHash = FullyQualifiedName.buildHash(parent);
@@ -3735,13 +3741,9 @@ public interface CollectionDAO {
           condition = "WHERE fqnHash LIKE :parentFqnPrefix";
         }
         return listCount(
-            getTableName(),
-            getNameHashColumn(),
-            filter.getQueryParams(),
-            condition,
-            condition);
+            getTableName(), getNameHashColumn(), filter.getQueryParams(), condition, condition);
       }
-      
+
       // Original behavior for classification.disabled parameter
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =
@@ -3786,7 +3788,7 @@ public interface CollectionDAO {
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String parent = filter.getQueryParam("parent");
-      
+
       // If parent parameter is provided, filter tags by parent classification FQN
       if (parent != null) {
         String parentFqnHash = FullyQualifiedName.buildHash(parent);
@@ -3806,7 +3808,7 @@ public interface CollectionDAO {
             beforeName,
             beforeId);
       }
-      
+
       // Original behavior for classification.disabled parameter
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =
@@ -3854,7 +3856,7 @@ public interface CollectionDAO {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String parent = filter.getQueryParam("parent");
-      
+
       // If parent parameter is provided, filter tags by parent classification FQN
       if (parent != null) {
         String parentFqnHash = FullyQualifiedName.buildHash(parent);
@@ -3874,7 +3876,7 @@ public interface CollectionDAO {
             afterName,
             afterId);
       }
-      
+
       // Original behavior for classification.disabled parameter
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =

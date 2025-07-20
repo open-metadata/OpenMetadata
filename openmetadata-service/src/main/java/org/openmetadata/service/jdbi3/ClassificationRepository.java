@@ -140,7 +140,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       // Build regex pattern for bulk fetch
       StringBuilder patternBuilder = new StringBuilder("^(");
       Map<String, String> hashToFqnMap = new HashMap<>();
-      
+
       for (int i = 0; i < classifications.size(); i++) {
         if (i > 0) {
           patternBuilder.append("|");
@@ -151,11 +151,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         hashToFqnMap.put(hash, fqn);
       }
       patternBuilder.append(")\\..*$");
-      
+
       // Use the DAO method for database-specific query
-      List<Pair<String, Integer>> results = 
+      List<Pair<String, Integer>> results =
           daoCollection.classificationDAO().bulkGetTermCounts(patternBuilder.toString());
-      
+
       // Process results
       for (Pair<String, Integer> result : results) {
         String classificationHash = result.getLeft();
@@ -165,19 +165,20 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           termCountMap.put(fqn, count);
         }
       }
-      
+
       // Set 0 for classifications with no tags
       for (Classification classification : classifications) {
         termCountMap.putIfAbsent(classification.getFullyQualifiedName(), 0);
       }
-      
+
       return termCountMap;
     } catch (Exception e) {
       LOG.error("Error batch fetching term counts, falling back to individual queries", e);
       // Fall back to individual queries
       for (Classification classification : classifications) {
-        ListFilter filterWithParent = new ListFilter(Include.NON_DELETED)
-            .addQueryParam("parent", classification.getFullyQualifiedName());
+        ListFilter filterWithParent =
+            new ListFilter(Include.NON_DELETED)
+                .addQueryParam("parent", classification.getFullyQualifiedName());
         int count = daoCollection.tagDAO().listCount(filterWithParent);
         termCountMap.put(classification.getFullyQualifiedName(), count);
       }
@@ -192,13 +193,16 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     }
 
     // Batch fetch usage counts for all classifications at once
-    List<String> classificationFQNs = classifications.stream()
-        .map(Classification::getFullyQualifiedName)
-        .collect(Collectors.toList());
-    
-    Map<String, Integer> counts = daoCollection.tagUsageDAO()
-        .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), classificationFQNs);
-    
+    List<String> classificationFQNs =
+        classifications.stream()
+            .map(Classification::getFullyQualifiedName)
+            .collect(Collectors.toList());
+
+    Map<String, Integer> counts =
+        daoCollection
+            .tagUsageDAO()
+            .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), classificationFQNs);
+
     return counts != null ? counts : usageCountMap;
   }
 
