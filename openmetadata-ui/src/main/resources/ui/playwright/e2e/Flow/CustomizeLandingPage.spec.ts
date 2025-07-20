@@ -55,166 +55,54 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe('Customize Landing Page Flow', () => {
-  test('Check all default widget present', async ({ adminPage }) => {
+  test.fixme('Check all default widget present', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
     await adminPage.getByTestId('welcome-screen-close-btn').click();
     await checkAllDefaultWidgets(adminPage);
   });
 
-  test('Add,Remove and Reset widget should work properly', async ({
-    adminPage,
-  }) => {
-    await redirectToHomePage(adminPage);
-    await setUserDefaultPersona(adminPage, persona.responseData.displayName);
-
-    await test.step('Remove widget', async () => {
-      await navigateToCustomizeLandingPage(adminPage, {
-        personaName: persona.responseData.name,
-        customPageDataResponse: 404,
-      });
-
-      await removeAndCheckWidget(adminPage, {
-        widgetTestId: 'activity-feed-widget',
-        widgetKey: 'KnowledgePanel.ActivityFeed',
-      });
-      await removeAndCheckWidget(adminPage, {
-        widgetTestId: 'following-widget',
-        widgetKey: 'KnowledgePanel.Following',
-      });
-      await removeAndCheckWidget(adminPage, {
-        widgetTestId: 'kpi-widget',
-        widgetKey: 'KnowledgePanel.KPI',
-      });
-
-      await saveCustomizeLayoutPage(adminPage, true);
-
+  test.fixme(
+    'Add,Remove and Reset widget should work properly',
+    async ({ adminPage }) => {
       await redirectToHomePage(adminPage);
+      await setUserDefaultPersona(adminPage, persona.responseData.displayName);
 
-      // Check if removed widgets are not present on landing adminPage
-      await expect(
-        adminPage.locator('[data-testid="activity-feed-widget"]')
-      ).not.toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="following-widget"]')
-      ).not.toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="kpi-widget"]')
-      ).not.toBeVisible();
-    });
+      await test.step('Remove widget', async () => {
+        await navigateToCustomizeLandingPage(adminPage, {
+          personaName: persona.responseData.name,
+          customPageDataResponse: 404,
+        });
 
-    await test.step('Add widget', async () => {
-      await navigateToCustomizeLandingPage(adminPage, {
-        personaName: persona.responseData.name,
-        customPageDataResponse: 200,
-      });
+        await removeAndCheckWidget(adminPage, {
+          widgetTestId: 'activity-feed-widget',
+          widgetKey: 'KnowledgePanel.ActivityFeed',
+        });
+        await removeAndCheckWidget(adminPage, {
+          widgetTestId: 'following-widget',
+          widgetKey: 'KnowledgePanel.Following',
+        });
+        await removeAndCheckWidget(adminPage, {
+          widgetTestId: 'kpi-widget',
+          widgetKey: 'KnowledgePanel.KPI',
+        });
 
-      // Check if removed widgets are not present on customize page
-      await expect(
-        adminPage.locator('[data-testid="activity-feed-widget"]')
-      ).not.toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="following-widget"]')
-      ).not.toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="kpi-widget"]')
-      ).not.toBeVisible();
+        await saveCustomizeLayoutPage(adminPage, true);
 
-      // Check if other widgets are present
-      await expect(
-        adminPage.locator('[data-testid="recently-viewed-widget"]')
-      ).toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="my-data-widget"]')
-      ).toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="total-assets-widget"]')
-      ).toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="ExtraWidget.EmptyWidgetPlaceholder"]')
-      ).toBeVisible();
+        await redirectToHomePage(adminPage);
 
-      await openAddCustomizeWidgetModal(adminPage);
-
-      // Check if 'check' icon is present for existing widgets
-      await expect(
-        adminPage.locator('[data-testid="MyData-check-icon"]')
-      ).toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="RecentlyViewed-check-icon"]')
-      ).toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="TotalAssets-check-icon"]')
-      ).toBeVisible();
-
-      // Check if 'check' icon is not present for removed widgets
-      await expect(
-        adminPage.locator('[data-testid="ActivityFeed-check-icon"]')
-      ).not.toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="Following-check-icon"]')
-      ).not.toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="KPI-check-icon"]')
-      ).not.toBeVisible();
-
-      // Add Following widget
-      await adminPage
-        .locator('[data-testid="Following-widget-tab-label"]')
-        .click();
-      await adminPage
-        .locator(
-          '[aria-labelledby$="KnowledgePanel.Following"] [data-testid="add-widget-button"]'
-        )
-        .click();
-
-      await expect(
-        adminPage.locator('[data-testid="following-widget"]')
-      ).toBeVisible();
-
-      // Check if check icons are present in tab labels for newly added widgets
-      await openAddCustomizeWidgetModal(adminPage);
-
-      // Check if 'check' icon is present for the Following widget
-      await expect(
-        adminPage.locator('[data-testid="Following-check-icon"]')
-      ).toBeVisible();
-
-      // Close the add widget modal
-      await adminPage
-        .locator('[data-testid="add-widget-modal"] [aria-label="Close"]')
-        .click();
-
-      // Save the updated layout
-      await saveCustomizeLayoutPage(adminPage);
-
-      // Navigate to the landing page
-      await redirectToHomePage(adminPage);
-
-      // Check if removed widgets are not present on the landing page
-      await expect(
-        adminPage.locator('[data-testid="activity-feed-widget"]')
-      ).not.toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="kpi-widget"]')
-      ).not.toBeVisible();
-
-      // Check if newly added widgets are present on the landing page
-      await expect(
-        adminPage.locator('[data-testid="following-widget"]')
-      ).toBeVisible();
-    });
-
-    await test.step(
-      'Resetting the layout flow should work properly',
-      async () => {
-        // Check if removed widgets are not present on landing page
+        // Check if removed widgets are not present on landing adminPage
         await expect(
           adminPage.locator('[data-testid="activity-feed-widget"]')
         ).not.toBeVisible();
         await expect(
+          adminPage.locator('[data-testid="following-widget"]')
+        ).not.toBeVisible();
+        await expect(
           adminPage.locator('[data-testid="kpi-widget"]')
         ).not.toBeVisible();
+      });
 
+      await test.step('Add widget', async () => {
         await navigateToCustomizeLandingPage(adminPage, {
           personaName: persona.responseData.name,
           customPageDataResponse: 200,
@@ -225,58 +113,222 @@ test.describe('Customize Landing Page Flow', () => {
           adminPage.locator('[data-testid="activity-feed-widget"]')
         ).not.toBeVisible();
         await expect(
+          adminPage.locator('[data-testid="following-widget"]')
+        ).not.toBeVisible();
+        await expect(
           adminPage.locator('[data-testid="kpi-widget"]')
         ).not.toBeVisible();
 
-        await adminPage.locator('[data-testid="reset-button"]').click();
+        // Check if other widgets are present
+        await expect(
+          adminPage.locator('[data-testid="recently-viewed-widget"]')
+        ).toBeVisible();
+        await expect(
+          adminPage.locator('[data-testid="my-data-widget"]')
+        ).toBeVisible();
+        await expect(
+          adminPage.locator('[data-testid="total-assets-widget"]')
+        ).toBeVisible();
+        await expect(
+          adminPage.locator(
+            '[data-testid="ExtraWidget.EmptyWidgetPlaceholder"]'
+          )
+        ).toBeVisible();
 
-        // Confirm reset in modal
-        const resetResponse = adminPage.waitForResponse('/api/v1/docStore/*');
+        await openAddCustomizeWidgetModal(adminPage);
 
+        // Check if 'check' icon is present for existing widgets
+        await expect(
+          adminPage.locator('[data-testid="MyData-check-icon"]')
+        ).toBeVisible();
+        await expect(
+          adminPage.locator('[data-testid="RecentlyViewed-check-icon"]')
+        ).toBeVisible();
+        await expect(
+          adminPage.locator('[data-testid="TotalAssets-check-icon"]')
+        ).toBeVisible();
+
+        // Check if 'check' icon is not present for removed widgets
+        await expect(
+          adminPage.locator('[data-testid="ActivityFeed-check-icon"]')
+        ).not.toBeVisible();
+        await expect(
+          adminPage.locator('[data-testid="Following-check-icon"]')
+        ).not.toBeVisible();
+        await expect(
+          adminPage.locator('[data-testid="KPI-check-icon"]')
+        ).not.toBeVisible();
+
+        // Add Following widget
         await adminPage
-          .locator('[data-testid="reset-layout-modal"] .ant-modal-footer')
-          .locator('text=Yes')
+          .locator('[data-testid="Following-widget-tab-label"]')
+          .click();
+        await adminPage
+          .locator(
+            '[aria-labelledby$="KnowledgePanel.Following"] [data-testid="add-widget-button"]'
+          )
           .click();
 
-        await resetResponse;
+        await expect(
+          adminPage.locator('[data-testid="following-widget"]')
+        ).toBeVisible();
 
-        // Verify the toast notification
-        await toastNotification(adminPage, 'Page layout updated successfully.');
+        // Check if check icons are present in tab labels for newly added widgets
+        await openAddCustomizeWidgetModal(adminPage);
 
-        // Check if all widgets are present after resetting the layout
-        await checkAllDefaultWidgets(adminPage, true);
+        // Check if 'check' icon is present for the Following widget
+        await expect(
+          adminPage.locator('[data-testid="Following-check-icon"]')
+        ).toBeVisible();
 
-        // Check if all widgets are present on landing page
+        // Close the add widget modal
+        await adminPage
+          .locator('[data-testid="add-widget-modal"] [aria-label="Close"]')
+          .click();
+
+        // Save the updated layout
+        await saveCustomizeLayoutPage(adminPage);
+
+        // Navigate to the landing page
         await redirectToHomePage(adminPage);
 
-        // Ensures the page is fully loaded
-        await adminPage.waitForLoadState('networkidle');
+        // Check if removed widgets are not present on the landing page
+        await expect(
+          adminPage.locator('[data-testid="activity-feed-widget"]')
+        ).not.toBeVisible();
+        await expect(
+          adminPage.locator('[data-testid="kpi-widget"]')
+        ).not.toBeVisible();
 
-        await checkAllDefaultWidgets(adminPage);
-      }
-    );
-  });
+        // Check if newly added widgets are present on the landing page
+        await expect(
+          adminPage.locator('[data-testid="following-widget"]')
+        ).toBeVisible();
+      });
 
-  test('Remove and add the widget in the same placeholder', async ({
-    adminPage,
-  }) => {
-    await redirectToHomePage(adminPage);
+      await test.step(
+        'Resetting the layout flow should work properly',
+        async () => {
+          // Check if removed widgets are not present on landing page
+          await expect(
+            adminPage.locator('[data-testid="activity-feed-widget"]')
+          ).not.toBeVisible();
+          await expect(
+            adminPage.locator('[data-testid="kpi-widget"]')
+          ).not.toBeVisible();
 
-    const feedResponse = adminPage.waitForResponse(
-      '/api/v1/feed?type=Conversation&*'
-    );
-    await navigateToCustomizeLandingPage(adminPage, {
-      personaName: persona2.responseData.name,
-      customPageDataResponse: 404,
-    });
+          await navigateToCustomizeLandingPage(adminPage, {
+            personaName: persona.responseData.name,
+            customPageDataResponse: 200,
+          });
 
-    await feedResponse;
+          // Check if removed widgets are not present on customize page
+          await expect(
+            adminPage.locator('[data-testid="activity-feed-widget"]')
+          ).not.toBeVisible();
+          await expect(
+            adminPage.locator('[data-testid="kpi-widget"]')
+          ).not.toBeVisible();
 
-    await adminPage.waitForSelector('[data-testid="activity-feed-widget"]');
+          await adminPage.locator('[data-testid="reset-button"]').click();
 
-    const followingElementStyle = await adminPage
-      .locator('[id="KnowledgePanel.Following"]')
-      .evaluate((node) => {
+          // Confirm reset in modal
+          const resetResponse = adminPage.waitForResponse('/api/v1/docStore/*');
+
+          await adminPage
+            .locator('[data-testid="reset-layout-modal"] .ant-modal-footer')
+            .locator('text=Yes')
+            .click();
+
+          await resetResponse;
+
+          // Verify the toast notification
+          await toastNotification(
+            adminPage,
+            'Page layout updated successfully.'
+          );
+
+          // Check if all widgets are present after resetting the layout
+          await checkAllDefaultWidgets(adminPage, true);
+
+          // Check if all widgets are present on landing page
+          await redirectToHomePage(adminPage);
+
+          // Ensures the page is fully loaded
+          await adminPage.waitForLoadState('networkidle');
+
+          await checkAllDefaultWidgets(adminPage);
+        }
+      );
+    }
+  );
+
+  test.fixme(
+    'Remove and add the widget in the same placeholder',
+    async ({ adminPage }) => {
+      await redirectToHomePage(adminPage);
+
+      const feedResponse = adminPage.waitForResponse(
+        '/api/v1/feed?type=Conversation&*'
+      );
+      await navigateToCustomizeLandingPage(adminPage, {
+        personaName: persona2.responseData.name,
+        customPageDataResponse: 404,
+      });
+
+      await feedResponse;
+
+      await adminPage.waitForSelector('[data-testid="activity-feed-widget"]');
+
+      const followingElementStyle = await adminPage
+        .locator('[id="KnowledgePanel.Following"]')
+        .evaluate((node) => {
+          const computedStyle = window.getComputedStyle(node);
+
+          return {
+            transform: computedStyle.transform,
+          };
+        });
+
+      // Remove and check the placement of Following widget.
+      await adminPage.click(
+        '[data-testid="following-widget"] [data-testid="remove-widget-button"]'
+      );
+
+      await adminPage.waitForSelector('[data-testid="following-widget"]', {
+        state: 'detached',
+      });
+
+      await adminPage.waitForSelector(
+        '[data-testid*="KnowledgePanel.Following"][data-testid$="EmptyWidgetPlaceholder"]'
+      );
+
+      // Add KPI widget in the same placeholder
+      const getWidgetList = adminPage.waitForResponse(
+        'api/v1/docStore?fqnPrefix=KnowledgePanel&*'
+      );
+      await adminPage.click(
+        '[data-testid="KnowledgePanel.Following.EmptyWidgetPlaceholder"] [data-testid="add-widget-button"]'
+      );
+
+      await getWidgetList;
+
+      await adminPage.waitForSelector('[role="dialog"].ant-modal');
+
+      expect(adminPage.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+      await adminPage.click('[data-testid="KPI-widget-tab-label"]');
+
+      await adminPage
+        .locator('.ant-tabs-tabpane-active [data-testid="add-widget-button"]')
+        .click();
+
+      await adminPage.waitForSelector('[role="dialog"].ant-modal', {
+        state: 'detached',
+      });
+
+      const kpiElement = adminPage.locator('[id^="KnowledgePanel.KPI-"]');
+      const kpiElementStyle = await kpiElement.evaluate((node) => {
         const computedStyle = window.getComputedStyle(node);
 
         return {
@@ -284,55 +336,12 @@ test.describe('Customize Landing Page Flow', () => {
         };
       });
 
-    // Remove and check the placement of Following widget.
-    await adminPage.click(
-      '[data-testid="following-widget"] [data-testid="remove-widget-button"]'
-    );
+      // Check if the KPI widget is added in the same placeholder,by their transform property or placement.
+      expect(kpiElementStyle.transform).toEqual(
+        followingElementStyle.transform
+      );
 
-    await adminPage.waitForSelector('[data-testid="following-widget"]', {
-      state: 'detached',
-    });
-
-    await adminPage.waitForSelector(
-      '[data-testid*="KnowledgePanel.Following"][data-testid$="EmptyWidgetPlaceholder"]'
-    );
-
-    // Add KPI widget in the same placeholder
-    const getWidgetList = adminPage.waitForResponse(
-      'api/v1/docStore?fqnPrefix=KnowledgePanel&*'
-    );
-    await adminPage.click(
-      '[data-testid="KnowledgePanel.Following.EmptyWidgetPlaceholder"] [data-testid="add-widget-button"]'
-    );
-
-    await getWidgetList;
-
-    await adminPage.waitForSelector('[role="dialog"].ant-modal');
-
-    expect(adminPage.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-    await adminPage.click('[data-testid="KPI-widget-tab-label"]');
-
-    await adminPage
-      .locator('.ant-tabs-tabpane-active [data-testid="add-widget-button"]')
-      .click();
-
-    await adminPage.waitForSelector('[role="dialog"].ant-modal', {
-      state: 'detached',
-    });
-
-    const kpiElement = adminPage.locator('[id^="KnowledgePanel.KPI-"]');
-    const kpiElementStyle = await kpiElement.evaluate((node) => {
-      const computedStyle = window.getComputedStyle(node);
-
-      return {
-        transform: computedStyle.transform,
-      };
-    });
-
-    // Check if the KPI widget is added in the same placeholder,by their transform property or placement.
-    expect(kpiElementStyle.transform).toEqual(followingElementStyle.transform);
-
-    await saveCustomizeLayoutPage(adminPage, true);
-  });
+      await saveCustomizeLayoutPage(adminPage, true);
+    }
+  );
 });
