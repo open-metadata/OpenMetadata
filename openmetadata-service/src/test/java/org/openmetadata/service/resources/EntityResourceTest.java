@@ -1149,7 +1149,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Test 3: Add reviewers within session timeout (if supported)
-    // Only check if we are adding owners from scratch, not updating existing ones
+    // Only check if we are adding reviewers from scratch, not updating existing ones
     if (supportsReviewers && nullOrEmpty(entity.getReviewers())) {
       String originalJson = JsonUtils.pojoToJson(entity);
       entity.setReviewers(List.of(USER2_REF));
@@ -1165,7 +1165,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Test 4: Add experts within session timeout (if supported)
-    if (supportsExperts) {
+    // Only check if we are adding experts from scratch, not updating existing ones
+    if (supportsExperts && nullOrEmpty(entity.getExperts())) {
       String originalJson = JsonUtils.pojoToJson(entity);
       entity.setExperts(List.of(DATA_STEWARD.getEntityReference()));
       ChangeDescription change = getChangeDescription(entity, getChangeType());
