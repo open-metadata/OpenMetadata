@@ -188,7 +188,7 @@ const DomainsWidget = ({
       <WidgetFooter
         moreButtonLink="/domain"
         moreButtonText={t('label.view-more-count', {
-          count:
+          countValue:
             sortedDomains.length > 10 ? sortedDomains.length - 10 : undefined,
         })}
         showMoreButton={Boolean(!loading)}
