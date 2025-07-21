@@ -162,7 +162,7 @@ class OpenMetadata(
         extra_headers: Optional[dict[str, str]] = None
         if self.config.extraHeaders:
             extra_headers = self.config.extraHeaders.root
-            
+
         # Create default client config if none provided
         if client_config is None:
             client_config = ClientConfig(
