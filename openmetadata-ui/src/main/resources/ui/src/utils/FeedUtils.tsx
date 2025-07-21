@@ -78,9 +78,9 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
+import { getSanitizeContent } from './sanitize.utils';
 import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
-import {getSanitizeContent} from "./sanitize.utils";
 
 export const getEntityType = (entityLink: string) => {
   return EntityLink.getEntityType(entityLink);
@@ -309,7 +309,7 @@ const getEntityLinkDetail = (item: string) => {
 };
 
 export const getBackendFormat = (message: string) => {
-  let updatedMessage = getSanitizeContent(message);
+  let updatedMessage = message;
   const mentionList = [...new Set(getMentionList(message) ?? [])];
   const hashtagList = [...new Set(getHashTagList(message) ?? [])];
   const mentionDetails = mentionList.map((m) => getEntityDetail(m) ?? []);
@@ -330,11 +330,11 @@ export const getBackendFormat = (message: string) => {
     updatedMessage = updatedMessage.replaceAll(h, entityLink);
   });
 
-  return updatedMessage;
+  return getSanitizeContent(updatedMessage);
 };
 
 export const getFrontEndFormat = (message: string) => {
-  let updatedMessage = getSanitizeContent(message);
+  let updatedMessage = message;
   const entityLinkList = [...new Set(getEntityLinkList(message) ?? [])];
   const entityLinkDetails = entityLinkList.map(
     (m) => getEntityLinkDetail(m) ?? []
@@ -344,7 +344,7 @@ export const getFrontEndFormat = (message: string) => {
     updatedMessage = updatedMessage.replaceAll(m, markdownLink);
   });
 
-  return updatedMessage;
+  return getSanitizeContent(updatedMessage);
 };
 
 export const getUpdatedThread = (id: string) => {
