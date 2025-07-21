@@ -20,11 +20,21 @@ For this guide, you will need:
 http://localhost:8585/settings/apps/McpApplication
 ```
 
+{% ossContent %}
 {% image
 src="/images/v1.8/how-to-guides/mcp/install-mcp.jpg"
 alt="Add MCP app"
 caption="Install MCP Server on OpenMetadata"
 /%}
+{% /ossContent %}
+
+{% collateContent %}
+{% image
+src="/images/v1.8/how-to-guides/mcp/install-mcp.jpg"
+alt="Add MCP app"
+caption="Install MCP Server on Collate"
+/%}
+{% /collateContent %}
 
 - The next screen, with *Origin Header URI* is for Streamable-Http requests. This guide uses SSE, so we can skip this portion, select *Submit*
 
@@ -87,6 +97,20 @@ This how-to guide uses the free version of Claude Desktop for macOS with Sonnet 
 
 - Restart Claude Desktop. You should see your {% collateContent %}`Collate`{% /collateContent %}{% ossContent %}`OpenMetadata`{% /ossContent %}`openmetadata` service running
 
+{% ossContent %}
+{% image
+src="/images/v1.8/how-to-guides/mcp/claude-settings.jpg"
+alt="Claude Settings"
+caption="OpenMetadata MCP Server running in Claude Desktop"
+/%}
+{% /ossContent %}
+{% collateContent %}
+{% image
+src="/images/v1.8/how-to-guides/mcp/claude-settings.jpg"
+alt="Claude Settings"
+caption="Collate MCP Server running in Claude Desktop"
+/%}
+{% /collateContent %}
 
 ## Prompt to read from {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %}
 This part of the guide assumes that you have assets in {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %} that Claude can read, and that some of your data assets have references to customers. You can change the prompt accordingly and/or add data sources into {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %} [here](https://docs.open-metadata.org/latest/connectors).
@@ -96,14 +120,22 @@ Paste the following prompt into Claude to have it read from {% collateContent %}
 What tables do you have access to in OpenMetadata?
 ```
 
-Claude will ask if it can use the external integration `openmetadata`, select *Allow always*. You may have to do this multiple times, once for each tool. Claude is now reading from {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %} via its MCP Server!
+Claude will ask if it can use the external integration {% collateContent %}`Collate`{% /collateContent %}{% ossContent %}`OpenMetadata`{% /ossContent %}, select *Allow always*. You may have to do this multiple times, once for each tool. Claude is now reading from {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %} via its MCP Server!
 
+{% ossContent %}
 {% image
 src="/images/v1.8/how-to-guides/mcp/claude-allow.jpg"
 alt="Allow Claude to use OpenMetadata"
 caption="Claude asking for permission to search OpenMetadata"
 /%}
-
+{% /ossContent %}
+{% collateContent %}
+{% image
+src="/images/v1.8/how-to-guides/mcp/claude-allow.jpg"
+alt="Allow Claude to use Collate"
+caption="Claude asking for permission to search Collate"
+/%}
+{% /collateContent %}
 
 
 ### Show us what you got

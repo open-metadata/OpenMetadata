@@ -63,19 +63,28 @@ This how-to guide uses Goose Desktop for macOS. Make sure that you already have 
 
 - Navigate to Goose Desktop's Settings, then under *Extensions*, select *+Add custom extension*. 
 
+{% ossContent %}
 {% image
 src="/images/v1.8/how-to-guides/mcp/goose-settings.jpg"
 alt="Goose settings"
 caption="Settings are where you add custom extensions like OpenMetadata MCP Server"
 /%}
+{% /ossContent %}
+{% collateContent %}
+{% image
+src="/images/v1.8/how-to-guides/mcp/goose-settings.jpg"
+alt="Goose settings"
+caption="Settings are where you add custom extensions like Collate MCP Server"
+/%}
+{% /collateContent %}
 
 - The custom extension should have the following information:
-  - *Extension Name* `OpenMetadata`
+  - *Extension Name* {% collateContent %}`Collate`{% /collateContent %}{% ossContent %}`OpenMetadata`{% /ossContent %}
   - *Command* paste the following command:
     ```
     npx -y mcp-remote <YOUR_OpenMetadata_SERVER>/mcp/sse --auth-server-url=<YOUR_OpenMetadata_SERVER>/mcp --client-id=openmetadata --verbose --clean --header Authorization:${AUTH_HEADER}
     ```
-    - If you are running [OpenMetadata locally](https://docs.open-metadata.org/latest/quick-start/local-docker-deployment), your command will look like this:
+    - If you are running [it locally](https://docs.open-metadata.org/latest/quick-start/local-docker-deployment), your command will look like this:
       ```
       npx -y mcp-remote http://localhost:8585/mcp/sse --auth-server-url=http://localhost:8585/mcp --client-id=openmetadata --verbose --clean --header Authorization:${AUTH_HEADER}
       ```
@@ -83,32 +92,67 @@ caption="Settings are where you add custom extensions like OpenMetadata MCP Serv
     - *Variable name* is `AUTH_HEADER`
     - *Value* is "Bearer <YOUR_OpenMetadata_PAT>
 
+{% ossContent %}
 {% image
 src="/images/v1.8/how-to-guides/mcp/goose-mcp-settings.jpg"
 alt="Configuring OpenMetadata MCP Server"
 caption="The proper settings for OpenMetadata MCP Server in Goose"
 /%}
+{% /ossContent %}
+{% collateContent %}
+{% image
+src="/images/v1.8/how-to-guides/mcp/goose-mcp-settings.jpg"
+alt="Configuring Collate MCP Server"
+caption="The proper settings for Collate MCP Server in Goose"
+/%}
+{% /collateContent %}
 
     - Select *+Add* to store this Environment Variable
+{% ossContent %}
 {% image
 src="/images/v1.8/how-to-guides/mcp/goose-mcp-settings.jpg"
 alt="Configuring OpenMetadata MCP Server"
 caption="The proper settings for OpenMetadata MCP Server in Goose"
 /%}
+{% /ossContent %}
+{% collateContent %}
+{% image
+src="/images/v1.8/how-to-guides/mcp/goose-mcp-settings.jpg"
+alt="Configuring Collate MCP Server"
+caption="The proper settings for Collate MCP Server in Goose"
+/%}
+{% /collateContent %}
 
   - Select *Add Extension*
-
+{% ossContent %}
 {% image
 src="/images/v1.8/how-to-guides/mcp/goose-add-extension.jpg"
 alt="Adding extension"
 caption="Adding OpenMetadata MCP Server as a custom extension to Goose"
 /%}
+{% /ossContent %}
+{% collateContent %}
+{% image
+src="/images/v1.8/how-to-guides/mcp/goose-add-extension.jpg"
+alt="Adding extension"
+caption="Adding Collate MCP Server as a custom extension to Goose"
+/%}
+{% /collateContent %}
 
+{% ossContent %}
 {% image
 src="/images/v1.8/how-to-guides/mcp/goose-success.jpg"
 alt="OpenMetadata successfully added"
 caption="OpenMetadata successfully added to Goose"
 /%}
+{% /ossContent %}
+{% collateContent %}
+{% image
+src="/images/v1.8/how-to-guides/mcp/goose-success.jpg"
+alt="Collate successfully added"
+caption="Collate successfully added to Goose"
+/%}
+{% /collateContent %}
 
 ## Prompt to read from {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %}
 This part of the guide assumes that you have assets in {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %}. You can add data assets into {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %} [here](https://docs.open-metadata.org/latest/connectors).

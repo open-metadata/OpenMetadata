@@ -18,11 +18,21 @@ For this guide, you will need:
 
 - Go to <YOUR-OpenMetadata-SERVER>/marketplace/apps/McpApplication and select *Install*
 
+{% ossContent %}
 {% image
-src="/images/v1.8/how-to-guides/mcp/install-mcp.jpg"
+src="/images/v1.9/how-to-guides/mcp/install-mcp.jpg"
 alt="Add MCP app"
 caption="Install MCP Server on OpenMetadata"
 /%}
+{% /ossContent %}
+
+{% collateContent %}
+{% image
+src="/images/v1.9/how-to-guides/mcp/install-mcp.jpg"
+alt="Add MCP app"
+caption="Install MCP Server on Collate"
+/%}
+{% /collateContent %}
 
 - The next screen, with *Origin Header URI* is for Streamable-Http requests. This guide uses SSE, so we can skip this portion, select *Submit*
 
@@ -54,7 +64,7 @@ The next step will be to add your Personal Access Token (PAT) to mcp-remote so t
 - Go to <YOUR-OpenMetadata-SERVER>/users/<YOUR-USERNAME>/access-token and select *Generate New Token*. This will give Claude the same role and access policy that is assign to you in {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %}, if you would like Claude to have different role-based access controls, create a new user.
 
 {% image
-src="/images/v1.8/how-to-guides/mcp/generate-new-token.jpg"
+src="/images/v1.9/how-to-guides/mcp/generate-new-token.jpg"
 alt="Generate New Token"
 caption="Creating a new Personal Access Token"
 /%}
@@ -62,7 +72,7 @@ caption="Creating a new Personal Access Token"
 - Set your *Token Expiration*. This guide uses 60 days. Once your new token is created copy it.
 
 {% image
-src="/images/v1.8/how-to-guides/mcp/generate-new-token-2.jpg"
+src="/images/v1.9/how-to-guides/mcp/generate-new-token-2.jpg"
 alt="Set Token Lifespan"
 caption="Personal Access Token expires in 60 days"
 /%}
@@ -104,11 +114,20 @@ This how-to guide uses the free version of Claude Desktop for macOS with Sonnet 
 
 - Restart Claude Desktop. You should see your `openmetadata` service running
 
+{% ossContent %}
 {% image
-src="/images/v1.8/how-to-guides/mcp/claude-settings.jpg"
+src="/images/v1.9/how-to-guides/mcp/claude-settings.jpg"
 alt="Claude Settings"
 caption="OpenMetadata MCP Server running in Claude Desktop"
 /%}
+{% /ossContent %}
+{% collateContent %}
+{% image
+src="/images/v1.9/how-to-guides/mcp/claude-settings.jpg"
+alt="Claude Settings"
+caption="Collate MCP Server running in Claude Desktop"
+/%}
+{% /collateContent %}
 
 ## Prompt to read from {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %}
 This part of the guide assumes that you have assets in {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %} that Claude can read, and that some of your data assets have references to customers. You can change the prompt accordingly and/or add data sources into OpenMetadata [here](https://docs.open-metadata.org/latest/connectors).
@@ -118,13 +137,22 @@ Past the following prompt into Claude to have it read from {% collateContent %}C
 Imagine you're a data analyst tasked with building a customer retention dashboard. Can you help me identify which tables or datasets in the openmetadata database might contain relevant information?
 ```
 
-Claude will ask if it can use the external integration `openmetadata`, select *Allow always*. You may have to do this 2 or 3 times per each request type. Claude is now reading from {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %} via its MCP Server!
+Claude will ask if it can use the external integration {% collateContent %}`Collate`{% /collateContent %}{% ossContent %}`OpenMetadata`{% /ossContent %}, select *Allow always*. You may have to do this multiple times, once for each tool. Claude is now reading from {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %} via its MCP Server!
 
+{% ossContent %}
 {% image
-src="/images/v1.8/how-to-guides/mcp/claude-allow.jpg"
+src="/images/v1.9/how-to-guides/mcp/claude-allow.jpg"
 alt="Allow Claude to use OpenMetadata"
 caption="Claude asking for permission to search OpenMetadata"
 /%}
+{% /ossContent %}
+{% collateContent %}
+{% image
+src="/images/v1.9/how-to-guides/mcp/claude-allow.jpg"
+alt="Allow Claude to use Collate"
+caption="Claude asking for permission to search Collate"
+/%}
+{% /collateContent %}
 
 
 ### Show us what you got
