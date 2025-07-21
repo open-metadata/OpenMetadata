@@ -12,9 +12,7 @@
  */
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import advancedSearchClassBase, {
-  AdvancedSearchClassBase,
-} from './AdvancedSearchClassBase';
+import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
 
 jest.mock('../rest/miscAPI', () => ({
   getAggregateFieldOptions: jest.fn().mockImplementation(() =>
@@ -57,6 +55,12 @@ describe('AdvancedSearchClassBase', () => {
 });
 
 describe('getEntitySpecificQueryBuilderFields', () => {
+  let advancedSearchClassBase: AdvancedSearchClassBase;
+
+  beforeEach(() => {
+    advancedSearchClassBase = new AdvancedSearchClassBase();
+  });
+
   it('should return table specific fields', () => {
     const result = advancedSearchClassBase.getEntitySpecificQueryBuilderFields([
       SearchIndex.TABLE,
