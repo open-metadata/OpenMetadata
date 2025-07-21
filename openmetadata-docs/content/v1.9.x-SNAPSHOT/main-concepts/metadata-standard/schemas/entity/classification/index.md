@@ -1,5 +1,6 @@
 ---
 title: Classification Entity Schema | OpenMetadata Classification Data
+description: Classification schema capturing tag hierarchies, custom categories, and semantic labeling structures.
 slug: /main-concepts/metadata-standard/schemas/entity/classification
 ---
 
