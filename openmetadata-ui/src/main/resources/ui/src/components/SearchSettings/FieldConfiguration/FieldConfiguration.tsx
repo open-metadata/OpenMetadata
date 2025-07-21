@@ -122,7 +122,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
 
             <div className="d-flex items-center justify-between gap-2 m-y-xss">
               <span className="text-grey-muted text-xs font-normal">
-                {fieldDescription}
+                {fieldDescription ?? t('label.no-description')}
               </span>
               <span
                 className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
