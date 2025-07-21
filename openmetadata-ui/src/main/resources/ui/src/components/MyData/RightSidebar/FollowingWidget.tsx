@@ -270,9 +270,10 @@ function FollowingWidget({
               currentUser?.name ?? '',
               EntityTabs.ACTIVITY_FEED
             )}
-            moreButtonText={t('label.view-more-count', {
-              count: !isEmpty(followedData) ? String(followedData.length) : '',
-            })}
+            moreButtonText={t(
+              'label.view-more-count',
+              !isEmpty(followedData) ? String(followedData.length) : ''
+            )}
             showMoreButton={
               Boolean(!isLoadingOwnedData) && !isEmpty(followedData)
             }
