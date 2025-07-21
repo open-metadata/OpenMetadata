@@ -106,7 +106,7 @@ const MyFeedWidgetInternal = ({
   }, []);
 
   const showMoreCount = useMemo(() => {
-    return String(entityThread.length > 0 ? entityThread.length : '');
+    return entityThread.length > 0 ? entityThread.length.toString() : '';
   }, [entityThread]);
 
   const widgetBody = useMemo(() => {
@@ -167,7 +167,7 @@ const MyFeedWidgetInternal = ({
               EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
-              count: showMoreCount as unknown as number,
+              countValue: showMoreCount,
             })}
             showMoreButton={Boolean(!loading) && !isEmpty(entityThread)}
           />
