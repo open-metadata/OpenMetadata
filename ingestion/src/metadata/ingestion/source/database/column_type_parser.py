@@ -446,15 +446,11 @@ class ColumnTypeParser:
         data_length = 1
         match = re.match(r".*\(([\w]*)\)", dtype)
         if match:
-            data_length = match.groups()[0]
-            # Keep data_length as string to maintain backward compatibility
-            # Only convert to integer if it's a valid numeric string
             try:
-                # Test if it can be converted to int, but keep as string for compatibility
-                int(data_length)
+                data_length = int(match.groups()[0])
             except ValueError:
                 # If conversion fails, keep it as 1 (default)
-                data_length = "1"
+                data_length = 1
         return {
             "dataType": data_type,
             "dataTypeDisplay": data_type,

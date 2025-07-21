@@ -22,6 +22,7 @@ RAW_ROW_DATA_TYPES = [
     "row(a array(string))",
     "row(bigquerytestdatatype51 array(row(bigquery_test_datatype_511 array(string))))",
     "row(record_1 row(record_2 row(record_3 row(record_4 string))))",
+    "row(splash row(color varchar, icon varchar, custom_story_board varchar, custom_android_splash varchar), android row(firebase_app_id varchar, google_services_json varchar, whitelisted_audience varchar, android_client_id varchar, build_preview row(download_url varchar, app_version varchar)), name varchar, app_icon varchar, url_scheme varchar, universal_link varchar, universal_links array(varchar), ios row(ios_client_id varchar))",
 ]
 
 EXPECTED_ROW_DATA_TYPES = [
@@ -30,6 +31,7 @@ EXPECTED_ROW_DATA_TYPES = [
     "struct<a:array<string>>",
     "struct<bigquerytestdatatype51:array<struct<bigquery_test_datatype_511:array<string>>>>",
     "struct<record_1:struct<record_2:struct<record_3:struct<record_4:string>>>>",
+    "struct<splash:struct<color:varchar,icon:varchar,custom_story_board:varchar,custom_android_splash:varchar>,android:struct<firebase_app_id:varchar,google_services_json:varchar,whitelisted_audience:varchar,android_client_id:varchar,build_preview:struct<download_url:varchar,app_version:varchar>>,name:varchar,app_icon:varchar,url_scheme:varchar,universal_link:varchar,universal_links:array<varchar>,ios:struct<ios_client_id:varchar>>",
 ]
 
 # Test cases for dataLength conversion - only for types that should have dataLength
