@@ -2488,6 +2488,109 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   //////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  protected void patch_dataProducts_multipleOperations_200(TestInfo test) throws IOException {
+    if (!supportsPatch || !supportsDataProducts || !supportsDomains) {
+      return;
+    }
+    
+    // Create entity without dataProducts
+    T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
+    
+    // First add a domain (required for dataProducts)
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+    Domain domain = domainResourceTest.createEntity(domainResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+    EntityReference domainRef = domain.getEntityReference();
+    
+    String originalJson = JsonUtils.pojoToJson(entity);
+    entity.setDomains(List.of(domainRef));
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    fieldAdded(change, FIELD_DOMAINS, List.of(domainRef));
+    entity = patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    
+    // Create data products
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct1 = dataProductResourceTest.createRequest(test)
+        .withDomains(listOf(domainRef.getFullyQualifiedName()));
+    DataProduct dataProduct1 = dataProductResourceTest.createEntity(createDataProduct1, ADMIN_AUTH_HEADERS);
+    EntityReference dataProductRef1 = dataProduct1.getEntityReference();
+    
+    CreateDataProduct createDataProduct2 = dataProductResourceTest.createRequest(test, 1)
+        .withDomains(listOf(domainRef.getFullyQualifiedName()));
+    DataProduct dataProduct2 = dataProductResourceTest.createEntity(createDataProduct2, ADMIN_AUTH_HEADERS);
+    EntityReference dataProductRef2 = dataProduct2.getEntityReference();
+    
+    // Test scenario 1: Add first dataProduct via PATCH
+    originalJson = JsonUtils.pojoToJson(entity);
+    entity.setDataProducts(List.of(dataProductRef1));
+    change = getChangeDescription(entity, MINOR_UPDATE);
+    fieldAdded(change, FIELD_DATA_PRODUCTS, List.of(dataProductRef1));
+    T patched1 = patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    
+    // Verify patch response contains the first dataProduct
+    assertNotNull(patched1.getDataProducts(), "Patch response should include dataProducts");
+    assertEquals(1, patched1.getDataProducts().size(), "Should have 1 dataProduct");
+    assertEquals(dataProductRef1.getId(), patched1.getDataProducts().get(0).getId(),
+        "Should have the first dataProduct");
+    
+    // Test scenario 2: Add second dataProduct (now have 2)
+    originalJson = JsonUtils.pojoToJson(patched1);
+    patched1.setDataProducts(List.of(dataProductRef1, dataProductRef2));
+    change = getChangeDescription(patched1, MINOR_UPDATE);
+    fieldAdded(change, FIELD_DATA_PRODUCTS, List.of(dataProductRef2));
+    T patched2 = patchEntityAndCheck(patched1, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    
+    // Verify patch response contains both dataProducts
+    assertNotNull(patched2.getDataProducts(), "Patch response should include dataProducts");
+    assertEquals(2, patched2.getDataProducts().size(), "Should have 2 dataProducts");
+    assertTrue(
+        patched2.getDataProducts().stream().anyMatch(dp -> dp.getId().equals(dataProductRef1.getId())),
+        "Should contain first dataProduct");
+    assertTrue(
+        patched2.getDataProducts().stream().anyMatch(dp -> dp.getId().equals(dataProductRef2.getId())),
+        "Should contain second dataProduct");
+    
+    // Test scenario 3: Remove first dataProduct (keep only second)
+    originalJson = JsonUtils.pojoToJson(patched2);
+    patched2.setDataProducts(List.of(dataProductRef2));
+    change = getChangeDescription(patched2, MINOR_UPDATE);
+    fieldDeleted(change, FIELD_DATA_PRODUCTS, List.of(dataProductRef1));
+    T patched3 = patchEntityAndCheck(patched2, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    
+    // Verify patch response has only the second dataProduct
+    assertNotNull(patched3.getDataProducts(), "Patch response should include dataProducts");
+    assertEquals(1, patched3.getDataProducts().size(), "Should have 1 dataProduct after deletion");
+    assertEquals(dataProductRef2.getId(), patched3.getDataProducts().get(0).getId(),
+        "Should only have the second dataProduct");
+    
+    // Verify by fetching the entity that it persisted correctly
+    T fetched = getEntity(patched3.getId(), FIELD_DATA_PRODUCTS, ADMIN_AUTH_HEADERS);
+    assertNotNull(fetched.getDataProducts(), "Fetched entity should have dataProducts");
+    assertEquals(1, fetched.getDataProducts().size(), "Fetched entity should have 1 dataProduct");
+    assertEquals(dataProductRef2.getId(), fetched.getDataProducts().get(0).getId(),
+        "Fetched entity should have only the second dataProduct");
+    
+    // Clean up: Remove dataProducts from entity before cleanup
+    originalJson = JsonUtils.pojoToJson(patched3);
+    patched3.setDataProducts(null);
+    change = getChangeDescription(patched3, MINOR_UPDATE);
+    fieldDeleted(change, FIELD_DATA_PRODUCTS, List.of(dataProductRef2));
+    patched3 = patchEntityAndCheck(patched3, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    
+    // Remove domain from entity
+    originalJson = JsonUtils.pojoToJson(patched3);
+    patched3.setDomains(null);
+    change = getChangeDescription(patched3, MINOR_UPDATE);
+    fieldDeleted(change, FIELD_DOMAINS, List.of(domainRef));
+    patchEntityAndCheck(patched3, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    
+    // Clean up created entities
+    dataProductResourceTest.deleteEntity(dataProduct1.getId(), ADMIN_AUTH_HEADERS);
+    dataProductResourceTest.deleteEntity(dataProduct2.getId(), ADMIN_AUTH_HEADERS);
+    domainResourceTest.deleteEntity(domain.getId(), ADMIN_AUTH_HEADERS);
+  }
+  
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   protected void patch_entityDescriptionAndTestAuthorizer(TestInfo test) throws IOException {
     if (!supportsPatch || supportsAdminOnly) {
       return;

@@ -2509,25 +2509,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  private void removeCrossDomainDataProducts(List<EntityReference> domains, T entity) {
+  private void removeCrossDomainDataProducts(List<EntityReference> removedDomains, T entity) {
     if (!supportsDataProducts) {
       return;
     }
 
     List<EntityReference> entityDataProducts = entity.getDataProducts();
-    if (entityDataProducts == null) {
+    if (entityDataProducts == null || nullOrEmpty(removedDomains)) {
+      // If no domains are being removed, nothing to do
       return;
     }
 
-    if (nullOrEmpty(domains)) {
-      entityDataProducts.clear();
-      LOG.info(
-          "Removed all data products from entity {} as no domain is provided",
-          entity.getEntityReference().getType());
-      return;
-    }
-
-    for (EntityReference domain : domains) {
+    for (EntityReference domain : removedDomains) {
       // Fetch domain data products
       List<UUID> domainDataProductIds =
           daoCollection
