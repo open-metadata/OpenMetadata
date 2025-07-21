@@ -365,23 +365,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
     jobLogger.addInitDetail("Search type", searchType);
 
-    if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
-      this.searchIndexSink =
-          new OpenSearchBulkSink(
-              searchRepository,
-              jobData.getBatchSize(),
-              jobData.getMaxConcurrentRequests(),
-              jobData.getPayLoadSize());
-      LOG.debug("Initialized OpenSearchBulkSink with batch size: {}", jobData.getBatchSize());
-    } else {
-      this.searchIndexSink =
-          new ElasticSearchBulkSink(
-              searchRepository,
-              jobData.getBatchSize(),
-              jobData.getMaxConcurrentRequests(),
-              jobData.getPayLoadSize());
-      LOG.debug("Initialized ElasticSearchBulkSink with batch size: {}", jobData.getBatchSize());
-    }
+    this.searchIndexSink =
+        searchRepository.createBulkSink(
+            jobData.getBatchSize(), jobData.getMaxConcurrentRequests(), jobData.getPayLoadSize());
+    LOG.debug(
+        "Initialized {} with batch size: {}",
+        searchIndexSink.getClass().getSimpleName(),
+        jobData.getBatchSize());
 
     return clusterMetrics;
   }
