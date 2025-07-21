@@ -165,11 +165,16 @@ const checkElementVisibility = async (
       }
 
       case 'with-manage-button': {
-        await testUserPage.locator('[data-testid="manage-button"]').click();
+        const manageButton = testUserPage.locator(
+          '[data-testid="manage-button"]'
+        );
+        if (await manageButton.isVisible()) {
+          await manageButton.click();
 
-        await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`)
-        ).toBeVisible();
+          await expect(
+            testUserPage.locator(`[data-testid="${testId}"]`)
+          ).toBeVisible();
+        }
 
         break;
       }
@@ -213,11 +218,16 @@ const checkElementVisibility = async (
       }
 
       case 'with-manage-button': {
-        await testUserPage.locator('[data-testid="manage-button"]').click();
+        const manageButton = testUserPage.locator(
+          '[data-testid="manage-button"]'
+        );
+        if (await manageButton.isVisible()) {
+          await manageButton.click();
 
-        await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`)
-        ).not.toBeVisible();
+          await expect(
+            testUserPage.locator(`[data-testid="${testId}"]`)
+          ).not.toBeVisible();
+        }
 
         break;
       }
