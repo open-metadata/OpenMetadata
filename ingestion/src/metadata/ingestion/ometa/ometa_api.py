@@ -145,7 +145,7 @@ class OpenMetadata(
         self,
         config: OpenMetadataConnection,
         raw_data: bool = False,
-        client_config: Optional[ClientConfig] = None,
+        additional_client_config_arguments: Optional[Dict[str]] = None,
     ):
         self.config = config
 
@@ -164,23 +164,16 @@ class OpenMetadata(
             extra_headers = self.config.extraHeaders.root
 
         # Create default client config if none provided
-        if client_config is None:
-            client_config = ClientConfig(
-                base_url=self.config.hostPort,
-                api_version=self.config.apiVersion,
-                auth_header="Authorization",
-                extra_headers=extra_headers,
-                auth_token=self._auth_provider.get_access_token,
-                verify=get_verify_ssl(self.config.sslConfig),
-            )
-        else:
-            # Update the provided client_config with required OpenMetadata connection settings
-            client_config.base_url = self.config.hostPort
-            client_config.api_version = self.config.apiVersion
-            client_config.auth_header = "Authorization"
-            client_config.extra_headers = extra_headers
-            client_config.auth_token = self._auth_provider.get_access_token
-            client_config.verify = get_verify_ssl(self.config.sslConfig)
+        client_config = ClientConfig(
+            base_url=self.config.hostPort,
+            api_version=self.config.apiVersion,
+            auth_header="Authorization",
+            extra_headers=extra_headers,
+            auth_token=self._auth_provider.get_access_token,
+            verify=get_verify_ssl(self.config.sslConfig),
+            **additional_client_config_arguments or {},
+        )
+
         self.client = REST(client_config)
         self._use_raw_data = raw_data
         if self.config.enableVersionValidation:
