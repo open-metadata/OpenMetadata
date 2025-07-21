@@ -517,7 +517,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         BAD_REQUEST,
         "Required parameter missingCountValue is not passed in parameterValues");
 
-    // Test parameter name validation - parameter name not defined in test definition
     CreateTestCase create2 = createRequest(test);
     create2
         .withEntityLink(TABLE_LINK)
@@ -529,7 +528,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertResponseContains(
         () -> createAndCheckEntity(create2, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Parameter 'invalidParameter' is not defined in the test definition. Defined parameters are: [missingCountValue]");
+        "Parameter 'invalidParameter' is not defined in the test definition. Defined parameters are: [missingValueMatch, missingCountValue]");
   }
 
   @Test
