@@ -228,6 +228,8 @@ export const checkDomainDisplayName = async (
   page: Page,
   displayName: string
 ) => {
+  await page.waitForLoadState('networkidle');
+
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
     displayName
   );
