@@ -297,6 +297,7 @@ function FollowingWidget({
     widgetKey,
     widgetData,
     isEditView,
+    showMoreCount,
   ]);
 
   return (

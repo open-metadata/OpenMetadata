@@ -306,6 +306,7 @@ const MyDataWidgetInternal = ({
     widgetKey,
     widgetData,
     isEditView,
+    showMoreCount,
   ]);
 
   return (
