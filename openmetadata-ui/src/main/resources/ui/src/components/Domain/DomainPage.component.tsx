@@ -152,6 +152,7 @@ const DomainPage = () => {
           TabSpecificField.EXPERTS,
           TabSpecificField.TAGS,
           TabSpecificField.FOLLOWERS,
+          TabSpecificField.EXTENSION,
         ],
       });
       setActiveDomain(data);
