@@ -34,10 +34,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.secrets.ExternalSecretsManager;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
@@ -123,6 +127,7 @@ public class AbstractNativeApplication implements NativeApplication {
   /**
    * Validate the configuration of the application. This method is called before the application is
    * triggered.
+   * @param config
    */
   protected void validateConfig(Map<String, Object> config) {
     LOG.warn("validateConfig is not implemented for this application. Skipping validation.");
@@ -205,6 +210,20 @@ public class AbstractNativeApplication implements NativeApplication {
             .getByName(null, SERVICE_NAME, serviceEntityRepository.getFields("id"))
             .getEntityReference();
 
+    // Get encrypted private config
+    Object privateConfig = this.getApp().getPrivateConfiguration();
+    if (privateConfig != null) {
+      String privateConfigJson = JsonUtils.pojoToJson(privateConfig);
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+      if (secretsManager instanceof ExternalSecretsManager) {
+        String baseSecretId =
+            "external-app-" + this.getApp().getName().toLowerCase() + "-private-config";
+        privateConfig = "secret:" + baseSecretId;
+      } else {
+        privateConfig = Fernet.getInstance().encrypt(privateConfigJson);
+      }
+    }
+
     CreateIngestionPipeline createPipelineRequest =
         new CreateIngestionPipeline()
             .withName(this.getApp().getName())
@@ -217,10 +236,7 @@ public class AbstractNativeApplication implements NativeApplication {
                         new ApplicationPipeline()
                             .withSourcePythonClass(this.getApp().getSourcePythonClass())
                             .withAppConfig(config)
-                            .withAppPrivateConfig(
-                                this.getApp().getAppType() == AppType.External
-                                    ? new java.util.HashMap<>()
-                                    : this.getApp().getPrivateConfiguration())))
+                            .withAppPrivateConfig(privateConfig)))
             .withAirflowConfig(
                 new AirflowConfig()
                     .withScheduleInterval(this.getApp().getAppSchedule().getCronExpression()))
@@ -269,7 +285,7 @@ public class AbstractNativeApplication implements NativeApplication {
     // This is the part of the code that is executed by the scheduler
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
     App jobApp = collectionDAO.applicationDAO().findEntityByName(appName);
-    ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
+    ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp, false);
     jobApp.setAppConfiguration(
         JsonUtils.getMapFromJson(
             (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));

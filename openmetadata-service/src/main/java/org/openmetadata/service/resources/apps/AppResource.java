@@ -623,7 +623,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    App app = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    app.setPrivateConfiguration(null);
+    return app;
   }
 
   @GET

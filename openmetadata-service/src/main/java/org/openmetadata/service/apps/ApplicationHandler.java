@@ -20,23 +20,29 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.ExternalSecretsManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -53,13 +59,15 @@ public class ApplicationHandler {
   private final AppMarketPlaceRepository appMarketPlaceRepository;
   private final EventSubscriptionRepository eventSubscriptionRepository;
   private final ConfigurationReader configReader = new ConfigurationReader();
-  private final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+  private final SecretsManager secretsManager;
+  private static final String SERVICE_NAME = "OpenMetadata";
 
   private ApplicationHandler(OpenMetadataApplicationConfig config) {
     this.config = config;
     this.appRepository = new AppRepository();
     this.appMarketPlaceRepository = new AppMarketPlaceRepository();
     this.eventSubscriptionRepository = new EventSubscriptionRepository();
+    this.secretsManager = SecretsManagerFactory.getSecretsManager();
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
@@ -72,7 +80,7 @@ public class ApplicationHandler {
   /**
    * Load the apps' OM configuration and private parameters
    */
-  public void setAppRuntimeProperties(App app) {
+  public void setAppRuntimeProperties(App app, boolean isUpdate) {
     app.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(config, app.getBot().getName()).build());
     try {
@@ -82,78 +90,16 @@ public class ApplicationHandler {
       if (appPrivateConfig.getParameters() != null
           && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
         app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
-      }
 
-      if (app.getAppType() == AppType.External) {
-        storeExternalAppPrivateConfig(app);
+        if ((app.getAppType() == AppType.External) && isUpdate) {
+          storeExternalAppPrivateConfig(app);
+          updateIngestionPipelinePrivateConfig(app);
+        }
       }
     } catch (IOException e) {
       LOG.debug("Config file for app {} not found: ", app.getName(), e);
     } catch (ConfigurationException e) {
       LOG.error("Error reading config file for app {}", app.getName(), e);
-    }
-  }
-
-  /**
-   * Store private configuration in Secrets Manager for external apps
-   * so they can access it when running in Argo workflows
-   */
-  public void storeExternalAppPrivateConfig(App app) {
-    if (app.getAppType() != AppType.External) {
-      return;
-    }
-    if (app.getPrivateConfiguration() == null) {
-      LOG.debug(
-          "External app {} has no private configuration to store in Secrets Manager",
-          app.getName());
-      return;
-    }
-    try {
-      String privateConfigJson = JsonUtils.pojoToJson(app.getPrivateConfiguration());
-      if (secretsManager instanceof ExternalSecretsManager) {
-        ExternalSecretsManager externalSM = (ExternalSecretsManager) secretsManager;
-        String baseSecretId = "external-app-" + app.getName().toLowerCase() + "-private-config";
-        externalSM.upsertSecret(baseSecretId, privateConfigJson);
-        LOG.info(
-            "Stored private config in Secrets Manager for external app {} with secretId: {}",
-            app.getName(),
-            baseSecretId);
-      } else {
-        LOG.debug(
-            "Using DB Secrets Manager - private config will be loaded from resource files for app {}",
-            app.getName());
-      }
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to store private config in Secrets Manager for external app {}: {}",
-          app.getName(),
-          e.getMessage());
-      LOG.warn(
-          "External app {} will load private config from resource files instead of Secrets Manager",
-          app.getName());
-    }
-  }
-
-  /**
-   * Delete private configuration from Secrets Manager for external apps
-   */
-  private void deleteExternalAppPrivateConfig(App app) {
-    if (app.getAppType() != AppType.External) {
-      return;
-    }
-    try {
-      if (secretsManager instanceof ExternalSecretsManager) {
-        String baseSecretId = "external-app-" + app.getName().toLowerCase() + "-private-config";
-        ExternalSecretsManager externalSM = (ExternalSecretsManager) secretsManager;
-        externalSM.upsertSecret(baseSecretId, null);
-
-        LOG.info("Deleted private config from Secrets Manager for external app {}", app.getName());
-      }
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to delete private config from Secrets Manager for external app {}",
-          app.getName(),
-          e);
     }
   }
 
@@ -319,8 +265,9 @@ public class ApplicationHandler {
           InvocationTargetException,
           InstantiationException,
           IllegalAccessException {
-    // add private runtime properties
-    setAppRuntimeProperties(app);
+    // Set runtime properties (which now handles private config storage if needed)
+    setAppRuntimeProperties(app, !forDelete);
+
     Class<? extends AbstractNativeApplication> clz =
         Class.forName(app.getClassName()).asSubclass(AbstractNativeApplication.class);
     AbstractNativeApplication resource =
@@ -409,5 +356,72 @@ public class ApplicationHandler {
             LOG.error("Error deleting job {}", jobKey.getName(), e);
           }
         });
+  }
+
+  public void storeExternalAppPrivateConfig(App app) {
+    if (app.getAppType() != AppType.External) {
+      return;
+    }
+    if (app.getPrivateConfiguration() == null) {
+      LOG.debug(
+          "External app {} has no private configuration to store in Secrets Manager",
+          app.getName());
+      return;
+    }
+    try {
+      String privateConfigJson = JsonUtils.pojoToJson(app.getPrivateConfiguration());
+      if (secretsManager instanceof ExternalSecretsManager) {
+        ExternalSecretsManager externalSM = (ExternalSecretsManager) secretsManager;
+        String baseSecretId = "external-app-" + app.getName().toLowerCase() + "-private-config";
+        externalSM.upsertSecret(baseSecretId, privateConfigJson);
+        LOG.info("Stored private config in Secrets Manager for external app {}", app.getName());
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to store private config in Secrets Manager for external app {}: {}",
+          app.getName(),
+          e.getMessage());
+      LOG.warn(
+          "External app {} will load private config from resource files instead of Secrets Manager",
+          app.getName());
+    }
+  }
+
+  private void updateIngestionPipelinePrivateConfig(App app) {
+    try {
+      String fqn = FullyQualifiedName.add("OpenMetadata", app.getName());
+      IngestionPipelineRepository ingestionPipelineRepository =
+          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      IngestionPipeline pipeline =
+          ingestionPipelineRepository.getByName(
+              null, fqn, ingestionPipelineRepository.getFields("sourceConfig"));
+
+      Object encryptedConfig;
+      String privateConfigJson = JsonUtils.pojoToJson(app.getPrivateConfiguration());
+      if (secretsManager instanceof ExternalSecretsManager) {
+        String baseSecretId = "external-app-" + app.getName().toLowerCase() + "-private-config";
+        encryptedConfig = "secret:" + baseSecretId;
+      } else {
+        encryptedConfig = Fernet.getInstance().encrypt(privateConfigJson);
+      }
+
+      ApplicationPipeline appPipeline =
+          JsonUtils.convertValue(pipeline.getSourceConfig().getConfig(), ApplicationPipeline.class);
+
+      if (encryptedConfig.equals(appPipeline.getAppPrivateConfig())) {
+        LOG.info("Private config for app {} is unchanged, skipping update.", app.getName());
+        return;
+      }
+      IngestionPipeline original = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
+      pipeline.setSourceConfig(
+          pipeline.getSourceConfig().withConfig(appPipeline.withAppPrivateConfig(encryptedConfig)));
+      ingestionPipelineRepository.update(null, original, pipeline, "admin");
+      LOG.info("Updated ingestion pipeline private config for app {}", app.getName());
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Ingestion pipeline not found for app {}, skipping update", app.getName());
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to update ingestion pipeline for app {}: {}", app.getName(), e.getMessage());
+    }
   }
 }

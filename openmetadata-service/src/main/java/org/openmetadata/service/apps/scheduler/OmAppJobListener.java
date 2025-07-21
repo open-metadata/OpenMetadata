@@ -65,7 +65,7 @@ public class OmAppJobListener implements JobListener {
         appConfig.getAdditionalProperties().putAll(overrideConfig.getAdditionalProperties());
       }
 
-      ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
+      ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp, false);
       JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
       long jobStartTime = System.currentTimeMillis();
       AppRunRecord runRecord =
