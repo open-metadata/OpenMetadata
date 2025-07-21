@@ -1,5 +1,6 @@
 ---
 title: Enable Security (Docker) | OpenMetadata Docker Security
+description: Secure Docker-based deployments using best practices in network access, token handling, and identity provider integration.
 slug: /deployment/docker/security
 collate: false
 ---

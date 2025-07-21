@@ -81,6 +81,18 @@ describe('CustomizablePageHeader', () => {
     });
   });
 
+  it('should disable buttons when disableSave is true', async () => {
+    render(
+      <MemoryRouter>
+        <CustomizablePageHeader {...mockProps} disableSave />
+      </MemoryRouter>
+    );
+
+    const saveButton = screen.getByTestId('save-button');
+
+    expect(saveButton).toBeDisabled();
+  });
+
   it('should disable buttons while saving', async () => {
     render(
       <MemoryRouter>
