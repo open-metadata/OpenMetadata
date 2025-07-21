@@ -1,5 +1,6 @@
 ---
 title: Run the Airbyte Connector Externally
+description: Use YAML to configure Airbyte ingestion and extract metadata from pipeline sources and syncs.
 slug: /connectors/pipeline/airbyte/yaml
 ---
 

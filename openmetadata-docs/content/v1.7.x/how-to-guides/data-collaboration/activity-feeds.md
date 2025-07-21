@@ -1,5 +1,6 @@
 ---
-title: Understanding Activity Feeds
+title: Understanding Activity Feeds | Official Documentation
+description: Monitor all activity feeds to stay informed about changes in ownership, usage, classification, or quality events.
 slug: /how-to-guides/data-collaboration/activity-feeds
 ---
 

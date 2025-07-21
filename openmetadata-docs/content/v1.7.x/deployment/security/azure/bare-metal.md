@@ -1,5 +1,6 @@
 ---
-title: Azure SSO for Bare Metal
+title: Azure SSO for Bare Metal  | Official Documentation
+description: Connect Bare Metal to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /deployment/security/azure/bare-metal
 collate: false
 ---

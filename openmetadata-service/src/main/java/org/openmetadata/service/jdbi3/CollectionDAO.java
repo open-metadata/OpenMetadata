@@ -202,6 +202,9 @@ public interface CollectionDAO {
   ProfilerDataTimeSeriesDAO profilerDataTimeSeriesDao();
 
   @CreateSqlObject
+  IndexMappingVersionDAO indexMappingVersionDAO();
+
+  @CreateSqlObject
   DataQualityDataTimeSeriesDAO dataQualityDataTimeSeriesDao();
 
   @CreateSqlObject
@@ -418,6 +421,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   WorkflowInstanceStateTimeSeriesDAO workflowInstanceStateTimeSeriesDAO();
+
+  @CreateSqlObject
+  DeletionLockDAO deletionLockDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -1629,10 +1635,47 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
+    // Optimized deleteAll implementation that splits OR query for better performance
+    @Transaction
+    default void deleteAll(UUID id, String entity) {
+      // Split OR query into two separate deletes for better index usage
+      deleteAllFrom(id, entity);
+      deleteAllTo(id, entity);
+    }
+
+    @SqlUpdate("DELETE FROM entity_relationship WHERE fromId = :id AND fromEntity = :entity")
+    void deleteAllFrom(@BindUUID("id") UUID id, @Bind("entity") String entity);
+
+    @SqlUpdate("DELETE FROM entity_relationship WHERE toId = :id AND toEntity = :entity")
+    void deleteAllTo(@BindUUID("id") UUID id, @Bind("entity") String entity);
+
+    // Batch deletion methods for improved performance
+    @Transaction
+    default void batchDeleteRelationships(List<UUID> entityIds, String entityType) {
+      if (entityIds == null || entityIds.isEmpty()) {
+        return;
+      }
+
+      // Process in chunks of 500 to avoid hitting database query limits
+      int batchSize = 500;
+      for (int i = 0; i < entityIds.size(); i += batchSize) {
+        int endIndex = Math.min(i + batchSize, entityIds.size());
+        List<String> batch =
+            entityIds.subList(i, endIndex).stream()
+                .map(UUID::toString)
+                .collect(Collectors.toList());
+
+        batchDeleteFrom(batch, entityType);
+        batchDeleteTo(batch, entityType);
+      }
+    }
+
     @SqlUpdate(
-        "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
-            + "(fromId = :id AND fromEntity = :entity)")
-    void deleteAll(@BindUUID("id") UUID id, @Bind("entity") String entity);
+        "DELETE FROM entity_relationship WHERE fromId IN (<ids>) AND fromEntity = :entityType")
+    void batchDeleteFrom(@BindList("ids") List<String> ids, @Bind("entityType") String entityType);
+
+    @SqlUpdate("DELETE FROM entity_relationship WHERE toId IN (<ids>) AND toEntity = :entityType")
+    void batchDeleteTo(@BindList("ids") List<String> ids, @Bind("entityType") String entityType);
 
     @SqlUpdate(
         "DELETE FROM entity_relationship "
@@ -1865,6 +1908,18 @@ public interface CollectionDAO {
     @SqlQuery("SELECT count(id) FROM thread_entity <condition> AND createdBy = :username")
     int listCountTasksAssignedBy(
         @Bind("username") String username, @Define("condition") String condition);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity where type = 'Task' LIMIT :limit OFFSET :paginationOffset")
+    List<String> listTaskThreadWithOffset(
+        @Bind("limit") int limit, @Bind("paginationOffset") int paginationOffset);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity where type != 'Task' AND createdAt > :cutoffMillis ORDER BY createdAt LIMIT :limit OFFSET :paginationOffset")
+    List<String> listOtherConversationThreadWithOffset(
+        @Bind("cutoffMillis") long cutoffMillis,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") int paginationOffset);
 
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> AND "
@@ -6051,6 +6106,13 @@ public interface CollectionDAO {
             "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE stateId = :stateId ORDER BY timestamp DESC")
     List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM test_case_resolution_status_time_series "
+                + "WHERE entityFQNHash = :entityFQNHash ORDER BY timestamp DESC")
+    List<String> listTestCaseResolutionForEntityFQNHash(
+        @BindFQN("entityFQNHash") String entityFqnHas);
 
     @SqlQuery(
         value =

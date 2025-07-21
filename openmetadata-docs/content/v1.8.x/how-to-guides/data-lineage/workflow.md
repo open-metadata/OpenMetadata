@@ -1,5 +1,6 @@
 ---
 title: How to Deploy a Lineage Workflow
+description: Build data lineage using workflows to extract upstream and downstream dependencies.
 slug: /how-to-guides/data-lineage/workflow
 ---
 

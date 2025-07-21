@@ -90,6 +90,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -1187,6 +1188,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
   private void delete_recursiveTest() throws IOException {
+    // Skip recursive delete test when container reuse is enabled
+    // as entities from previous test runs may still reference the container
+    if (Boolean.parseBoolean(System.getProperty("testcontainers.reuse.enable", "false"))) {
+      LOG.info("Skipping delete_recursiveTest - container reuse is enabled");
+      return;
+    }
+
     // Finally, delete the container that contains the entities created for this test
     EntityReference container = getContainer();
     if (container != null) {
@@ -5169,10 +5177,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .on(
             "csvImportChannel",
             args -> {
-              receivedMessage[0] = (String) args[0];
+              String[] msg = new String[1];
+              msg[0] = (String) args[0];
+              CSVImportMessage receivedCsvImportMessage =
+                  JsonUtils.readValue(msg[0], CSVImportMessage.class);
               System.out.println("Received message: " + receivedMessage[0]);
-              messageLatch.countDown();
-              socket.disconnect();
+              if (Objects.equals(receivedCsvImportMessage.getStatus(), "COMPLETED")
+                  || Objects.equals(receivedCsvImportMessage.getStatus(), "FAILED")) {
+                receivedMessage[0] = msg[0];
+                messageLatch.countDown();
+                socket.disconnect();
+              }
             })
         .on(
             Socket.EVENT_CONNECT_ERROR,

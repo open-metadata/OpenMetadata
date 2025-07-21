@@ -15,6 +15,9 @@ package org.openmetadata.service.cache;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.*;
+import org.openmetadata.service.jdbi3.DeletionLockDAO;
+import org.openmetadata.service.jdbi3.IndexMappingVersionDAO;
 
 /**
  * Decorator for CollectionDAO that provides caching capabilities.
@@ -466,5 +469,15 @@ public class CachedCollectionDAO implements CollectionDAO {
   @Override
   public WorksheetDAO worksheetDAO() {
     return delegate.worksheetDAO();
+  }
+
+  @Override
+  public DeletionLockDAO deletionLockDAO() {
+    return delegate.deletionLockDAO();
+  }
+
+  @Override
+  public IndexMappingVersionDAO indexMappingVersionDAO() {
+    return delegate.indexMappingVersionDAO();
   }
 }

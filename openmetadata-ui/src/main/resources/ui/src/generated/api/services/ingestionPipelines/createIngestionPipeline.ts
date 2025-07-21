@@ -308,6 +308,18 @@ export interface Pipeline {
      */
     incremental?: IncrementalMetadataExtractionConfiguration;
     /**
+     * Optional configuration to soft delete databases in OpenMetadata if the source databases
+     * are deleted. Also, if the database is deleted, all the associated entities like schemas,
+     * tables, views, stored procedures, lineage, etc., with that database will be deleted
+     */
+    markDeletedDatabases?: boolean;
+    /**
+     * Optional configuration to soft delete schemas in OpenMetadata if the source schemas are
+     * deleted. Also, if the schema is deleted, all the associated entities like tables, views,
+     * stored procedures, lineage, etc., with that schema will be deleted
+     */
+    markDeletedSchemas?: boolean;
+    /**
      * Optional configuration to soft delete stored procedures in OpenMetadata if the source
      * stored procedures are deleted. Also, if the stored procedures is deleted, all the
      * associated entities like lineage, etc., with that stored procedures will be deleted
@@ -2015,6 +2027,8 @@ export interface ServiceConnection {
  *
  * Sigma Connection Config
  *
+ * ThoughtSpot Connection Config
+ *
  * Google BigQuery Connection Config
  *
  * Google BigTable Connection Config
@@ -2311,6 +2325,8 @@ export interface ConfigClass {
      * Host and Port of the Qlik Cloud instance.
      *
      * Sigma API url.
+     *
+     * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      *
      * BigQuery APIs URL.
      *
@@ -2635,6 +2651,8 @@ export interface ConfigClass {
      *
      * Sigma API version.
      *
+     * ThoughtSpot API version to use
+     *
      * OpenMetadata server API version to use.
      *
      * Airbyte API version.
@@ -2781,6 +2799,15 @@ export interface ConfigClass {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * ThoughtSpot authentication configuration
+     */
+    authentication?: Authenticationation;
+    /**
+     * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
+     * only.
+     */
+    orgId?: string;
     /**
      * Billing Project ID
      */
@@ -3670,6 +3697,8 @@ export enum AuthProvider {
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  *
+ * ThoughtSpot authentication configuration
+ *
  * Types of methods used to authenticate to the alation instance
  *
  * API Access Token Auth Credentials
@@ -3895,6 +3924,30 @@ export interface DataStaxAstraDBConfiguration {
  */
 export enum NoConfigAuthenticationTypes {
     OAuth2 = "OAuth2",
+}
+
+/**
+ * ThoughtSpot authentication configuration
+ *
+ * Types of methods used to authenticate to the alation instance
+ *
+ * Basic Auth Credentials
+ *
+ * API Access Token Auth Credentials
+ */
+export interface Authenticationation {
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Access Token for the API
+     */
+    accessToken?: string;
 }
 
 export interface AuthenticationModeObject {
@@ -5407,6 +5460,8 @@ export enum TransactionMode {
  *
  * Sigma service type
  *
+ * ThoughtSpot service type
+ *
  * Service type.
  *
  * Custom database service type
@@ -5548,6 +5603,7 @@ export enum PurpleType {
     Synapse = "Synapse",
     Tableau = "Tableau",
     Teradata = "Teradata",
+    ThoughtSpot = "ThoughtSpot",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
