@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Typography } from 'antd';
+import { Button, Card, Form, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
@@ -41,16 +41,13 @@ export const ContractDetailFormTab: React.FC<{
     },
     {
       label: t('label.description'),
-      id: 'contractDescription',
-      name: 'contractDescription',
+      id: 'description',
+      name: 'description',
       type: FieldTypes.DESCRIPTION,
       required: false,
       props: {
         'data-testid': 'description',
         initialValue: initialValues?.description ?? '',
-        style: {
-          margin: 0,
-        },
       },
     },
     {
@@ -80,8 +77,8 @@ export const ContractDetailFormTab: React.FC<{
   ];
 
   return (
-    <div className="container bg-grey">
-      <div>
+    <Card className="container bg-grey p-box">
+      <div className="m-b-sm">
         <Typography.Title className="m-0" level={5}>
           {t('label.contract-detail-plural')}
         </Typography.Title>
@@ -89,19 +86,20 @@ export const ContractDetailFormTab: React.FC<{
           {t('message.contract-detail-plural-description')}
         </Typography.Paragraph>
       </div>
-      <div className="h-full">
-        <Form form={form} layout="vertical">
-          {generateFormFields(fields)}
 
-          <div className="d-flex justify-end m-t-md">
-            <Button
-              type="primary"
-              onClick={() => onNext(form.getFieldsValue())}>
-              {t('label.next')}
-            </Button>
-          </div>
-        </Form>
-      </div>
-    </div>
+      <Form
+        className="bg-white p-box"
+        form={form}
+        layout="vertical"
+        onFinish={onNext}>
+        {generateFormFields(fields)}
+
+        <div className="d-flex justify-end m-t-md">
+          <Button htmlType="submit" type="primary">
+            {t('label.next')}
+          </Button>
+        </div>
+      </Form>
+    </Card>
   );
 };

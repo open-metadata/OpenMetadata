@@ -74,6 +74,7 @@ export const ContractSchemaFormTab: React.FC<{
         <Table
           columns={columns}
           dataSource={schema}
+          rowKey="name"
           rowSelection={{
             selectedRowKeys: selectedKeys,
             onChange: (selectedRowKeys) => {
