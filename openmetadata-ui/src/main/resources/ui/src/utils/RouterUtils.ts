@@ -359,18 +359,6 @@ export const getTagPath = (fqn?: string) => {
   return path;
 };
 
-export const getAddDataQualityTableTestPath = (
-  dashboardType: string,
-  fqn: string
-) => {
-  let path = ROUTES.ADD_DATA_QUALITY_TEST_CASE;
-
-  path = path
-    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
-
-  return path;
-};
 export const getAddCustomMetricPath = (
   dashboardType: ProfilerDashboardType,
   fqn: string
@@ -510,11 +498,26 @@ export const getGlossaryTermsVersionsPath = (
   return path;
 };
 
-export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
-  let path = tab ? ROUTES.DATA_QUALITY_WITH_TAB : ROUTES.DATA_QUALITY;
+export const getDataQualityPagePath = (
+  tab?: DataQualityPageTabs,
+  subTab?: string
+) => {
+  let path = ROUTES.DATA_QUALITY;
+
+  if (tab) {
+    path = ROUTES.DATA_QUALITY_WITH_TAB;
+  }
+
+  if (subTab) {
+    path = ROUTES.DATA_QUALITY_WITH_SUB_TAB;
+  }
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  if (subTab) {
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
 
   return path;

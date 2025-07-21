@@ -53,7 +53,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'containers',
     tableConfig: {
@@ -74,7 +74,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'dashboards',
     tableConfig: {
@@ -95,7 +95,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'databases',
     tableConfig: {
@@ -116,7 +116,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'databaseSchemas',
     tableConfig: {
@@ -137,7 +137,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'glossaryTerm',
     tableConfig: {
@@ -158,7 +158,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'mlmodels',
     tableConfig: {
@@ -179,7 +179,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'pipelines',
     tableConfig: {
@@ -200,7 +200,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'searchIndexes',
     tableConfig: {
@@ -221,7 +221,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'storedProcedures',
     tableConfig: {
@@ -242,7 +242,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'tables',
     tableConfig: {
@@ -263,7 +263,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'topics',
     tableConfig: {
@@ -283,7 +283,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'apiCollections',
     tableConfig: {
@@ -304,7 +304,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'apiEndpoints',
     tableConfig: {
@@ -324,7 +324,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'dataProducts',
     tableConfig: {
@@ -344,7 +344,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'domains',
     tableConfig: {
@@ -364,7 +364,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'dashboardDataModels',
     tableConfig: {
@@ -384,7 +384,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'metrics',
     tableConfig: {

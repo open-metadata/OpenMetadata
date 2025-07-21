@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { filterSelectOptions } from './CommonUtils';
+import { filterSelectOptions, getTableFQNFromColumnFQN } from './CommonUtils';
 
 describe('Tests for CommonUtils', () => {
   describe('filterSelectOptions', () => {
@@ -62,6 +62,22 @@ describe('Tests for CommonUtils', () => {
       const option = { labelValue: 'Label', value: 'value', label: 'Label' };
 
       expect(filterSelectOptions(input, option)).toBe(true);
+    });
+  });
+
+  describe('getTableFQNFromColumnFQN', () => {
+    it('should return the table FQN from a column FQN', () => {
+      const columnFQN = 'service.database.schema.table.column';
+      const tableFQN = getTableFQNFromColumnFQN(columnFQN);
+
+      expect(tableFQN).toBe('service.database.schema.table');
+    });
+
+    it('should return the table FQN as it is if table FQN is provided', () => {
+      const tableFQN = 'service.database.schema.table';
+      const result = getTableFQNFromColumnFQN(tableFQN);
+
+      expect(result).toBe(tableFQN);
     });
   });
 });

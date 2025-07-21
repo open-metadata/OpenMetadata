@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { render, screen } from '@testing-library/react';
 import { ExtensionDataProps } from '../../components/Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { Status } from '../../generated/type/csvImportResult';
 import {
   MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES,
   MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_CONVERTED_EXTENSION_CSV_STRING,
@@ -24,8 +26,19 @@ import {
   getColumnConfig,
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
+  renderColumnDataEditor,
   splitCSV,
 } from './CSV.utils';
+
+jest.mock(
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ markdown }) => (
+        <div data-testid="rich-text-editor-previewer">{markdown}</div>
+      ))
+);
 
 describe('CSVUtils', () => {
   describe('getColumnConfig', () => {
@@ -34,7 +47,7 @@ describe('CSVUtils', () => {
       const columnConfig = getColumnConfig(column, EntityType.GLOSSARY);
 
       expect(columnConfig).toBeDefined();
-      expect(columnConfig.name).toBe(column);
+      expect(columnConfig.key).toBe(column);
     });
   });
 
@@ -46,7 +59,8 @@ describe('CSVUtils', () => {
       ];
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
         csv,
-        EntityType.GLOSSARY
+        EntityType.GLOSSARY,
+        false
       );
 
       expect(columns).toHaveLength(2);
@@ -56,7 +70,10 @@ describe('CSVUtils', () => {
 
   describe('getCSVStringFromColumnsAndDataSource', () => {
     it('should return the CSV string from the columns and data source for non-quoted columns', () => {
-      const columns = [{ name: 'col1' }, { name: 'col2' }];
+      const columns = [
+        { name: 'col1', key: 'col1' },
+        { name: 'col2', key: 'col2' },
+      ];
       const dataSource = [{ col1: 'value1', col2: 'value2' }];
       const csvString = getCSVStringFromColumnsAndDataSource(
         columns,
@@ -68,10 +85,10 @@ describe('CSVUtils', () => {
 
     it('should return the CSV string from the columns and data source with quoted columns', () => {
       const columns = [
-        { name: 'tags' },
-        { name: 'glossaryTerms' },
-        { name: 'description' },
-        { name: 'domain' },
+        { name: 'tags', key: 'tags' },
+        { name: 'glossaryTerms', key: 'glossaryTerms' },
+        { name: 'description', key: 'description' },
+        { name: 'domain', key: 'domain' },
       ];
       const dataSource = [
         {
@@ -93,10 +110,10 @@ describe('CSVUtils', () => {
 
     it('should return quoted value if data contains comma', () => {
       const columns = [
-        { name: 'tags' },
-        { name: 'glossaryTerms' },
-        { name: 'description' },
-        { name: 'domain' },
+        { name: 'tags', key: 'tags' },
+        { name: 'glossaryTerms', key: 'glossaryTerms' },
+        { name: 'description', key: 'description' },
+        { name: 'domain', key: 'domain' },
       ];
       const dataSource = [
         {
@@ -248,6 +265,78 @@ describe('CSVUtils', () => {
       result.forEach((value) => {
         expect(typeof value).toBe('string');
       });
+    });
+  });
+
+  describe('renderColumnDataEditor', () => {
+    it('should render status badge for status column with success status', () => {
+      const result = renderColumnDataEditor('status', {
+        value: Status.Success,
+        data: { details: '', glossaryStatus: '' },
+      });
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('success-badge')).toBeInTheDocument();
+    });
+
+    it('should render status badge for status column with failure status', () => {
+      const result = renderColumnDataEditor('status', {
+        value: Status.Failure,
+        data: { details: '', glossaryStatus: '' },
+      });
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('failure-badge')).toBeInTheDocument();
+    });
+
+    it('should show the status for glossaryStatus column', () => {
+      const glossaryStatus = 'Draft';
+      const result = renderColumnDataEditor('glossaryStatus', {
+        value: '',
+        data: { details: '', glossaryStatus },
+      });
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByText(glossaryStatus)).toBeInTheDocument();
+    });
+
+    it('should render RichTextEditorPreviewerV1 for description column', () => {
+      const description = 'This is a test description';
+      const result = renderColumnDataEditor('description', {
+        value: description,
+        data: { details: '', glossaryStatus: '' },
+      });
+
+      render(<div>{result}</div>);
+
+      expect(
+        screen.getByTestId('rich-text-editor-previewer')
+      ).toBeInTheDocument();
+      expect(screen.getByText(description)).toBeInTheDocument();
+    });
+
+    it('should render different content for different column types', () => {
+      const testData = {
+        value: 'test value',
+        data: { details: 'test details', glossaryStatus: 'Draft' },
+      };
+
+      const statusResult = renderColumnDataEditor('status', {
+        ...testData,
+        value: Status.Success,
+      });
+      const glossaryResult = renderColumnDataEditor('glossaryStatus', testData);
+      const descriptionResult = renderColumnDataEditor('description', testData);
+      const defaultResult = renderColumnDataEditor('otherColumn', testData);
+
+      // Verify different return types
+      expect(statusResult).not.toBe(testData.value);
+      expect(glossaryResult).not.toBe(testData.value);
+      expect(descriptionResult).not.toBe(testData.value);
+      expect(defaultResult).toBe(testData.value);
     });
   });
 });

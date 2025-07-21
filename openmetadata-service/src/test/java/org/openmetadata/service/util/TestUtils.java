@@ -581,6 +581,22 @@ public final class TestUtils {
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
+  public static <T> T patch(
+      WebTarget target,
+      JsonNode patch,
+      Class<T> clz,
+      Map<String, String> headers,
+      String ifMatchHeader)
+      throws HttpResponseException {
+    Response response =
+        SecurityUtil.addHeaders(target, headers)
+            .header("If-Match", ifMatchHeader)
+            .method(
+                "PATCH",
+                Entity.entity(patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+    return readResponse(response, clz, Status.OK.getStatusCode());
+  }
+
   public static <K> void put(
       WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
       throws HttpResponseException {

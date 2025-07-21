@@ -1,6 +1,6 @@
 ---
 title: Trino Connector | OpenMetadata Distributed SQL Integration
-description: Connect Trino to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration examples, and metadata extraction tips.
+description: Configure OpenMetadata's Trino database connector to seamlessly integrate your distributed SQL engine with automated metadata discovery and lineage tracking.
 slug: /connectors/database/trino
 ---
 
