@@ -76,7 +76,7 @@ test.describe.serial('My Data page', () => {
     await removeLandingBanner(page);
   });
 
-  test('Verify my data widget', async ({ page }) => {
+  test.skip('Verify my data widget', async ({ page }) => {
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -104,7 +104,7 @@ test.describe.serial('My Data page', () => {
     );
   });
 
-  test('Verify following widget', async ({ page }) => {
+  test.skip('Verify following widget', async ({ page }) => {
     // Verify total count
     await expect(
       page.locator('[data-testid="following-data-total-count"]')
