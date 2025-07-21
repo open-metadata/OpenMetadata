@@ -28,32 +28,46 @@ the following docs to run the Ingestion Framework in any orchestrator externally
     description="Get more information about running the Ingestion Framework Externally."
     link="/deployment/ingestion/external"
   / %}
-{% tile
-    title="Metadata Agent"
-    description="Run metadata Agent workflows externally for greater flexibility and control."
-    link="/connectors/ingestion/workflows/metadata"
-  / %}
-{% tile
-    title="Usage Agent"
-    description="Run usage ingestion workflows externally to track data access."
-    link="/connectors/ingestion/workflows/usage"
-  / %}
-{% tile
-    title="Lineage Agent"
-    description="Run lineage Agent workflows externally to capture data flow."
-    link="/connectors/ingestion/workflows/lineage"
-  / %}
-{% tile
-    title="DBT Agent"
-    description="Run dbt Agent workflows externally to sync models and metadata."
-    link="/connectors/ingestion/workflows/dbt"
-  / %}
-{% tile
-    title="Auto-Classification Agent"
-    description="Set up auto-classification to detect and tag sensitive data automatically."
-    link="/how-to-guides/data-governance/classification/auto-classification"
-  / %}
 {% /tilesContainer %}
+
+{%inlineCalloutContainer%}
+
+{%inlineCallout
+  bold="Metadata"
+  icon="cable"
+  href="/connectors/ingestion/workflows/metadata"%}
+Learn more about how to ingest metadata from dozens of connectors.
+{%/inlineCallout%}
+
+{%inlineCallout
+  bold="Usage"
+  icon="cable"
+  href="/connectors/ingestion/workflows/usage"%}
+Run usage ingestion workflows externally to track data access.
+{%/inlineCallout%}
+
+{%inlineCallout
+  bold="Lineage"
+  icon="cable"
+  href="/connectors/ingestion/workflows/lineage"%}
+Run lineage Agent workflows externally to capture data flow.
+{%/inlineCallout%}
+
+{%inlineCallout
+  bold="DBT"
+  icon="cable"
+  href="/connectors/ingestion/workflows/dbt"%}
+Run dbt Agent workflows externally to sync models and metadata.
+{%/inlineCallout%}
+
+{%inlineCallout
+  bold="Auto-Classification"
+  icon="cable"
+  href="/how-to-guides/data-governance/classification/auto-classification"%}
+Set up auto-classification to detect and tag sensitive data automatically.
+{%/inlineCallout%}
+
+{%/inlineCalloutContainer%}
 
 ## API Services
 
