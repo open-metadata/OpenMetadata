@@ -114,12 +114,18 @@ The **Propagation Depth** feature allows you to limit how far metadata propagate
 - **How it works**: 
   - Root entities (those with no upstream lineage) start at depth 0
   - Each downstream neighbor increases the depth by 1
+  - Depth is calculated separately for each path from each root entity
   - Example: In lineage A → B → C → D
     - A is at depth 0 (root)
     - B is at depth 1
     - C is at depth 2
     - D is at depth 3
-  - Setting depth to 2 means metadata flows only to assets at depth 2 (C in above example)
+  - Setting depth to 2 means metadata flows only to assets at depth 2 or less (B and C in above example)
+  
+- **Advanced Scenario - Complex Lineage**: 
+  - In scenarios with multiple parent paths (e.g., A → B → C and D → C), depth is calculated for each path independently
+  - With propagation depth = 1: C would receive metadata from D (depth 1 from D) but not from A via B (depth 2 from A)
+  - This path-aware approach provides precise control over which upstream sources contribute to each downstream asset
 
 **When to use**: 
 - When you have deep lineage chains and want to prevent metadata from propagating too far downstream
@@ -191,4 +197,5 @@ Note that this automation, the ML Tagging, will be deprecated in future releases
 - **Use Automation Logs**: Regularly check the **Recent Runs** logs to monitor automation activity and ensure that they are running as expected.
 - **Propagate Metadata Thoughtfully**: When propagating metadata via lineage, make sure that the source metadata is correct before applying it across multiple datasets.
 - **Start with Controlled Propagation**: For complex and large lineage trees, begin the propagation with a limited propagation depth (e.g., 2-3 levels/depth) and gradually increase as needed to avoid unintended widespread changes.
+- **Understand Path-Aware Depth Behavior**: In complex lineage with multiple parent paths, remember that propagation depth is calculated separately for each path from each root entity. This ensures precise control over which upstream sources contribute metadata to downstream assets.
 - **Set Up Stop Conditions for Critical Data**: Cofigure strategic stop conditions around critical ownership boundaries or sensitive data boundaries (Tags- PII, Confidential) to prevent accidental metadata overwrites.
