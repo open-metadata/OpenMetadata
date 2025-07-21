@@ -67,6 +67,7 @@ export interface DataQualityTabProps {
   breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
   fetchTestCases?: (params?: ListTestCaseParamsBySearch) => Promise<void>;
   isEditAllowed?: boolean;
+  tableHeader?: ReactNode;
 }
 
 export interface TestSummaryProps {

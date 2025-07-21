@@ -51,12 +51,12 @@ test.describe('Table pagination sorting search scenarios ', () => {
   }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
-    const listTestCaseResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?**`
-    );
+    await page.click('[data-testid="test-cases"]');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
-    await page.click('[data-testid="by-test-cases"]');
-    await listTestCaseResponse;
     await page.getByText('Name', { exact: true }).click();
 
     await page.getByTestId('next').click();
@@ -69,7 +69,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
-    await page.click('[data-testid="by-test-cases"]');
+    await page.click('[data-testid="test-cases"]');
     await page.getByText('Name', { exact: true }).click();
     await page.getByTestId('searchbar').click();
     await page.getByTestId('searchbar').fill('temp-test-case');
@@ -83,7 +83,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.waitForLoadState('networkidle');
-    await page.click('[data-testid="by-test-cases"]');
+    await page.click('[data-testid="test-cases"]');
 
     const listTestCaseResponse = page.waitForResponse(
       `/api/v1/dataQuality/testCases/search/list?**`
@@ -112,7 +112,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table page should show schema tab with count', async ({
     dataConsumerPage: page,
   }) => {
-    await table1.visitEntityPage(page);
+    await table1.visitEntityPageWithCustomSearchBox(page);
 
     await expect(page.getByRole('tab', { name: 'Columns' })).toContainText('4');
   });

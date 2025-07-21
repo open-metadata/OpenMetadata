@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../../../styles/variables.less';
+
 .ant-card.ant-card-bordered.total-data-insight-card {
   border-radius: 10px;
   box-shadow: none;
@@ -29,5 +31,82 @@
     &::-webkit-scrollbar {
       display: none;
     }
+  }
+}
+
+.total-data-assets-widget-content {
+  .legend-list {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: column;
+    gap: @size-sm;
+    max-height: 300px;
+
+    .d-flex {
+      flex: 0 0 auto;
+      width: calc(50% - @size-sm / 2);
+    }
+
+    .data-value {
+      border-radius: @border-radius-md;
+      background-color: @grey-31;
+    }
+  }
+
+  .donut-chart-wrapper {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .donut-center-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+
+  .date-selector-wrapper {
+    .date-selector-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: @size-xs;
+      justify-content: center;
+      min-width: 0;
+      padding: 0 @padding-sm;
+    }
+
+    .date-box {
+      border: 1px solid @grey-2;
+      background: @grey-29;
+      padding: @padding-xs @padding-sm;
+      border-radius: @border-radius-sm;
+      text-align: center;
+      cursor: pointer;
+      flex: 1 1 0;
+      min-width: 40px;
+      max-width: 60px;
+
+      .month {
+        color: @grey-32;
+      }
+
+      &.selected {
+        border: 1px solid @blue-36;
+        background: @blue-38;
+      }
+    }
+  }
+
+  .recharts-tooltip-item-name,
+  .recharts-tooltip-item-value {
+    color: @white !important;
+  }
+
+  .recharts-default-tooltip {
+    background-color: @tag-text !important;
+    border-radius: @border-radius-md;
+    padding: @padding-sm;
+    border: none !important;
   }
 }

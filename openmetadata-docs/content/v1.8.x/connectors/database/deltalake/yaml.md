@@ -1,5 +1,6 @@
 ---
 title: Run the Delta Lake Connector Externally
+description: Configure Delta Lake ingestion using YAML to extract structured metadata, table properties, and data lineage.
 slug: /connectors/database/deltalake/yaml
 ---
 
