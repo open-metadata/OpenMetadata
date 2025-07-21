@@ -23,6 +23,11 @@
   overflow: hidden;
   background: @white !important;
 
+  &.disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
   .announcement-card-v1-content {
     padding: @padding-sm;
     background: transparent !important;
@@ -34,6 +39,7 @@
       align-items: flex-start;
       margin-bottom: @size-xs;
       background: @white !important;
+      border-radius: @border-radius-xs;
 
       .announcement-title-section {
         display: flex;
@@ -41,11 +47,12 @@
         gap: @size-xxs;
         flex: 1;
         min-width: 0;
+        height: 44px;
         background: linear-gradient(270deg, @white -12.07%, @blue-24 500.72%);
+        border-radius: @border-radius-xs;
 
         .user-name {
           font-weight: @font-semibold;
-          font-size: @font-size-base;
           white-space: nowrap;
           color: @primary-color;
           text-decoration: none;
@@ -65,25 +72,25 @@
 
         .field-operation-text {
           color: @primary-color;
-          font-size: @font-size-base;
           white-space: nowrap;
           font-weight: @font-regular;
         }
 
         .announcement-card-entity-icon {
-          font-size: @font-size-base;
           margin: 0 0 0 2px;
           color: @primary-color;
+          width: @size-mlg;
+          height: @size-mlg;
 
           svg {
-            width: @size-mlg;
-            height: @size-mlg;
+            width: @size-md;
+            height: @size-md;
           }
         }
 
         .announcement-entity-name {
-          font-weight: @font-semibold !important;
-          font-size: @font-size-base;
+          font-size: @size-md !important;
+          font-weight: @font-medium !important;
           color: @primary-color;
           text-decoration: none;
           cursor: pointer;
@@ -101,19 +108,21 @@
         }
 
         .announcement-header {
-          font-weight: @font-semibold;
-          font-size: @size-md;
-          line-height: 1.4;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          display: flex;
           align-items: center;
           border-left: 3px solid @primary-color;
-          padding: @size-xxs 0 @size-xxs @size-xxs;
-          gap: @size-xxs;
+          border-radius: @border-radius-xs;
+          display: flex;
           flex: 1;
+          font-size: @size-md;
+          font-weight: @font-semibold;
+          gap: @size-xxs;
+          height: 44px;
+          line-height: 1.4;
           min-width: 0;
+          overflow: hidden;
+          padding: @size-xxs 0 @size-xxs @size-xxs;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       }
 

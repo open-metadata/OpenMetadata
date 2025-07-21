@@ -289,7 +289,7 @@ const MyDataWidgetInternal = ({
             moreButtonText={t('label.view-more-count', {
               count: String(data.length > 0 ? data.length : ''),
             })}
-            showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
+            showMoreButton={Boolean(!isLoading) && data?.length > 10}
           />
         </div>
       </div>

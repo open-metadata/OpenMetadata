@@ -274,7 +274,7 @@ function FollowingWidget({
               count: String(followedData.length > 0 ? followedData.length : ''),
             })}
             showMoreButton={
-              Boolean(!isLoadingOwnedData) && !isEmpty(followedData)
+              Boolean(!isLoadingOwnedData) && followedData?.length > 10
             }
           />
         </div>

@@ -44,37 +44,22 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
           {t('label.select-background')}
         </Typography.Text>
         <div className="select-background-options p-y-lg p-x-0 d-flex flex-wrap items-center">
-          <div className="d-flex flex-wrap items-center gap-3">
-            <Typography.Text className="text-sm font-semibold">
-              {t('label.custom')}
-            </Typography.Text>
-            <div
-              className="color-preview p-xss"
-              style={{
-                borderColor: selectedColor,
-              }}>
-              <div
-                className="color-preview-inner w-full h-full"
-                style={{ backgroundColor: selectedColor }}
-              />
-            </div>
-            <div className="color-hex-code p-xs text-md font-regular border-radius-xs">
-              {!selectedColor.includes('linear-gradient')
-                ? selectedColor
-                : 'Default'}
-            </div>
-          </div>
           <div className="d-flex flex-wrap items-center gap-2">
             {headerBackgroundColors.map((value) => (
               <div
-                className="option-color cursor-pointer"
+                className="option-color-container cursor-pointer"
                 key={value.color}
                 style={{
-                  borderColor: value.color,
                   backgroundColor: value.color,
+                  borderColor: value.color,
                 }}
-                onClick={() => handleColorClick(value.color)}
-              />
+                onClick={() => handleColorClick(value.color)}>
+                <div
+                  className={`option-color w-full h-full ${
+                    selectedColor === value.color ? 'white-border' : ''
+                  }`}
+                />
+              </div>
             ))}
           </div>
         </div>

@@ -165,7 +165,7 @@ const MyFeedWidgetInternal = ({
             moreButtonText={t('label.view-more-count', {
               count: String(entityThread.length > 0 ? entityThread.length : ''),
             })}
-            showMoreButton={Boolean(!loading) && !isEmpty(entityThread)}
+            showMoreButton={Boolean(!loading) && entityThread?.length > 10}
           />
         </div>
       </div>

@@ -20,6 +20,10 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
 import { ROUTES } from '../../../../constants/constants';
+import {
+  getSortField,
+  getSortOrder,
+} from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -61,7 +65,9 @@ const DataAssetsWidget = ({
   const fetchDataAssets = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await searchData('', 0, 0, '', 'updatedAt', '', [
+      const sortField = getSortField(selectedSortBy);
+      const sortOrder = getSortOrder(selectedSortBy);
+      const res = await searchData('', 0, 0, '', sortField, sortOrder, [
         SearchIndex.TABLE,
         SearchIndex.TOPIC,
         SearchIndex.DASHBOARD,
@@ -82,18 +88,6 @@ const DataAssetsWidget = ({
   useEffect(() => {
     fetchDataAssets();
   }, [fetchDataAssets]);
-
-  const sortedServices = useMemo(() => {
-    switch (selectedSortBy) {
-      case DATA_ASSETS_SORT_BY_KEYS.A_TO_Z:
-        return [...services].sort((a, b) => a.key.localeCompare(b.key));
-      case DATA_ASSETS_SORT_BY_KEYS.Z_TO_A:
-        return [...services].sort((a, b) => b.key.localeCompare(a.key));
-      case DATA_ASSETS_SORT_BY_KEYS.LATEST:
-      default:
-        return services;
-    }
-  }, [services, selectedSortBy]);
 
   const handleSortByClick = useCallback(
     (key: string) => {
@@ -127,7 +121,7 @@ const DataAssetsWidget = ({
             'cards-scroll-container flex-1 overflow-y-auto',
             isFullSize ? 'justify-start' : 'justify-center'
           )}>
-          {sortedServices.map((service) => (
+          {services.map((service) => (
             <div
               className="card-wrapper"
               key={service.key}
@@ -140,7 +134,7 @@ const DataAssetsWidget = ({
         </div>
       </div>
     ),
-    [sortedServices]
+    [services]
   );
 
   const widgetContent = useMemo(
@@ -160,11 +154,11 @@ const DataAssetsWidget = ({
           onSortChange={handleSortByClick}
         />
         <div className="widget-content flex-1">
-          {isEmpty(sortedServices) ? emptyState : dataAssetsContent}
+          {isEmpty(services) ? emptyState : dataAssetsContent}
           <WidgetFooter
             moreButtonLink={ROUTES.EXPLORE}
             moreButtonText={t('label.view-more')}
-            showMoreButton={Boolean(!loading) && !isEmpty(sortedServices)}
+            showMoreButton={Boolean(!loading) && services?.length > 10}
           />
         </div>
       </div>
@@ -180,13 +174,13 @@ const DataAssetsWidget = ({
       selectedSortBy,
       emptyState,
       dataAssetsContent,
-      sortedServices,
+      services,
     ]
   );
 
   return (
     <WidgetWrapper
-      dataLength={sortedServices.length !== 0 ? sortedServices.length : 10}
+      dataLength={services.length !== 0 ? services.length : 10}
       loading={loading}>
       {widgetContent}
     </WidgetWrapper>
