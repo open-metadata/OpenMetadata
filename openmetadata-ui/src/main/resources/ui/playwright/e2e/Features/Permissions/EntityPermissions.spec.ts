@@ -11,60 +11,35 @@
  *  limitations under the License.
  */
 
-import { Page, test as base } from '@playwright/test';
-import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
-import { ContainerClass } from '../../../support/entity/ContainerClass';
-import { DashboardClass } from '../../../support/entity/DashboardClass';
-import { DashboardDataModelClass } from '../../../support/entity/DashboardDataModelClass';
+import { APIRequestContext, Page, test as base } from '@playwright/test';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
-import { MetricClass } from '../../../support/entity/MetricClass';
-import { MlModelClass } from '../../../support/entity/MlModelClass';
-import { PipelineClass } from '../../../support/entity/PipelineClass';
-import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
-import { StoredProcedureClass } from '../../../support/entity/StoredProcedureClass';
-import { TableClass } from '../../../support/entity/TableClass';
-import { TopicClass } from '../../../support/entity/TopicClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-  testApiEndpointSpecificOperations,
-  testCommonOperations,
-  testContainerSpecificOperations,
-  testDashboardDataModelSpecificOperations,
-  testDashboardSpecificOperations,
-  testMetricSpecificOperations,
-  testMlModelSpecificOperations,
-  testPipelineSpecificOperations,
-  testSearchIndexSpecificOperations,
-  testStoredProcedureSpecificOperations,
-  testTableSpecificOperations,
-  testTopicSpecificOperations,
+  assignRoleToUser,
+  cleanupPermissions,
+  entityConfig,
+  initializePermissions,
+  runCommonPermissionTests,
+  runEntitySpecificPermissionTests,
 } from '../../../utils/entityPermissionUtils';
-
-const entities = [
-  ApiEndpointClass,
-  TableClass,
-  StoredProcedureClass,
-  DashboardClass,
-  PipelineClass,
-  TopicClass,
-  MlModelClass,
-  ContainerClass,
-  SearchIndexClass,
-  DashboardDataModelClass,
-  MetricClass,
-] as const;
-
 const adminUser = new UserClass();
 const testUser = new UserClass();
 const dataConsumerUser = new UserClass();
 
-const createdEntities: any[] = [];
+interface CreatedEntity {
+  entity: {
+    create: (apiContext: APIRequestContext) => Promise<void>;
+    delete: (apiContext: APIRequestContext) => Promise<void>;
+    getType: () => string;
+  };
+}
+
+const createdEntities: CreatedEntity[] = [];
 
 const test = base.extend<{
   page: Page;
   testUserPage: Page;
-  dataConsumerPage: Page;
 }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
@@ -75,12 +50,6 @@ const test = base.extend<{
   testUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await testUser.login(page);
-    await use(page);
-    await page.close();
-  },
-  dataConsumerPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await dataConsumerUser.login(page);
     await use(page);
     await page.close();
   },
@@ -95,11 +64,11 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-entities.forEach((EntityClass) => {
-  const entity = new EntityClass();
-  const entityName = entity.getType();
+Object.entries(entityConfig).forEach(([, config]) => {
+  const entity = new config.class();
+  const entityType = entity.getType();
 
-  test.describe(`${entityName} Permissions`, () => {
+  test.describe(`${entityType} Permissions`, () => {
     test.beforeAll('Setup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await EntityDataClass.preRequisitesForTests(apiContext);
@@ -107,320 +76,89 @@ entities.forEach((EntityClass) => {
       await afterAction();
     });
 
-    test('common operations permissions', async ({ page, testUserPage }) => {
-      test.slow(true);
+    // Allow permissions tests
+    test.describe('Allow permissions', () => {
+      test.beforeAll('Initialize allow permissions', async ({ browser }) => {
+        const page = await browser.newPage();
+        await adminUser.login(page);
+        await initializePermissions(page, 'allow');
+        await assignRoleToUser(page, testUser);
+        await page.close();
+      });
 
-      // Test allow
-      await testCommonOperations(page, testUserPage, entity, 'allow', testUser);
+      test.afterAll('Cleanup allow permissions', async ({ browser }) => {
+        const page = await browser.newPage();
+        await adminUser.login(page);
+        await cleanupPermissions(page);
+        await page.close();
+      });
 
-      // Test deny
-      await testCommonOperations(page, testUserPage, entity, 'deny', testUser);
+      test(`${entityType} allow common operations permissions`, async ({
+        testUserPage,
+      }) => {
+        test.slow(true);
+
+        await runCommonPermissionTests(testUserPage, entity, 'allow');
+      });
+
+      // Entity-specific tests
+      if (config.specificTest) {
+        test(`${entityType} allow entity-specific operations`, async ({
+          testUserPage,
+        }) => {
+          test.slow(true);
+
+          await runEntitySpecificPermissionTests(
+            testUserPage,
+            entity,
+            'allow',
+            config.specificTest
+          );
+        });
+      }
     });
 
-    // Entity-specific tests
-    if (entityName === 'Table') {
-      test.slow(true);
+    // Deny permissions tests
+    test.describe('Deny permissions', () => {
+      test.beforeAll('Initialize deny permissions', async ({ browser }) => {
+        const page = await browser.newPage();
+        await adminUser.login(page);
+        await initializePermissions(page, 'deny');
+        await assignRoleToUser(page, testUser);
+        await page.close();
+      });
 
-      test('Table specific allow operations', async ({
-        page,
+      test.afterAll('Cleanup deny permissions', async ({ browser }) => {
+        const page = await browser.newPage();
+        await adminUser.login(page);
+        await cleanupPermissions(page);
+        await page.close();
+      });
+
+      test(`${entityType} deny common operations permissions`, async ({
         testUserPage,
       }) => {
-        await testTableSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'allow',
-          testUser
-        );
+        test.slow(true);
+
+        await runCommonPermissionTests(testUserPage, entity, 'deny');
       });
 
-      test('Table specific deny operations', async ({ page, testUserPage }) => {
-        await testTableSpecificOperations(
-          page,
+      // Entity-specific tests
+      if (config.specificTest) {
+        test(`${entityType} deny entity-specific operations`, async ({
           testUserPage,
-          entity,
-          'deny',
-          testUser
-        );
-      });
-    }
+        }) => {
+          test.slow(true);
 
-    if (entityName === 'Topic') {
-      test('topic-specific allow operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testTopicSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'allow',
-          testUser
-        );
-      });
-
-      test('topic-specific deny operations', async ({ page, testUserPage }) => {
-        await testTopicSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'deny',
-          testUser
-        );
-      });
-    }
-
-    if (entityName === 'Container') {
-      test('container-specific allow operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testContainerSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'allow',
-          testUser
-        );
-      });
-
-      test('container-specific deny operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testContainerSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'deny',
-          testUser
-        );
-      });
-    }
-
-    if (entityName === 'Dashboard') {
-      test('dashboard-specific allow operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testDashboardSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'allow',
-          testUser
-        );
-      });
-
-      test('dashboard-specific deny operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testDashboardSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'deny',
-          testUser
-        );
-      });
-    }
-
-    if (entityName === 'Pipeline') {
-      test('pipeline-specific allow operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testPipelineSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'allow',
-          testUser
-        );
-      });
-
-      test('pipeline-specific deny operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testPipelineSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'deny',
-          testUser
-        );
-      });
-    }
-
-    if (entityName === 'MlModel') {
-      test('ML model-specific allow operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testMlModelSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'allow',
-          testUser
-        );
-      });
-
-      test('ML model-specific deny operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testMlModelSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'deny',
-          testUser
-        );
-      });
-    }
-
-    if (entityName === 'SearchIndex') {
-      test('search index-specific allow operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testSearchIndexSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'allow',
-          testUser
-        );
-      });
-
-      test('search index-specific deny operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testSearchIndexSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'deny',
-          testUser
-        );
-      });
-    }
-
-    if (entityName === 'StoredProcedure') {
-      test('stored procedure-specific allow operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testStoredProcedureSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'allow',
-          testUser
-        );
-      });
-
-      test('stored procedure-specific deny operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testStoredProcedureSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'deny',
-          testUser
-        );
-      });
-    }
-
-    if (entityName === 'Metric') {
-      test('metric-specific allow operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testMetricSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'allow',
-          testUser
-        );
-      });
-
-      test('metric-specific deny operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testMetricSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'deny',
-          testUser
-        );
-      });
-    }
-
-    if (entityName === 'ApiEndpoint') {
-      test('API endpoint-specific allow operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testApiEndpointSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'allow',
-          testUser
-        );
-      });
-
-      test('API endpoint-specific deny operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testApiEndpointSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'deny',
-          testUser
-        );
-      });
-    }
-
-    if (entityName === 'DashboardDataModel') {
-      test('dashboard data model-specific allow operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testDashboardDataModelSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'allow',
-          testUser
-        );
-      });
-
-      test('dashboard data model-specific deny operations', async ({
-        page,
-        testUserPage,
-      }) => {
-        await testDashboardDataModelSpecificOperations(
-          page,
-          testUserPage,
-          entity,
-          'deny',
-          testUser
-        );
-      });
-    }
+          await runEntitySpecificPermissionTests(
+            testUserPage,
+            entity,
+            'deny',
+            config.specificTest
+          );
+        });
+      }
+    });
 
     test.afterAll('Cleanup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
