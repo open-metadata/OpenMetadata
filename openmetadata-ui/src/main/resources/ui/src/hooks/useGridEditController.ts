@@ -22,35 +22,55 @@ export type Range = {
   endCol: number;
 };
 
-/**
- * useGridEditController
- * Provides Excel-like range selection, copy-paste, and undo-redo for react-data-grid.
- * All mouse/keyboard event binding is handled internally.
- */
-export function useGridEditController<RowType extends { [key: string]: any }>({
-  dataSource,
-  setDataSource,
-  columns,
-}: {
-  dataSource: RowType[];
-  setDataSource: React.Dispatch<React.SetStateAction<RowType[]>>;
-  columns: Column<RowType>[];
-}) {
-  const [gridContainer, setGridContainer] = useState<HTMLElement | null>(null);
-  const [isSelecting, setIsSelecting] = useState(false);
+// --- Undo/Redo Stack Hook ---
+function useUndoRedo(
+  dataSource: Record<string, string>[],
+  setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>
+) {
+  const undoStack = useRef<Record<string, string>[][]>([]);
+  const redoStack = useRef<Record<string, string>[][]>([]);
 
-  // Undo/redo stacks
-  const undoStack = useRef<RowType[][]>([]);
-  const redoStack = useRef<RowType[][]>([]);
+  const pushToUndoStack = useCallback(
+    (rowsToPush?: Record<string, string>[]) => {
+      const prevRows =
+        undoStack.current.length > 0
+          ? undoStack.current[undoStack.current.length - 1]
+          : undefined;
+      const nextRows = rowsToPush ?? dataSource;
+      if (!prevRows || JSON.stringify(prevRows) !== JSON.stringify(nextRows)) {
+        undoStack.current.push(nextRows.map((r) => ({ ...r })));
+        redoStack.current = [];
+      }
+    },
+    [dataSource]
+  );
 
-  const isShiftArrow = useRef(false);
-  const selectionStart = useRef<{ row: number; col: number } | null>(null);
-  const selectionAnchor = useRef<{ row: number; col: number } | null>(null);
-  const selectionFocus = useRef<{ row: number; col: number } | null>(null);
+  const undo = useCallback(() => {
+    if (undoStack.current.length > 0) {
+      const previous = undoStack?.current?.pop?.();
+      if (previous) {
+        redoStack.current.push(dataSource.map((r) => ({ ...r })));
+        setDataSource(previous.map((r) => ({ ...r })));
+      }
+    }
+  }, [dataSource, setDataSource]);
 
-  // Range selection state
+  const redo = useCallback(() => {
+    if (redoStack.current.length > 0) {
+      const next = redoStack?.current?.pop?.();
+      if (next) {
+        undoStack.current.push(dataSource.map((r) => ({ ...r })));
+        setDataSource(next.map((r) => ({ ...r })));
+      }
+    }
+  }, [dataSource, setDataSource]);
+
+  return { pushToUndoStack, undo, redo };
+}
+
+// --- Selection State Hook ---
+function useSelectionState(dataSource: Record<string, string>[]) {
   const [selectedRange, setSelectedRange] = useState<Range | null>(null);
-
   const getFinalSelectedRange = useCallback(() => {
     if (!selectedRange) {
       return null;
@@ -65,7 +85,139 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
     } else {
       return selectedRange;
     }
-  }, [selectedRange]);
+  }, [selectedRange, dataSource]);
+
+  return { selectedRange, setSelectedRange, getFinalSelectedRange };
+}
+
+// --- Clipboard Handlers Hook ---
+function useClipboardHandlers(
+  selectedRange: Range | null,
+  getFinalSelectedRange: () => Range | null,
+  dataSource: Record<string, string>[],
+  setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>,
+  columns: Column<Record<string, string>[]>[],
+  pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void
+) {
+  const handleCopy = useCallback(() => {
+    const range = getFinalSelectedRange();
+    if (range && dataSource.length > 0) {
+      const { startRow, endRow, startCol, endCol } = range;
+      const minRow = Math.min(startRow, endRow);
+      const maxRow = Math.max(startRow, endRow);
+      const minCol = Math.min(startCol, endCol);
+      const maxCol = Math.max(startCol, endCol);
+
+      const tsv: string[] = [];
+      for (let r = minRow; r <= maxRow; r++) {
+        const row = dataSource[r];
+        const rowValues: string[] = [];
+        for (let c = minCol; c <= maxCol; c++) {
+          const key = columns[c].key;
+          let value = row[key];
+          if (value === undefined || value === null) {
+            value = '';
+          }
+          rowValues.push(value || '');
+        }
+        tsv.push(rowValues.join(','));
+      }
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(tsv.join('\n'));
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = tsv.join('\n');
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+    }
+  }, [selectedRange, dataSource, columns, getFinalSelectedRange]);
+
+  const handlePaste = useCallback(() => {
+    const range = getFinalSelectedRange();
+    const newRows = dataSource.map((row) => ({ ...row }));
+
+    if (range && dataSource.length > 0) {
+      return navigator.clipboard.readText().then((clipText) => {
+        const { startRow, endRow, startCol, endCol } = range;
+        const minRow = Math.min(startRow, endRow);
+        const minCol = Math.min(startCol, endCol);
+        const lines = clipText.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const rowIdx = minRow + i;
+          if (rowIdx >= dataSource.length) {
+            break;
+          }
+          const cells = lines[i].split(',');
+          for (let j = 0; j < cells.length; j++) {
+            const colIdx = minCol + j;
+            if (colIdx >= columns.length) {
+              break;
+            }
+            const column = columns[colIdx];
+            if (column.editable) {
+              (newRows[rowIdx] as Record<string, string>)[column.key] =
+                cells[j];
+            }
+          }
+        }
+        setDataSource(newRows);
+        pushToUndoStack(dataSource);
+
+        return newRows;
+      });
+    }
+
+    return dataSource;
+  }, [
+    selectedRange,
+    dataSource,
+    setDataSource,
+    pushToUndoStack,
+    columns,
+    getFinalSelectedRange,
+  ]);
+
+  return { handleCopy, handlePaste };
+}
+
+// --- Main Hook ---
+export function useGridEditController({
+  dataSource,
+  setDataSource,
+  columns,
+}: {
+  dataSource: Record<string, string>[];
+  setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>;
+  columns: Column<Record<string, string>[]>[];
+}) {
+  const [gridContainer, setGridContainer] = useState<HTMLElement | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+
+  // Undo/redo
+  const { pushToUndoStack, undo, redo } = useUndoRedo(
+    dataSource,
+    setDataSource
+  );
+  // Selection state
+  const { selectedRange, setSelectedRange, getFinalSelectedRange } =
+    useSelectionState(dataSource);
+  // Clipboard
+  const { handleCopy, handlePaste } = useClipboardHandlers(
+    selectedRange,
+    getFinalSelectedRange,
+    dataSource,
+    setDataSource,
+    columns,
+    pushToUndoStack
+  );
+
+  const isShiftArrow = useRef(false);
+  const selectionStart = useRef<{ row: number; col: number } | null>(null);
+  const selectionAnchor = useRef<{ row: number; col: number } | null>(null);
+  const selectionFocus = useRef<{ row: number; col: number } | null>(null);
 
   const getCellsInRange = useCallback(() => {
     const finalSelectedRange = getFinalSelectedRange();
@@ -141,42 +293,6 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
     return;
   }, [highlightSelectedRange]);
 
-  // Undo/redo logic
-  const pushToUndoStack = useCallback(
-    (rowsToPush?: RowType[]) => {
-      const prevRows =
-        undoStack.current.length > 0
-          ? undoStack.current[undoStack.current.length - 1]
-          : undefined;
-      const nextRows = rowsToPush ?? dataSource;
-      if (!prevRows || JSON.stringify(prevRows) !== JSON.stringify(nextRows)) {
-        undoStack.current.push(nextRows.map((r) => ({ ...r })));
-        redoStack.current = [];
-      }
-    },
-    [dataSource]
-  );
-
-  const undo = useCallback(() => {
-    if (undoStack.current.length > 0) {
-      const previous = undoStack?.current?.pop?.();
-      if (previous) {
-        redoStack.current.push(dataSource.map((r) => ({ ...r })));
-        setDataSource(previous.map((r) => ({ ...r })));
-      }
-    }
-  }, [dataSource, setDataSource]);
-
-  const redo = useCallback(() => {
-    if (redoStack.current.length > 0) {
-      const next = redoStack?.current?.pop?.();
-      if (next) {
-        undoStack.current.push(dataSource.map((r) => ({ ...r })));
-        setDataSource(next.map((r) => ({ ...r })));
-      }
-    }
-  }, [dataSource, setDataSource]);
-
   // Helper to get cell indices from event target
   const getCellIndices = useCallback(
     (target: EventTarget | null): { row: number; col: number } | null => {
@@ -191,6 +307,10 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
           row: parseInt(rowAttr ?? '0', 10) - 2,
           col: parseInt(colAttr ?? '0', 10) - 1,
         };
+      }
+      const closestCell = target.closest('.rdg-cell');
+      if (closestCell) {
+        return getCellIndices(closestCell);
       }
 
       return null;
@@ -302,10 +422,26 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
       if (
         !(
           e.target instanceof HTMLElement &&
-          e.target.classList.contains('rdg-cell')
+          (e.target.classList.contains('rdg-cell') ||
+            e.target.closest('.rdg-cell'))
         )
       ) {
         return;
+      }
+
+      // handleCopy & handlePaste on header cell focused as react-data-grid only trigger on body cells
+      if (
+        e.target.getAttribute('role') === 'columnheader' &&
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === 'c'
+      ) {
+        handleCopy();
+      } else if (
+        e.target.getAttribute('role') === 'columnheader' &&
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === 'v'
+      ) {
+        handlePaste();
       }
 
       // Undo/Redo
@@ -444,7 +580,9 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
       if (isShiftArrow.current || selectedRange) {
         return;
       }
-      const target = e.target as HTMLElement;
+      const target =
+        (e.target as HTMLElement)?.closest?.('.rdg-cell') ||
+        (e.target as HTMLElement);
       if (
         target.classList.contains('rdg-cell') &&
         target.parentElement?.getAttribute('role') === 'row'
@@ -500,80 +638,8 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
     [columns]
   );
 
-  // Copy selected range as TSV
-  const handleCopy = useCallback(() => {
-    if (selectedRange && dataSource.length > 0) {
-      const { startRow, endRow, startCol, endCol } = getFinalSelectedRange();
-      const minRow = Math.min(startRow, endRow);
-      const maxRow = Math.max(startRow, endRow);
-      const minCol = Math.min(startCol, endCol);
-      const maxCol = Math.max(startCol, endCol);
-
-      const tsv: string[] = [];
-      for (let r = minRow; r <= maxRow; r++) {
-        const row = dataSource[r];
-        const rowValues: string[] = [];
-        for (let c = minCol; c <= maxCol; c++) {
-          const key = columns[c].key;
-          let value = row[key];
-          if (value === undefined || value === null) {
-            value = '';
-          }
-          rowValues.push(value || '');
-        }
-        tsv.push(rowValues.join(','));
-      }
-      // Use the Clipboard API if available, otherwise fallback
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(tsv.join('\n')); // react-data-grid only gives first line so join with different character
-      } else {
-        // fallback for older browsers
-        const textarea = document.createElement('textarea');
-        textarea.value = tsv.join('\n');
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-      }
-    }
-  }, [selectedRange, dataSource, columns]);
-
-  // Paste clipboard data into selected range
-  const handlePaste = useCallback(() => {
-    // Try to get clipboard data as TSV
-    const newRows = dataSource.map((row) => ({ ...row }));
-    if (selectedRange && dataSource.length > 0) {
-      return navigator.clipboard.readText().then((clipText) => {
-        const { startRow, endRow, startCol, endCol } = getFinalSelectedRange();
-        const minRow = Math.min(startRow, endRow);
-        const minCol = Math.min(startCol, endCol);
-        const lines = clipText.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          const rowIdx = minRow + i;
-          if (rowIdx >= dataSource.length) {
-            break;
-          }
-          const cells = lines[i].split(',');
-          for (let j = 0; j < cells.length; j++) {
-            const colIdx = minCol + j;
-            if (colIdx >= columns.length) {
-              break;
-            }
-            (newRows[rowIdx] as any)[columns[colIdx].key] = cells[j];
-          }
-        }
-        setDataSource(newRows);
-        pushToUndoStack(dataSource);
-
-        return newRows;
-      });
-    }
-
-    return dataSource;
-  }, [selectedRange, dataSource, setDataSource, pushToUndoStack, columns]);
-
   const handleOnRowsChange = useCallback(
-    (updatedRows: RowType[]) => {
+    (updatedRows: Record<string, string>[]) => {
       const hasPromises = updatedRows.some(
         (updatedRow) => updatedRow instanceof Promise
       );
@@ -595,19 +661,21 @@ export function useGridEditController<RowType extends { [key: string]: any }>({
   );
 
   const handleAddRow = useCallback(() => {
-    setDataSource((data: RowType[]): RowType[] => {
-      setTimeout(() => {
-        // Select first cell of last newly added row
-        const rows = gridContainer?.querySelectorAll('.rdg-row');
-        const lastRow = rows?.[rows.length - 1];
-        const firstCell = lastRow?.querySelector('.rdg-cell');
-        if (firstCell) {
-          (firstCell as HTMLElement).click();
-        }
-      }, 1);
+    setDataSource(
+      (data: Record<string, string>[]): Record<string, string>[] => {
+        setTimeout(() => {
+          // Select first cell of last newly added row
+          const rows = gridContainer?.querySelectorAll('.rdg-row');
+          const lastRow = rows?.[rows.length - 1];
+          const firstCell = lastRow?.querySelector('.rdg-cell');
+          if (firstCell) {
+            (firstCell as HTMLElement).click();
+          }
+        }, 1);
 
-      return [...data, { id: data.length + '' } as unknown as RowType];
-    });
+        return [...data, { id: data.length + '' }];
+      }
+    );
   }, [gridContainer, setDataSource]);
 
   const focusFirstCell = useCallback(() => {

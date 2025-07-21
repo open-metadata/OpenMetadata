@@ -18,7 +18,7 @@ import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.
 
 export interface BulkEditEntityProps {
   dataSource: Record<string, string>[];
-  columns: Column<Record<string, string>>[];
+  columns: Column<Record<string, string>[]>[];
   breadcrumbList: TitleBreadcrumbProps['titleLinks'];
   activeStep: VALIDATION_STEP;
   activeAsyncImportJob?: CSVImportJobType;

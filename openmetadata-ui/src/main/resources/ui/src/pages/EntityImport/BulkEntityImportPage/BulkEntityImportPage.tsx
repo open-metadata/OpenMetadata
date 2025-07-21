@@ -84,7 +84,9 @@ const BulkEntityImportPage = () => {
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
   const [validationData, setValidationData] = useState<CSVImportResult>();
-  const [columns, setColumns] = useState<Column<Record<string, string>>[]>([]);
+  const [columns, setColumns] = useState<Column<Record<string, string>[]>[]>(
+    []
+  );
   const [dataSource, setDataSource] = useState<Record<string, string>[]>([]);
   const navigate = useNavigate();
   const { readString } = usePapaParse();
@@ -481,7 +483,7 @@ const BulkEntityImportPage = () => {
             activeAsyncImportJob={activeAsyncImportJob}
             activeStep={activeStep}
             breadcrumbList={breadcrumbList}
-            columns={filterColumns as Column<any>[]}
+            columns={filterColumns as Column<Record<string, string>[]>[]}
             dataSource={dataSource}
             handleBack={handleBack}
             handleCopy={handleCopy}
