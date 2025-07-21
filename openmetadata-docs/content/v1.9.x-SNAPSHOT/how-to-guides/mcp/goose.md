@@ -22,7 +22,7 @@ http://localhost:8585/settings/apps/McpApplication
 ```
 
 {% image
-src="/images/v1.8/how-to-guides/mcp/install-mcp.jpg"
+src="/images/v1.9/how-to-guides/mcp/install-mcp.jpg"
 alt="Add MCP app"
 caption="Install MCP Server on OpenMetadata"
 /%}
@@ -45,7 +45,7 @@ http://localhost:8585/users/admin/access-token
 - Select *Generate New Token*. This will give your models the same role and access policy that is assigned to you in {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %}. If you would like your models in Goose to have different access controls, [create a new user](https://docs.open-metadata.org/latest/how-to-guides/admin-guide/roles-policies/use-cases).
 
 {% image
-src="/images/v1.8/how-to-guides/mcp/generate-new-token.jpg"
+src="/images/v1.9/how-to-guides/mcp/generate-new-token.jpg"
 alt="Generate New Token"
 caption="Creating a new Personal Access Token"
 /%}
@@ -53,7 +53,7 @@ caption="Creating a new Personal Access Token"
 - Set your *Token Expiration*. This guide uses 60 days. Once your new token is created copy it.
 
 {% image
-src="/images/v1.8/how-to-guides/mcp/generate-new-token-2.jpg"
+src="/images/v1.9/how-to-guides/mcp/generate-new-token-2.jpg"
 alt="Set Token Lifespan"
 caption="Personal Access Token expires in 60 days"
 /%}
@@ -64,7 +64,7 @@ This how-to guide uses Goose Desktop for macOS. Make sure that you already have 
 - Navigate to Goose Desktop's Settings, then under *Extensions*, select *+Add custom extension*. 
 
 {% image
-src="/images/v1.8/how-to-guides/mcp/goose-settings.jpg"
+src="/images/v1.9/how-to-guides/mcp/goose-settings.jpg"
 alt="Goose settings"
 caption="Settings are where you add custom extensions like OpenMetadata MCP Server"
 /%}
@@ -84,14 +84,14 @@ caption="Settings are where you add custom extensions like OpenMetadata MCP Serv
     - *Value* is "Bearer <YOUR_OpenMetadata_PAT>
 
 {% image
-src="/images/v1.8/how-to-guides/mcp/goose-mcp-settings.jpg"
+src="/images/v1.9/how-to-guides/mcp/goose-mcp-settings.jpg"
 alt="Configuring OpenMetadata MCP Server"
 caption="The proper settings for OpenMetadata MCP Server in Goose"
 /%}
 
     - Select *+Add* to store this Environment Variable
 {% image
-src="/images/v1.8/how-to-guides/mcp/goose-mcp-settings.jpg"
+src="/images/v1.9/how-to-guides/mcp/goose-mcp-settings.jpg"
 alt="Configuring OpenMetadata MCP Server"
 caption="The proper settings for OpenMetadata MCP Server in Goose"
 /%}
@@ -99,13 +99,13 @@ caption="The proper settings for OpenMetadata MCP Server in Goose"
   - Select *Add Extension*
 
 {% image
-src="/images/v1.8/how-to-guides/mcp/goose-add-extension.jpg"
+src="/images/v1.9/how-to-guides/mcp/goose-add-extension.jpg"
 alt="Adding extension"
 caption="Adding OpenMetadata MCP Server as a custom extension to Goose"
 /%}
 
 {% image
-src="/images/v1.8/how-to-guides/mcp/goose-success.jpg"
+src="/images/v1.9/how-to-guides/mcp/goose-success.jpg"
 alt="OpenMetadata successfully added"
 caption="OpenMetadata successfully added to Goose"
 /%}
