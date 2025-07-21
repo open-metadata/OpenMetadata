@@ -1,5 +1,6 @@
 ---
 title: entityReference | OpenMetadata Entity Reference
+description: EntityReference schema allows linking to metadata objects using ID, type, and qualified name.
 slug: /main-concepts/metadata-standard/schemas/type/entityreference
 ---
 

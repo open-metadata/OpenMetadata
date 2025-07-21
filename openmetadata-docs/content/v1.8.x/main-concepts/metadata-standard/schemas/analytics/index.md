@@ -1,5 +1,6 @@
 ---
 title: Analytics Schemas | OpenMetadata Analytics Data Models
+description: Metadata schema capturing analytics models, reports, events, and associated metrics used for tracking data usage and impact.
 slug: /main-concepts/metadata-standard/schemas/analytics
 ---
 

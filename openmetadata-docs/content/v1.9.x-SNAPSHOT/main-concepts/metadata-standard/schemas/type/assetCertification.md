@@ -1,5 +1,6 @@
 ---
 title: assetCertification | OpenMetadata Asset Certification
+description: AssetCertification schema tracks verification levels, status, and certifying authority of metadata assets.
 slug: /main-concepts/metadata-standard/schemas/type/assetcertification
 ---
 

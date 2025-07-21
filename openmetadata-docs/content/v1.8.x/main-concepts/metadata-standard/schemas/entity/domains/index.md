@@ -1,5 +1,6 @@
 ---
 title: Domains Schema | OpenMetadata Domains Schema and API
+description: Domains schema capturing business domains and logical groupings of data assets by organizational or functional boundaries.
 slug: /main-concepts/metadata-standard/schemas/entity/domains
 ---
 

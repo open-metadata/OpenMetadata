@@ -1,5 +1,6 @@
 ---
 title: Entity Utilities | OpenMetadata Entity Utilities Overview
+description: Utility schema for helper components such as date formats, file paths, or reusable system values in metadata objects.
 slug: /main-concepts/metadata-standard/schemas/entity/utils
 ---
 

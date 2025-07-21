@@ -1,5 +1,6 @@
 ---
 title: tableUsageCount | OpenMetadata Table Usage Count
+description: TableUsageCount schema tracks how often tables are accessed or queried within the platform.
 slug: /main-concepts/metadata-standard/schemas/type/tableusagecount
 ---
 

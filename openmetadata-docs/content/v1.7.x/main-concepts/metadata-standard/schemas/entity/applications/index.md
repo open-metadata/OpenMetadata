@@ -1,5 +1,6 @@
 ---
 title: Applications Schema | OpenMetadata Applications
+description: Applications schema capturing integrations, third-party apps, and internal tools connected to the platform.
 slug: /main-concepts/metadata-standard/schemas/entity/applications
 ---
 

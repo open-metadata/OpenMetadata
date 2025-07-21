@@ -1,5 +1,6 @@
 ---
 title: customProperty | OpenMetadata Custom Property
+description: CustomProperty schema allows defining user-generated attributes for metadata objects.
 slug: /main-concepts/metadata-standard/schemas/type/customproperty
 ---
 

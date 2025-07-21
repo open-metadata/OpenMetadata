@@ -1,5 +1,6 @@
 ---
 title: Jobs Schema | OpenMetadata Jobs Schema Details
+description: Metadata schema representing jobs, tasks, triggers, and execution contexts for orchestrating system or user workflows.
 slug: /main-concepts/metadata-standard/schemas/jobs
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Email Schemas | OpenMetadata Email API and Schema Overview
+description: Email metadata schema used to represent email notification templates, preferences, and communication workflows.
 slug: /main-concepts/metadata-standard/schemas/email
 ---
 

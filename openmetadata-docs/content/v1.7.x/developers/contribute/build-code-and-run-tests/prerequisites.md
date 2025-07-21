@@ -1,5 +1,6 @@
 ---
 title: Prerequisites | OpenMetadata Developer Setup Requirements
+description: Complete prerequisite steps for contributing code including environment, dependencies, and access setup.
 slug: /developers/contribute/build-code-and-run-tests/prerequisites
 ---
 

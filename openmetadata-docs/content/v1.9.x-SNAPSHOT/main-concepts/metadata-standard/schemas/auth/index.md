@@ -1,5 +1,6 @@
 ---
 title: Auth Schemas | OpenMetadata Authentication
+description: Schema for authentication metadata including login methods, identity providers, and credentials configuration.
 slug: /main-concepts/metadata-standard/schemas/auth
 ---
 

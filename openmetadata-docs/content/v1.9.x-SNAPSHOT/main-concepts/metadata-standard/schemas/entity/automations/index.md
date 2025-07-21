@@ -1,5 +1,6 @@
 ---
 title: Automations | OpenMetadata Automations API and Workflows
+description: Automations schema enabling scheduled actions, predefined triggers, and scripted operations within the system.
 slug: /main-concepts/metadata-standard/schemas/entity/automations
 ---
 

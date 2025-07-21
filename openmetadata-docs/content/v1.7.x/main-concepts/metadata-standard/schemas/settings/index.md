@@ -1,5 +1,6 @@
 ---
 title: Settings Schema | OpenMetadata Settings Schema Details
+description: Settings schema defining user preferences, system flags, and customizable UI or behavior configurations.
 slug: /main-concepts/metadata-standard/schemas/settings
 ---
 

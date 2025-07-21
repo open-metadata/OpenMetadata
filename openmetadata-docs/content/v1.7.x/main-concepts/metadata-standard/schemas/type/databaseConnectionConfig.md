@@ -1,5 +1,6 @@
 ---
-title: databaseConnectionConfig
+title: databaseConnectionConfig | Official Documentation
+description: DatabaseConnectionConfig schema captures credentials, hosts, and configs used for source connections.
 slug: /main-concepts/metadata-standard/schemas/type/databaseconnectionconfig
 ---
 

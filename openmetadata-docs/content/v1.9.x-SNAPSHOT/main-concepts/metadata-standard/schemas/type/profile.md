@@ -1,5 +1,6 @@
 ---
 title: Profile Schema | OpenMetadata Profile Schema Details
+description: Profile type schema tracks profiling metadata, metric values, and historical data patterns.
 slug: /main-concepts/metadata-standard/schemas/type/profile
 ---
 

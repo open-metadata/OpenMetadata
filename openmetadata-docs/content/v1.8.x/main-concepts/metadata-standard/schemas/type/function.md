@@ -1,5 +1,6 @@
 ---
 title: Function Schema | OpenMetadata Function Schema Details
+description: Function type schema representing executable scripts, logic units, or custom transformations on metadata.
 slug: /main-concepts/metadata-standard/schemas/type/function
 ---
 

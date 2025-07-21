@@ -1,5 +1,6 @@
 ---
 title: Docstore Schema | OpenMetadata Document Store
+description: Docstore schema enabling storage and retrieval of documents, markdown descriptions, and asset documentation.
 slug: /main-concepts/metadata-standard/schemas/entity/docstore
 ---
 

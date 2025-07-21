@@ -1,5 +1,6 @@
 ---
 title: Governance Schemas | OpenMetadata Governance Schemas Overview
+description: Governance schema describing policies, roles, classifications, certifications, and other compliance-related metadata rules.
 slug: /main-concepts/metadata-standard/schemas/governance
 ---
 

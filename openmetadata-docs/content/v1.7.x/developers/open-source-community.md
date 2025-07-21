@@ -1,5 +1,6 @@
 ---
-title: Open Source Community
+title: Open Source Community | Official Documentation
+description: Explore how to contribute to the open-source community, including issues, pull requests, and collaboration.
 slug: /developers/open-source-community
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Generate Typescript Types From JSON Schema
+description: Use this guide to generate TypeScript type definitions from JSON Schema to maintain consistency and type safety.
 slug: /developers/contribute/build-code-and-run-tests/generate-typescript-types-from-json-schema
 ---
 

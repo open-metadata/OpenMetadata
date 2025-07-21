@@ -1,5 +1,6 @@
 ---
 title: Policies Schema | OpenMetadata Policies Schema Overview
+description: Policies schema defining access controls, rules, conditions, and enforcement logic across platform components.
 slug: /main-concepts/metadata-standard/schemas/entity/policies
 ---
 

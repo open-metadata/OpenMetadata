@@ -1,5 +1,6 @@
 ---
 title: Monitoring Schema | OpenMetadata Monitoring Schema Details
+description: Monitoring schema capturing metrics, health checks, logs, and alert settings across platform infrastructure and assets.
 slug: /main-concepts/metadata-standard/schemas/monitoring
 ---
 

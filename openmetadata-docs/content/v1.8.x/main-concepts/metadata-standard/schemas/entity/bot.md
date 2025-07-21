@@ -1,5 +1,6 @@
 ---
 title: Bot Schema | OpenMetadata Bot Schema and API Documentation
+description: Bot schema defining automation agents, workflows, and scheduled tasks executed by non-human actors.
 slug: /main-concepts/metadata-standard/schemas/entity/bot
 ---
 

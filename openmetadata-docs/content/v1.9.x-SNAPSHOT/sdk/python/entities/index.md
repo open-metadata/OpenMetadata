@@ -1,5 +1,6 @@
 ---
 title: Python SDK Entities | OpenMetadata Python Entities
+description: Python SDK entity schemas defining classes and attributes for accessing metadata programmatically.
 slug: /sdk/python/entities
 noindex: true
 nofollow: true

@@ -1,5 +1,6 @@
 ---
 title: csvDocumentation | OpenMetadata CSV Documentation
+description: CsvDocumentation schema helps represent structured metadata imported via CSVs.
 slug: /main-concepts/metadata-standard/schemas/type/csvdocumentation
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Feed Schema | OpenMetadata Feed Schema and API Documentation
+description: Schema for feeds including activity updates, discussions, and collaboration threads tied to metadata entities.
 slug: /main-concepts/metadata-standard/schemas/entity/feed
 ---
 

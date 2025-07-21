@@ -1,5 +1,6 @@
 ---
 title: Include Schema | OpenMetadata Include Schema Overview
+description: Include type schema defines reusable nested objects for inclusion across entity relationships.
 slug: /main-concepts/metadata-standard/schemas/type/include
 noindex: true
 nofollow: true

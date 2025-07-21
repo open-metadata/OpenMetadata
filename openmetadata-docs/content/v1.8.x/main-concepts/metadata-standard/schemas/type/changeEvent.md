@@ -1,5 +1,6 @@
 ---
 title: Change Event | OpenMetadata Change Event Information
+description: ChangeEvent schema defines full details about entity changes, before-and-after values, and event types.
 slug: /main-concepts/metadata-standard/schemas/type/changeevent
 ---
 
