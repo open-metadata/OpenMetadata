@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { get } from 'lodash';
+import { get, startCase } from 'lodash';
+import { DATA_ASSETS } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
+import { DataProduct } from '../../support/domain/DataProduct';
+import { Domain } from '../../support/domain/Domain';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
@@ -26,10 +32,12 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { TagClass } from '../../support/tag/TagClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { updateDisplayNameForEntity } from '../../utils/entity';
 import {
   validateBucketsForIndex,
+  validateBucketsForIndexAndSort,
   verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
@@ -266,6 +274,14 @@ test.describe('Explore page', () => {
   const searchIndex = new SearchIndexClass();
   const dashboardDataModel = new DashboardDataModelClass();
   const mlModel = new MlModelClass();
+  const database = new DatabaseClass();
+  const databaseSchema = new DatabaseSchemaClass();
+  const metric = new MetricClass();
+  const domain = new Domain();
+  const dataProduct = new DataProduct(domain);
+  const tag = new TagClass({
+    classification: 'Certification',
+  });
 
   test.beforeEach('Setup pre-requisits', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
@@ -281,6 +297,12 @@ test.describe('Explore page', () => {
     await searchIndex.create(apiContext);
     await dashboardDataModel.create(apiContext);
     await mlModel.create(apiContext);
+    await database.create(apiContext);
+    await databaseSchema.create(apiContext);
+    await domain.create(apiContext);
+    await metric.create(apiContext);
+    await dataProduct.create(apiContext);
+    await tag.create(apiContext);
     await afterAction();
   });
 
@@ -298,6 +320,12 @@ test.describe('Explore page', () => {
     await searchIndex.delete(apiContext);
     await dashboardDataModel.delete(apiContext);
     await mlModel.delete(apiContext);
+    await database.delete(apiContext);
+    await databaseSchema.delete(apiContext);
+    await metric.delete(apiContext);
+    await domain.delete(apiContext);
+    await dataProduct.delete(apiContext);
+    await tag.delete(apiContext);
     await afterAction();
   });
 
@@ -332,5 +360,25 @@ test.describe('Explore page', () => {
 
   test('Check listing of entities when index is all', async ({ page }) => {
     await validateBucketsForIndex(page, 'all');
+  });
+
+  DATA_ASSETS.forEach((asset) => {
+    test(`${startCase(asset.label)} - search when index is ${
+      asset.indexType
+    } and sort is descending`, async ({ page }) => {
+      const searchBox = page.getByTestId('searchBox');
+      await searchBox.fill('pw');
+      await searchBox.press('Enter');
+
+      await page.waitForLoadState('networkidle');
+
+      const assetId = `${asset.label}-tab`;
+      const tabLocator = page.getByTestId(assetId);
+
+      await tabLocator.click();
+      await page.waitForLoadState('networkidle');
+
+      await validateBucketsForIndexAndSort(page, asset);
+    });
   });
 });

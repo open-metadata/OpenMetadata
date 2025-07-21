@@ -221,3 +221,32 @@ export const verifyDatabaseAndSchemaInExploreTree = async (
     page.getByTestId(`explore-tree-title-${schemaName}`)
   ).toBeVisible();
 };
+
+export const validateBucketsForIndexAndSort = async (
+  page: Page,
+  asset: {
+    key: string;
+    label: string;
+    indexType: string;
+  }
+) => {
+  const { apiContext } = await getApiContext(page);
+
+  const response = await apiContext
+    .get(
+      `/api/v1/search/query?q=pw&index=${asset.indexType}&from=0&size=15&deleted=false&sort_field=_score&sort_order=desc`
+    )
+    .then((res) => res.json());
+
+  const buckets = response.aggregations?.['sterms#entityType']?.buckets ?? [];
+
+  const bucket = buckets.find((b: Bucket) => b.key === asset.key);
+
+  expect(bucket, `Bucket with key "${asset.key}" is present`).toBeDefined();
+
+  // Expect the bucket's doc_count to be greater than 0
+  expect(
+    bucket?.doc_count,
+    `Bucket "${asset.key}" has doc_count >= 0`
+  ).toBeGreaterThan(0);
+};
