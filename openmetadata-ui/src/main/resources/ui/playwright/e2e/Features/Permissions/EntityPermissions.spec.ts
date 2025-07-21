@@ -17,7 +17,6 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
   assignRoleToUser,
-  cleanupPermissions,
   entityConfig,
   initializePermissions,
   runCommonPermissionTests,
@@ -86,13 +85,6 @@ Object.entries(entityConfig).forEach(([, config]) => {
         await page.close();
       });
 
-      test.afterAll('Cleanup allow permissions', async ({ browser }) => {
-        const page = await browser.newPage();
-        await adminUser.login(page);
-        await cleanupPermissions(page);
-        await page.close();
-      });
-
       test(`${entityType} allow common operations permissions`, async ({
         testUserPage,
       }) => {
@@ -102,8 +94,8 @@ Object.entries(entityConfig).forEach(([, config]) => {
       });
 
       // Entity-specific tests
-      if (config.specificTest) {
-        test(`${entityType} allow entity-specific operations`, async ({
+      if ('specificTest' in config && config.specificTest) {
+        test(`${entityType} allow entity-specific permission operations`, async ({
           testUserPage,
         }) => {
           test.slow(true);
@@ -128,13 +120,6 @@ Object.entries(entityConfig).forEach(([, config]) => {
         await page.close();
       });
 
-      test.afterAll('Cleanup deny permissions', async ({ browser }) => {
-        const page = await browser.newPage();
-        await adminUser.login(page);
-        await cleanupPermissions(page);
-        await page.close();
-      });
-
       test(`${entityType} deny common operations permissions`, async ({
         testUserPage,
       }) => {
@@ -144,8 +129,8 @@ Object.entries(entityConfig).forEach(([, config]) => {
       });
 
       // Entity-specific tests
-      if (config.specificTest) {
-        test(`${entityType} deny entity-specific operations`, async ({
+      if ('specificTest' in config && config.specificTest) {
+        test(`${entityType} deny entity-specific permission operations`, async ({
           testUserPage,
         }) => {
           test.slow(true);

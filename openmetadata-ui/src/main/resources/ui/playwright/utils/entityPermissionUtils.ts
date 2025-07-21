@@ -15,7 +15,6 @@ import { expect, Page } from '@playwright/test';
 import { VIEW_ALL_RULE } from '../constant/permission';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
 import { RolesClass } from '../support/access-control/RolesClass';
-import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
@@ -23,18 +22,27 @@ import { MetricClass } from '../support/entity/MetricClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
 import { PipelineClass } from '../support/entity/PipelineClass';
 import { SearchIndexClass } from '../support/entity/SearchIndexClass';
-import { StoredProcedureClass } from '../support/entity/StoredProcedureClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
+import { UserClass } from '../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from './common';
+
+// Base entity interface for permission tests
+interface BaseEntity {
+  visitEntityPage: (page: Page) => Promise<void>;
+}
 
 // All operations across all entities
 const ALL_OPERATIONS = [
   // Common operations
+
   'EditDescription',
   'EditOwners',
   'EditTier',
-  'EditCertification',
+  'EditDisplayName',
+  'EditTags',
+  'EditGlossaryTerms',
+  'Delete',
 
   // Table-specific operations
   'ViewQueries',
@@ -85,7 +93,7 @@ export const initializePermissions = async (
   return { apiContext, policy, role };
 };
 
-export const assignRoleToUser = async (page: Page, testUser: any) => {
+export const assignRoleToUser = async (page: Page, testUser: UserClass) => {
   const { apiContext } = await getApiContext(page);
 
   await testUser.patch({
@@ -113,24 +121,138 @@ export const cleanupPermissions = async (page: Page) => {
   await afterAction();
 };
 
+// Helper function to check element visibility based on configuration
+const checkElementVisibility = async (
+  testUserPage: Page,
+  config: {
+    testId: string;
+    type: string;
+    containers?: string[];
+  },
+  effect: 'allow' | 'deny'
+) => {
+  const { testId, type } = config;
+
+  if (effect === 'allow') {
+    switch (type) {
+      case 'direct': {
+        await expect(
+          testUserPage.locator(`[data-testid="${testId}"]`)
+        ).toBeVisible();
+
+        break;
+      }
+
+      case 'multiple-containers': {
+        // Handle elements that exist in multiple containers
+        const containerLocators =
+          config.containers?.map((container) =>
+            testUserPage
+              .locator(`[data-testid="${container}"]`)
+              .locator(`button[data-testid="${testId}"]`)
+          ) || [];
+
+        const containerVisibilityChecks = await Promise.all(
+          containerLocators.map((locator) => locator.isVisible())
+        );
+
+        // In allow case: any one of the containers should have the element visible
+        expect(
+          containerVisibilityChecks.some((visible) => visible)
+        ).toBeTruthy();
+
+        break;
+      }
+
+      case 'with-manage-button': {
+        await testUserPage.locator('[data-testid="manage-button"]').click();
+
+        await expect(
+          testUserPage.locator(`[data-testid="${testId}"]`)
+        ).toBeVisible();
+
+        break;
+      }
+
+      default: {
+        await expect(
+          testUserPage.locator(`[data-testid="${testId}"]`)
+        ).toBeVisible();
+      }
+    }
+  } else {
+    // Deny effect
+    switch (type) {
+      case 'direct': {
+        await expect(
+          testUserPage.locator(`[data-testid="${testId}"]`)
+        ).not.toBeVisible();
+
+        break;
+      }
+
+      case 'multiple-containers': {
+        // Handle elements that exist in multiple containers for deny case
+        const containerLocators =
+          config.containers?.map((container) =>
+            testUserPage
+              .locator(`[data-testid="${container}"]`)
+              .locator(`button[data-testid="${testId}"]`)
+          ) || [];
+
+        const containerVisibilityChecks = await Promise.all(
+          containerLocators.map((locator) => locator.isVisible())
+        );
+
+        // In deny case: none of the containers should have the element visible
+        expect(
+          containerVisibilityChecks.every((visible) => !visible)
+        ).toBeTruthy();
+
+        break;
+      }
+
+      case 'with-manage-button': {
+        await testUserPage.locator('[data-testid="manage-button"]').click();
+
+        await expect(
+          testUserPage.locator(`[data-testid="${testId}"]`)
+        ).not.toBeVisible();
+
+        break;
+      }
+
+      default: {
+        await expect(
+          testUserPage.locator(`[data-testid="${testId}"]`)
+        ).not.toBeVisible();
+      }
+    }
+  }
+};
+
 // Test common operations for any entity
 export const testCommonOperations = async (
   testUserPage: Page,
-  entity: any,
+  entity: BaseEntity,
   effect: 'allow' | 'deny'
 ) => {
   // Navigate to entity page
   await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
-  // Check visibility of common UI elements (same for all entities)
-  const commonTestIds = [
-    'edit-description',
-    // 'edit-tags',
-    // 'edit-glossary-terms',
-    'edit-tier',
-    'edit-owner',
-    // 'edit-display-name',
+  // Define test configurations with special handling
+  const testIdsConfigs = [
+    { testId: 'edit-description', type: 'direct' },
+    {
+      testId: 'add-tag',
+      type: 'multiple-containers',
+      containers: ['tags-container', 'glossary-container'],
+    },
+    { testId: 'edit-tier', type: 'direct' },
+    { testId: 'edit-owner', type: 'direct' },
+    { testId: 'rename-button', type: 'with-manage-button' },
+    { testId: 'delete-button', type: 'with-manage-button' },
     // 'edit-custom-fields',
     // 'edit-certification'
   ];
@@ -139,16 +261,8 @@ export const testCommonOperations = async (
     testUserPage.locator('[data-testid="entity-header-title"]')
   ).toBeVisible();
 
-  for (const testId of commonTestIds) {
-    if (effect === 'allow') {
-      await expect(
-        testUserPage.locator(`[data-testid="${testId}"]`)
-      ).toBeVisible();
-    } else {
-      await expect(
-        testUserPage.locator(`[data-testid="${testId}"]`)
-      ).not.toBeVisible();
-    }
+  for (const config of testIdsConfigs) {
+    await checkElementVisibility(testUserPage, config, effect);
   }
 };
 
@@ -206,7 +320,7 @@ export const testProfilerTabPermission = async (
 // Entity-specific test functions
 export const testTableSpecificOperations = async (
   testUserPage: Page,
-  entity: any,
+  entity: BaseEntity,
   effect: 'allow' | 'deny'
 ) => {
   await entity.visitEntityPage(testUserPage);
@@ -257,7 +371,7 @@ export const testTableSpecificOperations = async (
 
 export const testTopicSpecificOperations = async (
   testUserPage: Page,
-  entity: any,
+  entity: BaseEntity,
   effect: 'allow' | 'deny'
 ) => {
   await entity.visitEntityPage(testUserPage);
@@ -271,25 +385,9 @@ export const testTopicSpecificOperations = async (
   );
 };
 
-export const testContainerSpecificOperations = async (
-  testUserPage: Page,
-  entity: any,
-  effect: 'allow' | 'deny'
-) => {
-  await entity.visitEntityPage(testUserPage);
-
-  // Test ViewUsage for Container
-  await testPermissionErrorVisibility(
-    testUserPage,
-    'usage',
-    effect,
-    "You don't have necessary permissions. Please check with the admin to get the View Usage permission."
-  );
-};
-
 export const testDashboardSpecificOperations = async (
   testUserPage: Page,
-  entity: any,
+  entity: BaseEntity,
   effect: 'allow' | 'deny'
 ) => {
   await entity.visitEntityPage(testUserPage);
@@ -305,46 +403,27 @@ export const testDashboardSpecificOperations = async (
 
 export const testPipelineSpecificOperations = async (
   testUserPage: Page,
-  entity: any,
+  entity: BaseEntity,
   effect: 'allow' | 'deny'
 ) => {
   await entity.visitEntityPage(testUserPage);
 
-  // Test ViewUsage for Pipeline
-  await testPermissionErrorVisibility(
-    testUserPage,
-    'usage',
-    effect,
-    "You don't have necessary permissions. Please check with the admin to get the View Usage permission."
-  );
+  // Test Edit Lineage for Pipeline
+  await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
+  if (effect === 'allow') {
+    await testUserPage.getByTestId('edit-lineage').click();
 
-  // Test EditStatus for Pipeline (if status edit button exists)
-  if (effect === 'deny') {
-    await expect(
-      testUserPage.locator('[data-testid="edit-status"]')
-    ).not.toBeVisible();
+    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
+  } else {
+    await testUserPage.getByTestId('edit-lineage').click();
+
+    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
   }
-};
-
-export const testMlModelSpecificOperations = async (
-  testUserPage: Page,
-  entity: any,
-  effect: 'allow' | 'deny'
-) => {
-  await entity.visitEntityPage(testUserPage);
-
-  // Test ViewUsage for ML Model
-  await testPermissionErrorVisibility(
-    testUserPage,
-    'usage',
-    effect,
-    "You don't have necessary permissions. Please check with the admin to get the View Usage permission."
-  );
 };
 
 export const testSearchIndexSpecificOperations = async (
   testUserPage: Page,
-  entity: any,
+  entity: BaseEntity,
   effect: 'allow' | 'deny'
 ) => {
   await entity.visitEntityPage(testUserPage);
@@ -352,15 +431,15 @@ export const testSearchIndexSpecificOperations = async (
   // Test ViewUsage for Search Index
   await testPermissionErrorVisibility(
     testUserPage,
-    'usage',
+    'sample_data',
     effect,
-    "You don't have necessary permissions. Please check with the admin to get the View Usage permission."
+    "You don't have necessary permissions. Please check with the admin to get the View Sample Data permission."
   );
 };
 
 export const testStoredProcedureSpecificOperations = async (
   testUserPage: Page,
-  entity: any,
+  entity: BaseEntity,
   effect: 'allow' | 'deny'
 ) => {
   await entity.visitEntityPage(testUserPage);
@@ -374,58 +453,30 @@ export const testStoredProcedureSpecificOperations = async (
   );
 };
 
-export const testMetricSpecificOperations = async (
-  testUserPage: Page,
-  entity: any,
-  effect: 'allow' | 'deny'
-) => {
-  await entity.visitEntityPage(testUserPage);
-
-  // Test ViewUsage for Metric
-  await testPermissionErrorVisibility(
-    testUserPage,
-    'usage',
-    effect,
-    "You don't have necessary permissions. Please check with the admin to get the View Usage permission."
-  );
-};
-
-export const testApiEndpointSpecificOperations = async (
-  testUserPage: Page,
-  entity: any,
-  effect: 'allow' | 'deny'
-) => {
-  await entity.visitEntityPage(testUserPage);
-
-  // Test ViewUsage for API Endpoint
-  await testPermissionErrorVisibility(
-    testUserPage,
-    'usage',
-    effect,
-    "You don't have necessary permissions. Please check with the admin to get the View Usage permission."
-  );
-};
-
 export const testDashboardDataModelSpecificOperations = async (
   testUserPage: Page,
-  entity: any,
+  entity: BaseEntity,
   effect: 'allow' | 'deny'
 ) => {
   await entity.visitEntityPage(testUserPage);
 
-  // Test ViewUsage for Dashboard Data Model
-  await testPermissionErrorVisibility(
-    testUserPage,
-    'usage',
-    effect,
-    "You don't have necessary permissions. Please check with the admin to get the View Usage permission."
-  );
+  // Test Edit Lineage for Dashboard Data Model
+  await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
+  if (effect === 'allow') {
+    await testUserPage.getByTestId('edit-lineage').click();
+
+    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
+  } else {
+    await testUserPage.getByTestId('edit-lineage').click();
+
+    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+  }
 };
 
 // Helper function to run common permission tests
 export const runCommonPermissionTests = async (
   testUserPage: Page,
-  entity: any,
+  entity: BaseEntity,
   effect: 'allow' | 'deny'
 ) => {
   await testCommonOperations(testUserPage, entity, effect);
@@ -434,11 +485,11 @@ export const runCommonPermissionTests = async (
 // Helper function to run entity-specific permission tests
 export const runEntitySpecificPermissionTests = async (
   testUserPage: Page,
-  entity: any,
+  entity: BaseEntity,
   effect: 'allow' | 'deny',
   specificTest?: (
     page: Page,
-    entity: any,
+    entity: BaseEntity,
     effect: 'allow' | 'deny'
   ) => Promise<void>
 ) => {
@@ -449,17 +500,9 @@ export const runEntitySpecificPermissionTests = async (
 
 // Entity configuration with their specific test functions
 export const entityConfig = {
-  ApiEndpoint: {
-    class: ApiEndpointClass,
-    specificTest: testApiEndpointSpecificOperations,
-  },
   Table: {
     class: TableClass,
     specificTest: testTableSpecificOperations,
-  },
-  StoredProcedure: {
-    class: StoredProcedureClass,
-    specificTest: testStoredProcedureSpecificOperations,
   },
   Dashboard: {
     class: DashboardClass,
@@ -475,11 +518,9 @@ export const entityConfig = {
   },
   MlModel: {
     class: MlModelClass,
-    specificTest: testMlModelSpecificOperations,
   },
   Container: {
     class: ContainerClass,
-    specificTest: testContainerSpecificOperations,
   },
   SearchIndex: {
     class: SearchIndexClass,
@@ -491,6 +532,5 @@ export const entityConfig = {
   },
   Metric: {
     class: MetricClass,
-    specificTest: testMetricSpecificOperations,
   },
 } as const;
