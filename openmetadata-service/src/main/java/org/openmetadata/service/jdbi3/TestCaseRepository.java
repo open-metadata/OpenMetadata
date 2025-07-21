@@ -26,9 +26,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -507,10 +509,25 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         throw new IllegalArgumentException(
             "Parameter Values doesn't match Test Definition Parameters");
       }
+      
+      // Create sets of parameter names for validation
+      Set<String> definedParameterNames = parameterDefinition.stream()
+          .map(TestCaseParameter::getName)
+          .collect(Collectors.toSet());
+      
       Map<String, Object> values = new HashMap<>();
 
       for (TestCaseParameterValue testCaseParameterValue : parameterValues) {
-        values.put(testCaseParameterValue.getName(), testCaseParameterValue.getValue());
+        String parameterName = testCaseParameterValue.getName();
+        
+        // Validate that the parameter name exists in the test definition
+        if (!definedParameterNames.contains(parameterName)) {
+          throw new IllegalArgumentException(
+              String.format("Parameter '%s' is not defined in the test definition. Defined parameters are: %s", 
+                  parameterName, definedParameterNames));
+        }
+        
+        values.put(parameterName, testCaseParameterValue.getValue());
       }
       for (TestCaseParameter parameter : parameterDefinition) {
         if (Boolean.TRUE.equals(parameter.getRequired())
