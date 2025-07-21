@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Page, test as base } from '@playwright/test';
+import { Page, test as base } from '@playwright/test';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -24,17 +24,6 @@ import {
 } from '../../../utils/entityPermissionUtils';
 const adminUser = new UserClass();
 const testUser = new UserClass();
-const dataConsumerUser = new UserClass();
-
-interface CreatedEntity {
-  entity: {
-    create: (apiContext: APIRequestContext) => Promise<void>;
-    delete: (apiContext: APIRequestContext) => Promise<void>;
-    getType: () => string;
-  };
-}
-
-const createdEntities: CreatedEntity[] = [];
 
 const test = base.extend<{
   page: Page;
@@ -59,7 +48,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await testUser.create(apiContext);
-  await dataConsumerUser.create(apiContext);
   await afterAction();
 });
 
@@ -158,10 +146,6 @@ test.afterAll('Cleanup', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await testUser.delete(apiContext);
-
-  for (const { entity } of createdEntities) {
-    await entity.delete(apiContext);
-  }
 
   await afterAction();
 });
