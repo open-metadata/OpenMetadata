@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
+
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -20,8 +19,6 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
-import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import {
   DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
@@ -283,16 +280,6 @@ export const DashboardChartTable = ({
               <Link to={getChartDetailsPath(record?.fullyQualifiedName ?? '')}>
                 <span className="break-all">{chartName}</span>
               </Link>
-
-              {record.sourceUrl && (
-                <Typography.Link href={record.sourceUrl} target="_blank">
-                  <Icon
-                    className="m-l-xs flex-none align-middle"
-                    component={ExternalLinkIcon}
-                    style={DATA_ASSET_ICON_DIMENSION}
-                  />
-                </Typography.Link>
-              )}
             </div>
           );
         },

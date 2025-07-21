@@ -32,6 +32,7 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -683,7 +684,13 @@ export const getDataAssetsHeaderInfo = (
 
       break;
     }
+    case EntityType.CHART: {
+      const chart = dataAsset as Chart;
 
+      returnData.breadcrumbs = getEntityBreadcrumbs(chart, EntityType.CHART);
+
+      break;
+    }
     case EntityType.TABLE:
     default:
       const tableDetails = dataAsset as Table;

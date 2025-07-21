@@ -16,7 +16,7 @@ import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-c
 import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
-import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
+import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/dashboard-data-models-colored.svg';
 import { ReactComponent as DataAssetsIcon } from '../assets/svg/data-assets-colored-new.svg';
