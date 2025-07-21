@@ -329,10 +329,17 @@ public class DatabaseRepository extends EntityRepository<Database> {
       return;
     }
 
-    EntityReference service = getContainer(entities.get(0).getId());
-    for (Database database : entities) {
-      database.setService(service);
-    }
+    // Use batch fetch to get correct service for each database
+    var serviceMap = batchFetchServices(entities);
+
+    // Set the correct service for each database
+    entities.forEach(
+        database -> {
+          EntityReference service = serviceMap.get(database.getId());
+          if (service != null) {
+            database.setService(service);
+          }
+        });
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDatabaseSchemas(List<Database> databases) {

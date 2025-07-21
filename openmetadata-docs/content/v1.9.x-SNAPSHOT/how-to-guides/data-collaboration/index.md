@@ -1,5 +1,6 @@
 ---
 title: Data Collaboration | OpenMetadata Collaboration Features
+description: Enable data collaboration through announcements, conversations, tags, and task workflows across teams.
 slug: /how-to-guides/data-collaboration
 ---
 
