@@ -182,6 +182,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityLockedException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -191,6 +192,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.rules.RuleEngine;
@@ -298,6 +300,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
 
   protected final ChangeSummarizer<T> changeSummarizer;
+
+  // Lock manager for preventing orphaned entities during cascade deletion
+  private static HierarchicalLockManager lockManager;
+
+  // Static setter for lock manager initialization
+  public static void setLockManager(HierarchicalLockManager manager) {
+    lockManager = manager;
+  }
 
   public boolean isSupportsOwners() {
     return supportsOwners;
@@ -1064,6 +1074,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T createInternal(T entity) {
+    // Check if parent entity is being deleted
+    if (lockManager != null) {
+      try {
+        lockManager.checkModificationAllowed(entity);
+      } catch (EntityLockedException e) {
+        LOG.warn("Entity creation blocked due to parent deletion: {}", e.getMessage());
+        throw e;
+      }
+    }
+
     prepareInternal(entity, false);
     return createNewEntity(entity);
   }
@@ -1130,6 +1150,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated, String updatedBy) {
+    // Check if parent entity is being deleted
+    if (lockManager != null) {
+      try {
+        lockManager.checkModificationAllowed(updated);
+      } catch (EntityLockedException e) {
+        LOG.warn("Entity update blocked due to parent deletion: {}", e.getMessage());
+        throw e;
+      }
+    }
+
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(
@@ -1550,23 +1580,57 @@ public abstract class EntityRepository<T extends EntityInterface> {
     checkSystemEntityDeletion(original);
     preDelete(original, deletedBy);
     setFieldsInternal(original, putFields);
-    deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
 
-    EventType changeType;
-    T updated = get(null, original.getId(), putFields, ALL, false);
-    if (supportsSoftDelete && !hardDelete) {
-      updated.setUpdatedBy(deletedBy);
-      updated.setUpdatedAt(System.currentTimeMillis());
-      updated.setDeleted(true);
-      EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
-      updater.update();
-      changeType = ENTITY_SOFT_DELETED;
-    } else {
-      cleanup(updated);
-      changeType = ENTITY_DELETED;
+    // Acquire deletion lock to prevent concurrent modifications
+    DeletionLock lock = null;
+    if (lockManager != null && recursive) {
+      try {
+        lock = lockManager.acquireDeletionLock(original, deletedBy, recursive);
+        LOG.info("Acquired deletion lock for {} {}", entityType, original.getId());
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to acquire deletion lock for {} {}: {}",
+            entityType,
+            original.getId(),
+            e.getMessage());
+        // Continue without lock for backward compatibility
+      }
     }
-    LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
-    return new DeleteResponse<>(updated, changeType);
+
+    try {
+      deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
+
+      EventType changeType;
+      T updated = get(null, original.getId(), putFields, ALL, false);
+      if (supportsSoftDelete && !hardDelete) {
+        updated.setUpdatedBy(deletedBy);
+        updated.setUpdatedAt(System.currentTimeMillis());
+        updated.setDeleted(true);
+        EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
+        updater.update();
+        changeType = ENTITY_SOFT_DELETED;
+      } else {
+        cleanup(updated);
+        changeType = ENTITY_DELETED;
+      }
+      LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
+      return new DeleteResponse<>(updated, changeType);
+
+    } finally {
+      // Always release the lock
+      if (lock != null && lockManager != null) {
+        try {
+          lockManager.releaseDeletionLock(original.getId(), entityType);
+          LOG.info("Released deletion lock for {} {}", entityType, original.getId());
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to release deletion lock for {} {}: {}",
+              entityType,
+              original.getId(),
+              e.getMessage());
+        }
+      }
+    }
   }
 
   @Transaction
@@ -1621,18 +1685,122 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   protected void deleteChildren(
       List<EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
-    for (EntityRelationshipRecord entityRelationshipRecord : children) {
-      LOG.info(
-          "Recursively {} deleting {} {}",
-          hardDelete ? "hard" : "soft",
-          entityRelationshipRecord.getType(),
-          entityRelationshipRecord.getId());
-      Entity.deleteEntity(
-          updatedBy,
-          entityRelationshipRecord.getType(),
-          entityRelationshipRecord.getId(),
-          true,
-          hardDelete);
+    // Use batch deletion only for hard deletes with large numbers of children
+    // For soft deletes, we must maintain the correct order for restoration to work properly
+    if (hardDelete && children.size() > 100) {
+      LOG.info("Using batch deletion for {} children entities", children.size());
+      batchDeleteChildren(children, hardDelete, updatedBy);
+    } else {
+      // For soft deletes or small numbers, use original sequential deletion
+      // This ensures proper parent-child relationships are maintained for restoration
+      for (EntityRelationshipRecord entityRelationshipRecord : children) {
+        LOG.info(
+            "Recursively {} deleting {} {}",
+            hardDelete ? "hard" : "soft",
+            entityRelationshipRecord.getType(),
+            entityRelationshipRecord.getId());
+        Entity.deleteEntity(
+            updatedBy,
+            entityRelationshipRecord.getType(),
+            entityRelationshipRecord.getId(),
+            true,
+            hardDelete);
+      }
+    }
+  }
+
+  /**
+   * Batch deletion of children entities for improved performance
+   */
+  @Transaction
+  protected void batchDeleteChildren(
+      List<EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+
+    // Group entities by type for batch processing
+    Map<String, List<UUID>> entitiesByType =
+        children.stream()
+            .collect(
+                Collectors.groupingBy(
+                    EntityRelationshipRecord::getType,
+                    Collectors.mapping(EntityRelationshipRecord::getId, Collectors.toList())));
+
+    LOG.info("Batch deleting {} entities across {} types", children.size(), entitiesByType.size());
+
+    // Process deletion in levels to handle cascading properly
+    for (Map.Entry<String, List<UUID>> entry : entitiesByType.entrySet()) {
+      String childEntityType = entry.getKey();
+      List<UUID> entityIds = entry.getValue();
+
+      LOG.info("Batch processing {} entities of type {}", entityIds.size(), childEntityType);
+
+      // Process in smaller batches to avoid overwhelming the system
+      int batchSize = 50;
+      for (int i = 0; i < entityIds.size(); i += batchSize) {
+        List<UUID> batch = entityIds.subList(i, Math.min(i + batchSize, entityIds.size()));
+        processDeletionBatch(batch, childEntityType, hardDelete, updatedBy);
+      }
+    }
+  }
+
+  /**
+   * Process a batch of entities for deletion
+   */
+  @Transaction
+  private void processDeletionBatch(
+      List<UUID> entityIds, String entityType, boolean hardDelete, String updatedBy) {
+
+    LOG.debug("Processing batch of {} {} entities", entityIds.size(), entityType);
+
+    // First, collect all grandchildren that need to be deleted
+    List<EntityRelationshipRecord> allGrandchildren = new ArrayList<>();
+    for (UUID entityId : entityIds) {
+      List<EntityRelationshipRecord> grandchildren =
+          daoCollection
+              .relationshipDAO()
+              .findTo(
+                  entityId,
+                  entityType,
+                  List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
+      allGrandchildren.addAll(grandchildren);
+    }
+
+    // Recursively delete grandchildren first
+    if (!allGrandchildren.isEmpty()) {
+      LOG.info("Found {} grandchildren to delete first", allGrandchildren.size());
+      deleteChildren(allGrandchildren, hardDelete, updatedBy);
+    }
+
+    // Now batch delete the entities at this level
+    List<String> stringIds = entityIds.stream().map(UUID::toString).collect(Collectors.toList());
+
+    // Only delete relationships for hard delete
+    // For soft delete, relationships must be preserved for restoration
+    if (hardDelete) {
+      // Batch delete relationships for all entities
+      daoCollection.relationshipDAO().batchDeleteFrom(stringIds, entityType);
+      daoCollection.relationshipDAO().batchDeleteTo(stringIds, entityType);
+    }
+
+    // Delete or soft-delete the entities themselves
+    for (UUID entityId : entityIds) {
+      try {
+        @SuppressWarnings("rawtypes")
+        EntityRepository repository = Entity.getEntityRepository(entityType);
+        if (repository.supportsSoftDelete && !hardDelete) {
+          // Soft delete
+          EntityInterface entity = repository.find(entityId, Include.ALL);
+          entity.setUpdatedBy(updatedBy);
+          entity.setUpdatedAt(System.currentTimeMillis());
+          entity.setDeleted(true);
+          repository.dao.update(entity);
+        } else {
+          // Hard delete
+          EntityInterface entity = repository.find(entityId, Include.ALL);
+          repository.cleanup(entity);
+        }
+      } catch (Exception e) {
+        LOG.error("Error deleting entity {} of type {}: {}", entityId, entityType, e.getMessage());
+      }
     }
   }
 

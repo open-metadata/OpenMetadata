@@ -285,7 +285,7 @@ const TestSuiteDetailsPage = () => {
     async (updateDomain?: EntityReference | EntityReference[]) => {
       const updatedTestSuite: TestSuite = {
         ...testSuite,
-        domain: updateDomain,
+        domains: updateDomain,
       } as TestSuite;
 
       await updateTestSuiteData(updatedTestSuite);

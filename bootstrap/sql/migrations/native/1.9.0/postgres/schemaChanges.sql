@@ -135,3 +135,38 @@ CREATE INDEX IF NOT EXISTS idx_worksheet_spreadsheet ON worksheet_entity ((json 
 
 -- Clean old test connections
 TRUNCATE automations_workflow;
+
+-- Performance optimization indexes for entity_relationship table
+-- These indexes improve cascade deletion performance
+CREATE INDEX IF NOT EXISTS idx_entity_rel_from_delete 
+ON entity_relationship(fromid, fromentity, toid, toentity, relation);
+
+CREATE INDEX IF NOT EXISTS idx_entity_rel_to_delete 
+ON entity_relationship(toid, toentity, fromid, fromentity, relation);
+
+-- Index for cascade queries (CONTAINS and PARENT_OF relationships only)
+-- PostgreSQL supports partial indexes
+CREATE INDEX IF NOT EXISTS idx_entity_rel_cascade 
+ON entity_relationship(fromid, relation, toentity, toid)
+WHERE relation IN (0, 8);
+
+-- Entity deletion lock table for preventing orphaned entities during cascade deletion
+CREATE TABLE IF NOT EXISTS entity_deletion_lock (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    entityId UUID NOT NULL,
+    entityType VARCHAR(256) NOT NULL,
+    entityFqn VARCHAR(2048) NOT NULL,
+    lockType VARCHAR(50) NOT NULL, -- 'DELETE_IN_PROGRESS', 'DELETE_SCHEDULED'
+    lockedBy VARCHAR(256) NOT NULL,
+    lockedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expectedCompletion TIMESTAMP NULL,
+    deletionScope VARCHAR(50), -- 'ENTITY_ONLY', 'CASCADE'
+    metadata JSONB,
+    PRIMARY KEY (id),
+    UNIQUE (entityId, entityType)
+);
+
+-- Create indexes for deletion lock table
+-- Use btree index for entityFqn prefix matching
+CREATE INDEX IF NOT EXISTS idx_deletion_lock_fqn ON entity_deletion_lock(entityFqn);
+CREATE INDEX IF NOT EXISTS idx_deletion_lock_time ON entity_deletion_lock(lockedAt);

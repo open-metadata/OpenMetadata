@@ -268,6 +268,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsEtag = true;
   protected final boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
+  protected boolean supportsPatchDomains = true;
   protected final boolean supportsEmptyDescription;
   protected boolean supportsAdminOnly = false;
 
@@ -277,7 +278,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final boolean supportsCustomExtension;
 
   protected final boolean supportsLifeCycle;
-  protected final boolean supportsDomain;
+  protected final boolean supportsDomains;
   protected final boolean supportsDataProducts;
   protected final boolean supportsExperts;
   protected final boolean supportsReviewers;
@@ -492,7 +493,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
     this.supportsLifeCycle = allowedFields.contains(FIELD_LIFE_CYCLE);
     this.systemEntityName = systemEntityName;
-    this.supportsDomain = allowedFields.contains(Entity.FIELD_DOMAINS);
+    this.supportsDomains = allowedFields.contains(Entity.FIELD_DOMAINS);
     this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
     this.supportsExperts = allowedFields.contains(FIELD_EXPERTS);
     this.supportsReviewers = allowedFields.contains(FIELD_REVIEWERS);
@@ -843,7 +844,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Build a combination with domain, tags, and owners if supported
     StringBuilder complexFields = new StringBuilder();
-    if (supportsDomain) {
+    if (supportsDomains) {
       complexFields.append("domains");
     }
     if (supportsTags) {
@@ -950,7 +951,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   void patchWrongDomainId(TestInfo test) throws IOException {
-    Assumptions.assumeTrue(supportsDomain);
+    Assumptions.assumeTrue(supportsDomains);
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
     // Data Product domain cannot be modified see DataProductRepository.restorePatchAttributes
     Assumptions.assumeTrue(!(entity.getEntityReference().getType().equals(DATA_PRODUCT)));
@@ -991,7 +992,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Execution(ExecutionMode.CONCURRENT)
   void patch_dataProducts_200_ok(TestInfo test) throws IOException {
     Assumptions.assumeTrue(supportsDataProducts);
-    Assumptions.assumeTrue(supportsDomain);
+    Assumptions.assumeTrue(supportsDomains);
 
     // Create entity without dataProducts
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
@@ -1102,7 +1103,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // This test verifies that all relationship fields are properly returned in patch responses
     // during session consolidation (multiple patches within session timeout)
 
-    if (!supportsPatch) {
+    if (!supportsPatch || !supportsFieldsQueryParam) {
       return;
     }
 
@@ -1110,7 +1111,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
 
     // Test 1: Add domain (if supported)
-    if (supportsDomain) {
+    if (supportsDomains && supportsPatchDomains) {
       DomainResourceTest domainResourceTest = new DomainResourceTest();
       Domain domain =
           domainResourceTest.createEntity(
@@ -1130,7 +1131,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Test 2: Add owner within session timeout (tests consolidation)
-    if (supportsOwners) {
+    // Only check if we are adding owners from scratch, not updating existing ones
+    if (supportsOwners && nullOrEmpty(entity.getOwners())) {
       String originalJson = JsonUtils.pojoToJson(entity);
       entity.setOwners(List.of(USER1_REF));
       ChangeDescription change = getChangeDescription(entity, getChangeType());
@@ -1147,7 +1149,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Test 3: Add reviewers within session timeout (if supported)
-    if (supportsReviewers) {
+    // Only check if we are adding reviewers from scratch, not updating existing ones
+    if (supportsReviewers && nullOrEmpty(entity.getReviewers())) {
       String originalJson = JsonUtils.pojoToJson(entity);
       entity.setReviewers(List.of(USER2_REF));
       ChangeDescription change = getChangeDescription(entity, getChangeType());
@@ -1162,7 +1165,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Test 4: Add experts within session timeout (if supported)
-    if (supportsExperts) {
+    // Only check if we are adding experts from scratch, not updating existing ones
+    if (supportsExperts && nullOrEmpty(entity.getExperts())) {
       String originalJson = JsonUtils.pojoToJson(entity);
       entity.setExperts(List.of(DATA_STEWARD.getEntityReference()));
       ChangeDescription change = getChangeDescription(entity, getChangeType());
@@ -1180,7 +1184,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     String fields =
         Stream.of(
                 supportsOwners ? FIELD_OWNERS : null,
-                supportsDomain ? FIELD_DOMAINS : null,
+                supportsDomains ? FIELD_DOMAINS : null,
                 supportsReviewers ? FIELD_REVIEWERS : null,
                 supportsExperts ? FIELD_EXPERTS : null,
                 supportsDataProducts ? FIELD_DATA_PRODUCTS : null)
@@ -1194,7 +1198,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       if (supportsOwners && entity.getOwners() != null) {
         assertEntityReferences(entity.getOwners(), fetchedEntity.getOwners());
       }
-      if (supportsDomain && entity.getDomains() != null) {
+      if (supportsDomains && entity.getDomains() != null) {
         assertEntityReferences(entity.getDomains(), fetchedEntity.getDomains());
       }
       if (supportsReviewers && entity.getReviewers() != null) {
@@ -1411,6 +1415,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
   private void delete_recursiveTest() throws IOException {
+    // Skip recursive delete test when container reuse is enabled
+    // as entities from previous test runs may still reference the container
+    if (Boolean.parseBoolean(System.getProperty("testcontainers.reuse.enable", "false"))) {
+      LOG.info("Skipping delete_recursiveTest - container reuse is enabled");
+      return;
+    }
+
     // Finally, delete the container that contains the entities created for this test
     EntityReference container = getContainer();
     if (container != null) {
