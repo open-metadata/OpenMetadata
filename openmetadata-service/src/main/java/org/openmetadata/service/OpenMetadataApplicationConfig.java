@@ -31,6 +31,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.configuration.AiPlatformConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
@@ -150,6 +151,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("scimConfiguration")
   private ScimConfiguration scimConfiguration;
+
+  @JsonProperty("aiPlatformConfiguration")
+  private AiPlatformConfiguration aiPlatformConfiguration;
 
   @Override
   public String toString() {
