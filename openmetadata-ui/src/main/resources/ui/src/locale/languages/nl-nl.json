@@ -1674,7 +1674,7 @@
     "view-less": "Minder weergeven",
     "view-more": "Bekijk meer",
     "view-more-capital": "View More",
-    "view-more-count": "Bekijk meer ({{count}})",
+    "view-more-count": "Bekijk meer ({{countValue}})",
     "view-new-count": "Bekijk {{count}} nieuw",
     "view-parsing-timeout-limit": "Viewdefinitie parsing time-outlimiet",
     "view-plural": "Views",
