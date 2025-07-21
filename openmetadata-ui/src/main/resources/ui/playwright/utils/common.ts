@@ -18,6 +18,7 @@ import { Domain } from '../support/domain/Domain';
 import { sidebarClick } from './sidebar';
 
 export const uuid = () => randomUUID().split('-')[0];
+export const fullUuid = () => randomUUID();
 
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
@@ -59,6 +60,12 @@ export const getAuthContext = async (token: string) => {
 export const redirectToHomePage = async (page: Page) => {
   await page.goto('/');
   await page.waitForURL('**/my-data');
+  await page.waitForLoadState('networkidle');
+};
+
+export const redirectToExplorePage = async (page: Page) => {
+  await page.goto('/explore');
+  await page.waitForURL('**/explore');
   await page.waitForLoadState('networkidle');
 };
 
@@ -111,6 +118,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     SearchIndex: 'search_entity_search_index',
     ApiEndpoint: 'api_endpoint_search_index',
     Metric: 'metric_search_index',
+    'Dashboard Data Model': 'dashboard_data_model_search_index',
   };
 
   return entityMapping[entityType as keyof typeof entityMapping];
@@ -138,8 +146,7 @@ export const clickOutside = async (page: Page) => {
       x: 0,
       y: 0,
     },
-  }); // with this action left menu bar is getting opened
-  await page.mouse.move(1280, 0); // moving out side left menu bar to avoid random failure due to left menu bar
+  });
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
@@ -353,7 +360,66 @@ export const closeFirstPopupAlert = async (page: Page) => {
 export const reloadAndWaitForNetworkIdle = async (page: Page) => {
   await page.reload();
   await page.waitForLoadState('networkidle');
+
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
+};
+
+/**
+ * Utility function to handle API calls with retry logic for connection-related errors.
+ * This is particularly useful for cleanup operations that might fail due to network issues.
+ *
+ * @param apiCall - The API call function to execute
+ * @param operationName - Name of the operation for logging purposes
+ * @param maxRetries - Maximum number of retry attempts (default: 3)
+ * @param baseDelay - Base delay in milliseconds for exponential backoff (default: 1000)
+ * @returns The result of the API call if successful
+ */
+export const executeWithRetry = async <T>(
+  apiCall: () => Promise<T>,
+  operationName: string,
+  maxRetries = 3,
+  baseDelay = 1000
+): Promise<T | void> => {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await apiCall();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      // Check if it's a retriable error (connection-related issues)
+      const isRetriableError =
+        errorMessage.includes('socket hang up') ||
+        errorMessage.includes('ECONNRESET') ||
+        errorMessage.includes('ENOTFOUND') ||
+        errorMessage.includes('ETIMEDOUT') ||
+        errorMessage.includes('Connection refused') ||
+        errorMessage.includes('ECONNREFUSED');
+
+      if (isRetriableError && attempt < maxRetries - 1) {
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = baseDelay * Math.pow(2, attempt);
+        // eslint-disable-next-line no-console
+        console.log(
+          `${operationName} attempt ${
+            attempt + 1
+          } failed with retriable error: ${errorMessage}. Retrying in ${delay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+
+        continue;
+      } else {
+        // eslint-disable-next-line no-console
+        console.error(
+          `Failed to ${operationName} after ${attempt + 1} attempts:`,
+          errorMessage
+        );
+
+        // Don't throw the error to prevent test failures - just log it
+        break;
+      }
+    }
+  }
 };

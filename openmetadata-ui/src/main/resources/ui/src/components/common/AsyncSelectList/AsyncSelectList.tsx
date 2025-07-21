@@ -23,16 +23,10 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -51,7 +45,10 @@ import {
   SelectOption,
 } from './AsyncSelectList.interface';
 
-const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
+const AsyncSelectList: FC<
+  AsyncSelectListProps &
+    SelectProps & { dropdownContainerRef?: React.RefObject<HTMLDivElement> }
+> = ({
   mode,
   onChange,
   fetchOptions,
@@ -62,10 +59,13 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   tagType,
   onCancel,
   isSubmitLoading,
+  newLook = false,
+  dropdownContainerRef,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasContentLoading, setHasContentLoading] = useState(false);
+  const [open, setOpen] = useState(props.autoFocus ?? false);
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [searchValue, setSearchValue] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -175,7 +175,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   };
 
   const dropdownRender = (menu: React.ReactElement) => (
-    <>
+    <div ref={dropdownContainerRef}>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
       {onCancel && (
@@ -198,7 +198,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
           </Button>
         </Space>
       )}
-    </>
+    </div>
   );
 
   const customTagRender = (data: CustomTagProps) => {
@@ -250,6 +250,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     return (
       <TagsV1
         isEditTags
+        newLook={newLook}
         size={props.size}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
@@ -295,7 +296,9 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   return (
     <Select
       showSearch
-      className="async-select-list"
+      className={classNames('async-select-list', {
+        'new-chip-style': newLook,
+      })}
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
       filterOption={false}
@@ -312,12 +315,13 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
           />
         )
       }
+      open={open}
       optionLabelProp="label"
-      // this popupClassName class is used to identify the dropdown in the playwright tests
-      popupClassName="async-select-list-dropdown"
+      popupClassName="async-select-list-dropdown" // this popupClassName class is used to identify the dropdown in the playwright tests
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}
+      onDropdownVisibleChange={setOpen}
       onInputKeyDown={(event) => {
         if (event.key === 'Backspace') {
           return event.stopPropagation();

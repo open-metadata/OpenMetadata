@@ -14,15 +14,16 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Pipeline, TagLabel } from '../../../generated/entity/data/pipeline';
+import { Operation as PermissionOperation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -36,7 +37,10 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+} from '../../../utils/PermissionsUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
@@ -46,6 +50,7 @@ import {
   updateTierTag,
 } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -71,8 +76,8 @@ const PipelineDetails = ({
   handleToggleDelete,
   onPipelineUpdate,
 }: PipeLineDetailsProp) => {
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const userID = currentUser?.id ?? '';
@@ -215,21 +220,30 @@ const PipelineDetails = ({
   } = useMemo(
     () => ({
       editTagsPermission:
-        (pipelinePermissions.EditTags || pipelinePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          pipelinePermissions,
+          PermissionOperation.EditTags
+        ) && !deleted,
       editGlossaryTermsPermission:
-        (pipelinePermissions.EditGlossaryTerms ||
-          pipelinePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          pipelinePermissions,
+          PermissionOperation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (pipelinePermissions.EditDescription || pipelinePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          pipelinePermissions,
+          PermissionOperation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (pipelinePermissions.EditAll || pipelinePermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          pipelinePermissions,
+          PermissionOperation.EditCustomFields
+        ) && !deleted,
       editLineagePermission:
-        (pipelinePermissions.EditAll || pipelinePermissions.EditLineage) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          pipelinePermissions,
+          PermissionOperation.EditLineage
+        ) && !deleted,
       viewAllPermission: pipelinePermissions.ViewAll,
     }),
     [pipelinePermissions, deleted]
@@ -237,13 +251,16 @@ const PipelineDetails = ({
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
-      history.replace({
-        pathname: getEntityDetailsPath(
-          EntityType.PIPELINE,
-          pipelineFQN,
-          tabValue
-        ),
-      });
+      navigate(
+        {
+          pathname: getEntityDetailsPath(
+            EntityType.PIPELINE,
+            pipelineFQN,
+            tabValue
+          ),
+        },
+        { replace: true }
+      );
     }
   };
 
@@ -258,7 +275,7 @@ const PipelineDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 

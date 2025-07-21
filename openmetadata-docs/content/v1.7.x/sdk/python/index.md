@@ -1,5 +1,6 @@
 ---
-title: Python SDK
+title: Python SDK | OpenMetadata Python SDK Documentation
+description: Master OpenMetadata's Python SDK with comprehensive documentation, code examples, and API guides. Build powerful data discovery and governance solutions.
 slug: /sdk/python
 ---
 

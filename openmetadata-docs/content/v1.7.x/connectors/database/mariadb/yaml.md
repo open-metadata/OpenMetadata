@@ -1,5 +1,6 @@
 ---
 title: Run the MariaDB Connector Externally
+description: Configure MariaDB ingestion using YAML to sync metadata, run profiling, and enable data discovery.
 slug: /connectors/database/mariadb/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/mariadb/yaml
 name="MariaDB"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 

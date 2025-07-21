@@ -12,7 +12,6 @@
  */
 
 import { findByTestId, render } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getMlModelByFQN } from '../../rest/mlModelAPI';
 import MlModelPageComponent from './MlModelPage.component';
@@ -207,6 +206,8 @@ jest.mock('../../utils/PermissionsUtils', () => ({
     ViewTests: true,
     ViewUsage: true,
   },
+  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
+  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
 describe('Test MlModel Entity Page', () => {

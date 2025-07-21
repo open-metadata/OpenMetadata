@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import React, {
-  createContext,
-  useContext,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { createContext, useContext, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DeleteType } from '../../components/common/DeleteWidget/DeleteWidget.interface';
 import { deleteAsyncEntity } from '../../rest/miscAPI';

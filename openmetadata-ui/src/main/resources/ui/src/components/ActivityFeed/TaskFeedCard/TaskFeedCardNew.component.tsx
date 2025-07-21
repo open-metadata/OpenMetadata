@@ -15,9 +15,9 @@ import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
@@ -67,6 +67,8 @@ interface TaskFeedCardProps {
   onUpdateEntityDetails?: () => void;
   isForFeedTab?: boolean;
   isOpenInDrawer?: boolean;
+  hideCardBorder?: boolean;
+  isFeedWidget?: boolean;
 }
 
 const TaskFeedCard = ({
@@ -77,8 +79,9 @@ const TaskFeedCard = ({
   onUpdateEntityDetails,
   isForFeedTab = false,
   isOpenInDrawer = false,
+  hideCardBorder = false,
 }: TaskFeedCardProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { setActiveThread } = useActivityFeedProvider();
   const { currentUser } = useApplicationStore();
@@ -120,9 +123,7 @@ const TaskFeedCard = ({
   }, [feed]);
 
   const handleTaskLinkClick = () => {
-    history.push({
-      pathname: getTaskDetailPath(feed),
-    });
+    navigate(getTaskDetailPath(feed));
     setActiveThread(feed);
   };
 
@@ -251,7 +252,7 @@ const TaskFeedCard = ({
       <div
         className={classNames(className, 'task-feed-card-v1-new', {
           active: isActive,
-          'no-bg-border': isOpenInDrawer,
+          'no-bg-border': hideCardBorder,
         })}
         data-testid="task-feed-card">
         <Row
@@ -335,7 +336,7 @@ const TaskFeedCard = ({
                     width={20}
                     onClick={isForFeedTab ? showReplies : undefined}
                   />
-                  {feed?.postsCount && feed?.postsCount > 0 && (
+                  {feed?.postsCount && feed?.postsCount > 0 ? (
                     <Button
                       className="posts-length m-r-xss p-0 remove-button-default-styling"
                       data-testid="replies-count"
@@ -348,7 +349,7 @@ const TaskFeedCard = ({
                         { number: feed.postsCount }
                       )}
                     </Button>
-                  )}
+                  ) : null}
                 </Col>
 
                 <Col

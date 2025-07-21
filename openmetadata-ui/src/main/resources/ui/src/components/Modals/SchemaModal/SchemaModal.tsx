@@ -13,9 +13,11 @@
 
 import { Button, Modal, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { clone } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import CloseIcon from '../CloseIcon.component';
 import './schema-modal.less';
@@ -33,7 +35,7 @@ const SchemaModal: FC<SchemaModalProp> = ({
   isFooterVisible = false,
 }) => {
   const [schemaText, setSchemaText] = useState(data);
-
+  const { t } = useTranslation();
   useEffect(() => {
     setSchemaText(clone(data));
   }, [data, visible]);
@@ -51,24 +53,24 @@ const SchemaModal: FC<SchemaModalProp> = ({
       }
       data-testid="schema-modal"
       footer={
-        isFooterVisible
-          ? [
-              <Button
-                data-testid="cancel"
-                key="cancelButton"
-                type="link"
-                onClick={onClose}>
-                {t('label.cancel')}
-              </Button>,
-              <Button
-                data-testid="save"
-                key="saveButton"
-                type="primary"
-                onClick={onSave}>
-                {t('label.save')}
-              </Button>,
-            ]
-          : null
+        isFooterVisible ? (
+          <KeyDownStopPropagationWrapper>
+            <Button
+              data-testid="cancel"
+              key="cancelButton"
+              type="link"
+              onClick={onClose}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              data-testid="save"
+              key="saveButton"
+              type="primary"
+              onClick={onSave}>
+              {t('label.save')}
+            </Button>
+          </KeyDownStopPropagationWrapper>
+        ) : null
       }
       maskClosable={false}
       open={visible}
@@ -79,15 +81,17 @@ const SchemaModal: FC<SchemaModalProp> = ({
       }
       width={800}
       onCancel={onClose}>
-      <div data-testid="schema-modal-body">
-        <SchemaEditor
-          className="schema-editor"
-          editorClass={classNames('custom-entity-schema', editorClass)}
-          mode={mode}
-          value={schemaText as string}
-          onChange={onChange}
-        />
-      </div>
+      <KeyDownStopPropagationWrapper>
+        <div data-testid="schema-modal-body">
+          <SchemaEditor
+            className="schema-editor"
+            editorClass={classNames('custom-entity-schema', editorClass)}
+            mode={mode}
+            value={schemaText as string}
+            onChange={onChange}
+          />
+        </div>
+      </KeyDownStopPropagationWrapper>
     </Modal>
   );
 };

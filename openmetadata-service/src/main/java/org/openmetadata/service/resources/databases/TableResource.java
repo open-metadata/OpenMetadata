@@ -70,6 +70,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -80,7 +81,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/tables")
@@ -94,8 +94,8 @@ import org.openmetadata.service.util.ResultList;
 public class TableResource extends EntityResource<Table, TableRepository> {
   private final TableMapper mapper = new TableMapper();
   public static final String COLLECTION_PATH = "v1/tables/";
-  static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,"
+  public static final String FIELDS =
+      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
           + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
 
   @Override
@@ -120,6 +120,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     addViewOperation("customMetrics", MetadataOperation.VIEW_TESTS);
     addViewOperation("testSuite", MetadataOperation.VIEW_TESTS);
+    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
     return listOf(
         MetadataOperation.VIEW_TESTS,
         MetadataOperation.VIEW_QUERIES,

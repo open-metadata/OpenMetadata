@@ -38,7 +38,6 @@ import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare, Operation } from 'fast-json-patch';
-import i18next, { t } from 'i18next';
 import {
   isEmpty,
   isEqual,
@@ -49,7 +48,7 @@ import {
   trim,
   uniqBy,
 } from 'lodash';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
@@ -107,6 +106,7 @@ import { searchData } from '../../rest/miscAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { handleEntityCreationError } from '../formUtils';
+import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../ToastUtils';
@@ -131,27 +131,27 @@ export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
 export const getFunctionDisplayName = (func: string): string => {
   switch (func) {
     case 'matchAnyEntityFqn':
-      return i18next.t('label.fqn-uppercase');
+      return t('label.fqn-uppercase');
     case 'matchAnyOwnerName':
-      return i18next.t('label.owner-plural');
+      return t('label.owner-plural');
     case 'matchAnyEventType':
-      return i18next.t('label.event-type');
+      return t('label.event-type');
     case 'matchTestResult':
-      return i18next.t('label.test-entity', {
-        entity: i18next.t('label.result-plural'),
+      return t('label.test-entity', {
+        entity: t('label.result-plural'),
       });
     case 'matchUpdatedBy':
-      return i18next.t('label.updated-by');
+      return t('label.updated-by');
     case 'matchAnyFieldChange':
-      return i18next.t('label.field-change');
+      return t('label.field-change');
     case 'matchPipelineState':
-      return i18next.t('label.pipeline-state');
+      return t('label.pipeline-state');
     case 'matchIngestionPipelineState':
-      return i18next.t('label.pipeline-state');
+      return t('label.pipeline-state');
     case 'matchAnySource':
-      return i18next.t('label.source-match');
+      return t('label.source-match');
     case 'matchAnyEntityId':
-      return i18next.t('label.entity-id-match');
+      return t('label.entity-id-match');
     default:
       return '';
   }
@@ -169,7 +169,7 @@ export const listLengthValidator =
     if (!list || list.length < minLengthRequired) {
       return Promise.reject(
         new Error(
-          i18next.t('message.length-validator-error', {
+          t('message.length-validator-error', {
             length: minLengthRequired,
             field: name,
           })
@@ -185,17 +185,17 @@ export const getAlertActionTypeDisplayName = (
 ) => {
   switch (alertActionType) {
     case SubscriptionType.ActivityFeed:
-      return i18next.t('label.activity-feed-plural');
+      return t('label.activity-feed-plural');
     case SubscriptionType.Email:
-      return i18next.t('label.email');
+      return t('label.email');
     case SubscriptionType.Webhook:
-      return i18next.t('label.webhook');
+      return t('label.webhook');
     case SubscriptionType.Slack:
-      return i18next.t('label.slack');
+      return t('label.slack');
     case SubscriptionType.MSTeams:
-      return i18next.t('label.ms-team-plural');
+      return t('label.ms-team-plural');
     case SubscriptionType.GChat:
-      return i18next.t('label.g-chat');
+      return t('label.g-chat');
     default:
       return '';
   }
@@ -204,9 +204,9 @@ export const getAlertActionTypeDisplayName = (
 export const getDisplayNameForEntities = (entity: string) => {
   switch (entity) {
     case 'kpi':
-      return i18next.t('label.kpi-uppercase');
+      return t('label.kpi-uppercase');
     case 'mlmodel':
-      return i18next.t('label.ml-model');
+      return t('label.ml-model');
     default:
       return startCase(entity);
   }
@@ -1224,7 +1224,8 @@ export const getFilteredDestinationOptions = (
 export const getSourceOptionsFromResourceList = (
   resources: Array<string>,
   showCheckbox?: boolean,
-  selectedResource?: string[]
+  selectedResource?: string[],
+  showIcon?: boolean
 ) =>
   resources.map((resource) => {
     const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
@@ -1237,7 +1238,9 @@ export const getSourceOptionsFromResourceList = (
           {showCheckbox && (
             <Checkbox checked={selectedResource?.includes(resource)} />
           )}
-          {sourceIcon && <div className="d-flex h-4 w-4">{sourceIcon}</div>}
+          {sourceIcon && showIcon && (
+            <div className="d-flex h-4 w-4">{sourceIcon}</div>
+          )}
           <span>{getEntityNameLabel(resource ?? '')}</span>
         </div>
       ),

@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Popover, Typography } from 'antd';
-import React, { useMemo, useState } from 'react';
+import { Badge, Button, Modal, Popover, Typography } from 'antd';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
 import { User } from '../../generated/entity/teams/user';
-import { isMaskedEmail } from '../../utils/Users.util';
+import { getUserOnlineStatus, isMaskedEmail } from '../../utils/Users.util';
 
 import Icon from '@ant-design/icons';
 import { AxiosError } from 'axios';
@@ -87,6 +87,10 @@ const ProfileSectionUserDetailsCard = ({
     () => isAuthProviderBasic && hasEditPermission,
     [isAuthProviderBasic, hasEditPermission]
   );
+
+  const onlineStatus = useMemo(() => {
+    return getUserOnlineStatus(userData, false);
+  }, [userData]);
 
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {
@@ -251,11 +255,20 @@ const ProfileSectionUserDetailsCard = ({
           </div>
         </UserPopOverCard>
       </div>
-      <div>
+      <div className="d-flex flex-col items-center">
         <p className="profile-details-title" data-testid="user-display-name">
           {getEntityName(userData)}
         </p>
         {userEmailRender}
+        {onlineStatus && (
+          <div className="m-t-sm">
+            <Badge
+              data-testid="user-online-status"
+              status={onlineStatus.status}
+              text={onlineStatus.text}
+            />
+          </div>
+        )}
       </div>
       {showChangePasswordComponent && (
         <ChangePasswordForm

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { TagSource } from '../../../generated/type/tagLabel';
 import AsyncSelectList from '../../common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
@@ -73,6 +72,11 @@ describe('TagSelectForm', () => {
 
   it('should pass isSubmitLoading for saving form for tagType Glossary', async () => {
     tagType = TagSource.Glossary;
+    const mockSubmit = jest
+      .fn()
+      .mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 0))
+      );
 
     render(
       <TagSelectForm
@@ -82,12 +86,14 @@ describe('TagSelectForm', () => {
         tagData={tagData}
         tagType={tagType}
         onCancel={onCancel}
-        onSubmit={onSubmit}
+        onSubmit={mockSubmit}
       />
     );
 
+    const form = (await screen.findAllByTestId('tag-form'))[1];
+
     await act(async () => {
-      fireEvent.submit((await screen.findAllByTestId('tag-form'))[1]);
+      fireEvent.submit(form);
     });
 
     expect(TreeAsyncSelectList).toHaveBeenCalledWith(
@@ -97,11 +103,31 @@ describe('TagSelectForm', () => {
   });
 
   it('should pass isSubmitLoading for saving form', async () => {
+    const mockSubmit = jest
+      .fn()
+      .mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 0))
+      );
+
+    render(
+      <TagSelectForm
+        defaultValue={defaultValue}
+        fetchApi={fetchApi}
+        placeholder={placeholder}
+        tagData={tagData}
+        tagType={tagType}
+        onCancel={onCancel}
+        onSubmit={mockSubmit}
+      />
+    );
+
+    const form = (await screen.findAllByTestId('tag-form'))[1];
+
     await act(async () => {
-      fireEvent.submit(await screen.findByTestId('tag-form'));
+      fireEvent.submit(form);
     });
 
-    expect(AsyncSelectList).toHaveBeenCalledWith(
+    expect(AsyncSelectList).toHaveBeenLastCalledWith(
       expect.objectContaining({ isSubmitLoading: true }),
       {}
     );

@@ -19,11 +19,11 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.DocWriteRequest;
@@ -452,7 +452,7 @@ public class OpenSearchIndexSink implements BulkSink, Closeable {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     client.close();
   }
 

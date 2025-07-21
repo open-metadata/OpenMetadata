@@ -1,5 +1,6 @@
 ---
-title: How to Add Tags
+title: How to Add Tags | OpenMetadata User Tagging Guide
+description: Add metadata tags to datasets, columns, or dashboards for improved classification, search, and governance reporting.
 slug: /how-to-guides/guide-for-data-users/tags
 ---
 

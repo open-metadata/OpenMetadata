@@ -13,7 +13,6 @@
 
 import { Button, Popover, Space } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import { get, isEmpty } from 'lodash';
 import React, {
   FC,
@@ -24,7 +23,8 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
 import { TERM_ADMIN } from '../../../constants/constants';
@@ -48,6 +48,7 @@ export const UserTeams = React.memo(({ userName }: { userName: string }) => {
   const { userProfilePics } = useApplicationStore();
   const userData = userProfilePics[userName];
   const teams = getNonDeletedTeams(userData?.teams ?? []);
+  const { t } = useTranslation();
 
   return teams?.length ? (
     <div className="m-t-xs">
@@ -76,6 +77,7 @@ export const UserRoles = React.memo(({ userName }: { userName: string }) => {
   const userData = userProfilePics[userName];
   const roles = userData?.roles;
   const isAdmin = userData?.isAdmin;
+  const { t } = useTranslation();
 
   return roles?.length ? (
     <div className="m-t-xs">
@@ -120,7 +122,7 @@ export const PopoverContent = React.memo(
     });
     const { updateUserProfilePics } = useApplicationStore();
     const [loading, setLoading] = useState(false);
-
+    const { t } = useTranslation();
     const teamDetails = get(user, 'teams', null);
 
     const getUserWithAdditionalDetails = useCallback(async () => {
@@ -185,7 +187,7 @@ export const PopoverTitle = React.memo(
     profilePicture: JSX.Element;
     type: OwnerType;
   }) => {
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const [, , userData] = useUserProfile({
       permission: true,
@@ -194,7 +196,7 @@ export const PopoverTitle = React.memo(
     });
 
     const onTitleClickHandler = (path: string) => {
-      history.push(path);
+      navigate(path);
     };
     const name = userData?.name ?? '';
     const displayName = getEntityName(userData as unknown as EntityReference);
@@ -267,7 +269,7 @@ const UserPopOverCard: FC<Props> = ({
       }
       trigger="hover"
       zIndex={9999}>
-      {children ?? (
+      {(children as ReactNode) ?? (
         <Link
           className={classNames(
             'assignee-item d-flex gap-1 cursor-pointer items-center',
@@ -283,7 +285,9 @@ const UserPopOverCard: FC<Props> = ({
               : getUserPath(userName ?? '')
           }>
           {showUserProfile ? profilePicture : null}
-          {showUserName ? <span>{displayName ?? userName}</span> : null}
+          {showUserName ? (
+            <span className="truncate">{displayName ?? userName}</span>
+          ) : null}
         </Link>
       )}
     </Popover>

@@ -15,9 +15,9 @@ import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -28,11 +28,7 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import {
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_MEDIUM,
-  ROUTES,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER, ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
@@ -63,7 +59,7 @@ import './policies-list.less';
 
 const PoliciesListPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -75,7 +71,7 @@ const PoliciesListPage = () => {
     pageSize,
     handlePageSizeChange,
     showPagination,
-  } = usePaging(PAGE_SIZE_MEDIUM);
+  } = usePaging();
 
   const { permissions } = usePermissionProvider();
 
@@ -111,7 +107,7 @@ const PoliciesListPage = () => {
   const columns: ColumnsType<Policy> = useMemo(() => {
     return [
       {
-        title: t('label.name'),
+        title: t('label.name').toString(),
         dataIndex: 'name',
         width: '200px',
         key: 'name',
@@ -129,7 +125,7 @@ const PoliciesListPage = () => {
         ),
       },
       {
-        title: t('label.description'),
+        title: t('label.description').toString(),
         dataIndex: 'description',
         key: 'description',
         render: (_, record) =>
@@ -140,7 +136,7 @@ const PoliciesListPage = () => {
           ),
       },
       {
-        title: t('label.role-plural'),
+        title: t('label.role-plural').toString(),
         dataIndex: 'roles',
         width: '250px',
         key: 'roles',
@@ -201,7 +197,7 @@ const PoliciesListPage = () => {
         },
       },
       {
-        title: t('label.action-plural'),
+        title: t('label.action-plural').toString(),
         dataIndex: 'actions',
         width: '80px',
         align: 'center',
@@ -255,7 +251,7 @@ const PoliciesListPage = () => {
   }, [fetchPolicies]);
 
   const handleAddPolicy = () => {
-    history.push(ROUTES.ADD_POLICY);
+    navigate(ROUTES.ADD_POLICY);
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {

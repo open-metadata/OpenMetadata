@@ -23,6 +23,58 @@
     margin: 0;
     font: inherit;
     overflow: visible;
+
+    &.qb-lite .rule:hover .rule .widget--valuesrc,
+    &.qb-lite .rule:hover .rule .rule--drag-handler,
+    &.qb-lite .rule:hover .rule .rule--header,
+    &.qb-lite .rule:not(:hover) .widget--valuesrc,
+    &.qb-lite .rule:not(:hover) .rule--drag-handler,
+    &.qb-lite .rule:not(:hover) .rule--header {
+      opacity: 1;
+    }
+
+    &.qb-lite .group--header:hover .group--header .group--drag-handler,
+    &.qb-lite .group--header:hover .group--header .group--actions,
+    &.qb-lite .group--header:not(:hover) .group--drag-handler,
+    &.qb-lite .group--header:not(:hover) .group--actions,
+    &.qb-lite .rule_group:not(:hover) .group--drag-handler,
+    &.qb-lite .rule_group:not(:hover) .group--actions {
+      opacity: 1;
+    }
+
+    &.qb-lite
+      .group--header
+      .group--conjunctions
+      .ant-btn:not(.ant-btn-primary),
+    &.qb-lite .group--header .group--header .rule_group_ext--drag-handler,
+    &.qb-lite
+      .group--header:not(:hover)
+      .group--conjunctions
+      .ant-btn:not(.ant-btn-primary),
+    &.qb-lite .group--header:not(:hover) .rule_group_ext--drag-handler,
+    &.qb-lite
+      .rule_group:not(:hover)
+      .group--conjunctions
+      .ant-btn:not(.ant-btn-primary),
+    &.qb-lite .rule_group:not(:hover) .rule_group_ext--drag-handler {
+      width: inherit;
+      padding: 0 7px;
+      overflow: hidden;
+      opacity: 1;
+    }
+    &.qb-lite .group--header:not(.no--children):not(.hide--conjs) {
+      position: static;
+    }
+    &.qb-lite .group--header:not(.no--children):not(.hide--conjs)::before {
+      display: none;
+    }
+
+    .rule--body {
+      text-align: left;
+    }
+    .rule--label {
+      font-weight: normal; // override the default font-weight of 600
+    }
   }
 
   .group-or-rule-container.group-container {
@@ -147,7 +199,7 @@
           .action.action--DELETE {
             position: absolute;
             right: 10px;
-            bottom: 10px;
+            top: 10px;
             z-index: 1;
 
             font-size: 16px;
@@ -162,7 +214,7 @@
         .rule--header {
           .ant-btn-group {
             align-self: end;
-            margin-bottom: 8px;
+            margin-bottom: 14px;
           }
         }
       }
@@ -184,42 +236,6 @@
       margin-bottom: 6px;
     }
   }
-}
-
-.qb-lite .rule:hover .rule .widget--valuesrc,
-.qb-lite .rule:hover .rule .rule--drag-handler,
-.qb-lite .rule:hover .rule .rule--header,
-.qb-lite .rule:not(:hover) .widget--valuesrc,
-.qb-lite .rule:not(:hover) .rule--drag-handler,
-.qb-lite .rule:not(:hover) .rule--header {
-  opacity: 1;
-}
-
-.qb-lite .group--header:hover .group--header .group--drag-handler,
-.qb-lite .group--header:hover .group--header .group--actions,
-.qb-lite .group--header:not(:hover) .group--drag-handler,
-.qb-lite .group--header:not(:hover) .group--actions,
-.qb-lite .rule_group:not(:hover) .group--drag-handler,
-.qb-lite .rule_group:not(:hover) .group--actions {
-  opacity: 1;
-}
-
-.qb-lite .group--header .group--conjunctions .ant-btn:not(.ant-btn-primary),
-.qb-lite .group--header .group--header .rule_group_ext--drag-handler,
-.qb-lite
-  .group--header:not(:hover)
-  .group--conjunctions
-  .ant-btn:not(.ant-btn-primary),
-.qb-lite .group--header:not(:hover) .rule_group_ext--drag-handler,
-.qb-lite
-  .rule_group:not(:hover)
-  .group--conjunctions
-  .ant-btn:not(.ant-btn-primary),
-.qb-lite .rule_group:not(:hover) .rule_group_ext--drag-handler {
-  width: inherit;
-  padding: 0 7px;
-  overflow: hidden;
-  opacity: 1;
 }
 
 .rule-container .ant-btn-group {

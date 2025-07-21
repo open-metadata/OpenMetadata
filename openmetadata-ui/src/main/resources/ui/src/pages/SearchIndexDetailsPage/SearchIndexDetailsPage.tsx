@@ -16,15 +16,16 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -38,6 +39,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -59,21 +61,26 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
 import { defaultFields } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedSearchIndexFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
@@ -87,7 +94,8 @@ function SearchIndexDetailsPage() {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const viewPermission = useMemo(
-    () => searchIndexPermissions.ViewAll || searchIndexPermissions.ViewBasic,
+    () =>
+      getPrioritizedViewPermission(searchIndexPermissions, Operation.ViewBasic),
     [searchIndexPermissions]
   );
 
@@ -154,33 +162,46 @@ function SearchIndexDetailsPage() {
   } = useMemo(
     () => ({
       editTagsPermission:
-        (searchIndexPermissions.EditTags || searchIndexPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditTags
+        ) && !deleted,
       editGlossaryTermsPermission:
-        (searchIndexPermissions.EditGlossaryTerms ||
-          searchIndexPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (searchIndexPermissions.EditDescription ||
-          searchIndexPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (searchIndexPermissions.EditAll ||
-          searchIndexPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editLineagePermission:
-        (searchIndexPermissions.EditAll ||
-          searchIndexPermissions.EditLineage) &&
-        !deleted,
-      viewSampleDataPermission:
-        searchIndexPermissions.ViewAll || searchIndexPermissions.ViewSampleData,
+        getPrioritizedEditPermission(
+          searchIndexPermissions,
+          Operation.EditLineage
+        ) && !deleted,
+      viewSampleDataPermission: getPrioritizedViewPermission(
+        searchIndexPermissions,
+        Operation.ViewSampleData
+      ),
       viewAllPermission: searchIndexPermissions.ViewAll,
     }),
-    [searchIndexPermissions, deleted]
+    [
+      searchIndexPermissions,
+      deleted,
+      getPrioritizedEditPermission,
+      getPrioritizedViewPermission,
+    ]
   );
 
   const fetchResourcePermission = useCallback(
-    async (entityFQN) => {
+    async (entityFQN: string) => {
       try {
         const searchIndexPermission = await getEntityPermissionByFqn(
           ResourceEntity.SEARCH_INDEX,
@@ -208,12 +229,13 @@ function SearchIndexDetailsPage() {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.replace(
+      navigate(
         getEntityDetailsPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
           activeKey
-        )
+        ),
+        { replace: true }
       );
     }
   };
@@ -471,7 +493,7 @@ function SearchIndexDetailsPage() {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
@@ -481,11 +503,11 @@ function SearchIndexDetailsPage() {
   }, [version]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as SearchIndex;
 
     setSearchIndexDetails((data) => ({

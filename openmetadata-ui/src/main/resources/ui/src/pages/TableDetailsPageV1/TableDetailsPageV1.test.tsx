@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TableType } from '../../generated/entity/data/table';
@@ -183,7 +182,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
     .mockImplementation(() => ({ fqn: 'fqn', tab: 'schema' })),
-  useHistory: jest.fn().mockImplementation(() => ({})),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 jest.mock('../../context/TourProvider/TourProvider', () => ({
@@ -277,7 +276,7 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
-    expect(await screen.findByText('label.schema')).toBeInTheDocument();
+    expect(await screen.findByText('label.column-plural')).toBeInTheDocument();
     expect(
       await screen.findByText('label.activity-feed-and-task-plural')
     ).toBeInTheDocument();

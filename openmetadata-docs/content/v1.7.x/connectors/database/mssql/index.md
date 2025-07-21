@@ -1,5 +1,6 @@
 ---
 title: MSSQL Connector | OpenMetadata SQL Server Integration Guide
+description: Connect your Microsoft SQL Server to OpenMetadata with our comprehensive MSSQL connector guide. Step-by-step setup, configuration, and metadata extraction.
 slug: /connectors/database/mssql
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/mssql
 name="MSSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Owners", "Tags", "SSIS packages"]
 / %}
 

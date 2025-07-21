@@ -1,5 +1,6 @@
 ---
-title: All Releases
+title: All Releases | OpenMetadata All Releases
+description: Explore all OpenMetadata releases with detailed changelogs, new features, bug fixes, and upgrade guides. Stay updated with the latest versions and improvements.
 slug: /releases/all-releases
 ---
 

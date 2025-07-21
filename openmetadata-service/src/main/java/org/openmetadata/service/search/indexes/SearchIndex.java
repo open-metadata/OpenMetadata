@@ -36,15 +36,15 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSummary;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS =
@@ -395,6 +395,11 @@ public interface SearchIndex {
     fields.putAll(TagIndex.getFields());
     fields.putAll(DataProductIndex.getFields());
     fields.putAll(APIEndpointIndex.getFields());
+    fields.putAll(DirectoryIndex.getFields());
+    fields.putAll(FileIndex.getFields());
+    fields.putAll(SpreadsheetIndex.getFields());
+    fields.putAll(WorksheetIndex.getFields());
+    fields.putAll(DriveServiceIndex.getFields());
     return fields;
   }
 }

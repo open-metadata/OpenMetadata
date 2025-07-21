@@ -14,9 +14,9 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../enums/entity.enum';
@@ -28,6 +28,7 @@ import { restoreUser } from '../../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
@@ -48,6 +49,7 @@ import AccessTokenCard from './AccessTokenCard/AccessTokenCard.component';
 import UserProfilePersonas from './UserProfilePersona/UserProfilePersona.component';
 import { Props, UserPageTabs } from './Users.interface';
 import './users.less';
+import UserPermissions from './UsersProfile/UserPermissions/UserPermissions.component';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
@@ -58,10 +60,10 @@ const Users = ({
   updateUserDetails,
 }: Props) => {
   const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } =
-    useParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
+    useRequiredParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
   const { fqn: decodedUsername } = useFqn();
   const { isAdminUser } = useAuth();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { currentUser } = useApplicationStore();
   const [currentTab, setCurrentTab] = useState<UserPageTabs>(activeTab);
@@ -87,7 +89,7 @@ const Users = ({
   const activeTabHandler = (activeKey: string) => {
     location.search = '';
     if (activeKey !== currentTab) {
-      history.push({
+      navigate({
         pathname: getUserPath(decodedUsername, activeKey),
         search: location.search,
       });
@@ -95,13 +97,16 @@ const Users = ({
     setCurrentTab(activeKey as UserPageTabs);
   };
 
-  const handleAssetClick = useCallback((asset) => {
-    setPreviewAsset(asset);
-  }, []);
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   const handleTabRedirection = useCallback(() => {
     if (!isLoggedInUser && activeTab === UserPageTabs.ACCESS_TOKEN) {
-      history.push({
+      navigate({
         pathname: getUserPath(decodedUsername, UserPageTabs.ACTIVITY),
         search: location.search,
       });
@@ -129,7 +134,7 @@ const Users = ({
             <AssetsTabs
               isSummaryPanelOpen={Boolean(previewAsset)}
               permissions={{ ...DEFAULT_ENTITY_PERMISSION, Create: true }}
-              onAddAsset={() => history.push(ROUTES.EXPLORE)}
+              onAddAsset={() => navigate(ROUTES.EXPLORE)}
               onAssetClick={handleAssetClick}
               {...props}
             />
@@ -234,6 +239,22 @@ const Users = ({
           },
         }),
       },
+      {
+        label: (
+          <TabsLabel
+            id={UserPageTabs.PERMISSIONS}
+            isActive={activeTab === UserPageTabs.PERMISSIONS}
+            name={t('label.permissions')}
+          />
+        ),
+        key: UserPageTabs.PERMISSIONS,
+        children: (
+          <UserPermissions
+            isLoggedInUser={isLoggedInUser}
+            username={userData.name}
+          />
+        ),
+      },
       ...(isLoggedInUser
         ? [
             {
@@ -256,11 +277,13 @@ const Users = ({
     [
       currentTab,
       userData.id,
+      userData.name,
       decodedUsername,
       setPreviewAsset,
       tabDataRender,
       disableFields,
       subTab,
+      isLoggedInUser,
     ]
   );
 

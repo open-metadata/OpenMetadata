@@ -1132,6 +1132,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -1141,12 +1142,14 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
     MeasureHidden = "MEASURE HIDDEN",
     MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
@@ -1469,6 +1472,10 @@ export interface OidcClientConfig {
      * Server Url.
      */
     serverUrl?: string;
+    /**
+     * Validity for the Session in case of confidential clients
+     */
+    sessionExpiry?: number;
     /**
      * Tenant in case of Azure.
      */

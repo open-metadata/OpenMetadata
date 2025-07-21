@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TypeColumn } from '@inovua/reactdatagrid-community/types';
 import {
   compact,
   get,
@@ -20,7 +19,7 @@ import {
   startCase,
 } from 'lodash';
 import { parse } from 'papaparse';
-import React from 'react';
+import { Column } from 'react-data-grid';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
@@ -107,29 +106,38 @@ const renderColumnDataEditor = (
 
 export const getColumnConfig = (
   column: string,
-  entityType: EntityType
-): TypeColumn => {
+  entityType: EntityType,
+  editable = false
+): Column<any> => {
   const colType = column.split('.').pop() ?? '';
 
   return {
-    header: startCase(column),
-    name: column,
-    defaultFlex: 1,
+    key: column,
+    name: startCase(column),
     sortable: false,
-    renderEditor: csvUtilsClassBase.getEditor(colType, entityType),
+    resizable: true,
+    cellClass: () => `rdg-cell-${column.replace(/[^a-zA-Z0-9-_]/g, '')}`,
+    editable,
+    renderEditCell: csvUtilsClassBase.getEditor(colType, entityType),
+    renderCell: (data: any) =>
+      renderColumnDataEditor(colType, {
+        value: data.row[column],
+        data: { details: '' },
+      }),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
-    render: (recordData) => renderColumnDataEditor(colType, recordData),
-  } as TypeColumn;
+  } as Column<any>;
 };
 
 export const getEntityColumnsAndDataSourceFromCSV = (
   csv: string[][],
-  entityType: EntityType
+  entityType: EntityType,
+  cellEditable: boolean
 ) => {
   const [cols, ...rows] = csv;
 
   const columns =
-    cols?.map((column) => getColumnConfig(column, entityType)) ?? [];
+    cols?.map((column) => getColumnConfig(column, entityType, cellEditable)) ??
+    [];
 
   const dataSource =
     rows.map((row, idx) => {
@@ -151,12 +159,12 @@ export const getEntityColumnsAndDataSourceFromCSV = (
 };
 
 export const getCSVStringFromColumnsAndDataSource = (
-  columns: TypeColumn[],
+  columns: Column<any>[],
   dataSource: Record<string, string>[]
 ) => {
-  const header = columns.map((col) => col.name).join(',');
+  const header = columns.map((col) => col.key).join(',');
   const rows = dataSource.map((row) => {
-    const compactValues = compact(columns.map((col) => row[col.name ?? '']));
+    const compactValues = compact(columns.map((col) => row[col.key ?? '']));
 
     if (compactValues.length === 0) {
       return '';
@@ -164,8 +172,8 @@ export const getCSVStringFromColumnsAndDataSource = (
 
     return columns
       .map((col) => {
-        const value = get(row, col.name ?? '', '');
-        const colName = col.name ?? '';
+        const value = get(row, col.key ?? '', '');
+        const colName = col.key ?? '';
         if (
           csvUtilsClassBase
             .columnsWithMultipleValuesEscapeNeeded()
@@ -183,7 +191,7 @@ export const getCSVStringFromColumnsAndDataSource = (
           return isEmpty(value) ? '' : `"${value}"`;
         }
 
-        return get(row, col.name ?? '', '');
+        return get(row, col.key ?? '', '');
       })
       .join(',');
   });

@@ -16,10 +16,11 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined } from 'lodash';
+import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -68,6 +69,7 @@ import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
@@ -119,7 +121,8 @@ export const DataAssetsHeader = ({
   isAutoPilotWorkflowStatusLoading = false,
   onCertificationUpdate,
 }: DataAssetsHeaderProps) => {
-  const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
+  const { serviceCategory } =
+    useRequiredParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser } = useApplicationStore();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
@@ -129,7 +132,7 @@ export const DataAssetsHeader = ({
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
 
   const icon = useMemo(() => {
@@ -324,7 +327,7 @@ export const DataAssetsHeader = ({
       return;
     }
 
-    history.push(
+    navigate(
       entityUtilClassBase.getEntityLink(
         entityType,
         dataAsset.fullyQualifiedName,
@@ -417,7 +420,9 @@ export const DataAssetsHeader = ({
   const triggerTheAutoPilotApplication = useCallback(async () => {
     try {
       setIsAutoPilotTriggering(true);
-      const entityType = getEntityTypeFromServiceCategory(serviceCategory);
+      const entityType = getEntityTypeFromServiceCategory(
+        serviceCategory as ServiceTypes
+      );
       const entityLink = getEntityFeedLink(
         entityType,
         dataAsset.fullyQualifiedName ?? ''
@@ -440,8 +445,6 @@ export const DataAssetsHeader = ({
       return null;
     }
 
-    const isDisabled =
-      isAutoPilotWorkflowStatusLoading || disableRunAgentsButton;
     const isLoading = isAutoPilotWorkflowStatusLoading || isAutoPilotTriggering;
 
     return (
@@ -449,7 +452,7 @@ export const DataAssetsHeader = ({
         <Button
           className="font-semibold"
           data-testid="trigger-auto-pilot-application-button"
-          disabled={isDisabled}
+          disabled={disableRunAgentsButton}
           icon={<Icon className="flex-center" component={TriggerIcon} />}
           loading={isLoading}
           type="primary"

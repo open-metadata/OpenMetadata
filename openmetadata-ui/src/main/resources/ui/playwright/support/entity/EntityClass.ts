@@ -95,6 +95,11 @@ export class EntityClass {
     // Override for entity visit
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async visitEntityPageWithCustomSearchBox(_: Page) {
+    // Override for entity visit
+  }
+
   async prepareCustomProperty(apiContext: APIRequestContext) {
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
@@ -310,11 +315,18 @@ export class EntityClass {
     page: Page,
     tag1: string,
     tag2: string,
-    tag2Fqn?: string,
-    entity?: EntityClass
+    entity: EntityClass,
+    tag2Fqn?: string
   ) {
-    await assignTag(page, tag1);
-    await assignTag(page, tag2, 'Edit', tag2Fqn);
+    await assignTag(page, tag1, 'Add', entity.endpoint, 'KnowledgePanel.Tags');
+    await assignTag(
+      page,
+      tag2,
+      'Edit',
+      entity.endpoint,
+      'KnowledgePanel.Tags',
+      tag2Fqn
+    );
     if (entity && tag2Fqn) {
       await checkExploreSearchFilter(
         page,
@@ -473,7 +485,7 @@ export class EntityClass {
   async followUnfollowEntity(page: Page, entity: string) {
     await followEntity(page, this.endpoint);
     await validateFollowedEntityToWidget(page, entity, true);
-    await this.visitEntityPage(page);
+    await this.visitEntityPageWithCustomSearchBox(page);
     await unFollowEntity(page, this.endpoint);
     await validateFollowedEntityToWidget(page, entity, false);
   }

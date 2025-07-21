@@ -56,6 +56,8 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -63,8 +65,6 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
@@ -82,6 +82,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         "dataQuality/testSuites",
         TestSuiteResource.FIELDS);
     supportsSearchIndex = true;
+    supportsEtag = false;
   }
 
   public void setupTestSuites(TestInfo test) throws IOException {

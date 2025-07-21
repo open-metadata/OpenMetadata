@@ -15,6 +15,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
+import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 
 import jakarta.json.JsonPatch;
@@ -22,12 +24,16 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.Authorizer;
@@ -35,7 +41,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class ColumnRepository {
@@ -65,7 +71,7 @@ public class ColumnRepository {
 
     String parentFQN;
     try {
-      parentFQN = FullyQualifiedName.getParentFQN(columnFQN);
+      parentFQN = FullyQualifiedName.getParentEntityFQN(columnFQN, entityType);
     } catch (Exception e) {
       throw new IllegalArgumentException(
           String.format("Invalid column FQN format: %s. Error: %s", columnFQN, e.getMessage()), e);
@@ -144,7 +150,9 @@ public class ColumnRepository {
             TABLE, parentEntityRef.getId(), null, ResourceContextInterface.Operation.PATCH);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    tableRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
+    RestUtil.PatchResponse<Table> patchResponse =
+        tableRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
+    triggerParentChangeEvent(patchResponse.entity(), user);
 
     return column;
   }
@@ -211,7 +219,9 @@ public class ColumnRepository {
             ResourceContextInterface.Operation.PATCH);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    dataModelRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
+    RestUtil.PatchResponse<DashboardDataModel> patchResponse =
+        dataModelRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
+    triggerParentChangeEvent(patchResponse.entity(), user);
 
     return column;
   }
@@ -262,5 +272,14 @@ public class ColumnRepository {
       }
     }
     return null;
+  }
+
+  private void triggerParentChangeEvent(Object parent, String user) {
+    ChangeEvent changeEvent =
+        createChangeEventForEntity(user, EventType.ENTITY_UPDATED, (EntityInterface) parent);
+    Object entity = changeEvent.getEntity();
+    changeEvent = copyChangeEvent(changeEvent);
+    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }
 }

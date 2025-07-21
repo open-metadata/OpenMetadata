@@ -14,14 +14,7 @@ import { Button, Empty, Space, Spin, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, {
-  FC,
-  Key,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
@@ -196,7 +189,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     }
   }, 300);
 
-  const switcherIcon = useCallback(({ expanded }) => {
+  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
@@ -254,6 +247,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   return (
     <div className="p-sm" data-testid="domain-selectable-tree">
       <Search
+        autoFocus
         data-testid="searchbar"
         placeholder="Search"
         style={{ marginBottom: 8 }}

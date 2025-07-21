@@ -39,6 +39,7 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -46,7 +47,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -111,6 +111,28 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("id") String id,
       @Bind("json") String json);
+
+  /**
+   * Update entity with optimistic locking using version check.
+   * Returns the number of rows updated (0 if version mismatch, 1 if successful)
+   */
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = :json, <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND (json->>'version')::text = :version",
+      connectionType = POSTGRES)
+  int updateWithVersion(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") String nameHashColumnValue,
+      @Bind("id") String id,
+      @Bind("json") String json,
+      @Bind("version") String version);
 
   default void updateFqn(String oldPrefix, String newPrefix) {
     LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);

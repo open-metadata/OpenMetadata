@@ -45,10 +45,10 @@ import org.openmetadata.schema.system.ui.Page;
 import org.openmetadata.schema.system.ui.PageType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -67,7 +67,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
         createRequest(test, 1).withName("activityFeed").withFullyQualifiedName("activityFeed");
     ACTIVITY_FEED_KNOWLEDGE_PANEL = createEntity(createDoc, ADMIN_AUTH_HEADERS);
 
-    createDoc = createRequest(test, 11).withName("myData");
+    createDoc = createRequest(test, 13).withName("myData");
     MY_DATA_KNOWLEDGE_PANEL = createEntity(createDoc, ADMIN_AUTH_HEADERS);
   }
 
@@ -265,7 +265,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     queryParams.put(
         "fqnPrefix", FullyQualifiedName.build(knowledgePanel.getEntityType().toString()));
     ResultList<Document> panelList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(panelDocs.size() + 7, panelList.getPaging().getTotal());
+    assertEquals(panelDocs.size() + 10, panelList.getPaging().getTotal());
 
     // docs
     List<Document> pageDocs = new ArrayList<>();

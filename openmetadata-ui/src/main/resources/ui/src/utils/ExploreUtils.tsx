@@ -13,7 +13,6 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { get, isEmpty, isNil, isString, isUndefined, lowerCase } from 'lodash';
 import Qs from 'qs';
 import React from 'react';
@@ -28,7 +27,6 @@ import {
 } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
-import { PAGE_SIZE } from '../constants/constants';
 import {
   ES_EXCEPTION_SHARDS_FAILED,
   FAILED_TO_FIND_INDEX_ERROR,
@@ -56,6 +54,7 @@ import {
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import { getCountBadge } from './CommonUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+import { t } from './i18next/LocalUtil';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -413,7 +412,11 @@ export const isElasticsearchError = (error: unknown): boolean => {
 /**
  * Parse search parameters from URL query
  */
-export const parseSearchParams = (search: string) => {
+export const parseSearchParams = (
+  search: string,
+  globalPageSize: number,
+  queryFilter?: Record<string, unknown>
+) => {
   const parsedSearch = Qs.parse(
     search.startsWith('?') ? search.substring(1) : search
   );
@@ -438,11 +441,20 @@ export const parseSearchParams = (search: string) => {
   const size =
     isString(parsedSearch.size) && !isNaN(Number.parseInt(parsedSearch.size))
       ? Number.parseInt(parsedSearch.size)
-      : PAGE_SIZE;
+      : globalPageSize;
 
-  // We are not setting showDeleted as 'false' since we don't want it to conflict with
-  // the `Deleted` field value in the advanced search quick filters when the value there is true.
-  const showDeleted = parsedSearch.showDeleted === 'true' ? true : undefined;
+  const stringifiedQueryFilter = isEmpty(queryFilter)
+    ? ''
+    : JSON.stringify(queryFilter);
+  const queryFilterContainsDeleted =
+    stringifiedQueryFilter.includes('"deleted":');
+
+  // Since the 'Deleted' field in the queryFilter conflicts with the 'showDeleted' parameter,
+  // We are giving priority to the 'Deleted' field in the queryFilter if it exists.
+  // If not there in the queryFilter, use the 'showDeleted' parameter from the URL.
+  const showDeleted = queryFilterContainsDeleted
+    ? undefined
+    : parsedSearch.showDeleted === 'true';
 
   return {
     parsedSearch,

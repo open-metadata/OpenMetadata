@@ -1,5 +1,5 @@
 ---
-title: Day 1
+title: Day 1 Getting Started | OpenMetadata Day 1 Guide
 slug: /quick-start/getting-started/day-1
 ---
 
@@ -98,6 +98,12 @@ src="/images/v1.7/how-to-guides/admin-guide/email.png"
 alt="Email Configuration"
 caption="Email Configuration"
 /%}
+
+{% note %}
+
+If you encounter issues connecting to the SMTP server, ensure that the correct Certificate Authority (CA) is configured to trust the SMTP host. Additionally, use the DNS hostname instead of the IP address in the SMTP server endpoint configuration to avoid certificate validation errors.
+
+{% /note %}
 
 ### Inviting Users
 

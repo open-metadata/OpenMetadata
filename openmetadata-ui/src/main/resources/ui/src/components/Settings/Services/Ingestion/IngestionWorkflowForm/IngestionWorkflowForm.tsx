@@ -16,7 +16,7 @@ import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, omit, omitBy } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
@@ -190,7 +190,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
           </Button>
 
           <Button data-testid="submit-btn" htmlType="submit" type="primary">
-            {okText ?? t('label.submit')}
+            {okText ?? t('label.save')}
           </Button>
         </Space>
       </div>

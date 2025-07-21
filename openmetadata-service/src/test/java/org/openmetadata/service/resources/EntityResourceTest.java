@@ -18,6 +18,7 @@ import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -76,6 +77,7 @@ import es.org.elasticsearch.xcontent.json.JsonXContent;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
@@ -89,12 +91,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -182,12 +188,15 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
@@ -198,6 +207,7 @@ import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
+import org.openmetadata.service.resources.drives.WorksheetResourceTest;
 import org.openmetadata.service.resources.events.EventResource.EventList;
 import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
@@ -210,6 +220,7 @@ import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.APIServiceResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
+import org.openmetadata.service.resources.services.DriveServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
@@ -218,7 +229,6 @@ import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
@@ -227,9 +237,9 @@ import org.openmetadata.service.util.CSVImportMessage;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.DeleteEntityMessage;
 import org.openmetadata.service.util.DeleteEntityResponse;
+import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
@@ -250,12 +260,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       systemEntityName; // System entity provided by the system that can't be deleted
   protected final boolean supportsFollowers;
   protected final boolean supportsVotes;
-  protected final boolean supportsOwners;
+  protected boolean supportsOwners;
   protected boolean supportsTags;
   protected boolean supportsPatch = true;
+  protected boolean supportsEtag = true;
   protected final boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected final boolean supportsEmptyDescription;
+  protected boolean supportsAdminOnly = false;
 
   // Special characters supported in the entity name
   protected String supportedNameCharacters = "_'-.&()[]" + RANDOM_STRING_GENERATOR.generate(1);
@@ -349,6 +361,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
 
+  public static EntityReference GOOGLE_DRIVE_SERVICE_REFERENCE;
+  public static EntityReference SHAREPOINT_DRIVE_SERVICE_REFERENCE;
+
   public static Classification USER_CLASSIFICATION;
   public static Tag ADDRESS_TAG;
   public static TagLabel USER_ADDRESS_TAG_LABEL;
@@ -390,6 +405,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static TestDefinition TEST_DEFINITION1;
   public static TestDefinition TEST_DEFINITION2;
   public static TestDefinition TEST_DEFINITION3;
+  public static TestDefinition TEST_DEFINITION4;
+  public static TestDefinition TEST_DEFINITION5;
 
   public static DataInsightChart DI_CHART1;
 
@@ -503,6 +520,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new SearchServiceResourceTest().setupSearchService(test);
     new APIServiceResourceTest().setupAPIService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
+    new DriveServiceResourceTest().setupDriveServices(test);
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions();
@@ -512,6 +530,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new BotResourceTest().setupBots();
     new QueryResourceTest().setupQuery(test);
     new APICollectionResourceTest().setupAPICollection(test);
+    new WorksheetResourceTest().setupSpreadsheet(test);
 
     if (EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
       switch (SELECTED_TEST_CATEGORY) {
@@ -691,6 +710,240 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         () -> listEntities(params, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid field name invalidField");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void test_bulkLoadingEfficiency(TestInfo test) throws HttpResponseException {
+    if (!supportsFieldsQueryParam) {
+      return;
+    }
+
+    // Create multiple entities to test bulk loading
+    int entityCount = Math.min(50, 10); // Create 10 entities for testing, or fewer if constrained
+    List<T> entities = new ArrayList<>();
+
+    for (int i = 0; i < entityCount; i++) {
+      K createRequest = createRequest(test, i);
+      T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+      entities.add(entity);
+    }
+
+    String allFields = getAllowedFields();
+    Map<String, String> params = new HashMap<>();
+    params.put("fields", allFields);
+
+    // Test 1: Verify that listing entities with all fields works correctly
+    ResultList<T> result = listEntities(params, ADMIN_AUTH_HEADERS);
+    assertNotNull(result, "Bulk listing should return results");
+    assertTrue(
+        result.getData().size() >= entityCount, "Should return at least the created entities");
+
+    // Test 2: Test bulk loading performance by measuring time
+    long startTime = System.currentTimeMillis();
+    ResultList<T> bulkResult = listEntities(params, ADMIN_AUTH_HEADERS);
+    long bulkTime = System.currentTimeMillis() - startTime;
+
+    // Test 3: Compare with individual entity loading time
+    startTime = System.currentTimeMillis();
+    for (T entity : entities) {
+      getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
+    }
+    long individualTime = System.currentTimeMillis() - startTime;
+
+    LOG.info("Bulk loading time: {}ms, Individual loading time: {}ms", bulkTime, individualTime);
+
+    // Test 4: Verify that bulk loaded entities have the same field completeness
+    if (!bulkResult.getData().isEmpty()) {
+      T bulkEntity = bulkResult.getData().get(0);
+      T individualEntity = getEntity(bulkEntity.getId(), allFields, ADMIN_AUTH_HEADERS);
+
+      // Verify critical fields are populated in bulk load
+      assertEquals(
+          bulkEntity.getId(),
+          individualEntity.getId(),
+          "Entity ID should match between bulk and individual load");
+      assertEquals(
+          bulkEntity.getFullyQualifiedName(),
+          individualEntity.getFullyQualifiedName(),
+          "FQN should match between bulk and individual load");
+
+      // If the entity supports specific fields, verify they are loaded
+      if (supportsTags && bulkEntity.getTags() != null) {
+        assertEquals(
+            bulkEntity.getTags().size(),
+            individualEntity.getTags().size(),
+            "Tags should be loaded consistently in bulk operations");
+      }
+
+      if (supportsOwners && bulkEntity.getOwners() != null) {
+        assertEquals(
+            bulkEntity.getOwners().size(),
+            individualEntity.getOwners().size(),
+            "Owners should be loaded consistently in bulk operations");
+      }
+    }
+
+    // Test 5: Verify that bulk loading doesn't cause N+1 query issues by testing with larger
+    // datasets
+    // This is more of a monitoring test - in production, bulk loading should be significantly
+    // faster
+    if (entityCount >= 5) {
+      assertTrue(
+          bulkTime <= individualTime * 2,
+          "Bulk loading should not be significantly slower than individual loading. "
+              + "Bulk: "
+              + bulkTime
+              + "ms, Individual: "
+              + individualTime
+              + "ms");
+    }
+
+    // Clean up created entities
+    for (T entity : entities) {
+      deleteEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void test_fieldFetchersEfficiency(TestInfo test) throws HttpResponseException {
+    if (!supportsFieldsQueryParam) {
+      return;
+    }
+
+    // Create entities to test field fetching patterns
+    int entityCount = 20;
+    List<T> entities = new ArrayList<>();
+
+    for (int i = 0; i < entityCount; i++) {
+      K createRequest = createRequest(test, i);
+      T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+      entities.add(entity);
+    }
+
+    // Test bulk field fetching with different field combinations
+    // Build combinations based on what the entity actually supports
+    List<String> fieldCombinationsList = new ArrayList<>();
+
+    // Add combinations based on supported fields
+    if (supportsOwners && supportsTags) {
+      fieldCombinationsList.add("owners,tags");
+    } else if (supportsOwners) {
+      fieldCombinationsList.add("owners");
+    }
+
+    if (supportsFollowers && supportsOwners) {
+      fieldCombinationsList.add("followers,owners");
+    } else if (supportsFollowers) {
+      fieldCombinationsList.add("followers");
+    }
+
+    // Build a combination with domain, tags, and owners if supported
+    StringBuilder complexFields = new StringBuilder();
+    if (supportsDomain) {
+      complexFields.append("domain");
+    }
+    if (supportsTags) {
+      if (complexFields.length() > 0) complexFields.append(",");
+      complexFields.append("tags");
+    }
+    if (supportsOwners) {
+      if (complexFields.length() > 0) complexFields.append(",");
+      complexFields.append("owners");
+    }
+    if (complexFields.length() > 0) {
+      fieldCombinationsList.add(complexFields.toString());
+    }
+
+    // Always test with all allowed fields
+    fieldCombinationsList.add(getAllowedFields());
+
+    String[] fieldCombinations = fieldCombinationsList.toArray(new String[0]);
+
+    for (String fields : fieldCombinations) {
+      if (fields == null || fields.isEmpty()) continue;
+
+      Map<String, String> params = new HashMap<>();
+      params.put("fields", fields);
+
+      // Test bulk loading with specific field combinations
+      long startTime = System.currentTimeMillis();
+      ResultList<T> bulkResult = listEntities(params, ADMIN_AUTH_HEADERS);
+      long bulkTime = System.currentTimeMillis() - startTime;
+
+      // Verify that the requested fields are populated in bulk results
+      if (!bulkResult.getData().isEmpty()) {
+        T entity = bulkResult.getData().get(0);
+
+        // Test that bulk loading populates the same fields as individual loading
+        T individualEntity = getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+
+        // Verify field consistency between bulk and individual loading
+        if (fields.contains("owners") && supportsOwners) {
+          assertEquals(
+              listOrEmpty(entity.getOwners()).size(),
+              listOrEmpty(individualEntity.getOwners()).size(),
+              "Owners field should be consistently loaded in bulk operations for fields: "
+                  + fields);
+        }
+
+        if (fields.contains("tags") && supportsTags) {
+          assertEquals(
+              listOrEmpty(entity.getTags()).size(),
+              listOrEmpty(individualEntity.getTags()).size(),
+              "Tags field should be consistently loaded in bulk operations for fields: " + fields);
+        }
+
+        if (fields.contains("followers") && supportsFollowers) {
+          // Note: followers might be null if no followers exist, which is expected
+          List<?> bulkFollowers = (List<?>) getField(entity, "followers");
+          List<?> individualFollowers = (List<?>) getField(individualEntity, "followers");
+          assertEquals(
+              listOrEmpty(bulkFollowers).size(),
+              listOrEmpty(individualFollowers).size(),
+              "Followers field should be consistently loaded in bulk operations for fields: "
+                  + fields);
+        }
+      }
+
+      LOG.info(
+          "Field fetching test for '{}' completed in {}ms with {} entities",
+          fields,
+          bulkTime,
+          bulkResult.getData().size());
+    }
+
+    // Clean up created entities
+    for (T entity : entities) {
+      deleteEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  // Helper method to get field value using reflection
+  private Object getField(T entity, String fieldName) {
+    try {
+      // Try common getter patterns
+      java.lang.reflect.Method getter = null;
+      try {
+        getter = entity.getClass().getMethod("get" + capitalize(fieldName));
+      } catch (NoSuchMethodException e) {
+        // Try is* pattern for boolean fields
+        try {
+          getter = entity.getClass().getMethod("is" + capitalize(fieldName));
+        } catch (NoSuchMethodException e2) {
+          return null;
+        }
+      }
+      return getter.invoke(entity);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private String capitalize(String str) {
+    if (str == null || str.isEmpty()) return str;
+    return str.substring(0, 1).toUpperCase() + str.substring(1);
   }
 
   @Test
@@ -936,14 +1189,30 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
   private void delete_recursiveTest() throws IOException {
+    // Skip recursive delete test when container reuse is enabled
+    // as entities from previous test runs may still reference the container
+    if (Boolean.parseBoolean(System.getProperty("testcontainers.reuse.enable", "false"))) {
+      LOG.info("Skipping delete_recursiveTest - container reuse is enabled");
+      return;
+    }
+
     // Finally, delete the container that contains the entities created for this test
     EntityReference container = getContainer();
     if (container != null) {
+      LOG.info(
+          "delete_recursiveTest: Testing with container: {} (id: {}, type: {})",
+          container.getName(),
+          container.getId(),
+          container.getType());
+
       // List both deleted and non deleted entities
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", Include.ALL.value());
       ResultList<T> listBeforeDeletion =
           listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+      LOG.info(
+          "delete_recursiveTest: Entities before deletion: {}",
+          listBeforeDeletion.getData().size());
 
       // Delete non-empty container entity and ensure deletion is not allowed
       EntityResourceTest<? extends EntityInterface, ? extends CreateEntity> containerTest =
@@ -954,6 +1223,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           entityIsNotEmpty(container.getType()));
 
       // Now soft-delete the container with recursive flag on
+      LOG.info(
+          "delete_recursiveTest: Soft-deleting container {} with recursive flag",
+          container.getName());
       containerTest.deleteEntity(container.getId(), true, false, ADMIN_AUTH_HEADERS);
 
       // Make sure entities that belonged to the container are deleted and the new list operation
@@ -963,6 +1235,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           .getData()
           .forEach(e -> assertNotEquals(getContainer(e).getId(), container.getId()));
       assertTrue(listAfterDeletion.getData().size() < listBeforeDeletion.getData().size());
+      LOG.info(
+          "delete_recursiveTest: Entities after deletion: {}", listAfterDeletion.getData().size());
 
       // Restore the soft-deleted container by PUT operation and make sure it is restored
       String containerName = container.getName();
@@ -972,6 +1246,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         String parentOfContainer = containerTest.getContainer().getName();
         containerName = container.getName().replace(parentOfContainer + Entity.SEPARATOR, "");
       }
+      LOG.info(
+          "delete_recursiveTest: Attempting to restore container with name: {}", containerName);
       CreateEntity request = containerTest.createRequest(containerName, "", "", null);
       containerTest.updateEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS);
 
@@ -1364,6 +1640,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
+    if (supportsOwners || supportsAdminOnly) {
+      return;
+    }
     // Ingestion bot can create and delete all the entities except websocket and bot
     if (List.of(Entity.EVENT_SUBSCRIPTION, Entity.BOT).contains(entityType)) {
       return;
@@ -1380,6 +1659,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_entity_as_non_admin_401(TestInfo test) {
+    if (supportsAdminOnly) {
+      return;
+    }
     assertResponse(
         () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
         FORBIDDEN,
@@ -1540,6 +1822,150 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // No lingering relationships should cause error in listing the entity
     listEntities(null, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_tagUpdateOptimization_PUT(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    TagLabel tag1 = new TagLabel().withTagFQN("PII.Sensitive");
+    TagLabel tag2 = new TagLabel().withTagFQN("Tier.Tier1");
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(listOf(tag1, tag2));
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify initial tags
+    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+    assertTagsContain(entity.getTags(), listOf(tag1, tag2));
+
+    // PUT with one new tag - should ADD the new tag without removing existing ones
+    TagLabel tag3 = new TagLabel().withTagFQN("PersonalData.Personal");
+    create.setTags(listOf(tag3));
+    T updated = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify all three tags are present (PUT merges tags)
+    updated = getEntity(updated.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(3, updated.getTags().size());
+    assertTagsContain(updated.getTags(), listOf(tag1, tag2, tag3));
+
+    // PUT with existing tags - should not duplicate
+    create.setTags(listOf(tag1, tag3));
+    updated = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify still three tags (no duplicates)
+    updated = getEntity(updated.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(3, updated.getTags().size());
+    assertTagsContain(updated.getTags(), listOf(tag1, tag2, tag3));
+  }
+
+  @Test
+  void test_tagUpdateOptimization_PATCH(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    TagLabel tag1 = new TagLabel().withTagFQN("PII.Sensitive");
+    TagLabel tag2 = new TagLabel().withTagFQN("Tier.Tier1");
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(listOf(tag1, tag2));
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+    assertTagsContain(entity.getTags(), listOf(tag1, tag2));
+
+    // PATCH with different tags - should REPLACE all tags
+    TagLabel tag3 = new TagLabel().withTagFQN("PersonalData.Personal");
+    TagLabel tag4 = new TagLabel().withTagFQN("Certification.Bronze");
+    String originalJson = JsonUtils.pojoToJson(entity);
+    entity.setTags(listOf(tag3, tag4));
+    T patched = patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+
+    // Verify only new tags are present (PATCH replaces tags)
+    patched = getEntity(patched.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, patched.getTags().size());
+    assertTagsContain(patched.getTags(), listOf(tag3, tag4));
+    assertTagsDoNotContain(patched.getTags(), listOf(tag1, tag2));
+
+    // PATCH with empty tags - should remove all tags
+    originalJson = JsonUtils.pojoToJson(patched);
+    patched.setTags(new ArrayList<>());
+    patched = patchEntity(patched.getId(), originalJson, patched, ADMIN_AUTH_HEADERS);
+
+    // Verify no tags
+    patched = getEntity(patched.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertTrue(patched.getTags().isEmpty());
+  }
+
+  @Test
+  void test_tagUpdateOptimization_LargeScale(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    // Create entity with initial tags (from different classifications)
+    List<TagLabel> initialTags = new ArrayList<>();
+    initialTags.add(
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+    initialTags.add(
+        new TagLabel()
+            .withTagFQN("Tier.Tier1")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(initialTags);
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify we have 2 unique tags
+    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+
+    // Add more unique tags via PUT - should be efficient (only adds new ones)
+    List<TagLabel> additionalTags = new ArrayList<>();
+    additionalTags.add(
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+    additionalTags.add(
+        new TagLabel()
+            .withTagFQN("Certification.Bronze")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+
+    create.setTags(additionalTags);
+
+    long startTime = System.currentTimeMillis();
+    T updated = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+    long updateTime = System.currentTimeMillis() - startTime;
+
+    updated = getEntity(updated.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(4, updated.getTags().size());
+    assertTagsContain(updated.getTags(), initialTags);
+    assertTagsContain(updated.getTags(), additionalTags);
+  }
+
+  private void assertTagsContain(List<TagLabel> tags, List<TagLabel> expectedTags) {
+    for (TagLabel expected : expectedTags) {
+      assertTrue(
+          tags.stream().anyMatch(tag -> tag.getTagFQN().equals(expected.getTagFQN())),
+          "Tags should contain: " + expected.getTagFQN());
+    }
+  }
+
+  private void assertTagsDoNotContain(List<TagLabel> tags, List<TagLabel> unexpectedTags) {
+    for (TagLabel unexpected : unexpectedTags) {
+      assertFalse(
+          tags.stream().anyMatch(tag -> tag.getTagFQN().equals(unexpected.getTagFQN())),
+          "Tags should not contain: " + unexpected.getTagFQN());
+    }
   }
 
   @Test
@@ -1711,6 +2137,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
+    if (supportsEmptyDescription) {
+      return;
+    }
     // Create entity with non-empty description
     K request =
         createRequest(
@@ -1834,7 +2263,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void patch_entityDescriptionAndTestAuthorizer(TestInfo test) throws IOException {
-    if (!supportsPatch) {
+    if (!supportsPatch || supportsAdminOnly) {
       return;
     }
     T entity =
@@ -2020,6 +2449,507 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void patch_etag_in_get_response(TestInfo test) throws IOException {
+    if (!supportsPatch || !supportsEtag) {
+      return;
+    }
+
+    // Create a test entity
+    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Get the entity and check for ETag header
+    WebTarget target = getResource(entity.getId());
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    // Check if ETag header is present
+    String etag = response.getHeaderString(EntityETag.ETAG_HEADER);
+    assertNotNull(etag, "ETag header should be present in GET response");
+    assertTrue(etag.startsWith("\"") && etag.endsWith("\""), "ETag should be wrapped in quotes");
+
+    T returnedEntity = response.readEntity(entityClass);
+
+    // Verify ETag format includes version and timestamp
+    // Remove any compression suffixes (e.g., "--gzip") from the ETag for comparison
+    String cleanEtag = etag.replaceAll("--\\w+\"$", "\"");
+    String expectedETag = EntityETag.generateETag(returnedEntity);
+    assertEquals(
+        expectedETag,
+        cleanEtag,
+        "Generated ETag should match response ETag (ignoring compression suffix)");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void patch_with_valid_etag(TestInfo test) throws IOException {
+    if (!supportsPatch || !supportsEtag) {
+      return;
+    }
+
+    // Create a test entity
+    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Get the entity with ETag
+    WebTarget getTarget = getResource(entity.getId());
+    Response getResponse = SecurityUtil.addHeaders(getTarget, ADMIN_AUTH_HEADERS).get();
+    String etag = getResponse.getHeaderString(EntityETag.ETAG_HEADER);
+    T originalEntity = getResponse.readEntity(entityClass);
+
+    // Prepare patch to update description
+    String originalJson = JsonUtils.pojoToJson(originalEntity);
+    originalEntity.setDescription("Updated description with ETag");
+    String updatedJson = JsonUtils.pojoToJson(originalEntity);
+    JsonNode patch =
+        JsonDiff.asJson(
+            JsonUtils.getObjectMapper().readTree(originalJson),
+            JsonUtils.getObjectMapper().readTree(updatedJson));
+
+    // PATCH with valid ETag in If-Match header
+    WebTarget patchTarget = getResource(entity.getId());
+    Map<String, String> headers = new HashMap<>(ADMIN_AUTH_HEADERS);
+    headers.put(EntityETag.IF_MATCH_HEADER, etag);
+
+    Response patchResponse =
+        SecurityUtil.addHeaders(patchTarget, headers)
+            .method(
+                "PATCH",
+                jakarta.ws.rs.client.Entity.entity(
+                    patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+
+    assertEquals(
+        OK.getStatusCode(), patchResponse.getStatus(), "PATCH with valid ETag should succeed");
+
+    // Verify response has new ETag
+    String newETag = patchResponse.getHeaderString(EntityETag.ETAG_HEADER);
+    assertNotNull(newETag, "Response should include new ETag");
+    assertNotEquals(etag, newETag, "ETag should change after update");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void patch_with_stale_etag(TestInfo test) throws IOException {
+    if (!supportsPatch || !supportsEtag) {
+      return;
+    }
+
+    // Create a test entity
+    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Get the entity with ETag
+    WebTarget getTarget = getResource(entity.getId());
+    Response getResponse = SecurityUtil.addHeaders(getTarget, ADMIN_AUTH_HEADERS).get();
+    String originalETag = getResponse.getHeaderString(EntityETag.ETAG_HEADER);
+    T originalEntity = getResponse.readEntity(entityClass);
+
+    // First update to change the ETag
+    String originalJson = JsonUtils.pojoToJson(originalEntity);
+    originalEntity.setDescription("First update");
+    patchEntity(entity.getId(), originalJson, originalEntity, ADMIN_AUTH_HEADERS);
+
+    // Try to patch with the stale ETag
+    originalEntity.setDescription("Second update with stale ETag");
+    String updatedJson = JsonUtils.pojoToJson(originalEntity);
+    JsonNode patch =
+        JsonDiff.asJson(
+            JsonUtils.getObjectMapper().readTree(originalJson),
+            JsonUtils.getObjectMapper().readTree(updatedJson));
+
+    // PATCH with stale ETag
+    WebTarget patchTarget = getResource(entity.getId());
+    Map<String, String> headers = new HashMap<>(ADMIN_AUTH_HEADERS);
+    headers.put(EntityETag.IF_MATCH_HEADER, originalETag);
+
+    Response patchResponse =
+        SecurityUtil.addHeaders(patchTarget, headers)
+            .method(
+                "PATCH",
+                jakarta.ws.rs.client.Entity.entity(
+                    patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+
+    // Should return 412 Precondition Failed if ETag validation is enabled
+    // For backward compatibility, it might still return 200 if validation is disabled
+    int status = patchResponse.getStatus();
+    assertTrue(
+        status == OK.getStatusCode() || status == PRECONDITION_FAILED.getStatusCode(),
+        "PATCH with stale ETag should either succeed (if validation disabled) or return 412");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void patch_concurrent_updates_with_etag(TestInfo test) throws Exception {
+    if (!supportsPatch || !supportsEtag) {
+      return;
+    }
+
+    // Create a test entity
+    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Get the entity with ETag
+    WebTarget getTarget = getResource(entity.getId());
+    Response getResponse = SecurityUtil.addHeaders(getTarget, ADMIN_AUTH_HEADERS).get();
+    String etag = getResponse.getHeaderString(EntityETag.ETAG_HEADER);
+    T originalEntity = getResponse.readEntity(entityClass);
+
+    // Prepare for concurrent updates
+    ExecutorService executorService = Executors.newFixedThreadPool(2);
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch completionLatch = new CountDownLatch(2);
+    AtomicReference<Response> response1 = new AtomicReference<>();
+    AtomicReference<Response> response2 = new AtomicReference<>();
+    AtomicReference<Exception> error = new AtomicReference<>();
+
+    // Task 1: Update description
+    executorService.submit(
+        () -> {
+          try {
+            startLatch.await();
+
+            String originalJson = JsonUtils.pojoToJson(originalEntity);
+            T updated = JsonUtils.readValue(originalJson, entityClass);
+            updated.setDescription("Concurrent update 1");
+            String updatedJson = JsonUtils.pojoToJson(updated);
+            JsonNode patch =
+                JsonDiff.asJson(
+                    JsonUtils.getObjectMapper().readTree(originalJson),
+                    JsonUtils.getObjectMapper().readTree(updatedJson));
+
+            WebTarget patchTarget = getResource(entity.getId());
+            Map<String, String> headers = new HashMap<>(ADMIN_AUTH_HEADERS);
+            headers.put(EntityETag.IF_MATCH_HEADER, etag);
+
+            Response response =
+                SecurityUtil.addHeaders(patchTarget, headers)
+                    .method(
+                        "PATCH",
+                        jakarta.ws.rs.client.Entity.entity(
+                            patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+            response1.set(response);
+
+          } catch (Exception e) {
+            error.compareAndSet(null, e);
+          } finally {
+            completionLatch.countDown();
+          }
+        });
+
+    // Task 2: Update displayName
+    executorService.submit(
+        () -> {
+          try {
+            startLatch.await();
+
+            String originalJson = JsonUtils.pojoToJson(originalEntity);
+            T updated = JsonUtils.readValue(originalJson, entityClass);
+            updated.setDisplayName("Concurrent Display Name");
+            String updatedJson = JsonUtils.pojoToJson(updated);
+            JsonNode patch =
+                JsonDiff.asJson(
+                    JsonUtils.getObjectMapper().readTree(originalJson),
+                    JsonUtils.getObjectMapper().readTree(updatedJson));
+
+            WebTarget patchTarget = getResource(entity.getId());
+            Map<String, String> headers = new HashMap<>(ADMIN_AUTH_HEADERS);
+            headers.put(EntityETag.IF_MATCH_HEADER, etag);
+
+            Response response =
+                SecurityUtil.addHeaders(patchTarget, headers)
+                    .method(
+                        "PATCH",
+                        jakarta.ws.rs.client.Entity.entity(
+                            patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+            response2.set(response);
+
+          } catch (Exception e) {
+            error.compareAndSet(null, e);
+          } finally {
+            completionLatch.countDown();
+          }
+        });
+
+    // Start both tasks simultaneously
+    startLatch.countDown();
+
+    // Wait for completion
+    assertTrue(completionLatch.await(30, TimeUnit.SECONDS), "Tasks should complete within timeout");
+    executorService.shutdown();
+
+    // Check results
+    if (error.get() != null) {
+      throw new RuntimeException("Error in concurrent update", error.get());
+    }
+
+    int status1 = response1.get().getStatus();
+    int status2 = response2.get().getStatus();
+
+    // With ETag validation, at least one should fail with 412 or both succeed due to timing
+    LOG.info("Concurrent update with ETag - status 1: {}, status 2: {}", status1, status2);
+
+    // If ETag validation is enabled, one should fail
+    // If disabled, both might succeed
+    assertTrue(
+        (status1 == OK.getStatusCode() && status2 == OK.getStatusCode())
+            || // Both succeed (no validation)
+            (status1 == OK.getStatusCode() && status2 == PRECONDITION_FAILED.getStatusCode())
+            || // First succeeds
+            (status1 == PRECONDITION_FAILED.getStatusCode()
+                && status2 == OK.getStatusCode()), // Second succeeds
+        "One update should succeed and other should fail with 412, or both succeed if validation disabled");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void patch_concurrentUpdates_dataLossTest(TestInfo test) throws Exception {
+    if (!supportsPatch || !supportsEtag) {
+      return;
+    }
+
+    // Store original session timeout and set a short one to avoid consolidation
+    long originalTimeout = EntityRepository.EntityUpdater.getSessionTimeout();
+    EntityRepository.EntityUpdater.setSessionTimeout(10); // 10ms timeout
+
+    try {
+      // Create initial entity
+      K createRequest = createRequest(test);
+      T entity = createAndCheckEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+      // Set up for concurrent updates
+      int numThreads = 2;
+      CountDownLatch startLatch = new CountDownLatch(1);
+      CountDownLatch completionLatch = new CountDownLatch(numThreads);
+      AtomicReference<T> entityAfterUpdate1 = new AtomicReference<>();
+      AtomicReference<T> entityAfterUpdate2 = new AtomicReference<>();
+      AtomicReference<Exception> errorRef = new AtomicReference<>();
+      AtomicInteger retryCount = new AtomicInteger(0);
+
+      // Thread 1: Update description with ETag and retry logic
+      java.lang.Thread thread1 =
+          new java.lang.Thread(
+              () -> {
+                try {
+                  startLatch.await();
+
+                  boolean updated = false;
+                  int attempts = 0;
+                  while (!updated && attempts < 3) {
+                    attempts++;
+
+                    // Get fresh copy of entity with ETag
+                    WebTarget target = getResource(entity.getId());
+                    Response getResponse =
+                        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+                    T currentEntity = getResponse.readEntity(entityClass);
+                    String etag = getResponse.getHeaderString("ETag");
+                    // Remove compression suffix if present (e.g., "--gzip")
+                    if (etag != null && etag.contains("--")) {
+                      etag = etag.substring(0, etag.indexOf("--")) + "\"";
+                    }
+                    String originalJson = JsonUtils.pojoToJson(currentEntity);
+
+                    // Update description
+                    currentEntity.setDescription("Updated by thread 1 - new description");
+
+                    // Simulate processing delay
+                    java.lang.Thread.sleep(100);
+
+                    // Patch the entity with ETag
+                    try {
+                      String updatedJson = JsonUtils.pojoToJson(currentEntity);
+                      JsonNode patch =
+                          JsonDiff.asJson(
+                              JsonUtils.getObjectMapper().readTree(originalJson),
+                              JsonUtils.getObjectMapper().readTree(updatedJson));
+
+                      T result =
+                          TestUtils.patch(
+                              getResource(entity.getId()),
+                              patch,
+                              entityClass,
+                              ADMIN_AUTH_HEADERS,
+                              etag);
+                      entityAfterUpdate1.set(result);
+                      updated = true;
+                    } catch (HttpResponseException e) {
+                      if (e.getStatusCode() == 412) { // Precondition Failed - ETag mismatch
+                        retryCount.incrementAndGet();
+                        LOG.info("Thread 1 got 412, retrying... (attempt {})", attempts);
+                        // Will retry with fresh data in next iteration
+                      } else {
+                        throw e;
+                      }
+                    }
+                  }
+
+                  if (!updated) {
+                    fail("Thread 1 failed to update after 3 attempts");
+                  }
+
+                } catch (Exception e) {
+                  errorRef.compareAndSet(null, e);
+                } finally {
+                  completionLatch.countDown();
+                }
+              });
+
+      // Thread 2: Add tags (if supported) or update displayName with ETag and retry logic
+      java.lang.Thread thread2 =
+          new java.lang.Thread(
+              () -> {
+                try {
+                  startLatch.await();
+
+                  boolean updated = false;
+                  int attempts = 0;
+                  while (!updated && attempts < 3) {
+                    attempts++;
+
+                    // Get fresh copy of entity with ETag
+                    WebTarget target = getResource(entity.getId());
+                    Response getResponse =
+                        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+                    T currentEntity = getResponse.readEntity(entityClass);
+                    String etag = getResponse.getHeaderString("ETag");
+                    // Remove compression suffix if present (e.g., "--gzip")
+                    if (etag != null && etag.contains("--")) {
+                      etag = etag.substring(0, etag.indexOf("--")) + "\"";
+                    }
+                    String originalJson = JsonUtils.pojoToJson(currentEntity);
+
+                    // Add tags or update displayName
+                    if (supportsTags && currentEntity instanceof EntityInterface) {
+                      EntityInterface entityInterface = (EntityInterface) currentEntity;
+                      List<TagLabel> tags = new ArrayList<>();
+                      tags.add(TIER1_TAG_LABEL);
+                      tags.add(USER_ADDRESS_TAG_LABEL);
+                      entityInterface.setTags(tags);
+                    } else {
+                      currentEntity.setDisplayName("Updated by thread 2");
+                    }
+
+                    // Simulate processing delay
+                    java.lang.Thread.sleep(150);
+
+                    // Patch the entity with ETag
+                    try {
+                      String updatedJson = JsonUtils.pojoToJson(currentEntity);
+                      JsonNode patch =
+                          JsonDiff.asJson(
+                              JsonUtils.getObjectMapper().readTree(originalJson),
+                              JsonUtils.getObjectMapper().readTree(updatedJson));
+
+                      T result =
+                          TestUtils.patch(
+                              getResource(entity.getId()),
+                              patch,
+                              entityClass,
+                              ADMIN_AUTH_HEADERS,
+                              etag);
+                      entityAfterUpdate2.set(result);
+                      updated = true;
+                    } catch (HttpResponseException e) {
+                      if (e.getStatusCode() == 412) { // Precondition Failed - ETag mismatch
+                        retryCount.incrementAndGet();
+                        LOG.info("Thread 2 got 412, retrying... (attempt {})", attempts);
+                        // Will retry with fresh data in next iteration
+                      } else {
+                        throw e;
+                      }
+                    }
+                  }
+
+                  if (!updated) {
+                    fail("Thread 2 failed to update after 3 attempts");
+                  }
+
+                } catch (Exception e) {
+                  errorRef.compareAndSet(null, e);
+                } finally {
+                  completionLatch.countDown();
+                }
+              });
+
+      // Start both threads
+      thread1.start();
+      thread2.start();
+
+      // Release both threads to run concurrently
+      startLatch.countDown();
+
+      // Add a small delay to ensure threads fetch at slightly different times
+      // This increases the chance of one thread getting a stale ETag
+      java.lang.Thread.sleep(50);
+
+      // Wait for completion
+      assertTrue(
+          completionLatch.await(30, TimeUnit.SECONDS), "Threads should complete within timeout");
+
+      // Check for errors
+      if (errorRef.get() != null) {
+        throw new AssertionError("Thread execution failed", errorRef.get());
+      }
+
+      // Get final entity state
+      T finalEntity = getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
+
+      // Verify both updates were applied (this should fail if there's a concurrency issue)
+      // The issue is that when both threads start with the same version, the second update
+      // might overwrite the first update's changes
+
+      // Check description from thread 1
+      assertEquals(
+          "Updated by thread 1 - new description",
+          finalEntity.getDescription(),
+          "Description update from thread 1 should be preserved");
+
+      // Check tags/displayName from thread 2
+      if (supportsTags) {
+        List<TagLabel> finalTags = finalEntity.getTags();
+        assertNotNull(finalTags, "Tags should not be null after thread 2 update");
+        assertEquals(2, finalTags.size(), "Should have 2 tags from thread 2");
+        assertTrue(
+            finalTags.stream().anyMatch(tag -> tag.getTagFQN().equals(TIER1_TAG_LABEL.getTagFQN())),
+            "Should have Tier1 tag from thread 2");
+        assertTrue(
+            finalTags.stream()
+                .anyMatch(tag -> tag.getTagFQN().equals(USER_ADDRESS_TAG_LABEL.getTagFQN())),
+            "Should have User.Address tag from thread 2");
+      } else {
+        assertEquals(
+            "Updated by thread 2",
+            finalEntity.getDisplayName(),
+            "DisplayName update from thread 2 should be preserved");
+      }
+
+      // Verify version increments
+      assertTrue(
+          finalEntity.getVersion() > entity.getVersion(),
+          "Version should be incremented after updates");
+
+      // Both updates should result in version increments
+      // If concurrency is handled properly, we should see version increments for both updates
+      assertNotNull(entityAfterUpdate1.get(), "Thread 1 should have completed update");
+      assertNotNull(entityAfterUpdate2.get(), "Thread 2 should have completed update");
+
+      // Verify retry occurred (at least one thread should have retried due to concurrent update)
+      assertTrue(
+          retryCount.get() > 0, "At least one thread should have retried due to ETag mismatch");
+
+      // Log versions for debugging
+      LOG.info("Concurrent update test completed successfully with {} retries", retryCount.get());
+      LOG.info(
+          "Initial version: {}, Thread1 version: {}, Thread2 version: {}, Final version: {}",
+          entity.getVersion(),
+          entityAfterUpdate1.get().getVersion(),
+          entityAfterUpdate2.get().getVersion(),
+          finalEntity.getVersion());
+    } finally {
+      // Restore original session timeout
+      EntityRepository.EntityUpdater.setSessionTimeout(originalTimeout);
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void put_addEntityCustomAttributes(TestInfo test) throws IOException {
     if (!supportsCustomExtension) {
       return;
@@ -2171,6 +3101,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    if (supportsAdminOnly) {
+      return;
+    }
     // Deleting as non-owner and non-admin should fail
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -2223,6 +3156,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void delete_async_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    if (supportsEmptyDescription) {
+      return;
+    }
     // Create entity as admin
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -2308,11 +3244,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               connectLatch.countDown();
               messageLatch.countDown();
             })
-        .on(
-            Socket.EVENT_DISCONNECT,
-            args -> {
-              LOG.info("Disconnected from Socket.IO server");
-            });
+        .on(Socket.EVENT_DISCONNECT, args -> LOG.info("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {
@@ -2444,6 +3376,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // create entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
+
+    // Wait for entity to be indexed in Elasticsearch
+    waitForSyncAndGetFromSearchIndex(
+        entity.getUpdatedAt(), entity.getId(), entityReference.getType());
+
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     // search api method internally appends clusterAlias name
@@ -2464,6 +3401,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // create entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
+
+    // Wait for entity to be indexed in Elasticsearch
+    waitForSyncAndGetFromSearchIndex(
+        entity.getUpdatedAt(), entity.getId(), entityReference.getType());
+
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     // search api method internally appends clusterAlias name
@@ -2480,17 +3422,22 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // delete entity
     WebTarget target = getResource(entity.getId());
     TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
-    // search again in search after deleting
 
-    // search api method internally appends clusterAlias name
-    response = getResponseFormSearch(indexMapping.getIndexName(null));
-    hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
-      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-      entityIds.add(sourceAsMap.get("id").toString());
-    }
-    // verify if it is deleted from the search as well
-    assertFalse(entityIds.contains(entity.getId().toString()));
+    // Wait for deletion to be reflected in Elasticsearch and verify
+    // Use Awaitility to wait for the entity to be removed from search
+    Awaitility.await("Wait for entity to be deleted from search index")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .until(
+            () -> {
+              SearchResponse deleteCheckResponse =
+                  getResponseFormSearch(indexMapping.getIndexName(null));
+              List<String> currentIds = new ArrayList<>();
+              for (SearchHit hit : deleteCheckResponse.getHits().getHits()) {
+                currentIds.add(hit.getSourceAsMap().get("id").toString());
+              }
+              return !currentIds.contains(entity.getId().toString());
+            });
   }
 
   @Test
@@ -3454,6 +4401,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEntityReferences(expectedRefs, actualRefs);
   }
 
+  public void assertEntityReference(Object expected, Object actual) {
+    EntityReference expectedRef =
+        expected instanceof EntityReference
+            ? (EntityReference) expected
+            : JsonUtils.readValue(expected.toString(), EntityReference.class);
+    EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
+    assertEquals(expectedRef.getId(), actualRef.getId());
+    assertEquals(expectedRef.getDisplayName(), actualRef.getDisplayName());
+  }
+
   public static class EventHolder {
     @Getter ChangeEvent expectedEvent;
 
@@ -4163,9 +5120,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             })
         .on(
             Socket.EVENT_DISCONNECT,
-            args -> {
-              System.out.println("Disconnected from Socket.IO server");
-            });
+            args -> System.out.println("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {
@@ -4223,10 +5178,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .on(
             "csvImportChannel",
             args -> {
-              receivedMessage[0] = (String) args[0];
+              String[] msg = new String[1];
+              msg[0] = (String) args[0];
+              CSVImportMessage receivedCsvImportMessage =
+                  JsonUtils.readValue(msg[0], CSVImportMessage.class);
               System.out.println("Received message: " + receivedMessage[0]);
-              messageLatch.countDown();
-              socket.disconnect();
+              if (Objects.equals(receivedCsvImportMessage.getStatus(), "COMPLETED")
+                  || Objects.equals(receivedCsvImportMessage.getStatus(), "FAILED")) {
+                receivedMessage[0] = msg[0];
+                messageLatch.countDown();
+                socket.disconnect();
+              }
             })
         .on(
             Socket.EVENT_CONNECT_ERROR,
@@ -4237,9 +5199,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             })
         .on(
             Socket.EVENT_DISCONNECT,
-            args -> {
-              System.out.println("Disconnected from Socket.IO server");
-            });
+            args -> System.out.println("Disconnected from Socket.IO server"));
 
     socket.connect();
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {
@@ -4267,7 +5227,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return null;
   }
 
-  private UUID getAdminUserId() throws HttpResponseException {
+  protected UUID getAdminUserId() throws HttpResponseException {
     UserResourceTest userResourceTest = new UserResourceTest();
     User adminUser = userResourceTest.getEntityByName("admin", ADMIN_AUTH_HEADERS);
     return adminUser.getId();

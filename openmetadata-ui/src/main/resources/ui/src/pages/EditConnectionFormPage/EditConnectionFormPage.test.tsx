@@ -17,7 +17,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import React from 'react';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import EditConnectionFormPage from './EditConnectionFormPage.component';
 
@@ -45,24 +44,14 @@ const mockServiceData = {
 
 const ERROR = 'Error';
 
-const mockGoBack = jest.fn();
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
@@ -181,11 +170,12 @@ jest.mock('../../utils/ToastUtils', () => ({
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ serviceCategory: 'databaseServices' }),
-  useHistory: jest.fn().mockImplementation(() => ({
-    goBack: mockGoBack,
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
+
+const mockProps = {
+  pageTitle: 'edit-connection',
+};
 
 describe('EditConnectionFormPage component', () => {
   beforeEach(() => {
@@ -195,7 +185,7 @@ describe('EditConnectionFormPage component', () => {
   it('should render all necessary elements', async () => {
     const mockGetServiceByFQN = getServiceByFQN as jest.Mock;
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
     expect(mockGetServiceByFQN).toHaveBeenCalled();
@@ -214,7 +204,7 @@ describe('EditConnectionFormPage component', () => {
     });
 
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
@@ -224,7 +214,7 @@ describe('EditConnectionFormPage component', () => {
     (getServiceByFQN as jest.Mock).mockRejectedValueOnce(ERROR);
 
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
     expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
@@ -232,7 +222,7 @@ describe('EditConnectionFormPage component', () => {
 
   it('should handle form submission in step 1', async () => {
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
     const nextButton = screen.getByText('label.next');
@@ -245,7 +235,7 @@ describe('EditConnectionFormPage component', () => {
 
   it('should handle back navigation from step 2 to step 1', async () => {
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
     // Move to step 2
@@ -267,7 +257,7 @@ describe('EditConnectionFormPage component', () => {
     const mockPatchService = patchService as jest.Mock;
 
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
     // Move to step 2
@@ -290,7 +280,7 @@ describe('EditConnectionFormPage component', () => {
     mockPatchService.mockRejectedValueOnce(new Error('Update failed'));
 
     await act(async () => {
-      render(<EditConnectionFormPage />);
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
     // Move to step 2
@@ -309,7 +299,7 @@ describe('EditConnectionFormPage component', () => {
   });
 
   it('should handle field focus', async () => {
-    render(<EditConnectionFormPage />);
+    render(<EditConnectionFormPage {...mockProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('connection-field')).toBeInTheDocument();
@@ -326,7 +316,7 @@ describe('EditConnectionFormPage component', () => {
   });
 
   it('should handle cancel button click', async () => {
-    render(<EditConnectionFormPage />);
+    render(<EditConnectionFormPage {...mockProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
@@ -335,7 +325,7 @@ describe('EditConnectionFormPage component', () => {
     const cancelButton = screen.getByTestId('cancel-button');
     fireEvent.click(cancelButton);
 
-    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   it('should show loader while fetching service details', async () => {
@@ -347,7 +337,7 @@ describe('EditConnectionFormPage component', () => {
         )
     );
 
-    render(<EditConnectionFormPage />);
+    render(<EditConnectionFormPage {...mockProps} />);
 
     expect(screen.getByText('Loader')).toBeInTheDocument();
   });

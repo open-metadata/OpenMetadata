@@ -7,8 +7,6 @@ import org.openmetadata.service.Entity;
 public class SearchUtil {
   /**
    * Check if the index is a data asset index
-   * @param indexName name of the index to check
-   * @return true if index is a data asset, false otherwise
    */
   public static boolean isDataAssetIndex(String indexName) {
     return switch (indexName) {
@@ -49,7 +47,15 @@ public class SearchUtil {
           "api_collection_search_index",
           Entity.API_COLLCECTION,
           "api_endpoint_search_index",
-          Entity.API_ENDPOINT -> true;
+          Entity.API_ENDPOINT,
+          "directory_search_index",
+          Entity.DIRECTORY,
+          "worksheet_search_index",
+          Entity.WORKSHEET,
+          "spreadsheet_search_index",
+          Entity.SPREADSHEET,
+          "file_search_index",
+          Entity.FILE -> true;
       default -> false;
     };
   }
@@ -81,7 +87,8 @@ public class SearchUtil {
           "pipeline_service_index",
           "storage_service_index",
           "search_service_index",
-          "metadata_service_index" -> true;
+          "metadata_service_index",
+          "drive_service_index" -> true;
       default -> false;
     };
   }
@@ -108,7 +115,11 @@ public class SearchUtil {
       case "domain_search_index", Entity.DOMAIN -> Entity.DOMAIN;
       case "data_product_search_index", Entity.DATA_PRODUCT -> Entity.DATA_PRODUCT;
       case "team_search_index", Entity.TEAM -> Entity.TEAM;
-      case "user_Search_index", Entity.USER -> Entity.USER;
+      case "user_search_index", Entity.USER -> Entity.USER;
+      case "directory_search_index", Entity.DIRECTORY -> Entity.DIRECTORY;
+      case "file_search_index", Entity.FILE -> Entity.FILE;
+      case "worksheet_search_index", Entity.WORKSHEET -> Entity.WORKSHEET;
+      case "spreadsheet_search_index", Entity.SPREADSHEET -> Entity.SPREADSHEET;
       case "dataAsset" -> "dataAsset";
       default -> "dataAsset";
     };

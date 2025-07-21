@@ -81,7 +81,7 @@ jobs:
           ingestion_dependency: "mysql,elasticsearch,sample-data"
 
       - name: Run Python Tests
-        if: ${{ matrix.py-version != '3.9' }}
+        if: ${{ matrix.py-version != '3.10' }}
         run: |
           source env/bin/activate
           make run_python_tests
@@ -89,7 +89,7 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: true
 
       - name: Run Python Tests & record coverage
-        if: ${{ matrix.py-version == '3.9' }}
+        if: ${{ matrix.py-version == '3.10' }}
         run: |
           source env/bin/activate
           make coverage

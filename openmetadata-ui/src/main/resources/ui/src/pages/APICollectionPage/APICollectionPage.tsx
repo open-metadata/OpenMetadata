@@ -15,7 +15,7 @@ import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -23,13 +23,14 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -49,6 +50,7 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { useCustomPages } from '../../hooks/useCustomPages';
@@ -71,19 +73,23 @@ import {
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { customizedPage, isLoading } = useCustomPages(PageType.APICollection);
-  const { tab: activeTab = EntityTabs.API_ENDPOINT } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [apiCollection, setAPICollection] = useState<APICollection>(
     {} as APICollection
@@ -107,7 +113,8 @@ const APICollectionPage: FunctionComponent = () => {
         EntityType.API_COLLECTION,
         decodedAPICollectionFQN,
         apiCollectionPermission,
-        apiCollection
+        apiCollection,
+        navigate
       ),
     [apiCollectionPermission, decodedAPICollectionFQN, apiCollection]
   );
@@ -136,8 +143,12 @@ const APICollectionPage: FunctionComponent = () => {
   }, [decodedAPICollectionFQN]);
 
   const viewAPICollectionPermission = useMemo(
-    () => apiCollectionPermission.ViewAll || apiCollectionPermission.ViewBasic,
-    [apiCollectionPermission?.ViewAll, apiCollectionPermission?.ViewBasic]
+    () =>
+      getPrioritizedViewPermission(
+        apiCollectionPermission,
+        PermissionOperation.ViewBasic
+      ),
+    [apiCollectionPermission]
   );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -167,7 +178,7 @@ const APICollectionPage: FunctionComponent = () => {
     } catch (err) {
       // Error
       if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsAPICollectionLoading(false);
@@ -205,17 +216,20 @@ const APICollectionPage: FunctionComponent = () => {
 
   const activeTabHandler = useCallback(
     (activeKey: string) => {
-      if (activeKey !== activeTab) {
-        history.replace({
-          pathname: getEntityDetailsPath(
-            EntityType.API_COLLECTION,
-            decodedAPICollectionFQN,
-            activeKey
-          ),
-        });
+      if (activeKey !== tab) {
+        navigate(
+          {
+            pathname: getEntityDetailsPath(
+              EntityType.API_COLLECTION,
+              decodedAPICollectionFQN,
+              activeKey
+            ),
+          },
+          { replace: true }
+        );
       }
     },
-    [activeTab, decodedAPICollectionFQN]
+    [tab, decodedAPICollectionFQN]
   );
 
   const handleUpdateOwner = useCallback(
@@ -317,7 +331,7 @@ const APICollectionPage: FunctionComponent = () => {
 
   const versionHandler = useCallback(() => {
     currentVersion &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.API_COLLECTION,
           decodedAPICollectionFQN,
@@ -328,11 +342,11 @@ const APICollectionPage: FunctionComponent = () => {
   }, [currentVersion, decodedAPICollectionFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as APICollection;
 
     setAPICollection((data) => ({
@@ -370,23 +384,28 @@ const APICollectionPage: FunctionComponent = () => {
   const { editCustomAttributePermission, viewAllPermission } = useMemo(
     () => ({
       editTagsPermission:
-        (apiCollectionPermission.EditTags || apiCollectionPermission.EditAll) &&
-        !apiCollection.deleted,
+        getPrioritizedEditPermission(
+          apiCollectionPermission,
+          PermissionOperation.EditTags
+        ) && !apiCollection.deleted,
       editGlossaryTermsPermission:
-        (apiCollectionPermission.EditGlossaryTerms ||
-          apiCollectionPermission.EditAll) &&
-        !apiCollection.deleted,
+        getPrioritizedEditPermission(
+          apiCollectionPermission,
+          PermissionOperation.EditGlossaryTerms
+        ) && !apiCollection.deleted,
       editDescriptionPermission:
-        (apiCollectionPermission.EditDescription ||
-          apiCollectionPermission.EditAll) &&
-        !apiCollection.deleted,
+        getPrioritizedEditPermission(
+          apiCollectionPermission,
+          PermissionOperation.EditDescription
+        ) && !apiCollection.deleted,
       editCustomAttributePermission:
-        (apiCollectionPermission.EditAll ||
-          apiCollectionPermission.EditCustomFields) &&
-        !apiCollection.deleted,
+        getPrioritizedEditPermission(
+          apiCollectionPermission,
+          PermissionOperation.EditCustomFields
+        ) && !apiCollection.deleted,
       viewAllPermission: apiCollectionPermission.ViewAll,
     }),
-    [apiCollectionPermission, apiCollection]
+    [apiCollectionPermission, apiCollection, getPrioritizedEditPermission]
   );
 
   const handleAPICollectionUpdate = async (updatedData: APICollection) => {
@@ -401,7 +420,7 @@ const APICollectionPage: FunctionComponent = () => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = apiCollectionClassBase.getAPICollectionDetailPageTabs({
-      activeTab,
+      activeTab: tab,
       feedCount,
       apiCollection,
       fetchAPICollectionDetails,
@@ -419,7 +438,7 @@ const APICollectionPage: FunctionComponent = () => {
       EntityTabs.API_ENDPOINT
     );
   }, [
-    activeTab,
+    tab,
     customizedPage,
     feedCount,
     apiCollection,
@@ -464,9 +483,8 @@ const APICollectionPage: FunctionComponent = () => {
   };
 
   const isExpandViewSupported = useMemo(
-    () =>
-      checkIfExpandViewSupported(tabs[0], activeTab, PageType.APICollection),
-    [tabs[0], activeTab]
+    () => checkIfExpandViewSupported(tabs[0], tab, PageType.APICollection),
+    [tabs[0], tab]
   );
   if (isPermissionsLoading || isLoading) {
     return <Loader />;
@@ -537,7 +555,7 @@ const APICollectionPage: FunctionComponent = () => {
             onUpdate={handleAPICollectionUpdate}>
             <Col className="entity-details-page-tabs" span={24}>
               <Tabs
-                activeKey={activeTab}
+                activeKey={tab}
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}

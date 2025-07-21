@@ -405,6 +405,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -414,12 +415,14 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
     MeasureHidden = "MEASURE HIDDEN",
     MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
@@ -743,6 +746,7 @@ export enum DataModelType {
     TableauDataModel = "TableauDataModel",
     TableauEmbeddedDatasource = "TableauEmbeddedDatasource",
     TableauPublishedDatasource = "TableauPublishedDatasource",
+    ThoughtSpotDataModel = "ThoughtSpotDataModel",
 }
 
 /**
@@ -812,6 +816,7 @@ export enum DashboardServiceType {
     Sigma = "Sigma",
     Superset = "Superset",
     Tableau = "Tableau",
+    ThoughtSpot = "ThoughtSpot",
 }
 
 /**

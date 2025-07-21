@@ -42,13 +42,13 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.factory.ParserFactory;
 import org.openmetadata.service.formatter.field.DefaultFieldFormatter;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -321,7 +321,11 @@ public class FormatterUtil {
               TEST_CASE_RESULT + ",testSuites",
               Include.ALL);
       ChangeEvent changeEvent =
-          getChangeEvent(updateBy, eventType, testCase.getEntityReference().getType(), testCase);
+          getChangeEvent(
+              updateBy,
+              eventType,
+              testCase.getEntityReference().getType(),
+              testCase.withUpdatedAt(testCaseResult.getTimestamp()));
       return changeEvent
           .withChangeDescription(
               new ChangeDescription()

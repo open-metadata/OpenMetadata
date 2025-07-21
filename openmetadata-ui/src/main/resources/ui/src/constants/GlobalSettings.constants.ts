@@ -27,10 +27,12 @@ export enum GlobalSettingsMenuCategory {
 export enum GlobalSettingOptions {
   USERS = 'users',
   ADMINS = 'admins',
+  ONLINE_USERS = 'online-users',
   TEAMS = 'teams',
   PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
+  PERMISSION_DEBUGGER = 'permission-debugger',
   DATABASES = 'databases',
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchemas',
