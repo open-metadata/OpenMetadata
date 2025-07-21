@@ -163,7 +163,6 @@ class OpenMetadata(
         if self.config.extraHeaders:
             extra_headers = self.config.extraHeaders.root
 
-        # Create default client config if none provided
         client_config = ClientConfig(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
