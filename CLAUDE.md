@@ -2,111 +2,139 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## About OpenMetadata
+## About OpenMetadata Ingestion
 
-OpenMetadata is a unified metadata platform for data discovery, data observability, and data governance. This is a multi-module project with Java backend services, React frontend, Python ingestion framework, and comprehensive Docker infrastructure.
+OpenMetadata Ingestion is a Python framework for building connectors to ingest metadata from various systems into OpenMetadata. It contains 75+ data source connectors for databases, dashboards, pipelines, messaging systems, and more. This module is part of the larger OpenMetadata platform.
 
 ## Architecture Overview
 
-- **Backend**: Java 21 + Dropwizard REST API framework, multi-module Maven project
-- **Frontend**: React + TypeScript + Ant Design, built with Webpack and Yarn
-- **Ingestion**: Python 3.9+ with Pydantic 2.x, 75+ data source connectors
-- **Database**: MySQL (default) or PostgreSQL with Flyway migrations
-- **Search**: Elasticsearch 7.17+ or OpenSearch 2.6+ for metadata discovery
-- **Infrastructure**: Apache Airflow for workflow orchestration
+The ingestion module follows a plugin-based architecture:
+
+- **Core Framework**: Based on Python 3.9+ with Pydantic 2.x for data models
+- **Workflow Engine**: Handles sequential processing of metadata through Source → Processor → Sink steps
+- **Connectors**: Plugin-based connectors for various data sources
+- **Metadata Profiler**: SQLAlchemy ORM-based profiler for data quality metrics
+- **Data Quality**: Framework for running tests against data sources
+- **PII Detection**: NLP-based detection of sensitive data
+
+## Directory Structure
+
+- `src/metadata/`: Core functionality for metadata ingestion and workflows
+  - `ingestion/`: Core ingestion framework and source connectors
+  - `profiler/`: Data profiling capabilities
+  - `data_quality/`: Data quality validations framework
+  - `workflow/`: Workflow execution engine
+
+- `examples/`: Example workflow configuration files
+- `plugins/`: Custom pylint plugins for code quality
+- `tests/`: Unit and integration tests
 
 ## Essential Development Commands
 
-### Prerequisites and Setup
-```bash
-make prerequisites              # Check system requirements
-make install_dev_env           # Install all development dependencies
-make yarn_install_cache        # Install UI dependencies
-```
-
-### Frontend Development
-```bash
-cd openmetadata-ui/src/main/resources/ui
-yarn start                     # Start development server on localhost:3000
-yarn test                      # Run Jest unit tests
-yarn playwright:run            # Run E2E tests
-yarn lint                      # ESLint check
-yarn lint:fix                  # ESLint with auto-fix
-```
-
-### Backend Development
-```bash
-mvn clean package -DskipTests  # Build without tests
-mvn clean package -DonlyBackend -pl !openmetadata-ui  # Backend only
-mvn test                       # Run unit tests
-mvn verify                     # Run integration tests
-mvn spotless:apply             # Format Java code
-```
-
-### Python Ingestion Development
-```bash
-cd ingestion
-make install_dev_env           # Install in development mode
-make generate                  # Generate Pydantic models from JSON schemas
-make unit_ingestion_dev_env    # Run unit tests
-make lint                      # Run pylint
-make py_format                 # Format with black, isort, pycln
-make static-checks             # Run type checking with basedpyright
-```
-
-### Full Local Environment
-```bash
-./docker/run_local_docker.sh -m ui -d mysql        # Complete local setup with UI
-./docker/run_local_docker.sh -m no-ui -d postgresql # Backend only with PostgreSQL
-./docker/run_local_docker.sh -s true               # Skip Maven build step
-```
-
-### Testing
-```bash
-make run_e2e_tests             # Full E2E test suite
-make unit_ingestion            # Python unit tests with coverage
-yarn test:coverage             # Frontend test coverage
-```
-
-## Code Generation and Schemas
-
-OpenMetadata uses a schema-first approach with JSON Schema definitions driving code generation:
+### Setup and Installation
 
 ```bash
-make generate                  # Generate all models from schemas
-make py_antlr                  # Generate Python ANTLR parsers
-make js_antlr                  # Generate JavaScript ANTLR parsers
-yarn parse-schema              # Parse JSON schemas for frontend
+# Install development dependencies
+make install_dev_env
+
+# Install specific plugin dependencies
+pip install ".[mysql]"
+pip install ".[snowflake]"
+pip install ".[all]"  # Install all dependencies (except airflow, db2, etc)
 ```
 
-## Key Directories
+### Build Commands
 
-- `openmetadata-service/` - Core Java backend services and REST APIs
-- `openmetadata-ui/src/main/resources/ui/` - React frontend application
-- `ingestion/` - Python ingestion framework with connectors
-- `openmetadata-spec/` - JSON Schema specifications for all entities
-- `bootstrap/sql/` - Database schema migrations and sample data
-- `conf/` - Configuration files for different environments
-- `docker/` - Docker configurations for local and production deployment
+```bash
+# Install the package in development mode
+pip install -e .
+
+# Generate models from JSON schemas
+make generate
+```
+
+### Testing Commands
+
+```bash
+# Run unit tests (excluding specific packages like airflow)
+make unit_ingestion_dev_env
+
+# Run specific unit tests
+pytest tests/unit/path/to/test_file.py -v
+
+# Run integration tests
+make run_ometa_integration_tests
+
+# Run all tests with coverage
+make run_python_tests
+```
+
+### Code Quality Tools
+
+```bash
+# Run linting
+make lint
+
+# Format code
+make py_format
+
+# Run static type checking
+make static-checks
+
+# Install pre-commit hooks
+make precommit_install
+```
+
+### Running the CLI
+
+```bash
+# Run metadata ingestion
+metadata ingest -c path/to/config.yaml
+
+# Run metadata profiling
+metadata profile -c path/to/config.yaml
+
+# Run data quality tests
+metadata test-suite -c path/to/config.yaml
+```
 
 ## Development Workflow
 
-1. **Schema Changes**: Modify JSON schemas in `openmetadata-spec/`, then run `mvn clean install` on openmetadata-spec to update models
-2. **Backend**: Develop in Java using Dropwizard patterns, test with `mvn test`  
-3. **Frontend**: Use React/TypeScript with Ant Design components, test with Jest/Playwright
-4. **Ingestion**: Python connectors follow plugin pattern, use `make install_dev_env` for development
-5. **Full Testing**: Use `make run_e2e_tests` before major changes
+1. **Install Dependencies**: Use `make install_dev_env` to set up your environment
+2. **Write Code**: Follow the plugin-based architecture for adding new connectors or features
+3. **Format Code**: Use `make py_format` to ensure code follows style guidelines
+4. **Test**: Run `make unit_ingestion_dev_env` to verify your changes
+5. **Static Type Checking**: Run `make static-checks` to catch type errors
 
-## Database and Migrations
+## Connector Development
 
-- Flyway handles schema migrations in `bootstrap/sql/migrations/`
-- Use Docker containers for local database setup
-- Default MySQL, PostgreSQL supported as alternative
-- Sample data loaded automatically in development environment
+When developing a new connector:
 
-## Security and Authentication
+1. Study existing connectors in `src/metadata/ingestion/source/`
+2. Implement required interfaces (metadata, usage, lineage, etc.)
+3. Add example configuration in `examples/workflows/`
+4. Write unit tests in `tests/unit/`
+5. Add integration tests if possible in `tests/integration/`
 
-- JWT-based authentication with OAuth2/SAML support
-- Role-based access control defined in Java entities
-- Security configurations in `conf/openmetadata.yaml`
-- Never commit secrets - use environment variables or secure vaults
+## Workflow Architecture
+
+OpenMetadata ingestion workflows use a step-based architecture:
+
+- **Source**: Reads metadata from external systems (IterStep)
+- **Processor**: Transforms metadata (ReturnStep)
+- **Sink**: Sends data to OpenMetadata API (ReturnStep)
+- **BulkSink**: Handles bulk operations (BulkStep)
+
+Workflows handle errors through Either monad pattern and maintain Status objects to track progress.
+
+## Common Issues and Solutions
+
+- **Import Errors**: Use the correct import paths. Never use `ingestion.src.metadata`, use `metadata` directly.
+- **Dependency Conflicts**: Some plugins have conflicting dependencies. Use specific environments for testing.
+- **SSL Errors**: Check SSL certificates and configurations in connection parameters.
+- **Performance Issues**: Use sampling for large datasets in profiling workflows.
+
+## Useful Documentation Links
+
+For more details on the OpenMetadata architecture and APIs, refer to:
+- https://docs.open-metadata.org/connectors
