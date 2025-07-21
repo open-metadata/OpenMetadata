@@ -69,6 +69,7 @@ const formData = {
   supportsDBTExtraction: true,
   supportsProfiler: true,
   supportsQueryComment: true,
+  ingestionRunner: 'CollateSaaS',
 };
 
 jest.mock('../../../../utils/DatabaseServiceUtils', () => ({
@@ -145,17 +146,28 @@ jest.mock('../../../../utils/CommonUtils', () => ({
 
 jest.mock('../../../common/FormBuilder/FormBuilder', () =>
   forwardRef(
-    jest.fn().mockImplementation(({ children, onSubmit, onCancel }) => (
-      <div data-testid="form-builder">
-        {children}
-        <button
-          data-testid="submit-button"
-          onClick={() => onSubmit({ formData })}>
-          Submit FormBuilder
-        </button>
-        <button onClick={onCancel}>Cancel FormBuilder</button>
-      </div>
-    ))
+    jest.fn().mockImplementation(({ children, onSubmit, onCancel, ref }) => {
+      if (ref) {
+        ref.current = {
+          state: {
+            formData: formData,
+          },
+          validateForm: jest.fn().mockReturnValue(true),
+        };
+      }
+
+      return (
+        <div data-testid="form-builder">
+          {children}
+          <button
+            data-testid="submit-button"
+            onClick={() => onSubmit({ formData })}>
+            Submit FormBuilder
+          </button>
+          <button onClick={onCancel}>Cancel FormBuilder</button>
+        </div>
+      );
+    })
   )
 );
 
