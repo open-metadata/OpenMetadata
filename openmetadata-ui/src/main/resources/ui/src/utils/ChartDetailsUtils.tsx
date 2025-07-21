@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
@@ -25,10 +26,9 @@ import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ChartDetailsTabsProps } from './ChartDetailsClassBase';
-import { t } from './i18next/LocalUtil';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS}`;
+export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
 
 export const getChartDetailPageTabs = ({
   chartDetails,
@@ -48,7 +48,7 @@ export const getChartDetailPageTabs = ({
         <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
       ),
       key: EntityTabs.DETAILS,
-      children: <GenericTab type={'Chart' as PageType} />,
+      children: <GenericTab type={PageType.Chart} />,
     },
     {
       label: (

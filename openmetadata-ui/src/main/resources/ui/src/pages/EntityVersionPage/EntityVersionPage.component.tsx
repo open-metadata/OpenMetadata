@@ -22,6 +22,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import APIEndpointVersion from '../../components/APIEndpoint/APIEndpointVersion/APIEndpointVersion';
+import ChartVersion from '../../components/Chart/ChartVersion/ChartVersion.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ContainerVersion from '../../components/Container/ContainerVersion/ContainerVersion.component';
@@ -44,6 +45,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
+import { Chart } from '../../generated/entity/data/chart';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
@@ -63,6 +65,11 @@ import {
   getApiEndPointVersion,
   getApiEndPointVersions,
 } from '../../rest/apiEndpointsAPI';
+import {
+  getChartByFqn,
+  getChartVersion,
+  getChartVersions,
+} from '../../rest/chartsAPI';
 import {
   getDashboardByFqn,
   getDashboardVersion,
@@ -128,6 +135,7 @@ export type VersionData =
   | Table
   | Topic
   | Dashboard
+  | Chart
   | Pipeline
   | Mlmodel
   | Container
@@ -369,6 +377,19 @@ const EntityVersionPage: FunctionComponent = () => {
 
           break;
         }
+        case EntityType.CHART: {
+          const { id } = await getChartByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
+
+          setEntityId(id ?? '');
+
+          const versions = await getChartVersions(id ?? '');
+
+          setVersionList(versions);
+
+          break;
+        }
 
         default:
           break;
@@ -463,6 +484,13 @@ const EntityVersionPage: FunctionComponent = () => {
             }
             case EntityType.METRIC: {
               const currentVersion = await getMetricVersion(id, version);
+
+              setCurrentVersionData(currentVersion);
+
+              break;
+            }
+            case EntityType.CHART: {
+              const currentVersion = await getChartVersion(id, version);
 
               setCurrentVersionData(currentVersion);
 
@@ -715,6 +743,25 @@ const EntityVersionPage: FunctionComponent = () => {
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedMetricName={slashedEntityName}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.CHART: {
+        return (
+          <ChartVersion
+            backHandler={backHandler}
+            currentVersionData={currentVersionData as Chart}
+            dataProducts={currentVersionData.dataProducts}
+            deleted={currentVersionData.deleted}
+            domain={domain}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
+            slashedChartName={slashedEntityName as unknown as string[]}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}

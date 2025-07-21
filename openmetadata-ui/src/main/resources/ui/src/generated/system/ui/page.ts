@@ -131,6 +131,7 @@ export enum PageType {
     StoredProcedure = "StoredProcedure",
     Table = "Table",
     Topic = "Topic",
+    Chart = "Chart",
 }
 
 /**
