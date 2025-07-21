@@ -11,3 +11,9 @@ CREATE TABLE IF NOT EXISTS index_mapping_versions (
 
 CREATE INDEX IF NOT EXISTS idx_index_mapping_versions_version ON index_mapping_versions (version);
 CREATE INDEX IF NOT EXISTS idx_index_mapping_versions_updatedAt ON index_mapping_versions (updatedAt);
+
+-- remove old reset link email template
+DELETE from doc_store where name = 'reset-link' and entityType = 'EmailTemplate';
+
+-- In case 1.7.3 migrations executed , with --force , remove it from server_logs
+DELETE FROM SERVER_CHANGE_LOG WHERE version = '1.7.3';
