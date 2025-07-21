@@ -239,6 +239,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATA_OBSERVABILITY}`,
             icon: DataObservability,
           },
+          {
+            label: t('label.security'),
+            description: t('message.page-sub-header-for-security'),
+            isProtected: true,
+            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.SECURITY}`,
+            icon: DataObservability,
+          },
         ],
       },
       {

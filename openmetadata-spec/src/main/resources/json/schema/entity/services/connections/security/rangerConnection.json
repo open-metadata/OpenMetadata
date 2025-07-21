@@ -1,112 +1,102 @@
 {
-    "$id": "https://open-metadata.org/schema/entity/services/connections/security/rangerConnection.json",
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "RangerConnection",
-    "description": "Apache Ranger Connection Config",
-    "type": "object",
-    "javaType": "org.openmetadata.schema.services.connections.security.RangerConnection",
-    "definitions": {
-        "rangerType": {
-            "description": "Apache Ranger service type",
-            "type": "string",
-            "enum": [
-                "Ranger"
-            ],
-            "default": "Ranger"
-        },
-        "basicAuth": {
-            "title": "Basic Auth",
-            "type": "object",
-            "properties": {
-                "username": {
-                    "title": "Username",
-                    "description": "Username to connect to Apache Ranger. This user should have privileges to read all policies and metadata in Ranger.",
-                    "type": "string"
-                },
-                "password": {
-                    "title": "Password",
-                    "description": "Password to connect to Apache Ranger.",
-                    "type": "string",
-                    "format": "password"
-                }
-            },
-            "required": [
-                "username",
-                "password"
-            ],
-            "additionalProperties": false
-        },
-        "kerberosAuth": {
-            "title": "Kerberos Auth",
-            "type": "object",
-            "properties": {
-                "keytabPath": {
-                    "title": "Keytab Path",
-                    "description": "Path to the keytab file for Kerberos authentication.",
-                    "type": "string"
-                },
-                "principal": {
-                    "title": "Principal",
-                    "description": "Kerberos principal for authentication. Used with keytab file.",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "keytabPath",
-                "principal"
-            ],
-            "additionalProperties": false
-        }
+  "$id": "https://open-metadata.org/schema/entity/services/connections/security/rangerConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RangerConnection",
+  "description": "Apache Ranger Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.security.RangerConnection",
+  "definitions": {
+    "rangerType": {
+      "title": "Ranger Type",
+      "description": "Apache Ranger service type",
+      "type": "string",
+      "enum": ["Ranger"],
+      "default": "Ranger"
     },
-    "properties": {
-        "type": {
-            "title": "Service Type",
-            "description": "Service Type",
-            "$ref": "#/definitions/rangerType",
-            "default": "Ranger"
+    "basicAuth": {
+      "title": "Basic Auth",
+      "type": "object",
+      "properties": {
+        "username": {
+          "title": "Username",
+          "description": "Username to connect to Apache Ranger. This user should have privileges to read all policies and metadata in Ranger.",
+          "type": "string"
         },
-        "hostPort": {
-            "expose": true,
-            "title": "Host and Port",
-            "description": "Apache Ranger Admin URL.",
-            "type": "string",
-            "format": "uri"
-        },
-        "authType": {
-            "title": "Authentication Type",
-            "description": "Authentication type to connect to Apache Ranger.",
-            "oneOf": [
-                {
-                    "$ref": "#/definitions/basicAuth"
-                },
-                {
-                    "$ref": "#/definitions/kerberosAuth"
-                }
-            ]
-        },
-        "verifySSL": {
-            "title": "Verify SSL",
-            "description": "Flag to verify SSL Certificate for Apache Ranger.",
-            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
-            "default": "no-ssl"
-        },
-        "sslConfig": {
-            "title": "SSL Configuration",
-            "description": "SSL Configuration for Apache Ranger",
-            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
-        },
-        "connectionOptions": {
-            "title": "Connection Options",
-            "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
-        },
-        "connectionArguments": {
-            "title": "Connection Arguments",
-            "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+        "password": {
+          "title": "Password",
+          "description": "Password to connect to Apache Ranger.",
+          "type": "string",
+          "format": "password"
         }
+      },
+      "required": ["username", "password"],
+      "additionalProperties": false
     },
-    "additionalProperties": false,
-    "required": [
-        "hostPort",
-        "authType"
-    ]
+    "kerberosAuth": {
+      "title": "Kerberos Auth",
+      "type": "object",
+      "properties": {
+        "keytabPath": {
+          "title": "Keytab Path",
+          "description": "Path to the keytab file for Kerberos authentication.",
+          "type": "string"
+        },
+        "principal": {
+          "title": "Principal",
+          "description": "Kerberos principal for authentication. Used with keytab file.",
+          "type": "string"
+        }
+      },
+      "required": ["keytabPath", "principal"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/rangerType",
+      "default": "Ranger"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Apache Ranger Admin URL.",
+      "type": "string",
+      "format": "uri"
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Authentication type to connect to Apache Ranger.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/basicAuth"
+        },
+        {
+          "$ref": "#/definitions/kerberosAuth"
+        }
+      ]
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Flag to verify SSL Certificate for Apache Ranger.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL Configuration for Apache Ranger",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "authType"]
 }

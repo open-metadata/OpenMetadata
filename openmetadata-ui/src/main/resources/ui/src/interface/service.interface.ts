@@ -44,6 +44,7 @@ import {
   SearchConnection,
   SearchService,
 } from '../generated/entity/services/searchService';
+import { SecurityConnection } from '../generated/entity/services/securityService';
 import {
   StorageConnection,
   StorageService,
@@ -116,7 +117,8 @@ export type ConfigData =
   | MlModelConnection
   | MetadataConnection
   | StorageConnection
-  | SearchConnection;
+  | SearchConnection
+  | SecurityConnection;
 
 export type IngestionWorkflowData = Pipeline & {
   name: string;
