@@ -141,7 +141,7 @@ test.describe('Service Version pages', () => {
 
   entities.forEach((entity) => {
     test(`${entity.getType()}`, async ({ page }) => {
-      await entity.visitEntityPage(page);
+      await entity.visitEntityPageWithCustomSearchBox(page);
       const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
