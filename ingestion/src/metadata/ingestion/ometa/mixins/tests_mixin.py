@@ -169,6 +169,7 @@ class OMetaTestsMixin:
         entity_link: Optional[str] = None,
         test_definition_fqn: Optional[str] = None,
         test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,
+        description: Optional[str] = None,
     ):
         """Get or create a test case
 
@@ -197,6 +198,7 @@ class OMetaTestsMixin:
                 entityLink=entity_link,
                 testDefinition=test_definition_fqn,
                 parameterValues=test_case_parameter_values,
+                description=description,
             )  # type: ignore
         )
         return test_case

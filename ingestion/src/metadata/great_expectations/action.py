@@ -322,6 +322,16 @@ class OpenMetadataValidationAction(ValidationAction):
         fqn_ = cast(str, fqn_)
         return fqn_
 
+    def _get_test_case_description(self, result: dict) -> str:
+        """Get test case description from GE test result"""
+        if self.expectation_suite:
+            expectation = self._get_expectation_config(result)
+            if expectation:
+                meta: Optional[Dict] = expectation.get("meta")
+                if meta:
+                    return meta.get("description", "")
+        return ""
+
     def _get_test_case_params_value(self, result: dict) -> List[TestCaseParameterValue]:
         """Build test case parameter value from GE test result"""
         if self.expectation_suite:
@@ -545,6 +555,7 @@ class OpenMetadataValidationAction(ValidationAction):
                 ),
                 test_definition_fqn=test_definition.fullyQualifiedName.root,
                 test_case_parameter_values=self._get_test_case_params_value(result),
+                description=self._get_test_case_description(result),
             )
 
             self.ometa_conn.add_test_case_results(
