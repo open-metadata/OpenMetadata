@@ -18,6 +18,7 @@ import { Domain } from '../support/domain/Domain';
 import { sidebarClick } from './sidebar';
 
 export const uuid = () => randomUUID().split('-')[0];
+export const fullUuid = () => randomUUID();
 
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
@@ -59,6 +60,12 @@ export const getAuthContext = async (token: string) => {
 export const redirectToHomePage = async (page: Page) => {
   await page.goto('/');
   await page.waitForURL('**/my-data');
+  await page.waitForLoadState('networkidle');
+};
+
+export const redirectToExplorePage = async (page: Page) => {
+  await page.goto('/explore');
+  await page.waitForURL('**/explore');
   await page.waitForLoadState('networkidle');
 };
 
@@ -230,7 +237,15 @@ export const removeDomain = async (
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
-  await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('no-domain-text')).toContainText('No Domains');
 };
 
 export const assignDataProduct = async (

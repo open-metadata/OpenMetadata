@@ -28,7 +28,10 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { updateDisplayNameForEntity } from '../../utils/entity';
-import { validateBucketsForIndex } from '../../utils/explore';
+import {
+  validateBucketsForIndex,
+  verifyDatabaseAndSchemaInExploreTree,
+} from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -129,6 +132,54 @@ test.describe('Explore Tree scenarios ', () => {
     );
   });
 
+  test('Verify Database and Database Schema available in explore tree', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const table1 = new TableClass();
+    const table2 = new TableClass();
+
+    try {
+      await table1.create(apiContext);
+      await table2.create(apiContext);
+
+      const schemaName1 = get(table1.schemaResponseData, 'name', '');
+      const dbName1 = get(table1.databaseResponseData, 'name', '');
+      const serviceName1 = get(table1.serviceResponseData, 'name', '');
+      const schemaName2 = get(table2.schemaResponseData, 'name', '');
+      const dbName2 = get(table2.databaseResponseData, 'name', '');
+      const serviceName2 = get(table2.serviceResponseData, 'name', '');
+
+      await sidebarClick(page, SidebarItem.EXPLORE);
+      await page.waitForLoadState('networkidle');
+
+      // Verify first table's database and schema
+      await test.step('Verify first table database and schema', async () => {
+        await verifyDatabaseAndSchemaInExploreTree(
+          page,
+          serviceName1,
+          dbName1,
+          schemaName1
+        );
+      });
+
+      // Verify second table's database and schema
+      await test.step('Verify second table database and schema', async () => {
+        await verifyDatabaseAndSchemaInExploreTree(
+          page,
+          serviceName2,
+          dbName2,
+          schemaName2,
+          true
+        );
+      });
+    } finally {
+      await table1.delete(apiContext);
+      await table2.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   test('Verify Database and Database schema after rename', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass();
@@ -140,68 +191,62 @@ test.describe('Explore Tree scenarios ', () => {
     const updatedSchemaName = `Test ${schemaName} updated`;
     const updatedDbName = `Test ${dbName} updated`;
 
-    const schemaRes = page.waitForResponse('/api/v1/databaseSchemas/name/*');
-    await page.getByRole('link', { name: schemaName }).click();
-    // Rename Schema Page
-    await schemaRes;
-    await updateDisplayNameForEntity(
-      page,
-      updatedSchemaName,
-      EntityTypeEndpoint.DatabaseSchema
+    // Step 1: Visit explore page and check existing values before rename
+    await test.step(
+      'Visit explore page and verify existing values',
+      async () => {
+        await sidebarClick(page, SidebarItem.EXPLORE);
+        await page.waitForLoadState('networkidle');
+
+        // Verify original database and schema names using utility function
+        await verifyDatabaseAndSchemaInExploreTree(
+          page,
+          serviceName,
+          dbName,
+          schemaName
+        );
+      }
     );
 
-    const dbRes = page.waitForResponse('/api/v1/databases/name/*');
-    await page.getByRole('link', { name: dbName }).click();
-    // Rename Database Page
-    await dbRes;
-    await updateDisplayNameForEntity(
-      page,
-      updatedDbName,
-      EntityTypeEndpoint.Database
-    );
+    // Step 2: Perform rename operations
+    await test.step('Rename schema and database', async () => {
+      // Navigate back to the table page for renaming
+      await table.visitEntityPage(page);
 
-    await sidebarClick(page, SidebarItem.EXPLORE);
-    await page.waitForLoadState('networkidle');
-    const serviceNameRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=database_search_index&from=0&size=0*mysql*'
-    );
-    await page
-      .locator('div')
-      .filter({ hasText: /^mysql$/ })
-      .locator('svg')
-      .first()
-      .click();
-    await serviceNameRes;
+      const schemaRes = page.waitForResponse('/api/v1/databaseSchemas/name/*');
+      await page.getByRole('link', { name: schemaName }).click();
+      // Rename Schema Page
+      await schemaRes;
+      await updateDisplayNameForEntity(
+        page,
+        updatedSchemaName,
+        EntityTypeEndpoint.DatabaseSchema
+      );
 
-    const databaseRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=dataAsset*serviceType*'
-    );
+      const dbRes = page.waitForResponse('/api/v1/databases/name/*');
+      await page.getByRole('link', { name: dbName }).click();
+      // Rename Database Page
+      await dbRes;
+      await updateDisplayNameForEntity(
+        page,
+        updatedDbName,
+        EntityTypeEndpoint.Database
+      );
+    });
 
-    await page
-      .locator('.ant-tree-treenode')
-      .filter({ hasText: serviceName })
-      .locator('.ant-tree-switcher svg')
-      .click();
-    await databaseRes;
+    // Step 3: Verify the changes are reflected in explore page
+    await test.step('Verify renamed values in explore page', async () => {
+      await sidebarClick(page, SidebarItem.EXPLORE);
+      await page.waitForLoadState('networkidle');
 
-    await expect(
-      page.getByTestId(`explore-tree-title-${updatedDbName}`)
-    ).toBeVisible();
-
-    const databaseSchemaRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=dataAsset*database.displayName*'
-    );
-
-    await page
-      .locator('.ant-tree-treenode')
-      .filter({ hasText: updatedDbName })
-      .locator('.ant-tree-switcher svg')
-      .click();
-    await databaseSchemaRes;
-
-    await expect(
-      page.getByTestId(`explore-tree-title-${updatedSchemaName}`)
-    ).toBeVisible();
+      // Verify updated database and schema names using utility function
+      await verifyDatabaseAndSchemaInExploreTree(
+        page,
+        serviceName,
+        updatedDbName,
+        updatedSchemaName
+      );
+    });
 
     await table.delete(apiContext);
     await afterAction();

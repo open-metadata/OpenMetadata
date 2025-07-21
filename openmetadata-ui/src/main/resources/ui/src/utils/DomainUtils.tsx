@@ -513,3 +513,11 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
     />
   );
 };
+
+export const getDomainIcon = (iconURL?: string) => {
+  if (iconURL) {
+    return <img alt="domain icon" className="domain-icon-url" src={iconURL} />;
+  }
+
+  return <DomainIcon className="domain-default-icon" />;
+};

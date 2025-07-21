@@ -174,13 +174,25 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         setIsLoading(true);
         const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
         const results: Domain[] = await searchDomains(encodedValue);
+
+        const combinedData = [...results];
+
+        initialDomains?.forEach((selectedDomain) => {
+          const exists = combinedData.some((domain: Domain) =>
+            isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
+          );
+          if (!exists) {
+            combinedData.push(selectedDomain as unknown as Domain);
+          }
+        });
+
         const updatedTreeData = convertDomainsToTreeOptions(
-          results,
+          combinedData,
           0,
           isMultiple
         );
         setTreeData(updatedTreeData);
-        setDomains(results);
+        setDomains(combinedData);
       } finally {
         setIsLoading(false);
       }
