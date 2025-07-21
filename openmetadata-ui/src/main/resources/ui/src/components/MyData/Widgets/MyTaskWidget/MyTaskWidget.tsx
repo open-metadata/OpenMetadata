@@ -14,7 +14,6 @@
 import { isEmpty, orderBy, toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/ic-my-task.svg';
 import { SIZE, SORT_ORDER } from '../../../../enums/common.enum';
@@ -46,7 +45,6 @@ const MyTaskWidget = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [sortedData, setSortedData] = useState<Thread[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
@@ -139,7 +137,7 @@ const MyTaskWidget = ({
       <div className="widget-content flex-1">
         {isEmpty(sortedData) ? (
           <WidgetEmptyState
-            showActionButton
+            actionButtonLink={`users/${currentUser?.name}/task`}
             actionButtonText={t('label.view-all-task-plural')}
             dataTestId="my-task-empty-state"
             description={t('message.my-task-no-data-placeholder')}
@@ -151,7 +149,6 @@ const MyTaskWidget = ({
               />
             }
             title={t('label.no-tasks-yet')}
-            onActionClick={() => navigate(`users/${currentUser?.name}/task`)}
           />
         ) : (
           <>
