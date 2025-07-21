@@ -14,7 +14,7 @@
 import { isEmpty } from 'lodash';
 import { useFqn } from '../../../hooks/useFqn';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreateDataContract } from '../../../generated/api/data/createDataContract';
 import { EntityType } from '../../../generated/api/tests/createTestDefinition';
@@ -35,6 +35,12 @@ export const ContractTab = () => {
       id: '1',
     },
   };
+
+  useEffect(() => {
+    if (fqn) {
+      setTabMode('view');
+    }
+  }, [fqn]);
 
   const content = useMemo(() => {
     switch (tabMode) {

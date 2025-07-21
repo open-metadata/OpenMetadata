@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Input, Select, Space, Spin, Tabs, Typography } from 'antd';
 import { debounce, noop } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
@@ -84,16 +84,6 @@ export const UserTeamSelect = ({
 
   const isMultiUser = multiple.user;
   const isMultiTeam = multiple.team;
-
-  // Separate selected users and teams for reference if needed
-  const selectedUsers = useMemo(
-    () => value?.filter((item) => item.type === EntityType.USER) ?? [],
-    [value]
-  );
-  const selectedTeams = useMemo(
-    () => value?.filter((item) => item.type === EntityType.TEAM) ?? [],
-    [value]
-  );
 
   const fetchUserOptions = async (searchTerm: string, page = 1) => {
     setLoading(true);
@@ -278,7 +268,8 @@ export const UserTeamSelect = ({
     ));
   };
 
-  const dropdownRender = (menu: React.ReactElement) => (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const dropdownRender = (_menu: React.ReactElement) => (
     <div className="user-team-select-dropdown">
       <Tabs
         activeKey={activeTab}
