@@ -14,6 +14,6 @@ CREATE TABLE IF NOT EXISTS index_mapping_versions (
 -- remove old reset link email template
 DELETE from doc_store where name = 'reset-link' and entityType = 'EmailTemplate';
 
--- In case 1.7.3 migrations executed , with --force , remove it from server_logs
+-- In case 1.7.3 migrations executed , with --force , remove it from server_logs as it is covered in this migration
 DELETE FROM SERVER_CHANGE_LOG WHERE version = '1.7.3';
 
