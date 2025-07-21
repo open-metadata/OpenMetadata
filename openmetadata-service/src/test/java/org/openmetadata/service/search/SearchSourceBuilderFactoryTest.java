@@ -14,6 +14,9 @@
 package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +26,7 @@ import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchSourceBuilderFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchSourceBuilderFactory;
 
@@ -37,6 +41,17 @@ public class SearchSourceBuilderFactoryTest {
   public void setUp() {
     // Set up search settings with configurations
     searchSettings = new SearchSettings();
+    SearchRepository mockSearchRepository = mock(SearchRepository.class);
+
+    // Add mock for getIndexNameWithoutAlias method
+    when(mockSearchRepository.getIndexNameWithoutAlias(anyString()))
+        .thenAnswer(
+            invocation -> {
+              String resource = invocation.getArgument(0);
+              return resource.toLowerCase();
+            });
+
+    Entity.setSearchRepository(mockSearchRepository);
 
     // Global settings
     GlobalSettings globalSettings = new GlobalSettings();
