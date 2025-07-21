@@ -1828,6 +1828,7 @@
     "custom-property-update": "بروزرسانی ویژگی سفارشی '{{propertyName}}' در {{entityName}} {{status}} است",
     "customize-brand-description": "تجربه کاربری {{brandName}} را برای نیازهای سازمانی و تیمی خود تنظیم کنید.",
     "customize-entity-landing-page-header-for-persona": "تجربه صفحه موجودیت {{entity}} را برای شخصیت <0>{{persona}}</0> شخصی‌سازی کنید",
+    "customize-homepage-page-header-for-persona": "Personalize a experiência da página inicial para a <0>{{persona}}</0> persona",
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "دارایی داده‌ای {{actionType}} شده است",
     "data-insight-alert-destination-description": "اعلان‌های ایمیلی را به مدیران یا تیم‌ها ارسال کنید.",

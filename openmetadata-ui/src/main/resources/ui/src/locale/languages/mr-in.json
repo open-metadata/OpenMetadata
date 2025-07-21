@@ -1828,6 +1828,7 @@
     "custom-property-update": "सानुकूल गुणधर्म '{{propertyName}}' चे {{entityName}} मधील अद्यतन {{status}} आहे",
     "customize-brand-description": "तुमच्या संस्थात्मक आणि टीमच्या गरजांसाठी {{brandName}} UX सानुकूलित करा.",
     "customize-entity-landing-page-header-for-persona": "{{persona}} व्यक्तिमत्वासाठी {{entity}} घटक पृष्ठ अनुभव वैयक्तिकृत करा",
+    "customize-homepage-page-header-for-persona": "<0>{{persona}}</0> पर्सोनासाठी होमपेज अनुभव वैयक्तिकृत करा",
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "डेटा ॲसेट {{actionType}} केले आहे",
     "data-insight-alert-destination-description": "प्रशासक किंवा टीमला ईमेल सूचना पाठवा.",

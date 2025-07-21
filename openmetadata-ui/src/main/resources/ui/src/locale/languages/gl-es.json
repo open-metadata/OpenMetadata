@@ -1828,6 +1828,7 @@
     "custom-property-update": "A actualización da propiedade personalizada '{{propertyName}}' en {{entityName}} está {{status}}",
     "customize-brand-description": "Adapta a experiencia de usuario de {{brandName}} ás necesidades da túa organización e equipo.",
     "customize-entity-landing-page-header-for-persona": "Personaliza a experiencia da páxina de entidade {{entity}} para a persoa <0>{{persona}}</0>",
+    "customize-homepage-page-header-for-persona": "Personaliza a experiencia da páxina de inicio para a <0>{{persona}}</0> persoa",
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "O activo de datos foi {{actionType}}",
     "data-insight-alert-destination-description": "Envía notificacións por correo electrónico aos administradores ou equipos.",

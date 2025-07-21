@@ -1828,6 +1828,7 @@
     "custom-property-update": "Aangepaste eigenschap '{{propertyName}}' update in {{entityName}} is {{status}}",
     "customize-brand-description": "De {{brandName}} UX aanpassen aan de behoeften van uw organisatie en team.",
     "customize-entity-landing-page-header-for-persona": "Personaliseer de {{entity}} entiteitspagina-ervaring voor de <0>{{persona}}</0> persona",
+    "customize-homepage-page-header-for-persona": "Personaliseer de homepage-ervaring voor de <0>{{persona}}</0> persona",
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "Data-asset is {{actionType}}",
     "data-insight-alert-destination-description": "Stuur e-mailmeldingen naar beheerders of teams.",
