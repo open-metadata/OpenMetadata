@@ -167,7 +167,7 @@ const MyFeedWidgetInternal = ({
               EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
-              count: showMoreCount,
+              count: showMoreCount as unknown as number,
             })}
             showMoreButton={Boolean(!loading) && !isEmpty(entityThread)}
           />
