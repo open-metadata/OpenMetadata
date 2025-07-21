@@ -1674,7 +1674,7 @@
     "view-less": "Показать меньше",
     "view-more": "Посмотреть больше",
     "view-more-capital": "View More",
-    "view-more-count": "Показать ещё {{count}}",
+    "view-more-count": "Показать ещё {{countValue}}",
     "view-new-count": "Посмотреть {{count}} новых",
     "view-parsing-timeout-limit": "Ограничение по времени парсинга представления",
     "view-plural": "Просмотры",

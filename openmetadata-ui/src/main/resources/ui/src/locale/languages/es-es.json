@@ -1674,7 +1674,7 @@
     "view-less": "Ver menos",
     "view-more": "Ver más",
     "view-more-capital": "View More",
-    "view-more-count": "Ver {{count}} más",
+    "view-more-count": "Ver {{countValue}} más",
     "view-new-count": "Ver {{count}} nuevo",
     "view-parsing-timeout-limit": "Timpo Límite de parseo de vistas",
     "view-plural": "Vistas",

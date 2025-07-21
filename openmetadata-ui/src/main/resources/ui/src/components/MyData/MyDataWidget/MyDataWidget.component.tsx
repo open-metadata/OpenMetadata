@@ -263,6 +263,11 @@ const MyDataWidgetInternal = ({
       </div>
     );
   }, [data, isExpanded]);
+
+  const showMoreCount = useMemo(() => {
+    return data.length > 0 ? data.length.toString() : '';
+  }, [data]);
+
   const widgetContent = useMemo(() => {
     return (
       <div className="my-data-widget-container">
@@ -287,7 +292,7 @@ const MyDataWidgetInternal = ({
               UserPageTabs.MY_DATA
             )}
             moreButtonText={t('label.view-more-count', {
-              count: String(data.length > 0 ? data.length : ''),
+              countValue: showMoreCount,
             })}
             showMoreButton={Boolean(!isLoading) && data?.length > 10}
           />
@@ -304,6 +309,7 @@ const MyDataWidgetInternal = ({
     widgetKey,
     widgetData,
     isEditView,
+    showMoreCount,
   ]);
 
   return (

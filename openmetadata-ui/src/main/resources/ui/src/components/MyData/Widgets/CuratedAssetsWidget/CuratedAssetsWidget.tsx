@@ -392,7 +392,7 @@ const CuratedAssetsWidget = ({
       <WidgetFooter
         moreButtonLink={queryURL}
         moreButtonText={t('label.view-more-count', {
-          count: viewMoreCount as unknown as number,
+          countValue: viewMoreCount,
         })}
         showMoreButton={Boolean(!isLoading) && data?.length > 10}
       />

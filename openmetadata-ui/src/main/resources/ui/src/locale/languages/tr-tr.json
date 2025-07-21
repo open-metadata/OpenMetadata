@@ -1674,7 +1674,7 @@
     "view-less": "Daha Az Görüntüle",
     "view-more": "Daha Fazla Görüntüle",
     "view-more-capital": "View More",
-    "view-more-count": "{{count}} tane daha göster",
+    "view-more-count": "{{countValue}} tane daha göster",
     "view-new-count": "{{count}} yeniyi görüntüle",
     "view-parsing-timeout-limit": "Görünüm Tanımı Ayrıştırma Zaman Aşımı Limiti",
     "view-plural": "Görünümler",

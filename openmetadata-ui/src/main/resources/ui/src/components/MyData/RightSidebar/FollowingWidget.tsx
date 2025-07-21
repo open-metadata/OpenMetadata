@@ -179,6 +179,11 @@ function FollowingWidget({
     ),
     []
   );
+
+  const showMoreCount = useMemo(() => {
+    return followedData.length > 0 ? followedData.length.toString() : '';
+  }, [followedData]);
+
   const followingContent = useMemo(() => {
     return (
       <div className="entity-list-body">
@@ -271,7 +276,7 @@ function FollowingWidget({
               EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
-              count: String(followedData.length > 0 ? followedData.length : ''),
+              countValue: showMoreCount,
             })}
             showMoreButton={
               Boolean(!isLoadingOwnedData) && followedData?.length > 10
@@ -292,6 +297,7 @@ function FollowingWidget({
     widgetKey,
     widgetData,
     isEditView,
+    showMoreCount,
   ]);
 
   return (
