@@ -134,3 +134,8 @@ CREATE TABLE IF NOT EXISTS entity_deletion_lock (
 -- Use btree index for entityFqn prefix matching
 CREATE INDEX IF NOT EXISTS idx_deletion_lock_fqn ON entity_deletion_lock(entityFqn);
 CREATE INDEX IF NOT EXISTS idx_deletion_lock_time ON entity_deletion_lock(lockedAt);
+
+-- Update columnValuesToBeInSet test definition to include BOOLEAN in supportedDataTypes and update parameterDefinition
+UPDATE test_definition
+  SET json = jsonb_set(json, '{supportedDataTypes}', '["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR", "BOOLEAN"]'::jsonb)
+WHERE name in ('columnValuesToBeInSet', 'columnValuesToBeNotInSet');
