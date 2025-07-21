@@ -260,6 +260,11 @@ const MyDataWidgetInternal = ({
       </div>
     );
   }, [data, isExpanded]);
+
+  const showMoreCount = useMemo(() => {
+    return String(data.length > 0 ? data.length : '');
+  }, [data]);
+
   const widgetContent = useMemo(() => {
     return (
       <div className="my-data-widget-container">
@@ -283,10 +288,9 @@ const MyDataWidgetInternal = ({
               currentUser?.name ?? '',
               EntityTabs.ACTIVITY_FEED
             )}
-            moreButtonText={t(
-              'label.view-more-count',
-              !isEmpty(data) ? String(data.length) : ''
-            )}
+            moreButtonText={t('label.view-more-count', {
+              count: showMoreCount,
+            })}
             showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
           />
         </div>
