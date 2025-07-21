@@ -24,6 +24,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
+import { MatchType } from '../../../generated/settings/settings';
 import './field-configuration.less';
 import { FieldConfigurationProps } from './fieldConfiguration.interface';
 
@@ -44,7 +45,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   >({});
   const [fieldWeight, setFieldWeight] = useState(field.weight);
   const [fieldMatchType, setFieldMatchType] = useState(
-    field.matchType || 'standard'
+    field.matchType || MatchType.Standard
   );
 
   const fieldDescription = entityFields.find(
@@ -73,18 +74,16 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     onFieldWeightChange(field.fieldName, value);
   };
 
-  const handleMatchTypeChange = (
-    value: 'exact' | 'phrase' | 'fuzzy' | 'standard'
-  ) => {
+  const handleMatchTypeChange = (value: MatchType) => {
     setFieldMatchType(value);
     onMatchTypeChange(field.fieldName, value);
   };
 
   const matchTypeOptions = [
-    { label: t('label.exact-match'), value: 'exact' },
-    { label: t('label.phrase-match'), value: 'phrase' },
-    { label: t('label.fuzzy-match'), value: 'fuzzy' },
-    { label: t('label.standard-match'), value: 'standard' },
+    { label: t('label.exact-match'), value: MatchType.Exact },
+    { label: t('label.phrase-match'), value: MatchType.Phrase },
+    { label: t('label.fuzzy-match'), value: MatchType.Fuzzy },
+    { label: t('label.standard-match'), value: MatchType.Standard },
   ];
 
   return (

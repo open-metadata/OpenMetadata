@@ -14,13 +14,14 @@ import {
   AllowedFieldField,
   FieldValueBoost,
 } from '../../../generated/configuration/searchSettings';
+import { MatchType } from '../../../generated/settings/settings';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
 
 export interface FieldConfigurationProps {
   field: {
     fieldName: string;
     weight: number;
-    matchType?: 'exact' | 'phrase' | 'fuzzy' | 'standard';
+    matchType?: MatchType;
   };
   searchSettings: EntitySearchSettingsState;
   index: number;
@@ -28,10 +29,7 @@ export interface FieldConfigurationProps {
   initialOpen?: boolean;
   onHighlightFieldsChange: (fieldName: string) => void;
   onFieldWeightChange: (fieldName: string, value: number) => void;
-  onMatchTypeChange: (
-    fieldName: string,
-    matchType: 'exact' | 'phrase' | 'fuzzy' | 'standard'
-  ) => void;
+  onMatchTypeChange: (fieldName: string, matchType: MatchType) => void;
   onValueBoostChange?: (fieldName: string, boost: FieldValueBoost) => void;
   onDeleteBoost?: (fieldName: string) => void;
   onDeleteSearchField: (fieldName: string) => void;
