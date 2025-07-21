@@ -78,6 +78,7 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
+import { getSanitizeContent } from './sanitize.utils';
 import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -331,7 +332,7 @@ export const getBackendFormat = (message: string) => {
     updatedMessage = updatedMessage.replaceAll(h, entityLink);
   });
 
-  return updatedMessage;
+  return getSanitizeContent(updatedMessage);
 };
 
 export const getFrontEndFormat = (message: string) => {
@@ -345,7 +346,7 @@ export const getFrontEndFormat = (message: string) => {
     updatedMessage = updatedMessage.replaceAll(m, markdownLink);
   });
 
-  return updatedMessage;
+  return getSanitizeContent(updatedMessage);
 };
 
 export const getUpdatedThread = (id: string) => {
