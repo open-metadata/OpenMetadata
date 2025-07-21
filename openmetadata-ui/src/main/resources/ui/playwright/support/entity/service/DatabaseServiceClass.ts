@@ -95,6 +95,17 @@ export class DatabaseServiceClass extends EntityClass {
     );
   }
 
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.entity.name,
+        type: SERVICE_TYPE.Database,
+      },
+      false
+    );
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(

@@ -43,8 +43,11 @@ import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -75,6 +78,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
 public class DatabaseSchemaResourceTest
     extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
@@ -752,5 +756,58 @@ public class DatabaseSchemaResourceTest
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Order(1)
+  @Test
+  void testSchemaServiceInheritanceFromDatabase(TestInfo test) throws IOException {
+    // This test verifies that schemas correctly inherit service from their database
+    // when fetched in bulk with the service field
+
+    // Use the existing DATABASE which already has a service set
+    Database database = DATABASE;
+    assertNotNull(database.getService(), "Test database should have a service");
+
+    // Create a schema in the database
+    String uniqueName = "serviceInheritanceTest" + System.currentTimeMillis();
+    CreateDatabaseSchema createSchema =
+        createRequest(uniqueName).withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Fetch schemas with the service field included
+    ResultList<DatabaseSchema> schemas =
+        listEntities(
+            Map.of(
+                "limit",
+                "10",
+                "fields",
+                "database,service",
+                "database",
+                database.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(schemas.getData());
+    assertTrue(schemas.getData().size() >= 1);
+
+    // Find our created schema
+    DatabaseSchema foundSchema =
+        schemas.getData().stream()
+            .filter(s -> s.getId().equals(schema.getId()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(foundSchema, "Created schema should be in the results");
+
+    // Verify the schema has the correct database and service
+    assertNotNull(foundSchema.getDatabase(), "Database should not be null");
+    assertEquals(database.getId(), foundSchema.getDatabase().getId());
+
+    assertNotNull(
+        foundSchema.getService(), "Service should not be null - should be inherited from database");
+    assertEquals(database.getService().getId(), foundSchema.getService().getId());
+    assertEquals(database.getService().getName(), foundSchema.getService().getName());
+
+    // Clean up
+    deleteEntity(schema.getId(), ADMIN_AUTH_HEADERS);
   }
 }

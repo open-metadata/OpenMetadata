@@ -1,5 +1,6 @@
 ---
 title: Data Schema | OpenMetadata Data Entity Schema Details
+description: Schema representing data containers like tables, topics, dashboards, and their structured relationships.
 slug: /main-concepts/metadata-standard/schemas/entity/data
 ---
 

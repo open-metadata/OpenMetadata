@@ -1,5 +1,6 @@
 ---
-title: Hive Connector Troubleshooting
+title: Hive Connector Troubleshooting | Official Documentation
+description: Resolve Hive ingestion issues like metastore connection failures, schema fetch errors, or unsupported data types.
 slug: /connectors/database/hive/troubleshooting
 ---
 
