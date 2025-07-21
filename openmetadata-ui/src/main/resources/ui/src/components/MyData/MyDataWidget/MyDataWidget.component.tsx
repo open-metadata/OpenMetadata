@@ -284,8 +284,8 @@ const MyDataWidgetInternal = ({
               EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
-              count: String(data.length > 0 ? data.length : ''),
-            })} // if data is empty then show view more
+              count: !isEmpty(data) ? String(data.length) : '',
+            })}
             showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
           />
         </div>
