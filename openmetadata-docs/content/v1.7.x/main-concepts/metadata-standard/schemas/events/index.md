@@ -1,5 +1,6 @@
 ---
 title: Events Schema | OpenMetadata Events Schema Details
+description: Events schema that describes platform or user-triggered activities, audit trails, and system state changes.
 slug: /main-concepts/metadata-standard/schemas/events
 ---
 

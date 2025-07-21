@@ -1,5 +1,6 @@
 ---
 title: Security Schema | OpenMetadata Security Schema Overview
+description: Schema for capturing security-related metadata like authentication providers, credentials, and token settings.
 slug: /main-concepts/metadata-standard/schemas/security
 ---
 
