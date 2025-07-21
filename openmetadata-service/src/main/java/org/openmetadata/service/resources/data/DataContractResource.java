@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.resources.data;
 
+import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION;
+import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION_KEY;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -708,7 +711,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Parameter(description = "Id of the data contract result", schema = @Schema(type = "UUID"))
           @PathParam("resultId")
           UUID resultId) {
-    repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
     ResourceContext<DataContract> resourceContext =
@@ -716,14 +719,19 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
-    String jsonRecord = timeSeriesDAO.getById(resultId);
+    String jsonRecord =
+        timeSeriesDAO.getLatestExtensionByKey(
+            RESULT_EXTENSION_KEY,
+            resultId.toString(),
+            dataContract.getFullyQualifiedName(),
+            RESULT_EXTENSION);
     return JsonUtils.readValue(jsonRecord, DataContractResult.class);
   }
 
-  @POST
+  @PUT
   @Path("/{id}/results")
   @Operation(
-      operationId = "createDataContractResult",
+      operationId = "createOrUpdateDataContractResult",
       summary = "Create or update data contract result",
       description = "Create a new data contract execution result.",
       responses = {
@@ -750,17 +758,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     DataContractResult result = getContractResult(dataContract, create);
-
-    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
-    timeSeriesDAO.insert(
-        dataContract.getFullyQualifiedName(),
-        "dataContract.dataContractResult",
-        "dataContractResult",
-        JsonUtils.pojoToJson(result));
-
-    // Update latest result in data contract
-    updateLatestResult(dataContract, result);
-
+    result = repository.addContractResult(dataContract, result);
     return Response.ok(result).build();
   }
 
@@ -830,11 +828,45 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     return Response.ok().build();
   }
 
+  @POST
+  @Path("/{id}/validate")
+  @Operation(
+      operationId = "validateDataContract",
+      summary = "Validate a data contract",
+      description =
+          "Execute on-demand validation of a data contract including semantic rules and quality tests.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContractResult.class))),
+        @ApiResponse(responseCode = "404", description = "Data contract not found")
+      })
+  public Response validateContract(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.EDIT_ALL);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    DataContractResult result = repository.validateContract(dataContract);
+    return Response.ok(result).build();
+  }
+
   private DataContractResult getContractResult(
       DataContract dataContract, CreateDataContractResult create) {
     DataContractResult result =
         new DataContractResult()
-            .withId(UUID.randomUUID())
+            .withId(dataContract.getId() == null ? UUID.randomUUID() : dataContract.getId())
             .withDataContractFQN(dataContract.getFullyQualifiedName())
             .withTimestamp(create.getTimestamp())
             .withContractExecutionStatus(create.getContractExecutionStatus())
@@ -862,27 +894,6 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     }
 
     return result;
-  }
-
-  private void updateLatestResult(DataContract dataContract, DataContractResult result) {
-    try {
-      jakarta.json.JsonPatchBuilder patchBuilder = jakarta.json.Json.createPatchBuilder();
-
-      jakarta.json.JsonObjectBuilder latestResultBuilder =
-          jakarta.json.Json.createObjectBuilder()
-              .add("timestamp", result.getTimestamp())
-              .add("status", result.getContractExecutionStatus().value())
-              .add("message", result.getResult() != null ? result.getResult() : "")
-              .add("resultId", result.getId().toString());
-      patchBuilder.add("/latestResult", latestResultBuilder.build());
-      JsonPatch patch = patchBuilder.build();
-      repository.patch(null, dataContract.getId(), null, patch);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to update latest result for data contract {}",
-          dataContract.getFullyQualifiedName(),
-          e);
-    }
   }
 
   public static class DataContractList extends ResultList<DataContract> {

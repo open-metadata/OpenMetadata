@@ -135,6 +135,10 @@
       "description": "Reference to the data entity (table, topic, etc.) this contract applies to.",
       "$ref": "../../type/entityReference.json"
     },
+    "testSuite": {
+      "description": "Reference to the test suite that contains tests related to this data contract.",
+      "$ref": "../../type/entityReference.json"
+    },
     "schema": {
       "description": "Schema definition for the data contract.",
       "type": "array",
@@ -213,7 +217,7 @@
         },
         "status": {
           "type": "string",
-          "enum": ["Success", "Failed", "PartialSuccess", "Aborted", "Queued"]
+          "enum": ["Running", "Success", "Failed", "PartialSuccess", "Aborted", "Queued"]
         },
         "message": {
           "type": "string"
