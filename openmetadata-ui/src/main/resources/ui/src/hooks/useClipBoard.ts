@@ -14,6 +14,36 @@ import { toNumber } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 
 /**
+ * Fallback method for copying text to clipboard using document.execCommand
+ * This works in older browsers and doesn't require HTTPS
+ */
+const fallbackCopyTextToClipboard = (text: string): boolean => {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+
+  // Avoid scrolling to bottom
+  textArea.style.top = '0';
+  textArea.style.left = '0';
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  try {
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+
+    return successful;
+  } catch (err) {
+    document.body.removeChild(textArea);
+
+    return false;
+  }
+};
+
+/**
  * React hook to copy text to clipboard
  * @param value the text to copy
  * @param timeout delay (in ms) to switch back to initial state once copied.
@@ -31,19 +61,48 @@ export const useClipboard = (
   // handlers
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(valueState);
-      setHasCopied(true);
-      callBack && callBack();
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(valueState);
+        setHasCopied(true);
+        callBack && callBack();
+      } else {
+        // Fallback for older browsers or non-HTTPS contexts
+        const success = fallbackCopyTextToClipboard(valueState);
+        if (success) {
+          setHasCopied(true);
+          callBack && callBack();
+        } else {
+          setHasCopied(false);
+        }
+      }
     } catch (error) {
-      setHasCopied(false);
+      // If modern API fails, try fallback
+      try {
+        const success = fallbackCopyTextToClipboard(valueState);
+        if (success) {
+          setHasCopied(true);
+          callBack && callBack();
+        } else {
+          setHasCopied(false);
+        }
+      } catch (fallbackError) {
+        setHasCopied(false);
+      }
     }
-  }, [valueState]);
+  }, [valueState, callBack]);
 
   const handlePaste = useCallback(async () => {
     try {
-      const text = await navigator.clipboard.readText();
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        const text = await navigator.clipboard.readText();
 
-      return text;
+        return text;
+      } else {
+        // Fallback for older browsers
+        return null;
+      }
     } catch (error) {
       return null;
     }
