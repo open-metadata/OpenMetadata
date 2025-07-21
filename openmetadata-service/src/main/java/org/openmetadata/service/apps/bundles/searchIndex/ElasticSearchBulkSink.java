@@ -107,7 +107,17 @@ public class ElasticSearchBulkSink implements BulkSink {
                   for (var item : response.getItems()) {
                     if (item.isFailed()) {
                       failures++;
-                      LOG.warn("Failed to index document: {}", item.getFailureMessage());
+                      String failureMessage = item.getFailureMessage();
+                      // Log document_missing_exception differently as it indicates a race condition
+                      if (failureMessage != null
+                          && failureMessage.contains("document_missing_exception")) {
+                        LOG.warn(
+                            "Document missing error for {}: {} - This may occur during concurrent reindexing",
+                            item.getId(),
+                            failureMessage);
+                      } else {
+                        LOG.warn("Failed to index document {}: {}", item.getId(), failureMessage);
+                      }
                     }
                   }
                   int successes = numberOfActions - failures;
@@ -179,6 +189,8 @@ public class ElasticSearchBulkSink implements BulkSink {
       throw new IllegalArgumentException("Entity type is required in context data");
     }
 
+    Boolean recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
+
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
     if (indexMapping == null) {
       LOG.debug("No index mapping found for entityType '{}'. Skipping indexing.", entityType);
@@ -196,7 +208,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
         for (EntityInterface entity : entityInterfaces) {
-          addEntity(entity, indexName);
+          addEntity(entity, indexName, recreateIndex);
         }
       }
     } catch (Exception e) {
@@ -215,18 +227,24 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
   }
 
-  private void addEntity(EntityInterface entity, String indexName) {
+  private void addEntity(EntityInterface entity, String indexName, boolean recreateIndex) {
     // Build the search index document using the proper transformation
     String entityType = Entity.getEntityTypeFromObject(entity);
     Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
     String json = JsonUtils.pojoToJson(searchIndexDoc);
 
-    UpdateRequest updateRequest = new UpdateRequest(indexName, entity.getId().toString());
-    updateRequest.doc(json, XContentType.JSON);
-    updateRequest.docAsUpsert(true);
-
-    // Add to bulk processor - it handles everything including size limits
-    bulkProcessor.add(updateRequest);
+    if (recreateIndex) {
+      // Use IndexRequest for fresh indexing to avoid document_missing_exception
+      IndexRequest indexRequest =
+          new IndexRequest(indexName).id(entity.getId().toString()).source(json, XContentType.JSON);
+      bulkProcessor.add(indexRequest);
+    } else {
+      // Use UpdateRequest with upsert for regular updates
+      UpdateRequest updateRequest = new UpdateRequest(indexName, entity.getId().toString());
+      updateRequest.doc(json, XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+      bulkProcessor.add(updateRequest);
+    }
   }
 
   private void addTimeSeriesEntity(EntityTimeSeriesInterface entity, String indexName) {
