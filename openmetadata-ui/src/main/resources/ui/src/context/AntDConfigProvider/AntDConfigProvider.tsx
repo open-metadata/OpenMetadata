@@ -21,6 +21,54 @@ const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
   const { applicationConfig } = useApplicationStore();
 
+  /**
+   * Finds the nearest scrollable ancestor for a given trigger element.
+   * Used to position dropdowns or overlays relative to the scroll context.
+   * Falls back to document.body if no scrollable container is found.
+   */
+  const getScrollableContainer = (trigger?: HTMLElement): HTMLElement => {
+    // Ensure this runs only in the browser
+    if (typeof window === 'undefined' || !trigger) {
+      return document.body;
+    }
+
+    let node: HTMLElement | null = trigger;
+
+    while (node && node !== document.body) {
+      const style = window.getComputedStyle(node);
+
+      // Skip non-rendered or display: contents elements
+      const isHidden =
+        style.display === 'none' || style.visibility === 'hidden';
+      const isDisplayContents = style.display === 'contents';
+
+      if (!isHidden && !isDisplayContents) {
+        const overflowY = style.overflowY;
+        const overflow = style.overflow;
+
+        // Acceptable scroll values (also includes overlay for Safari)
+        const scrollableValues = ['auto', 'scroll', 'overlay'];
+
+        // Check both overflowY and fallback to general overflow
+        const isScrollable =
+          scrollableValues.includes(overflowY) ||
+          scrollableValues.includes(overflow);
+
+        // Ensure actual scroll capacity
+        const canScroll = node.scrollHeight > node.clientHeight;
+
+        if (isScrollable && canScroll) {
+          return node;
+        }
+      }
+
+      node = node.parentElement;
+    }
+
+    // Fallback to <body> if no scrollable container found
+    return document.body;
+  };
+
   useEffect(() => {
     const palette = generatePalette(
       applicationConfig?.customTheme?.primaryColor ?? DEFAULT_THEME.primaryColor
@@ -58,7 +106,13 @@ const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
     },
   });
 
-  return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;
+  return (
+    <ConfigProvider
+      direction={i18n.dir()}
+      getPopupContainer={getScrollableContainer}>
+      {children}
+    </ConfigProvider>
+  );
 };
 
 export default AntDConfigProvider;

@@ -27,7 +27,6 @@ import {
   MY_DATA_WIDGET_FILTER_OPTIONS,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -45,6 +44,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
@@ -182,7 +182,10 @@ const MyDataWidgetInternal = ({
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonLink={`users/${currentUser?.name}/mydata`}
+        actionButtonLink={getUserPath(
+          currentUser?.name ?? '',
+          UserPageTabs.MY_DATA
+        )}
         actionButtonText={t('label.get-started')}
         description={`${t('message.nothing-saved-yet')} ${t(
           'message.no-owned-data'
@@ -281,11 +284,11 @@ const MyDataWidgetInternal = ({
           <WidgetFooter
             moreButtonLink={getUserPath(
               currentUser?.name ?? '',
-              EntityTabs.ACTIVITY_FEED
+              UserPageTabs.MY_DATA
             )}
             moreButtonText={t('label.view-more-count', {
               count: String(data.length > 0 ? data.length : ''),
-            })} // if data is empty then show view more
+            })}
             showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
           />
         </div>
