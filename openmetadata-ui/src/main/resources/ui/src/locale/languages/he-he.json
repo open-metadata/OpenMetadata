@@ -1674,7 +1674,7 @@
     "view-less": "הצג פחות",
     "view-more": "הצג עוד",
     "view-more-capital": "View More",
-    "view-more-count": "הצג עוד {{count}}",
+    "view-more-count": "הצג עוד {{countValue}}",
     "view-new-count": "הצג {{count}} חדש",
     "view-parsing-timeout-limit": "מגבלת זמן לפענוח הצגה",
     "view-plural": "תצוגות",
