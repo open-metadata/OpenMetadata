@@ -1,5 +1,6 @@
 ---
 title: Teams | OpenMetadata Teams API and Management
+description: Teams schema capturing metadata about users, teams, roles, and organizational structure in data collaboration.
 slug: /main-concepts/metadata-standard/schemas/entity/teams
 ---
 
