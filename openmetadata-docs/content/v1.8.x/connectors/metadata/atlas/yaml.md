@@ -1,5 +1,6 @@
 ---
 title: Run the Atlas Connector Externally
+description: Use YAML to ingest metadata from Apache Atlas including classifications, glossary, and lineage.
 slug: /connectors/metadata/atlas/yaml
 ---
 

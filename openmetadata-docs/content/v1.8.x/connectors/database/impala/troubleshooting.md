@@ -1,5 +1,6 @@
 ---
-title: Impala Connector Troubleshooting
+title: Impala Connector Troubleshooting | Official Documentation
+description: Troubleshoot Impala connector for ingestion failures, type mismatches, and driver issues.
 slug: /connectors/database/impala/troubleshooting
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Run the Redshift Connector Externally
+description: Ingest metadata from Redshift using YAML and configure access, profiling, and lineage extraction.
 slug: /connectors/database/redshift/yaml
 ---
 
