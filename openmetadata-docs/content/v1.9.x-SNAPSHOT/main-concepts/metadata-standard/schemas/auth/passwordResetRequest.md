@@ -1,5 +1,6 @@
 ---
-title: passwordResetRequest
+title: Passwordresetrequest | Official Documentation
+description: Schema to initiate a secure password reset process for a user account.
 slug: /main-concepts/metadata-standard/schemas/auth/passwordresetrequest
 ---
 
