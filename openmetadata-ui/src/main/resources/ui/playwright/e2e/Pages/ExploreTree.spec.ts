@@ -374,7 +374,7 @@ test.describe('Explore page', () => {
 
     const response = await apiContext
       .get(
-        `/api/v1/search/query?q=pw&index=dataAsset&from=0&size=0&deleted=false&track_total_hits=true&fetch_source=false&`
+        `/api/v1/search/query?q=pw&index=dataAsset&from=0&size=0&deleted=false&track_total_hits=true&fetch_source=false`
       )
       .then((res) => res.json());
 
