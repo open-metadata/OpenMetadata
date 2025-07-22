@@ -78,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
     order = 6) // Initialize before GlossaryTerm and after Classification and Tags
 public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
-  static final String FIELDS = "owners,tags,reviewers,usageCount,termCount,domain,extension";
+  static final String FIELDS = "owners,tags,reviewers,usageCount,termCount,domains,extension";
   private final GlossaryMapper mapper = new GlossaryMapper();
 
   public GlossaryResource(Authorizer authorizer, Limits limits) {

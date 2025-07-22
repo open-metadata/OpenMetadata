@@ -32,9 +32,9 @@ export interface CreateAPICollection {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the API Collection belongs to.
+     * Fully qualified names of the domains the API Collection belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * EndPoint URL for the API Collection. Capture the Root URL of the collection.
      */

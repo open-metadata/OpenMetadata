@@ -299,6 +299,15 @@ public final class CsvUtil {
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
   }
 
+  public static void addDomains(List<String> csvRecord, List<EntityReference> domains) {
+    csvRecord.add(
+        nullOrEmpty(domains)
+            ? null
+            : domains.stream()
+                .map(EntityReference::getFullyQualifiedName)
+                .collect(Collectors.joining(FIELD_SEPARATOR)));
+  }
+
   public static void addReviewers(List<String> csvRecord, List<EntityReference> reviewers) {
     csvRecord.add(
         nullOrEmpty(reviewers)

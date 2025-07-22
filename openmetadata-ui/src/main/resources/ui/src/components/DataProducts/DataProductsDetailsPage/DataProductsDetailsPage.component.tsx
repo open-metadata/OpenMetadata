@@ -101,8 +101,10 @@ const DataProductsDetailsPage = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { getEntityPermission } = usePermissionProvider();
-  const { tab: activeTab, version } =
-    useRequiredParams<{ tab: string; version: string }>();
+  const { tab: activeTab, version } = useRequiredParams<{
+    tab: string;
+    version: string;
+  }>();
   const { fqn: dataProductFqn } = useFqn();
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -117,18 +119,18 @@ const DataProductsDetailsPage = ({
   const [assetCount, setAssetCount] = useState<number>(0);
 
   const breadcrumbs = useMemo(() => {
-    if (!dataProduct.domain) {
+    if (!dataProduct.domains) {
       return [];
     }
 
     return [
       {
-        name: getEntityName(dataProduct.domain),
-        url: getDomainPath(dataProduct.domain.fullyQualifiedName),
+        name: getEntityName(dataProduct.domains[0]),
+        url: getDomainPath(dataProduct.domains[0].fullyQualifiedName),
         activeTitle: false,
       },
     ];
-  }, [dataProduct.domain]);
+  }, [dataProduct.domains]);
 
   const [name, displayName] = useMemo(() => {
     const defaultName = dataProduct.name;
@@ -647,13 +649,17 @@ const DataProductsDetailsPage = ({
       {assetModalVisible && (
         <AssetSelectionModal
           emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
-            name: getEntityName(dataProduct.domain),
+            name: dataProduct.domains
+              ?.map((domain) => getEntityName(domain))
+              .join(', '),
           })}
           entityFqn={dataProductFqn}
           open={assetModalVisible}
           queryFilter={
             getQueryFilterToIncludeDomain(
-              dataProduct.domain?.fullyQualifiedName ?? '',
+              dataProduct.domains
+                ?.map((domain) => domain.fullyQualifiedName)
+                .join(', ') ?? '',
               dataProduct.fullyQualifiedName ?? ''
             ) as QueryFilterInterface
           }

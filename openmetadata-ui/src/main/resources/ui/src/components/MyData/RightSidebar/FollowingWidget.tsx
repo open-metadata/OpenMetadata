@@ -118,11 +118,11 @@ function FollowingWidget({
   const getEntityExtraInfo = (item: SourceType): ExtraInfo[] => {
     const extraInfo: ExtraInfo[] = [];
     // Add domain info
-    if (item.domain) {
+    if (item.domains) {
       extraInfo.push({
         key: 'Domain',
-        value: getDomainPath(item.domain.fullyQualifiedName),
-        placeholderText: getEntityName(item.domain),
+        value: getDomainPath(item.domains[0]?.fullyQualifiedName ?? ''),
+        placeholderText: getEntityName(item.domains[0] ?? {}),
         isLink: true,
         openInNewTab: false,
       });

@@ -107,7 +107,7 @@
       "href": {
         "type": "text"
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",

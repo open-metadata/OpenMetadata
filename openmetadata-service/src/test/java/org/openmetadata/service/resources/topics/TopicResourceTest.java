@@ -396,12 +396,12 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // When domain is not set for a topic, carry it forward from the messaging service
     MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
     CreateMessagingService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     MessagingService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a topic without domain and ensure it inherits domain from the parent
     CreateTopic create = createRequest("chart").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test
@@ -563,7 +563,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
               : JsonUtils.readObjects(expected.toString(), EntityReference.class);
       List<EntityReference> actualOwners =
           JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertOwners(expectedOwners, actualOwners);
+      assertReferenceList(expectedOwners, actualOwners);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
