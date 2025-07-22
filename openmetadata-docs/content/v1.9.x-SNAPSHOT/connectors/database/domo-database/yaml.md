@@ -1,5 +1,6 @@
 ---
 title: Run the Domo Database Connector Externally
+description: Configure YAML to ingest Domo database assets and track metadata like schema, usage, and dashboard relationships.
 slug: /connectors/database/domo-database/yaml
 ---
 
@@ -8,7 +9,7 @@ name="Domo"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "dbt", "Sample Data"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "dbt", "Sample Data", "Auto-Classification"]
 / %}
 
 In this section, we provide guides and references to use the Domo Database connector.

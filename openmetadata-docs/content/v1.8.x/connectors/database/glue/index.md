@@ -1,5 +1,6 @@
 ---
 title: AWS Glue Connector | OpenMetadata Data Integration Guide
+description: Learn how to integrate AWS Glue with OpenMetadata using our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction.
 slug: /connectors/database/glue
 ---
 
@@ -8,7 +9,7 @@ name="Glue"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "dbt"]
-unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Sample Data"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Sample Data", "Auto-Classification"]
 / %}
 
 

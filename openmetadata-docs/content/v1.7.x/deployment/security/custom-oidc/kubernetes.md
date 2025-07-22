@@ -1,5 +1,6 @@
 ---
-title: Custom OIDC SSO for Kubernetes
+title: Custom OIDC SSO for Kubernetes | Official Documentation
+description: Configure a custom OIDC provider in Kubernetes to enable secure, token-based authentication with flexible identity management and access control.
 slug: /deployment/security/custom-oidc/kubernetes
 collate: false
 ---

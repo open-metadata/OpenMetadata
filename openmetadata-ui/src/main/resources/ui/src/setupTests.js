@@ -95,6 +95,7 @@ jest.mock('utils/i18next/LocalUtil', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key) => key,
   }),
+  detectBrowserLanguage: jest.fn().mockReturnValue('en-US'),
   t: (key) => key,
   dir: jest.fn().mockReturnValue('ltr'),
 }));
@@ -126,3 +127,20 @@ jest.mock('./utils/TableColumn.util', () => ({
   tagTableObject: jest.fn().mockReturnValue([]),
   columnFilterIcon: jest.fn(),
 }));
+
+/**
+ * Global mock for AdvancedSearchClassBase to fix circular dependency issues
+ */
+jest.mock('./utils/AdvancedSearchClassBase', () => {
+  const actual = jest.requireActual('./utils/AdvancedSearchClassBase');
+
+  return {
+    __esModule: true,
+    ...actual,
+    default: {
+      ...actual.default,
+      autocomplete: jest.fn().mockReturnValue(jest.fn()),
+      getQbConfigs: jest.fn().mockReturnValue({}),
+    },
+  };
+});

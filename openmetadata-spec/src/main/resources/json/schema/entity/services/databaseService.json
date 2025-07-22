@@ -443,9 +443,9 @@
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
-    "domain" : {
-      "description": "Domain the Database service belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Database service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",

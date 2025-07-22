@@ -1,5 +1,6 @@
 ---
 title: Connectors | OpenMetadata Docs for Seamless Data Integration
+description: Explore OpenMetadata's comprehensive connector library to integrate with databases, dashboards, pipelines, and ML platforms. Easy setup guides included.
 slug: /connectors
 ---
 
@@ -19,15 +20,54 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 {% tilesContainer %}
 {% tile
     title="Run Connectors from the OpenMetadata UI"
-    description="Learn how to manage your deployment to run connectors from the UI"
+    description="Learn how to manage your deployment to run connectors from the UI."
     link="/deployment/ingestion/openmetadata"
   / %}
 {% tile
     title="External Schedulers"
-    description="Get more information about running the Ingestion Framework Externally"
+    description="Get more information about running the Ingestion Framework Externally."
     link="/deployment/ingestion/external"
   / %}
 {% /tilesContainer %}
+
+{%inlineCalloutContainer%}
+
+{%inlineCallout
+  bold="Metadata"
+  icon="cable"
+  href="/connectors/ingestion/workflows/metadata"%}
+Learn more about how to ingest metadata from dozens of connectors.
+{%/inlineCallout%}
+
+{%inlineCallout
+  bold="Usage"
+  icon="cable"
+  href="/connectors/ingestion/workflows/usage"%}
+Run usage ingestion workflows externally to track data access.
+{%/inlineCallout%}
+
+{%inlineCallout
+  bold="Lineage"
+  icon="cable"
+  href="/connectors/ingestion/workflows/lineage"%}
+Run lineage Agent workflows externally to capture data flow.
+{%/inlineCallout%}
+
+{%inlineCallout
+  bold="DBT"
+  icon="cable"
+  href="/connectors/ingestion/workflows/dbt"%}
+Run dbt Agent workflows externally to sync models and metadata.
+{%/inlineCallout%}
+
+{%inlineCallout
+  bold="Auto-Classification"
+  icon="cable"
+  href="/how-to-guides/data-governance/classification/auto-classification"%}
+Set up auto-classification to detect and tag sensitive data automatically.
+{%/inlineCallout%}
+
+{%/inlineCalloutContainer%}
 
 ## API Services
 

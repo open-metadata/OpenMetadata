@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { pick } from 'lodash';
+import { isEmpty, pick } from 'lodash';
 import QueryString from 'qs';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DataQualityPageParams } from '../../components/DataQuality/DataQuality.interface';
 import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { Operation } from '../../generated/entity/policies/policy';
 import { TestSummary } from '../../generated/tests/testCase';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
@@ -25,6 +26,7 @@ import {
   fetchTotalEntityCount,
 } from '../../rest/dataQualityDashboardAPI';
 import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityUtils';
+import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
@@ -37,9 +39,10 @@ export const DataQualityContext = createContext<DataQualityContextInterface>(
 );
 
 const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
-  const { tab: activeTab = DataQualityPageTabs.TABLES } = useRequiredParams<{
-    tab: DataQualityPageTabs;
-  }>();
+  const { tab: activeTab = DataQualityPageTabs.TEST_CASES } =
+    useRequiredParams<{
+      tab: DataQualityPageTabs;
+    }>();
   const location = useCustomLocation();
   const params = useMemo(() => {
     const search = location.search;
@@ -50,6 +53,18 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
 
     return params as DataQualityPageParams;
   }, [location.search]);
+
+  // Extract only filter-related parameters, excluding pagination
+  const filterParams = useMemo(() => {
+    const { currentPage, pageSize, ...filters } = params;
+
+    return filters;
+  }, [params]);
+
+  // Create a stable key for filter changes to prevent unnecessary re-renders
+  const filterKey = useMemo(() => {
+    return !isEmpty(filterParams) ? JSON.stringify(filterParams) : null;
+  }, [filterParams]);
 
   const [testCaseSummary, setTestCaseSummary] =
     useState<TestSummary>(INITIAL_TEST_SUMMARY);
@@ -120,12 +135,12 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
-      fetchTestSummary(params);
+    if (getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic)) {
+      fetchTestSummary(filterParams);
     } else {
       setIsTestCaseSummaryLoading(false);
     }
-  }, [params]);
+  }, [filterKey]);
 
   return (
     <DataQualityContext.Provider value={dataQualityContextValue}>

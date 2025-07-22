@@ -14,8 +14,8 @@ site_menu:
     url: /getting-started/day-1/hybrid-saas/airflow
   - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
     url: /getting-started/day-1/hybrid-saas/mwaa
-  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
-    url: /getting-started/day-1/hybrid-saas/gcs-composer
+  - category: Getting Started / Day 1 / Hybrid SaaS / GCP Composer 
+    url: /getting-started/day-1/hybrid-saas/gcp-composer
   - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
     url: /getting-started/day-1/hybrid-saas/github-actions
   - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
@@ -411,6 +411,12 @@ site_menu:
     url: /connectors/dashboard/tableau/yaml
   - category: Connectors / Dashboard / Tableau / Troubleshooting
     url: /connectors/dashboard/tableau/troubleshooting
+  - category: Connectors / Dashboard / ThoughtSpot
+    url: /connectors/dashboard/thoughtspot
+  - category: Connectors / Dashboard / ThoughtSpot / Run Externally
+    url: /connectors/dashboard/thoughtspot/yaml
+  - category: Connectors / Dashboard / ThoughtSpot / Troubleshooting
+    url: /connectors/dashboard/thoughtspot/troubleshooting
 
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -455,8 +461,8 @@ site_menu:
     url: /connectors/pipeline/airflow/configuring-lineage
   - category: Connectors / Pipeline / Airflow / MWAA
     url: /connectors/pipeline/airflow/mwaa
-  - category: Connectors / Pipeline / Airflow / GCS Composer
-    url: /connectors/pipeline/airflow/gcs-composer
+  - category: Connectors / Pipeline / Airflow / GCP Composer 
+    url: /connectors/pipeline/airflow/gcp-composer
   - category: Connectors / Pipeline / Azure Data Factory
     url: /connectors/pipeline/datafactory
   - category: Connectors / Pipeline / Azure Data Factory / Run Externally
@@ -751,6 +757,8 @@ site_menu:
     url: /applications/autopilot
   - category: Applications / Data Retention Application
     url: /applications/data-retention
+  - category: Applications / Slack Application
+    url: /applications/slack
 
   - category: How-to Guides
     url: /how-to-guides
@@ -992,6 +1000,8 @@ site_menu:
     url: /how-to-guides/data-governance/glossary/export
   - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
     url: /how-to-guides/data-governance/glossary/approval
+  - category: How-to Guides / Data Governance / Glossary / Import-Export Troubleshooting
+    url: /how-to-guides/data-governance/glossary/troubleshooting
   - category: How-to Guides / Data Governance / Glossary / Glossary Styling
     url: /how-to-guides/data-governance/glossary/styling
   - category: How-to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms

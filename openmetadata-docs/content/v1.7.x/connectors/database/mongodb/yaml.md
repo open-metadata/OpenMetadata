@@ -1,5 +1,6 @@
 ---
 title: Run the MongoDB Connector Externally
+description: Configure MongoDB ingestion via YAML to extract collection metadata, schema, and profiling insights from NoSQL datasets.
 slug: /connectors/database/mongodb/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/mongodb/yaml
 name="MongoDB"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures"]
 / %}
 

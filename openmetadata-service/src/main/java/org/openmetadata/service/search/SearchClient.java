@@ -5,6 +5,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -120,12 +121,24 @@ public interface SearchClient {
           + "ctx._source.owners = params.updatedOwners; "
           + "}";
 
+  String ADD_DOMAINS_SCRIPT =
+      "if (ctx._source.domains == null || ctx._source.domains.isEmpty() || "
+          + "(ctx._source.domains.size() > 0 && ctx._source.domains[0] != null && ctx._source.domains[0].inherited == true)) { "
+          + "ctx._source.domains = params.updatedDomains; "
+          + "}";
+
   String PROPAGATE_TEST_SUITES_SCRIPT = "ctx._source.testSuites = params.testSuites";
 
   String REMOVE_OWNERS_SCRIPT =
       "if (ctx._source.owners != null) { "
           + "ctx._source.owners.removeIf(owner -> owner.inherited == true); "
           + "ctx._source.owners.addAll(params.deletedOwners); "
+          + "}";
+
+  String REMOVE_DOMAINS_SCRIPT =
+      "if (ctx._source.domains != null) { "
+          + "ctx._source.domains.removeIf(domain -> domain.inherited == true); "
+          + "ctx._source.domains.addAll(params.deletedDomains); "
           + "}";
 
   String UPDATE_TAGS_FIELD_SCRIPT =
@@ -140,6 +153,59 @@ public interface SearchClient {
           + "} "
           + "} "
           + "}";
+
+  String UPDATE_COLUMN_LINEAGE_SCRIPT =
+      """
+          if (ctx._source.upstreamLineage != null) {
+            for (int i = 0; i < ctx._source.upstreamLineage.length; i++) {
+              def lineage = ctx._source.upstreamLineage[i];
+              if (lineage == null || lineage.columns == null) continue;
+
+              for (int j = 0; j < lineage.columns.length; j++) {
+                def columnMapping = lineage.columns[j];
+                if (columnMapping == null) continue;
+
+                if (columnMapping.toColumn != null && params.columnUpdates.containsKey(columnMapping.toColumn)) {
+                  columnMapping.toColumn = params.columnUpdates[columnMapping.toColumn];
+                }
+
+                if (columnMapping.fromColumns != null) {
+                  for (int k = 0; k < columnMapping.fromColumns.length; k++) {
+                    def fc = columnMapping.fromColumns[k];
+                    if (fc != null && params.columnUpdates.containsKey(fc)) {
+                      columnMapping.fromColumns[k] = params.columnUpdates[fc];
+                    }
+                  }
+                }
+              }
+            }
+          }
+          """;
+
+  String DELETE_COLUMN_LINEAGE_SCRIPT =
+      """
+          if (ctx._source.upstreamLineage != null) {
+              for (int i = 0; i < ctx._source.upstreamLineage.length; i++) {
+                  def lineage = ctx._source.upstreamLineage[i];
+
+                  if (lineage != null && lineage.columns != null) {
+                      for (def column : lineage.columns) {
+                          if (column != null && column.fromColumns != null) {
+                              column.fromColumns.removeIf(fromCol ->\s
+                                  fromCol == null || params.deletedFQNs.contains(fromCol)
+                              );
+                          }
+                      }
+
+                      lineage.columns.removeIf(column ->\s
+                          column == null ||
+                          (column.toColumn != null && params.deletedFQNs.contains(column.toColumn)) ||
+                          (column.fromColumns != null && column.fromColumns.isEmpty())
+                      );
+                  }
+              }
+          }
+          """;
 
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
@@ -169,7 +235,7 @@ public interface SearchClient {
           "dataProducts",
           "tags",
           "followers",
-          "domain",
+          "domains",
           "votes",
           "tier",
           "changeDescription");
@@ -385,10 +451,6 @@ public interface SearchClient {
 
   /**
    * Get a list of data stream names that match the given prefix.
-   *
-   * @param prefix The prefix to match data stream names against
-   * @return List of data stream names that match the prefix
-   * @throws IOException if there is an error communicating with the search engine
    */
   default List<String> getDataStreams(String prefix) throws IOException {
     throw new CustomExceptionMessage(
@@ -397,9 +459,6 @@ public interface SearchClient {
 
   /**
    * Delete data streams that match the given name or pattern.
-   *
-   * @param dataStreamName The name or pattern of data streams to delete
-   * @throws IOException if there is an error communicating with the search engine
    */
   default void deleteDataStream(String dataStreamName) throws IOException {
     throw new CustomExceptionMessage(
@@ -408,9 +467,6 @@ public interface SearchClient {
 
   /**
    * Delete an Index Lifecycle Management (ILM) policy.
-   *
-   * @param policyName The name of the ILM policy to delete
-   * @throws IOException if there is an error communicating with the search engine
    */
   default void deleteILMPolicy(String policyName) throws IOException {
     throw new CustomExceptionMessage(
@@ -419,9 +475,6 @@ public interface SearchClient {
 
   /**
    * Delete an index template.
-   *
-   * @param templateName The name of the index template to delete
-   * @throws IOException if there is an error communicating with the search engine
    */
   default void deleteIndexTemplate(String templateName) throws IOException {
     throw new CustomExceptionMessage(
@@ -430,9 +483,6 @@ public interface SearchClient {
 
   /**
    * Delete a component template.
-   *
-   * @param componentTemplateName The name of the component template to delete
-   * @throws IOException if there is an error communicating with the search engine
    */
   default void deleteComponentTemplate(String componentTemplateName) throws IOException {
     throw new CustomExceptionMessage(
@@ -441,9 +491,6 @@ public interface SearchClient {
 
   /**
    * Detach an ILM policy from indexes matching the given pattern.
-   *
-   * @param indexPattern The pattern of indexes to detach the ILM policy from
-   * @throws IOException if there is an error communicating with the search engine
    */
   default void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
     throw new CustomExceptionMessage(
@@ -453,9 +500,6 @@ public interface SearchClient {
   /**
    * Removes ILM policy from a component template while preserving all other settings.
    * This is only implemented for Elasticsearch as OpenSearch handles ILM differently.
-   *
-   * @param componentTemplateName The name of the component template to update
-   * @throws IOException if there is an error communicating with the search engine
    */
   default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
     // Default implementation does nothing as this is only needed for Elasticsearch
@@ -463,4 +507,9 @@ public interface SearchClient {
 
   void updateGlossaryTermByFqnPrefix(
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
+
+  void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap);
+
+  void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns);
 }

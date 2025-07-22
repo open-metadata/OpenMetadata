@@ -116,7 +116,7 @@ describe('Feed Utils', () => {
     const result = getBackendFormat(message);
 
     // eslint-disable-next-line no-useless-escape
-    const expectedResult = `<#E::user::\"admin\"|<#E::user::admin|[@admin](http://localhost:3000/users/admin)>> test`;
+    const expectedResult = `&lt;#E::user::\"admin\"|&lt;#E::user::admin|[@admin](http://localhost:3000/users/admin)&gt;&gt; test`;
 
     expect(result).toStrictEqual(expectedResult);
   });
@@ -126,7 +126,7 @@ describe('Feed Utils', () => {
     const result = getBackendFormat(message);
 
     // eslint-disable-next-line no-useless-escape
-    const expectedResult = `<#E::user::\"admin.test\"|<#E::user::%22admin.test%22|[@admin.test](http://localhost:3000/users/%22admin.test%22)>> test`;
+    const expectedResult = `&lt;#E::user::\"admin.test\"|&lt;#E::user::%22admin.test%22|[@admin.test](http://localhost:3000/users/%22admin.test%22)&gt;&gt; test`;
 
     expect(result).toStrictEqual(expectedResult);
   });

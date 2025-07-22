@@ -1,5 +1,6 @@
 ---
-title: Run the ingestion from AWS MWAA
+title: Run the ingestion from AWS MWAA | Official Documentation
+description: Integrate with MWAA to schedule and execute ingestion workflows using managed Airflow on AWS infrastructure.
 slug: /deployment/ingestion/external/mwaa
 collate: false
 ---

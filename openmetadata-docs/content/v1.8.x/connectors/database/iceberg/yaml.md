@@ -1,5 +1,6 @@
 ---
 title: Run the Iceberg Connector Externally
+description: Use YAML to ingest Iceberg table metadata, including partitions, columns, and associated lineage information.
 slug: /connectors/database/iceberg/yaml
 ---
 
@@ -8,7 +9,7 @@ name="Iceberg"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Owners"]
-unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Tags", "Stored Procedures", "Sample Data"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Tags", "Stored Procedures", "Sample Data", "Auto-Classification"]
 / %}
 
 In this section, we provide guides and references to use the Iceberg connector.

@@ -35,6 +35,7 @@ export enum SettingType {
     CustomUIThemePreference = "customUiThemePreference",
     Elasticsearch = "elasticsearch",
     EmailConfiguration = "emailConfiguration",
+    EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
     JwtTokenConfiguration = "jwtTokenConfiguration",
@@ -1472,6 +1473,10 @@ export interface OidcClientConfig {
      * Server Url.
      */
     serverUrl?: string;
+    /**
+     * Validity for the Session in case of confidential clients
+     */
+    sessionExpiry?: number;
     /**
      * Tenant in case of Azure.
      */

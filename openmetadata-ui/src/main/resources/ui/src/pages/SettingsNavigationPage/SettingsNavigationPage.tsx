@@ -155,7 +155,7 @@ export const SettingsNavigationPage = ({
 
   const titleRenderer = (node: TreeDataNode) => (
     <div className="space-between">
-      {node.title as string}
+      {t(node.title as string)}
       <Switch
         checked={!hiddenKeys.includes(node.key as string)}
         onChange={(checked) => handleRemoveToggle(checked, node.key as string)}
@@ -169,7 +169,7 @@ export const SettingsNavigationPage = ({
 
   return (
     <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
-      <Row className="p-x-lg" gutter={[0, 20]}>
+      <Row gutter={[0, 20]}>
         <Col span={24}>
           <Card
             bodyStyle={{ padding: 0 }}

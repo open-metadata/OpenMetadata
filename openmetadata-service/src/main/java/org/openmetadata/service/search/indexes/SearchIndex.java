@@ -99,7 +99,7 @@ public interface SearchIndex {
         entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName());
     map.put("entityType", entityType);
     map.put("owners", getEntitiesWithDisplayName(entity.getOwners()));
-    map.put("domain", getEntityWithDisplayName(entity.getDomain()));
+    map.put("domains", getEntitiesWithDisplayName(entity.getDomains()));
     map.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
     int totalVotes =
         nullOrEmpty(entity.getVotes())
@@ -147,7 +147,6 @@ public interface SearchIndex {
           nullOrEmpty(cloneEntity.getDisplayName())
               ? cloneEntity.getName()
               : cloneEntity.getDisplayName());
-      cloneEntity.setFullyQualifiedName(cloneEntity.getFullyQualifiedName().replace("\"", "\\'"));
       clone.add(cloneEntity);
     }
     return clone;
@@ -395,6 +394,11 @@ public interface SearchIndex {
     fields.putAll(TagIndex.getFields());
     fields.putAll(DataProductIndex.getFields());
     fields.putAll(APIEndpointIndex.getFields());
+    fields.putAll(DirectoryIndex.getFields());
+    fields.putAll(FileIndex.getFields());
+    fields.putAll(SpreadsheetIndex.getFields());
+    fields.putAll(WorksheetIndex.getFields());
+    fields.putAll(DriveServiceIndex.getFields());
     return fields;
   }
 }

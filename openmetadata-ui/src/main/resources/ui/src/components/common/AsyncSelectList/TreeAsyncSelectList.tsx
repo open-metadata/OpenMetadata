@@ -22,6 +22,7 @@ import {
   TreeSelectProps,
 } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import {
@@ -61,6 +62,7 @@ import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
+import { KeyDownStopPropagationWrapper } from '../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
@@ -72,6 +74,9 @@ interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
   isMultiSelect?: boolean;
   isParentSelectable?: boolean;
+  newLook?: boolean;
+  onSubmit?: () => void;
+  dropdownContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
@@ -85,7 +90,9 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   hasNoActionButtons,
   isMultiSelect = true, // default to true for backward compatibility
   isParentSelectable = false, // by default, only leaf nodes can be selected
-
+  newLook = false,
+  onSubmit,
+  dropdownContainerRef,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -98,6 +105,12 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   const [open, setOpen] = useState(openProp); // state for controlling dropdown visibility
 
   const form = Form.useFormInstance();
+  const handleSubmit = () => {
+    onSubmit?.();
+    // Avoiding antd > Form on Bulk edit because Form onFinish is triggered immediately when mounted.
+    // Root cause: No Form.Item fields, or all fields are valid → triggers submit.
+    form?.submit?.();
+  };
 
   const handleDropdownVisibleChange = (visible: boolean) => {
     setOpen(visible);
@@ -125,28 +138,32 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   }, []);
 
   const dropdownRender = (menu: React.ReactElement) => (
-    <>
-      {isLoading ? <Loader size="small" /> : menu}
-      <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
-        <Button
-          className="update-btn"
-          data-testid="saveAssociatedTag"
-          disabled={isEmpty(glossaries)}
-          htmlType="submit"
-          loading={isSubmitLoading}
-          size="small"
-          type="default"
-          onClick={() => form.submit()}>
-          {t('label.update')}
-        </Button>
-        <Button
-          data-testid="cancelAssociatedTag"
-          size="small"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-      </Space>
-    </>
+    <KeyDownStopPropagationWrapper>
+      <div ref={dropdownContainerRef}>
+        {isLoading ? <Loader size="small" /> : menu}
+        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+          <Button
+            className="update-btn"
+            data-testid="saveAssociatedTag"
+            disabled={isEmpty(glossaries)}
+            htmlType="button"
+            loading={isSubmitLoading}
+            size="small"
+            tabIndex={0}
+            type="default"
+            onClick={() => handleSubmit()}>
+            {t('label.update')}
+          </Button>
+          <Button
+            data-testid="cancelAssociatedTag"
+            size="small"
+            tabIndex={0}
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Space>
+      </div>
+    </KeyDownStopPropagationWrapper>
   );
 
   const customTagRender = (data: CustomTagProps) => {
@@ -198,6 +215,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     return (
       <TagsV1
         isEditTags
+        newLook={newLook}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         tagProps={tagProps}
@@ -354,6 +372,35 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     );
   }, [glossaries, searchOptions, expandableKeys.current, isParentSelectable]);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    switch (e.key) {
+      case 'Escape':
+        e.preventDefault();
+        onCancel?.();
+
+        break;
+      case 'Tab':
+        e.preventDefault();
+        e.stopPropagation();
+
+        break;
+      case 'Enter': {
+        e.preventDefault();
+        e.stopPropagation();
+        const active = document.querySelector(
+          '.ant-select-tree .ant-select-tree-treenode-active .ant-select-tree-checkbox'
+        );
+        if (active) {
+          (active as HTMLElement).click();
+        }
+
+        break;
+      }
+      default:
+        break;
+    }
+  };
+
   return (
     <TreeSelect
       showSearch
@@ -361,7 +408,9 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         ? { treeCheckable: true, treeCheckStrictly: true }
         : {})}
       autoFocus={open}
-      className="async-select-list"
+      className={classNames('async-select-list', {
+        'new-chip-style': newLook,
+      })}
       data-testid="tag-selector"
       dropdownRender={
         hasNoActionButtons ? (menu: ReactElement) => menu : dropdownRender
@@ -408,6 +457,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}
+      onKeyDown={handleKeyDown}
     />
   );
 };

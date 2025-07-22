@@ -1,5 +1,6 @@
 ---
 title: Run the Redshift Connector Externally
+description: Ingest metadata from Redshift using YAML and configure access, profiling, and lineage extraction.
 slug: /connectors/database/redshift/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/redshift/yaml
 name="Redshift"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 

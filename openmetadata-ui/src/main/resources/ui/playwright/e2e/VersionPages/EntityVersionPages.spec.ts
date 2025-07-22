@@ -22,7 +22,11 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
-import { addMultiOwner, assignTier } from '../../utils/entity';
+import {
+  addMultiOwner,
+  assignTier,
+  getEntityDataTypeDisplayPatch,
+} from '../../utils/entity';
 
 const entityCreationConfig: EntityDataClassCreationConfig = {
   apiEndpoint: true,
@@ -78,6 +82,7 @@ test.describe('Entity Version pages', () => {
     const domain = EntityDataClass.domain1.responseData;
 
     for (const entity of entities) {
+      const dataTypeDisplayPath = getEntityDataTypeDisplayPatch(entity);
       await entity.patch({
         apiContext,
         patchData: [
@@ -108,7 +113,7 @@ test.describe('Entity Version pages', () => {
           },
           {
             op: 'add',
-            path: '/domain',
+            path: '/domains/0',
             value: {
               id: domain.id,
               type: 'domain',
@@ -116,6 +121,15 @@ test.describe('Entity Version pages', () => {
               description: domain.description,
             },
           },
+          ...(dataTypeDisplayPath
+            ? [
+                {
+                  op: 'add' as const,
+                  path: dataTypeDisplayPath,
+                  value: 'OBJECT',
+                },
+              ]
+            : []),
         ],
       });
     }
@@ -144,7 +158,7 @@ test.describe('Entity Version pages', () => {
     test(`${entity.getType()}`, async ({ page }) => {
       test.slow();
 
-      await entity.visitEntityPage(page);
+      await entity.visitEntityPageWithCustomSearchBox(page);
       const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;

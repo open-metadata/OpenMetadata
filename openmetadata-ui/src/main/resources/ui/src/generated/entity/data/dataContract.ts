@@ -63,6 +63,10 @@ export interface DataContract {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Latest validation result for this data contract.
+     */
+    latestResult?: LatestResult;
+    /**
      * Name of the data contract.
      */
     name: string;
@@ -75,9 +79,17 @@ export interface DataContract {
      */
     qualityExpectations?: QualityExpectation[];
     /**
+     * User references of the reviewers for this data contract.
+     */
+    reviewers?: EntityReference[];
+    /**
+     * Configuration for scheduling data contract validation checks.
+     */
+    scheduleConfig?: ScheduleConfig;
+    /**
      * Schema definition for the data contract.
      */
-    schema?: Field[];
+    schema?: Column[];
     /**
      * Semantics rules defined in the data contract.
      */
@@ -252,6 +264,24 @@ export interface EntityReference {
 }
 
 /**
+ * Latest validation result for this data contract.
+ */
+export interface LatestResult {
+    message?:   string;
+    resultId?:  string;
+    status?:    Status;
+    timestamp?: number;
+}
+
+export enum Status {
+    Aborted = "Aborted",
+    Failed = "Failed",
+    PartialSuccess = "PartialSuccess",
+    Queued = "Queued",
+    Success = "Success",
+}
+
+/**
  * Quality expectation defined in the data contract.
  */
 export interface QualityExpectation {
@@ -274,20 +304,73 @@ export interface QualityExpectation {
 }
 
 /**
- * Field defined in the data contract's schema.
- *
- * This schema defines the nested object to capture protobuf/avro/jsonschema of topic's
- * schema.
+ * Configuration for scheduling data contract validation checks.
  */
-export interface Field {
+export interface ScheduleConfig {
     /**
-     * Child fields if dataType or arrayDataType is `map`, `record`, `message`
+     * Whether the scheduled validation is enabled.
      */
-    children?: Field[];
+    enabled?: boolean;
     /**
-     * Data type of the field (int, date etc.).
+     * End date for the scheduled validation.
      */
-    dataType: DataTypeTopic;
+    endDate?: Date;
+    /**
+     * Number of retries on validation failure.
+     */
+    retries?: number;
+    /**
+     * Delay between retries in seconds.
+     */
+    retryDelay?: number;
+    /**
+     * Schedule interval for validation checks in cron format (e.g., '0 0 * * *' for daily).
+     */
+    scheduleInterval: string;
+    /**
+     * Start date for the scheduled validation.
+     */
+    startDate?: Date;
+    /**
+     * Timeout for validation execution in seconds.
+     */
+    timeout?: number;
+    /**
+     * Timezone for the scheduled validation.
+     */
+    timezone?: string;
+}
+
+/**
+ * This schema defines the type for a column in a table.
+ */
+export interface Column {
+    /**
+     * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
+     * arrayDataType as `int`.
+     */
+    arrayDataType?: DataType;
+    /**
+     * Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.
+     */
+    children?: Column[];
+    /**
+     * Column level constraint.
+     */
+    constraint?: Constraint;
+    /**
+     * List of Custom Metrics registered for a table.
+     */
+    customMetrics?: CustomMetric[];
+    /**
+     * Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example,
+     * `varchar(20)` has dataType as `varchar` and dataLength as `20`.
+     */
+    dataLength?: number;
+    /**
+     * Data type of the column (int, date etc.).
+     */
+    dataType: DataType;
     /**
      * Display name used for dataType. This is useful for complex types, such as `array<int>`,
      * `map<int,string>`, `struct<>`, and union types.
@@ -298,11 +381,36 @@ export interface Field {
      */
     description?: string;
     /**
-     * Display Name that identifies this field name.
+     * Display Name that identifies this column name.
      */
     displayName?:        string;
     fullyQualifiedName?: string;
-    name:                string;
+    /**
+     * Json schema only if the dataType is JSON else null.
+     */
+    jsonSchema?: string;
+    name:        string;
+    /**
+     * Ordinal position of the column.
+     */
+    ordinalPosition?: number;
+    /**
+     * The precision of a numeric is the total count of significant digits in the whole number,
+     * that is, the number of digits to both sides of the decimal point. Precision is applicable
+     * Integer types, such as `INT`, `SMALLINT`, `BIGINT`, etc. It also applies to other Numeric
+     * types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
+     */
+    precision?: number;
+    /**
+     * Latest Data profile for a Column.
+     */
+    profile?: ColumnProfile;
+    /**
+     * The scale of a numeric is the count of decimal digits in the fractional part, to the
+     * right of the decimal point. For Integer types, the scale is `0`. It mainly applies to non
+     * Integer Numeric types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
+     */
+    scale?: number;
     /**
      * Tags associated with the column.
      */
@@ -310,31 +418,299 @@ export interface Field {
 }
 
 /**
- * Data type of the field (int, date etc.).
+ * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
+ * arrayDataType as `int`.
  *
- * This enum defines the type of data defined in schema.
+ * This enum defines the type of data stored in a column.
+ *
+ * Data type of the column (int, date etc.).
  */
-export enum DataTypeTopic {
+export enum DataType {
+    AggState = "AGG_STATE",
+    Aggregatefunction = "AGGREGATEFUNCTION",
     Array = "ARRAY",
+    Bigint = "BIGINT",
+    Binary = "BINARY",
+    Bit = "BIT",
+    Bitmap = "BITMAP",
+    Blob = "BLOB",
     Boolean = "BOOLEAN",
+    Bytea = "BYTEA",
+    Byteint = "BYTEINT",
     Bytes = "BYTES",
+    CIDR = "CIDR",
+    Char = "CHAR",
+    Clob = "CLOB",
     Date = "DATE",
+    Datetime = "DATETIME",
+    Datetimerange = "DATETIMERANGE",
+    Decimal = "DECIMAL",
     Double = "DOUBLE",
     Enum = "ENUM",
     Error = "ERROR",
     Fixed = "FIXED",
     Float = "FLOAT",
+    Geography = "GEOGRAPHY",
+    Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
+    Hll = "HLL",
+    Hllsketch = "HLLSKETCH",
+    Image = "IMAGE",
+    Inet = "INET",
     Int = "INT",
+    Interval = "INTERVAL",
+    Ipv4 = "IPV4",
+    Ipv6 = "IPV6",
+    JSON = "JSON",
+    Kpi = "KPI",
+    Largeint = "LARGEINT",
     Long = "LONG",
+    Longblob = "LONGBLOB",
+    Lowcardinality = "LOWCARDINALITY",
+    Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
+    Mediumblob = "MEDIUMBLOB",
+    Mediumtext = "MEDIUMTEXT",
+    Money = "MONEY",
+    Ntext = "NTEXT",
     Null = "NULL",
+    Number = "NUMBER",
+    Numeric = "NUMERIC",
+    PGLsn = "PG_LSN",
+    PGSnapshot = "PG_SNAPSHOT",
+    Point = "POINT",
+    Polygon = "POLYGON",
+    QuantileState = "QUANTILE_STATE",
     Record = "RECORD",
+    Rowid = "ROWID",
+    Set = "SET",
+    Smallint = "SMALLINT",
+    Spatial = "SPATIAL",
     String = "STRING",
+    Struct = "STRUCT",
+    Super = "SUPER",
+    Table = "TABLE",
+    Text = "TEXT",
     Time = "TIME",
     Timestamp = "TIMESTAMP",
     Timestampz = "TIMESTAMPZ",
+    Tinyint = "TINYINT",
+    Tsquery = "TSQUERY",
+    Tsvector = "TSVECTOR",
+    Tuple = "TUPLE",
+    TxidSnapshot = "TXID_SNAPSHOT",
+    UUID = "UUID",
+    Uint = "UINT",
     Union = "UNION",
     Unknown = "UNKNOWN",
+    Varbinary = "VARBINARY",
+    Varchar = "VARCHAR",
+    Variant = "VARIANT",
+    XML = "XML",
+    Year = "YEAR",
+}
+
+/**
+ * Column level constraint.
+ *
+ * This enum defines the type for column constraint.
+ */
+export enum Constraint {
+    NotNull = "NOT_NULL",
+    Null = "NULL",
+    PrimaryKey = "PRIMARY_KEY",
+    Unique = "UNIQUE",
+}
+
+/**
+ * Custom Metric definition that we will associate with a column.
+ */
+export interface CustomMetric {
+    /**
+     * Name of the column in a table.
+     */
+    columnName?: string;
+    /**
+     * Description of the Metric.
+     */
+    description?: string;
+    /**
+     * SQL expression to compute the Metric. It should return a single numerical value.
+     */
+    expression: string;
+    /**
+     * Unique identifier of this Custom Metric instance.
+     */
+    id?: string;
+    /**
+     * Name that identifies this Custom Metric.
+     */
+    name: string;
+    /**
+     * Owners of this Custom Metric.
+     */
+    owners?: EntityReference[];
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    updatedAt?: number;
+    /**
+     * User who made the update.
+     */
+    updatedBy?: string;
+}
+
+/**
+ * Latest Data profile for a Column.
+ *
+ * This schema defines the type to capture the table's column profile.
+ */
+export interface ColumnProfile {
+    /**
+     * Custom Metrics profile list bound to a column.
+     */
+    customMetrics?: CustomMetricProfile[];
+    /**
+     * Number of values that contain distinct values.
+     */
+    distinctCount?: number;
+    /**
+     * Proportion of distinct values in a column.
+     */
+    distinctProportion?: number;
+    /**
+     * No.of Rows that contain duplicates in a column.
+     */
+    duplicateCount?: number;
+    /**
+     * First quartile of a column.
+     */
+    firstQuartile?: number;
+    /**
+     * Histogram of a column.
+     */
+    histogram?: any[] | boolean | HistogramClass | number | number | null | string;
+    /**
+     * Inter quartile range of a column.
+     */
+    interQuartileRange?: number;
+    /**
+     * Maximum value in a column.
+     */
+    max?: number | string;
+    /**
+     * Maximum string length in a column.
+     */
+    maxLength?: number;
+    /**
+     * Avg value in a column.
+     */
+    mean?: number;
+    /**
+     * Median of a column.
+     */
+    median?: number;
+    /**
+     * Minimum value in a column.
+     */
+    min?: number | string;
+    /**
+     * Minimum string length in a column.
+     */
+    minLength?: number;
+    /**
+     * Missing count is calculated by subtracting valuesCount - validCount.
+     */
+    missingCount?: number;
+    /**
+     * Missing Percentage is calculated by taking percentage of validCount/valuesCount.
+     */
+    missingPercentage?: number;
+    /**
+     * Column Name.
+     */
+    name: string;
+    /**
+     * Non parametric skew of a column.
+     */
+    nonParametricSkew?: number;
+    /**
+     * No.of null values in a column.
+     */
+    nullCount?: number;
+    /**
+     * No.of null value proportion in columns.
+     */
+    nullProportion?: number;
+    /**
+     * Standard deviation of a column.
+     */
+    stddev?: number;
+    /**
+     * Median value in a column.
+     */
+    sum?: number;
+    /**
+     * First quartile of a column.
+     */
+    thirdQuartile?: number;
+    /**
+     * Timestamp on which profile is taken.
+     */
+    timestamp: number;
+    /**
+     * No. of unique values in the column.
+     */
+    uniqueCount?: number;
+    /**
+     * Proportion of number of unique values in a column.
+     */
+    uniqueProportion?: number;
+    /**
+     * Total count of valid values in this column.
+     */
+    validCount?: number;
+    /**
+     * Total count of the values in this column.
+     */
+    valuesCount?: number;
+    /**
+     * Percentage of values in this column with respect to row count.
+     */
+    valuesPercentage?: number;
+    /**
+     * Variance of a column.
+     */
+    variance?: number;
+}
+
+/**
+ * Profiling results of a Custom Metric.
+ */
+export interface CustomMetricProfile {
+    /**
+     * Custom metric name.
+     */
+    name?: string;
+    /**
+     * Profiling results for the metric.
+     */
+    value?: number;
+}
+
+export interface HistogramClass {
+    /**
+     * Boundaries of Histogram.
+     */
+    boundaries?: any[];
+    /**
+     * Frequencies of Histogram.
+     */
+    frequencies?: any[];
 }
 
 /**
@@ -433,6 +809,14 @@ export interface SemanticsRule {
      * Description of the semantics rule.
      */
     description: string;
+    /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
     /**
      * Name of the semantics rule.
      */

@@ -49,6 +49,7 @@ jest.mock('../../../../common/SummaryCard/SummaryCard.component', () => ({
 
 jest.mock('../../../../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
+  getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => fqn),
 }));
 jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
   return jest
@@ -78,6 +79,13 @@ jest.mock('../../../../common/TestIndicator/TestIndicator', () => {
 jest.mock('../TableProfilerProvider', () => ({
   useTableProfiler: jest.fn().mockImplementation(() => ({
     tableProfiler: MOCK_TABLE,
+    permissions: {
+      EditAll: true,
+      EditTests: true,
+      EditDataProfile: true,
+      ViewDataProfile: true,
+      ViewAll: true,
+    },
   })),
 }));
 

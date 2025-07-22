@@ -2,7 +2,6 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -108,7 +107,17 @@ public class OpenSearchBulkSink implements BulkSink {
                   for (var item : response.getItems()) {
                     if (item.isFailed()) {
                       failures++;
-                      LOG.warn("Failed to index document: {}", item.getFailureMessage());
+                      String failureMessage = item.getFailureMessage();
+                      // Log document_missing_exception differently as it indicates a race condition
+                      if (failureMessage != null
+                          && failureMessage.contains("document_missing_exception")) {
+                        LOG.warn(
+                            "Document missing error for {}: {} - This may occur during concurrent reindexing",
+                            item.getId(),
+                            failureMessage);
+                      } else {
+                        LOG.warn("Failed to index document {}: {}", item.getId(), failureMessage);
+                      }
                     }
                   }
                   int successes = numberOfActions - failures;
@@ -180,12 +189,14 @@ public class OpenSearchBulkSink implements BulkSink {
       throw new IllegalArgumentException("Entity type is required in context data");
     }
 
+    Boolean recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
+
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
     if (indexMapping == null) {
       LOG.debug("No index mapping found for entityType '{}'. Skipping indexing.", entityType);
       return;
     }
-    String indexName = indexMapping.getIndexName();
+    String indexName = indexMapping.getIndexName(searchRepository.getClusterAlias());
 
     try {
       // Check if these are time series entities
@@ -197,7 +208,7 @@ public class OpenSearchBulkSink implements BulkSink {
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
         for (EntityInterface entity : entityInterfaces) {
-          addEntity(entity, indexName);
+          addEntity(entity, indexName, recreateIndex);
         }
       }
     } catch (Exception e) {
@@ -216,22 +227,27 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
-  private void addEntity(EntityInterface entity, String indexName) throws Exception {
+  private void addEntity(EntityInterface entity, String indexName, boolean recreateIndex) {
     // Build the search index document using the proper transformation
     String entityType = Entity.getEntityTypeFromObject(entity);
     Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
     String json = JsonUtils.pojoToJson(searchIndexDoc);
 
-    UpdateRequest updateRequest = new UpdateRequest(indexName, entity.getId().toString());
-    updateRequest.doc(json, XContentType.JSON);
-    updateRequest.docAsUpsert(true);
-
-    // Add to bulk processor - it handles everything including size limits
-    bulkProcessor.add(updateRequest);
+    if (recreateIndex) {
+      // Use IndexRequest for fresh indexing to avoid document_missing_exception
+      IndexRequest indexRequest =
+          new IndexRequest(indexName).id(entity.getId().toString()).source(json, XContentType.JSON);
+      bulkProcessor.add(indexRequest);
+    } else {
+      // Use UpdateRequest with upsert for regular updates
+      UpdateRequest updateRequest = new UpdateRequest(indexName, entity.getId().toString());
+      updateRequest.doc(json, XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+      bulkProcessor.add(updateRequest);
+    }
   }
 
-  private void addTimeSeriesEntity(EntityTimeSeriesInterface entity, String indexName)
-      throws Exception {
+  private void addTimeSeriesEntity(EntityTimeSeriesInterface entity, String indexName) {
     String json = JsonUtils.pojoToJson(entity);
     String docId = entity.getId().toString();
 
@@ -263,7 +279,7 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     try {
       // Flush any pending requests
       bulkProcessor.flush();

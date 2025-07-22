@@ -215,6 +215,17 @@ public class WebsocketNotificationHandler {
     return null;
   }
 
+  public static void sendCsvImportStartedNotification(
+      String jobId, SecurityContext securityContext) {
+    CSVImportMessage message = new CSVImportMessage(jobId, "STARTED", null, null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, jsonMessage);
+    }
+  }
+
   public static void sendCsvImportCompleteNotification(
       String jobId, SecurityContext securityContext, CsvImportResult result) {
     CSVImportMessage message = new CSVImportMessage(jobId, "COMPLETED", result, null);

@@ -1,5 +1,6 @@
 ---
 title: Run the Kinesis Connector Externally
+description: Use YAML to configure ingestion from Kinesis streams and extract topic, schema, and lineage metadata.
 slug: /connectors/messaging/kinesis/yaml
 ---
 

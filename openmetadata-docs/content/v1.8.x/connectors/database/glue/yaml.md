@@ -1,5 +1,6 @@
 ---
 title: Run the Glue Connector Externally
+description: Configure AWS Glue ingestion using YAML to capture ETL job metadata, source-target lineage, and transformation logic.
 slug: /connectors/database/glue/yaml
 ---
 
@@ -8,7 +9,7 @@ name="Glue"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "dbt"]
-unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Sample Data"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Sample Data", "Auto-Classification"]
 / %}
 
 In this section, we provide guides and references to use the Glue connector.

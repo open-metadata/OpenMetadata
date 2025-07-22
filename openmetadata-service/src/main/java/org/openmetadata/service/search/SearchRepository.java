@@ -5,7 +5,7 @@ import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
@@ -15,6 +15,7 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
+import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.ADD_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
@@ -25,6 +26,7 @@ import static org.openmetadata.service.search.SearchClient.PROPAGATE_NESTED_FIEL
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_TEST_SUITES_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -131,7 +133,7 @@ public class SearchRepository {
   private final List<String> inheritableFields =
       List.of(
           FIELD_OWNERS,
-          FIELD_DOMAIN,
+          FIELD_DOMAINS,
           Entity.FIELD_DISABLED,
           Entity.FIELD_TEST_SUITES,
           FIELD_DISPLAY_NAME);
@@ -525,7 +527,10 @@ public class SearchRepository {
           getInheritedFieldChanges(changeDescription, entity);
       Pair<String, String> parentMatch;
       if (!updates.getValue().isEmpty()
-          && (updates.getValue().containsKey(FIELD_DOMAIN)
+          // domains can be updatedDomains or deletedDomains and need to be propagated from the
+          // service level
+          && (updates.getValue().keySet().stream()
+                  .anyMatch(key -> key.toLowerCase().contains(FIELD_DOMAINS))
               || updates.getValue().containsKey(FIELD_DISPLAY_NAME))) {
         if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
@@ -534,7 +539,8 @@ public class SearchRepository {
             || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
             || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.API_SERVICE)) {
+            || entityType.equalsIgnoreCase(Entity.API_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.DRIVE_SERVICE)) {
           parentMatch = new ImmutablePair<>(SERVICE_ID, entityId);
         } else {
           parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
@@ -761,6 +767,15 @@ public class SearchRepository {
               fieldData.put("deletedOwners", inheritedOwners);
               scriptTxt.append(REMOVE_OWNERS_SCRIPT);
               scriptTxt.append(" ");
+            } else if (field.getName().equals(FIELD_DOMAINS)) {
+              List<EntityReference> inheritedDomains =
+                  JsonUtils.deepCopyList(entity.getDomains(), EntityReference.class);
+              for (EntityReference inheritedDomain : inheritedDomains) {
+                inheritedDomain.setInherited(true);
+              }
+              fieldData.put("deletedDomains", inheritedDomains);
+              scriptTxt.append(REMOVE_DOMAINS_SCRIPT);
+              scriptTxt.append(" ");
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
@@ -824,6 +839,14 @@ public class SearchRepository {
               }
               fieldData.put("updatedOwners", inheritedOwners);
               scriptTxt.append(ADD_OWNERS_SCRIPT);
+            } else if (field.getName().equals(FIELD_DOMAINS)) {
+              List<EntityReference> inheritedDomains =
+                  JsonUtils.deepCopyList(entity.getDomains(), EntityReference.class);
+              for (EntityReference inheritedDomain : inheritedDomains) {
+                inheritedDomain.setInherited(true);
+              }
+              fieldData.put("updatedDomains", inheritedDomains);
+              scriptTxt.append(ADD_DOMAINS_SCRIPT);
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
@@ -865,7 +888,8 @@ public class SearchRepository {
         || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
         || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
         || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
-        || entityType.equalsIgnoreCase(Entity.API_SERVICE)) {
+        || entityType.equalsIgnoreCase(Entity.API_SERVICE)
+        || entityType.equalsIgnoreCase(Entity.DRIVE_SERVICE)) {
       return "service." + fieldName;
     } else {
       return entityType + "." + fieldName;
@@ -1020,16 +1044,6 @@ public class SearchRepository {
           new ImmutablePair<>(
               REMOVE_TAGS_CHILDREN_SCRIPT,
               Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
-      case Entity.DASHBOARD -> {
-        String scriptTxt =
-            String.format(
-                "if (ctx._source.dashboards.size() == 1) { ctx._source.put('deleted', '%s') }",
-                true);
-        searchClient.softDeleteOrRestoreChildren(
-            indexMapping.getChildAliases(clusterAlias),
-            scriptTxt,
-            List.of(new ImmutablePair<>("dashboards.id", docId)));
-      }
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getBasic())) {
@@ -1049,7 +1063,8 @@ public class SearchRepository {
           Entity.PIPELINE_SERVICE,
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE -> searchClient.deleteEntityByFields(
+          Entity.SEARCH_SERVICE,
+          Entity.DRIVE_SERVICE -> searchClient.deleteEntityByFields(
           indexMapping.getChildAliases(clusterAlias),
           List.of(new ImmutablePair<>("service.id", docId)));
       default -> {
@@ -1074,20 +1089,11 @@ public class SearchRepository {
           Entity.PIPELINE_SERVICE,
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE -> searchClient.softDeleteOrRestoreChildren(
+          Entity.SEARCH_SERVICE,
+          Entity.DRIVE_SERVICE -> searchClient.softDeleteOrRestoreChildren(
           indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
           List.of(new ImmutablePair<>("service.id", docId)));
-      case Entity.DASHBOARD -> {
-        scriptTxt =
-            String.format(
-                "if (ctx._source.dashboards.size() == 1) { ctx._source.put('deleted', '%s') }",
-                delete);
-        searchClient.softDeleteOrRestoreChildren(
-            indexMapping.getChildAliases(clusterAlias),
-            scriptTxt,
-            List.of(new ImmutablePair<>("dashboards.id", docId)));
-      }
       default -> {
         List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
         if (!indexNames.isEmpty()) {

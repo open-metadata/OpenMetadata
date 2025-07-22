@@ -1,5 +1,6 @@
 ---
 title: Run the Synapse Connector Externally
+description: Use YAML to extract metadata from Azure Synapse and visualize data structures and dependencies.
 slug: /connectors/database/synapse/yaml
 collate: true
 ---

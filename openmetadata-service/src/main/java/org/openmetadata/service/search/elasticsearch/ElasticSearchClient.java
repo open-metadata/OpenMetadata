@@ -457,12 +457,21 @@ public class ElasticSearchClient implements SearchClient {
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
 
     try {
+      // Start search operation timing using Micrometer
+      io.micrometer.core.instrument.Timer.Sample searchTimerSample =
+          org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
 
       SearchResponse searchResponse =
           client.search(
               new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
                   .source(searchSourceBuilder),
               RequestOptions.DEFAULT);
+
+      // End search operation timing
+      if (searchTimerSample != null) {
+        org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
+            searchTimerSample);
+      }
 
       if (!request.getIsHierarchy()) {
         return Response.status(OK).entity(searchResponse.toString()).build();
@@ -843,8 +852,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
-      throws IOException {
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) {
     LOG.info("Searching with NLQ: {}", request.getQuery());
     if (nlqService != null) {
       try {
@@ -1448,8 +1456,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
-      throws IOException {
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
     if (isClientAvailable) {
       BulkRequest bulkRequest = new BulkRequest();
       for (Map<String, String> docAndId : docsAndIds) {
@@ -2681,6 +2688,51 @@ public class ElasticSearchClient implements SearchClient {
         LOG.info("Successfully Updated FQN for Glossary Term: {}", oldParentFQN);
       } catch (Exception e) {
         LOG.error("Error while updating Glossary Term tag FQN: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("columnUpdates", originalUpdatedColumnFqnMap);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, UPDATE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateElasticSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while updating Column Lineage: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("deletedFQNs", deletedColumns);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, DELETE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateElasticSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while deleting Column Lineage: {}", e.getMessage(), e);
       }
     }
   }

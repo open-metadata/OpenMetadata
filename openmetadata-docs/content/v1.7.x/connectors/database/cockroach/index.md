@@ -1,5 +1,6 @@
 ---
 title: CockroachDB Connector | OpenMetadata Integration Guide
+description: Set up CockroachDB connector in OpenMetadata to discover, catalog, and manage your database metadata. Complete integration guide with configuration steps.
 slug: /connectors/database/cockroach
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/cockroach
 name="Cockroach"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Quality", "Data Profiler"]
+availableFeatures=["Metadata", "Data Quality", "Data Profiler", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures"]
 / %}
 
