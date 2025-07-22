@@ -1,5 +1,6 @@
 ---
-title: How to Ingest Metadata
+title: How to Ingest Metadata | Official Documentation
+description: Learn how to ingest metadata using connectors for databases, pipelines, dashboards, and storage systems.
 slug: /how-to-guides/admin-guide/how-to-ingest-metadata
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: Kubernetes Deployment
+title: Kubernetes Deployment | Official Documentation
+description: Deploy the OpenMetadata on Kubernetes using Helm, custom values, and supported cloud configurations for scalable containerized environments.
 slug: /deployment/kubernetes
 collate: false
 ---

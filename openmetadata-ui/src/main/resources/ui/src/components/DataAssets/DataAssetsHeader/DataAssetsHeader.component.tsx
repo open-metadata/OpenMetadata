@@ -121,8 +121,9 @@ export const DataAssetsHeader = ({
   isAutoPilotWorkflowStatusLoading = false,
   onCertificationUpdate,
 }: DataAssetsHeaderProps) => {
-  const { serviceCategory } =
-    useRequiredParams<{ serviceCategory: ServiceCategory }>();
+  const { serviceCategory } = useRequiredParams<{
+    serviceCategory: ServiceCategory;
+  }>();
   const { currentUser } = useApplicationStore();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
@@ -445,8 +446,6 @@ export const DataAssetsHeader = ({
       return null;
     }
 
-    const isDisabled =
-      isAutoPilotWorkflowStatusLoading || disableRunAgentsButton;
     const isLoading = isAutoPilotWorkflowStatusLoading || isAutoPilotTriggering;
 
     return (
@@ -454,7 +453,7 @@ export const DataAssetsHeader = ({
         <Button
           className="font-semibold"
           data-testid="trigger-auto-pilot-application-button"
-          disabled={isDisabled}
+          disabled={disableRunAgentsButton}
           icon={<Icon className="flex-center" component={TriggerIcon} />}
           loading={isLoading}
           type="primary"
@@ -609,8 +608,9 @@ export const DataAssetsHeader = ({
               <>
                 <DomainLabel
                   headerLayout
+                  multiple
                   afterDomainUpdateAction={afterDomainUpdateAction}
-                  domain={(dataAsset as EntitiesWithDomainField).domain}
+                  domains={(dataAsset as EntitiesWithDomainField).domains}
                   entityFqn={dataAsset.fullyQualifiedName ?? ''}
                   entityId={dataAsset.id ?? ''}
                   entityType={entityType}

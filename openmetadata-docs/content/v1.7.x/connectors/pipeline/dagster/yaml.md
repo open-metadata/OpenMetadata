@@ -1,5 +1,6 @@
 ---
 title: Run the Dagster Connector Externally
+description: Use YAML to set up Dagster pipeline ingestion and track transformations, dependencies, and metadata flows.
 slug: /connectors/pipeline/dagster/yaml
 ---
 

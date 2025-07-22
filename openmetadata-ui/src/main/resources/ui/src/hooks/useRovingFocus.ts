@@ -100,6 +100,11 @@ export function useRovingFocus({
       return;
     }
 
+    const active = document.activeElement as HTMLElement | null;
+    if (!active?.dataset?.rovingItem) {
+      return;
+    }
+
     const current = container.querySelector<HTMLElement>(
       `[data-roving-index="${focusedIndex}"]`
     );

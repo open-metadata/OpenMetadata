@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -276,7 +284,7 @@
           }
         }
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",

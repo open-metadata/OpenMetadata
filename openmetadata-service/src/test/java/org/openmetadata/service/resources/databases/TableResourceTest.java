@@ -87,6 +87,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -1815,7 +1818,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(initialTableCount + 2, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
-      assertOwners(Lists.newArrayList(USER1_REF), table.getOwners());
+      assertReferenceList(Lists.newArrayList(USER1_REF), table.getOwners());
       assertReference(DATABASE.getFullyQualifiedName(), table.getDatabase());
     }
 
@@ -2494,24 +2497,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void test_domainInheritance(TestInfo test) throws IOException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
-        dbServiceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        dbServiceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     DatabaseService dbService = dbServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
 
     // Ensure database domain is inherited from database service
     CreateDatabase createDb =
         dbTest.createRequest(test).withService(dbService.getFullyQualifiedName());
-    Database db = dbTest.assertDomainInheritance(createDb, DOMAIN.getEntityReference());
+    Database db = dbTest.assertSingleDomainInheritance(createDb, DOMAIN.getEntityReference());
 
     // Ensure databaseSchema domain is inherited from database
     CreateDatabaseSchema createSchema =
         schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
     DatabaseSchema schema =
-        schemaTest.assertDomainInheritance(createSchema, DOMAIN.getEntityReference());
+        schemaTest.assertSingleDomainInheritance(createSchema, DOMAIN.getEntityReference());
 
     // Ensure table domain is inherited from databaseSchema
     CreateTable createTable =
         createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
-    Table table = assertDomainInheritance(createTable, DOMAIN.getEntityReference());
+    Table table = assertSingleDomainInheritance(createTable, DOMAIN.getEntityReference());
 
     // Ensure test case domain is inherited from table
     CreateTestSuite createTestSuite =
@@ -2525,39 +2528,83 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
     TestCase testCase =
-        testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());
+        testCaseResourceTest.assertSingleDomainInheritance(
+            createTestCase, DOMAIN.getEntityReference());
 
     // Check domain properly updated in search
-    verifyDomainInSearch(db.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(schema.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(table.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(testCase.getEntityReference(), DOMAIN.getEntityReference());
+    verifyDomainsInSearch(db.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(schema.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(table.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(testCase.getEntityReference(), List.of(DOMAIN.getEntityReference()));
 
     // Update domain of service within same session
     ChangeDescription change = getChangeDescription(dbService, MINOR_UPDATE);
-    fieldUpdated(change, "domain", DOMAIN.getEntityReference(), DOMAIN1.getEntityReference());
+    fieldAdded(change, "domains", List.of(DOMAIN1.getEntityReference()));
+    fieldDeleted(change, "domains", List.of(DOMAIN.getEntityReference()));
     dbService =
         dbServiceTest.updateAndCheckEntity(
-            createDbService.withDomain(DOMAIN1.getFullyQualifiedName()),
+            createDbService.withDomains(List.of(DOMAIN1.getFullyQualifiedName())),
             OK,
             ADMIN_AUTH_HEADERS,
             MINOR_UPDATE,
             change);
 
     // Check domain properly updated in search
-    verifyDomainInSearch(db.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(schema.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(table.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(testCase.getEntityReference(), DOMAIN1.getEntityReference());
+    verifyDomainsInSearch(db.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(schema.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(table.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(testCase.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
 
     // Change the domain of table and ensure further ingestion updates don't overwrite the domain
-    assertDomainInheritanceOverride(
-        table, createTable.withDomain(null), SUB_DOMAIN.getEntityReference());
+    assertSingleDomainInheritanceOverride(
+        table, createTable.withDomains(null), SUB_DOMAIN.getEntityReference());
 
     // Change the ownership of schema and ensure further ingestion updates don't overwrite the
     // ownership
-    schemaTest.assertDomainInheritanceOverride(
-        schema, createSchema.withDomain(null), SUB_DOMAIN.getEntityReference());
+    schemaTest.assertSingleDomainInheritanceOverride(
+        schema, createSchema.withDomains(null), SUB_DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void test_multipleDomainInheritance(TestInfo test) throws IOException {
+    // Test inheritance of multiple domains from databaseService > database > databaseSchema > table
+    CreateDatabaseService createDbService =
+        dbServiceTest
+            .createRequest(test)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName(), DOMAIN1.getFullyQualifiedName()));
+    DatabaseService dbService = dbServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
+
+    // Ensure database domains are inherited from database service
+    CreateDatabase createDb =
+        dbTest.createRequest(test).withService(dbService.getFullyQualifiedName());
+    Database db =
+        dbTest.assertMultipleDomainInheritance(
+            createDb, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Ensure databaseSchema domains are inherited from database
+    CreateDatabaseSchema createSchema =
+        schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema =
+        schemaTest.assertMultipleDomainInheritance(
+            createSchema, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Ensure table domains are inherited from databaseSchema
+    CreateTable createTable =
+        createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table =
+        assertMultipleDomainInheritance(
+            createTable, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Verify multiple domains are properly updated in search
+    verifyDomainsInSearch(
+        db.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(
+        schema.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(
+        table.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
   }
 
   @Test
@@ -2573,26 +2620,30 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable createTable =
         createRequest(test)
             .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withDomain(DOMAIN.getFullyQualifiedName());
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
 
-    Table createdTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN.getFullyQualifiedName(), createdTable.getDomain().getFullyQualifiedName());
+    Table createdTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        DOMAIN.getFullyQualifiedName(), createdTable.getDomains().get(0).getFullyQualifiedName());
 
     // update table entity domain w/ PUT request w/ bot auth and check update is ignored
-    CreateTable updateTablePayload = createTable.withDomain(DOMAIN1.getFullyQualifiedName());
+    CreateTable updateTablePayload =
+        createTable.withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
     updateEntity(updateTablePayload, OK, INGESTION_BOT_AUTH_HEADERS);
-    Table updatedTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN.getFullyQualifiedName(), updatedTable.getDomain().getFullyQualifiedName());
+    Table updatedTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        DOMAIN.getFullyQualifiedName(), updatedTable.getDomains().get(0).getFullyQualifiedName());
 
     // patch domain w/ bot auth and check update is applied
     patchEntity(
         table.getId(),
-        JsonUtils.pojoToJson(createTable),
-        createdTable.withDomain(DOMAIN1.getEntityReference()),
+        JsonUtils.pojoToJson(updatedTable),
+        updatedTable.withDomains(List.of(DOMAIN1.getEntityReference())),
         INGESTION_BOT_AUTH_HEADERS);
-    Table patchedTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN1.getFullyQualifiedName(), patchedTable.getDomain().getFullyQualifiedName());
+    Table patchedTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        DOMAIN1.getFullyQualifiedName(), patchedTable.getDomains().get(0).getFullyQualifiedName());
   }
 
   @Test
@@ -3714,7 +3765,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
               : JsonUtils.readObjects(expected.toString(), EntityReference.class);
       List<EntityReference> actualOwners =
           JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertOwners(expectedOwners, actualOwners);
+      assertReferenceList(expectedOwners, actualOwners);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -4210,6 +4261,194 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void test_concurrentColumnUpdates_reproduceDataLoss(TestInfo test) throws Exception {
+    // This test reproduces the concurrent update issue described in the GitHub issue
+    // where two near-simultaneous PATCH calls against the same table version can
+    // silently wipe out each other's changes
+
+    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // IMPORTANT: Get the table state that both threads will use as their base
+    // This simulates both requests reading the same version 0.2 as in the issue
+    Table baseTableState = getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+    String baseTableJson = JsonUtils.pojoToJson(baseTableState);
+    Double baseVersion = baseTableState.getVersion();
+    LOG.info("Base table version for both requests: {}", baseVersion);
+
+    // Set up for concurrent updates matching the issue scenario
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch completionLatch = new CountDownLatch(2);
+    AtomicReference<Table> resultA = new AtomicReference<>();
+    AtomicReference<Table> resultB = new AtomicReference<>();
+    AtomicReference<Exception> errorRef = new AtomicReference<>();
+
+    // Request A: Add description to a column (simulating eventid column description update)
+    Thread threadA =
+        new Thread(
+            () -> {
+              try {
+                startLatch.await();
+
+                // Use the same base table state (simulating both requests starting with version
+                // 0.2)
+                Table tableForA = JsonUtils.readValue(baseTableJson, Table.class);
+
+                // Add description to eventid column (index 2 in default test columns)
+                if (tableForA.getColumns() != null && tableForA.getColumns().size() > 2) {
+                  Column eventIdColumn = tableForA.getColumns().get(2);
+                  eventIdColumn.setDescription(
+                      "Unique identifier for the event, used to capture and track changes affecting the customer-address relationship.");
+                }
+
+                // Small delay to ensure concurrent processing
+                Thread.sleep(50);
+
+                // Apply update using the original base JSON
+                Table updated =
+                    patchEntity(tableForA.getId(), baseTableJson, tableForA, ADMIN_AUTH_HEADERS);
+                resultA.set(updated);
+                LOG.info(
+                    "Request A completed: version {} -> {}", baseVersion, updated.getVersion());
+
+              } catch (Exception e) {
+                LOG.error("Request A failed", e);
+                errorRef.compareAndSet(null, e);
+              } finally {
+                completionLatch.countDown();
+              }
+            });
+
+    // Request B: Add tags to multiple columns (simulating classification tags)
+    Thread threadB =
+        new Thread(
+            () -> {
+              try {
+                startLatch.await();
+
+                // Small delay to simulate the 358ms difference in the issue
+                Thread.sleep(358);
+
+                // Use the same base table state (simulating both requests starting with version
+                // 0.2)
+                Table tableForB = JsonUtils.readValue(baseTableJson, Table.class);
+
+                // Add tags to table
+                List<TagLabel> tableTags = new ArrayList<>();
+                tableTags.add(TIER2_TAG_LABEL);
+                tableForB.setTags(tableTags);
+
+                // Add tags to columns
+                if (tableForB.getColumns() != null && tableForB.getColumns().size() >= 2) {
+                  // Tag first column (addressid)
+                  Column col0 = tableForB.getColumns().get(0);
+                  List<TagLabel> col0Tags = new ArrayList<>();
+                  col0Tags.add(
+                      new TagLabel()
+                          .withTagFQN("PersonalData.Personal")
+                          .withSource(TagLabel.TagSource.CLASSIFICATION));
+                  col0Tags.add(
+                      new TagLabel()
+                          .withTagFQN("PII.Sensitive")
+                          .withSource(TagLabel.TagSource.CLASSIFICATION));
+                  col0.setTags(col0Tags);
+
+                  // Tag second column (customerid)
+                  Column col1 = tableForB.getColumns().get(1);
+                  List<TagLabel> col1Tags = new ArrayList<>();
+                  col1Tags.add(
+                      new TagLabel()
+                          .withTagFQN("PII.Sensitive")
+                          .withSource(TagLabel.TagSource.CLASSIFICATION));
+                  col1.setTags(col1Tags);
+                }
+
+                // Apply update using the original base JSON
+                Table updated =
+                    patchEntity(tableForB.getId(), baseTableJson, tableForB, ADMIN_AUTH_HEADERS);
+                resultB.set(updated);
+                LOG.info(
+                    "Request B completed: version {} -> {}", baseVersion, updated.getVersion());
+
+              } catch (Exception e) {
+                LOG.error("Request B failed", e);
+                errorRef.compareAndSet(null, e);
+              } finally {
+                completionLatch.countDown();
+              }
+            });
+
+    // Start both threads
+    threadA.start();
+    threadB.start();
+
+    // Release threads to simulate concurrent requests
+    startLatch.countDown();
+
+    // Wait for completion
+    assertTrue(
+        completionLatch.await(30, TimeUnit.SECONDS), "Requests should complete within timeout");
+
+    // Check for errors
+    if (errorRef.get() != null) {
+      throw new AssertionError("Request execution failed", errorRef.get());
+    }
+
+    // Get final table state
+    Table finalTable = getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+
+    // Verify the issue: Request A's column description should be preserved
+    // This assertion should FAIL if the concurrent update bug exists
+    assertNotNull(finalTable.getColumns());
+    assertTrue(finalTable.getColumns().size() > 2);
+    Column eventIdColumn = finalTable.getColumns().get(2);
+
+    // This is the key assertion - it should fail if Request B overwrote Request A's changes
+    assertEquals(
+        "Unique identifier for the event, used to capture and track changes affecting the customer-address relationship.",
+        eventIdColumn.getDescription(),
+        "Column description from Request A should be preserved (this will fail if concurrent update bug exists)");
+
+    // Verify Request B's changes are also present
+    // Check table tags
+    assertNotNull(finalTable.getTags());
+    assertTrue(
+        finalTable.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(TIER2_TAG_LABEL.getTagFQN())),
+        "Table should have Tier2 tag from Request B");
+
+    // Check column tags
+    Column firstColumn = finalTable.getColumns().get(0);
+    assertNotNull(firstColumn.getTags());
+    assertTrue(firstColumn.getTags().size() >= 2, "First column should have tags from Request B");
+
+    // Log final state for debugging
+    LOG.info(
+        "Final table version: {}, Request A version: {}, Request B version: {}",
+        finalTable.getVersion(),
+        resultA.get() != null ? resultA.get().getVersion() : "null",
+        resultB.get() != null ? resultB.get().getVersion() : "null");
+
+    // Log what we found to help debug
+    LOG.info("EventId column final description: {}", eventIdColumn.getDescription());
+    LOG.info("Table final tags: {}", finalTable.getTags());
+    LOG.info("First column final tags: {}", firstColumn.getTags());
+
+    // Both requests should have succeeded and resulted in version increments
+    assertNotNull(resultA.get(), "Request A should have completed");
+    assertNotNull(resultB.get(), "Request B should have completed");
+    assertTrue(finalTable.getVersion() > table.getVersion(), "Version should be incremented");
+
+    // Additional check: If both updates were properly merged, we should see version increments for
+    // both
+    // If the issue exists, one update might overwrite the other
+    if (resultA.get().getVersion().equals(resultB.get().getVersion())) {
+      LOG.warn(
+          "Both requests resulted in the same version - this suggests one overwrote the other!");
+    }
+  }
+
+  @Test
   void test_updateColumn_dataConsumerCannotUpdateColumns(TestInfo test) throws IOException {
     // Temporarily remove Organization's default roles to ensure USER3 has no permissions
     Team org = getOrganization();
@@ -4513,7 +4752,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withService(DATABASE.getService().getFullyQualifiedName())
             .withOwners(
                 List.of(databaseOwner1.getEntityReference(), databaseOwner2.getEntityReference()))
-            .withDomain(domain.getFullyQualifiedName());
+            .withDomains(List.of(domain.getFullyQualifiedName()));
     Database database = dbTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
 
     // Create schemas with different inheritance scenarios
@@ -4559,7 +4798,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             schemaTest
                 .createRequest(test.getDisplayName() + "_schema2")
                 .withDatabase(database.getFullyQualifiedName())
-                .withDomain(schemaDomain.getFullyQualifiedName()),
+                .withDomains(List.of(schemaDomain.getFullyQualifiedName())),
             ADMIN_AUTH_HEADERS);
     schemas.add(schema2);
 
@@ -4608,7 +4847,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Test 1: Fetch all tables with pagination including inherited fields
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("database", database.getFullyQualifiedName());
-    queryParams.put("fields", "owners,domain");
+    queryParams.put("fields", "owners,domains");
 
     ResultList<Table> tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
 
@@ -4620,11 +4859,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         // Tables in schema0
         if (tableName.endsWith("0")) {
           // Inherits from database
-          assertNotNull(fetchedTable.getDomain());
+          assertListNotNull(fetchedTable.getDomains());
           assertEquals(
-              domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+              domain.getFullyQualifiedName(),
+              fetchedTable.getDomains().get(0).getFullyQualifiedName());
           assertTrue(
-              fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+              fetchedTable.getDomains().get(0).getInherited(),
+              "Domain should be inherited from database");
 
           assertListNotNull(fetchedTable.getOwners());
           assertEquals(
@@ -4636,11 +4877,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                       assertTrue(owner.getInherited(), "Owners should be inherited from database"));
         } else {
           // Has its own owner but inherits domain
-          assertNotNull(fetchedTable.getDomain());
+          assertListNotNull(fetchedTable.getDomains());
           assertEquals(
-              domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+              domain.getFullyQualifiedName(),
+              fetchedTable.getDomains().get(0).getFullyQualifiedName());
           assertTrue(
-              fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+              fetchedTable.getDomains().get(0).getInherited(),
+              "Domain should be inherited from database");
 
           assertListNotNull(fetchedTable.getOwners());
           assertEquals(1, fetchedTable.getOwners().size(), "Should have its own owner");
@@ -4651,11 +4894,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         }
       } else if (tableName.contains("_s1_table")) {
         // Tables in schema1 - inherit domain from database, owners from schema
-        assertNotNull(fetchedTable.getDomain());
+        assertListNotNull(fetchedTable.getDomains());
         assertEquals(
-            domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+            domain.getFullyQualifiedName(),
+            fetchedTable.getDomains().get(0).getFullyQualifiedName());
         assertTrue(
-            fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+            fetchedTable.getDomains().get(0).getInherited(),
+            "Domain should be inherited from database");
 
         assertListNotNull(fetchedTable.getOwners());
         assertEquals(1, fetchedTable.getOwners().size(), "Should inherit owner from schema");
@@ -4665,11 +4910,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             "Owners should be inherited from schema");
       } else if (tableName.contains("_s2_table")) {
         // Tables in schema2 - inherit owners from database, domain from schema
-        assertNotNull(fetchedTable.getDomain());
+        assertListNotNull(fetchedTable.getDomains());
         assertEquals(
-            schemaDomain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+            schemaDomain.getFullyQualifiedName(),
+            fetchedTable.getDomains().get(0).getFullyQualifiedName());
         assertTrue(
-            fetchedTable.getDomain().getInherited(), "Domain should be inherited from schema");
+            fetchedTable.getDomains().get(0).getInherited(),
+            "Domain should be inherited from schema");
 
         assertListNotNull(fetchedTable.getOwners());
         assertEquals(
@@ -4685,10 +4932,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Test 2: Verify individual table fetch also shows correct inheritance
     Table individualTable =
         getEntityByName(
-            tables.getFirst().getFullyQualifiedName(), "owners,domain", ADMIN_AUTH_HEADERS);
+            tables.getFirst().getFullyQualifiedName(), "owners,domains", ADMIN_AUTH_HEADERS);
 
-    assertNotNull(individualTable.getDomain());
-    assertTrue(individualTable.getDomain().getInherited());
+    assertListNotNull(individualTable.getDomains());
+    assertTrue(individualTable.getDomains().get(0).getInherited());
     assertListNotNull(individualTable.getOwners());
     assertEquals(2, individualTable.getOwners().size());
     individualTable.getOwners().forEach(owner -> assertTrue(owner.getInherited()));

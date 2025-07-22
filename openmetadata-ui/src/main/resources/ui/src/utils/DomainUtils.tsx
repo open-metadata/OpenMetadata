@@ -41,6 +41,7 @@ import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { Domain } from '../generated/entity/domains/domain';
+import { Operation } from '../generated/entity/policies/policy';
 import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -51,6 +52,7 @@ import {
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { getPrioritizedEditPermission } from './PermissionsUtils';
 import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
@@ -77,7 +79,7 @@ export const getQueryFilterToIncludeDomain = (
       must: [
         {
           term: {
-            'domain.fullyQualifiedName': domainFqn,
+            'domains.fullyQualifiedName': domainFqn,
           },
         },
         {
@@ -115,7 +117,7 @@ export const getQueryFilterToExcludeDomainTerms = (
     ? [
         {
           term: {
-            'domain.fullyQualifiedName': parentFqn,
+            'domains.fullyQualifiedName': parentFqn,
           },
         },
       ]
@@ -130,7 +132,7 @@ export const getQueryFilterToExcludeDomainTerms = (
               must_not: [
                 {
                   term: {
-                    'domain.fullyQualifiedName': fqn,
+                    'domains.fullyQualifiedName': fqn,
                   },
                 },
               ],
@@ -151,12 +153,12 @@ export const getQueryFilterForDomain = (domainFqn: string) => ({
             should: [
               {
                 term: {
-                  'domain.fullyQualifiedName': domainFqn,
+                  'domains.fullyQualifiedName': domainFqn,
                 },
               },
               {
                 prefix: {
-                  'domain.fullyQualifiedName': `${domainFqn}.`,
+                  'domains.fullyQualifiedName': `${domainFqn}.`,
                 },
               },
             ],
@@ -275,16 +277,6 @@ export const initializeDomainEntityRef = (
   }
 
   return undefined;
-};
-
-export const getDomainFieldFromEntityType = (
-  entityType: EntityType
-): string => {
-  if (entityType === EntityType.TEAM || entityType === EntityType.USER) {
-    return 'domains';
-  } else {
-    return 'domain';
-  }
 };
 
 export const convertDomainsToTreeOptions = (
@@ -493,9 +485,10 @@ export const getDomainDetailTabs = ({
             children: (
               <CustomPropertyTable<EntityType.DOMAIN>
                 entityType={EntityType.DOMAIN}
-                hasEditAccess={
-                  domainPermission.EditAll || domainPermission.EditCustomFields
-                }
+                hasEditAccess={getPrioritizedEditPermission(
+                  domainPermission,
+                  Operation.EditCustomFields
+                )}
                 hasPermission={domainPermission.ViewAll}
               />
             ),
@@ -519,4 +512,12 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       widgetConfig={widgetConfig}
     />
   );
+};
+
+export const getDomainIcon = (iconURL?: string) => {
+  if (iconURL) {
+    return <img alt="domain icon" className="domain-icon-url" src={iconURL} />;
+  }
+
+  return <DomainIcon className="domain-default-icon" />;
 };

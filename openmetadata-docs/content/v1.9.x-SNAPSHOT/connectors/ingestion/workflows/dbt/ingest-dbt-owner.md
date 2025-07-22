@@ -1,5 +1,6 @@
 ---
-title: Ingest Owner from dbt
+title: Ingest Owner from dbt | Official Documentation
+description: Configure dbt workflows to ingest owner metadata from dbt models into your governance platform.
 slug: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
 ---
 
