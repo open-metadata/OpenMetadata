@@ -1,5 +1,6 @@
 ---
-title: elasticSearchConfiguration
+title: Elasticsearchconfiguration | Official Documentation
+description: Connect Elasticsearchconfiguration to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/elasticsearchconfiguration
 ---
 

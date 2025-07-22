@@ -1,5 +1,6 @@
 ---
 title: Tests API | OpenMetadata API for Test Management
+description: Connect Tests to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/tests
 ---
 

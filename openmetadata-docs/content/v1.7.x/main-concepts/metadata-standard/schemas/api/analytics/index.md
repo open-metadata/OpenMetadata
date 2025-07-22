@@ -1,5 +1,6 @@
 ---
 title: Analytics API Schemas | OpenMetadata Analytics API
+description: Connect Analytics to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/analytics
 ---
 
