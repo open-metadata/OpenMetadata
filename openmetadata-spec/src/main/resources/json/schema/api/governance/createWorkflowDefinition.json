@@ -48,6 +48,12 @@
             "$ref": "../../governance/workflows/elements/nodes/automatedTask/checkEntityAttributesTask.json"
           },
           {
+            "$ref": "../../governance/workflows/elements/nodes/automatedTask/setEntityAttributeTask.json"
+          },
+          {
+            "$ref": "../../governance/workflows/elements/nodes/automatedTask/conditionalSetEntityAttributeTask.json"
+          },
+          {
             "$ref": "../../governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask.json"
           },
           {

@@ -31,7 +31,55 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   // ENTITY_RESTORED.
   private static List<EventType> validEventTypes =
       List.of(EventType.ENTITY_CREATED, EventType.ENTITY_UPDATED);
-  private static List<String> validEntityTypes = List.of(Entity.GLOSSARY_TERM);
+  private static List<String> validEntityTypes =
+      List.of(
+          Entity.GLOSSARY_TERM,
+          Entity.TABLE,
+          Entity.DASHBOARD,
+          Entity.PIPELINE,
+          Entity.TOPIC,
+          Entity.CONTAINER,
+          Entity.DATABASE,
+          Entity.DATABASE_SCHEMA,
+          Entity.STORED_PROCEDURE,
+          Entity.DASHBOARD_DATA_MODEL,
+          Entity.CHART,
+          Entity.MLMODEL,
+          Entity.SEARCH_INDEX,
+          Entity.API_ENDPOINT,
+          Entity.API_COLLCECTION,
+          Entity.DATABASE_SERVICE,
+          Entity.DASHBOARD_SERVICE,
+          Entity.MESSAGING_SERVICE,
+          Entity.PIPELINE_SERVICE,
+          Entity.MLMODEL_SERVICE,
+          Entity.STORAGE_SERVICE,
+          Entity.SEARCH_SERVICE,
+          Entity.API_SERVICE,
+          Entity.METADATA_SERVICE,
+          Entity.DOMAIN,
+          Entity.DATA_PRODUCT,
+          Entity.GLOSSARY,
+          Entity.CLASSIFICATION,
+          Entity.TAG,
+          Entity.POLICY,
+          Entity.ROLE,
+          Entity.TEAM,
+          Entity.USER,
+          Entity.BOT,
+          Entity.APPLICATION,
+          Entity.INGESTION_PIPELINE,
+          Entity.TEST_SUITE,
+          Entity.TEST_CASE,
+          Entity.TEST_DEFINITION,
+          Entity.WEB_ANALYTIC_EVENT,
+          Entity.KPI,
+          Entity.TYPE,
+          Entity.THREAD,
+          Entity.QUERY,
+          Entity.REPORT,
+          Entity.METRIC,
+          Entity.DATA_INSIGHT_CHART);
 
   public WorkflowEventConsumer(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {

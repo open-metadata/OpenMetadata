@@ -8,6 +8,8 @@
   "enum": [
     "userApprovalTask",
     "checkEntityAttributesTask",
+    "setEntityAttributeTask",
+    "conditionalSetEntityAttributeTask",
     "setEntityCertificationTask",
     "setGlossaryTermStatusTask",
     "endEvent",

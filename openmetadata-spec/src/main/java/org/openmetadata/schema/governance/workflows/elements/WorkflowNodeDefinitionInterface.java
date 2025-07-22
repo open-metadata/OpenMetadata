@@ -7,8 +7,10 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ConditionalSetEntityAttributeTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
@@ -21,6 +23,12 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
   @JsonSubTypes.Type(
       value = CheckEntityAttributesTaskDefinition.class,
       name = "checkEntityAttributesTask"),
+  @JsonSubTypes.Type(
+      value = SetEntityAttributeTaskDefinition.class,
+      name = "setEntityAttributeTask"),
+  @JsonSubTypes.Type(
+      value = ConditionalSetEntityAttributeTaskDefinition.class,
+      name = "conditionalSetEntityAttributeTask"),
   @JsonSubTypes.Type(
       value = SetEntityCertificationTaskDefinition.class,
       name = "setEntityCertificationTask"),

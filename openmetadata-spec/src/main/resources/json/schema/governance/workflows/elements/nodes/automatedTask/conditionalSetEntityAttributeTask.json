@@ -1,0 +1,106 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/conditionalSetEntityAttributeTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConditionalSetEntityAttributeTaskDefinition", 
+  "description": "Sets Entity attribute field based on conditional input from previous nodes.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ConditionalSetEntityAttributeTaskDefinition",
+  "type": "object",
+  "definitions": {
+    "conditionalConfiguration": {
+      "title": "Node Configuration",
+      "type": "object",
+      "properties": {
+        "fieldName": {
+          "title": "Field Name",
+          "description": "Entity field name to set (e.g., 'status', 'description', 'displayName')",
+          "type": "string"
+        },
+        "conditionVariableName": {
+          "title": "Condition Variable Name",
+          "description": "Name of the variable to check for true/false condition",
+          "type": "string",
+          "default": "result"
+        },
+        "trueValue": {
+          "title": "Value if True",
+          "description": "Value to set if condition is true",
+          "type": "string"
+        },
+        "falseValue": {
+          "title": "Value if False",
+          "description": "Value to set if condition is false",
+          "type": "string"
+        }
+      },
+      "required": ["fieldName", "trueValue", "falseValue"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "conditionalSetEntityAttributeTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "$ref": "#/definitions/conditionalConfiguration"
+    },
+    "input": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["relatedEntity", "updatedBy", "result"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 3
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        },
+        "updatedBy": {
+          "type": "string",
+          "default": null
+        },
+        "result": {
+          "title": "Result Variable Source",
+          "description": "Name of the node that provides the condition result",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity", "result"]
+    },
+    "output": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": [],
+      "additionalItems": false,
+      "minItems": 0,
+      "maxItems": 0
+    }
+  }
+} 
