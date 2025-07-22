@@ -148,7 +148,7 @@
           }
         }
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword"
@@ -166,7 +166,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"

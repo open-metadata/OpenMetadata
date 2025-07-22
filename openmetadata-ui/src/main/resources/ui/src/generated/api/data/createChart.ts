@@ -33,9 +33,9 @@ export interface CreateChart {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Chart belongs to.
+     * Fully qualified names of the domains the Chart belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */

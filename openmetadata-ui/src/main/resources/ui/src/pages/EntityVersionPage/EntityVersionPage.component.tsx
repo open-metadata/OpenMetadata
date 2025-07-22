@@ -508,11 +508,11 @@ const EntityVersionPage: FunctionComponent = () => {
     [entityType, version, viewVersionPermission]
   );
 
-  const { owners, domain, tier, slashedEntityName } = useMemo(() => {
+  const { owners, domains, tier, slashedEntityName } = useMemo(() => {
     return {
       owners: currentVersionData.owners,
       tier: getTierTags(currentVersionData.tags ?? []),
-      domain: currentVersionData.domain,
+      domains: currentVersionData.domains,
       slashedEntityName: getEntityBreadcrumbs(currentVersionData, entityType),
     };
   }, [currentVersionData, entityType]);
@@ -546,7 +546,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Table}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -565,7 +565,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Topic}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -585,7 +585,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Dashboard}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -605,7 +605,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Pipeline}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -625,7 +625,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Mlmodel}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -645,7 +645,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Container}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -664,7 +664,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as SearchIndex}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -683,7 +683,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as DashboardDataModel}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -703,7 +703,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as StoredProcedure}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -721,7 +721,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <APIEndpointVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as APIEndpoint}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -738,7 +738,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <MetricVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Metric}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
