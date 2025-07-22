@@ -98,6 +98,10 @@
           "compound": {
             "type": "text",
             "analyzer": "om_compound_analyzer"
+          },
+          "actualCase": {
+            "type": "keyword",
+            "ignore_above": 256
           }
         }
       },

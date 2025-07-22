@@ -1679,7 +1679,7 @@
     "view-less": "कमी पहा",
     "view-more": "अधिक पहा",
     "view-more-capital": "View More",
-    "view-more-count": "{{count}} अधिक पहा",
+    "view-more-count": "{{countValue}} अधिक पहा",
     "view-new-count": "{{count}} नवीन पहा",
     "view-parsing-timeout-limit": "परिभाषा पार्सिंग टाइमआउट मर्यादा पहा",
     "view-plural": "दृश्ये",

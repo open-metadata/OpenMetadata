@@ -1679,7 +1679,7 @@
     "view-less": "查看较少",
     "view-more": "查看更多",
     "view-more-capital": "View More",
-    "view-more-count": "查看更多（{{count}}）",
+    "view-more-count": "查看更多（{{countValue}}）",
     "view-new-count": "查看{{count}}个新的",
     "view-parsing-timeout-limit": "查看定义解析超时限制",
     "view-plural": "查看",

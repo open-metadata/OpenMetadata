@@ -1679,7 +1679,7 @@
     "view-less": "表示を減らす",
     "view-more": "もっと見る",
     "view-more-capital": "View More",
-    "view-more-count": "{{count}} 件をさらに表示",
+    "view-more-count": "{{countValue}} 件をさらに表示",
     "view-new-count": "View {{count}} new",
     "view-parsing-timeout-limit": "View Definition Parsing Timeout Limit",
     "view-plural": "Views",

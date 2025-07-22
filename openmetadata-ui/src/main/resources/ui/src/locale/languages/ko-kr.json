@@ -1679,7 +1679,7 @@
     "view-less": "간단히 보기",
     "view-more": "더 보기",
     "view-more-capital": "View More",
-    "view-more-count": "{{count}}개 더 보기",
+    "view-more-count": "{{countValue}}개 더 보기",
     "view-new-count": "{{count}}개의 새로운 항목 보기",
     "view-parsing-timeout-limit": "정의 구문 분석 시간 제한",
     "view-plural": "뷰들",

@@ -1679,7 +1679,7 @@
     "view-less": "Ver menos",
     "view-more": "مشاهده بیشتر",
     "view-more-capital": "View More",
-    "view-more-count": "مشاهده {{count}} مورد بیشتر",
+    "view-more-count": "مشاهده {{countValue}} مورد بیشتر",
     "view-new-count": "مشاهده {{count}} جدید",
     "view-parsing-timeout-limit": "محدودیت زمان برای تجزیه تعریف",
     "view-plural": "مشاهدات",

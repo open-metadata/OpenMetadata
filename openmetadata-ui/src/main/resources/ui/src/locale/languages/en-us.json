@@ -1679,7 +1679,7 @@
     "view-less": "View less",
     "view-more": "View more",
     "view-more-capital": "View More",
-    "view-more-count": "View {{count}} more",
+    "view-more-count": "View {{countValue}} more",
     "view-new-count": "View {{count}} new",
     "view-parsing-timeout-limit": "View Definition Parsing Timeout Limit",
     "view-plural": "Views",

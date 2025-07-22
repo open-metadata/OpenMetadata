@@ -1679,7 +1679,7 @@
     "view-less": "ดูน้อยลง",
     "view-more": "ดูเพิ่มเติม",
     "view-more-capital": "View More",
-    "view-more-count": "ดูเพิ่มเติม {{count}} รายการ",
+    "view-more-count": "ดูเพิ่มเติม {{countValue}} รายการ",
     "view-new-count": "ดู {{count}} ใหม่",
     "view-parsing-timeout-limit": "ดูขีดจำกัดเวลาในการวิเคราะห์คำจำกัดความ",
     "view-plural": "การเข้าชม",
