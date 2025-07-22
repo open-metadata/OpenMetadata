@@ -13,5 +13,25 @@
 import DOMPurify from 'dompurify';
 
 export const getSanitizeContent = (html: string): string => {
-  return DOMPurify.sanitize(html);
+  // First, temporarily replace entity links to protect them from encoding
+  const entityLinkRegex = /<#E::[^>]+>/g;
+  const entityLinks: string[] = [];
+  let entityLinkIndex = 0;
+
+  const protectedHtml = html.replace(entityLinkRegex, (match) => {
+    entityLinks.push(match);
+
+    return `__ENTITY_LINK_${entityLinkIndex++}__`;
+  });
+
+  // Sanitize the content with standard DOMPurify settings
+  const sanitizedContent = DOMPurify.sanitize(protectedHtml);
+
+  // Restore entity links
+  let restoredContent = sanitizedContent;
+  entityLinks.forEach((link, index) => {
+    restoredContent = restoredContent.replace(`__ENTITY_LINK_${index}__`, link);
+  });
+
+  return restoredContent;
 };

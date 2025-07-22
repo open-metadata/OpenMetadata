@@ -40,9 +40,9 @@ export interface CreateEventSubscription {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Event Subscription belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Is the alert enabled.
      */
