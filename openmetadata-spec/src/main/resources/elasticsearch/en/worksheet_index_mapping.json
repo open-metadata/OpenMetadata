@@ -92,6 +92,10 @@
             "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           },
+          "actualCase": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
           "ngram": {
             "type": "text",
             "analyzer": "om_ngram"
@@ -370,7 +374,7 @@
           }
         }
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword"
@@ -388,7 +392,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"

@@ -118,11 +118,11 @@ function FollowingWidget({
   const getEntityExtraInfo = (item: SourceType): ExtraInfo[] => {
     const extraInfo: ExtraInfo[] = [];
     // Add domain info
-    if (item.domain) {
+    if (item.domains) {
       extraInfo.push({
         key: 'Domain',
-        value: getDomainPath(item.domain.fullyQualifiedName),
-        placeholderText: getEntityName(item.domain),
+        value: getDomainPath(item.domains[0]?.fullyQualifiedName ?? ''),
+        placeholderText: getEntityName(item.domains[0] ?? {}),
         isLink: true,
         openInNewTab: false,
       });
@@ -181,7 +181,7 @@ function FollowingWidget({
   );
 
   const showMoreCount = useMemo(() => {
-    return String(followedData.length > 0 ? followedData.length : '');
+    return followedData.length > 0 ? followedData.length.toString() : '';
   }, [followedData]);
 
   const followingContent = useMemo(() => {
@@ -276,7 +276,7 @@ function FollowingWidget({
               EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
-              count: showMoreCount,
+              countValue: showMoreCount,
             })}
             showMoreButton={
               Boolean(!isLoadingOwnedData) && !isEmpty(followedData)

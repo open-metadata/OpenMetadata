@@ -87,11 +87,11 @@ const MyDataWidgetInternal = ({
   const getEntityExtraInfo = (item: SourceType): ExtraInfo[] => {
     const extraInfo: ExtraInfo[] = [];
     // Add domain info
-    if (item.domain) {
+    if (item.domains && item.domains.length > 0) {
       extraInfo.push({
         key: 'Domain',
-        value: getDomainPath(item.domain.fullyQualifiedName),
-        placeholderText: getEntityName(item.domain),
+        value: getDomainPath(item.domains[0]?.fullyQualifiedName ?? ''),
+        placeholderText: getEntityName(item.domains[0] ?? {}),
         isLink: true,
         openInNewTab: false,
       });
@@ -262,7 +262,7 @@ const MyDataWidgetInternal = ({
   }, [data, isExpanded]);
 
   const showMoreCount = useMemo(() => {
-    return String(data.length > 0 ? data.length : '');
+    return data.length > 0 ? data.length.toString() : '';
   }, [data]);
 
   const widgetContent = useMemo(() => {
@@ -289,7 +289,7 @@ const MyDataWidgetInternal = ({
               EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
-              count: showMoreCount,
+              countValue: showMoreCount,
             })}
             showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
           />
