@@ -1,5 +1,6 @@
 ---
-title: dataInsightChartResult
+title: dataInsightChartResult | Official Documentation
+description: Connect Datainsightchartresult to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/datainsight/datainsightchartresult
 ---
 
