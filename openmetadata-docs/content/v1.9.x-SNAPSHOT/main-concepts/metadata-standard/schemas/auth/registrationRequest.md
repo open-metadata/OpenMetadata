@@ -1,5 +1,6 @@
 ---
 title: Registration Request | OpenMetadata Registration API
+description: Submit registration requests with user credentials and profile details.
 slug: /main-concepts/metadata-standard/schemas/auth/registrationrequest
 ---
 

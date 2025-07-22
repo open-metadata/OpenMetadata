@@ -1,5 +1,6 @@
 ---
 title: Logout Request API | OpenMetadata Logout API
+description: Request logout schema to invalidate active tokens and end user sessions.
 slug: /main-concepts/metadata-standard/schemas/auth/logoutrequest
 ---
 

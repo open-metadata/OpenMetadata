@@ -1,5 +1,6 @@
 ---
 title: Basic Login Request | OpenMetadata Login API
+description: Authenticate via basic login credentials with username and password fields.
 slug: /main-concepts/metadata-standard/schemas/auth/basicloginrequest
 ---
 

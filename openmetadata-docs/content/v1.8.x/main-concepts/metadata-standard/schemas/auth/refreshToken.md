@@ -1,5 +1,6 @@
 ---
 title: Refresh Token API | OpenMetadata Token Refresh
+description: Refresh a user authentication token to maintain session continuity securely.
 slug: /main-concepts/metadata-standard/schemas/auth/refreshtoken
 ---
 

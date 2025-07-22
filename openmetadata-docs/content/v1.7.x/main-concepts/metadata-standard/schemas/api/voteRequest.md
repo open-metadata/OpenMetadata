@@ -1,5 +1,6 @@
 ---
 title: Vote Request API | OpenMetadata Vote Request
+description: Connect Voterequest to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/voterequest
 ---
 

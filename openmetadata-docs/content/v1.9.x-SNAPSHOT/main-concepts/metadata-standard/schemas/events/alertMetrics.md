@@ -1,5 +1,6 @@
 ---
 title: alertMetrics | OpenMetadata Alert Metrics
+description: Connect Alertmetrics to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/events/alertmetrics
 ---
 

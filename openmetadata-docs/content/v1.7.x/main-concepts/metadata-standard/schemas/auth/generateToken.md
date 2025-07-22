@@ -1,5 +1,6 @@
 ---
 title: Generate Token API | OpenMetadata Token Generation
+description: Generate a secure access token for a session using defined login methods.
 slug: /main-concepts/metadata-standard/schemas/auth/generatetoken
 ---
 

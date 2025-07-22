@@ -1,5 +1,6 @@
 ---
 title: Personal Access Token | OpenMetadata Access Tokens
+description: Store and manage personal access tokens for secure user API interactions.
 slug: /main-concepts/metadata-standard/schemas/auth/personalaccesstoken
 ---
 

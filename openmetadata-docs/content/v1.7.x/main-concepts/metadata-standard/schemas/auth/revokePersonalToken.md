@@ -1,5 +1,6 @@
 ---
 title: Revoke Personal Token | OpenMetadata Token Revocation
+description: Revoke a personal access token using this token management schema.
 slug: /main-concepts/metadata-standard/schemas/auth/revokepersonaltoken
 ---
 

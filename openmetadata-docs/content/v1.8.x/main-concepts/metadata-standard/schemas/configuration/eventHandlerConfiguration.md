@@ -1,5 +1,6 @@
 ---
-title: eventHandlerConfiguration
+title: eventHandlerConfiguration | Official Documentation
+description: Connect Eventhandlerconfiguration to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/eventhandlerconfiguration
 ---
 

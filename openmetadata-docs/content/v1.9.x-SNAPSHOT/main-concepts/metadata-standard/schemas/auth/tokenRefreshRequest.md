@@ -1,5 +1,6 @@
 ---
 title: Token Refresh Request | OpenMetadata Token Refresh
+description: Schema to refresh session tokens before expiry using a refresh request.
 slug: /main-concepts/metadata-standard/schemas/auth/tokenrefreshrequest
 ---
 

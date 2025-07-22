@@ -1,5 +1,6 @@
 ---
 title: Profiler Configuration | OpenMetadata Profiler Setup
+description: Connect Profilerconfiguration to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/profilerconfiguration
 ---
 

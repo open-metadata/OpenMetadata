@@ -1,5 +1,6 @@
 ---
 title: Feed API | OpenMetadata Feed API Endpoint Documentation
+description: Connect Feed to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/feed
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: emailVerificationToken
+title: emailVerificationToken | Official Documentation
+description: Use an email verification token schema to validate email-based identity claims.
 slug: /main-concepts/metadata-standard/schemas/auth/emailverificationtoken
 ---
 

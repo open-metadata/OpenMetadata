@@ -1,5 +1,6 @@
 ---
 title: subscriptionStatus | OpenMetadata Subscription Status
+description: Connect Subscriptionstatus to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/events/subscriptionstatus
 ---
 

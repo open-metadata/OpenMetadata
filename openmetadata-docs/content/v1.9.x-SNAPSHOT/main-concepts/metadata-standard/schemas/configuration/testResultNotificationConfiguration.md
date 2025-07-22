@@ -1,5 +1,6 @@
 ---
-title: testResultNotificationConfiguration
+title: testResultNotificationConfiguration | Official Documentation
+description: Connect Testresultnotificationconfiguration to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integration.
 slug: /main-concepts/metadata-standard/schemas/configuration/testresultnotificationconfiguration
 ---
 

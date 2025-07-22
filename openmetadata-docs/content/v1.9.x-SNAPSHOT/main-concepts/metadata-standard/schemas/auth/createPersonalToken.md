@@ -1,5 +1,6 @@
 ---
 title: Create Personal Token | OpenMetadata Token API
+description: Create a personal access token schema for secure, token-based user authentication.
 slug: /main-concepts/metadata-standard/schemas/auth/createpersonaltoken
 ---
 

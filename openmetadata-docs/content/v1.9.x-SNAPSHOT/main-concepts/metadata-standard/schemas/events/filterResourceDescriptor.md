@@ -1,5 +1,6 @@
 ---
-title: filterResourceDescriptor
+title: filterResourceDescriptor | Official Documentation
+description: Connect Filterresourcedescriptor to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/events/filterresourcedescriptor
 ---
 

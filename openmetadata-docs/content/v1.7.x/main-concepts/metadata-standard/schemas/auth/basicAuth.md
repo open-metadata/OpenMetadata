@@ -1,5 +1,6 @@
 ---
 title: Basic Auth Schema | OpenMetadata Basic Auth
+description: Use this schema for basic authentication parameters and headers.
 slug: /main-concepts/metadata-standard/schemas/auth/basicauth
 ---
 

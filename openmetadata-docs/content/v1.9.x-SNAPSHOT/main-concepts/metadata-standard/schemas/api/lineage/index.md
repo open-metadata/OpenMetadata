@@ -1,5 +1,6 @@
 ---
 title: Lineage API | OpenMetadata Lineage API Integration Guide
+description: Connect Lineage to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/lineage
 ---
 

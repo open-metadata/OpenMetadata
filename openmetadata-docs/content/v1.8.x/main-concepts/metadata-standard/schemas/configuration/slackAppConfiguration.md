@@ -1,5 +1,6 @@
 ---
-title: slackAppConfiguration
+title: slackAppConfiguration | Official Documentation
+description: Connect Slackappconfiguration to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/slackappconfiguration
 ---
 

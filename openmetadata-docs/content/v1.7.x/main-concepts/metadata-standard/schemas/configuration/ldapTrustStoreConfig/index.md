@@ -1,5 +1,6 @@
 ---
 title: LDAP Trust Store Config | OpenMetadata LDAP SSL
+description: Connect Ldaptruststoreconfig to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig
 ---
 

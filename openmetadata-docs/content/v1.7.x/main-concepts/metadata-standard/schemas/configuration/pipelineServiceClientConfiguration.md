@@ -1,5 +1,6 @@
 ---
-title: pipelineServiceClientConfiguration
+title: pipelineServiceClientConfiguration | Official Documentation
+description: Connect Pipelineserviceclientconfiguration to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integration.
 slug: /main-concepts/metadata-standard/schemas/configuration/pipelineserviceclientconfiguration
 ---
 
