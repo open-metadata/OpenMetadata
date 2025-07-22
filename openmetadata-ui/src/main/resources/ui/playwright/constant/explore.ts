@@ -31,6 +31,11 @@ export const EXPECTED_BUCKETS = [
 
 export const DATA_ASSETS = [
   {
+    key: 'table',
+    label: 'tables',
+    indexType: 'table_search_index',
+  },
+  {
     key: 'storedProcedure',
     label: 'stored procedures',
     indexType: 'stored_procedure_search_index',
@@ -104,10 +109,5 @@ export const DATA_ASSETS = [
     key: 'apiEndpoint',
     label: 'api endpoints',
     indexType: 'api_endpoint_search_index',
-  },
-  {
-    key: 'table',
-    label: 'tables',
-    indexType: 'table_search_index',
   },
 ];

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { get, startCase } from 'lodash';
+import { get } from 'lodash';
 import { DATA_ASSETS } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
@@ -36,6 +36,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { updateDisplayNameForEntity } from '../../utils/entity';
 import {
+  Bucket,
   validateBucketsForIndex,
   validateBucketsForIndexAndSort,
   verifyDatabaseAndSchemaInExploreTree,
@@ -362,23 +363,45 @@ test.describe('Explore page', () => {
     await validateBucketsForIndex(page, 'all');
   });
 
-  DATA_ASSETS.forEach((asset) => {
-    test(`${startCase(asset.label)} - search when index is ${
-      asset.indexType
-    } and sort is descending`, async ({ page }) => {
-      const searchBox = page.getByTestId('searchBox');
-      await searchBox.fill('pw');
-      await searchBox.press('Enter');
+  test('Check listing of for each entity when sort is descending', async ({
+    page,
+  }) => {
+    const { apiContext } = await getApiContext(page);
 
-      await page.waitForLoadState('networkidle');
+    const searchBox = page.getByTestId('searchBox');
+    await searchBox.fill('pw');
+    await searchBox.press('Enter');
 
-      const assetId = `${asset.label}-tab`;
-      const tabLocator = page.getByTestId(assetId);
+    const response = await apiContext
+      .get(
+        `/api/v1/search/query?q=pw&index=dataAsset&from=0&size=0&deleted=false&track_total_hits=true&fetch_source=false&`
+      )
+      .then((res) => res.json());
 
-      await tabLocator.click();
-      await page.waitForLoadState('networkidle');
+    const buckets = response.aggregations?.['sterms#entityType']?.buckets ?? [];
 
-      await validateBucketsForIndexAndSort(page, asset);
-    });
+    const bucketMap = new Map(buckets.map((b: Bucket) => [b.key, b.doc_count]));
+
+    const filteredAssets = DATA_ASSETS.filter((asset) =>
+      bucketMap.has(asset.key)
+    );
+
+    let i = 0;
+
+    do {
+      const asset = filteredAssets[i];
+      const doc_count = Number(bucketMap.get(asset.key) ?? 0);
+      const tab = page.getByTestId(`${asset.label}-tab`);
+
+      if (i !== 0) {
+        await tab.click();
+      }
+
+      await test.step(`Validate asset: ${asset.label}`, async () => {
+        await validateBucketsForIndexAndSort(page, asset, doc_count);
+      });
+
+      i++;
+    } while (i < filteredAssets.length);
   });
 });

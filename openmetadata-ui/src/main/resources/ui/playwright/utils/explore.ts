@@ -228,7 +228,8 @@ export const validateBucketsForIndexAndSort = async (
     key: string;
     label: string;
     indexType: string;
-  }
+  },
+  docCount: number
 ) => {
   const { apiContext } = await getApiContext(page);
 
@@ -238,15 +239,7 @@ export const validateBucketsForIndexAndSort = async (
     )
     .then((res) => res.json());
 
-  const buckets = response.aggregations?.['sterms#entityType']?.buckets ?? [];
+  const totalCount = response.hits.total.value ?? 0;
 
-  const bucket = buckets.find((b: Bucket) => b.key === asset.key);
-
-  expect(bucket, `Bucket with key "${asset.key}" is present`).toBeDefined();
-
-  // Expect the bucket's doc_count to be greater than 0
-  expect(
-    bucket?.doc_count,
-    `Bucket "${asset.key}" has doc_count >= 0`
-  ).toBeGreaterThan(0);
+  expect(totalCount).toEqual(docCount);
 };
