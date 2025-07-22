@@ -85,6 +85,11 @@ test.describe('Search Settings Tests', () => {
     // Field Weight
     await setSliderValue(page, 'field-weight-slider', 8);
 
+    // Match Type
+    const matchTypeSelect = page.getByTestId('match-type-select');
+    await matchTypeSelect.click();
+    await page.getByTitle('Fuzzy Match').click();
+
     // Score Mode
     const scoreModeSelect = page.getByTestId('score-mode-select');
     await scoreModeSelect.click();

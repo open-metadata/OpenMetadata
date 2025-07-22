@@ -619,9 +619,6 @@ export enum MetadataAttribute {
  * the relationship of a table `belongs to a` database.
  *
  * Bot User Associated with this application.
- *
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
- * it belongs to.
  */
 export interface TagLabel {
     /**

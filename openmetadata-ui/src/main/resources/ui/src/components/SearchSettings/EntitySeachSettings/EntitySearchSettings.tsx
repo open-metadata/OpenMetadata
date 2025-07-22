@@ -31,7 +31,11 @@ import {
   SearchSettings,
   TermBoost,
 } from '../../../generated/configuration/searchSettings';
-import { Settings, SettingType } from '../../../generated/settings/settings';
+import {
+  MatchType,
+  Settings,
+  SettingType,
+} from '../../../generated/settings/settings';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
@@ -121,6 +125,7 @@ const EntitySearchSettings = () => {
     return searchSettings.searchFields.map((field) => ({
       fieldName: field.field,
       weight: field.boost ?? 0,
+      matchType: field.matchType || MatchType.Standard,
     }));
   }, [searchSettings.searchFields]);
 
@@ -312,6 +317,20 @@ const EntitySearchSettings = () => {
     setSearchSettings((prev) => {
       const updatedFields = prev.searchFields?.map((field) =>
         field.field === fieldName ? { ...field, boost: value } : field
+      );
+
+      return {
+        ...prev,
+        searchFields: updatedFields,
+        isUpdated: true,
+      };
+    });
+  };
+
+  const handleMatchTypeChange = (fieldName: string, matchType: MatchType) => {
+    setSearchSettings((prev) => {
+      const updatedFields = prev.searchFields?.map((field) =>
+        field.field === fieldName ? { ...field, matchType } : field
       );
 
       return {
@@ -597,6 +616,7 @@ const EntitySearchSettings = () => {
                         onDeleteSearchField={handleDeleteSearchField}
                         onFieldWeightChange={handleFieldWeightChange}
                         onHighlightFieldsChange={handleHighlightFieldsChange}
+                        onMatchTypeChange={handleMatchTypeChange}
                       />
                     </Col>
                   ))}
