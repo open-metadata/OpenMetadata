@@ -364,7 +364,6 @@ test.describe('Table & Data Model columns table pagination', () => {
     ).toHaveCount(26);
   });
 
-
   test('expand collapse should only visible for nested columns', async ({
     page,
   }) => {
@@ -374,6 +373,38 @@ test.describe('Table & Data Model columns table pagination', () => {
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
+
+    // Should show expand icon for nested columns
+    expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shipping_address"]'
+        )
+        .getByTestId('expand-icon')
+    ).toBeVisible();
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]'
+        )
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"]'
+        )
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    // verify column profile table
+    await page.getByRole('tab', { name: 'Data Observability' }).click();
+
+    await page.getByRole('tab', { name: 'Column Profile' }).click();
 
     // Should show expand icon for nested columns
     expect(
