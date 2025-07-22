@@ -11,62 +11,6 @@
  *  limitations under the License.
  */
 /**
- * Propagate description, tags and glossary terms via lineage
- */
-export interface LineagePropagationAction {
-    /**
-     * Update descriptions, tags and Glossary Terms via lineage even if they are already defined
-     * in the asset. By default, descriptions are only updated if they are not already defined
-     * in the asset, and incoming tags are merged with the existing ones.
-     */
-    overwriteMetadata?: boolean;
-    /**
-     * Propagate the metadata to columns via column-level lineage.
-     */
-    propagateColumnLevel?: boolean;
-    /**
-     * Propagate description through lineage
-     */
-    propagateDescription?: boolean;
-    /**
-     * Propagate domain from the parent through lineage
-     */
-    propagateDomain?: boolean;
-    /**
-     * Propagate glossary terms through lineage
-     */
-    propagateGlossaryTerms?: boolean;
-    /**
-     * Propagate owner from the parent
-     */
-    propagateOwner?: boolean;
-    /**
-     * Propagate the metadata to the parents (e.g., tables) via lineage.
-     */
-    propagateParent?: boolean;
-    /**
-     * Propagate tags through lineage
-     */
-    propagateTags?: boolean;
-    /**
-     * Propagate tier from the parent
-     */
-    propagateTier?: boolean;
-    /**
-     * Number of levels to propagate lineage. If not set, it will propagate to all levels.
-     */
-    propagationDepth?: number;
-    /**
-     * List of configurations to stop propagation based on conditions
-     */
-    propagationStopConfigs?: PropagationStopConfig[];
-    /**
-     * Application Type
-     */
-    type: LineagePropagationActionType;
-}
-
-/**
  * Configuration to stop lineage propagation based on conditions
  */
 export interface PropagationStopConfig {
@@ -215,13 +159,4 @@ export interface Style {
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
-}
-
-/**
- * Application Type
- *
- * Lineage propagation action type.
- */
-export enum LineagePropagationActionType {
-    LineagePropagationAction = "LineagePropagationAction",
 }
