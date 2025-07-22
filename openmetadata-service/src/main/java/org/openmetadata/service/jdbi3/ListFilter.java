@@ -52,7 +52,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getAgentTypeCondition());
-    conditions.add(getProviderCondition());
+    conditions.add(getProviderCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -116,15 +116,19 @@ public class ListFilter extends Filter<ListFilter> {
     }
   }
 
-  public String getProviderCondition() {
+  public String getProviderCondition(String tableName) {
     String provider = queryParams.get("provider");
     if (provider == null) {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.provider') = '%s'", provider);
+        return tableName == null
+            ? "JSON_EXTRACT(json, '$.provider') = :provider"
+            : String.format("JSON_EXTRACT(%s.json, '$.provider') = :provider", tableName);
       } else {
-        return String.format("json->>'provider' = '%s'", provider);
+        return tableName == null
+            ? "json->>'provider' = :provider"
+            : String.format("%s.json->>'provider' = :provider", tableName);
       }
     }
   }
