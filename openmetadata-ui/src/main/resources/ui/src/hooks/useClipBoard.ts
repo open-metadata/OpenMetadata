@@ -61,20 +61,21 @@ export const useClipboard = (
   // handlers
   const handleCopy = useCallback(async () => {
     try {
-      // Try modern clipboard API first
+      let success = false;
       if (navigator.clipboard && window.isSecureContext) {
+        // Try modern clipboard API first
         await navigator.clipboard.writeText(valueState);
+        success = true;
+      } else {
+        // Fallback for older browsers or non-HTTPS contexts
+        success = fallbackCopyTextToClipboard(valueState);
+      }
+
+      if (success) {
         setHasCopied(true);
         callBack && callBack();
       } else {
-        // Fallback for older browsers or non-HTTPS contexts
-        const success = fallbackCopyTextToClipboard(valueState);
-        if (success) {
-          setHasCopied(true);
-          callBack && callBack();
-        } else {
-          setHasCopied(false);
-        }
+        setHasCopied(false);
       }
     } catch (error) {
       // If modern API fails, try fallback
