@@ -17,7 +17,7 @@ import java.util.List;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.JsonUtils;
 
 /** Converter class to get a `ThoughtSpotConnection` object. */
 public class ThoughtSpotConnectionClassConverter extends ClassConverter {
