@@ -54,7 +54,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedPipelineName,
@@ -77,9 +77,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const pipelineVersionTableData = useMemo(
@@ -217,7 +217,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />

@@ -32,7 +32,8 @@ function CommonEntitySummaryInfo({
   return (
     <Row className="text-sm common-entity-summary-info" gutter={[0, 4]}>
       {entityInfo.map((info) => {
-        const isDomain = isDomainVisible && info.name === t('label.domain');
+        const isDomain =
+          isDomainVisible && info.name === t('label.domain-plural');
 
         return info.visible?.includes(componentType) || isDomain ? (
           <Col key={info.name} span={24}>

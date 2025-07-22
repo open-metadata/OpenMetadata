@@ -231,15 +231,17 @@ export const DataAssetSummaryPanel = ({
                 <Typography.Text
                   className="summary-panel-section-title"
                   data-testid="domain-header">
-                  {t('label.domain')}
+                  {t('label.domain-plural')}
                 </Typography.Text>
               </Col>
               <Col className="d-flex flex-wrap gap-2" span={24}>
                 <DomainLabel
-                  domain={dataAsset.domain}
+                  multiple
+                  domains={dataAsset.domains}
                   entityFqn={dataAsset.fullyQualifiedName ?? ''}
                   entityId={dataAsset.id ?? ''}
                   entityType={entityType}
+                  hasPermission={false}
                   textClassName="render-domain-lebel-style"
                 />
               </Col>

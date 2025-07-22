@@ -32,9 +32,9 @@ export interface CreateAppRequest {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Application belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Name of the Application.
      */

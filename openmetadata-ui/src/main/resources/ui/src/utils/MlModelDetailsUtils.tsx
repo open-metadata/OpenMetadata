@@ -29,7 +29,7 @@ import { t } from './i18next/LocalUtil';
 import { MlModelDetailPageTabProps } from './MlModel/MlModelClassBase';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.DASHBOARD},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.DOMAINS},${TabSpecificField.OWNERS}, ${TabSpecificField.DASHBOARD},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
 
 export const getMlModelDetailsPageTabs = ({
   feedCount,

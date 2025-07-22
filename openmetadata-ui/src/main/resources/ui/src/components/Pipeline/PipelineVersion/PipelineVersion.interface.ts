@@ -22,7 +22,7 @@ export interface PipelineVersionProp {
   currentVersionData: Pipeline;
   isVersionLoading: boolean;
   owners: Pipeline['owners'];
-  domain: Pipeline['domain'];
+  domains: Pipeline['domains'];
   dataProducts: Pipeline['dataProducts'];
   tier: TagLabel;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];

@@ -23,9 +23,9 @@ export interface CreateWorkflow {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Workflow belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Name of the workflow.
      */

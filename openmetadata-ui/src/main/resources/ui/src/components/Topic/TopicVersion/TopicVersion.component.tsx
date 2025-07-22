@@ -53,7 +53,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
-  domain,
+  domains,
   dataProducts,
 }: TopicVersionProp) => {
   const { t } = useTranslation();
@@ -70,9 +70,9 @@ const TopicVersion: FC<TopicVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   useEffect(() => {
@@ -154,7 +154,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />

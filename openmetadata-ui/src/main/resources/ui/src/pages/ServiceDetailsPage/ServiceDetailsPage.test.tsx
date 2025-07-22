@@ -575,7 +575,7 @@ describe('ServiceDetailsPage', () => {
           ServiceCategory.DATABASE_SERVICES,
           'test-service',
           {
-            fields: 'owners,tags,followers,dataProducts,domain',
+            fields: 'owners,tags,followers,dataProducts,domains',
             include: 'all',
           }
         );

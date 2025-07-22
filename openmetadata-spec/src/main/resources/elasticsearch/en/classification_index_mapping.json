@@ -141,7 +141,7 @@
       "tierSources": {
         "type": "object"
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",

@@ -91,16 +91,15 @@ export const selectNullOption = async (
 
   const queryRes = page.waitForResponse(querySearchURL);
   await page.click('[data-testid="update-btn"]');
-  const queryResponseData = await queryRes;
-  const request = await queryResponseData.request();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+  await queryRes;
 
-  const queryParams = request.url().split('?')[1];
+  const queryParams = page.url().split('?')[1];
   const queryParamsObj = new URLSearchParams(queryParams);
 
-  const queryParamValue = queryParamsObj.get('query_filter');
-  const isQueryFilterPresent = queryParamValue === queryFilter;
+  const queryParamValue = queryParamsObj.get('quickFilter');
 
-  expect(isQueryFilterPresent).toBeTruthy();
+  expect(queryParamValue).toEqual(queryFilter);
 
   if (clearFilter) {
     await page.click(`[data-testid="clear-filters"]`);

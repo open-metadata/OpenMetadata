@@ -243,7 +243,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a glossary term, carry it forward from the glossary
     CreateGlossary createGlossary =
-        glossaryTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        glossaryTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     // Create term t1 in the glossary without domain
@@ -253,7 +253,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("desc");
 
-    GlossaryTerm t1 = assertDomainInheritance(create, DOMAIN.getEntityReference());
+    GlossaryTerm t1 = assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
 
     // Create terms t12 under t1 without reviewers and owner
     create =
@@ -261,7 +261,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withName("t12")
             .withGlossary(glossary.getFullyQualifiedName())
             .withParent(t1.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test

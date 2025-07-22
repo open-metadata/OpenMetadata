@@ -71,7 +71,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   public static final String COLLECTION_PATH = "v1/apiEndpoints/";
   private final APIEndpointMapper mapper = new APIEndpointMapper();
 
-  static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
+  static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
 
   @Override
   public APIEndpoint addHref(UriInfo uriInfo, APIEndpoint apiEndpoint) {

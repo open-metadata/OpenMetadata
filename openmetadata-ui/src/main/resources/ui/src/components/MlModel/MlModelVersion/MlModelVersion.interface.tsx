@@ -22,7 +22,7 @@ export interface MlModelVersionProp {
   currentVersionData: Mlmodel;
   isVersionLoading: boolean;
   owners: Mlmodel['owners'];
-  domain: Mlmodel['domain'];
+  domains: Mlmodel['domains'];
   dataProducts: Mlmodel['dataProducts'];
   tier: TagLabel;
   slashedMlModelName: TitleBreadcrumbProps['titleLinks'];

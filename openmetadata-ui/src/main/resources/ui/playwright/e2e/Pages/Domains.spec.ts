@@ -194,8 +194,8 @@ test.describe('Domains', () => {
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
-    const dataProduct1 = new DataProduct(domain);
-    const dataProduct2 = new DataProduct(domain);
+    const dataProduct1 = new DataProduct([domain]);
+    const dataProduct2 = new DataProduct([domain]);
     await domain.create(apiContext);
     await page.reload();
 
@@ -312,7 +312,7 @@ test.describe('Domains', () => {
 
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
-    const dataProduct1 = new DataProduct(domain);
+    const dataProduct1 = new DataProduct([domain]);
     await domain.create(apiContext);
     await sidebarClick(page, SidebarItem.DOMAIN);
     await page.reload();
@@ -387,7 +387,7 @@ test.describe('Domains', () => {
       .replace(/"/g, '\\"')
       .replace(/-/g, '\\-');
 
-    expect(qParam).toContain(`(domain.fullyQualifiedName:"${fqn}")`);
+    expect(qParam).toContain(`(domains.fullyQualifiedName:"${fqn}")`);
 
     await domain.delete(apiContext);
     await afterAction();
@@ -498,8 +498,8 @@ test.describe('Domains', () => {
       domainType: 'Aggregate',
       fullyQualifiedName: 'PW_Domain_Delete_Testing',
     });
-    const dataProduct1 = new DataProduct(domain, 'PW_DataProduct_Sales');
-    const dataProduct2 = new DataProduct(domain, 'PW_DataProduct_Finance');
+    const dataProduct1 = new DataProduct([domain], 'PW_DataProduct_Sales');
+    const dataProduct2 = new DataProduct([domain], 'PW_DataProduct_Finance');
 
     const domain1 = new Domain({
       name: 'PW_Domain_Delete_Testing',
@@ -508,8 +508,8 @@ test.describe('Domains', () => {
       domainType: 'Aggregate',
       fullyQualifiedName: 'PW_Domain_Delete_Testing',
     });
-    const newDomainDP1 = new DataProduct(domain1, 'PW_DataProduct_Sales');
-    const newDomainDP2 = new DataProduct(domain1, 'PW_DataProduct_Finance');
+    const newDomainDP1 = new DataProduct([domain1], 'PW_DataProduct_Sales');
+    const newDomainDP2 = new DataProduct([domain1], 'PW_DataProduct_Finance');
 
     try {
       await domain.create(apiContext);
@@ -579,7 +579,7 @@ test.describe('Domains', () => {
         ],
         experts: [user2.responseData.name],
       });
-      dataProduct = new DataProduct(domain);
+      dataProduct = new DataProduct([domain]);
       await domain.create(apiContext);
       await dataProduct.create(apiContext);
 
@@ -683,7 +683,7 @@ test.describe('Domains', () => {
   test('Verify data product tags and glossary terms', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain1 = new Domain();
-    const dataProduct = new DataProduct(domain1);
+    const dataProduct = new DataProduct([domain1]);
     try {
       await domain1.create(apiContext);
       await page.reload();

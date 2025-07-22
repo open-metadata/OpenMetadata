@@ -99,9 +99,9 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     if (endpoint.getApiCollection() != null) {
       APICollection apiCollection =
           Entity.getEntity(
-              API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domain", ALL);
+              API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domains", ALL);
       inheritOwners(endpoint, fields, apiCollection);
-      inheritDomain(endpoint, fields, apiCollection);
+      inheritDomains(endpoint, fields, apiCollection);
     }
   }
 

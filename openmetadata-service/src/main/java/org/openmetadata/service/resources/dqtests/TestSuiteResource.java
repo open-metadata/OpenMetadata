@@ -288,7 +288,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     searchListFilter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
     searchListFilter.addQueryParam("fullyQualifiedName", fullyQualifiedName);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
-    searchListFilter.addQueryParam("domain", domain);
+    searchListFilter.addQueryParam("domains", domain);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
       try {

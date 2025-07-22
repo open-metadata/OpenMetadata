@@ -318,7 +318,7 @@
           }
         }
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",

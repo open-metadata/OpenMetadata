@@ -264,6 +264,27 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return getOwners(printer, csvRecord, fieldNumber, EntityCsv::invalidReviewer);
   }
 
+  public List<EntityReference> getDomains(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      throws IOException {
+    if (!processRecord) {
+      return null;
+    }
+    String domainsRecord = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(domainsRecord)) {
+      return null;
+    }
+    List<String> domains = listOrEmpty(CsvUtil.fieldToStrings(domainsRecord));
+    List<EntityReference> refs = new ArrayList<>();
+    for (String domain : domains) {
+      EntityReference domainRef =
+          getEntityReference(printer, csvRecord, fieldNumber, Entity.DOMAIN, domain);
+      if (domainRef != null) {
+        refs.add(domainRef);
+      }
+    }
+    return refs;
+  }
+
   /** Owner field is in entityName format */
   public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
       throws IOException {
@@ -1102,7 +1123,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withDomains(getDomains(printer, csvRecord, 10))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1185,7 +1206,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withDomains(getDomains(printer, csvRecord, 10))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1277,7 +1298,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withTags(tagLabels)
         .withCertification(certification)
         .withSourceUrl(csvRecord.get(9))
-        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withDomains(getDomains(printer, csvRecord, 10))
         .withStoredProcedureCode(storedProcedureCode)
         .withExtension(getExtension(printer, csvRecord, 11));
 

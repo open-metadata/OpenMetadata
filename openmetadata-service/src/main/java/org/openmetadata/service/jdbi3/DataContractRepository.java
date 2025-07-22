@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.resources.data.DataContractResource;
@@ -66,7 +67,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     EntityReference entityRef = dataContract.getEntity();
 
     if (!update) {
-      validateEntityLink(entityRef);
+      validateEntityReference(entityRef);
     }
     validateSchemaFieldsAgainstEntity(dataContract, entityRef);
     if (dataContract.getOwners() != null) {
@@ -155,6 +156,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return fieldNames;
   }
 
+  public DataContract loadEntityDataContract(EntityReference entity) {
+    return JsonUtils.readValue(
+        daoCollection
+            .dataContractDAO()
+            .getContractByEntityId(entity.getId().toString(), entity.getType()),
+        DataContract.class);
+  }
+
   @Override
   public void storeEntity(DataContract dataContract, boolean update) {
     store(dataContract, update);
@@ -183,18 +192,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         .withUpdatedBy(original.getUpdatedBy());
   }
 
-  private void validateEntityLink(EntityReference entity) {
+  private void validateEntityReference(EntityReference entity) {
     if (entity == null) {
       throw BadRequestException.of("Entity reference is required for data contract");
     }
 
+    // Check the entity exists
     Entity.getEntityReferenceById(entity.getType(), entity.getId(), Include.NON_DELETED);
+    DataContract existingContract = loadEntityDataContract(entity);
 
-    ListFilter filter =
-        new ListFilter(Include.NON_DELETED).addQueryParam("entity", entity.getId().toString());
-    List<DataContract> existingContracts = listAll(new Fields(Set.of("id")), filter);
-
-    if (!existingContracts.isEmpty()) {
+    if (existingContract != null) {
       throw BadRequestException.of(
           String.format(
               "A data contract already exists for entity '%s' with ID %s",

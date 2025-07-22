@@ -24,9 +24,9 @@ export interface CreateIngestionPipeline {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Ingestion Pipeline belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Set the logging level for the workflow.
      */

@@ -31,9 +31,9 @@ export interface CreateTag {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Tag belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Children tags under this group are mutually exclusive. When mutually exclusive is `true`
      * the tags from this group are used to **classify** an entity. An entity can only be in one

@@ -73,7 +73,7 @@ import org.openmetadata.service.util.ResultList;
 public class WorksheetResource extends EntityResource<Worksheet, WorksheetRepository> {
   public static final String COLLECTION_PATH = "v1/drives/worksheets/";
   static final String FIELDS =
-      "owners,spreadsheet,columns,sampleData,usageSummary,tags,extension,domain,sourceHash,lifeCycle,votes,followers";
+      "owners,spreadsheet,columns,sampleData,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers";
   private final WorksheetMapper mapper = new WorksheetMapper();
 
   @Override

@@ -144,9 +144,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     if (Boolean.TRUE.equals(testSuite.getBasic()) && testSuite.getBasicEntityReference() != null) {
       Table table =
           Entity.getEntity(
-              TABLE, testSuite.getBasicEntityReference().getId(), "owners,domain", ALL);
+              TABLE, testSuite.getBasicEntityReference().getId(), "owners,domains", ALL);
       inheritOwners(testSuite, fields, table);
-      inheritDomain(testSuite, fields, table);
+      inheritDomains(testSuite, fields, table);
     }
   }
 

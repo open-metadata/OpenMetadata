@@ -91,6 +91,10 @@ jest.mock('../../../rest/tableAPI', () => ({
   })),
 }));
 
+jest.mock('../../../utils/CommonUtils', () => ({
+  getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
+}));
+
 jest.mock('../../../utils/TableUtils', () => ({
   getAllRowKeysByKeyName: jest.fn(),
   makeData: jest.fn().mockImplementation((value) => value),
@@ -247,6 +251,17 @@ jest.mock('../../../utils/TableColumn.util', () => ({
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   getEntityByFqn: jest.fn(),
+}));
+
+jest.mock('../../../utils/EntityUtils', () => ({
+  getColumnSorter: jest.fn(),
+  getEntityBulkEditPath: jest.fn(),
+  getEntityName: jest
+    .fn()
+    .mockImplementation(({ displayName, name }) => displayName || name || ''),
+  getFrequentlyJoinedColumns: jest.fn(),
+  highlightSearchArrayElement: jest.fn(),
+  highlightSearchText: jest.fn().mockImplementation((value) => value),
 }));
 
 describe('Test EntityTable Component', () => {

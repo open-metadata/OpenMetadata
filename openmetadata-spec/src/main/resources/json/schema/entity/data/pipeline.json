@@ -286,9 +286,9 @@
       "type": "string",
       "default": null
     },
-    "domain" : {
-      "description": "Domain the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes" : {
       "description": "Votes on the entity.",

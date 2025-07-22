@@ -106,11 +106,11 @@
       ]
     },
     {
-      "name": "domain",
+      "name": "domains",
       "required": false,
-      "description": "Fully qualified name of the domain the worksheet belongs to.",
+      "description": "Fully qualified names of the domains the worksheet belongs to, separated by ';'.",
       "examples": [
-        "Finance", "Sales"
+        "Finance", "Sales;Operations"
       ]
     },
     {

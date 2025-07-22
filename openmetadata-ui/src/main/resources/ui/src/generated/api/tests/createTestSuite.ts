@@ -28,9 +28,9 @@ export interface CreateTestSuite {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Test Suite belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * DEPRECATED in 1.6.2: use 'basicEntityReference'
      */

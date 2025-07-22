@@ -104,8 +104,9 @@ const TagPage = () => {
   const { t } = useTranslation();
   const { fqn: tagFqn } = useFqn();
   const navigate = useNavigate();
-  const { tab: activeTab = TagTabs.OVERVIEW } =
-    useRequiredParams<{ tab?: string }>();
+  const { tab: activeTab = TagTabs.OVERVIEW } = useRequiredParams<{
+    tab?: string;
+  }>();
   const { permissions, getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(false);
   const [tagItem, setTagItem] = useState<Tag>();
@@ -221,7 +222,7 @@ const TagPage = () => {
       setIsLoading(true);
       if (tagFqn) {
         const response = await getTagByFqn(tagFqn, {
-          fields: [TabSpecificField.DOMAIN, TabSpecificField.OWNERS],
+          fields: [TabSpecificField.DOMAINS, TabSpecificField.OWNERS],
         });
         setTagItem(response);
       }
@@ -467,7 +468,7 @@ const TagPage = () => {
               </Col>
               <Col span={6}>
                 <div className="d-flex flex-column gap-5">
-                  <DomainLabelV2 showDomainHeading />
+                  <DomainLabelV2 multiple showDomainHeading />
                   <OwnerLabelV2 dataTestId="tag-owner-name" />
                 </div>
               </Col>

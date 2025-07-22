@@ -99,7 +99,7 @@ export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
   } else if (
     widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.DOMAIN)
   ) {
-    return <DomainLabelV2 showDomainHeading />;
+    return <DomainLabelV2 multiple showDomainHeading />;
   }
 
   return (

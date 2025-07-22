@@ -154,9 +154,9 @@
         "$ref": "#/definitions/testSuiteConnection/resultSummary"
       }
     },
-    "domain": {
-      "description": "Domain the test Suite belongs to. When not set, the test Suite inherits the domain from the table it belongs to.",
-      "$ref": "../type/entityReference.json"
+    "domains": {
+      "description": "Domains the test Suite belongs to. When not set, the test Suite inherits the domain from the table it belongs to.",
+      "$ref": "../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags for this test suite. This is an inherited field from the parent entity if the testSuite is native.",

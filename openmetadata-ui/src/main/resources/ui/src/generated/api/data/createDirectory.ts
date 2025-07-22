@@ -31,9 +31,9 @@ export interface CreateDirectory {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Directory belongs to.
+     * Fully qualified names of the domains the Directory belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */

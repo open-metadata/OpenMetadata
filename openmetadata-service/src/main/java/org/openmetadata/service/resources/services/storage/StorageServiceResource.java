@@ -66,7 +66,7 @@ public class StorageServiceResource
     extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
   private final StorageServiceMapper mapper = new StorageServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domain,followers";
+  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {

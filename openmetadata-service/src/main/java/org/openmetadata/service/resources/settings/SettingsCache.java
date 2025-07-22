@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.settings;
 import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
@@ -41,6 +42,7 @@ import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
@@ -150,7 +152,7 @@ public class SettingsCache {
     if (storedSearchSettings == null) {
       try {
         List<String> jsonDataFiles =
-            EntityUtil.getJsonDataResources(".*json/data/searchSettings/searchSettings.json$");
+            EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
         if (!jsonDataFiles.isEmpty()) {
           String json =
               CommonUtil.getResourceAsStream(
@@ -207,6 +209,28 @@ public class SettingsCache {
                       .withUpstreamDepth(2)
                       .withLineageLayer(LineageLayer.ENTITY_LINEAGE));
       Entity.getSystemRepository().createNewSetting(setting);
+    }
+
+    Settings entityRulesSettings =
+        Entity.getSystemRepository()
+            .getConfigWithKey(SettingsType.ENTITY_RULES_SETTINGS.toString());
+    if (entityRulesSettings == null) {
+      try {
+        List<String> jsonDataFiles =
+            EntityUtil.getJsonDataResources(".*json/data/settings/entityRulesSettings.json$");
+        if (!jsonDataFiles.isEmpty()) {
+          String json =
+              CommonUtil.getResourceAsStream(
+                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+          Settings setting =
+              new Settings()
+                  .withConfigType(ENTITY_RULES_SETTINGS)
+                  .withConfigValue(JsonUtils.readValue(json, EntityRulesSettings.class));
+          Entity.getSystemRepository().createNewSetting(setting);
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to read default Enitty Rules settings. Message: {}", e.getMessage(), e);
+      }
     }
   }
 

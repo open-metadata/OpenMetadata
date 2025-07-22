@@ -239,13 +239,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     create.setTasks(List.of(task));
     Pipeline entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Task actualTask = entity.getTasks().get(0);
-    assertOwners(List.of(USER1_REF), actualTask.getOwners());
+    assertReferenceList(List.of(USER1_REF), actualTask.getOwners());
 
     // We can GET the task retrieving the owner info
     Pipeline storedPipeline =
         getPipelineByName(entity.getFullyQualifiedName(), "owners,tasks", ADMIN_AUTH_HEADERS);
     Task storedTask = storedPipeline.getTasks().get(0);
-    assertOwners(List.of(USER1_REF), storedTask.getOwners());
+    assertReferenceList(List.of(USER1_REF), storedTask.getOwners());
   }
 
   @Test
@@ -617,12 +617,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // When domain is not set for a pipeline, carry it forward from the pipeline service
     PipelineServiceResourceTest serviceTest = new PipelineServiceResourceTest();
     CreatePipelineService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     PipelineService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a pipeline without domain and ensure it inherits domain from the parent
     CreatePipeline create = createRequest("pipeline").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test

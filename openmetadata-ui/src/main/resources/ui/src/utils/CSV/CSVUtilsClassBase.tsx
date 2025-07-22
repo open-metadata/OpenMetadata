@@ -12,7 +12,7 @@
  */
 
 import Select, { DefaultOptionType } from 'antd/lib/select';
-import { toString } from 'lodash';
+import { isEmpty, toString } from 'lodash';
 import { ReactNode, useRef } from 'react';
 import { RenderEditCellProps, textEditor } from 'react-data-grid';
 import Certification from '../../components/Certification/Certification.component';
@@ -297,19 +297,28 @@ class CSVUtilsClassBase {
             </Certification>
           );
         };
-      case 'domain':
+      case 'domains':
         return ({
           row,
           onRowChange,
           column,
         }: RenderEditCellProps<any, any>) => {
           const value = row[column.key];
-          const handleChange = async (domain?: EntityReference) => {
-            if (!domain) {
+          const domains = value
+            ? (value?.split(';') ?? []).map((domain: string) => ({
+                type: EntityType.DOMAIN,
+                name: domain,
+                id: '',
+                fullyQualifiedName: domain,
+              }))
+            : [];
+
+          const handleChange = async (domain?: EntityReference[]) => {
+            if (!domain || isEmpty(domain)) {
               onRowChange(
                 {
                   ...row,
-                  [column.key]: '',
+                  [column.key]: [],
                 },
                 true
               );
@@ -320,10 +329,11 @@ class CSVUtilsClassBase {
               {
                 ...row,
                 [column.key]:
-                  domain.fullyQualifiedName?.replace(
-                    new RegExp('"', 'g'),
-                    '""'
-                  ) ?? '',
+                  domain
+                    .map((d) =>
+                      d.fullyQualifiedName?.replace(new RegExp('"', 'g'), '""')
+                    )
+                    .join(';') ?? '',
               },
               true
             );
@@ -332,19 +342,11 @@ class CSVUtilsClassBase {
           return (
             <DomainSelectableList
               hasPermission
+              multiple
               popoverProps={{ open: true }}
-              selectedDomain={
-                value
-                  ? {
-                      type: EntityType.DOMAIN,
-                      name: value,
-                      id: '',
-                      fullyQualifiedName: value,
-                    }
-                  : undefined
-              }
+              selectedDomain={domains}
               wrapInButton={false}
-              onUpdate={(domain) => handleChange(domain as EntityReference)}>
+              onUpdate={(domain) => handleChange(domain as EntityReference[])}>
               <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
             </DomainSelectableList>
           );

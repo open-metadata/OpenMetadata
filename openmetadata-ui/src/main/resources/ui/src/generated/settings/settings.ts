@@ -35,6 +35,7 @@ export enum SettingType {
     CustomUIThemePreference = "customUiThemePreference",
     Elasticsearch = "elasticsearch",
     EmailConfiguration = "emailConfiguration",
+    EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
     JwtTokenConfiguration = "jwtTokenConfiguration",

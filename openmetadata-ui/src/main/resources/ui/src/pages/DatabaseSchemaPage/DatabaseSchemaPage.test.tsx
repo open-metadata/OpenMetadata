@@ -195,7 +195,7 @@ const API_FIELDS = [
   'owners',
   'usageSummary',
   'tags',
-  'domain',
+  'domains',
   'votes',
   'extension',
   'followers',

@@ -22,7 +22,7 @@ export interface DataModelVersionProp {
   currentVersionData: DashboardDataModel;
   isVersionLoading: boolean;
   owners: DashboardDataModel['owners'];
-  domain: DashboardDataModel['domain'];
+  domains: DashboardDataModel['domains'];
   dataProducts: DashboardDataModel['dataProducts'];
   tier: TagLabel;
   slashedDataModelName: TitleBreadcrumbProps['titleLinks'];

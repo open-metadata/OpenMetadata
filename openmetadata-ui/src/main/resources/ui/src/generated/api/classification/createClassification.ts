@@ -23,9 +23,9 @@ export interface CreateClassification {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Classification belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Tags under this classification are mutually exclusive. When mutually exclusive is `true`
      * the tags from this classification are used to **classify** an entity. An entity can only
