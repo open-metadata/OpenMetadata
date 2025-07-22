@@ -1,5 +1,6 @@
 ---
 title: Search Settings | OpenMetadata Search Config
+description: Connect Searchsettings to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/searchsettings
 ---
 

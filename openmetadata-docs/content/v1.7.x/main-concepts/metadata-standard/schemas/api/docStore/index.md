@@ -1,5 +1,6 @@
 ---
 title: Docstore API | OpenMetadata Document Store API
+description: Connect Docstore to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/docstore
 ---
 

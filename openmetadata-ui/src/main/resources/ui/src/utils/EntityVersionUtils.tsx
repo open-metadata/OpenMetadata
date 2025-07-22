@@ -609,19 +609,127 @@ export const getEntityReferenceDiffFromFieldName = (
   };
 };
 
+const getOwnerLabelName = (
+  reviewer: EntityReference,
+  operation: EntityChangeOperations
+) => {
+  switch (operation) {
+    case EntityChangeOperations.ADDED:
+      return getAddedDiffElement(getEntityName(reviewer));
+    case EntityChangeOperations.DELETED:
+      return getRemovedDiffElement(getEntityName(reviewer));
+    case EntityChangeOperations.UPDATED:
+    case EntityChangeOperations.NORMAL:
+    default:
+      return getEntityName(reviewer);
+  }
+};
+
+export const getOwnerDiff = (
+  defaultItems: EntityReference[],
+  changeDescription?: ChangeDescription,
+  ownerField = TabSpecificField.OWNERS
+) => {
+  const fieldDiff = getDiffByFieldName(
+    ownerField,
+    changeDescription as ChangeDescription
+  );
+
+  const addedItems: EntityReference[] = JSON.parse(
+    getChangedEntityNewValue(fieldDiff) ?? '[]'
+  );
+  const deletedItems: EntityReference[] = JSON.parse(
+    getChangedEntityOldValue(fieldDiff) ?? '[]'
+  );
+
+  const unchangedItems = defaultItems.filter(
+    (item: EntityReference) =>
+      !addedItems.find((addedItem: EntityReference) => addedItem.id === item.id)
+  );
+
+  const allItems = [
+    ...unchangedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.NORMAL,
+    })),
+    ...addedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.ADDED,
+    })),
+    ...deletedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.DELETED,
+    })),
+  ];
+
+  return {
+    owners: allItems.map(({ item }) => item),
+    ownerDisplayName: allItems.map(({ item, operation }) =>
+      getOwnerLabelName(item, operation)
+    ),
+  };
+};
+
+export const getDomainDiff = (
+  defaultItems: EntityReference[],
+  changeDescription?: ChangeDescription,
+  domainField = TabSpecificField.DOMAINS
+) => {
+  const fieldDiff = getDiffByFieldName(
+    domainField,
+    changeDescription as ChangeDescription
+  );
+
+  const addedItems: EntityReference[] = JSON.parse(
+    getChangedEntityNewValue(fieldDiff) ?? '[]'
+  );
+  const deletedItems: EntityReference[] = JSON.parse(
+    getChangedEntityOldValue(fieldDiff) ?? '[]'
+  );
+
+  const unchangedItems = defaultItems.filter(
+    (item: EntityReference) =>
+      !addedItems.find((addedItem: EntityReference) => addedItem.id === item.id)
+  );
+
+  const allItems = [
+    ...unchangedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.NORMAL,
+    })),
+    ...addedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.ADDED,
+    })),
+    ...deletedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.DELETED,
+    })),
+  ];
+
+  return {
+    domains: allItems.map(({ item }) => item),
+    domainDisplayName: allItems.map(({ item, operation }) =>
+      getOwnerLabelName(item, operation)
+    ),
+  };
+};
+
 export const getCommonExtraInfoForVersionDetails = (
   changeDescription: ChangeDescription,
   owners?: EntityReference[],
   tier?: TagLabel,
-  domain?: EntityReference
+  domains?: EntityReference[]
 ) => {
   const { owners: ownerRef, ownerDisplayName } = getOwnerDiff(
     owners ?? [],
     changeDescription
   );
 
-  const { entityDisplayName: domainDisplayName } =
-    getEntityReferenceDiffFromFieldName('domain', changeDescription, domain);
+  const { domains: domainRef, domainDisplayName } = getDomainDiff(
+    domains ?? [],
+    changeDescription
+  );
 
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
   const newTier = [
@@ -646,6 +754,7 @@ export const getCommonExtraInfoForVersionDetails = (
   const extraInfo = {
     ownerRef,
     ownerDisplayName,
+    domainRef,
     domainDisplayName,
     tierDisplayName,
   };
@@ -937,8 +1046,8 @@ export const getBasicEntityInfoFromVersionData = (
 ) => ({
   tier: getTierTags(currentVersionData.tags ?? []),
   owners: currentVersionData.owners,
-  domain: (currentVersionData as Exclude<VersionEntityTypes, MetadataService>)
-    .domain,
+  domains: (currentVersionData as Exclude<VersionEntityTypes, MetadataService>)
+    .domains,
   breadcrumbLinks: getEntityBreadcrumbs(currentVersionData, entityType),
   changeDescription:
     currentVersionData.changeDescription ?? ({} as ChangeDescription),
@@ -990,67 +1099,6 @@ export const renderVersionButton = (
       />
     </Fragment>
   );
-};
-
-const getOwnerLabelName = (
-  reviewer: EntityReference,
-  operation: EntityChangeOperations
-) => {
-  switch (operation) {
-    case EntityChangeOperations.ADDED:
-      return getAddedDiffElement(getEntityName(reviewer));
-    case EntityChangeOperations.DELETED:
-      return getRemovedDiffElement(getEntityName(reviewer));
-    case EntityChangeOperations.UPDATED:
-    case EntityChangeOperations.NORMAL:
-    default:
-      return getEntityName(reviewer);
-  }
-};
-
-export const getOwnerDiff = (
-  defaultItems: EntityReference[],
-  changeDescription?: ChangeDescription,
-  ownerField = TabSpecificField.OWNERS
-) => {
-  const fieldDiff = getDiffByFieldName(
-    ownerField,
-    changeDescription as ChangeDescription
-  );
-
-  const addedItems: EntityReference[] = JSON.parse(
-    getChangedEntityNewValue(fieldDiff) ?? '[]'
-  );
-  const deletedItems: EntityReference[] = JSON.parse(
-    getChangedEntityOldValue(fieldDiff) ?? '[]'
-  );
-
-  const unchangedItems = defaultItems.filter(
-    (item: EntityReference) =>
-      !addedItems.find((addedItem: EntityReference) => addedItem.id === item.id)
-  );
-
-  const allItems = [
-    ...unchangedItems.map((item) => ({
-      item,
-      operation: EntityChangeOperations.NORMAL,
-    })),
-    ...addedItems.map((item) => ({
-      item,
-      operation: EntityChangeOperations.ADDED,
-    })),
-    ...deletedItems.map((item) => ({
-      item,
-      operation: EntityChangeOperations.DELETED,
-    })),
-  ];
-
-  return {
-    owners: allItems.map(({ item }) => item),
-    ownerDisplayName: allItems.map(({ item, operation }) =>
-      getOwnerLabelName(item, operation)
-    ),
-  };
 };
 
 export const getChangedEntityStatus = (
