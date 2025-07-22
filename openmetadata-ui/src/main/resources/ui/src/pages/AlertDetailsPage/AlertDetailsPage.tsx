@@ -42,6 +42,7 @@ import {
 import { AlertDetailTabs } from '../../enums/Alerts.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { EventsRecord } from '../../generated/events/api/eventsRecord';
 import {
   EntityReference,
@@ -58,7 +59,11 @@ import {
 } from '../../rest/observabilityAPI';
 import { getAlertExtraInfo } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import {
   getNotificationAlertDetailsPath,
   getNotificationAlertsEditPath,
@@ -98,12 +103,19 @@ function AlertDetailsPage({
     deletePermission,
   } = useMemo(
     () => ({
-      viewPermission: alertPermission.ViewAll || alertPermission.ViewBasic,
+      viewPermission: getPrioritizedViewPermission(
+        alertPermission,
+        Operation.ViewBasic
+      ),
       editPermission: alertPermission.EditAll,
-      editOwnersPermission:
-        alertPermission.EditAll || alertPermission.EditOwners,
-      editDescriptionPermission:
-        alertPermission.EditAll || alertPermission.EditDescription,
+      editOwnersPermission: getPrioritizedEditPermission(
+        alertPermission,
+        Operation.EditOwners
+      ),
+      editDescriptionPermission: getPrioritizedEditPermission(
+        alertPermission,
+        Operation.EditDescription
+      ),
       deletePermission: alertPermission.Delete,
     }),
     [alertPermission]

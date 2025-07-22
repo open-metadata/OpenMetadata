@@ -44,6 +44,7 @@ import {
 } from '../../enums/entity.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
+import { Operation } from '../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
@@ -65,7 +66,10 @@ import {
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -119,7 +123,8 @@ const APICollectionVersionPage = () => {
     );
 
   const viewVersionPermission = useMemo(
-    () => collectionPermissions.ViewAll || collectionPermissions.ViewBasic,
+    () =>
+      getPrioritizedViewPermission(collectionPermissions, Operation.ViewBasic),
     [collectionPermissions]
   );
 

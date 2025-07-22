@@ -45,6 +45,7 @@ import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
@@ -63,6 +64,7 @@ import {
   getEntityName,
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
+import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
@@ -373,12 +375,16 @@ export const DataAssetsHeader = ({
     () => ({
       editDomainPermission: permissions.EditAll && !dataAsset.deleted,
       editOwnerPermission:
-        (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
-      editTierPermission:
-        (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
-      editCertificationPermission:
-        (permissions.EditAll || permissions.EditCertification) &&
+        getPrioritizedEditPermission(permissions, Operation.EditOwners) &&
         !dataAsset.deleted,
+      editTierPermission:
+        getPrioritizedEditPermission(permissions, Operation.EditTier) &&
+        !dataAsset.deleted,
+      editCertificationPermission:
+        getPrioritizedEditPermission(
+          permissions,
+          Operation.EditCertification
+        ) && !dataAsset.deleted,
     }),
     [permissions, dataAsset]
   );
@@ -567,9 +573,10 @@ export const DataAssetsHeader = ({
                     canDelete={permissions.Delete}
                     deleted={dataAsset.deleted}
                     displayName={getEntityName(dataAsset)}
-                    editDisplayNamePermission={
-                      permissions?.EditAll || permissions?.EditDisplayName
-                    }
+                    editDisplayNamePermission={getPrioritizedEditPermission(
+                      permissions,
+                      Operation.EditDisplayName
+                    )}
                     entityFQN={dataAsset.fullyQualifiedName}
                     entityId={dataAsset.id}
                     entityName={dataAsset.name}

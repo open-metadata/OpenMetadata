@@ -17,7 +17,9 @@ import {
   SearchIndex,
   SearchIndexField,
 } from '../../../generated/entity/data/searchIndex';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { useFqn } from '../../../hooks/useFqn';
+import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getAllRowKeysByKeyName } from '../../../utils/TableUtils';
 import SearchIndexFieldsTable from '../SearchIndexFieldsTable/SearchIndexFieldsTable';
 
@@ -32,11 +34,18 @@ function SearchIndexFieldsTab() {
     hasTagEditAccess,
   } = useMemo(
     () => ({
-      hasDescriptionEditAccess:
-        permissions.EditAll || permissions.EditDescription,
-      hasGlossaryTermEditAccess:
-        permissions.EditAll || permissions.EditGlossaryTerms,
-      hasTagEditAccess: permissions.EditAll || permissions.EditTags,
+      hasDescriptionEditAccess: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditDescription
+      ),
+      hasGlossaryTermEditAccess: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditGlossaryTerms
+      ),
+      hasTagEditAccess: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditTags
+      ),
     }),
     [permissions]
   );
