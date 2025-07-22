@@ -1,5 +1,6 @@
 ---
 title: Entity Error Schema | OpenMetadata Entity Error Details
+description: Connect Entityerror to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/system/entityerror
 ---
 
