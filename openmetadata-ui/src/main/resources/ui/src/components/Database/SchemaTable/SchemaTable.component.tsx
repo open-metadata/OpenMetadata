@@ -80,6 +80,7 @@ import {
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
   prepareConstraintIcon,
+  pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -212,7 +213,7 @@ const SchemaTable = () => {
               fields: 'tags,customMetrics',
             });
 
-        setTableColumns(response.data || []);
+        setTableColumns(pruneEmptyChildren(response.data) || []);
         handlePagingChange(response.paging);
       } catch {
         // Set empty state if API fails
