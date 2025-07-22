@@ -15,9 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.getEntityReferenceById;
 
-import jakarta.json.JsonPatch;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -30,6 +28,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.data.LatestResult;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.FailedRule;
@@ -52,6 +51,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.DataContractValidationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
@@ -65,9 +65,9 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics";
+      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics";
+      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
@@ -234,7 +234,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             new CreateTestSuite()
                 .withName(testSuiteName)
                 .withDisplayName(testSuiteName)
-                .withDescription("Logical test suite for Data Contract: " + dataContract.getName());
+                .withDescription("Logical test suite for Data Contract: " + dataContract.getName())
+                .withDataContract(
+                    new EntityReference()
+                        .withId(dataContract.getId())
+                        .withFullyQualifiedName(dataContract.getFullyQualifiedName())
+                        .withType(Entity.DATA_CONTRACT));
         TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
         testSuite = testSuiteRepository.create(null, newTestSuite);
       }
@@ -250,7 +255,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
       // Add the test suite to the data contract
       dataContract.setTestSuite(
-          getEntityReferenceById(Entity.TEST_SUITE, testSuite.getId(), Include.NON_DELETED));
+          new EntityReference()
+              .withId(testSuite.getId())
+              .withFullyQualifiedName(testSuite.getFullyQualifiedName())
+              .withType(Entity.TEST_SUITE));
 
       return testSuite;
 
@@ -297,13 +305,39 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     // If we don't have quality expectations, just flag the results based on semantics validation
     // Otherwise, keep it Running and wait for the DQ results to kick in
-    if (nullOrEmpty(dataContract.getQualityExpectations())) {
-      compileResult(result, ContractExecutionStatus.Success);
-    } else {
+    if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       compileResult(result, ContractExecutionStatus.Running);
+      triggerAndDeployDQValidation(dataContract);
+    } else {
+      compileResult(result, ContractExecutionStatus.Success);
     }
 
+    // Add the result to the data contract and update the time series
+    addContractResult(dataContract, result);
     return result;
+  }
+
+  private void triggerAndDeployDQValidation(DataContract dataContract) {
+    if (dataContract.getTestSuite() == null) {
+      throw DataContractValidationException.byMessage(
+          String.format(
+              "Data contract %s does not have a test suite defined, cannot trigger DQ validation",
+              dataContract.getFullyQualifiedName()));
+    }
+    TestSuite testSuite =
+        Entity.getEntity(dataContract.getTestSuite(), "tests,pipelines", Include.NON_DELETED);
+
+    if (nullOrEmpty(testSuite.getPipelines())) {
+      throw DataContractValidationException.byMessage(
+          String.format(
+              "Test suite %s does not have any pipelines defined, cannot trigger DQ validation",
+              testSuite.getFullyQualifiedName()));
+    }
+
+    IngestionPipeline pipeline =
+        Entity.getEntity(testSuite.getPipelines().get(0), "*", Include.NON_DELETED);
+    pipelineServiceClient.deployPipeline(pipeline, testSuite);
+    pipelineServiceClient.runPipeline(pipeline, testSuite);
   }
 
   private SemanticsValidation validateSemantics(DataContract dataContract) {
@@ -390,27 +424,66 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           RESULT_EXTENSION,
           RESULT_SCHEMA,
           JsonUtils.pojoToJson(result));
+    }
 
-      // Update latest result in data contract
+    // Update latest result in data contract if it is indeed the latest
+    // or if we're updating the same result with a newer status
+    if (dataContract.getLatestResult() == null
+        || dataContract.getLatestResult().getTimestamp() < result.getTimestamp()
+        || dataContract.getLatestResult().getResultId() == result.getId()) {
       updateLatestResult(dataContract, result);
     }
 
     return result;
   }
 
+  public DataContractResult updateContractDQResults(
+      EntityReference contractReference, TestSuite testSuite) {
+    DataContract dataContract = Entity.getEntity(contractReference, "", Include.NON_DELETED);
+    if (dataContract == null) {
+      throw EntityNotFoundException.byMessage(
+          String.format("Data contract not found for Test Suite %s", testSuite.getName()));
+    }
+    // TODO: check if we have a running or failed resultId for the contract, check pending tests on
+    // the suite and update status.
+    // also if the DQ is created in the contract, we could set the DQ status in the result as
+    // running as well
+    return null;
+  }
+
+  @Override
+  public EntityUpdater getUpdater(
+      DataContract original, DataContract updated, Operation operation, ChangeSource changeSource) {
+    return new DataContractUpdater(original, updated, operation, changeSource);
+  }
+
+  public class DataContractUpdater extends EntityUpdater {
+    public DataContractUpdater(
+        DataContract original,
+        DataContract updated,
+        Operation operation,
+        ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
+    }
+
+    @Override
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
+      recordChange("latestResult", original.getLatestResult(), updated.getLatestResult());
+    }
+  }
+
   private void updateLatestResult(DataContract dataContract, DataContractResult result) {
     try {
-      jakarta.json.JsonPatchBuilder patchBuilder = jakarta.json.Json.createPatchBuilder();
-
-      jakarta.json.JsonObjectBuilder latestResultBuilder =
-          jakarta.json.Json.createObjectBuilder()
-              .add("timestamp", result.getTimestamp())
-              .add("status", result.getContractExecutionStatus().value())
-              .add("message", result.getResult() != null ? result.getResult() : "")
-              .add("resultId", result.getId().toString());
-      patchBuilder.add("/latestResult", latestResultBuilder.build());
-      JsonPatch patch = patchBuilder.build();
-      patch(null, dataContract.getId(), null, patch, ChangeSource.DERIVED);
+      DataContract updated = JsonUtils.deepCopy(dataContract, DataContract.class);
+      updated.setLatestResult(
+          new LatestResult()
+              .withTimestamp(result.getTimestamp())
+              .withStatus(result.getContractExecutionStatus())
+              .withMessage(result.getResult())
+              .withResultId(result.getId()));
+      EntityRepository.EntityUpdater entityUpdater =
+          getUpdater(dataContract, updated, EntityRepository.Operation.PATCH, null);
+      entityUpdater.update();
     } catch (Exception e) {
       LOG.error(
           "Failed to update latest result for data contract {}",
@@ -418,163 +491,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           e);
     }
   }
-
-  /*
-  public DataContractResult validateContract(DataContract dataContract) {
-    long startTime = System.currentTimeMillis();
-    DataContractResult result = new DataContractResult()
-        .withId(UUID.randomUUID())
-        .withDataContractFQN(dataContract.getFullyQualifiedName())
-        .withTimestamp(System.currentTimeMillis());
-
-    List<String> messages = new ArrayList<>();
-    boolean allValidationsPassed = true;
-
-    try {
-      // 1. Validate Semantics Rules using RuleEngine
-      SemanticsValidation semanticsValidation = validateSemantics(dataContract);
-      result.withSemanticsValidation(semanticsValidation);
-      if (!semanticsValidation.getPassed()) {
-        allValidationsPassed = false;
-        messages.add("Semantics validation failed: " + semanticsValidation.getMessage());
-      }
-
-      // 2. Create/Update Test Suite for Quality Expectations
-      TestSuite testSuite = createOrUpdateDataContractTestSuite(dataContract);
-
-      // 3. Trigger Quality Tests Execution if test suite has tests
-      QualityValidation qualityValidation = null;
-      if (testSuite != null && !nullOrEmpty(testSuite.getTests())) {
-        qualityValidation = executeQualityTests(dataContract, testSuite);
-        result.withQualityValidation(qualityValidation);
-        if (!qualityValidation.getPassed()) {
-          allValidationsPassed = false;
-          messages.add("Quality validation failed: " + qualityValidation.getMessage());
-        }
-      } else {
-        // No quality tests to run
-        qualityValidation = new QualityValidation()
-            .withPassed(true)
-            .withMessage("No quality tests defined");
-        result.withQualityValidation(qualityValidation);
-      }
-
-      // Set overall status
-      if (allValidationsPassed) {
-        result.withContractExecutionStatus(ContractExecutionStatus.Success)
-            .withResult("All validations passed successfully");
-      } else {
-        result.withContractExecutionStatus(ContractExecutionStatus.Failed)
-            .withResult(String.join("; ", messages));
-      }
-
-    } catch (Exception e) {
-      log.error("Error validating data contract: {}", dataContract.getFullyQualifiedName(), e);
-      result.withContractExecutionStatus(ContractExecutionStatus.Aborted)
-          .withResult("Validation aborted due to error: " + e.getMessage());
-    }
-
-    long executionTime = System.currentTimeMillis() - startTime;
-    result.withExecutionTime(executionTime);
-
-    return result;
-  }
-
-
-
-  private QualityValidation executeQualityTests(DataContract dataContract, TestSuite testSuite) {
-    QualityValidation validation = new QualityValidation();
-
-    try {
-      // Create ingestion pipeline for test suite execution
-      IngestionPipelineRepository pipelineRepository =
-          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-
-      String pipelineName = testSuite.getName() + "_validation_" + System.currentTimeMillis();
-
-      // Create pipeline configuration for test suite
-      IngestionPipelineConfig pipelineConfig = new IngestionPipelineConfig()
-          .withType(PipelineType.TestSuite);
-
-      CreateIngestionPipeline createPipeline = new CreateIngestionPipeline()
-          .withName(pipelineName)
-          .withDisplayName("Data Contract Validation - " + dataContract.getName())
-          .withPipelineType(PipelineType.TestSuite)
-          .withService(new EntityReference()
-              .withId(testSuite.getId())
-              .withType(Entity.TEST_SUITE))
-          .withSourceConfig(pipelineConfig);
-
-      // Create and trigger the pipeline
-      IngestionPipeline pipeline = pipelineRepository.createEntity(null, createPipeline);
-
-      // Trigger pipeline execution
-      pipelineRepository.triggerIngestion(pipeline.getId(), null);
-
-      // Wait for pipeline completion (with timeout)
-      long timeout = 300000; // 5 minutes timeout
-      long startTime = System.currentTimeMillis();
-      IngestionPipelineState pipelineState = null;
-
-      while (System.currentTimeMillis() - startTime < timeout) {
-        Thread.sleep(5000); // Check every 5 seconds
-        pipeline = pipelineRepository.get(null, pipeline.getId(),
-            new Fields(Set.of("pipelineStatuses")), Include.NON_DELETED);
-
-        if (pipeline.getPipelineStatuses() != null && !pipeline.getPipelineStatuses().isEmpty()) {
-          pipelineState = pipeline.getPipelineStatuses().get(0);
-          if (pipelineState.getState() != null &&
-              (pipelineState.getState().equals("success") ||
-               pipelineState.getState().equals("failed"))) {
-            break;
-          }
-        }
-      }
-
-      // Check test results
-      if (pipelineState != null && "success".equals(pipelineState.getState())) {
-        // Get test case results
-        TestCaseRepository testCaseRepository =
-            (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-
-        int totalTests = testSuite.getTests().size();
-        int passedTests = 0;
-        List<String> failedTestNames = new ArrayList<>();
-
-        for (EntityReference testRef : testSuite.getTests()) {
-          TestCase testCase = testCaseRepository.get(null, testRef.getId(),
-              new Fields(Set.of("testCaseResult")), Include.NON_DELETED);
-
-          if (testCase.getTestCaseResult() != null &&
-              "Success".equals(testCase.getTestCaseResult().getTestCaseStatus())) {
-            passedTests++;
-          } else {
-            failedTestNames.add(testCase.getName());
-          }
-        }
-
-        if (passedTests == totalTests) {
-          validation.withPassed(true)
-              .withMessage(String.format("All %d quality tests passed", totalTests));
-        } else {
-          validation.withPassed(false)
-              .withMessage(String.format("%d/%d tests failed: %s",
-                  totalTests - passedTests, totalTests,
-                  String.join(", ", failedTestNames)));
-        }
-      } else {
-        validation.withPassed(false)
-            .withMessage("Quality test execution failed or timed out");
-      }
-
-    } catch (Exception e) {
-      log.error("Error during quality test execution", e);
-      validation.withPassed(false).withMessage("Quality test execution error: " + e.getMessage());
-    }
-
-    return validation;
-  }
-   */
 
   public DataContract loadEntityDataContract(EntityReference entity) {
     return JsonUtils.readValue(

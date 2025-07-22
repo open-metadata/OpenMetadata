@@ -216,8 +216,7 @@
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "status": {
-          "type": "string",
-          "enum": ["Running", "Success", "Failed", "PartialSuccess", "Aborted", "Queued"]
+          "$ref": "../../type/contractExecutionStatus.json"
         },
         "message": {
           "type": "string"

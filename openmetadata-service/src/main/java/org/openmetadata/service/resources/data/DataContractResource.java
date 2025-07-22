@@ -693,8 +693,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
 
     EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
     String jsonRecord =
-        timeSeriesDAO.getLatestExtension(
-            dataContract.getFullyQualifiedName(), "dataContract.dataContractResult");
+        timeSeriesDAO.getLatestExtension(dataContract.getFullyQualifiedName(), RESULT_EXTENSION);
 
     return jsonRecord != null ? JsonUtils.readValue(jsonRecord, DataContractResult.class) : null;
   }

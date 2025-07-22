@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.data;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -361,6 +362,22 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
   private String getTableUri() {
     return String.format("http://localhost:%s/api/v1/tables", APP.getLocalPort());
+  }
+
+  private DataContractResult getLatestResult(DataContract dataContract)
+      throws HttpResponseException {
+    WebTarget latestTarget = getResource(dataContract.getId()).path("/results/latest");
+    Response latestResponse = SecurityUtil.addHeaders(latestTarget, ADMIN_AUTH_HEADERS).get();
+    return TestUtils.readResponse(
+        latestResponse, DataContractResult.class, Status.OK.getStatusCode());
+  }
+
+  private DataContractResult runValidate(DataContract dataContract) throws HttpResponseException {
+    WebTarget validateTarget = getResource(dataContract.getId()).path("/validate");
+    Response validateResponse =
+        SecurityUtil.addHeaders(validateTarget, ADMIN_AUTH_HEADERS).post(null);
+    return TestUtils.readResponse(
+        validateResponse, DataContractResult.class, Status.OK.getStatusCode());
   }
 
   // ===================== CRUD Tests =====================
@@ -1212,6 +1229,9 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
     DataContract dataContract = createDataContract(create);
 
+    // no result yet
+    assertNull(dataContract.getLatestResult());
+
     // Create a contract result
     CreateDataContractResult createResult =
         new CreateDataContractResult()
@@ -1235,10 +1255,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1234L, result.getExecutionTime());
 
     // Get latest result
-    WebTarget latestTarget = getResource(dataContract.getId()).path("/results/latest");
-    Response latestResponse = SecurityUtil.addHeaders(latestTarget, ADMIN_AUTH_HEADERS).get();
-    DataContractResult latest =
-        TestUtils.readResponse(latestResponse, DataContractResult.class, Status.OK.getStatusCode());
+    DataContractResult latest = getLatestResult(dataContract);
 
     assertNotNull(latest);
     assertEquals(result.getId(), latest.getId());
@@ -1262,6 +1279,11 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(ContractExecutionStatus.Success, updatedResult.getContractExecutionStatus());
     assertEquals("Success result", updatedResult.getResult());
     assertEquals(2000L, updatedResult.getExecutionTime());
+
+    // Ensure the latestResult is updated properly in the DataContract
+    DataContract updatedContract = getDataContract(dataContract.getId(), "");
+    assertNotNull(updatedContract.getLatestResult());
+    assertEquals(updatedResult.getId(), updatedContract.getLatestResult().getResultId());
   }
 
   @Test
@@ -1341,10 +1363,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     }
 
     // Get latest result
-    WebTarget latestTarget = getResource(dataContract.getId()).path("/results/latest");
-    Response latestResponse = SecurityUtil.addHeaders(latestTarget, ADMIN_AUTH_HEADERS).get();
-    DataContractResult latest =
-        TestUtils.readResponse(latestResponse, DataContractResult.class, Status.OK.getStatusCode());
+    DataContractResult latest = getLatestResult(dataContract);
 
     assertNotNull(latest);
     assertEquals("Result 2", latest.getResult()); // Latest is from January 3rd (index 2)
@@ -1611,12 +1630,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, dataContract.getSemantics().size());
 
     // Call the validate endpoint
-    WebTarget validateTarget = getResource(dataContract.getId()).path("/validate");
-    Response validateResponse =
-        SecurityUtil.addHeaders(validateTarget, ADMIN_AUTH_HEADERS).post(null);
-    DataContractResult result =
-        TestUtils.readResponse(
-            validateResponse, DataContractResult.class, Status.OK.getStatusCode());
+    DataContractResult result = runValidate(dataContract);
 
     // Verify the validation result shows failure
     assertNotNull(result);
@@ -1633,6 +1647,16 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(
         "Required Field Check",
         result.getSemanticsValidation().getFailedRules().get(0).getRuleName());
+
+    // Verify the DataContract latestResult reflects the failed validation
+    DataContract updatedContract = getDataContract(dataContract.getId(), "");
+    DataContractResult latest = getLatestResult(dataContract);
+    assertNotNull(updatedContract.getLatestResult());
+    assertEquals(ContractExecutionStatus.Failed, updatedContract.getLatestResult().getStatus());
+    assertTrue(
+        updatedContract.getLatestResult().getMessage().contains("Semantics validation failed"));
+    assertEquals(
+        result.getId().toString(), updatedContract.getLatestResult().getResultId().toString());
   }
 
   @Test
@@ -1664,12 +1688,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(2, dataContract.getSemantics().size());
 
     // Call the validate endpoint
-    WebTarget validateTarget = getResource(dataContract.getId()).path("/validate");
-    Response validateResponse =
-        SecurityUtil.addHeaders(validateTarget, ADMIN_AUTH_HEADERS).post(null);
-    DataContractResult result =
-        TestUtils.readResponse(
-            validateResponse, DataContractResult.class, Status.OK.getStatusCode());
+    DataContractResult result = runValidate(dataContract);
 
     // Verify the validation result shows success
     assertNotNull(result);
@@ -1683,5 +1702,99 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertTrue(
         result.getSemanticsValidation().getFailedRules() == null
             || result.getSemanticsValidation().getFailedRules().isEmpty());
+
+    // Verify the DataContract latestResult reflects the successful validation
+    DataContract updatedContract = getDataContract(dataContract.getId(), "");
+    assertNotNull(updatedContract.getLatestResult());
+    assertEquals(ContractExecutionStatus.Success, updatedContract.getLatestResult().getStatus());
+    assertEquals(
+        result.getId().toString(), updatedContract.getLatestResult().getResultId().toString());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testLatestResultOnlyUpdatedForNewerResults(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract dataContract = createDataContract(create);
+
+    // Initially no latest result
+    assertNull(dataContract.getLatestResult());
+
+    // Create first result with timestamp T1
+    long timestamp1 = System.currentTimeMillis();
+    CreateDataContractResult createResult1 =
+        new CreateDataContractResult()
+            .withDataContractFQN(dataContract.getFullyQualifiedName())
+            .withTimestamp(timestamp1)
+            .withContractExecutionStatus(ContractExecutionStatus.Success)
+            .withResult("First result")
+            .withExecutionTime(1000L);
+
+    WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
+    Response response1 =
+        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult1));
+    DataContractResult result1 =
+        TestUtils.readResponse(response1, DataContractResult.class, Status.OK.getStatusCode());
+
+    // Verify first result becomes latestResult
+    DataContract contractAfterFirst = getDataContract(dataContract.getId(), "");
+    assertNotNull(contractAfterFirst.getLatestResult());
+    assertEquals(timestamp1, contractAfterFirst.getLatestResult().getTimestamp().longValue());
+    assertEquals("First result", contractAfterFirst.getLatestResult().getMessage());
+    assertEquals(result1.getId(), contractAfterFirst.getLatestResult().getResultId());
+
+    // Create second result with OLDER timestamp T2 < T1 (should NOT update latestResult)
+    long timestamp2 = timestamp1 - 10000; // 10 seconds earlier
+    CreateDataContractResult createResult2 =
+        new CreateDataContractResult()
+            .withDataContractFQN(dataContract.getFullyQualifiedName())
+            .withTimestamp(timestamp2)
+            .withContractExecutionStatus(ContractExecutionStatus.Failed)
+            .withResult("Older result")
+            .withExecutionTime(2000L);
+
+    Response response2 =
+        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult2));
+    DataContractResult result2 =
+        TestUtils.readResponse(response2, DataContractResult.class, Status.OK.getStatusCode());
+
+    // Verify latestResult is NOT updated (should still be first result)
+    DataContract contractAfterSecond = getDataContract(dataContract.getId(), "");
+    assertNotNull(contractAfterSecond.getLatestResult());
+    assertEquals(
+        timestamp1,
+        contractAfterSecond.getLatestResult().getTimestamp().longValue()); // Still first timestamp
+    assertEquals(
+        "First result", contractAfterSecond.getLatestResult().getMessage()); // Still first message
+    assertEquals(
+        result1.getId(),
+        contractAfterSecond.getLatestResult().getResultId()); // Still first result ID
+
+    // Create third result with NEWER timestamp T3 > T1 (should update latestResult)
+    long timestamp3 = timestamp1 + 10000; // 10 seconds later
+    CreateDataContractResult createResult3 =
+        new CreateDataContractResult()
+            .withDataContractFQN(dataContract.getFullyQualifiedName())
+            .withTimestamp(timestamp3)
+            .withContractExecutionStatus(ContractExecutionStatus.Running)
+            .withResult("Newest result")
+            .withExecutionTime(3000L);
+
+    Response response3 =
+        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult3));
+    DataContractResult result3 =
+        TestUtils.readResponse(response3, DataContractResult.class, Status.OK.getStatusCode());
+
+    // Verify latestResult IS updated to the newest result
+    DataContract contractAfterThird = getDataContract(dataContract.getId(), "");
+    assertNotNull(contractAfterThird.getLatestResult());
+    assertEquals(
+        timestamp3,
+        contractAfterThird.getLatestResult().getTimestamp().longValue()); // Now third timestamp
+    assertEquals(
+        "Newest result", contractAfterThird.getLatestResult().getMessage()); // Now third message
+    assertEquals(
+        result3.getId(), contractAfterThird.getLatestResult().getResultId()); // Now third result ID
   }
 }
