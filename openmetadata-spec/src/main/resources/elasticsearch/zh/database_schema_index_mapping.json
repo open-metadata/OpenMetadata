@@ -161,7 +161,7 @@
       "entityType": {
         "type": "keyword"
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",

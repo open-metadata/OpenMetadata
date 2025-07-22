@@ -27,9 +27,9 @@ export interface CreateDataProduct {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the Domain the DataProduct belongs to.
+     * Fully qualified names of the Domains the DataProduct belongs to.
      */
-    domain: string;
+    domains: string[];
     /**
      * List of user/login names of users who are experts in this DataProduct.
      */
