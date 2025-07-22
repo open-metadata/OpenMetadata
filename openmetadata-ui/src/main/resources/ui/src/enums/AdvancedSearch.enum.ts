@@ -42,6 +42,7 @@ export enum EntityFields {
   TABLE_TYPE = 'tableType',
   COLUMN_DESCRIPTION_STATUS = 'columnDescriptionStatus',
   DISPLAY_NAME_KEYWORD = 'displayName.keyword',
+  DISPLAY_NAME_ACTUAL_CASE = 'displayName.actualCase',
   NAME_KEYWORD = 'name.keyword',
   GLOSSARY = 'glossary.name.keyword',
   CLASSIFICATION = 'classification.name.keyword',
