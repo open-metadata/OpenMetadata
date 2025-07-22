@@ -18,6 +18,7 @@ import { RolesClass } from '../support/access-control/RolesClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
+import { EntityClass } from '../support/entity/EntityClass';
 import { MetricClass } from '../support/entity/MetricClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
 import { PipelineClass } from '../support/entity/PipelineClass';
@@ -26,11 +27,6 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { UserClass } from '../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from './common';
-
-// Base entity interface for permission tests
-interface BaseEntity {
-  visitEntityPage: (page: Page) => Promise<void>;
-}
 
 // All operations across all entities
 const ALL_OPERATIONS = [
@@ -244,12 +240,12 @@ const checkElementVisibility = async (
 // Test common operations for any entity
 export const testCommonOperations = async (
   testUserPage: Page,
-  entity: BaseEntity,
+  entity: EntityClass,
   effect: 'allow' | 'deny'
 ) => {
   // Navigate to entity page
   await redirectToHomePage(testUserPage);
-  await entity.visitEntityPage(testUserPage);
+  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
 
   // Define test configurations with special handling
   const testIdsConfigs = [
@@ -263,8 +259,6 @@ export const testCommonOperations = async (
     { testId: 'edit-owner', type: 'direct' },
     { testId: 'rename-button', type: 'with-manage-button' },
     { testId: 'delete-button', type: 'with-manage-button' },
-    // 'edit-custom-fields',
-    // 'edit-certification'
   ];
 
   await expect(
@@ -330,10 +324,10 @@ export const testProfilerTabPermission = async (
 // Entity-specific test functions
 export const testTableSpecificOperations = async (
   testUserPage: Page,
-  entity: BaseEntity,
+  entity: TableClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPage(testUserPage);
+  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
 
   // Test ViewQueries
   await testPermissionErrorVisibility(
@@ -381,10 +375,10 @@ export const testTableSpecificOperations = async (
 
 export const testTopicSpecificOperations = async (
   testUserPage: Page,
-  entity: BaseEntity,
+  entity: TopicClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPage(testUserPage);
+  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
 
   // Test ViewSampleData for Topic
   await testPermissionErrorVisibility(
@@ -397,10 +391,10 @@ export const testTopicSpecificOperations = async (
 
 export const testDashboardSpecificOperations = async (
   testUserPage: Page,
-  entity: BaseEntity,
+  entity: DashboardClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPage(testUserPage);
+  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
 
   // Test ViewUsage for Dashboard
   await testPermissionErrorVisibility(
@@ -413,10 +407,10 @@ export const testDashboardSpecificOperations = async (
 
 export const testPipelineSpecificOperations = async (
   testUserPage: Page,
-  entity: BaseEntity,
+  entity: PipelineClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPage(testUserPage);
+  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
 
   // Test Edit Lineage for Pipeline
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
@@ -433,10 +427,10 @@ export const testPipelineSpecificOperations = async (
 
 export const testSearchIndexSpecificOperations = async (
   testUserPage: Page,
-  entity: BaseEntity,
+  entity: SearchIndexClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPage(testUserPage);
+  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
 
   // Test ViewUsage for Search Index
   await testPermissionErrorVisibility(
@@ -449,10 +443,10 @@ export const testSearchIndexSpecificOperations = async (
 
 export const testStoredProcedureSpecificOperations = async (
   testUserPage: Page,
-  entity: BaseEntity,
+  entity: TableClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPage(testUserPage);
+  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
 
   // Test ViewUsage for Stored Procedure
   await testPermissionErrorVisibility(
@@ -465,10 +459,10 @@ export const testStoredProcedureSpecificOperations = async (
 
 export const testDashboardDataModelSpecificOperations = async (
   testUserPage: Page,
-  entity: BaseEntity,
+  entity: DashboardDataModelClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPage(testUserPage);
+  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
 
   // Test Edit Lineage for Dashboard Data Model
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
@@ -486,26 +480,23 @@ export const testDashboardDataModelSpecificOperations = async (
 // Helper function to run common permission tests
 export const runCommonPermissionTests = async (
   testUserPage: Page,
-  entity: BaseEntity,
+  entity: EntityClass,
   effect: 'allow' | 'deny'
 ) => {
   await testCommonOperations(testUserPage, entity, effect);
 };
 
-// Helper function to run entity-specific permission tests
 export const runEntitySpecificPermissionTests = async (
   testUserPage: Page,
-  entity: BaseEntity,
+  entity: EntityClass,
   effect: 'allow' | 'deny',
-  specificTest?: (
+  specificTest: (
     page: Page,
-    entity: BaseEntity,
+    entity: EntityClass,
     effect: 'allow' | 'deny'
   ) => Promise<void>
 ) => {
-  if (specificTest) {
-    await specificTest(testUserPage, entity, effect);
-  }
+  await specificTest(testUserPage, entity, effect);
 };
 
 // Entity configuration with their specific test functions

@@ -12,6 +12,7 @@
  */
 
 import { Page, test as base } from '@playwright/test';
+import { EntityClass } from '../../../support/entity/EntityClass';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -92,7 +93,11 @@ Object.entries(entityConfig).forEach(([, config]) => {
             testUserPage,
             entity,
             'allow',
-            config.specificTest
+            config.specificTest as (
+              page: Page,
+              entity: EntityClass,
+              effect: 'allow' | 'deny'
+            ) => Promise<void>
           );
         });
       }
@@ -127,7 +132,11 @@ Object.entries(entityConfig).forEach(([, config]) => {
             testUserPage,
             entity,
             'deny',
-            config.specificTest
+            config.specificTest as (
+              page: Page,
+              entity: EntityClass,
+              effect: 'allow' | 'deny'
+            ) => Promise<void>
           );
         });
       }
