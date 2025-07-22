@@ -86,6 +86,7 @@ export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
 export const STAR_OMD_USER = 'STAR_OMD_USER';
+export const AIRFLOW_HYBRID = 'Hybrid';
 export const COLLATE_SAAS = 'CollateSaaS';
 export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
 export const RUNNER = 'ingestionRunner';

@@ -20,6 +20,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  AIRFLOW_HYBRID,
   COLLATE_SAAS,
   COLLATE_SAAS_RUNNER,
   RUNNER,
@@ -62,7 +63,7 @@ const ConnectionConfigForm = ({
 
   const formRef = useRef<Form<ConfigData>>(null);
 
-  const { isAirflowAvailable } = useAirflowStatus();
+  const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
 
   const fetchHostIp = async () => {
@@ -114,7 +115,8 @@ const ConnectionConfigForm = ({
       !isEmpty(connSch.schema) &&
       isAirflowAvailable &&
       hostIp &&
-      (ingestionRunner === COLLATE_SAAS ||
+      (platform !== AIRFLOW_HYBRID ||
+        ingestionRunner === COLLATE_SAAS ||
         ingestionRunner === COLLATE_SAAS_RUNNER)
     );
   }, [connSch.schema, isAirflowAvailable, hostIp, ingestionRunner]);
