@@ -252,7 +252,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
     // If embeddings are enabled, also index to vector_search_index
     if (embeddingsEnabled) {
-      addEntityToVectorIndex(entity, searchIndexDoc);
+      addEntityToVectorIndex(bulkProcessor, entity, recreateIndex);
     }
   }
 
@@ -346,5 +346,6 @@ public class OpenSearchBulkSink implements BulkSink {
    * Adds entity to vector_search_index for embedding search.
    * This method will only be called when embeddings are enabled for the entity type.
    */
-  protected void addEntityToVectorIndex(EntityInterface entity, Object searchIndexDoc) {}
+  protected void addEntityToVectorIndex(
+      BulkProcessor bulkProcessor, EntityInterface entity, boolean recreateIndex) {}
 }

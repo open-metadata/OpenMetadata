@@ -97,10 +97,7 @@ class ElasticSearchBulkSinkSimpleTest {
   @Test
   void testAddEntityToVectorIndex() {
     // Test default implementation does nothing (no exception thrown)
-    Object mockSearchIndexDoc = new Object();
-
     // This should not throw any exception as the default implementation is empty
-    elasticSearchBulkSink.addEntityToVectorIndex(null, mockSearchIndexDoc);
-    elasticSearchBulkSink.addEntityToVectorIndex(null, null);
+    elasticSearchBulkSink.addEntityToVectorIndex(null, null, true);
   }
 }

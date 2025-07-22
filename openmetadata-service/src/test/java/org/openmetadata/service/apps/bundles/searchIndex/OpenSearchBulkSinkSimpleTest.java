@@ -98,10 +98,7 @@ class OpenSearchBulkSinkSimpleTest {
   @Test
   void testAddEntityToVectorIndex() {
     // Test default implementation does nothing (no exception thrown)
-    Object mockSearchIndexDoc = new Object();
-
     // This should not throw any exception as the default implementation is empty
-    openSearchBulkSink.addEntityToVectorIndex(null, mockSearchIndexDoc);
-    openSearchBulkSink.addEntityToVectorIndex(null, null);
+    openSearchBulkSink.addEntityToVectorIndex(null, null, true);
   }
 }
