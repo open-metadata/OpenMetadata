@@ -1420,4 +1420,8 @@ public class SearchRepository {
   public boolean isVectorEmbeddingEnabled() {
     return false;
   }
+
+  public <T> T getHighLevelClient() {
+    return (T) searchClient.getHighLevelClient();
+  }
 }
