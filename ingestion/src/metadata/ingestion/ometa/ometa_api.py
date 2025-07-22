@@ -170,7 +170,7 @@ class OpenMetadata(
             extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
-            **additional_client_config_arguments or {},
+            **(additional_client_config_arguments or {}),
         )
 
         self.client = REST(client_config)
