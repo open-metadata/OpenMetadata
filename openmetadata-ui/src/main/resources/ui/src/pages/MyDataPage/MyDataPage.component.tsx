@@ -35,7 +35,10 @@ import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
-import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
+import {
+  getWidgetFromKey,
+  processLayoutFromAPI,
+} from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
@@ -110,14 +113,14 @@ const MyDataPage = () => {
 
         setLayout(
           isEmpty(filteredLayout)
-            ? customizePageClassBase.defaultLayout
-            : filteredLayout
+            ? processLayoutFromAPI(customizePageClassBase.defaultLayout)
+            : processLayoutFromAPI(filteredLayout)
         );
       } else {
-        setLayout(customizePageClassBase.defaultLayout);
+        setLayout(processLayoutFromAPI(customizePageClassBase.defaultLayout));
       }
     } catch {
-      setLayout(customizePageClassBase.defaultLayout);
+      setLayout(processLayoutFromAPI(customizePageClassBase.defaultLayout));
     } finally {
       setIsLoading(false);
     }

@@ -15,6 +15,7 @@ import { MoreOutlined } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
+import { getVisiblePopupContainer } from '../../../../../utils/CommonUtils';
 import './widget-more-options.less';
 
 export interface MoreOption {
@@ -40,8 +41,10 @@ const WidgetMoreOptions = ({
   return (
     <div className="widget-more-options-container">
       <Dropdown
+        destroyPopupOnHide
         className={`widget-more-options ${className}`}
         data-testid={dataTestId}
+        getPopupContainer={getVisiblePopupContainer}
         menu={{
           items: menuItems,
           selectable: false,

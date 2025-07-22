@@ -119,6 +119,8 @@ test.describe.serial('Persona operations', () => {
 
     await personaResponse;
 
+    await page.getByRole('tab', { name: 'Users' }).click();
+
     await page.waitForSelector('[data-testid="entity-header-name"]', {
       state: 'visible',
     });

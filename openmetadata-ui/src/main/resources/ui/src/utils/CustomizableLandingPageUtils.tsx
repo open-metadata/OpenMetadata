@@ -272,3 +272,52 @@ export const getUniqueFilteredLayout = (layout: WidgetConfig[]) =>
     ),
     'i'
   );
+
+/**
+ * Ensures all widgets in a layout have a height of 4 if they don't already have it
+ * @param layout - The widget layout array
+ * @returns Updated layout with all widgets having height 4
+ */
+export const ensureWidgetHeight = (layout: WidgetConfig[]): WidgetConfig[] => {
+  return layout.map((widget) => {
+    // If widget height is not 4, set it to 4
+    if (widget.h !== 4) {
+      return { ...widget, h: 4 };
+    }
+
+    return widget;
+  });
+};
+
+/**
+ * Processes layout from API response and ensures all widgets have height 4
+ * ONLY for landing page widgets (MyData page and landing page customization)
+ * This function is specifically designed to maintain consistent widget heights
+ * for landing page components while preserving original heights for other pages
+ *
+ * @param layout - The widget layout array from API
+ * @returns Processed layout with consistent widget heights for landing page widgets only
+ */
+export const processLayoutFromAPI = (
+  layout: WidgetConfig[]
+): WidgetConfig[] => {
+  if (!layout || layout.length === 0) {
+    return layout;
+  }
+
+  // Only apply height 4 for landing page widgets
+  return layout.map((widget) => {
+    // Check if this is a landing page widget by checking the widget key
+    const isLandingPageWidget =
+      widget.i.startsWith('KnowledgePanel') &&
+      Object.values(LandingPageWidgetKeys).includes(
+        widget.i as LandingPageWidgetKeys
+      );
+    // Only update height to 4 for landing page widgets
+    if (isLandingPageWidget && widget.h !== 4) {
+      return { ...widget, h: 4 };
+    }
+
+    return widget;
+  });
+};

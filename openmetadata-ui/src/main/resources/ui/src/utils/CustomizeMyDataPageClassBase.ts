@@ -78,7 +78,7 @@ class CustomizeMyDataPageClassBase {
     static: false,
     w: 1,
     x: 2,
-    y: 12,
+    y: 0,
   };
 
   myTaskWidgetDefaultValues: WidgetConfig = {
@@ -87,7 +87,7 @@ class CustomizeMyDataPageClassBase {
     static: false,
     w: 1,
     x: 2,
-    y: 12,
+    y: 1,
   };
 
   domainsWidgetDefaultValues: WidgetConfig = {
@@ -96,7 +96,7 @@ class CustomizeMyDataPageClassBase {
     static: false,
     w: 1,
     x: 2,
-    y: 12,
+    y: 2,
   };
 
   defaultLayout: Array<WidgetConfig> = [
