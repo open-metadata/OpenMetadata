@@ -70,6 +70,7 @@ import {
 import {
   generateEntityLink,
   getTableExpandableConfig,
+  pruneEmptyChildren,
 } from '../../../../../utils/TableUtils';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -431,7 +432,7 @@ const ColumnProfileTable = () => {
               fields: TabSpecificField.PROFILE,
             });
 
-        setData(response.data || []);
+        setData(pruneEmptyChildren(response.data) || []);
         handlePagingChange(response.paging);
       } catch {
         setData([]);

@@ -13,13 +13,14 @@
 import React from 'react';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { TagLabel } from '../generated/entity/data/container';
-import { Column } from '../generated/entity/data/table';
+import { Column, DataType } from '../generated/entity/data/table';
 import {
   ExtraTableDropdownOptions,
   findColumnByEntityLink,
   getEntityIcon,
   getTagsWithoutTier,
   getTierTags,
+  pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
@@ -296,6 +297,344 @@ describe('TableUtils', () => {
 
       expect(result).toHaveLength(0);
       expect(result).toStrictEqual([]);
+    });
+  });
+
+  describe('pruneEmptyChildren', () => {
+    it('should remove children property when children array is empty', () => {
+      const columns: Column[] = [
+        {
+          name: 'column1',
+          dataType: DataType.String,
+          children: [],
+        } as Column,
+        {
+          name: 'column2',
+          dataType: DataType.Int,
+          children: [],
+        } as Column,
+      ];
+
+      const result = pruneEmptyChildren(columns);
+
+      expect(result[0]).not.toHaveProperty('children');
+      expect(result[1]).not.toHaveProperty('children');
+      expect(result[0].name).toBe('column1');
+      expect(result[1].name).toBe('column2');
+    });
+
+    it('should keep children property when children array has items', () => {
+      const columns: Column[] = [
+        {
+          name: 'parentColumn',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'childColumn1',
+              dataType: DataType.String,
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const result = pruneEmptyChildren(columns);
+
+      expect(result[0]).toHaveProperty('children');
+      expect(result[0].children).toHaveLength(1);
+      expect(result[0].children?.[0].name).toBe('childColumn1');
+    });
+
+    it('should handle columns without children property', () => {
+      const columns: Column[] = [
+        {
+          name: 'column1',
+          dataType: DataType.String,
+        } as Column,
+        {
+          name: 'column2',
+          dataType: DataType.Int,
+        } as Column,
+      ];
+
+      const result = pruneEmptyChildren(columns);
+
+      expect(result[0]).not.toHaveProperty('children');
+      expect(result[1]).not.toHaveProperty('children');
+      expect(result[0].name).toBe('column1');
+      expect(result[1].name).toBe('column2');
+    });
+
+    it('should handle mixed columns with and without empty children', () => {
+      const columns: Column[] = [
+        {
+          name: 'column1',
+          dataType: DataType.String,
+          children: [],
+        } as Column,
+        {
+          name: 'parentColumn',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'childColumn1',
+              dataType: DataType.String,
+            } as Column,
+          ],
+        } as Column,
+        {
+          name: 'column3',
+          dataType: DataType.Int,
+        } as Column,
+        {
+          name: 'column4',
+          dataType: DataType.Boolean,
+          children: [],
+        } as Column,
+      ];
+
+      const result = pruneEmptyChildren(columns);
+
+      expect(result[0]).not.toHaveProperty('children');
+      expect(result[1]).toHaveProperty('children');
+      expect(result[1].children).toHaveLength(1);
+      expect(result[2]).not.toHaveProperty('children');
+      expect(result[3]).not.toHaveProperty('children');
+    });
+
+    it('should handle nested empty children recursively', () => {
+      const columns: Column[] = [
+        {
+          name: 'parentColumn',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'childColumn1',
+              dataType: DataType.String,
+              children: [],
+            } as Column,
+            {
+              name: 'childColumn2',
+              dataType: DataType.Int,
+              children: [
+                {
+                  name: 'grandchildColumn',
+                  dataType: DataType.Boolean,
+                  children: [],
+                } as Column,
+              ],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const result = pruneEmptyChildren(columns);
+
+      expect(result[0]).toHaveProperty('children');
+      expect(result[0].children).toHaveLength(2);
+      expect(result[0].children?.[0]).not.toHaveProperty('children');
+      expect(result[0].children?.[1]).toHaveProperty('children');
+      expect(result[0].children?.[1].children?.[0]).not.toHaveProperty(
+        'children'
+      );
+    });
+
+    it('should return empty array when input is empty', () => {
+      const columns: Column[] = [];
+
+      const result = pruneEmptyChildren(columns);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should preserve all other column properties', () => {
+      const columns: Column[] = [
+        {
+          name: 'column1',
+          dataType: DataType.String,
+          description: 'Test description',
+          displayName: 'Test Display Name',
+          fullyQualifiedName: 'test.table.column1',
+          ordinalPosition: 1,
+          precision: 10,
+          scale: 2,
+          dataLength: 255,
+          children: [],
+          tags: [],
+          customMetrics: [],
+        } as Column,
+      ];
+
+      const result = pruneEmptyChildren(columns);
+
+      expect(result[0]).not.toHaveProperty('children');
+      expect(result[0].name).toBe('column1');
+      expect(result[0].dataType).toBe(DataType.String);
+      expect(result[0].description).toBe('Test description');
+      expect(result[0].displayName).toBe('Test Display Name');
+      expect(result[0].fullyQualifiedName).toBe('test.table.column1');
+      expect(result[0].ordinalPosition).toBe(1);
+      expect(result[0].precision).toBe(10);
+      expect(result[0].scale).toBe(2);
+      expect(result[0].dataLength).toBe(255);
+      expect(result[0].tags).toEqual([]);
+      expect(result[0].customMetrics).toEqual([]);
+    });
+
+    it('should handle complex nested structure with multiple empty children levels', () => {
+      const columns: Column[] = [
+        {
+          name: 'level1',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'level2a',
+              dataType: DataType.Struct,
+              children: [],
+            } as Column,
+            {
+              name: 'level2b',
+              dataType: DataType.Struct,
+              children: [
+                {
+                  name: 'level3a',
+                  dataType: DataType.String,
+                  children: [],
+                } as Column,
+                {
+                  name: 'level3b',
+                  dataType: DataType.Int,
+                  children: [
+                    {
+                      name: 'level4',
+                      dataType: DataType.Boolean,
+                      children: [],
+                    } as Column,
+                  ],
+                } as Column,
+              ],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const result = pruneEmptyChildren(columns);
+
+      expect(result[0]).toHaveProperty('children');
+      expect(result[0].children).toHaveLength(2);
+
+      // level2a should have children removed
+      expect(result[0].children?.[0]).not.toHaveProperty('children');
+
+      // level2b should keep children
+      expect(result[0].children?.[1]).toHaveProperty('children');
+      expect(result[0].children?.[1].children).toHaveLength(2);
+
+      // level3a should have children removed
+      expect(result[0].children?.[1].children?.[0]).not.toHaveProperty(
+        'children'
+      );
+
+      // level3b should keep children but level4 should have children removed
+      expect(result[0].children?.[1].children?.[1]).toHaveProperty('children');
+      expect(
+        result[0].children?.[1].children?.[1].children?.[0]
+      ).not.toHaveProperty('children');
+    });
+
+    it('should handle columns with undefined children property', () => {
+      const columns: Column[] = [
+        {
+          name: 'column1',
+          dataType: DataType.String,
+          children: undefined,
+        } as Column,
+        {
+          name: 'column2',
+          dataType: DataType.Int,
+        } as Column,
+      ];
+
+      const result = pruneEmptyChildren(columns);
+
+      expect(result[0]).not.toHaveProperty('children');
+      expect(result[1]).not.toHaveProperty('children');
+      expect(result[0].name).toBe('column1');
+      expect(result[1].name).toBe('column2');
+    });
+
+    it('should handle columns with null children property', () => {
+      const columns: Column[] = [
+        {
+          name: 'column1',
+          dataType: DataType.String,
+          children: null as any,
+        } as Column,
+      ];
+
+      const result = pruneEmptyChildren(columns);
+
+      expect(result[0]).not.toHaveProperty('children');
+      expect(result[0].name).toBe('column1');
+    });
+
+    it('should handle deeply nested structure where all children become empty after pruning', () => {
+      const columns: Column[] = [
+        {
+          name: 'parent',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'child1',
+              dataType: DataType.Struct,
+              children: [
+                {
+                  name: 'grandchild1',
+                  dataType: DataType.String,
+                  children: [],
+                } as Column,
+                {
+                  name: 'grandchild2',
+                  dataType: DataType.Int,
+                  children: [],
+                } as Column,
+              ],
+            } as Column,
+            {
+              name: 'child2',
+              dataType: DataType.Struct,
+              children: [
+                {
+                  name: 'grandchild3',
+                  dataType: DataType.Boolean,
+                  children: [],
+                } as Column,
+              ],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const result = pruneEmptyChildren(columns);
+
+      expect(result[0]).toHaveProperty('children');
+      expect(result[0].children).toHaveLength(2);
+
+      // child1 should keep children but grandchildren should have children removed
+      expect(result[0].children?.[0]).toHaveProperty('children');
+      expect(result[0].children?.[0].children).toHaveLength(2);
+      expect(result[0].children?.[0].children?.[0]).not.toHaveProperty(
+        'children'
+      );
+      expect(result[0].children?.[0].children?.[1]).not.toHaveProperty(
+        'children'
+      );
+
+      // child2 should keep children but grandchild should have children removed
+      expect(result[0].children?.[1]).toHaveProperty('children');
+      expect(result[0].children?.[1].children).toHaveLength(1);
+      expect(result[0].children?.[1].children?.[0]).not.toHaveProperty(
+        'children'
+      );
     });
   });
 });
