@@ -277,7 +277,7 @@ class JSONLogicSearchClassBase {
         fieldSettings: {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.DATA_ASSET,
-            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+            entityField: EntityFields.DISPLAY_NAME_ACTUAL_CASE,
           }),
           useAsyncSearch: true,
         },
