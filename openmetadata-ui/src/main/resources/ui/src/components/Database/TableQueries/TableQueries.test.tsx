@@ -14,12 +14,14 @@
 import {
   findAllByText,
   findByTestId,
+  fireEvent,
   render,
   screen,
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import {
   MOCK_QUERIES,
   MOCK_QUERIES_ES_DATA,
@@ -40,6 +42,16 @@ jest.mock('./TableQueryRightPanel/TableQueryRightPanel.component', () => {
     .fn()
     .mockImplementation(() => <div>TableQueryRightPanel.component</div>);
 });
+
+jest.mock('../../PaginationComponent/PaginationComponent', () => {
+  return jest.fn().mockImplementation(({ onChange }) => (
+    <div>
+      PaginationComponent
+      <button onClick={() => onChange(1, 25)}>PaginationComponentButton</button>
+    </div>
+  ));
+});
+
 jest.mock('../../SearchDropdown/SearchDropdown', () => {
   return jest
     .fn()
@@ -80,6 +92,21 @@ jest.mock('../../../rest/miscAPI', () => ({
   getSearchedUsers: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
+}));
+
+jest.mock('../../../hooks/paging/usePaging', () => ({
+  usePaging: jest.fn().mockReturnValue({
+    currentPage: 1,
+    pageSize: 25,
+    paging: {
+      currentPage: 1,
+      pageSize: 25,
+    },
+    showPagination: true,
+    handlePageChange: jest.fn(),
+    handlePagingChange: jest.fn(),
+    handlePageSizeChange: jest.fn(),
+  }),
 }));
 
 describe('Test TableQueries Component', () => {
@@ -133,6 +160,8 @@ describe('Test TableQueries Component', () => {
   });
 
   it('If paging count is more than 15, pagination should be visible', async () => {
+    const mockUsePaging = usePaging as jest.Mock;
+
     (searchQuery as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         hits: { total: { value: 16 }, hits: MOCK_QUERIES_ES_DATA },
@@ -141,8 +170,15 @@ describe('Test TableQueries Component', () => {
     render(<TableQueries {...mockTableQueriesProp} />, {
       wrapper: MemoryRouter,
     });
-    const pagingComponent = await screen.findByTestId('query-pagination');
+    const pagingComponent = await screen.findByText('PaginationComponent');
 
     expect(pagingComponent).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('PaginationComponentButton'));
+
+    const mockHandlePageSizeChange =
+      mockUsePaging.mock.results[0].value.handlePageSizeChange;
+
+    expect(mockHandlePageSizeChange).toHaveBeenCalledWith(25);
   });
 });
