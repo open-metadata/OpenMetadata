@@ -119,7 +119,7 @@ const ConnectionConfigForm = ({
         ingestionRunner === COLLATE_SAAS ||
         ingestionRunner === COLLATE_SAAS_RUNNER)
     );
-  }, [connSch.schema, isAirflowAvailable, hostIp, ingestionRunner]);
+  }, [connSch.schema, isAirflowAvailable, hostIp, platform, ingestionRunner]);
 
   // Remove the filters property from the schema
   // Since it'll have a separate form in the next step
