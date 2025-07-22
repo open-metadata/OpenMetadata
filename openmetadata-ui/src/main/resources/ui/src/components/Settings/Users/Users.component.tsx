@@ -48,6 +48,7 @@ import AccessTokenCard from './AccessTokenCard/AccessTokenCard.component';
 import UserProfilePersonas from './UserProfilePersona/UserProfilePersona.component';
 import { Props, UserPageTabs } from './Users.interface';
 import './users.less';
+import UserPermissions from './UsersProfile/UserPermissions/UserPermissions.component';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
@@ -234,6 +235,22 @@ const Users = ({
           },
         }),
       },
+      {
+        label: (
+          <TabsLabel
+            id={UserPageTabs.PERMISSIONS}
+            isActive={activeTab === UserPageTabs.PERMISSIONS}
+            name={t('label.permissions')}
+          />
+        ),
+        key: UserPageTabs.PERMISSIONS,
+        children: (
+          <UserPermissions
+            isLoggedInUser={isLoggedInUser}
+            username={userData.name}
+          />
+        ),
+      },
       ...(isLoggedInUser
         ? [
             {
@@ -256,11 +273,13 @@ const Users = ({
     [
       currentTab,
       userData.id,
+      userData.name,
       decodedUsername,
       setPreviewAsset,
       tabDataRender,
       disableFields,
       subTab,
+      isLoggedInUser,
     ]
   );
 

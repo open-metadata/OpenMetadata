@@ -63,6 +63,7 @@ import {
 } from '../../utils/RouterUtils';
 import EntitySearchSettings from '../SearchSettings/EntitySeachSettings/EntitySearchSettings';
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
+import AdminPermissionDebugger from '../Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
 
 const NotificationAlertDetailsPage = () => (
@@ -355,6 +356,19 @@ const SettingsRouter = () => {
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES,
           true
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AdminPermissionDebugger}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.USER,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.PERMISSION_DEBUGGER
         )}
       />
       <AdminProtectedRoute

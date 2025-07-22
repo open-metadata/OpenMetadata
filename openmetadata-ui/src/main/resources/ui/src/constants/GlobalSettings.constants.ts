@@ -31,6 +31,7 @@ export enum GlobalSettingOptions {
   PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
+  PERMISSION_DEBUGGER = 'permission-debugger',
   DATABASES = 'databases',
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchemas',
