@@ -1,0 +1,70 @@
+apiVersion: v3.0.2
+kind: DataContract
+id: "dc-test-001"
+name: "Test Table Matching Contract"
+version: "1.0.0"
+status: "active"
+
+description:
+  purpose: "Define structure and quality for test tables"
+  limitations: "Test data only"
+  usage: "Use for unit testing"
+
+schema:
+  - name: "test_table"
+    properties:
+      - name: "id"
+        logicalType: "integer"
+        description: "Unique identifier"
+        primaryKey: true
+        required: true
+        
+      - name: "name"
+        logicalType: "string"
+        description: "Name field"
+        required: true
+        
+      - name: "description"  
+        logicalType: "text"
+        description: "Description field"
+        
+      - name: "email"
+        logicalType: "string"
+        description: "Email address"
+        maxLength: 255
+        classification: "PII"
+
+quality:
+  - type: "text"
+    description: "ID must be positive"
+    rule: "id > 0"
+    
+  - type: "text"
+    description: "Name must not be empty"
+    rule: "name != ''"
+    
+  - type: "sql"
+    description: "Check for duplicate names"
+    rule: "SELECT name, COUNT(*) FROM test_table GROUP BY name HAVING COUNT(*) > 1"
+
+slaProperties:
+  - property: "refreshFrequency"
+    value: "24"
+    unit: "hours"
+    
+  - property: "maxLatency"
+    value: "4"
+    unit: "hours"
+    
+  - property: "availabilityTime"
+    value: "06:00 UTC"
+
+team:
+  - username: "john.doe"
+    role: "Data Owner"
+    
+  - username: "alice.johnson"
+    role: "Data Reviewer"
+    
+  - username: "bob.analyst"
+    role: "Data Analyst"

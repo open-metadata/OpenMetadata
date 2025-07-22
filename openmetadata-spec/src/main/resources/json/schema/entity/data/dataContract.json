@@ -118,6 +118,43 @@
           "rule"
         ],
         "additionalProperties": false
+    },
+    "sla": {
+      "type": "object",
+      "description": "Service Level Agreement expectations (timeliness, availability, etc.)",
+      "properties": {
+        "refreshFrequency": {
+          "type": "object",
+          "properties": {
+            "interval": { "type": "integer" },
+            "unit": { "type": "string", "enum": ["hour", "day", "week", "month"] }
+          },
+          "description": "Expected frequency of data updates (e.g. every 1 day)",
+          "required": ["interval", "unit"]
+        },
+        "maxLatency": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "integer" },
+            "unit": { "type": "string", "enum": ["minute", "hour", "day"] }
+          },
+          "description": "Maximum acceptable latency between data generation and availability (e.g. 4 hours)",
+          "required": ["value", "unit"]
+        },
+        "availabilityTime": {
+          "type": "string",
+          "description": "Time of day by which data is expected to be available (e.g. \"09:00 UTC\")"
+        },
+        "retention": {
+          "type": "object",
+          "properties": {
+            "period": { "type": "integer" },
+            "unit": { "type": "string", "enum": ["day", "year"] }
+          },
+          "description": "How long the data is retained (if relevant)",
+          "required": ["period", "unit"]
+        }
+      }
     }
   },
   "properties": {
@@ -187,6 +224,11 @@
       "items": {
         "$ref": "#/definitions/qualityExpectation"
       },
+      "default": null
+    },
+    "sla": {
+      "description": "Service Level Agreement expectations (timeliness, availability, etc.)",
+      "$ref": "#/definitions/sla",
       "default": null
     },
     "contractUpdates": {

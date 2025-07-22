@@ -1,0 +1,26 @@
+apiVersion: v3.0.0
+kind: DataContract
+id: "dc-retired-001"
+name: "Retired Analytics Contract"
+version: "3.0.0"
+status: "retired"
+
+description:
+  purpose: "This data product has been retired"
+
+schema:
+  - name: "old_analytics"
+    properties:
+      - name: "metric_id"
+        logicalType: "string"
+        primaryKey: true
+        
+      - name: "value"
+        logicalType: "double"
+        
+      - name: "timestamp"
+        logicalType: "timestamp"
+
+team:
+  - username: "archive.team"
+    role: "Archivist"
