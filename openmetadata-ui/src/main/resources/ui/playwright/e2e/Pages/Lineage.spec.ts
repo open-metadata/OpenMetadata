@@ -476,24 +476,16 @@ test('Verify table search with special characters as handledd', async ({
     await page.waitForSelector('[data-testid="search-entity-select"]');
     await page.click('[data-testid="search-entity-select"]');
 
-    // Set up API call interception to verify deleted=false parameter
-    let searchRequestUrl = '';
-    page.on('request', (request) => {
-      if (request.url().includes('/api/v1/search/query')) {
-        searchRequestUrl = request.url();
-      }
-    });
-
     await page.fill(
       '[data-testid="search-entity-select"] .ant-select-selection-search-input',
       table.entity.name
     );
 
-    // Wait for the search API call to complete
-    await page.waitForResponse('/api/v1/search/query?*');
-
-    // Verify that deleted=false is present in the API request
-    expect(searchRequestUrl).toContain('deleted=false');
+    await page.waitForRequest(
+      (req) =>
+        req.url().includes('/api/v1/search/query') &&
+        req.url().includes('deleted=false')
+    );
 
     await page.waitForSelector('.ant-select-dropdown');
 
