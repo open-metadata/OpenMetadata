@@ -58,6 +58,8 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.tests.TestCase;
@@ -73,6 +75,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -93,11 +96,14 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
   private static String testDatabaseSchemaFQN = null;
 
   private static TestCaseResourceTest testCaseResourceTest;
+  private static IngestionPipelineResourceTest ingestionPipelineResourceTest;
 
   @BeforeAll
   public static void setup(TestInfo test) throws URISyntaxException, IOException {
     testCaseResourceTest = new TestCaseResourceTest();
-    testCaseResourceTest.setup(test);
+    // testCaseResourceTest.setup(test);
+    ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
+    ingestionPipelineResourceTest.setup(test);
   }
 
   @AfterEach
@@ -1475,6 +1481,17 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     // Verify the Data Contract has the pointer to the test suite
     assertNotNull(dataContract.getTestSuite());
     assertEquals(testSuite.getId(), dataContract.getTestSuite().getId());
+
+    // Verify ingestion pipeline was created for the test suite
+    IngestionPipeline pipeline =
+        ingestionPipelineResourceTest.getEntity(
+            testSuite.getPipelines().get(0).getId(), "*", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(pipeline);
+    assertEquals(expectedTestSuiteName, pipeline.getName());
+    assertEquals(PipelineType.TEST_SUITE, pipeline.getPipelineType());
+    assertEquals(testSuite.getId(), pipeline.getService().getId());
+    assertEquals("testSuite", pipeline.getService().getType());
   }
 
   @Test
@@ -1556,6 +1573,17 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
         updatedTestSuite.getTests().stream().map(EntityReference::getId).toList();
     assertTrue(testCaseIds.contains(testCase1.getId()));
     assertTrue(testCaseIds.contains(testCase2.getId()));
+
+    // Verify ingestion pipeline still exists and is properly configured
+    IngestionPipeline updatedPipeline =
+        ingestionPipelineResourceTest.getEntity(
+            updatedTestSuite.getPipelines().get(0).getId(), "*", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(updatedPipeline);
+    assertEquals(expectedTestSuiteName, updatedPipeline.getName());
+    assertEquals(PipelineType.TEST_SUITE, updatedPipeline.getPipelineType());
+    assertEquals(updatedTestSuite.getId(), updatedPipeline.getService().getId());
+    assertEquals("testSuite", updatedPipeline.getService().getType());
   }
 
   @Test

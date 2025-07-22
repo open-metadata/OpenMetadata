@@ -60,7 +60,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -96,6 +99,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
 
   public DataContractResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_CONTRACT, authorizer, limits);
+  }
+
+  // Set the PipelineServiceClient so the repository can manage the Ingestion Pipelines for Test
+  // Suites
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) {
+    PipelineServiceClientInterface pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration());
+    repository.setPipelineServiceClient(pipelineServiceClient);
   }
 
   @GET

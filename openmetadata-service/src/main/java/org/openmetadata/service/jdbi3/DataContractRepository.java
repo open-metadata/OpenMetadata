@@ -24,14 +24,20 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContractExecutionStatus;
@@ -42,11 +48,14 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -65,8 +74,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   public static final String RESULT_EXTENSION_KEY = "id";
 
   private final TestSuiteMapper testSuiteMapper = new TestSuiteMapper();
+  private final IngestionPipelineMapper ingestionPipelineMapper;
+  @Setter private PipelineServiceClientInterface pipelineServiceClient;
 
-  public DataContractRepository() {
+  public DataContractRepository(OpenMetadataApplicationConfig config) {
     super(
         DataContractResource.COLLECTION_PATH,
         Entity.DATA_CONTRACT,
@@ -74,6 +85,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         Entity.getCollectionDAO().dataContractDAO(),
         DATA_CONTRACT_PATCH_FIELDS,
         DATA_CONTRACT_UPDATE_FIELDS);
+    this.ingestionPipelineMapper = new IngestionPipelineMapper(config);
   }
 
   @Override
@@ -104,7 +116,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       dataContract.setReviewers(EntityUtil.populateEntityReferences(dataContract.getReviewers()));
     }
 
-    createOrUpdateDataContractTestSuite(dataContract);
+    TestSuite testSuite = createOrUpdateDataContractTestSuite(dataContract);
+    // Create the ingestion pipeline only if needed
+    if (testSuite != null && nullOrEmpty(testSuite.getPipelines())) {
+      createIngestionPipeline(testSuite);
+    }
   }
 
   private void validateSchemaFieldsAgainstEntity(
@@ -185,9 +201,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return fieldNames;
   }
 
-  private void createOrUpdateDataContractTestSuite(DataContract dataContract) {
+  private TestSuite createOrUpdateDataContractTestSuite(DataContract dataContract) {
     if (nullOrEmpty(dataContract.getQualityExpectations())) {
-      return;
+      return null; // No quality expectations, no test suite needed
     }
     try {
       String testSuiteName = dataContract.getName() + " - Data Contract Expectations";
@@ -203,7 +219,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             testSuiteRepository.getByName(
                 null,
                 testSuiteName,
-                testSuiteRepository.getFields("tests"),
+                testSuiteRepository.getFields("tests,pipelines"),
                 Include.NON_DELETED,
                 false);
       } catch (EntityNotFoundException e) {
@@ -236,10 +252,33 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       dataContract.setTestSuite(
           getEntityReferenceById(Entity.TEST_SUITE, testSuite.getId(), Include.NON_DELETED));
 
+      return testSuite;
+
     } catch (Exception e) {
       LOG.error("Error creating/updating test suite for data contract", e);
       throw e;
     }
+  }
+
+  // Prepare the Ingestion Pipeline from the test suite that will handle the execution
+  private void createIngestionPipeline(TestSuite testSuite) {
+    IngestionPipelineRepository pipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+    CreateIngestionPipeline createPipeline =
+        new CreateIngestionPipeline()
+            .withName(testSuite.getName())
+            .withDisplayName(testSuite.getDisplayName())
+            .withPipelineType(PipelineType.TEST_SUITE)
+            .withService(
+                new EntityReference().withId(testSuite.getId()).withType(Entity.TEST_SUITE))
+            .withSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()));
+
+    IngestionPipeline pipeline =
+        ingestionPipelineMapper.createToEntity(createPipeline, ADMIN_USER_NAME);
+
+    // Create the Ingestion Pipeline
+    pipelineRepository.create(null, pipeline);
   }
 
   public DataContractResult validateContract(DataContract dataContract) {
