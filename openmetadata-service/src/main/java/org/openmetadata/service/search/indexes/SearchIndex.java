@@ -400,6 +400,7 @@ public interface SearchIndex {
     fields.putAll(SpreadsheetIndex.getFields());
     fields.putAll(WorksheetIndex.getFields());
     fields.putAll(DriveServiceIndex.getFields());
+    fields.putAll(SecurityServiceIndex.getFields());
     return fields;
   }
 }

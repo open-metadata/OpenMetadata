@@ -117,7 +117,6 @@ import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
-
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.DriveService;
@@ -332,8 +331,6 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   ApiServiceDAO apiServiceDAO();
-
-
 
   @CreateSqlObject
   DriveServiceDAO driveServiceDAO();
@@ -771,8 +768,6 @@ public interface CollectionDAO {
       return "nameHash";
     }
   }
-
-
 
   interface DriveServiceDAO extends EntityDAO<DriveService> {
     @Override

@@ -11,11 +11,10 @@
 """
 Base class for ingesting security services
 """
-import traceback
-from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set
+from abc import ABC
+from typing import Set
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 from typing_extensions import Annotated
 
 from metadata.generated.schema.entity.services.securityService import (
@@ -31,7 +30,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -53,22 +51,22 @@ class SecurityServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
-        TopologyNode(
-            producer="get_services",
-            stages=[
-                NodeStage(
-                    type_=SecurityService,
-                    context="security_service",
-                    processor="yield_create_request_security_service",
-                    overwrite=False,
-                    must_return=True,
-                    cache_entities=True,
-                ),
-            ],
-            children=[],  # Security services typically don't have child entities like policies, roles, etc.
-            post_process=["mark_security_entities_as_deleted"],
-        )
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
+        producer="get_services",
+        stages=[
+            NodeStage(
+                type_=SecurityService,
+                context="security_service",
+                processor="yield_create_request_security_service",
+                overwrite=False,
+                must_return=True,
+                cache_entities=True,
+            ),
+        ],
+        children=[],  # Security services typically don't have child entities like policies, roles, etc.
+        post_process=["mark_security_entities_as_deleted"],
     )
 
 
@@ -127,4 +125,4 @@ class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
     def test_connection(self) -> None:
-        pass
+        self.client.test_connection()

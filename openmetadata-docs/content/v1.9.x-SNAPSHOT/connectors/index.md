@@ -62,6 +62,10 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 {% partial file="/v1.9/connectors/metadata/connectors-list.md" /%}
 
+## Security Services
+
+{% partial file="/v1.9/connectors/security/connectors-list.md" /%}
+
 ## Search Services
 
 {% partial file="/v1.9/connectors/search/connectors-list.md" /%}

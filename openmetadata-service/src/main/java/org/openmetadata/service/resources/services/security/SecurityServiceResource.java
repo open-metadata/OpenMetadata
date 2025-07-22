@@ -88,15 +88,29 @@ public class SecurityServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "List of security service instances",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SecurityServiceList.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityServiceList.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public ResultList<SecurityService> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fields requested in the returned resource", schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields") String fieldsParam) {
-    return super.listInternal(uriInfo, securityContext, fieldsParam, new org.openmetadata.service.jdbi3.ListFilter(org.openmetadata.schema.type.Include.NON_DELETED), 10, null, null);
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam) {
+    return super.listInternal(
+        uriInfo,
+        securityContext,
+        fieldsParam,
+        new org.openmetadata.service.jdbi3.ListFilter(
+            org.openmetadata.schema.type.Include.NON_DELETED),
+        10,
+        null,
+        null);
   }
 
   @GET
@@ -109,14 +123,22 @@ public class SecurityServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "Security service instance",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SecurityService.class))),
-        @ApiResponse(responseCode = "404", description = "Security service for instance {id} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Security service for instance {id} is not found")
       })
   public SecurityService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Security service Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    return getInternal(uriInfo, securityContext, id, FIELDS, org.openmetadata.schema.type.Include.NON_DELETED);
+      @Parameter(description = "Security service Id", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return getInternal(
+        uriInfo, securityContext, id, FIELDS, org.openmetadata.schema.type.Include.NON_DELETED);
   }
 
   @POST
@@ -128,22 +150,26 @@ public class SecurityServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "Security service instance",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SecurityService.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSecurityService create) {
-    SecurityService service = new SecurityService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withServiceType(create.getServiceType())
-        .withDescription(create.getDescription())
-        .withConnection(create.getConnection())
-        .withTags(create.getTags())
-        .withOwners(create.getOwners());
+    SecurityService service =
+        new SecurityService()
+            .withId(UUID.randomUUID())
+            .withName(create.getName())
+            .withDisplayName(create.getDisplayName())
+            .withServiceType(create.getServiceType())
+            .withDescription(create.getDescription())
+            .withConnection(create.getConnection())
+            .withTags(create.getTags())
+            .withOwners(create.getOwners());
     return create(uriInfo, securityContext, service);
   }
 
@@ -156,22 +182,26 @@ public class SecurityServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "Security service instance",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SecurityService.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSecurityService create) {
-    SecurityService service = new SecurityService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withServiceType(create.getServiceType())
-        .withDescription(create.getDescription())
-        .withConnection(create.getConnection())
-        .withTags(create.getTags())
-        .withOwners(create.getOwners());
+    SecurityService service =
+        new SecurityService()
+            .withId(UUID.randomUUID())
+            .withName(create.getName())
+            .withDisplayName(create.getDisplayName())
+            .withServiceType(create.getServiceType())
+            .withDescription(create.getDescription())
+            .withConnection(create.getConnection())
+            .withTags(create.getTags())
+            .withOwners(create.getOwners());
     return createOrUpdate(uriInfo, securityContext, service);
   }
-} 
+}
