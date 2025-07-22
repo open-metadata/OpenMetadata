@@ -610,6 +610,7 @@ export enum DataModelType {
     TableauDataModel = "TableauDataModel",
     TableauEmbeddedDatasource = "TableauEmbeddedDatasource",
     TableauPublishedDatasource = "TableauPublishedDatasource",
+    ThoughtSpotDataModel = "ThoughtSpotDataModel",
 }
 
 /**
@@ -679,4 +680,5 @@ export enum DashboardServiceType {
     Sigma = "Sigma",
     Superset = "Superset",
     Tableau = "Tableau",
+    ThoughtSpot = "ThoughtSpot",
 }
