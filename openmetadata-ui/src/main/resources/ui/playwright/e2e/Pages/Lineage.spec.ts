@@ -474,20 +474,32 @@ test('Verify table search with special characters as handledd', async ({
     await sidebarClick(page, SidebarItem.LINEAGE);
 
     await page.waitForSelector('[data-testid="search-entity-select"]');
-
     await page.click('[data-testid="search-entity-select"]');
+
+    // Set up API call interception to verify deleted=false parameter
+    let searchRequestUrl = '';
+    page.on('request', (request) => {
+      if (request.url().includes('/api/v1/search/query')) {
+        searchRequestUrl = request.url();
+      }
+    });
 
     await page.fill(
       '[data-testid="search-entity-select"] .ant-select-selection-search-input',
       table.entity.name
     );
 
+    // Wait for the search API call to complete
+    await page.waitForResponse('/api/v1/search/query?*');
+
+    // Verify that deleted=false is present in the API request
+    expect(searchRequestUrl).toContain('deleted=false');
+
     await page.waitForSelector('.ant-select-dropdown');
 
-    // Click on the table option from the dropdown using test ID (aligned with lineage.ts)
-    const toNodeFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName');
     await page
-      .locator(`[data-testid="node-suggestion-${toNodeFqn}"]`)
+      .locator(`[data-testid="node-suggestion-${nodeFqn}"]`)
       .dispatchEvent('click');
 
     await page.waitForResponse('/api/v1/lineage/getLineage?*');
@@ -495,7 +507,7 @@ test('Verify table search with special characters as handledd', async ({
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
 
     await expect(
-      page.locator(`[data-testid="lineage-node-${toNodeFqn}"]`)
+      page.locator(`[data-testid="lineage-node-${nodeFqn}"]`)
     ).toBeVisible();
   } finally {
     // Cleanup
