@@ -1,5 +1,6 @@
 ---
-title: Add Language Support
+title: How To Add Language Support | Official Documentation
+description: Add support for additional languages to extend platform accessibility and usability across global teams.
 slug: /developers/how-to-add-language-support
 ---
 
