@@ -1,5 +1,6 @@
 ---
 title: securityConfiguration | OpenMetadata Security Config
+description: Connect Securityconfiguration to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/security/securityconfiguration
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: validationResponse | OpenMetadata Validation Response
+description: Connect Validationresponse to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/system/validationresponse
 ---
 

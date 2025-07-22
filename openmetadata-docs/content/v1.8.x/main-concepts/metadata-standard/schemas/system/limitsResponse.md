@@ -1,5 +1,6 @@
 ---
 title: limitsResponse | OpenMetadata Limits Response
+description: Connect Limitsresponse to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/system/limitsresponse
 ---
 

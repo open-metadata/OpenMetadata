@@ -1,5 +1,6 @@
 ---
 title: indexingError | OpenMetadata Indexing Error
+description: Connect Indexingerror to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/system/indexingerror
 ---
 

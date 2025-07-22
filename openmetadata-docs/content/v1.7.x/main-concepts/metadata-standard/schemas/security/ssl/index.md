@@ -1,5 +1,6 @@
 ---
 title: SSL Schema | OpenMetadata SSL Schema Overview
+description: Connect Ssl to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/security/ssl
 ---
 

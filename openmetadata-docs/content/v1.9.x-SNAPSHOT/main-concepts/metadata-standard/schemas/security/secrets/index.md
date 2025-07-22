@@ -1,5 +1,6 @@
 ---
 title: Security Secrets | OpenMetadata Security Secrets Details
+description: Connect Secrets to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/security/secrets
 ---
 

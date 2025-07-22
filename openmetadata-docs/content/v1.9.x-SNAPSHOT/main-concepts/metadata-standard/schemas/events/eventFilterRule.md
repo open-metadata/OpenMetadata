@@ -1,5 +1,6 @@
 ---
 title: eventFilterRule | OpenMetadata Event Filter Rule
+description: Connect Eventfilterrule to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/events/eventfilterrule
 ---
 
