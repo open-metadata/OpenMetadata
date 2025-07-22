@@ -160,6 +160,7 @@ test.describe('Service Ingestion Pagination', () => {
   });
 
   test.beforeEach('Visit home page', async ({ page }) => {
+    await redirectToHomePage(page);
     await table.visitEntityPageWithCustomSearchBox(page);
   });
 
