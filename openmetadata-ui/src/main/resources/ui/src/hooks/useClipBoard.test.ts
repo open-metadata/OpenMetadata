@@ -19,19 +19,8 @@ const clipboardMock = {
   writeText: clipboardWriteTextMock,
 };
 
-Object.defineProperty(window.navigator, 'clipboard', {
-  value: clipboardMock,
-  writable: true,
-});
-
 // Mock document.execCommand for fallback testing
 const execCommandMock = jest.fn();
-
-// Mock window.isSecureContext
-Object.defineProperty(window, 'isSecureContext', {
-  value: true,
-  writable: true,
-});
 
 // Mock document.execCommand
 Object.defineProperty(document, 'execCommand', {
@@ -46,27 +35,42 @@ const removeChildMock = jest.fn();
 const focusMock = jest.fn();
 const selectMock = jest.fn();
 
-const mockTextArea = {
-  value: '',
-  style: {},
-  focus: focusMock,
-  select: selectMock,
+// Create a new mock textarea for each test to avoid state pollution
+const createMockTextArea = () => {
+  const textArea = {
+    value: '',
+    style: {},
+    focus: focusMock,
+    select: selectMock,
+  };
+
+  // Allow value to be set
+  Object.defineProperty(textArea, 'value', {
+    get() {
+      return this._value || '';
+    },
+    set(value) {
+      this._value = value;
+    },
+    configurable: true,
+  });
+
+  return textArea;
 };
 
-createElementMock.mockReturnValue(mockTextArea);
+createElementMock.mockImplementation(() => createMockTextArea());
 
+// Mock document methods
 Object.defineProperty(document, 'createElement', {
   value: createElementMock,
   writable: true,
 });
 
-Object.defineProperty(document.body, 'appendChild', {
-  value: appendChildMock,
-  writable: true,
-});
-
-Object.defineProperty(document.body, 'removeChild', {
-  value: removeChildMock,
+Object.defineProperty(document, 'body', {
+  value: {
+    appendChild: appendChildMock,
+    removeChild: removeChildMock,
+  },
   writable: true,
 });
 
@@ -88,6 +92,25 @@ describe('useClipboard hook', () => {
     // Set secure context to true by default
     Object.defineProperty(window, 'isSecureContext', {
       value: true,
+      writable: true,
+    });
+
+    // Reset document mocks
+    Object.defineProperty(document, 'createElement', {
+      value: createElementMock,
+      writable: true,
+    });
+
+    Object.defineProperty(document, 'body', {
+      value: {
+        appendChild: appendChildMock,
+        removeChild: removeChildMock,
+      },
+      writable: true,
+    });
+
+    Object.defineProperty(document, 'execCommand', {
+      value: execCommandMock,
       writable: true,
     });
   });
@@ -175,7 +198,11 @@ describe('useClipboard hook', () => {
     });
 
     expect(createElementMock).toHaveBeenCalledWith('textarea');
+    expect(appendChildMock).toHaveBeenCalled();
+    expect(focusMock).toHaveBeenCalled();
+    expect(selectMock).toHaveBeenCalled();
     expect(execCommandMock).toHaveBeenCalledWith('copy');
+    expect(removeChildMock).toHaveBeenCalled();
     expect(result.current.hasCopied).toBe(true);
     expect(callBack).toHaveBeenCalled();
   });
@@ -196,7 +223,11 @@ describe('useClipboard hook', () => {
     });
 
     expect(createElementMock).toHaveBeenCalledWith('textarea');
+    expect(appendChildMock).toHaveBeenCalled();
+    expect(focusMock).toHaveBeenCalled();
+    expect(selectMock).toHaveBeenCalled();
     expect(execCommandMock).toHaveBeenCalledWith('copy');
+    expect(removeChildMock).toHaveBeenCalled();
     expect(result.current.hasCopied).toBe(true);
     expect(callBack).toHaveBeenCalled();
   });
@@ -213,7 +244,11 @@ describe('useClipboard hook', () => {
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(value);
     expect(createElementMock).toHaveBeenCalledWith('textarea');
+    expect(appendChildMock).toHaveBeenCalled();
+    expect(focusMock).toHaveBeenCalled();
+    expect(selectMock).toHaveBeenCalled();
     expect(execCommandMock).toHaveBeenCalledWith('copy');
+    expect(removeChildMock).toHaveBeenCalled();
     expect(result.current.hasCopied).toBe(true);
     expect(callBack).toHaveBeenCalled();
   });
@@ -230,7 +265,11 @@ describe('useClipboard hook', () => {
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(value);
     expect(createElementMock).toHaveBeenCalledWith('textarea');
+    expect(appendChildMock).toHaveBeenCalled();
+    expect(focusMock).toHaveBeenCalled();
+    expect(selectMock).toHaveBeenCalled();
     expect(execCommandMock).toHaveBeenCalledWith('copy');
+    expect(removeChildMock).toHaveBeenCalled();
     expect(result.current.hasCopied).toBe(false);
     expect(callBack).not.toHaveBeenCalled();
   });
@@ -253,7 +292,11 @@ describe('useClipboard hook', () => {
     });
 
     expect(createElementMock).toHaveBeenCalledWith('textarea');
+    expect(appendChildMock).toHaveBeenCalled();
+    expect(focusMock).toHaveBeenCalled();
+    expect(selectMock).toHaveBeenCalled();
     expect(execCommandMock).toHaveBeenCalledWith('copy');
+    expect(removeChildMock).toHaveBeenCalled();
     expect(result.current.hasCopied).toBe(false);
     expect(callBack).not.toHaveBeenCalled();
   });
