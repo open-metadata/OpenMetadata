@@ -149,7 +149,7 @@
       "sourceUrl": {
         "type": "keyword"
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",

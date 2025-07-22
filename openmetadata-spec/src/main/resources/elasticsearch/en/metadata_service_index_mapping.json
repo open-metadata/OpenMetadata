@@ -129,7 +129,7 @@
         "index_options": "docs",
         "term_vector": "with_positions_offsets"
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",

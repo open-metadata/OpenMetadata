@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
@@ -150,7 +151,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
     List<DatabaseSchema> schemas =
         schemaRepository.listAllForCSV(
-            schemaRepository.getFields("owners,tags,domain,extension"),
+            schemaRepository.getFields("owners,tags,domains,extension"),
             database.getFullyQualifiedName());
     schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
 
@@ -520,7 +521,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
         List<Table> tables =
             tableRepository.listAllForCSV(
-                tableRepository.getFields("owners,tags,domain,extension,columns"),
+                tableRepository.getFields("owners,tags,domains,extension,columns"),
                 schema.getFullyQualifiedName());
 
         // Add tables and their columns
@@ -537,7 +538,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
             (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
         List<StoredProcedure> storedProcedures =
             spRepository.listAllForCSV(
-                spRepository.getFields("owners,tags,domain,extension,storedProcedureCode"),
+                spRepository.getFields("owners,tags,domains,extension,storedProcedureCode"),
                 schema.getFullyQualifiedName());
 
         // Add stored procedures
@@ -571,11 +572,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
       Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
       addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
       addField(recordList, sourceUrl == null ? "" : sourceUrl.toString());
-      String domain =
-          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
-              ? ""
-              : entity.getDomain().getFullyQualifiedName();
-      addField(recordList, domain);
+      addDomains(recordList, entity.getDomains());
       addExtension(recordList, entity.getExtension());
       // Add entityType and fullyQualifiedName
       if (recursive) {
@@ -684,7 +681,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withCertification(certification)
           .withRetentionPeriod(csvRecord.get(8))
           .withSourceUrl(csvRecord.get(9))
-          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withDomains(getDomains(printer, csvRecord, 10))
           .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
         createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);

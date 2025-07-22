@@ -139,7 +139,7 @@ const DomainSelectableListNew = ({
               </div>
 
               <Typography.Text className="user-profile-edit-popover-card-title">
-                {t('label.domain')}
+                {t('label.domain-plural')}
               </Typography.Text>
             </div>
             <DomainSelectablTreeNew
@@ -164,7 +164,7 @@ const DomainSelectableListNew = ({
         {hasPermission && (
           <Tooltip
             title={t('label.edit-entity', {
-              entity: t('label.domain'),
+              entity: t('label.domain-plural'),
             })}>
             <EditIcon
               className="cursor-pointer"

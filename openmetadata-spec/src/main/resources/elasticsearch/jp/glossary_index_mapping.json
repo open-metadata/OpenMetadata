@@ -122,7 +122,7 @@
         "analyzer": "om_analyzer_jp",
         "similarity": "boolean"
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",

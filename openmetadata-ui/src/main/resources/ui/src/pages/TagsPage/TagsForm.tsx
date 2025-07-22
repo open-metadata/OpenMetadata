@@ -53,8 +53,8 @@ const TagsForm = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
-  const selectedDomain = Form.useWatch<EntityReference | undefined>(
-    'domain',
+  const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
+    'domains',
     form
   );
 
@@ -138,10 +138,10 @@ const TagsForm = ({
   };
 
   const domainField: FieldProp = {
-    name: 'domain',
-    id: 'root/domain',
+    name: 'domains',
+    id: 'root/domains',
     required: false,
-    label: t('label.domain'),
+    label: t('label.domain-plural'),
     type: FieldTypes.DOMAIN_SELECT,
     props: {
       selectedDomain: activeDomainEntityRef,
@@ -153,6 +153,7 @@ const TagsForm = ({
           type="primary"
         />
       ),
+      multiple: true,
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
@@ -292,7 +293,7 @@ const TagsForm = ({
       setSaving(true);
       const submitData = {
         ...data,
-        domain: selectedDomain?.fullyQualifiedName,
+        domains: selectedDomain?.map((domain) => domain.fullyQualifiedName),
       };
       await onSubmit(submitData);
       form.setFieldsValue(DEFAULT_FORM_VALUE);
@@ -352,7 +353,7 @@ const TagsForm = ({
             {getField(domainField)}
             {selectedDomain && (
               <DomainLabel
-                domain={selectedDomain}
+                domains={selectedDomain}
                 entityFqn=""
                 entityId=""
                 entityType={

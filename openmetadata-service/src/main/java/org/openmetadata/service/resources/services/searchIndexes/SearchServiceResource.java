@@ -66,7 +66,7 @@ public class SearchServiceResource
     extends ServiceEntityResource<SearchService, SearchServiceRepository, SearchConnection> {
   private final SearchServiceMapper mapper = new SearchServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/searchServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domain,followers";
+  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override
   public SearchService addHref(UriInfo uriInfo, SearchService service) {

@@ -95,15 +95,17 @@ export const DASHBOARD_DATA_MODEL_DUMMY_DATA: DashboardDataModel = {
       ordinalPosition: 5,
     },
   ],
-  domain: {
-    id: '52fc9c67-78b7-42bf-8147-69278853c230',
-    type: 'domain',
-    name: 'Design',
-    fullyQualifiedName: 'Design',
-    description: "<p>Here' the description for Product Design</p>",
-    displayName: 'Product Design ',
-    inherited: true,
-  },
+  domains: [
+    {
+      id: '52fc9c67-78b7-42bf-8147-69278853c230',
+      type: 'domain',
+      name: 'Design',
+      fullyQualifiedName: 'Design',
+      description: "<p>Here' the description for Product Design</p>",
+      displayName: 'Product Design ',
+      inherited: true,
+    },
+  ],
   votes: {
     upVotes: 0,
     downVotes: 0,
