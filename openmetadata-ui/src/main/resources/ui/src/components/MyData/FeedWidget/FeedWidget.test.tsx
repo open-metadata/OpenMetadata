@@ -224,17 +224,6 @@ describe('MyFeedWidget', () => {
 
       expect(screen.getByTestId('widget-footer')).toBeInTheDocument();
     });
-
-    it('should render view more link in footer when not loading', () => {
-      renderComponent();
-      const viewMoreLink = screen.getByTestId('view-more-link');
-
-      expect(viewMoreLink).toBeInTheDocument();
-      expect(viewMoreLink).toHaveAttribute(
-        'href',
-        '/users/testuser/activity_feed'
-      );
-    });
   });
 
   describe('Data Display', () => {

@@ -208,7 +208,7 @@ const MyDataWidgetInternal = ({
             return (
               <div
                 className="my-data-widget-list-item card-wrapper w-full p-xs border-radius-sm"
-                data-testid={`Recently Viewed-${getEntityName(item)}`}
+                data-testid={`My-Data-${getEntityName(item)}`}
                 key={item.id}>
                 <div className="d-flex items-center justify-between ">
                   <Link

@@ -58,6 +58,7 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
                   className={`option-color w-full h-full ${
                     selectedColor === value.color ? 'white-border' : ''
                   }`}
+                  data-testid="option-color"
                 />
               </div>
             ))}

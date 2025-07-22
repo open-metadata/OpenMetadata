@@ -190,7 +190,7 @@ const DomainsWidget = ({
           countValue:
             sortedDomains.length > 10 ? sortedDomains.length - 10 : undefined,
         })}
-        showMoreButton={Boolean(!loading)}
+        showMoreButton={Boolean(!loading && sortedDomains.length > 10)}
       />
     ),
     [t, sortedDomains.length, loading]
