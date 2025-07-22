@@ -7,6 +7,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.getFlowable
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.Getter;
 import org.flowable.bpmn.model.BpmnModel;
@@ -23,6 +24,7 @@ import org.flowable.bpmn.model.TimerEventDefinition;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchEntitiesImpl;
@@ -137,10 +139,13 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
   private ServiceTask getFetchEntitiesTask(
       String workflowTriggerId, PeriodicBatchEntityTriggerDefinition triggerDefinition) {
+    // Get the primary entity type for batch processing
+    String primaryEntityType = getPrimaryEntityTypeFromConfig(triggerDefinition.getConfig());
+
     FieldExtension entityTypeExpr =
         new FieldExtensionBuilder()
             .fieldName("entityTypeExpr")
-            .fieldValue(triggerDefinition.getConfig().getEntityType())
+            .fieldValue(primaryEntityType)
             .build();
 
     FieldExtension searchFilterExpr =
@@ -168,6 +173,49 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     serviceTask.setAsynchronousLeave(true);
 
     return serviceTask;
+  }
+
+  /**
+   * Helper method to get primary entity type from trigger configuration.
+   *
+   * 🎯 **WHY THIS METHOD EXISTS:**
+   * Periodic batch triggers process entities in batches using search queries.
+   * Search queries can only target ONE entity type at a time (OpenSearch limitation).
+   * When user specifies multiple entity types, we need to pick the PRIMARY one
+   * for batch processing. Currently uses the first entity type from the array.
+   *
+   * 🔄 **FUTURE IMPROVEMENT:**
+   * Could be enhanced to create separate batch processes for each entity type,
+   * but current implementation focuses on the primary entity type.
+   *
+   * Uses JsonUtils to convert config Object to Map for safe field access
+   * instead of risky reflection-based approach.
+   *
+   * @param configObj The trigger configuration object
+   * @return Primary entity type for batch processing
+   */
+  private String getPrimaryEntityTypeFromConfig(Object configObj) {
+    // Convert config object to Map for safe field access - NO REFLECTION!
+    Map<String, Object> configMap = JsonUtils.getMap(configObj);
+
+    // Try new entityTypes array first (use first entity for batch processing)
+    @SuppressWarnings("unchecked")
+    List<String> entityTypes = (List<String>) configMap.get("entityTypes");
+    if (entityTypes != null && !entityTypes.isEmpty()) {
+      // Use first entity type for batch processing (limitation of current implementation)
+      return entityTypes.get(0);
+    }
+
+    // Fall back to legacy single entityType (backward compatibility)
+    String entityType = (String) configMap.get("entityType");
+    if (entityType != null && !entityType.isEmpty()) {
+      return entityType;
+    }
+
+    // Should not happen due to schema validation, but defensive programming
+    throw new IllegalArgumentException(
+        "Neither 'entityType' nor 'entityTypes' found in workflow trigger configuration. "
+            + "At least one must be specified for batch processing.");
   }
 
   @Override

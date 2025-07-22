@@ -20,8 +20,18 @@
         },
         "entityType": {
           "title": "Entity Type",
-          "description": "Entity Type for which it should be triggered.",
+          "description": "[DEPRECATED] Single Entity Type for which it should be triggered. Use entityTypes for multiple types.",
           "type": "string"
+        },
+        "entityTypes": {
+          "title": "Entity Types",
+          "description": "Array of Entity Types for which this workflow should be triggered. Supports multiple entity types in one workflow.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
         },
         "filters": {
           "title": "Filters",
@@ -35,10 +45,13 @@
           "default": 500
         }
       },
-      "required": [
-        "schedule",
-        "entityType",
-        "filters"
+      "anyOf": [
+        {
+          "required": ["schedule", "entityType", "filters"]
+        },
+        {
+          "required": ["schedule", "entityTypes", "filters"]
+        }
       ],
       "additionalProperties": false
     }

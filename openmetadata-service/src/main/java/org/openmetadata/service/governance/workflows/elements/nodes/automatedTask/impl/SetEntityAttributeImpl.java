@@ -333,17 +333,17 @@ public class SetEntityAttributeImpl implements JavaDelegate {
 
   /**
    * Checks if the field pattern requires smart array handling.
-   * 
+   *
    * @param fieldName The field name to check
    * @return true if this is a smart array pattern like "tags.tagFQN", "owners.name"
    */
   private boolean isSmartArrayPattern(String fieldName) {
-    return fieldName.equals("tags.tagFQN") || 
-           fieldName.equals("tags.name") ||
-           fieldName.equals("owners.name") ||
-           fieldName.equals("owners.displayName") ||
-           fieldName.equals("reviewers.name") ||
-           fieldName.equals("reviewers.displayName");
+    return fieldName.equals("tags.tagFQN")
+        || fieldName.equals("tags.name")
+        || fieldName.equals("owners.name")
+        || fieldName.equals("owners.displayName")
+        || fieldName.equals("reviewers.name")
+        || fieldName.equals("reviewers.displayName");
   }
 
   /**
@@ -358,7 +358,7 @@ public class SetEntityAttributeImpl implements JavaDelegate {
   private void handleSmartArrayField(Map<String, Object> map, String fieldName, String fieldValue) {
     String[] parts = fieldName.split("\\.");
     String arrayFieldName = parts[0]; // e.g., "tags"
-    String propertyName = parts[1];   // e.g., "tagFQN"
+    String propertyName = parts[1]; // e.g., "tagFQN"
 
     // Get or create the array
     List<Map<String, Object>> arrayList = (List<Map<String, Object>>) map.get(arrayFieldName);
@@ -372,10 +372,11 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       arrayList.removeIf(item -> fieldValue.equals(item.get(propertyName)));
     } else {
       // Find existing item or create new one
-      Map<String, Object> targetItem = arrayList.stream()
-        .filter(item -> fieldValue.equals(item.get(propertyName)))
-        .findFirst()
-        .orElse(null);
+      Map<String, Object> targetItem =
+          arrayList.stream()
+              .filter(item -> fieldValue.equals(item.get(propertyName)))
+              .findFirst()
+              .orElse(null);
 
       if (targetItem == null) {
         // Create new item with appropriate defaults
@@ -396,38 +397,39 @@ public class SetEntityAttributeImpl implements JavaDelegate {
    * @param propertyValue The value for the property
    * @return A new map representing the array item with defaults
    */
-  private Map<String, Object> createDefaultArrayItem(String arrayFieldName, String propertyName, String propertyValue) {
+  private Map<String, Object> createDefaultArrayItem(
+      String arrayFieldName, String propertyName, String propertyValue) {
     Map<String, Object> item = new HashMap<>();
-    
+
     switch (arrayFieldName) {
       case "tags":
         // Create a valid TagLabel with required fields
         item.put("tagFQN", propertyValue);
         item.put("source", "Classification"); // Default source
-        item.put("labelType", "Manual");      // Default label type
-        item.put("state", "Confirmed");       // Default state
+        item.put("labelType", "Manual"); // Default label type
+        item.put("state", "Confirmed"); // Default state
         if ("name".equals(propertyName)) {
           item.put("name", propertyValue);
         }
         break;
-        
+
       case "owners":
       case "reviewers":
         // Create a valid EntityReference
         item.put("name", propertyValue);
-        item.put("type", "user");           // Default type
+        item.put("type", "user"); // Default type
         item.put("id", UUID.randomUUID().toString()); // Generate UUID for now
         if ("displayName".equals(propertyName)) {
           item.put("displayName", propertyValue);
         }
         break;
-        
+
       default:
         // Generic array item
         item.put(propertyName, propertyValue);
         break;
     }
-    
+
     return item;
   }
 }

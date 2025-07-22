@@ -23,8 +23,17 @@
       "type": "object",
       "properties": {
         "entityType": {
-          "description": "Entity Type for which it should be triggered.",
+          "description": "[DEPRECATED] Single Entity Type for which it should be triggered. Use entityTypes for multiple types.",
           "type": "string"
+        },
+        "entityTypes": {
+          "description": "Array of Entity Types for which this workflow should be triggered. Supports multiple entity types in one workflow.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
         },
         "events": {
           "title": "Events",
@@ -44,9 +53,13 @@
           }
         }
       },
-      "required": [
-        "entityType",
-        "events"
+      "anyOf": [
+        {
+          "required": ["entityType", "events"]
+        },
+        {
+          "required": ["entityTypes", "events"]
+        }
       ],
       "additionalProperties": false
     }

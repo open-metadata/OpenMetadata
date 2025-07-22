@@ -84,7 +84,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
  *
  * // Set owner based on approval
  * {
- *   "fieldName": "owners.name", 
+ *   "fieldName": "owners.name",
  *   "trueValue": "data.steward",
  *   "falseValue": null  // Remove owner
  * }
@@ -172,7 +172,8 @@ public class ConditionalSetEntityAttributeImpl implements JavaDelegate {
       String valueToSet = Boolean.TRUE.equals(conditionResult) ? trueValue : falseValue;
 
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
-      setEntityFieldConditionally(entity, entityLink.getEntityType(), updatedBy, fieldName, valueToSet);
+      setEntityFieldConditionally(
+          entity, entityLink.getEntityType(), updatedBy, fieldName, valueToSet);
 
     } catch (Exception exc) {
       LOG.error(
@@ -271,12 +272,12 @@ public class ConditionalSetEntityAttributeImpl implements JavaDelegate {
    * Checks if the field pattern requires smart array handling.
    */
   private boolean isSmartArrayPattern(String fieldName) {
-    return fieldName.equals("tags.tagFQN") || 
-           fieldName.equals("tags.name") ||
-           fieldName.equals("owners.name") ||
-           fieldName.equals("owners.displayName") ||
-           fieldName.equals("reviewers.name") ||
-           fieldName.equals("reviewers.displayName");
+    return fieldName.equals("tags.tagFQN")
+        || fieldName.equals("tags.name")
+        || fieldName.equals("owners.name")
+        || fieldName.equals("owners.displayName")
+        || fieldName.equals("reviewers.name")
+        || fieldName.equals("reviewers.displayName");
   }
 
   /**
@@ -286,7 +287,7 @@ public class ConditionalSetEntityAttributeImpl implements JavaDelegate {
   private void handleSmartArrayField(Map<String, Object> map, String fieldName, String fieldValue) {
     String[] parts = fieldName.split("\\.");
     String arrayFieldName = parts[0]; // e.g., "tags"
-    String propertyName = parts[1];   // e.g., "tagFQN"
+    String propertyName = parts[1]; // e.g., "tagFQN"
 
     // Get or create the array
     List<Map<String, Object>> arrayList = (List<Map<String, Object>>) map.get(arrayFieldName);
@@ -300,10 +301,11 @@ public class ConditionalSetEntityAttributeImpl implements JavaDelegate {
       arrayList.removeIf(item -> fieldValue.equals(item.get(propertyName)));
     } else {
       // Find existing item or create new one
-      Map<String, Object> targetItem = arrayList.stream()
-        .filter(item -> fieldValue.equals(item.get(propertyName)))
-        .findFirst()
-        .orElse(null);
+      Map<String, Object> targetItem =
+          arrayList.stream()
+              .filter(item -> fieldValue.equals(item.get(propertyName)))
+              .findFirst()
+              .orElse(null);
 
       if (targetItem == null) {
         // Create new item with appropriate defaults
@@ -319,38 +321,39 @@ public class ConditionalSetEntityAttributeImpl implements JavaDelegate {
   /**
    * Creates a default array item with required fields based on the array type.
    */
-  private Map<String, Object> createDefaultArrayItem(String arrayFieldName, String propertyName, String propertyValue) {
+  private Map<String, Object> createDefaultArrayItem(
+      String arrayFieldName, String propertyName, String propertyValue) {
     Map<String, Object> item = new HashMap<>();
-    
+
     switch (arrayFieldName) {
       case "tags":
         // Create a valid TagLabel with required fields
         item.put("tagFQN", propertyValue);
         item.put("source", "Classification"); // Default source
-        item.put("labelType", "Manual");      // Default label type
-        item.put("state", "Confirmed");       // Default state
+        item.put("labelType", "Manual"); // Default label type
+        item.put("state", "Confirmed"); // Default state
         if ("name".equals(propertyName)) {
           item.put("name", propertyValue);
         }
         break;
-        
+
       case "owners":
       case "reviewers":
         // Create a valid EntityReference
         item.put("name", propertyValue);
-        item.put("type", "user");           // Default type
+        item.put("type", "user"); // Default type
         item.put("id", UUID.randomUUID().toString()); // Generate UUID for now
         if ("displayName".equals(propertyName)) {
           item.put("displayName", propertyValue);
         }
         break;
-        
+
       default:
         // Generic array item
         item.put(propertyName, propertyValue);
         break;
     }
-    
+
     return item;
   }
 }
