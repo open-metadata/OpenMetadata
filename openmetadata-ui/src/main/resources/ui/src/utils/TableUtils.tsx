@@ -554,7 +554,7 @@ export function getTableExpandableConfig<T>(
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
-      !isEmpty(expandable) ? (
+      expandable ? (
         <>
           {isDraggable && <IconDrag className="drag-icon" />}
           <Icon
@@ -1249,5 +1249,27 @@ export const updateColumnInNestedStructure = (
     } else {
       return column;
     }
+  });
+};
+
+export const pruneEmptyChildren = (columns: Column[]): Column[] => {
+  return columns.map((column) => {
+    // If column has no children or empty children array, remove children property
+    if (!column.children || column.children.length === 0) {
+      return omit(column, 'children');
+    }
+
+    // If column has children, recursively prune them
+    const prunedChildren = pruneEmptyChildren(column.children);
+
+    // If after pruning, children array becomes empty, remove children property
+    if (prunedChildren.length === 0) {
+      return omit(column, 'children');
+    }
+
+    return {
+      ...column,
+      children: prunedChildren,
+    };
   });
 };

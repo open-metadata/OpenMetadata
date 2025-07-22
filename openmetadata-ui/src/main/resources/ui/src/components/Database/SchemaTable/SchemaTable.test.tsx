@@ -93,6 +93,7 @@ jest.mock('../../../rest/tableAPI', () => ({
 
 jest.mock('../../../utils/TableUtils', () => ({
   getAllRowKeysByKeyName: jest.fn(),
+  pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
   makeData: jest.fn().mockImplementation((value) => value),
   prepareConstraintIcon: jest.fn(),
   updateFieldTags: jest.fn(),
