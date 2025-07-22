@@ -390,6 +390,10 @@ secretsManagerConfiguration:
     vaultName: ${OM_SM_VAULT_NAME:-""}
     ## For GCP
     projectId: ${OM_SM_PROJECT_ID:-""}
+    ## For Kubernetes
+    namespace: ${OM_SM_NAMESPACE:-"default"}
+    kubeconfigPath: ${OM_SM_KUBECONFIG_PATH:-""}
+    inCluster: ${OM_SM_IN_CLUSTER:-"false"}
 
 health:
   delayedShutdownHandlerEnabled: true
