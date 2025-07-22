@@ -76,10 +76,10 @@ export interface App {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Event Subscriptions for the Application.
      */
@@ -520,9 +520,6 @@ export interface Action {
  * the relationship of a table `belongs to a` database.
  *
  * Bot User Associated with this application.
- *
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
- * it belongs to.
  */
 export interface EntityReference {
     /**

@@ -200,7 +200,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             TabSpecificField.OWNERS,
             TabSpecificField.USAGE_SUMMARY,
             TabSpecificField.TAGS,
-            TabSpecificField.DOMAIN,
+            TabSpecificField.DOMAINS,
             TabSpecificField.VOTES,
             TabSpecificField.EXTENSION,
             TabSpecificField.FOLLOWERS,

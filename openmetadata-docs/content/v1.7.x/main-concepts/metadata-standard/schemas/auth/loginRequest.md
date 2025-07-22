@@ -1,5 +1,6 @@
 ---
 title: Login Request API | OpenMetadata Login API
+description: Initiate a login session with basic authentication using this schema.
 slug: /main-concepts/metadata-standard/schemas/auth/loginrequest
 ---
 
