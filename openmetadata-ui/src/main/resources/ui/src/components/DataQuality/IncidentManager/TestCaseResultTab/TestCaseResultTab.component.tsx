@@ -35,6 +35,7 @@ import {
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { updateTestCaseById } from '../../../../rest/testAPI';
 import {
+  getComputeRowCountDiffDisplay,
   getEntityVersionByField,
   getEntityVersionTags,
   getParameterValueDiffDisplay,
@@ -210,6 +211,21 @@ const TestCaseResultTab = () => {
       )
     : getTagsWithoutTier(testCaseData?.tags ?? []);
 
+  const computeRowCountDisplay = useMemo(() => {
+    if (isVersionPage) {
+      return getComputeRowCountDiffDisplay(
+        testCaseData?.changeDescription as ChangeDescription,
+        testCaseData?.computePassedFailedRowCount
+      );
+    }
+
+    return toString(testCaseData?.computePassedFailedRowCount);
+  }, [
+    testCaseData?.changeDescription,
+    testCaseData?.computePassedFailedRowCount,
+    isVersionPage,
+  ]);
+
   const testCaseParams = useMemo(() => {
     if (isVersionPage) {
       return getParameterValueDiffDisplay(
@@ -298,6 +314,29 @@ const TestCaseResultTab = () => {
               {testCaseParams}
             </Space>
           </Col>
+          {!isUndefined(testCaseData?.computePassedFailedRowCount) && (
+            <Col data-testid="computed-row-count-container" span={24}>
+              <Space direction="vertical" size="small">
+                <Space align="center" size={8}>
+                  <Typography.Text className="right-panel-label">
+                    {t('label.compute-row-count')}
+                  </Typography.Text>
+                  {hasEditPermission && !isVersionPage && (
+                    <EditIconButton
+                      newLook
+                      data-testid="edit-compute-row-count-icon"
+                      size="small"
+                      title={t('label.edit-entity', {
+                        entity: t('label.compute-row-count'),
+                      })}
+                      onClick={() => setIsParameterEdit(true)}
+                    />
+                  )}
+                </Space>
+                <Typography.Text>{computeRowCountDisplay}</Typography.Text>
+              </Space>
+            </Col>
+          )}
 
           {!isUndefined(withSqlParams) && !isVersionPage ? (
             <Col>

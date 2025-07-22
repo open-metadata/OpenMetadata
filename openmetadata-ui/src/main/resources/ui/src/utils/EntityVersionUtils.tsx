@@ -1245,6 +1245,42 @@ export const getParameterValueDiffDisplay = (
   );
 };
 
+export const getComputeRowCountDiffDisplay = (
+  changeDescription: ChangeDescription,
+  fallbackValue?: boolean
+): React.ReactNode => {
+  const fieldDiff = getDiffByFieldName(
+    'computePassedFailedRowCount',
+    changeDescription,
+    true
+  );
+  const oldValue = getChangedEntityOldValue(fieldDiff);
+  const newValue = getChangedEntityNewValue(fieldDiff);
+
+  const isOldValueUndefined = isUndefined(oldValue);
+  const isNewValueUndefined = isUndefined(newValue);
+
+  // If there's no diff, return the fallback value as normal text
+  if (isOldValueUndefined && isNewValueUndefined) {
+    return toString(fallbackValue);
+  }
+
+  // If there's a diff, show the diff styling
+  if (!isOldValueUndefined && !isNewValueUndefined) {
+    // Field was updated
+    return getTextDiffElements(toString(oldValue), toString(newValue));
+  } else if (isOldValueUndefined && !isNewValueUndefined) {
+    // Field was added
+    return getAddedDiffElement(toString(newValue));
+  } else if (!isOldValueUndefined && isNewValueUndefined) {
+    // Field was deleted
+    return getRemovedDiffElement(toString(oldValue));
+  }
+
+  // Fallback
+  return toString(fallbackValue);
+};
+
 export const getOwnerVersionLabel = (
   entity: {
     [TabSpecificField.OWNERS]?: EntityReference[];
