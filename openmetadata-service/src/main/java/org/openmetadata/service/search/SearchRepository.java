@@ -1214,6 +1214,10 @@ public class SearchRepository {
     return searchClient.aggregate(request);
   }
 
+  public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
+    return searchClient.getEntityTypeCounts(request, index);
+  }
+
   public JsonObject aggregate(
       String query, String entityType, SearchAggregation searchAggregation, SearchListFilter filter)
       throws IOException {

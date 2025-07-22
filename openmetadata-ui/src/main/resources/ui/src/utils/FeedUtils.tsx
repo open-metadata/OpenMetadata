@@ -257,6 +257,7 @@ export const userMentionItemWithAvatar = (
 
   const { color, character } = getRandomColor(item.name);
 
+  // eslint-disable-next-line react/no-deprecated
   ReactDOM.render(
     <div className="d-flex gap-2">
       <div className="mention-profile-image">

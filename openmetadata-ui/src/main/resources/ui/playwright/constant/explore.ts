@@ -28,3 +28,86 @@ export const EXPECTED_BUCKETS = [
   'searchIndex',
   'mlmodel',
 ];
+
+export const DATA_ASSETS = [
+  {
+    key: 'table',
+    label: 'tables',
+    indexType: 'table_search_index',
+  },
+  {
+    key: 'storedProcedure',
+    label: 'stored procedures',
+    indexType: 'stored_procedure_search_index',
+  },
+  {
+    key: 'database',
+    label: 'databases',
+    indexType: 'database_search_index',
+  },
+  {
+    key: 'databaseSchema',
+    label: 'database schemas',
+    indexType: 'database_schema_search_index',
+  },
+  {
+    key: 'dashboard',
+    label: 'dashboards',
+    indexType: 'dashboard_search_index',
+  },
+  {
+    key: 'dashboardDataModel',
+    label: 'dashboard data models',
+    indexType: 'dashboard_data_model_search_index',
+  },
+  {
+    key: 'pipeline',
+    label: 'pipelines',
+    indexType: 'pipeline_search_index',
+  },
+  {
+    key: 'topic',
+    label: 'topics',
+    indexType: 'topic_search_index',
+  },
+  {
+    key: 'mlmodel',
+    label: 'ml models',
+    indexType: 'mlmodel_search_index',
+  },
+  {
+    key: 'container',
+    label: 'containers',
+    indexType: 'container_search_index',
+  },
+  {
+    key: 'searchIndex',
+    label: 'search indexes',
+    indexType: 'search_entity_search_index',
+  },
+  {
+    key: 'glossaryTerm',
+    label: 'glossary terms',
+    indexType: 'glossary_term_search_index',
+  },
+  {
+    key: 'tag',
+    label: 'tags',
+    indexType: 'tag_search_index',
+  },
+  {
+    key: 'dataProduct',
+    label: 'data products',
+    indexType: 'data_product_search_index',
+  },
+  {
+    key: 'apiCollection',
+    label: 'api collections',
+    indexType: 'api_collection_search_index',
+  },
+  {
+    key: 'apiEndpoint',
+    label: 'api endpoints',
+    indexType: 'api_endpoint_search_index',
+  },
+];

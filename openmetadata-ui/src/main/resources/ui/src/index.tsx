@@ -16,6 +16,7 @@ import ReactDOM from 'react-dom';
 import App from './App';
 import './styles/index';
 
+// eslint-disable-next-line react/no-deprecated
 ReactDOM.render(
   <React.StrictMode>
     <App />
