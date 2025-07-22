@@ -1,5 +1,6 @@
 ---
-title: Stitch
+title: Stitch Connector | Official Documentation
+description: Ingest Stitch pipeline metadata to track transformation flow and manage operational lineage.
 slug: /connectors/pipeline/stitch
 collate: true
 ---

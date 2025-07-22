@@ -75,8 +75,10 @@ const APICollectionVersionPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { version, tab } =
-    useRequiredParams<{ version: string; tab: string }>();
+  const { version, tab } = useRequiredParams<{
+    version: string;
+    tab: string;
+  }>();
 
   const { fqn: decodedEntityFQN } = useFqn();
 
@@ -108,7 +110,7 @@ const APICollectionVersionPage = () => {
 
   const [apiEndpoints, setAPIEndpoints] = useState<Array<APIEndpoint>>([]);
 
-  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domains } =
     useMemo(
       () =>
         getBasicEntityInfoFromVersionData(
@@ -130,9 +132,9 @@ const APICollectionVersionPage = () => {
           currentVersionData?.changeDescription as ChangeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [currentVersionData?.changeDescription, owners, tier, domain]
+      [currentVersionData?.changeDescription, owners, tier, domains]
     );
 
   const init = useCallback(async () => {
@@ -297,7 +299,7 @@ const APICollectionVersionPage = () => {
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -340,7 +342,7 @@ const APICollectionVersionPage = () => {
     ],
     [
       tags,
-      domain,
+      domains,
       description,
       currentVersionData,
       apiEndpoints,

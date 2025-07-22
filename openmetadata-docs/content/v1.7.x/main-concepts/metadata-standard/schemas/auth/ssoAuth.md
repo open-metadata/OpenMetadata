@@ -1,5 +1,6 @@
 ---
 title: SSO Auth Schema | OpenMetadata Single Sign-On
+description: Authenticate with a single sign-on provider using this SSO auth schema.
 slug: /main-concepts/metadata-standard/schemas/auth/ssoauth
 ---
 

@@ -39,7 +39,7 @@ test('Table difference test case', async ({ page }) => {
     type: 'tableDiff',
   };
 
-  await table1.visitEntityPage(page);
+  await table1.visitEntityPageWithCustomSearchBox(page);
   const profileResponse = page.waitForResponse(
     `/api/v1/tables/${encodeURIComponent(
       table1.entityResponseData?.['fullyQualifiedName']
@@ -55,17 +55,17 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
-      await page.fill('#tableTestForm_testTypeId', testCase.type);
+      await page.fill('#testCaseFormV1_testTypeId', testCase.type);
       const tableListSearchResponse = page.waitForResponse(
         `/api/v1/search/query?q=*index=table_search_index*`
       );
       await page.getByTestId('tableDiff').click();
       await tableListSearchResponse;
-      await page.click('#tableTestForm_params_table2');
+      await page.click('#testCaseFormV1_params_table2');
       const tableSearchResponse = page.waitForResponse(
         `/api/v1/search/query?q=*${testCase.table2}*index=table_search_index*`
       );
-      await page.fill(`#tableTestForm_params_table2`, testCase.table2);
+      await page.fill(`#testCaseFormV1_params_table2`, testCase.table2);
       await tableSearchResponse;
       // The 'networkidle' parameter tells Playwright to wait until there are no network connections
       // for at least 500 ms.
@@ -83,13 +83,13 @@ test('Table difference test case', async ({ page }) => {
         .click();
 
       await page.fill(
-        `#tableTestForm_params_keyColumns_0_value`,
+        `#testCaseFormV1_params_keyColumns_0_value`,
         table1.entity?.columns[0].name
       );
       await page.getByTitle(table1.entity?.columns[0].name).click();
-      await page.fill('#tableTestForm_params_threshold', testCase.threshold);
+      await page.fill('#testCaseFormV1_params_threshold', testCase.threshold);
       await page.fill(
-        '#tableTestForm_params_useColumns_0_value',
+        '#testCaseFormV1_params_useColumns_0_value',
         table1.entity?.columns[0].name
       );
 
@@ -97,24 +97,31 @@ test('Table difference test case', async ({ page }) => {
         page.getByTitle(table1.entity?.columns[0].name).nth(2)
       ).toHaveClass(/ant-select-item-option-disabled/);
 
-      await page.locator('#tableTestForm_params_useColumns_0_value').clear();
+      await page.locator('#testCaseFormV1_params_useColumns_0_value').clear();
       await page.fill(
-        '#tableTestForm_params_useColumns_0_value',
+        '#testCaseFormV1_params_useColumns_0_value',
         table1.entity?.columns[1].name
       );
       await page.getByTitle(table1.entity?.columns[1].name).click();
 
-      await page.fill('#tableTestForm_params_where', 'test');
+      await page.fill('#testCaseFormV1_params_where', 'test');
       const createTestCaseResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases`
       );
-      await page.getByTestId('submit-test').click();
+      await page.getByTestId('create-btn').click();
       await createTestCaseResponse;
-      const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?*fields=*`
+      await toastNotification(page, 'Test case created successfully.');
+
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page.getByTestId('view-service-button').click();
-      await tableTestResponse;
+      await page
+        .getByTestId('profiler-tab-left-panel')
+        .getByText('Data Quality')
+        .click();
+      await testCaseResponse;
+
+      await expect(page.getByTestId(testCase.name)).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -124,7 +131,7 @@ test('Table difference test case', async ({ page }) => {
 
       await page.getByTestId(`edit-${testCase.name}`).click();
 
-      await expect(page.locator('.ant-modal-title')).toHaveText(
+      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
       );
 
@@ -153,7 +160,7 @@ test('Table difference test case', async ({ page }) => {
       await page
         .getByTitle(table1.entity?.columns[2].name, { exact: true })
         .click();
-      await page.getByRole('button', { name: 'Save' }).click();
+      await page.getByTestId('update-btn').click();
 
       await toastNotification(page, 'Test case updated successfully.');
     });
@@ -183,7 +190,7 @@ test('Custom SQL Query', async ({ page }) => {
     type: 'tableCustomSQLQuery',
   };
 
-  await table.visitEntityPage(page);
+  await table.visitEntityPageWithCustomSearchBox(page);
   const profileResponse = page.waitForResponse(
     `/api/v1/tables/${encodeURIComponent(
       table.entityResponseData?.['fullyQualifiedName']
@@ -199,9 +206,9 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
-      await page.fill('#tableTestForm_testTypeId', testCase.type);
+      await page.fill('#testCaseFormV1_testTypeId', testCase.type);
       await page.getByTestId('tableCustomSQLQuery').click();
-      await page.click('#tableTestForm_params_strategy');
+      await page.click('#testCaseFormV1_params_strategy');
       await page.locator('.CodeMirror-scroll').click();
       await page
         .getByTestId('code-mirror-container')
@@ -209,17 +216,24 @@ test('Custom SQL Query', async ({ page }) => {
         .fill(testCase.sqlQuery);
       await page.getByLabel('Strategy').click();
       await page.getByTitle('ROWS').click();
-      await page.fill('#tableTestForm_params_threshold', '23');
+      await page.fill('#testCaseFormV1_params_threshold', '23');
       const createTestCaseResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases`
       );
-      await page.getByTestId('submit-test').click();
+      await page.getByTestId('create-btn').click();
       await createTestCaseResponse;
-      const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?*fields=*`
+      await toastNotification(page, 'Test case created successfully.');
+
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page.getByTestId('view-service-button').click();
-      await tableTestResponse;
+      await page
+        .getByTestId('profiler-tab-left-panel')
+        .getByText('Data Quality')
+        .click();
+      await testCaseResponse;
+
+      await expect(page.getByTestId(testCase.name)).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -229,7 +243,7 @@ test('Custom SQL Query', async ({ page }) => {
 
       await page.getByTestId(`edit-${testCase.name}`).click();
 
-      await expect(page.locator('.ant-modal-title')).toHaveText(
+      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
       );
       await expect(page.locator('#tableTestForm_name')).toHaveValue(
@@ -251,7 +265,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTitle('COUNT').click();
       await page.getByPlaceholder('Enter a Threshold').clear();
       await page.getByPlaceholder('Enter a Threshold').fill('244');
-      await page.getByRole('button', { name: 'Save' }).click();
+      await page.getByTestId('update-btn').click();
 
       await toastNotification(page, 'Test case updated successfully.');
     });
@@ -290,18 +304,18 @@ test('Column Values To Be Not Null', async ({ page }) => {
       const testDefinitionResponse = page.waitForResponse(
         '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC'
       );
-      await page.click('#tableTestForm_column');
+      await page.click('#testCaseFormV1_selectedColumn');
       await page.click(
         `[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.column}"]`
       );
       await testDefinitionResponse;
       await page.fill(
-        '#tableTestForm_testName',
+        '[data-testid="test-case-name"]',
         NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name
       );
 
       await page.fill(
-        '#tableTestForm_testTypeId',
+        '#testCaseFormV1_testTypeId',
         NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type
       );
       await page.click(
@@ -311,15 +325,8 @@ test('Column Values To Be Not Null', async ({ page }) => {
         .locator(descriptionBox)
         .fill(NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.description);
 
-      await page.click('[data-testid="submit-test"]');
-      await page.waitForSelector('[data-testid="success-line"]');
-      await page.waitForSelector('[data-testid="view-service-button"]');
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.click(`[data-testid="view-service-button"]`);
-      await testCaseResponse;
-      await page.click('[data-testid="profiler-tab-left-panel"]');
+      await page.click('[data-testid="create-btn"]');
+      await toastNotification(page, 'Test case created successfully.');
 
       await expect(
         page.locator(
@@ -333,7 +340,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
         .getByTestId(`edit-${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name}`)
         .click();
 
-      await expect(page.locator('.ant-modal-title')).toHaveText(
+      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name}`
       );
       await expect(page.locator('#tableTestForm_name')).toHaveValue(
@@ -347,7 +354,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
       );
       await page.getByText('New table test case for').first().click();
       await page.keyboard.type(' update');
-      await page.getByRole('button', { name: 'Save' }).click();
+      await page.getByTestId('update-btn').click();
 
       await toastNotification(page, 'Test case updated successfully.');
     });

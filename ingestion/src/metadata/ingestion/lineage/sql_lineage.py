@@ -14,7 +14,7 @@ Helper functions to handle SQL lineage operations
 import itertools
 import traceback
 from collections import defaultdict
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import networkx as nx
 from collate_sqllineage.core.models import Column, DataFunction
@@ -894,7 +894,7 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
 
 
 def get_lineage_by_graph(
-    graph: DiGraph,
+    graph: Optional[DiGraph],
     metadata: OpenMetadata,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
@@ -922,3 +922,27 @@ def get_lineage_by_graph(
         subtree = graph.subgraph(component).copy()
         for path in _get_paths_from_subtree(subtree):
             yield from _process_sequence(path, subtree, metadata)
+
+
+def get_lineage_by_procedure_graph(
+    procedure_graph_map: Optional[Dict],
+    metadata: OpenMetadata,
+) -> Iterable[Either[AddLineageRequest]]:
+    """
+    Generate lineage information from a directed graph.
+    """
+    if procedure_graph_map is None:
+        return
+
+    for procedure_and_procedure_graph in procedure_graph_map.values():
+        for either_lineage in get_lineage_by_graph(
+            graph=procedure_and_procedure_graph.graph,
+            metadata=metadata,
+        ):
+            if either_lineage.left is None and either_lineage.right.edge.lineageDetails:
+                either_lineage.right.edge.lineageDetails.pipeline = EntityReference(
+                    id=procedure_and_procedure_graph.procedure.id,
+                    type="storedProcedure",
+                )
+
+            yield either_lineage

@@ -1,5 +1,6 @@
 ---
-title: Cypress Integration Tests
+title: Cypress Integration Tests | Official Documentation
+description: Setup Cypress test framework and configure automated integration test suite for validating platform components.
 slug: /developers/contribute/build-code-and-run-tests/cypress-integration-tests
 ---
 

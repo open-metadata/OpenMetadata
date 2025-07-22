@@ -1,5 +1,6 @@
 ---
-title: Overview of Announcements
+title: Overview of Announcements | Official Documentation
+description: Post platform-wide announcements to share important data updates, outages, or governance messages with teams.
 slug: /how-to-guides/data-collaboration/announcements
 ---
 
