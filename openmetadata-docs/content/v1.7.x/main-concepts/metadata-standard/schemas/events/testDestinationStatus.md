@@ -1,5 +1,6 @@
 ---
 title: testDestinationStatus | OpenMetadata Test Destination Status
+description: Connect Testdestinationstatus to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/events/testdestinationstatus
 ---
 

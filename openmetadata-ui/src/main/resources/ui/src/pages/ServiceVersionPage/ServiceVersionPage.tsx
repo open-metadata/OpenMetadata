@@ -106,7 +106,7 @@ function ServiceVersionPage() {
     [serviceCategory]
   );
 
-  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domains } =
     useMemo(
       () => getBasicEntityInfoFromVersionData(currentVersionData, entityType),
       [currentVersionData, entityType]
@@ -124,9 +124,9 @@ function ServiceVersionPage() {
           currentVersionData.changeDescription as ChangeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [currentVersionData.changeDescription, owners, tier, domain]
+      [currentVersionData.changeDescription, owners, tier, domains]
     );
 
   const fetchResourcePermission = useCallback(async () => {

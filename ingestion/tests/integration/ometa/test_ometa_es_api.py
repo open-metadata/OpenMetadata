@@ -55,6 +55,8 @@ from metadata.utils import fqn
 
 from ..integration_base import TIER1_TAG, get_create_entity
 
+FIELDS = "owners,domains"
+
 
 class OMetaESTest(TestCase):
     """
@@ -235,7 +237,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            fields="owners",
+            fields=FIELDS,
         )
 
         # We get the created table back
@@ -253,7 +255,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            fields="owners",
+            fields=FIELDS,
         )
 
         self.assertIsNotNone(res)
@@ -270,7 +272,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            fields="owners",
+            fields=FIELDS,
         )
 
         self.assertIsNotNone(res)
