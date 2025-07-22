@@ -718,4 +718,45 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
       LOG.debug("Prefetch failed for {} ({}): {}", entityId, entityType, e.getMessage());
     }
   }
+
+  // Delegate new batch deletion methods to the underlying implementation
+  @Override
+  public void deleteAllFrom(UUID id, String entity) {
+    delegate.deleteAllFrom(id, entity);
+    evictEntityFromCache(id, entity);
+  }
+
+  @Override
+  public void deleteAllTo(UUID id, String entity) {
+    delegate.deleteAllTo(id, entity);
+    evictEntityFromCache(id, entity);
+  }
+
+  @Override
+  public void batchDeleteFrom(List<String> ids, String entityType) {
+    delegate.batchDeleteFrom(ids, entityType);
+    // Evict cache for all entities in the batch
+    for (String idStr : ids) {
+      try {
+        UUID id = UUID.fromString(idStr);
+        evictEntityFromCache(id, entityType);
+      } catch (IllegalArgumentException e) {
+        LOG.warn("Invalid UUID in batch delete: {}", idStr);
+      }
+    }
+  }
+
+  @Override
+  public void batchDeleteTo(List<String> ids, String entityType) {
+    delegate.batchDeleteTo(ids, entityType);
+    // Evict cache for all entities in the batch
+    for (String idStr : ids) {
+      try {
+        UUID id = UUID.fromString(idStr);
+        evictEntityFromCache(id, entityType);
+      } catch (IllegalArgumentException e) {
+        LOG.warn("Invalid UUID in batch delete: {}", idStr);
+      }
+    }
+  }
 }

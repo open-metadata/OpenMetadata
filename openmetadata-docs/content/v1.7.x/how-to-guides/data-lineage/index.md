@@ -1,5 +1,6 @@
 ---
 title: Data Lineage | OpenMetadata Lineage How-To Guide
+description: Navigate core data lineage guides to understand column, table, and pipeline lineage configuration.
 slug: /how-to-guides/data-lineage
 ---
 

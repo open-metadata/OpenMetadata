@@ -89,6 +89,10 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
+  await expect(
+    page.locator('.ant-tabs-tab-active').getByText('Teams')
+  ).toBeVisible();
+
   const userListResponse = page.waitForResponse(
     '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
   );
@@ -187,6 +191,9 @@ export const fillDomainDetails = async (
   await searchDomain;
 
   await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
   await page.waitForTimeout(100);
 };
 

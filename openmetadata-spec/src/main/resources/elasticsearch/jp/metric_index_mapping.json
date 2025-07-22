@@ -65,7 +65,7 @@
       "fqnParts": {
         "type": "keyword"
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -119,6 +119,10 @@
           "keyword": {
             "type": "keyword",
             "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          },
+          "actualCase": {
+            "type": "keyword",
             "ignore_above": 256
           },
           "ngram": {

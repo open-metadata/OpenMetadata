@@ -101,7 +101,7 @@ class OpenSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
@@ -151,7 +151,7 @@ class OpenSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     EntityReference team = new EntityReference();
     team.setId(UUID.randomUUID());

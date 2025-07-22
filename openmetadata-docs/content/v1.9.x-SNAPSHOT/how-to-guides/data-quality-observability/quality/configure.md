@@ -1,5 +1,6 @@
 ---
-title: Configure Data Quality
+title: Configure Data Quality | Official Documentation
+description: Set up and tune quality tests across datasets using custom rules, metrics, and alerting logic.
 slug: /how-to-guides/data-quality-observability/quality/configure
 ---
 

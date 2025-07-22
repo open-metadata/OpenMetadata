@@ -44,8 +44,11 @@ import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -80,6 +83,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
 public class DatabaseSchemaResourceTest
     extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
@@ -362,7 +366,7 @@ public class DatabaseSchemaResourceTest
             .withService(DATABASE.getService().getFullyQualifiedName())
             .withOwners(
                 List.of(databaseOwner1.getEntityReference(), databaseOwner2.getEntityReference()))
-            .withDomain(domain.getFullyQualifiedName());
+            .withDomains(List.of(domain.getFullyQualifiedName()));
     Database database = databaseResourceTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
 
     // Create multiple schemas - some with their own owners/domains, some without
@@ -396,7 +400,7 @@ public class DatabaseSchemaResourceTest
                     .withDomainType(DomainType.AGGREGATE)
                     .withDescription("Schema specific domain"),
                 ADMIN_AUTH_HEADERS);
-        createSchema.withDomain(schemaDomain.getFullyQualifiedName());
+        createSchema.withDomains(List.of(schemaDomain.getFullyQualifiedName()));
       }
 
       DatabaseSchema schema = createEntity(createSchema, ADMIN_AUTH_HEADERS);
@@ -416,7 +420,7 @@ public class DatabaseSchemaResourceTest
     // Test 1: Fetch schemas with pagination including inherited fields
     ResultList<DatabaseSchema> resultList =
         listEntities(
-            Map.of("database", database.getFullyQualifiedName(), "fields", "owners,domain"),
+            Map.of("database", database.getFullyQualifiedName(), "fields", "owners,domains"),
             ADMIN_AUTH_HEADERS);
 
     // Verify inheritance behavior
@@ -427,22 +431,23 @@ public class DatabaseSchemaResourceTest
           Integer.parseInt(fetchedSchema.getName().substring(fetchedSchema.getName().length() - 1));
 
       // Verify domain inheritance
-      assertNotNull(fetchedSchema.getDomain());
+      assertListNotNull(fetchedSchema.getDomains());
       if (index == 2) {
         // Schema 2 has its own domain
         assert schemaDomain != null;
         assertEquals(
             schemaDomain.getFullyQualifiedName(),
-            fetchedSchema.getDomain().getFullyQualifiedName());
+            fetchedSchema.getDomains().get(0).getFullyQualifiedName());
         assertNull(
-            fetchedSchema.getDomain().getInherited(),
+            fetchedSchema.getDomains().get(0).getInherited(),
             "Own domain should not be marked as inherited");
       } else {
         // Other schemas inherit from database
         assertEquals(
-            domain.getFullyQualifiedName(), fetchedSchema.getDomain().getFullyQualifiedName());
+            domain.getFullyQualifiedName(),
+            fetchedSchema.getDomains().get(0).getFullyQualifiedName());
         assertTrue(
-            fetchedSchema.getDomain().getInherited(),
+            fetchedSchema.getDomains().get(0).getInherited(),
             "Domain should be marked as inherited from database");
       }
 
@@ -477,13 +482,14 @@ public class DatabaseSchemaResourceTest
       Table table =
           tableResourceTest.getEntityByName(
               schemas.getFirst().getFullyQualifiedName() + ".inherit_test_table",
-              "owners,domain",
+              "owners,domains",
               ADMIN_AUTH_HEADERS);
 
       // Table should inherit domain from database (schema 0 doesn't have its own domain)
-      assertNotNull(table.getDomain());
-      assertEquals(domain.getFullyQualifiedName(), table.getDomain().getFullyQualifiedName());
-      assertTrue(table.getDomain().getInherited(), "Table domain should be inherited");
+      assertListNotNull(table.getDomains());
+      assertEquals(
+          domain.getFullyQualifiedName(), table.getDomains().get(0).getFullyQualifiedName());
+      assertTrue(table.getDomains().get(0).getInherited(), "Table domain should be inherited");
 
       // Table should inherit owners from database (schema 0 doesn't have its own owners)
       assertListNotNull(table.getOwners());
@@ -618,7 +624,8 @@ public class DatabaseSchemaResourceTest
     assertTrue(listOrEmpty(updatedTable.getOwners()).isEmpty(), "Owner should be cleared");
     assertTrue(
         listOrEmpty(updatedTable.getTags()).isEmpty(), "Tags should be empty after clearing");
-    assertNull(updatedTable.getDomain(), "Domain should be null after clearing");
+    assertTrue(
+        listOrEmpty(updatedTable.getDomains()).isEmpty(), "Domain should be null after clearing");
   }
 
   @Test
@@ -636,7 +643,7 @@ public class DatabaseSchemaResourceTest
             .withDescription("Initial Table Description");
 
     // Set column description
-    createTable.getColumns().getFirst().setDescription("Initial Column Description");
+    createTable.getColumns().get(0).setDescription("Initial Column Description");
 
     Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
@@ -647,7 +654,7 @@ public class DatabaseSchemaResourceTest
     List<String> csvLines = List.of(exportedCsv.split(CsvUtil.LINE_SEPARATOR));
     assertTrue(csvLines.size() > 1, "Export should contain schema, table, and column");
 
-    String header = csvLines.getFirst();
+    String header = csvLines.get(0);
     List<String> modified = new ArrayList<>();
     modified.add(header);
 
@@ -757,6 +764,59 @@ public class DatabaseSchemaResourceTest
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Order(1)
+  @Test
+  void testSchemaServiceInheritanceFromDatabase(TestInfo test) throws IOException {
+    // This test verifies that schemas correctly inherit service from their database
+    // when fetched in bulk with the service field
+
+    // Use the existing DATABASE which already has a service set
+    Database database = DATABASE;
+    assertNotNull(database.getService(), "Test database should have a service");
+
+    // Create a schema in the database
+    String uniqueName = "serviceInheritanceTest" + System.currentTimeMillis();
+    CreateDatabaseSchema createSchema =
+        createRequest(uniqueName).withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Fetch schemas with the service field included
+    ResultList<DatabaseSchema> schemas =
+        listEntities(
+            Map.of(
+                "limit",
+                "10",
+                "fields",
+                "database,service",
+                "database",
+                database.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(schemas.getData());
+    assertTrue(schemas.getData().size() >= 1);
+
+    // Find our created schema
+    DatabaseSchema foundSchema =
+        schemas.getData().stream()
+            .filter(s -> s.getId().equals(schema.getId()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(foundSchema, "Created schema should be in the results");
+
+    // Verify the schema has the correct database and service
+    assertNotNull(foundSchema.getDatabase(), "Database should not be null");
+    assertEquals(database.getId(), foundSchema.getDatabase().getId());
+
+    assertNotNull(
+        foundSchema.getService(), "Service should not be null - should be inherited from database");
+    assertEquals(database.getService().getId(), foundSchema.getService().getId());
+    assertEquals(database.getService().getName(), foundSchema.getService().getName());
+
+    // Clean up
+    deleteEntity(schema.getId(), ADMIN_AUTH_HEADERS);
   }
 
   private SearchSchemaEntityRelationshipResult searchSchemaEntityRelationship(
