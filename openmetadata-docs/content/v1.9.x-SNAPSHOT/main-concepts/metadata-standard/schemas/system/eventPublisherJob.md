@@ -1,5 +1,6 @@
 ---
 title: eventPublisherJob | OpenMetadata Event Publisher Job
+description: Connect Eventpublisherjob to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/system/eventpublisherjob
 ---
 
