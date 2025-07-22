@@ -41,6 +41,7 @@ import { searchQuery } from '../../rest/searchAPI';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
 import { getLineageEntityExclusionFilter } from '../../utils/EntityLineageUtils';
 import { getOperationPermissions } from '../../utils/PermissionsUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
@@ -65,9 +66,9 @@ const PlatformLineage = () => {
   const handleEntitySelect = useCallback(
     (value: EntityReference) => {
       navigate(
-        `/lineage/${(value as SourceType).entityType}/${
-          value.fullyQualifiedName
-        }`
+        `/lineage/${(value as SourceType).entityType}/${getEncodedFqn(
+          value.fullyQualifiedName ?? ''
+        )}`
       );
     },
     [navigate]
@@ -87,6 +88,7 @@ const PlatformLineage = () => {
           searchIndex: searchIndices,
           pageSize: PAGE_SIZE_BASE,
           queryFilter: getLineageEntityExclusionFilter(),
+          includeDeleted: false,
         });
 
         setOptions(
