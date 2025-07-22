@@ -661,7 +661,7 @@ public class SearchRepository {
       EntityInterface entity) {
 
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
-      String indexName = indexMapping.getIndexName();
+      String indexName = indexMapping.getIndexName(clusterAlias);
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (field.getName().contains(PARENT)) {
           String oldParentFQN = entity.getName();
