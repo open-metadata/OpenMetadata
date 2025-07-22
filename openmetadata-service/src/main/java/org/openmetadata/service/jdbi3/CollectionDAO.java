@@ -3667,26 +3667,6 @@ public interface CollectionDAO {
             "SELECT SUBSTRING_INDEX(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
                 + "FROM tag t "
                 + "WHERE t.deleted = FALSE "
-                + "AND t.fqnHash LIKE CONCAT(:classificationHash, '.%') "
-                + "GROUP BY SUBSTRING_INDEX(t.fqnHash, '.', 1)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT SPLIT_PART(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
-                + "FROM tag t "
-                + "WHERE t.deleted = FALSE "
-                + "AND t.fqnHash LIKE CONCAT(:classificationHash, '.%') "
-                + "GROUP BY SPLIT_PART(t.fqnHash, '.', 1)",
-        connectionType = POSTGRES)
-    @RegisterRowMapper(TermCountMapper.class)
-    List<Pair<String, Integer>> getTermCounts(
-        @Bind("classificationHash") String classificationHash);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT SUBSTRING_INDEX(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
-                + "FROM tag t "
-                + "WHERE t.deleted = FALSE "
                 + "AND t.fqnHash REGEXP :classificationHashPattern "
                 + "GROUP BY SUBSTRING_INDEX(t.fqnHash, '.', 1)",
         connectionType = MYSQL)
