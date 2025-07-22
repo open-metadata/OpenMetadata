@@ -31,6 +31,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
   INVALID_NAMES,
+  redirectToExplorePage,
   redirectToHomePage,
 } from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
@@ -160,8 +161,8 @@ test.describe('Service Ingestion Pagination', () => {
   });
 
   test.beforeEach('Visit home page', async ({ page }) => {
-    await redirectToHomePage(page);
-    await table.visitEntityPageWithCustomSearchBox(page);
+    await redirectToExplorePage(page);
+    await table.visitEntityPage(page);
   });
 
   test('Default Pagination size should be 15', async ({ page }) => {
