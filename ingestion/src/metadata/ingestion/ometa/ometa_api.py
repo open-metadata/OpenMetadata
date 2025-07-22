@@ -15,7 +15,7 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 import traceback
-from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -145,6 +145,7 @@ class OpenMetadata(
         self,
         config: OpenMetadataConnection,
         raw_data: bool = False,
+        additional_client_config_arguments: Optional[Dict[str, Any]] = None,
     ):
         self.config = config
 
@@ -161,14 +162,17 @@ class OpenMetadata(
         extra_headers: Optional[dict[str, str]] = None
         if self.config.extraHeaders:
             extra_headers = self.config.extraHeaders.root
-        client_config: ClientConfig = ClientConfig(
+
+        client_config = ClientConfig(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
             extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
+            **(additional_client_config_arguments or {}),
         )
+
         self.client = REST(client_config)
         self._use_raw_data = raw_data
         if self.config.enableVersionValidation:

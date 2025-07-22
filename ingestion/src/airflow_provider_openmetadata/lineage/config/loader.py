@@ -14,6 +14,7 @@ OpenMetadata Airflow Lineage Backend
 """
 import json
 import os
+from typing import Optional
 
 from airflow.configuration import AirflowConfigParser
 from pydantic import BaseModel
@@ -33,6 +34,9 @@ class AirflowLineageConfig(BaseModel):
     metadata_config: OpenMetadataConnection
     only_keep_dag_lineage: bool = False
     max_status: int = 10
+    timeout: Optional[int] = None
+    retry: Optional[int] = None
+    retry_wait: Optional[int] = None
 
 
 def parse_airflow_config(
@@ -51,6 +55,9 @@ def parse_airflow_config(
         )
         == "true",
         max_status=int(conf.get(LINEAGE, "max_status", fallback=10)),
+        timeout=int(conf.get(LINEAGE, "timeout", fallback=0)) or None,
+        retry=int(conf.get(LINEAGE, "retry", fallback=0)) or None,
+        retry_wait=int(conf.get(LINEAGE, "retry_wait", fallback=0)) or None,
         metadata_config=OpenMetadataConnection(
             hostPort=conf.get(
                 LINEAGE,
