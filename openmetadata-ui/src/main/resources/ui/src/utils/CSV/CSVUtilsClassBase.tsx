@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 
-import { Form } from 'antd';
 import Select, { DefaultOptionType } from 'antd/lib/select';
 import { toString } from 'lodash';
-import { ReactNode } from 'react';
+import { ReactNode, useRef } from 'react';
+import { RenderEditCellProps, textEditor } from 'react-data-grid';
 import Certification from '../../components/Certification/Certification.component';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
+import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
+import { KeyDownStopPropagationWrapper } from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { ValueRendererOnEditCell } from '../../components/common/ValueRendererOnEditCell/ValueRendererOnEditCell';
 import { ModalWithCustomPropertyEditor } from '../../components/Modals/ModalWithCustomProperty/ModalWithCustomPropertyEditor.component';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import SchemaModal from '../../components/Modals/SchemaModal/SchemaModal';
@@ -33,7 +36,6 @@ import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
-import { EditorProps } from './CSV.utils';
 
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
@@ -59,12 +61,18 @@ class CSVUtilsClassBase {
   public getEditor(
     column: string,
     entityType: EntityType
-  ): ((props: EditorProps) => ReactNode) | undefined {
+  ): ((props: RenderEditCellProps<any, any>) => ReactNode) | undefined {
     switch (column) {
       case 'owner':
-        return ({ value, ...props }: EditorProps) => {
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const value = row?.[column.key];
           const owners = value?.split(';') ?? [];
-          const ownerEntityRef = owners.map((owner) => {
+          const ownerEntityRef = owners.map((owner: string) => {
             const [type, user] = owner.split(':');
 
             return {
@@ -76,22 +84,14 @@ class CSVUtilsClassBase {
 
           const handleChange = (owners?: EntityReference[]) => {
             if (!owners || owners.length === 0) {
-              props.onChange();
-
-              setTimeout(() => {
-                props.onComplete();
-              }, 1);
+              onRowChange({ ...row, [column.key]: '' }, true);
 
               return;
             }
             const ownerText = owners
               .map((owner) => `${owner.type}:${owner.name}`)
               .join(';');
-            props.onChange(ownerText);
-
-            setTimeout(() => {
-              props.onComplete(ownerText);
-            }, 1);
+            onRowChange({ ...row, [column.key]: ownerText }, true);
           };
 
           return (
@@ -102,37 +102,54 @@ class CSVUtilsClassBase {
               popoverProps={{
                 open: true,
               }}
-              onClose={props.onCancel}
+              onClose={onClose}
               onUpdate={handleChange}>
-              {' '}
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
             </UserTeamSelectableList>
           );
         };
       case 'description':
-        return ({ value, ...props }: EditorProps) => {
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const value = row[column.key];
           const handleSave = async (description: string) => {
-            props.onChange(description);
-
-            setTimeout(() => {
-              props.onComplete(description);
-            }, 1);
+            onRowChange({ ...row, [column.key]: description }, true);
           };
 
           return (
-            <ModalWithMarkdownEditor
-              visible
-              header="Edit Description"
-              placeholder="Description"
-              value={value}
-              onCancel={props.onCancel}
-              onSave={handleSave}
-            />
+            <>
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+              <ModalWithMarkdownEditor
+                visible
+                header="Edit Description"
+                placeholder="Description"
+                value={value}
+                onCancel={() => onClose(false)}
+                onSave={handleSave}
+              />
+            </>
           );
         };
       case 'tags':
-        return ({ value, ...props }) => {
-          const tags = value
-            ? value?.split(';').map(
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const containerRef = useRef<HTMLDivElement | null>(null);
+          const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
+          useMultiContainerFocusTrap({
+            containers: [containerRef.current, dropdownContainerRef.current],
+            active: true,
+          });
+
+          const tags = row[column.key]
+            ? row[column.key]?.split(';').map(
                 (tag: string) =>
                   ({
                     tagFQN: tag,
@@ -143,64 +160,101 @@ class CSVUtilsClassBase {
             : undefined;
 
           const handleChange = (tags: TagLabel[]) => {
-            props.onChange(tags.map((tag) => tag.tagFQN).join(';'));
+            onRowChange({
+              ...row,
+              [column.key]: tags.map((tag) => tag.tagFQN).join(';'),
+            });
           };
 
           return (
-            <InlineEdit onCancel={props.onCancel} onSave={props.onComplete}>
-              <TagSuggestion
-                autoFocus
-                selectProps={{
-                  className: 'react-grid-select-dropdown',
-                  size: 'small',
-                }}
-                value={tags}
-                onChange={handleChange}
-              />
-            </InlineEdit>
+            <KeyDownStopPropagationWrapper>
+              <div ref={containerRef}>
+                <InlineEdit
+                  onCancel={() => onClose(false)}
+                  onSave={() => onClose(true)}>
+                  <TagSuggestion
+                    autoFocus
+                    dropdownContainerRef={dropdownContainerRef}
+                    selectProps={{
+                      className: 'react-grid-select-dropdown',
+                      size: 'small',
+                    }}
+                    value={tags}
+                    onChange={handleChange}
+                  />
+                </InlineEdit>
+              </div>
+            </KeyDownStopPropagationWrapper>
           );
         };
       case 'glossaryTerms':
       case 'relatedTerms':
-        return ({ value, ...props }) => {
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const containerRef = useRef<HTMLDivElement | null>(null);
+          const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
+          useMultiContainerFocusTrap({
+            containers: [containerRef.current, dropdownContainerRef.current],
+            active: true,
+          });
+
+          const value = row[column.key];
           const tags = value ? value?.split(';') : [];
 
           const handleChange = (
             option: DefaultOptionType | DefaultOptionType[]
           ) => {
             if (Array.isArray(option)) {
-              props.onChange(
-                option.map((tag) => toString(tag.value)).join(';')
-              );
+              onRowChange({
+                ...row,
+                [column.key]: option
+                  .map((tag) => toString(tag.value))
+                  .join(';'),
+              });
             } else {
-              props.onChange(toString(option.value));
+              onRowChange({
+                ...row,
+                [column.key]: toString(option.value),
+              });
             }
           };
 
           return (
-            <Form className="w-full" onFinish={props.onComplete}>
+            <div ref={containerRef}>
               <TreeAsyncSelectList
                 defaultValue={tags}
+                dropdownContainerRef={dropdownContainerRef}
                 optionClassName="tag-select-box"
                 tagType={TagSource.Glossary}
-                onCancel={props.onCancel}
+                onCancel={() => {
+                  onClose(false);
+                }}
                 onChange={handleChange}
+                onSubmit={() => onClose(true)}
               />
-            </Form>
+            </div>
           );
         };
       case 'tiers':
-        return ({ value, ...props }) => {
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const value = row[column.key];
           const handleChange = async (tag?: Tag) => {
-            props.onChange(tag?.fullyQualifiedName);
-
-            setTimeout(() => {
-              props.onComplete(tag?.fullyQualifiedName);
-            }, 1);
-          };
-
-          const onClose = () => {
-            props.onCancel();
+            onRowChange(
+              {
+                ...row,
+                [column.key]: tag?.fullyQualifiedName,
+              },
+              true
+            );
           };
 
           return (
@@ -208,24 +262,28 @@ class CSVUtilsClassBase {
               currentTier={value}
               popoverProps={{ open: true }}
               updateTier={handleChange}
-              onClose={onClose}>
-              {' '}
+              onClose={() => onClose(false)}>
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
             </TierCard>
           );
         };
 
       case 'certification':
-        return ({ value, ...props }) => {
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const value = row[column.key];
           const handleChange = async (tag?: Tag) => {
-            props.onChange(tag?.fullyQualifiedName);
-
-            setTimeout(() => {
-              props.onComplete(tag?.fullyQualifiedName);
-            }, 1);
-          };
-
-          const onClose = () => {
-            props.onCancel();
+            onRowChange(
+              {
+                ...row,
+                [column.key]: tag?.fullyQualifiedName,
+              },
+              true
+            );
           };
 
           return (
@@ -234,35 +292,41 @@ class CSVUtilsClassBase {
               currentCertificate={value}
               popoverProps={{ open: true }}
               onCertificationUpdate={handleChange}
-              onClose={onClose}
-            />
+              onClose={() => onClose(false)}>
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+            </Certification>
           );
         };
       case 'domain':
-        return ({ value, ...props }) => {
+        return ({
+          row,
+          onRowChange,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const value = row[column.key];
           const handleChange = async (domain?: EntityReference) => {
             if (!domain) {
-              props.onChange();
-
-              setTimeout(() => {
-                props.onComplete();
-              }, 1);
+              onRowChange(
+                {
+                  ...row,
+                  [column.key]: '',
+                },
+                true
+              );
 
               return;
             }
-            props.onChange(
-              domain.fullyQualifiedName?.replace(new RegExp('"', 'g'), '""') ??
-                ''
+            onRowChange(
+              {
+                ...row,
+                [column.key]:
+                  domain.fullyQualifiedName?.replace(
+                    new RegExp('"', 'g'),
+                    '""'
+                  ) ?? '',
+              },
+              true
             );
-
-            setTimeout(() => {
-              props.onComplete(
-                domain.fullyQualifiedName?.replace(
-                  new RegExp('"', 'g'),
-                  '""'
-                ) ?? ''
-              );
-            }, 1);
           };
 
           return (
@@ -279,15 +343,22 @@ class CSVUtilsClassBase {
                     }
                   : undefined
               }
+              wrapInButton={false}
               onUpdate={(domain) => handleChange(domain as EntityReference)}>
-              {' '}
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
             </DomainSelectableList>
           );
         };
       case 'reviewers':
-        return ({ value, ...props }: EditorProps) => {
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const value = row[column.key];
           const reviewers = value?.split(';') ?? [];
-          const reviewersEntityRef = reviewers.map((reviewer) => {
+          const reviewersEntityRef = reviewers.map((reviewer: string) => {
             const [type, user] = reviewer.split(':');
 
             return {
@@ -299,22 +370,26 @@ class CSVUtilsClassBase {
 
           const handleChange = (reviewers?: EntityReference[]) => {
             if (!reviewers || reviewers.length === 0) {
-              props.onChange();
-
-              setTimeout(() => {
-                props.onComplete();
-              }, 1);
+              onRowChange(
+                {
+                  ...row,
+                  [column.key]: '',
+                },
+                true
+              );
 
               return;
             }
             const reviewerText = reviewers
               .map((reviewer) => `${reviewer.type}:${reviewer.name}`)
               .join(';');
-            props.onChange(reviewerText);
-
-            setTimeout(() => {
-              props.onComplete(reviewerText);
-            }, 1);
+            onRowChange(
+              {
+                ...row,
+                [column.key]: reviewerText,
+              },
+              true
+            );
           };
 
           return (
@@ -328,73 +403,100 @@ class CSVUtilsClassBase {
               popoverProps={{
                 open: true,
               }}
+              onClose={onClose}
               onUpdate={handleChange}>
-              {' '}
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
             </UserTeamSelectableList>
           );
         };
       case 'extension':
-        return ({ value, ...props }: EditorProps) => {
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const value = row[column.key];
           const handleSave = async (extension?: string) => {
-            props.onChange(extension);
-
-            setTimeout(() => {
-              props.onComplete(extension);
-            }, 1);
+            onRowChange({ ...row, [column.key]: extension }, true);
           };
 
           return (
-            <ModalWithCustomPropertyEditor
-              visible
-              entityType={entityType}
-              header="Edit CustomProperty"
-              value={value}
-              onCancel={props.onCancel}
-              onSave={handleSave}
-            />
+            <>
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+              <ModalWithCustomPropertyEditor
+                visible
+                entityType={entityType}
+                header="Edit CustomProperty"
+                value={value}
+                onCancel={() => onClose(false)}
+                onSave={handleSave}
+              />
+            </>
           );
         };
       case 'entityType*':
-        return ({ value, ...props }) => {
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const value = row[column.key];
           const handleChange = (typeValue: string) => {
-            props.onChange(typeValue);
+            onRowChange({ ...row, [column.key]: typeValue });
           };
 
           return (
-            <InlineEdit onCancel={props.onCancel} onSave={props.onComplete}>
-              <Select
-                data-testid="entity-type-select"
-                options={ENTITY_TYPE_OPTIONS}
-                size="small"
-                style={{ width: '155px' }}
-                value={value}
-                onChange={handleChange}
-              />
-            </InlineEdit>
+            <KeyDownStopPropagationWrapper>
+              <InlineEdit
+                onCancel={() => onClose(false)}
+                onSave={() => onClose(true)}>
+                <Select
+                  autoFocus
+                  open
+                  data-testid="entity-type-select"
+                  options={ENTITY_TYPE_OPTIONS}
+                  size="small"
+                  style={{ width: '155px' }}
+                  value={value}
+                  onChange={handleChange}
+                />
+              </InlineEdit>
+            </KeyDownStopPropagationWrapper>
           );
         };
 
       case 'code':
-        return ({ value, ...props }) => {
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const value = row[column.key];
           const handleChange = (value: string) => {
-            props.onChange(value);
+            onRowChange({ ...row, [column.key]: value });
           };
 
           return (
-            <SchemaModal
-              isFooterVisible
-              visible
-              data={value}
-              editorClass="custom-code-mirror-theme full-screen-editor-height"
-              mode={{ name: CSMode.SQL }}
-              onChange={handleChange}
-              onClose={props.onCancel}
-              onSave={props.onComplete}
-            />
+            <>
+              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+              <SchemaModal
+                isFooterVisible
+                visible
+                data={value}
+                editorClass="custom-code-mirror-theme full-screen-editor-height"
+                mode={{ name: CSMode.SQL }}
+                onChange={handleChange}
+                onClose={() => onClose(false)}
+                onSave={() => onClose(true)}
+              />
+            </>
           );
         };
       default:
-        return undefined;
+        return textEditor;
     }
   }
 }

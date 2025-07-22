@@ -1,5 +1,6 @@
 ---
 title: Tests - YAML Config | OpenMetadata Quality Config Guide
+description: Define YAML tests to validate data quality during ingestion and enforce expectations at column or table level.
 slug: /how-to-guides/data-quality-observability/quality/tests-yaml
 ---
 

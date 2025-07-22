@@ -1,5 +1,6 @@
 ---
-title: How Column-Level Lineage Works
+title: How Column-Level Lineage Works | Official Documentation
+description: View column-level lineage to trace transformations and dependencies for data quality, debugging, and impact analysis.
 slug: /how-to-guides/data-lineage/column
 ---
 

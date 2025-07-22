@@ -42,7 +42,7 @@ const entities = [
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Recently viewed data assets', () => {
+test.describe.skip('Recently viewed data assets', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

@@ -452,7 +452,7 @@ public class OpenSearchIndexSink implements BulkSink, Closeable {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     client.close();
   }
 

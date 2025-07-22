@@ -1,5 +1,6 @@
 ---
-title: Explore the Lineage View
+title: Explore the Lineage View | Official Documentation
+description: Explore lineage diagrams interactively to understand how data flows between sources, transformations, and dashboards.
 slug: /how-to-guides/data-lineage/explore
 ---
 

@@ -96,24 +96,22 @@ if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
     OPENMETADATA_OPTS="$JAVA_DEBUG_OPTS $OPENMETADATA_OPTS"
 fi
 
-# GC options for Java 21
-OPENMETADATA_GC_LOG_OPTS="-Xlog:gc*,gc+heap=info,gc+ergo=debug:file=${LOG_DIR:-/var/log/openmetadata}/openmetadata-gc.log:time,level,tags:filecount=10,filesize=102m"
+# GC options
+if [ -z "$OPENMETADATA_GC_LOG_OPTS" ]; then
+  OPENMETADATA_GC_LOG_OPTS="-Xlog:gc*:file=$LOG_DIR/openmetadata-gc.log:time,tags:filecount=10,filesize=102400"
+fi
 
-NOW_EPOCH=$(date +%s)
-export OPENMETADATA_DIAG_OPTS="-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${LOG_DIR:-/var/log/openmetadata} -XX:+ExitOnOutOfMemoryError -XX:StartFlightRecording=filename=${LOG_DIR:-/var/log/openmetadata}/om_${NOW_EPOCH}.jfr,duration=0s,settings=profile"
-
-# JVM performance options optimized for Java 21
+# JVM performance options
 if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
-    # JVM performance tuning ----------------------------------------------------
-    export OPENMETADATA_JVM_PERFORMANCE_OPTS="\
-      -server -XX:+UseG1GC \
-      -XX:MaxGCPauseMillis=200 \
-      -XX:InitiatingHeapOccupancyPercent=45 \
-      -XX:+ExplicitGCInvokesConcurrent \
-      -XX:+UseStringDeduplication \
-      -XX:-UseLargePages \
-      -XX:+UseCompressedOops -XX:+UseCompressedClassPointers \
-      -Djava.awt.headless=true"
+  export OPENMETADATA_JVM_PERFORMANCE_OPTS="\
+    -server -XX:+UseG1GC \
+    -XX:MaxGCPauseMillis=200 \
+    -XX:InitiatingHeapOccupancyPercent=45 \
+    -XX:+ExplicitGCInvokesConcurrent \
+    -XX:+UseStringDeduplication \
+    -XX:-UseLargePages \
+    -XX:+UseCompressedOops -XX:+UseCompressedClassPointers \
+    -Djava.awt.headless=true"
 fi
 
 #Application classname
@@ -121,7 +119,7 @@ APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
-    nohup $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
+    nohup $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
 else
-    exec $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@"
+    exec $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@"
 fi

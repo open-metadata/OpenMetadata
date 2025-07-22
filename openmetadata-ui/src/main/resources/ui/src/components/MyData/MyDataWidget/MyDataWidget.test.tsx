@@ -90,13 +90,13 @@ describe('MyDataWidget component', () => {
       1,
       10,
       '(owners.id:113)',
-      '',
-      '',
+      'updatedAt',
+      'desc',
       'all'
     );
   });
 
-  it.skip('should render header', async () => {
+  it('should render header', async () => {
     await act(async () => {
       render(
         <MemoryRouter>
@@ -117,7 +117,7 @@ describe('MyDataWidget component', () => {
       );
     });
 
-    expect(screen.queryByTestId('view-all-link')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('view-more-link')).not.toBeInTheDocument();
   });
 
   it('should render view all for data present', async () => {
@@ -132,7 +132,9 @@ describe('MyDataWidget component', () => {
       );
     });
 
-    expect(await screen.findByText('label.view-all')).toBeInTheDocument();
+    expect(
+      await screen.findByText('label.view-more-count')
+    ).toBeInTheDocument();
   });
 
   it('should render table names', async () => {

@@ -1,5 +1,6 @@
 ---
 title: Login Configuration | OpenMetadata Login Config
+description: Connect Loginconfiguration to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/loginconfiguration
 ---
 
