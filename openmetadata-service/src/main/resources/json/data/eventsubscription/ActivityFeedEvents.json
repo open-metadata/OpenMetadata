@@ -26,7 +26,7 @@
         "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic', 'domain', 'dataProduct', 'metric'})"
       },
       {
-        "name": "isBot",
+        "name": "noBotAllowed",
         "effect": "exclude",
         "condition": "isBot()",
         "prefixCondition": "AND"
