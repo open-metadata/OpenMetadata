@@ -431,10 +431,11 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const pagingHandler = (currentPage: number) => {
+  const pagingHandler = (currentPage: number, pageSize: number) => {
     fetchFilteredQueries({
       pageNumber: currentPage,
     });
+    handlePageSizeChange(pageSize);
   };
 
   const handleSortFieldChange = (value: string) => {
@@ -656,7 +657,6 @@ const TableQueries: FC<TableQueriesProp> = ({
                           pageSize={pageSize}
                           total={paging.total}
                           onChange={pagingHandler}
-                          onShowSizeChange={handlePageSizeChange}
                         />
                       </Col>
                     )}
