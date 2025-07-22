@@ -434,7 +434,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     validateTestParameters(
         test.getParameterValues(),
         testDefinition.getParameterDefinition(),
-        testDefinition.getTestPlatforms());
+        testDefinition.getTestPlatforms(),
+        testDefinition);
     validateColumnTestCase(entityLink, testDefinition.getEntityType());
   }
 
@@ -509,7 +510,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private void validateTestParameters(
       List<TestCaseParameterValue> parameterValues,
       List<TestCaseParameter> parameterDefinition,
-      List<TestPlatform> testPlatforms) {
+      List<TestPlatform> testPlatforms,
+      TestDefinition testDefinition) {
     if (parameterValues != null) {
 
       if (parameterDefinition.isEmpty() && !parameterValues.isEmpty()) {
@@ -517,8 +519,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             "Parameter Values doesn't match Test Definition Parameters");
       }
 
-      // For GX paramneters and test definition parameters will be different so we will not validate
-      if (!testPlatforms.contains(TestPlatform.GREAT_EXPECTATIONS)) {
+      if (!testPlatforms.contains(TestPlatform.GREAT_EXPECTATIONS)
+          && !testDefinition.getName().equals("tableDiff")) {
         Set<String> definedParameterNames =
             parameterDefinition.stream()
                 .map(TestCaseParameter::getName)
