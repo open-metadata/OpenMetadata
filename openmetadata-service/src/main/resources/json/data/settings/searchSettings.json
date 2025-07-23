@@ -323,11 +323,6 @@
           "field": "columnNamesFuzzy",
           "boost": 1.5,
           "matchType": "standard"
-        },
-        {
-          "field": "tags.tagFQN.text",
-          "boost": 5.0,
-          "matchType": "standard"
         }
       ],
       "aggregations": [

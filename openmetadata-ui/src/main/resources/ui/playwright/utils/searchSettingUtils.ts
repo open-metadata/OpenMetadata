@@ -37,7 +37,6 @@ export const mockEntitySearchConfig = {
     { field: 'columns.displayName.keyword', boost: 2, matchType: 'exact' },
     { field: 'columns.children.name.keyword', boost: 1, matchType: 'exact' },
     { field: 'columnNamesFuzzy', boost: 1.5, matchType: 'standard' },
-    { field: 'tags.tagFQN.text', boost: 5, matchType: 'standard' },
   ],
   highlightFields: ['name', 'description', 'displayName'],
   matchTypeBoostMultipliers: {
