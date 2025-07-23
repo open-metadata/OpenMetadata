@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { TypeColumn } from '@inovua/reactdatagrid-community/types';
-import { Typography } from 'antd';
 import {
   compact,
   get,
@@ -80,22 +79,18 @@ const statusRenderer = (value: Status) => {
   );
 };
 
-export const renderColumnDataEditor = (
+const renderColumnDataEditor = (
   column: string,
   recordData: {
     value: string;
-    data: { details: string; glossaryStatus: string };
+    data: { details: string };
   }
 ) => {
-  const {
-    value,
-    data: { glossaryStatus },
-  } = recordData;
+  const { value } = recordData;
   switch (column) {
     case 'status':
-      return statusRenderer(value as Status);
     case 'glossaryStatus':
-      return <Typography.Text>{glossaryStatus}</Typography.Text>;
+      return statusRenderer(value as Status);
     case 'description':
       return (
         <RichTextEditorPreviewerV1
@@ -121,20 +116,9 @@ export const getColumnConfig = (
     name: column,
     defaultFlex: 1,
     sortable: false,
-    resizable: true,
-    cellClass: () => `rdg-cell-${column.replace(/[^a-zA-Z0-9-_]/g, '')}`,
-    editable: false,
-    renderEditCell: csvUtilsClassBase.getEditor(colType, entityType),
-    renderCell: (data: any) =>
-      renderColumnDataEditor(colType, {
-        value: data.row[column],
-        data: { details: '', glossaryStatus: '' },
-      }),
+    renderEditor: csvUtilsClassBase.getEditor(colType, entityType),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
-    render: (recordData: {
-      value: string;
-      data: { details: string; glossaryStatus: string };
-    }) => renderColumnDataEditor(colType, recordData),
+    render: (recordData) => renderColumnDataEditor(colType, recordData),
   } as TypeColumn;
 };
 
@@ -360,7 +344,7 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
     }
 
     default:
-      return typeof value === 'object' ? JSON.stringify(value) : String(value);
+      return value;
   }
 };
 
@@ -450,9 +434,6 @@ export const convertEntityExtensionToCustomPropertyString = (
         isString(stringValue) &&
         (stringValue.includes(',') || stringValue.includes(';'));
 
-      // Ensure stringValue is a string
-      const safeStringValue = String(stringValue);
-
       // Check if the property type is markdown or sqlQuery or string and add quotes around the value
       if (
         ['markdown', 'sqlQuery', 'string'].includes(
@@ -460,15 +441,15 @@ export const convertEntityExtensionToCustomPropertyString = (
         ) &&
         hasSeparator
       ) {
-        convertedString += `"${key}:${safeStringValue}"${endValue}`;
+        convertedString += `"${`${key}:${stringValue}`}"${endValue}`;
       } else if (
         // Check if the property type is table and add quotes around the value
         customPropertiesMapByName[key]?.propertyType?.name ===
         TABLE_TYPE_CUSTOM_PROPERTY
       ) {
-        convertedString += `"${key}:${safeStringValue}"${endValue}`;
+        convertedString += `"${`${key}:${stringValue}`}"${endValue}`;
       } else {
-        convertedString += `${key}:${safeStringValue}${endValue}`;
+        convertedString += `${key}:${stringValue}${endValue}`;
       }
     }
   });
