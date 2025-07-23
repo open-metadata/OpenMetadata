@@ -1,5 +1,6 @@
 ---
 title: Type Schema | OpenMetadata Type Schema Overview
+description: Metadata schema defining reusable data types, configurations, and structures used across entities and ingestion pipelines.
 slug: /main-concepts/metadata-standard/schemas/type
 ---
 

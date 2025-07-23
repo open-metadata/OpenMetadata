@@ -218,7 +218,9 @@ export const CustomizablePage = () => {
       } else {
         response = await createDocument({
           ...newDoc,
-          domain: newDoc.domain?.fullyQualifiedName,
+          domains: newDoc.domains
+            ?.map((d) => d.fullyQualifiedName)
+            .filter(Boolean) as string[],
         });
       }
       setDocument(response);

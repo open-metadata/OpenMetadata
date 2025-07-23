@@ -115,35 +115,53 @@
       "searchFields": [
         {
           "field": "displayName.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         }
       ],
       "highlightFields": [
@@ -151,54 +169,85 @@
         "description",
         "displayName"
       ],
-      "aggregations": [
-      ],
+      "aggregations": [],
       "scoreMode": "sum",
-      "boostMode": "sum"
+      "boostMode": "sum",
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "databaseSchema",
       "searchFields": [
         {
           "field": "displayName.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         }
       ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      },
       "highlightFields": [
         "name",
         "description",
         "displayName"
       ],
-      "aggregations": [
-      ],
+      "aggregations": [],
       "scoreMode": "sum",
       "boostMode": "sum"
     },
@@ -207,55 +256,78 @@
       "searchFields": [
         {
           "field": "displayName.keyword",
-          "boost": 20.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "columns.name.keyword",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "exact"
         },
         {
           "field": "columns.displayName.keyword",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "exact"
         },
         {
           "field": "columns.children.name.keyword",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "exact"
         },
         {
           "field": "columnNamesFuzzy",
-          "boost": 1.5
+          "boost": 1.5,
+          "matchType": "standard"
         },
         {
           "field": "tags.tagFQN.text",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -279,7 +351,7 @@
       ],
       "fieldValueBoosts": [
         {
-          "field": "usageSummary.monthlyStats.count", 
+          "field": "usageSummary.monthlyStats.count",
           "factor": 3.0,
           "modifier": "log1p",
           "missing": 0
@@ -290,42 +362,65 @@
           "modifier": "none",
           "missing": 0
         }
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "storedProcedure",
       "searchFields": [
         {
           "field": "displayName.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -346,50 +441,75 @@
         "name",
         "description",
         "displayName"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "query",
       "searchFields": [
         {
           "field": "displayName.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "queryText",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "queryText.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         }
       ],
       "aggregations": [
@@ -405,54 +525,80 @@
         "name",
         "description",
         "displayName"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "topic",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "messageSchema.schemaFields.name.keyword",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "exact"
         },
         {
           "field": "messageSchema.schemaFields.children.name.keyword",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "exact"
         },
         {
           "field": "fieldNamesFuzzy",
-          "boost": 1.5
+          "boost": 1.5,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -473,54 +619,80 @@
         "name",
         "displayName",
         "description"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "dashboard",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "charts.name",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
         },
         {
           "field": "charts.description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
         },
         {
           "field": "messageSchema.schemaFields.description",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -577,50 +749,75 @@
         "displayName",
         "description",
         "charts.name"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "dashboardDataModel",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "columns.name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "columnNamesFuzzy",
-          "boost": 1.5
+          "boost": 1.5,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -647,50 +844,75 @@
         "displayName",
         "description",
         "charts.name"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "pipeline",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "tasks.name",
-          "boost": 8.0
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "tasks.description",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -708,50 +930,75 @@
         "description",
         "tasks.name",
         "tasks.description"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "mlmodel",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "mlFeatures.name",
-          "boost": 8.0
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "mlFeatures.description",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -769,50 +1016,75 @@
         "description",
         "mlFeatures.name",
         "mlFeatures.description"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "searchIndex",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "mlFeatures.name",
-          "boost": 8.0
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "mlFeatures.description",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -830,54 +1102,80 @@
         "description",
         "mlFeatures.name",
         "mlFeatures.description"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "container",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "dataModel.columns.name",
-          "boost": 8.0
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "dataModel.columns.name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "columnNamesFuzzy",
-          "boost": 1.5
+          "boost": 1.5,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -896,66 +1194,95 @@
         "dataModel.columns.name",
         "dataModel.columns.description",
         "dataModel.columns.children.name"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "apiEndpoint",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "response_field_namesFuzzy",
-          "boost": 1.5
+          "boost": 1.5,
+          "matchType": "standard"
         },
         {
           "field": "request_field_namesFuzzy",
-          "boost": 1.5
+          "boost": 1.5,
+          "matchType": "standard"
         },
         {
           "field": "responseSchema.schemaFields.name.keyword",
-          "boost": 8.0
+          "boost": 8.0,
+          "matchType": "exact"
         },
         {
           "field": "responseSchema.schemaFields.children.keyword",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "exact"
         },
         {
           "field": "requestSchema.schemaFields.name.keyword",
-          "boost": 8.0
+          "boost": 8.0,
+          "matchType": "exact"
         },
         {
           "field": "requestSchema.schemaFields.children.keyword",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "exact"
         }
       ],
       "aggregations": [
@@ -981,42 +1308,65 @@
         "name",
         "displayName",
         "description"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "domain",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -1032,158 +1382,236 @@
         "name",
         "displayName",
         "description"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "dataProduct",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         }
       ],
-      "aggregations": [
-      ],
+      "aggregations": [],
       "scoreMode": "sum",
       "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
         "description"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "tag",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "classification.name",
-          "boost": 7.0
+          "boost": 7.0,
+          "matchType": "standard"
         },
         {
           "field": "classification.displayName",
-          "boost": 7.0
+          "boost": 7.0,
+          "matchType": "standard"
         }
       ],
-      "aggregations": [
-      ],
+      "aggregations": [],
       "scoreMode": "sum",
       "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
         "description"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "glossaryTerm",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "synonyms",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "synonyms.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "glossary.name",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "glossary.displayName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -1209,42 +1637,65 @@
         "name",
         "displayName",
         "description"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "driveService",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [],
@@ -1254,46 +1705,70 @@
         "name",
         "displayName",
         "description"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "directory",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "path",
-          "boost": 3.0
+          "boost": 3.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -1315,50 +1790,75 @@
         "displayName",
         "description",
         "path"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "file",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "path",
-          "boost": 3.0
+          "boost": 3.0,
+          "matchType": "standard"
         },
         {
           "field": "extension",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -1390,46 +1890,70 @@
         "displayName",
         "description",
         "path"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "spreadsheet",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "path",
-          "boost": 3.0
+          "boost": 3.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -1451,54 +1975,80 @@
         "displayName",
         "description",
         "path"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     },
     {
       "assetType": "worksheet",
       "searchFields": [
         {
           "field": "name.keyword",
-          "boost": 10.0
+          "boost": 20.0,
+          "matchType": "exact"
         },
         {
           "field": "name",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "name.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "displayName",
-          "boost": 10.0
+          "boost": 10.0,
+          "matchType": "phrase"
         },
         {
           "field": "displayName.ngram",
-          "boost": 1.0
+          "boost": 1.0,
+          "matchType": "fuzzy"
         },
         {
           "field": "description",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
         },
         {
           "field": "fullyQualifiedName",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "fqnParts",
-          "boost": 5.0
+          "boost": 5.0,
+          "matchType": "standard"
         },
         {
           "field": "columns.name.keyword",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "exact"
         },
         {
           "field": "columns.displayName.keyword",
-          "boost": 2.0
+          "boost": 2.0,
+          "matchType": "exact"
         },
         {
           "field": "columnNamesFuzzy",
-          "boost": 1.5
+          "boost": 1.5,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -1526,7 +2076,12 @@
         "description",
         "columns.name",
         "columns.description"
-      ]
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     }
   ],
   "defaultConfiguration": {
@@ -1534,39 +2089,52 @@
     "searchFields": [
       {
         "field": "name.keyword",
-        "boost": 10.0
+        "boost": 20.0,
+        "matchType": "exact"
       },
       {
         "field": "name",
-        "boost": 10.0
+        "boost": 10.0,
+        "matchType": "phrase"
       },
       {
         "field": "name.ngram",
-        "boost": 1.0
+        "boost": 1.0,
+        "matchType": "fuzzy"
       },
       {
         "field": "displayName",
-        "boost": 10.0
+        "boost": 10.0,
+        "matchType": "phrase"
       },
       {
         "field": "displayName.ngram",
-        "boost": 1.0
+        "boost": 1.0,
+        "matchType": "fuzzy"
       },
       {
         "field": "description",
-        "boost": 2.0
+        "boost": 2.0,
+        "matchType": "standard"
       },
       {
         "field": "fullyQualifiedName",
-        "boost": 5.0
+        "boost": 5.0,
+        "matchType": "standard"
       },
       {
         "field": "fqnParts",
-        "boost": 5.0
+        "boost": 5.0,
+        "matchType": "standard"
       }
     ],
     "highlightFields": [],
-    "aggregations": []
+    "aggregations": [],
+    "matchTypeBoostMultipliers": {
+      "exactMatchMultiplier": 2.0,
+      "phraseMatchMultiplier": 1.5,
+      "fuzzyMatchMultiplier": 1.0
+    }
   },
   "allowedFields": [
     {
@@ -3063,7 +3631,7 @@
       },
       {
         "section": "INCORRECT VS CORRECT PATTERNS",
-        "content": "❌ INCORRECT: Tables query missing entityType filter\n{\"bool\": {\"must\": [{\"term\": {\"owners.name\": \"accounting\"}}]}}\n\n✅ CORRECT: Tables query with entityType filter\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"accounting\"}}]}}\n\n❌ INCORRECT: Using nested query for columns\n{\"bool\": {\"must\": [{\"nested\": {\"path\": \"columns\", \"query\": {\"match\": {\"columns.name\": \"SKU\"}}}}]}}\n\n✅ CORRECT: Direct match query for columns\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"match\": {\"columns.name\": \"SKU\"}}]}}\n\n❌ INCORRECT: Using owner.name (singular)\n{\"term\": {\"owner.name\": \"marketing\"}}\n\n✅ CORRECT: Using owners.name (plural)\n{\"term\": {\"owners.name\": \"marketing\"}}\n\n❌ INCORRECT: Using tags for tier\n{\"term\": {\"tags.tagFQN\": \"Tier1\"}}\n\n✅ CORRECT: Using tier.tagFQN with proper format\n{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}",
+        "content": "\u274c INCORRECT: Tables query missing entityType filter\n{\"bool\": {\"must\": [{\"term\": {\"owners.name\": \"accounting\"}}]}}\n\n\u2705 CORRECT: Tables query with entityType filter\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"accounting\"}}]}}\n\n\u274c INCORRECT: Using nested query for columns\n{\"bool\": {\"must\": [{\"nested\": {\"path\": \"columns\", \"query\": {\"match\": {\"columns.name\": \"SKU\"}}}}]}}\n\n\u2705 CORRECT: Direct match query for columns\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"match\": {\"columns.name\": \"SKU\"}}]}}\n\n\u274c INCORRECT: Using owner.name (singular)\n{\"term\": {\"owner.name\": \"marketing\"}}\n\n\u2705 CORRECT: Using owners.name (plural)\n{\"term\": {\"owners.name\": \"marketing\"}}\n\n\u274c INCORRECT: Using tags for tier\n{\"term\": {\"tags.tagFQN\": \"Tier1\"}}\n\n\u2705 CORRECT: Using tier.tagFQN with proper format\n{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}",
         "order": 6
       },
       {
@@ -3097,14 +3665,13 @@
         "order": 20
       }
     ],
-
     "entitySpecificInstructions": [
       {
         "entityType": "table",
         "sections": [
           {
             "section": "TABLE FIELDS",
-            "content": "- name (text): Use match query for fuzzy text search\n  Example: {\"match\": {\"name\": \"customer\"}}\n\n- name.keyword (exact): Use term query for exact matching\n  Example: {\"term\": {\"name.keyword\": \"customer_orders\"}}\n\n- description (text): Use match query for content search\n  Example: {\"match\": {\"description\": \"sales data\"}}\n\n- owners.name (keyword): Use term query for exact matching\n  Example: {\"term\": {\"owners.name\": \"marketing\"}}\n\n- tier.tagFQN (keyword): Use term query for tier classification\n  Example: {\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}\n\n- tags.tagFQN (keyword): Use term query for tags\n  Example: {\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}\n\n- columns.name (keyword): Use direct match queries for columns\n  Example: {\"match\": {\"columns.name\": \"address\"}}\n  ⚠️ IMPORTANT: Do NOT use nested query syntax for columns\n\n- service.name, database.name, databaseSchema.name (keywords): Use term queries\n  Example: {\"term\": {\"service.name\": \"snowflake\"}}",
+            "content": "- name (text): Use match query for fuzzy text search\n  Example: {\"match\": {\"name\": \"customer\"}}\n\n- name.keyword (exact): Use term query for exact matching\n  Example: {\"term\": {\"name.keyword\": \"customer_orders\"}}\n\n- description (text): Use match query for content search\n  Example: {\"match\": {\"description\": \"sales data\"}}\n\n- owners.name (keyword): Use term query for exact matching\n  Example: {\"term\": {\"owners.name\": \"marketing\"}}\n\n- tier.tagFQN (keyword): Use term query for tier classification\n  Example: {\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}\n\n- tags.tagFQN (keyword): Use term query for tags\n  Example: {\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}\n\n- columns.name (keyword): Use direct match queries for columns\n  Example: {\"match\": {\"columns.name\": \"address\"}}\n  \u26a0\ufe0f IMPORTANT: Do NOT use nested query syntax for columns\n\n- service.name, database.name, databaseSchema.name (keywords): Use term queries\n  Example: {\"term\": {\"service.name\": \"snowflake\"}}",
             "order": 10
           }
         ]
@@ -3120,67 +3687,90 @@
         ]
       }
     ],
-
     "examples": [
       {
         "query": "tables owned by marketing",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}",
-        "entityTypes": ["table"]
+        "entityTypes": [
+          "table"
+        ]
       },
       {
         "query": "tables with customer data",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"match\": {\"columns.name\": \"customer\"}}]}}",
-        "entityTypes": ["table"]
+        "entityTypes": [
+          "table"
+        ]
       },
       {
         "query": "tables with column SKU",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"match\": {\"columns.name\": \"SKU\"}}]}}",
-        "entityTypes": ["table"]
+        "entityTypes": [
+          "table"
+        ]
       },
       {
         "query": "tables owned by marketing",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"owners.name\": \"marketing\"}}]}}",
-        "entityTypes": ["table"]
+        "entityTypes": [
+          "table"
+        ]
       },
       {
         "query": "tables with customer data",
         "esQuery": "{\"bool\": {\"must\": [{\"nested\": {\"path\": \"columns\", \"query\": {\"match\": {\"columns.name\": \"customer\"}}}}]}}",
-        "entityTypes": ["table"]
+        "entityTypes": [
+          "table"
+        ]
       },
       {
         "query": "tables with Tier1 classification",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}]}}",
-        "entityTypes": ["table"]
+        "entityTypes": [
+          "table"
+        ]
       },
       {
         "query": "tables tagged with tier1 or tier2",
         "esQuery": "{\"bool\": {\"should\": [{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}, {\"term\": {\"tier.tagFQN\": \"Tier.Tier2\"}}]}}",
-        "entityTypes": ["table"]
+        "entityTypes": [
+          "table"
+        ]
       },
       {
         "query": "find all tier1 and tier2 tables",
         "esQuery": "{\"bool\": {\"should\": [{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}, {\"term\": {\"tier.tagFQN\": \"Tier.Tier2\"}}]}}",
-        "entityTypes": ["table"]
+        "entityTypes": [
+          "table"
+        ]
       },
       {
         "query": "tables with PII.Sensitive tag",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}]}}",
-        "entityTypes": ["table"]
+        "entityTypes": [
+          "table"
+        ]
       },
       {
         "query": "tables where business owner is infrastructure",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"extension.businessOwner.name\": \"infrastructure\"}}]}}",
-        "entityTypes": ["table"]
+        "entityTypes": [
+          "table"
+        ]
       },
       {
         "query": "find tables with data steward John",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"extension.dataSteward.name\": \"John\"}}]}}",
-        "entityTypes": ["table"]
+        "entityTypes": [
+          "table"
+        ]
       },
       {
         "query": "dashboards with support team sales",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"dashboard\"}}, {\"term\": {\"extension.supportTeam.name\": \"sales\"}}]}}",
-        "entityTypes": ["dashboard"]
+        "entityTypes": [
+          "dashboard"
+        ]
       },
       {
         "description": "Find tables with no tags:",
