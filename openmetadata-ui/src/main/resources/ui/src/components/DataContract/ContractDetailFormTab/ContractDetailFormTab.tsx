@@ -13,6 +13,7 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
   FieldProp,
   FieldTypes,
@@ -20,29 +21,39 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
 
-export const ContractDetailFormTab: React.FC = () => {
+export const ContractDetailFormTab: React.FC<{
+  initialValues?: Partial<DataContract>;
+  onNext: (formData: Partial<DataContract>) => Promise<void>;
+}> = ({ initialValues, onNext }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
   const fields: FieldProp[] = [
     {
       label: t('label.contract-title'),
-      id: 'contractTitle',
-      name: 'contractTitle',
+      id: 'name',
+      name: 'name',
       type: FieldTypes.TEXT,
       required: true,
+      props: {
+        defaultValue: initialValues?.name ?? '',
+      },
     },
     {
       label: t('label.description'),
-      id: 'contractDescription',
-      name: 'contractDescription',
+      id: 'description',
+      name: 'description',
       type: FieldTypes.DESCRIPTION,
-      required: true,
+      required: false,
+      props: {
+        'data-testid': 'description',
+        initialValue: initialValues?.description ?? '',
+      },
     },
     {
-      label: t('label.owner'),
-      id: 'owner',
-      name: 'owner',
+      label: t('label.owner-plural'),
+      id: 'owners',
+      name: 'owners',
       type: FieldTypes.USER_TEAM_SELECT,
       required: false,
       props: {
@@ -63,18 +74,11 @@ export const ContractDetailFormTab: React.FC = () => {
         trigger: 'onUpdate',
       },
     },
-    {
-      label: t('label.enable-incident-management'),
-      id: 'enableIncidentManagement',
-      name: 'enableIncidentManagement',
-      type: FieldTypes.CHECK_BOX,
-      required: true,
-    },
   ];
 
   return (
-    <div className="container bg-grey">
-      <div>
+    <Card className="container bg-grey p-box">
+      <div className="m-b-sm">
         <Typography.Title className="m-0" level={5}>
           {t('label.contract-detail-plural')}
         </Typography.Title>
@@ -82,11 +86,20 @@ export const ContractDetailFormTab: React.FC = () => {
           {t('message.contract-detail-plural-description')}
         </Typography.Paragraph>
       </div>
-      <Card>
-        <Form form={form} layout="vertical" name="contract-detail-form">
-          {generateFormFields(fields)}
-        </Form>
-      </Card>
-    </div>
+
+      <Form
+        className="bg-white p-box"
+        form={form}
+        layout="vertical"
+        onFinish={onNext}>
+        {generateFormFields(fields)}
+
+        <div className="d-flex justify-end m-t-md">
+          <Button htmlType="submit" type="primary">
+            {t('label.next')}
+          </Button>
+        </div>
+      </Form>
+    </Card>
   );
 };

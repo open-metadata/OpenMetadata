@@ -18,23 +18,23 @@ import {
   Button,
   Card,
   Divider,
-  Form,
+  message,
   Radio,
   RadioChangeEvent,
   Tabs,
   Typography,
 } from 'antd';
-import { FormProviderProps } from 'antd/lib/form/context';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { DataContract } from '../../../generated/entity/data/dataContract';
+import { createContract, updateContract } from '../../../rest/contractAPI';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ContractDetailFormTab } from '../ContractDetailFormTab/ContractDetailFormTab';
 import { ContractQualityFormTab } from '../ContractQualityFormTab/ContractQualityFormTab';
 import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFormTab';
-import { ContractSecurityFormTab } from '../ContractSecurityFormTab/ContractSecurityFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
-import { ContractSLAFormTab } from '../ContractSLAFormTab/ContractSLAFormTab';
 import './add-data-contract.less';
 
 export interface FormStepProps {
@@ -46,50 +46,65 @@ export interface FormStepProps {
   isPrevVisible?: boolean;
 }
 
-const TABS = ['contract-detail', 'schema', 'semantics', 'security', 'quality'];
+const TABS = ['contract-detail', 'schema', 'semantics', 'quality'];
 
-const AddDataContract: React.FC = () => {
+const AddDataContract: React.FC<{
+  onCancel: () => void;
+  contract?: DataContract;
+}> = ({ onCancel, contract }) => {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<'YAML' | 'UI'>('YAML');
+  const [mode, setMode] = useState<'YAML' | 'UI'>('UI');
   const [yaml, setYaml] = useState('');
-  const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [activeTab, setActiveTab] = useState(TABS[0]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleFormChange: FormProviderProps['onFormFinish'] = (
-    name: string,
-    { forms, values }: { forms: Record<string, any>; values: any }
-  ) => {
-    console.log(name, forms, values);
-    setFormValues(values);
-  };
+  const [formValues, setFormValues] = useState<DataContract>(
+    contract || ({} as DataContract)
+  );
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
   }, []);
 
-  const isNextVisible = useMemo(() => {
-    return activeTab !== TABS[TABS.length - 1];
-  }, [activeTab]);
+  const onNext = useCallback(
+    async (data: Partial<DataContract>) => {
+      // Validate current tab before proceeding
 
-  const isPrevVisible = useMemo(() => {
-    return activeTab !== TABS[0];
-  }, [activeTab]);
-
-  const onNext = useCallback(() => {
-    setActiveTab(TABS[TABS.indexOf(activeTab) + 1]);
-  }, [activeTab]);
+      if (data) {
+        try {
+          setFormValues((prev) => ({ ...prev, ...data }));
+          setActiveTab(TABS[TABS.indexOf(activeTab) + 1]);
+        } catch (error) {
+          console.error('Validation failed:', error);
+          message.error(t('message.please-fill-required-fields'));
+        }
+      } else {
+        setActiveTab(TABS[TABS.indexOf(activeTab) + 1]);
+      }
+    },
+    [activeTab, t]
+  );
 
   const onPrev = useCallback(() => {
     setActiveTab(TABS[TABS.indexOf(activeTab) - 1]);
   }, [activeTab]);
 
-  const nextLabel = useMemo(() => {
-    return TABS[TABS.indexOf(activeTab) + 1];
-  }, [activeTab]);
+  const handleSave = useCallback(async () => {
+    setIsSubmitting(true);
 
-  const prevLabel = useMemo(() => {
-    return TABS[TABS.indexOf(activeTab) - 1];
-  }, [activeTab]);
+    try {
+      await (contract
+        ? updateContract({ ...contract, ...formValues } as DataContract)
+        : createContract(formValues));
+
+      showSuccessToast(t('message.data-contract-saved-successfully'));
+    } catch (error) {
+      console.error('Validation or submission failed:', error);
+      showErrorToast(t('message.please-fill-all-required-fields'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [t]);
 
   const items = useMemo(
     () => [
@@ -101,7 +116,7 @@ const AddDataContract: React.FC = () => {
           </div>
         ),
         key: 'contract-detail',
-        children: <ContractDetailFormTab />,
+        children: <ContractDetailFormTab onNext={onNext} />,
       },
       {
         label: (
@@ -111,7 +126,15 @@ const AddDataContract: React.FC = () => {
           </div>
         ),
         key: 'schema',
-        children: <ContractSchemaFormTab />,
+        children: (
+          <ContractSchemaFormTab
+            selectedSchema={
+              formValues.schema?.map((column) => column.name) || []
+            }
+            onNext={onNext}
+            onPrev={onPrev}
+          />
+        ),
       },
       {
         label: (
@@ -121,18 +144,18 @@ const AddDataContract: React.FC = () => {
           </div>
         ),
         key: 'semantics',
-        children: <ContractSemanticFormTab />,
+        children: <ContractSemanticFormTab onNext={onNext} onPrev={onPrev} />,
       },
-      {
-        label: (
-          <div className="d-flex items-center">
-            <TableOutlined />
-            <span>{t('label.security')}</span>
-          </div>
-        ),
-        key: 'security',
-        children: <ContractSecurityFormTab />,
-      },
+      //   {
+      //     label: (
+      //       <div className="d-flex items-center">
+      //         <TableOutlined />
+      //         <span>{t('label.security')}</span>
+      //       </div>
+      //     ),
+      //     key: 'security',
+      //     children: <ContractSecurityFormTab />,
+      //   },
       {
         label: (
           <div className="d-flex items-center">
@@ -143,18 +166,18 @@ const AddDataContract: React.FC = () => {
         key: 'quality',
         children: <ContractQualityFormTab />,
       },
-      {
-        label: (
-          <div className="d-flex items-center">
-            <TableOutlined />
-            <span>{t('label.sla')}</span>
-          </div>
-        ),
-        key: 'sla',
-        children: <ContractSLAFormTab />,
-      },
+      //   {
+      //     label: (
+      //       <div className="d-flex items-center">
+      //         <TableOutlined />
+      //         <span>{t('label.sla')}</span>
+      //       </div>
+      //     ),
+      //     key: 'sla',
+      //     children: <ContractSLAFormTab />,
+      //   },
     ],
-    [t]
+    [t, onNext, onPrev]
   );
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
@@ -187,14 +210,20 @@ const AddDataContract: React.FC = () => {
           </div>
         </div>
         <div>
-          <Button type="default">{t('label.cancel')}</Button>
-          <Button className="m-l-sm" type="primary">
+          <Button type="default" onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            className="m-l-sm"
+            loading={isSubmitting}
+            type="primary"
+            onClick={handleSave}>
             {t('label.save')}
           </Button>
         </div>
       </div>
     );
-  }, [mode, t, handleModeChange]);
+  }, [mode, t, handleModeChange, onCancel, handleSave, isSubmitting]);
 
   const cardContent = useMemo(() => {
     if (mode === 'YAML') {
@@ -210,38 +239,30 @@ const AddDataContract: React.FC = () => {
     }
 
     return (
-      <Form.Provider onFormFinish={handleFormChange}>
-        <Tabs
-          activeKey={activeTab}
-          className="contract-tabs"
-          items={items}
-          tabPosition="left"
-          onChange={handleTabChange}
-        />
-      </Form.Provider>
+      <Tabs
+        activeKey={activeTab}
+        className="contract-tabs"
+        items={items}
+        tabPosition="left"
+        onChange={handleTabChange}
+      />
     );
-  }, [mode, items, t, handleFormChange]);
+  }, [mode, items, handleTabChange, activeTab, yaml]);
 
   return (
     <Card className="h-full" title={cardTitle}>
       {cardContent}
 
-      <SchemaEditor
-        mode={{ name: CSMode.JAVASCRIPT }}
-        value={JSON.stringify(formValues, null, 2)}
-      />
-
-      <div className="d-flex justify-end">
-        {isPrevVisible ? (
-          <Button type="default" onClick={onPrev}>
-            {prevLabel ?? t('label.prev')}
-          </Button>
-        ) : null}
-        {isNextVisible ? (
-          <Button type="primary" onClick={onNext}>
-            {nextLabel ?? t('label.next')}
-          </Button>
-        ) : null}
+      {/* Debug: Show accumulated form data */}
+      <div className="m-t-md">
+        <Typography.Title level={5}>
+          {t('label.debug-accumulated-form-data')}
+        </Typography.Title>
+        <SchemaEditor
+          readOnly
+          mode={{ name: CSMode.JAVASCRIPT }}
+          value={JSON.stringify(formValues, null, 2)}
+        />
       </div>
     </Card>
   );

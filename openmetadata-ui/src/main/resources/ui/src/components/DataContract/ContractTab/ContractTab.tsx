@@ -11,53 +11,62 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
-import { useFqn } from '../../../hooks/useFqn';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { CreateDataContract } from '../../../generated/api/data/createDataContract';
-import { EntityType } from '../../../generated/api/tests/createTestDefinition';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import { DataContract } from '../../../generated/entity/data/dataContract';
+import { getContractByEntityId } from '../../../rest/contractAPI';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import AddDataContract from '../AddDataContract/AddDataContract';
+import { ContractDetail } from '../ContractDetailTab/ContractDetail';
 
 export const ContractTab = () => {
-  const { fqn } = useFqn();
-  const { t } = useTranslation();
-  const [tabMode, setTabMode] = useState<'add' | 'edit' | 'view'>('add');
+  const {
+    data: { id },
+  } = useGenericContext();
+  const [tabMode, setTabMode] = useState<'add' | 'edit' | 'view'>('view');
+  const [contract, setContract] = useState<DataContract | null>(null);
 
-  const contract: CreateDataContract = {
-    name: 'test',
-    description: 'test',
-    entity: {
-      type: EntityType.Table,
-      fullyQualifiedName: fqn,
-      id: '1',
-    },
+  const fetchContract = async () => {
+    const contract = await getContractByEntityId(id);
+    setContract(contract);
   };
 
   useEffect(() => {
-    if (fqn) {
-      setTabMode('view');
-    }
-  }, [fqn]);
+    fetchContract();
+  }, [id]);
 
   const content = useMemo(() => {
     switch (tabMode) {
       case 'add':
-        return <AddDataContract />;
+        return (
+          <AddDataContract
+            onCancel={() => {
+              setTabMode('view');
+            }}
+          />
+        );
 
       case 'edit':
-        return <div>Edit</div>;
+        return (
+          <AddDataContract
+            contract={contract || undefined}
+            onCancel={() => {
+              setTabMode('view');
+            }}
+          />
+        );
 
       case 'view':
-        return <div>{fqn}</div>;
+        return (
+          <ContractDetail
+            contract={contract}
+            onEdit={() => {
+              setTabMode(contract ? 'edit' : 'add');
+            }}
+          />
+        );
     }
-  }, [tabMode, fqn]);
-
-  if (isEmpty(contract)) {
-    return <ErrorPlaceHolderNew heading={t('label.no-contracts')} />;
-  }
+  }, [tabMode, contract]);
 
   return content;
 };

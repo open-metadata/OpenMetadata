@@ -12,135 +12,108 @@
  *  limitations under the License.
  */
 /* eslint-disable i18next/no-literal-string */
-import { PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Collapse,
-  Form,
-  FormListFieldData,
-  Select,
-  Space,
-  Switch,
-  Typography,
-} from 'antd';
+import { FieldErrorProps } from '@rjsf/utils';
+import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
+import TextArea from 'antd/lib/input/TextArea';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CardExpandCollapseIconButton } from '../../common/IconButtons/EditIconButton';
+import {
+  DataContract,
+  SemanticsRule,
+} from '../../../generated/entity/data/dataContract';
+import QueryBuilderWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import CloseIcon from '../../Modals/CloseIcon.component';
 
-const CheckField = ({
-  onRemove,
-  field,
-  index,
-}: {
-  index: number;
-  onRemove: () => void;
-  field: FormListFieldData;
-}) => {
-  return (
-    <Space className="w-full" key={index}>
-      <Form.Item {...field} name={[field.name, 'enabled']}>
-        <Switch />
-      </Form.Item>
-      <Form.Item {...field} name={[field.name, 'field']}>
-        <Select options={[]} />
-      </Form.Item>
-      <Form.Item {...field} name={[field.name, 'condition']}>
-        <Select options={[]} />
-      </Form.Item>
-      <CloseIcon handleCancel={onRemove} />
-    </Space>
-  );
-};
-
-export const ContractSemanticFormTab: React.FC = () => {
+export const ContractSemanticFormTab: React.FC<{
+  onNext: (data: Partial<DataContract>) => void;
+  onPrev: () => void;
+}> = ({ onNext, onPrev }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-
-  const handleAddCheck = (checkType: 'table' | 'column') => {
-    const existingChecks = form.getFieldValue(checkType);
-    const newCheck = {
-      enabled: true,
-      field: 'test',
-      condition: 'optional',
-    };
-    form.setFieldsValue({
-      [checkType]: existingChecks ? [...existingChecks, newCheck] : [newCheck],
-    });
+  const [semantics, setSemantics] = useState<SemanticsRule[]>([]);
+  const handleChange = (value: SemanticsRule[]) => {
+    console.log(value);
+    setSemantics(value);
   };
-
-  console.log(form.getFieldsValue());
 
   return (
     <div className="container">
-      <Form form={form}>
-        <Typography.Title level={5}>
-          {t('label.semantic-plural')}
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          {t('label.semantics-description')}
-        </Typography.Text>
-        <Collapse>
-          <Collapse.Panel
-            extra={<CardExpandCollapseIconButton />}
-            header={
-              <>
-                Table checks configuration
-                <Typography.Paragraph>
-                  Customize fields to run checks on table level. You can add
-                  remove or disable checks as needed.
-                </Typography.Paragraph>
-              </>
-            }
-            key="table-checks">
-            <Form.List name="table">
-              {(fields, { remove }) =>
-                fields.map((field, index) => (
-                  <CheckField
-                    field={field}
-                    index={index}
-                    key={field.key}
-                    onRemove={() => remove(index)}
-                  />
-                ))
-              }
-            </Form.List>
-
-            <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={() => handleAddCheck('table')}>
-              Add check
-            </Button>
-            <Button>Cancel</Button>
-            <Button type="primary">Save</Button>
-          </Collapse.Panel>
-          <Collapse.Panel
-            extra={<CardExpandCollapseIconButton />}
-            header="Column checks configuration"
-            key="column-checks">
-            <Form.List name="column">
-              {(fields, { remove }) =>
-                fields.map((field, index) => (
-                  <CheckField
-                    field={field}
-                    index={index}
-                    key={field.key}
-                    onRemove={() => remove(index)}
-                  />
-                ))
-              }
-            </Form.List>
-            <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={() => handleAddCheck('column')}>
-              Add check
-            </Button>
-            <Button>Cancel</Button>
-            <Button type="primary">Save</Button>
-          </Collapse.Panel>
-        </Collapse>
+      <Typography.Title level={5}>
+        {t('label.semantic-plural')}
+      </Typography.Title>
+      <Typography.Text type="secondary">
+        {t('label.semantics-description')}
+      </Typography.Text>
+      <Form form={form} layout="vertical">
+        <Form.List name="semantics">
+          {(fields, { add, remove }) => (
+            <>
+              {fields.map((field) => (
+                <Row key={field.key}>
+                  <Col>
+                    <Form.Item {...field} name={[field.name, 'enabled']}>
+                      <Switch />
+                    </Form.Item>
+                  </Col>
+                  <Col>
+                    <Form.Item {...field} name={[field.name, 'name']}>
+                      <Input />
+                    </Form.Item>
+                  </Col>
+                  <Col>
+                    <Form.Item {...field} name={[field.name, 'description']}>
+                      <TextArea />
+                    </Form.Item>
+                  </Col>
+                  <Col>
+                    <Form.Item {...field} name={[field.name, 'rule']}>
+                      <QueryBuilderWidget
+                        id="rule"
+                        label={t('label.rule')}
+                        name={`${field.name}.rule`}
+                        options={{
+                          addButtonText: t('label.add-semantic'),
+                          removeButtonText: t('label.remove-semantic'),
+                        }}
+                        registry={{} as FieldErrorProps['registry']}
+                        schema={{}}
+                        value=""
+                        onBlur={() => {
+                          // TODO: Implement onBlur
+                        }}
+                        onChange={handleChange}
+                        onFocus={() => {
+                          // TODO: Implement onFocus
+                        }}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col>
+                    <CloseIcon handleCancel={() => remove(field.name)} />
+                  </Col>
+                </Row>
+              ))}
+              <Button
+                onClick={() =>
+                  add({
+                    name: '',
+                    description: '',
+                    rule: '',
+                    enaebled: '',
+                  })
+                }
+              />
+            </>
+          )}
+        </Form.List>
       </Form>
+
+      <div className="d-flex justify-end m-t-md">
+        <Button type="primary" onClick={() => onNext({ semantics })}>
+          {t('label.next')}
+        </Button>
+        <Button onClick={onPrev}>{t('label.prev')}</Button>
+      </div>
     </div>
   );
 };
