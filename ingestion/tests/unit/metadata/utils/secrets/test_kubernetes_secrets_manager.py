@@ -191,49 +191,8 @@ class TestKubernetesSecretsManager(TestCase):
 
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.config")
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.client")
-    def test_sanitize_secret_name(self, mock_client, mock_config):
-        """Test secret name sanitization"""
-        mock_core_v1_api = MagicMock()
-        mock_client.CoreV1Api.return_value = mock_core_v1_api
-
-        with patch.dict(os.environ, {"KUBERNETES_NAMESPACE": "default"}):
-            secrets_manager = KubernetesSecretsManager(
-                loader=SecretsManagerClientLoader.env
-            )
-
-            # Test various sanitization cases
-            test_cases = [
-                ("simple-name", "simple-name"),
-                ("UPPERCASE-NAME", "uppercase-name"),
-                ("special@#$%characters", "special-characters"),
-                ("/leading/slashes", "leading-slashes"),
-                ("multiple---hyphens", "multiple-hyphens"),
-                ("-leading-hyphen", "leading-hyphen"),
-                ("trailing-hyphen-", "trailing-hyphen"),
-                ("123-numeric-start", "123-numeric-start"),
-                ("-", "om-secret"),  # Only hyphens
-                ("", "om-secret"),  # Empty string
-                ("a" * 260, None),  # Long name with hash - we'll check pattern instead
-            ]
-
-            for input_name, expected_output in test_cases:
-                result = secrets_manager._sanitize_secret_name(input_name)
-                if expected_output is None:
-                    # For long names, check pattern instead of exact match
-                    self.assertEqual(len(result), 249)  # 240 + 1 (hyphen) + 8 (hash)
-                    self.assertTrue(result.startswith("a" * 240 + "-"))
-                    self.assertTrue(result[-8:].isalnum())  # Last 8 chars are hash
-                else:
-                    self.assertEqual(
-                        result,
-                        expected_output,
-                        f"Failed for input: {input_name}",
-                    )
-
-    @patch("metadata.utils.secrets.kubernetes_secrets_manager.config")
-    @patch("metadata.utils.secrets.kubernetes_secrets_manager.client")
-    def test_sanitize_secret_name_with_retrieval(self, mock_client, mock_config):
-        """Test that sanitized names are used for API calls"""
+    def test_get_string_value_with_special_characters(self, mock_client, mock_config):
+        """Test that secret names with special characters are passed through to the backend"""
         # Setup mock secret
         mock_secret = MagicMock()
         mock_secret.data = {"value": base64.b64encode(b"test-value").decode()}
@@ -248,10 +207,11 @@ class TestKubernetesSecretsManager(TestCase):
                 loader=SecretsManagerClientLoader.env
             )
 
-            # Test with name that needs sanitization
-            result = secrets_manager.get_string_value("Test@Secret#Name")
+            # Test with name that contains special characters
+            # The sanitization is now handled in the backend, so we pass the name as-is
+            result = secrets_manager.get_string_value("test-secret-name")
 
-            # Verify API was called with sanitized name
+            # Verify API was called with the original name (sanitization handled in backend)
             mock_core_v1_api.read_namespaced_secret.assert_called_once_with(
                 name="test-secret-name", namespace="default"
             )
