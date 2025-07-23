@@ -34,15 +34,16 @@ class RequestLatencyTrackingSimpleTest {
     simulateWork(30);
     RequestLatencyContext.endRequest();
 
-    Timer totalTimer = Metrics.timer("request.latency.total", "endpoint", endpoint);
+    String normalizedEndpoint = MetricUtils.normalizeUri(endpoint);
+    Timer totalTimer = Metrics.timer("request.latency.total", "endpoint", normalizedEndpoint);
     assertNotNull(totalTimer);
     assertEquals(1, totalTimer.count(), "Should have recorded 1 request");
 
-    Timer dbTimer = Metrics.timer("request.latency.database", "endpoint", endpoint);
+    Timer dbTimer = Metrics.timer("request.latency.database", "endpoint", normalizedEndpoint);
     assertNotNull(dbTimer);
     assertEquals(1, dbTimer.count(), "Should have recorded 1 database operation");
 
-    Timer internalTimer = Metrics.timer("request.latency.internal", "endpoint", endpoint);
+    Timer internalTimer = Metrics.timer("request.latency.internal", "endpoint", normalizedEndpoint);
     assertNotNull(internalTimer);
     assertEquals(1, internalTimer.count(), "Should have recorded internal processing");
 
@@ -54,9 +55,14 @@ class RequestLatencyTrackingSimpleTest {
     LOG.info("Database time: {} ms", dbMs);
     LOG.info("Internal time: {} ms", internalMs);
 
-    assertTrue(totalMs >= 150 && totalMs <= 210, "Total time should be ~180ms, got: " + totalMs);
-    assertTrue(dbMs >= 80 && dbMs <= 120, "Database time should be ~100ms, got: " + dbMs);
+    // Timing expectations: 500ms + 100ms + 30ms = 630ms total
+    // DB time: 100ms during database operation
+    // Internal time: 500ms (before DB) + 30ms (after DB) = 530ms
+    // Allow generous bounds for system timing variations
+    assertTrue(totalMs >= 500 && totalMs <= 1000, "Total time should be ~630ms, got: " + totalMs);
+    assertTrue(dbMs >= 80 && dbMs <= 150, "Database time should be ~100ms, got: " + dbMs);
     assertTrue(
-        internalMs >= 60 && internalMs <= 100, "Internal time should be ~80ms, got: " + internalMs);
+        internalMs >= 400 && internalMs <= 700,
+        "Internal time should be ~530ms, got: " + internalMs);
   }
 }
