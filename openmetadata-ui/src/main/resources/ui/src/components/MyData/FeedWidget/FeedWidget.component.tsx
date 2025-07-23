@@ -61,7 +61,6 @@ const MyFeedWidgetInternal = ({
         undefined,
         10
       );
-
       const { updatedFeedList } = getFeedListWithRelativeDays(data);
       setEntityThread(updatedFeedList);
     } catch (error) {
@@ -71,9 +70,12 @@ const MyFeedWidgetInternal = ({
     }
   }, []);
 
-  const handleFilterChange = useCallback(({ key }: { key: string }) => {
-    setSelectedFilter(key as FeedFilter);
-  }, []);
+  const handleFilterChange = useCallback(
+    (key: string) => {
+      setSelectedFilter(key as FeedFilter);
+    },
+    [setSelectedFilter]
+  );
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
@@ -84,10 +86,8 @@ const MyFeedWidgetInternal = ({
   }, [getAllFeeds]);
 
   useEffect(() => {
-    if (currentUser) {
-      getFeeds(selectedFilter);
-    }
-  }, [currentUser, selectedFilter]);
+    getFeeds(selectedFilter);
+  }, [selectedFilter]);
 
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
@@ -165,7 +165,7 @@ const MyFeedWidgetInternal = ({
           title={t('label.activity-feed')}
           widgetKey={widgetKey}
           widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleFilterChange({ key })}
+          onSortChange={(key) => handleFilterChange(key)}
         />
         <div className="feed-content flex-1">
           {widgetBody}
