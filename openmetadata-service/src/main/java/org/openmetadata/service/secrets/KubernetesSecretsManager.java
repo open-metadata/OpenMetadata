@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -49,8 +50,14 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
   @Getter private CoreV1Api apiClient;
   private String namespace;
 
+  private String prefix;
+
   private KubernetesSecretsManager(SecretsConfig secretsConfig) {
     super(SecretsManagerProvider.KUBERNETES, secretsConfig, 100);
+    prefix =
+        Objects.isNull(secretsConfig.prefix()) || secretsConfig.prefix().isEmpty()
+            ? "om"
+            : secretsConfig.prefix();
 
     // Check if we should skip initialization (for testing)
     boolean skipInit =
@@ -262,7 +269,7 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
       sanitized = sanitized.substring(0, 240) + "-" + hash;
     }
     if (!sanitized.matches("^[a-z0-9].*")) {
-      sanitized = "om-" + sanitized;
+      sanitized = prefix + "-" + sanitized;
     }
     return sanitized;
   }
