@@ -1,5 +1,8 @@
 package org.openmetadata.service.monitoring;
 
+import static org.openmetadata.service.monitoring.MetricUtils.LATENCY_SLA_BUCKETS;
+import static org.openmetadata.service.monitoring.MetricUtils.normalizeUri;
+
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -51,12 +54,7 @@ public class OpenMetadataMetrics {
     this.httpRequestTimer =
         Timer.builder("http.server.requests")
             .description("HTTP server request duration")
-            .publishPercentileHistogram()
-            .serviceLevelObjectives(
-                Duration.ofMillis(50),
-                Duration.ofMillis(100),
-                Duration.ofMillis(500),
-                Duration.ofSeconds(1))
+            .sla(LATENCY_SLA_BUCKETS)
             .register(meterRegistry);
 
     this.httpRequestCounter =
@@ -68,16 +66,14 @@ public class OpenMetadataMetrics {
         DistributionSummary.builder("http.server.response.size")
             .description("HTTP response size in bytes")
             .baseUnit("bytes")
-            .publishPercentileHistogram()
+            .serviceLevelObjectives(1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216)
             .register(meterRegistry);
 
     // Initialize Database metrics
     this.jdbiQueryTimer =
         Timer.builder("db.query.duration")
             .description("Database query duration")
-            .publishPercentileHistogram()
-            .serviceLevelObjectives(
-                Duration.ofMillis(10), Duration.ofMillis(50), Duration.ofMillis(100))
+            .sla(LATENCY_SLA_BUCKETS)
             .register(meterRegistry);
 
     this.jdbiConnectionCounter =
@@ -123,7 +119,7 @@ public class OpenMetadataMetrics {
     this.pipelineExecutionTimer =
         Timer.builder("pipeline.execution.duration")
             .description("Pipeline execution duration")
-            .publishPercentileHistogram()
+            .sla(LATENCY_SLA_BUCKETS)
             .register(meterRegistry);
 
     // Initialize Authentication metrics
@@ -263,14 +259,6 @@ public class OpenMetadataMetrics {
     io.micrometer.core.instrument.Gauge.builder(name, () -> supplier.get().doubleValue())
         .description(description)
         .register(meterRegistry);
-  }
-
-  // Utility methods
-  private String normalizeUri(String uri) {
-    // Normalize URIs to avoid high cardinality
-    // Replace IDs with placeholders
-    return uri.replaceAll("/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "/{id}")
-        .replaceAll("/[0-9]+", "/{id}");
   }
 
   private String getStatusClass(int status) {

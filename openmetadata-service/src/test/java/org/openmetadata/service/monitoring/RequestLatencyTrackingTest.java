@@ -123,10 +123,11 @@ class RequestLatencyTrackingTest extends OpenMetadataApplicationTest {
     // Check for specific endpoint metrics - the actual metrics use the endpoint path as-is
     LOG.info("Looking for metrics with endpoint: {}", getEndpoint);
 
+    String normalizedUri = MetricUtils.normalizeUri("v1/tables/" + createdTable.getId());
     // Parse and verify latency metrics
-    assertLatencyMetricsExist(prometheusMetrics, "request_latency_total", getEndpoint);
-    assertLatencyMetricsExist(prometheusMetrics, "request_latency_database", getEndpoint);
-    assertLatencyMetricsExist(prometheusMetrics, "request_latency_internal", getEndpoint);
+    assertLatencyMetricsExist(prometheusMetrics, "request_latency_total", normalizedUri);
+    assertLatencyMetricsExist(prometheusMetrics, "request_latency_database", normalizedUri);
+    assertLatencyMetricsExist(prometheusMetrics, "request_latency_internal", normalizedUri);
   }
 
   @Test
@@ -205,7 +206,7 @@ class RequestLatencyTrackingTest extends OpenMetadataApplicationTest {
 
     WebTarget complexTarget =
         getResource("tables/" + createdTable.getId())
-            .queryParam("fields", "owners,tags,followers,columns,domain,dataProducts,extension")
+            .queryParam("fields", "owners,tags,followers,columns,domains,dataProducts,extension")
             .queryParam("include", "all");
     TestUtils.get(complexTarget, Table.class, ADMIN_AUTH_HEADERS);
 
@@ -218,7 +219,8 @@ class RequestLatencyTrackingTest extends OpenMetadataApplicationTest {
     String endpoint = "v1/tables/" + createdTable.getId();
 
     // Verify database operation count
-    assertLatencyMetricsExist(prometheusMetrics, "request_latency_database", endpoint);
+    assertLatencyMetricsExist(
+        prometheusMetrics, "request_latency_database", MetricUtils.normalizeUri(endpoint));
 
     // Check that we have multiple database operations recorded
     assertTrue(
@@ -247,7 +249,9 @@ class RequestLatencyTrackingTest extends OpenMetadataApplicationTest {
   private void assertLatencyMetricsExist(
       String prometheusOutput, String metricName, String endpoint) {
     // Look for metrics that contain the metric name with the endpoint label
-    String pattern = metricName + "_seconds.*endpoint=\"" + endpoint.replace("/", "\\/") + "\"";
+    // Escape regex special characters in the endpoint string
+    String escapedEndpoint = java.util.regex.Pattern.quote(endpoint);
+    String pattern = metricName + "_seconds.*endpoint=\"" + escapedEndpoint + "\"";
     assertTrue(
         prometheusOutput.matches("(?s).*" + pattern + ".*"),
         String.format(
