@@ -230,7 +230,7 @@ test.describe('Explore page', () => {
   const databaseSchema = new DatabaseSchemaClass();
   const metric = new MetricClass();
   const domain = new Domain();
-  const dataProduct = new DataProduct([domain]);
+  const dataProduct = new DataProduct(domain);
   const tag = new TagClass({
     classification: 'Certification',
   });
