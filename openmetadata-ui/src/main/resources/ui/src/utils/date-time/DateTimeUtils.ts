@@ -138,7 +138,7 @@ export const getRelativeTime = (timeStamp?: number): string => {
 
 /**
  * Returns a relative time like "10 mins ago" by converting the long form from Luxon.
- * Falls back to "Just now" if timestamp is undefined or too recent.
+ * Falls back to "" if timestamp is undefined or too recent.
  */
 export const getShortRelativeTime = (timeStamp?: number): string => {
   if (isNil(timeStamp)) {
@@ -148,7 +148,7 @@ export const getShortRelativeTime = (timeStamp?: number): string => {
   const longForm = getRelativeTime(timeStamp); // e.g. "10 minutes ago"
 
   if (!longForm) {
-    return 'Just now';
+    return '';
   }
 
   // Replace long time units with short ones

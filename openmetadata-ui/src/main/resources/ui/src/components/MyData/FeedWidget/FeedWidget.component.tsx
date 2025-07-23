@@ -91,6 +91,12 @@ const MyFeedWidgetInternal = ({
     () => currentLayout?.find((w) => w.i === widgetKey),
     [currentLayout, widgetKey]
   );
+
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!loading) && entityThread?.length > 10,
+    [entityThread, loading]
+  );
+
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
@@ -169,7 +175,7 @@ const MyFeedWidgetInternal = ({
             moreButtonText={t('label.view-more-count', {
               countValue: showMoreCount,
             })}
-            showMoreButton={Boolean(!loading) && entityThread?.length > 10}
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>

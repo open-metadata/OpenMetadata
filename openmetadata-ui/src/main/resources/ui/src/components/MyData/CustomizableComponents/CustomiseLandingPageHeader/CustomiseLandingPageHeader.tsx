@@ -73,6 +73,18 @@ const CustomiseLandingPageHeader = ({
   const [showAnnouncements, setShowAnnouncements] = useState(true);
   const bgColor = backgroundColor ?? DEFAULT_HEADER_BG_COLOR;
 
+  const landingPageStyle = useMemo(() => {
+    const backgroundImage = isLinearGradient(bgColor)
+      ? `${bgColor}, url(${LandingPageBg})` // gradient first (on top), image second
+      : `url(${LandingPageBg})`;
+
+    return {
+      backgroundImage,
+      backgroundColor: isLinearGradient(bgColor) ? undefined : bgColor, // for hex-only case
+      backgroundBlendMode: isLinearGradient(bgColor) ? 'overlay' : 'normal',
+    };
+  }, [bgColor]);
+
   const recentlyViewData = useMemo(() => {
     const entities = getRecentlyViewedData();
 
@@ -115,15 +127,20 @@ const CustomiseLandingPageHeader = ({
   };
 
   const CustomNextArrow = (props: DOMAttributes<HTMLDivElement>) => (
-    <div className="custom-arrow right-arrow" onClick={props.onClick}>
-      <ArrowRightIcon />
-    </div>
+    <Icon
+      className="custom-arrow right-arrow"
+      component={ArrowRightIcon}
+      onClick={props.onClick}
+    />
   );
 
   const CustomPrevArrow = (props: DOMAttributes<HTMLDivElement>) => (
-    <div className="custom-arrow left-arrow" onClick={props.onClick}>
-      <ArrowRightIcon style={{ transform: 'rotate(180deg)' }} />
-    </div>
+    <Icon
+      className="custom-arrow left-arrow"
+      component={ArrowRightIcon}
+      //   style={{ transform: 'rotate(180deg)' }}
+      onClick={props.onClick}
+    />
   );
 
   const handleDomainChange = useCallback(
@@ -140,15 +157,7 @@ const CustomiseLandingPageHeader = ({
   }, [fetchAnnouncements]);
 
   return (
-    <div
-      className="customise-landing-page"
-      style={{
-        backgroundImage: isLinearGradient(bgColor)
-          ? `${bgColor}, url(${LandingPageBg})` // gradient first (on top), image second
-          : `url(${LandingPageBg})`,
-        backgroundColor: isLinearGradient(bgColor) ? undefined : bgColor, // for hex-only case
-        backgroundBlendMode: isLinearGradient(bgColor) ? 'overlay' : 'normal',
-      }}>
+    <div className="customise-landing-page" style={landingPageStyle}>
       <div className="header-container">
         <div className="dashboard-header">
           <div
@@ -261,19 +270,20 @@ const CustomiseLandingPageHeader = ({
           </div>
         </div>
 
-        {showAnnouncements && (
-          <div className="announcements-container">
-            <AnnouncementsWidgetV1
-              announcements={announcements}
-              currentBackgroundColor={bgColor}
-              disabled={!onHomePage}
-              loading={isAnnouncementLoading}
-              onClose={() => {
-                setShowAnnouncements(false);
-              }}
-            />
-          </div>
-        )}
+        {showAnnouncements &&
+          !isAnnouncementLoading &&
+          announcements.length > 0 && (
+            <div className="announcements-container">
+              <AnnouncementsWidgetV1
+                announcements={announcements}
+                currentBackgroundColor={bgColor}
+                disabled={!onHomePage}
+                onClose={() => {
+                  setShowAnnouncements(false);
+                }}
+              />
+            </div>
+          )}
       </div>
       {overlappedContainer && <div className="overlapped-container" />}
 

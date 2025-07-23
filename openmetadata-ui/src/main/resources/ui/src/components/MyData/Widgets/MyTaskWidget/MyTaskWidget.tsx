@@ -82,6 +82,11 @@ const MyTaskWidget = ({
     handleFeedFetchFromFeedList();
   };
 
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!loading) && entityThread?.length > 10,
+    [entityThread, loading]
+  );
+
   const widgetContent = (
     <div className="my-task-widget-container">
       {/* Widget Header */}
@@ -138,7 +143,7 @@ const MyTaskWidget = ({
             <WidgetFooter
               moreButtonLink={`users/${currentUser?.name}/task`}
               moreButtonText={t('label.view-more')}
-              showMoreButton={Boolean(!loading) && entityThread?.length > 10}
+              showMoreButton={showWidgetFooterMoreButton}
             />
           </>
         )}

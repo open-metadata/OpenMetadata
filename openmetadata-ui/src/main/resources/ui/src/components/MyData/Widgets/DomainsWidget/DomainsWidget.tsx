@@ -182,6 +182,11 @@ const DomainsWidget = ({
     [sortedDomains, isFullSize]
   );
 
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!loading) && sortedDomains.length > 10,
+    [sortedDomains, loading]
+  );
+
   const footer = useMemo(
     () => (
       <WidgetFooter
@@ -190,7 +195,7 @@ const DomainsWidget = ({
           countValue:
             sortedDomains.length > 10 ? sortedDomains.length - 10 : undefined,
         })}
-        showMoreButton={Boolean(!loading && sortedDomains.length > 10)}
+        showMoreButton={showWidgetFooterMoreButton}
       />
     ),
     [t, sortedDomains.length, loading]

@@ -184,6 +184,11 @@ function FollowingWidget({
     return followedData.length > 0 ? followedData.length.toString() : '';
   }, [followedData]);
 
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!isLoadingOwnedData) && followedData?.length > 10,
+    [followedData, isLoadingOwnedData]
+  );
+
   const followingContent = useMemo(() => {
     return (
       <div className="entity-list-body">
@@ -278,9 +283,7 @@ function FollowingWidget({
             moreButtonText={t('label.view-more-count', {
               countValue: showMoreCount,
             })}
-            showMoreButton={
-              Boolean(!isLoadingOwnedData) && followedData?.length > 10
-            }
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>

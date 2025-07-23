@@ -137,6 +137,11 @@ const DataAssetsWidget = ({
     [services]
   );
 
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!loading) && services?.length > 10,
+    [services, loading]
+  );
+
   const widgetContent = useMemo(
     () => (
       <div className="data-assets-widget-container">
@@ -158,7 +163,7 @@ const DataAssetsWidget = ({
           <WidgetFooter
             moreButtonLink={ROUTES.EXPLORE}
             moreButtonText={t('label.view-more')}
-            showMoreButton={Boolean(!loading) && services?.length > 10}
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>

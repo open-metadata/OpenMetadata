@@ -88,15 +88,14 @@ const AnnouncementsWidgetV1 = ({
               style={{ color: bgColor }}
             />
           </div>
-          {!disabled && (
-            <Button
-              className="close-button"
-              data-testid="announcements-widget-v1-close"
-              icon={<CloseOutlined />}
-              type="text"
-              onClick={handleClose}
-            />
-          )}
+          <Button
+            className="close-button"
+            data-testid="announcements-widget-v1-close"
+            disabled={disabled}
+            icon={<CloseOutlined />}
+            type="text"
+            onClick={handleClose}
+          />
         </div>
 
         <div className="announcements-widget-v1-content">

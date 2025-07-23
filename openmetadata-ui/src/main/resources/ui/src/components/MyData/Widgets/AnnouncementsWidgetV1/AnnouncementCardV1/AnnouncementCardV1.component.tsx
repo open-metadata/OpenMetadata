@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
+import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -120,7 +121,7 @@ const AnnouncementCardV1 = ({
 
   return (
     <Card
-      className={`announcement-card-v1 ${disabled ? 'disabled' : ''}`}
+      className={classNames('announcement-card-v1', disabled ? 'disabled' : '')}
       data-testid={`announcement-card-v1-${announcement.id}`}
       onClick={handleCardClick}>
       <div className="announcement-card-v1-content">

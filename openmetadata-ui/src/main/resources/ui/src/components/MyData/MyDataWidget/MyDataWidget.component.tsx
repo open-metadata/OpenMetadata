@@ -268,6 +268,11 @@ const MyDataWidgetInternal = ({
     return data.length > 0 ? data.length.toString() : '';
   }, [data]);
 
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!isLoading) && data?.length > 10,
+    [data, isLoading]
+  );
+
   const widgetContent = useMemo(() => {
     return (
       <div className="my-data-widget-container">
@@ -294,7 +299,7 @@ const MyDataWidgetInternal = ({
             moreButtonText={t('label.view-more-count', {
               countValue: showMoreCount,
             })}
-            showMoreButton={Boolean(!isLoading) && data?.length > 10}
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>

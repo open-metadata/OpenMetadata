@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { headerBackgroundColors } from '../../../constants/Mydata.constants';
 import CustomiseLandingPageHeader from '../CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
@@ -46,7 +46,7 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
         <div className="select-background-options p-y-lg p-x-0 d-flex flex-wrap items-center">
           <div className="d-flex flex-wrap items-center gap-2">
             {headerBackgroundColors.map((value) => (
-              <div
+              <Button
                 className="option-color-container cursor-pointer"
                 key={value.color}
                 style={{
@@ -60,7 +60,7 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
                   }`}
                   data-testid="option-color"
                 />
-              </div>
+              </Button>
             ))}
           </div>
         </div>

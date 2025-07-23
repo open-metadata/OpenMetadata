@@ -107,6 +107,11 @@ const CuratedAssetsWidget = ({
     [curatedAssetsConfig]
   );
 
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!isLoading) && data?.length > 10,
+    [data, isLoading]
+  );
+
   const sourceIcon = searchClassBase.getEntityIcon(selectedResource?.[0] ?? '');
 
   const prepareData = useCallback(async () => {
@@ -394,7 +399,7 @@ const CuratedAssetsWidget = ({
         moreButtonText={t('label.view-more-count', {
           countValue: viewMoreCount,
         })}
-        showMoreButton={Boolean(!isLoading) && data?.length > 10}
+        showMoreButton={showWidgetFooterMoreButton}
       />
     </div>
   );

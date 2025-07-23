@@ -44,8 +44,6 @@
   gap: @size-mlg;
   justify-content: center;
   width: 100%;
-  position: relative;
-  z-index: 2;
 }
 
 .dashboard-header {
@@ -169,13 +167,13 @@
   transform: translateY(-50%);
   width: @size-xl;
   height: @size-xl;
-  background-color: #ffffff1a;
+  background-color: @white-alpha-10;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: @white;
+  color: @white !important;
 
   svg {
     width: 12px;
@@ -190,6 +188,7 @@
 
 .left-arrow {
   left: -@size-xl;
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .recently-viewed-data-carousel {
