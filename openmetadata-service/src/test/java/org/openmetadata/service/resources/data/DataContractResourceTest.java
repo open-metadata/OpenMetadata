@@ -380,6 +380,11 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
         validateResponse, DataContractResult.class, Status.OK.getStatusCode());
   }
 
+  private Response getResultById(UUID dataContractId, UUID resultId) {
+    WebTarget resultTarget = getResource(dataContractId).path("/results").path(resultId.toString());
+    return SecurityUtil.addHeaders(resultTarget, ADMIN_AUTH_HEADERS).get();
+  }
+
   // ===================== CRUD Tests =====================
 
   @Test
@@ -1796,5 +1801,25 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
         "Newest result", contractAfterThird.getLatestResult().getMessage()); // Now third message
     assertEquals(
         result3.getId(), contractAfterThird.getLatestResult().getResultId()); // Now third result ID
+  }
+
+  @Test
+  void testGetDataContractResultByIdWithNoResults(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the contract has no results initially
+    assertNull(dataContract.getLatestResult());
+
+    // Try to get a result by ID when no results exist
+    UUID randomResultId = UUID.randomUUID();
+    Response response = getResultById(dataContract.getId(), randomResultId);
+
+    // Expecting BadRequestException (400) when trying to get result from contract with no results
+    assertEquals(
+        Status.BAD_REQUEST.getStatusCode(),
+        response.getStatus(),
+        "Expected 400 Bad Request when getting result from contract with no results");
   }
 }

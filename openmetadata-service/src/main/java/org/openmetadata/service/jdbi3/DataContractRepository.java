@@ -448,7 +448,35 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     // the suite and update status.
     // also if the DQ is created in the contract, we could set the DQ status in the result as
     // running as well
+    if (nullOrEmpty(dataContract.getQualityExpectations())) {
+      throw DataContractValidationException.byMessage(
+          String.format(
+              "Data contract %s does not have any quality expectations defined, cannot update DQ results",
+              dataContract.getFullyQualifiedName()));
+    }
+
+    // DataContractResult result =
+
     return null;
+  }
+
+  public DataContractResult getLatestResult(DataContract dataContract) {
+    if (dataContract.getLatestResult() == null
+        || dataContract.getLatestResult().getResultId() == null) {
+      throw BadRequestException.of(
+          String.format(
+              "Data contract %s does not have a latest result defined",
+              dataContract.getFullyQualifiedName()));
+    }
+
+    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    String resultJson =
+        timeSeriesDAO.getLatestExtensionByKey(
+            RESULT_EXTENSION_KEY,
+            dataContract.getLatestResult().getResultId().toString(),
+            dataContract.getFullyQualifiedName(),
+            RESULT_EXTENSION);
+    return JsonUtils.readValue(resultJson, DataContractResult.class);
   }
 
   @Override

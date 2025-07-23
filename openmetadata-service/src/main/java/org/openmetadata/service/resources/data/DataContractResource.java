@@ -14,7 +14,6 @@
 package org.openmetadata.service.resources.data;
 
 import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION;
-import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION_KEY;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -730,14 +729,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
-    String jsonRecord =
-        timeSeriesDAO.getLatestExtensionByKey(
-            RESULT_EXTENSION_KEY,
-            resultId.toString(),
-            dataContract.getFullyQualifiedName(),
-            RESULT_EXTENSION);
-    return JsonUtils.readValue(jsonRecord, DataContractResult.class);
+    return repository.getLatestResult(dataContract);
   }
 
   @PUT
