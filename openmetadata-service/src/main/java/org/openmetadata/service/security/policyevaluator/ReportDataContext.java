@@ -30,7 +30,7 @@ public class ReportDataContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityReference getDomain() {
+  public List<EntityReference> getDomains() {
     return null;
   }
 }

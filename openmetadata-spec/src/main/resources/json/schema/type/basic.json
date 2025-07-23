@@ -206,6 +206,49 @@
         }
       },
       "additionalProperties": false
+    },
+    "semanticsRule": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.SemanticsRule",
+      "description": "Semantics rule defined in the data contract.",
+      "properties": {
+        "name": {
+          "title": "Rule Name",
+          "description": "Name of the semantics rule.",
+          "type": "string"
+        },
+        "description": {
+          "title": "Rule Description",
+          "description": "Description of the semantics rule.",
+          "$ref": "#/definitions/markdown"
+        },
+        "rule": {
+          "title": "Rule Definition",
+          "description": "Definition of the semantics rule.",
+          "type": "string",
+          "outputType": "jsonlogic",
+          "format": "queryBuilder"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "description": "Indicates if the semantics rule is enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "entityType": {
+          "title": "Entity Type",
+          "description": "Type of the entity to which this semantics rule applies.",
+          "type": "string",
+          "default": null
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "rule",
+        "enabled"
+      ],
+      "additionalProperties": false
     }
   }
 }

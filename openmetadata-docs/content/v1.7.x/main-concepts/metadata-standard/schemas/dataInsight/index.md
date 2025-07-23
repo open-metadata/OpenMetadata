@@ -1,5 +1,6 @@
 ---
 title: Data Insight Schemas | OpenMetadata Insight Schemas
+description: Schema for capturing data insight metrics, dashboards, and performance analytics across data assets and teams.
 slug: /main-concepts/metadata-standard/schemas/datainsight
 ---
 
