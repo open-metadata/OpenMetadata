@@ -260,6 +260,11 @@ const MyDataWidgetInternal = ({
       </div>
     );
   }, [data, isExpanded]);
+
+  const showMoreCount = useMemo(() => {
+    return data.length > 0 ? data.length.toString() : '';
+  }, [data]);
+
   const widgetContent = useMemo(() => {
     return (
       <div className="my-data-widget-container">
@@ -284,8 +289,8 @@ const MyDataWidgetInternal = ({
               EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
-              count: String(data.length > 0 ? data.length : ''),
-            })} // if data is empty then show view more
+              countValue: showMoreCount,
+            })}
             showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
           />
         </div>
@@ -301,6 +306,7 @@ const MyDataWidgetInternal = ({
     widgetKey,
     widgetData,
     isEditView,
+    showMoreCount,
   ]);
 
   return (

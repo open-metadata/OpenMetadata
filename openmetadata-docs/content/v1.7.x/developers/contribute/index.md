@@ -1,5 +1,6 @@
 ---
 title: How to Contribute Code | Open Source Contribution Guide
+description: Understand contribution guidelines for participating in the platform's development and submitting changes.
 slug: /developers/contribute
 ---
 

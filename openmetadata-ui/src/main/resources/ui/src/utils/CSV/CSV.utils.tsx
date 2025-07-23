@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from 'antd';
 import {
   compact,
   get,
@@ -78,18 +79,22 @@ const statusRenderer = (value: Status) => {
   );
 };
 
-const renderColumnDataEditor = (
+export const renderColumnDataEditor = (
   column: string,
   recordData: {
     value: string;
-    data: { details: string };
+    data: { details: string; glossaryStatus: string };
   }
 ) => {
-  const { value } = recordData;
+  const {
+    value,
+    data: { glossaryStatus },
+  } = recordData;
   switch (column) {
     case 'status':
-    case 'glossaryStatus':
       return statusRenderer(value as Status);
+    case 'glossaryStatus':
+      return <Typography.Text>{glossaryStatus}</Typography.Text>;
     case 'description':
       return (
         <RichTextEditorPreviewerV1
@@ -122,7 +127,7 @@ export const getColumnConfig = (
     renderCell: (data: any) =>
       renderColumnDataEditor(colType, {
         value: data.row[column],
-        data: { details: '' },
+        data: { details: '', glossaryStatus: '' },
       }),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
   } as Column<any>;
@@ -352,7 +357,7 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
     }
 
     default:
-      return value;
+      return typeof value === 'object' ? JSON.stringify(value) : String(value);
   }
 };
 
@@ -442,6 +447,9 @@ export const convertEntityExtensionToCustomPropertyString = (
         isString(stringValue) &&
         (stringValue.includes(',') || stringValue.includes(';'));
 
+      // Ensure stringValue is a string
+      const safeStringValue = String(stringValue);
+
       // Check if the property type is markdown or sqlQuery or string and add quotes around the value
       if (
         ['markdown', 'sqlQuery', 'string'].includes(
@@ -449,15 +457,15 @@ export const convertEntityExtensionToCustomPropertyString = (
         ) &&
         hasSeparator
       ) {
-        convertedString += `"${`${key}:${stringValue}`}"${endValue}`;
+        convertedString += `"${key}:${safeStringValue}"${endValue}`;
       } else if (
         // Check if the property type is table and add quotes around the value
         customPropertiesMapByName[key]?.propertyType?.name ===
         TABLE_TYPE_CUSTOM_PROPERTY
       ) {
-        convertedString += `"${`${key}:${stringValue}`}"${endValue}`;
+        convertedString += `"${key}:${safeStringValue}"${endValue}`;
       } else {
-        convertedString += `${key}:${stringValue}${endValue}`;
+        convertedString += `${key}:${safeStringValue}${endValue}`;
       }
     }
   });

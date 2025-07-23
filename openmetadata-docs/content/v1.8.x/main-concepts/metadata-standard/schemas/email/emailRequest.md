@@ -1,5 +1,6 @@
 ---
 title: Email Request | OpenMetadata Email Requests
+description: Connect Emailrequest to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/email/emailrequest
 ---
 
