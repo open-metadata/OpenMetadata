@@ -14,7 +14,7 @@
 import { act, render } from '@testing-library/react';
 import { createRef } from 'react';
 import { AccessTokenResponse } from '../../../rest/auth-API';
-import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import Auth0Authenticator from './Auth0Authenticator';
 
@@ -42,7 +42,7 @@ jest.mock('../AuthProviders/AuthProvider', () => ({
   useAuthProvider: () => ({ handleSuccessfulLogout }),
 }));
 
-jest.mock('../../../utils/LocalStorageUtils', () => ({
+jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: jest.fn(),
 }));
 

@@ -61,7 +61,7 @@ jest.mock('../../AuthProviders/AuthProvider', () => ({
   })),
 }));
 
-jest.mock('../../../../utils/LocalStorageUtils', () => ({
+jest.mock('../../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: jest.fn(),
 }));
 
