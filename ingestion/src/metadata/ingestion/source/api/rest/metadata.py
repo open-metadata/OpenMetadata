@@ -77,7 +77,10 @@ class RestSource(ApiServiceSource):
         Here is where filtering happens
         """
         try:
-            self.json_response = self.connection.json()
+            if isinstance(self.connection, dict):
+                self.json_response = self.connection
+            else:
+                self.json_response = self.connection.json()
             collections_list = []
             tags_collection_set = set()
             if self.json_response.get("tags", []):
