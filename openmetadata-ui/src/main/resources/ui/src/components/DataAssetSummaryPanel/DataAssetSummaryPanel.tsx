@@ -72,7 +72,7 @@ export const DataAssetSummaryPanel = ({
 
   const entityInfo = useMemo(
     () => getEntityOverview(entityType, dataAsset, additionalInfo),
-    [dataAsset, additionalInfo]
+    [dataAsset, additionalInfo, entityType]
   );
 
   const entityDetails = useMemo(() => {
