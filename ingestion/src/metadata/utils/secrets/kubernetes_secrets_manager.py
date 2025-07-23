@@ -48,13 +48,14 @@ def _get_current_namespace() -> str:
     :return: The namespace where the application service account is running or default if it can't be retrieved
     """
     try:
-        with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace") as f:
+        with open(
+            "/var/run/secrets/kubernetes.io/serviceaccount/namespace", encoding="utf-8"
+        ) as f:
             return f.read().strip()
-    except:
-        pass
-    logger.info(
-        "Can't read the current namespace from in-cluster kubernetes. Is the service account configured?"
-    )
+    except Exception as _:
+        logger.info(
+            "Can't read the current namespace from in-cluster kubernetes. Is the service account configured?"
+        )
     return "default"
 
 
@@ -147,11 +148,8 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
                 secret_value = base64.b64decode(secret.data["value"]).decode("utf-8")
                 logger.debug(f"Got value for secret {secret_id}")
                 return secret_value
-            else:
-                logger.warning(
-                    f"Secret {secret_id} exists but has no 'value' key"
-                )
-                return None
+            logger.warning(f"Secret {secret_id} exists but has no 'value' key")
+            return None
 
         except ApiException as exc:
             if exc.status == 404:
