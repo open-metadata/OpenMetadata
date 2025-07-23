@@ -198,6 +198,9 @@ test.describe.serial('Persona operations', () => {
       .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
       .click();
 
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: 'Users' }).click();
+
     await page
       .locator(
         `[data-row-key="${user.responseData.name}"] [data-testid="remove-user-btn"]`

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { filterSelectOptions, getTableFQNFromColumnFQN } from './CommonUtils';
+import {
+  filterSelectOptions,
+  getTableFQNFromColumnFQN,
+  getVisiblePopupContainer,
+  isLinearGradient,
+} from './CommonUtils';
 
 describe('Tests for CommonUtils', () => {
   describe('filterSelectOptions', () => {
@@ -78,6 +83,149 @@ describe('Tests for CommonUtils', () => {
       const result = getTableFQNFromColumnFQN(tableFQN);
 
       expect(result).toBe(tableFQN);
+    });
+  });
+
+  describe('isLinearGradient', () => {
+    it('should correctly identify linear gradient colors', () => {
+      // Linear gradient cases
+      expect(
+        isLinearGradient('linear-gradient(to right, #ff0000, #00ff00)')
+      ).toBe(true);
+      expect(isLinearGradient('linear-gradient(45deg, #ff0000, #00ff00)')).toBe(
+        true
+      );
+      expect(
+        isLinearGradient(
+          'linear-gradient(to bottom, rgba(255,0,0,0.5), rgba(0,255,0,0.5))'
+        )
+      ).toBe(true);
+      expect(
+        isLinearGradient(
+          'linear-gradient(90deg, #ff0000 0%, #00ff00 50%, #0000ff 100%)'
+        )
+      ).toBe(true);
+      expect(
+        isLinearGradient('LINEAR-GRADIENT(to right, #ff0000, #00ff00)')
+      ).toBe(true);
+
+      // Non-linear gradient cases
+      expect(isLinearGradient('#ff0000')).toBe(false);
+      expect(isLinearGradient('rgb(255, 0, 0)')).toBe(false);
+      expect(isLinearGradient('rgba(255, 0, 0, 0.5)')).toBe(false);
+      expect(isLinearGradient('red')).toBe(false);
+      expect(isLinearGradient('transparent')).toBe(false);
+      expect(isLinearGradient('hsl(0, 100%, 50%)')).toBe(false);
+      expect(isLinearGradient('hsla(0, 100%, 50%, 0.5)')).toBe(false);
+      expect(isLinearGradient('inherit')).toBe(false);
+      expect(isLinearGradient('')).toBe(false);
+    });
+  });
+
+  describe('getVisiblePopupContainer', () => {
+    let mockBody: HTMLElement;
+    let mockParentElement: HTMLElement;
+
+    beforeEach(() => {
+      // Mock document.body
+      mockBody = {
+        scrollHeight: 1000,
+        clientHeight: 800,
+      } as HTMLElement;
+
+      // Mock document.body property
+      Object.defineProperty(document, 'body', {
+        value: mockBody,
+        writable: true,
+      });
+
+      mockParentElement = {
+        scrollHeight: 800,
+        clientHeight: 500,
+        parentElement: mockBody,
+      } as HTMLElement;
+
+      // Mock window.getComputedStyle
+      Object.defineProperty(window, 'getComputedStyle', {
+        value: jest.fn(),
+        writable: true,
+      });
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should return document.body when no trigger is provided', () => {
+      expect(getVisiblePopupContainer()).toBe(mockBody);
+    });
+
+    it('should find suitable container with auto overflow', () => {
+      const mockGetComputedStyle = window.getComputedStyle as jest.Mock;
+
+      // Set up element hierarchy for this test
+      const testElement = {
+        scrollHeight: 500,
+        clientHeight: 400,
+        parentElement: mockParentElement,
+      } as HTMLElement;
+
+      mockGetComputedStyle
+        .mockReturnValueOnce({ overflow: 'visible', overflowY: 'visible' }) // testElement
+        .mockReturnValueOnce({ overflow: 'auto', overflowY: 'auto' }); // mockParentElement
+
+      expect(getVisiblePopupContainer(testElement)).toBe(mockParentElement);
+    });
+
+    it('should fallback to document.body when no suitable container found', () => {
+      const mockGetComputedStyle = window.getComputedStyle as jest.Mock;
+
+      // Set up element hierarchy for this test
+      const testElement = {
+        scrollHeight: 500,
+        clientHeight: 400,
+        parentElement: mockParentElement,
+      } as HTMLElement;
+
+      mockGetComputedStyle
+        .mockReturnValueOnce({ overflow: 'visible', overflowY: 'visible' }) // testElement
+        .mockReturnValueOnce({ overflow: 'visible', overflowY: 'visible' }); // mockParentElement
+
+      expect(getVisiblePopupContainer(testElement)).toBe(mockBody);
+    });
+
+    it('should not return container with hidden overflow', () => {
+      const mockGetComputedStyle = window.getComputedStyle as jest.Mock;
+
+      // Set up element hierarchy for this test
+      const testElement = {
+        scrollHeight: 500,
+        clientHeight: 400,
+        parentElement: mockParentElement,
+      } as HTMLElement;
+
+      mockGetComputedStyle
+        .mockReturnValueOnce({ overflow: 'visible', overflowY: 'visible' }) // testElement
+        .mockReturnValueOnce({ overflow: 'hidden', overflowY: 'hidden' }); // mockParentElement
+
+      expect(getVisiblePopupContainer(testElement)).toBe(mockBody);
+    });
+
+    it('should handle null parentElement', () => {
+      const mockGetComputedStyle = window.getComputedStyle as jest.Mock;
+
+      const elementWithNullParent = {
+        scrollHeight: 500,
+        clientHeight: 400,
+        parentElement: null,
+      } as HTMLElement;
+
+      mockGetComputedStyle.mockReturnValue({
+        overflow: 'visible',
+        overflowY: 'visible',
+      });
+
+      expect(getVisiblePopupContainer(elementWithNullParent)).toBe(mockBody);
     });
   });
 });

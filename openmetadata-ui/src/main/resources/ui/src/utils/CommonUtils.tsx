@@ -869,7 +869,7 @@ export const calculatePercentage = (
  * @returns {boolean} - True if the color is a linear gradient, false otherwise
  */
 export const isLinearGradient = (color: string) => {
-  return color.includes('linear-gradient');
+  return color.toLowerCase().includes('linear-gradient');
 };
 
 /**
