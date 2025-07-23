@@ -236,6 +236,10 @@ module.exports = {
           from: path.join(__dirname, 'public/GoldCertification.svg'),
           to: outputPath,
         },
+        {
+          from: path.join(__dirname, 'public/app-worker.js'),
+          to: outputPath,
+        },
       ],
     }),
 
