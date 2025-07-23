@@ -49,6 +49,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -71,6 +72,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
+  @Setter @Getter private LogStorageInterface logStorage;
 
   @Getter private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
@@ -539,6 +541,103 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return (String) appConfig.getAdditionalProperties().get("type");
     } else {
       return ingestionPipeline.getPipelineType().value();
+    }
+  }
+
+  // Log Storage Methods
+
+  public void appendLogs(String pipelineFQN, UUID runId, String logContent) {
+    try {
+      if (logStorage != null) {
+        logStorage.appendLogs(pipelineFQN, runId, logContent);
+      } else {
+        throw new IllegalStateException("Log storage is not configured");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to append logs for pipeline: {}, runId: {}", pipelineFQN, runId, e);
+      throw new RuntimeException("Failed to append logs", e);
+    }
+  }
+
+  public Map<String, Object> getLogs(
+      String pipelineFQN, UUID runId, String afterCursor, int limit) {
+    try {
+      if (logStorage != null) {
+        return logStorage.getLogs(pipelineFQN, runId, afterCursor, limit);
+      } else {
+        throw new IllegalStateException("Log storage is not initialized");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to get logs for pipeline: {}, runId: {}", pipelineFQN, runId, e);
+      throw new RuntimeException("Failed to get logs", e);
+    }
+  }
+
+  public List<UUID> listRuns(String pipelineFQN, int limit) {
+    try {
+      if (logStorage != null) {
+        return logStorage.listRuns(pipelineFQN, limit);
+      } else {
+        List<UUID> runIds = new ArrayList<>();
+        List<PipelineStatus> statuses = getQueuedPipelineStatus(pipelineFQN, limit);
+        for (PipelineStatus status : statuses) {
+          if (status.getRunId() != null) {
+            try {
+              runIds.add(UUID.fromString(status.getRunId()));
+            } catch (IllegalArgumentException e) {
+              // Skip invalid UUIDs
+            }
+          }
+        }
+        return runIds;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to list runs for pipeline: {}", pipelineFQN, e);
+      throw new RuntimeException("Failed to list runs", e);
+    }
+  }
+
+  public Response streamLogs(String pipelineFQN, UUID runId) {
+    try {
+      if (logStorage != null) {
+        java.io.InputStream logStream = logStorage.getLogInputStream(pipelineFQN, runId);
+        return Response.ok()
+            .type("text/event-stream")
+            .entity(
+                new jakarta.ws.rs.core.StreamingOutput() {
+                  @Override
+                  public void write(java.io.OutputStream output) throws java.io.IOException {
+                    try (java.io.BufferedReader reader =
+                        new java.io.BufferedReader(
+                            new java.io.InputStreamReader(
+                                logStream, java.nio.charset.StandardCharsets.UTF_8))) {
+                      String line;
+                      while ((line = reader.readLine()) != null) {
+                        output.write(
+                            ("data: " + line + "\n\n")
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        output.flush();
+                      }
+                    }
+                  }
+                })
+            .build();
+      } else {
+        throw new IllegalStateException("Log storage does not support streaming");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to stream logs for pipeline: {}, runId: {}", pipelineFQN, runId, e);
+      throw new RuntimeException("Failed to stream logs", e);
+    }
+  }
+
+  private List<PipelineStatus> getQueuedPipelineStatus(String pipelineFQN, int limit) {
+    try {
+      IngestionPipeline pipeline = findByName(pipelineFQN, Include.NON_DELETED);
+      List<PipelineStatus> statuses = pipelineServiceClient.getQueuedPipelineStatus(pipeline);
+      return statuses.size() > limit ? statuses.subList(0, limit) : statuses;
+    } catch (Exception e) {
+      return new ArrayList<>();
     }
   }
 }

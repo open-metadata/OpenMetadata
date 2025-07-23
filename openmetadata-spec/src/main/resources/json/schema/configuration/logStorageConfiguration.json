@@ -1,0 +1,52 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/logStorageConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LogStorageConfiguration",
+  "description": "Configuration for pipeline log storage",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.LogStorageConfiguration",
+  "properties": {
+    "type": {
+      "description": "Type of log storage implementation",
+      "type": "string",
+      "enum": ["default", "s3"],
+      "default": "default"
+    },
+    "bucketName": {
+      "description": "S3 bucket name for storing logs (required for S3 type)",
+      "type": "string"
+    },
+    "prefix": {
+      "description": "S3 key prefix for organizing logs",
+      "type": "string",
+      "default": "pipeline-logs"
+    },
+    "region": {
+      "description": "AWS region for the S3 bucket (required for S3 type)",
+      "type": "string"
+    },
+    "awsConfig": {
+      "description": "AWS credentials configuration",
+      "$ref": "../security/credentials/awsCredentials.json"
+    },
+    "enableServerSideEncryption": {
+      "description": "Enable server-side encryption for S3 objects",
+      "type": "boolean",
+      "default": true
+    },
+    "storageClass": {
+      "description": "S3 storage class for log objects",
+      "type": "string",
+      "enum": ["STANDARD", "STANDARD_IA", "ONEZONE_IA", "INTELLIGENT_TIERING", "GLACIER", "DEEP_ARCHIVE"],
+      "default": "STANDARD_IA"
+    },
+    "expirationDays": {
+      "description": "Number of days after which logs are automatically deleted (0 means no expiration)",
+      "type": "integer",
+      "minimum": 0,
+      "default": 30
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}

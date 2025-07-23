@@ -507,11 +507,36 @@
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>cloudwatch</artifactId>
     </dependency>
+    
+    <!-- Dependencies for S3 log storage -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+    </dependency>
 
     <!--test dependencies-->
     <dependency>
       <groupId>org.glassfish.jersey.core</groupId>
       <artifactId>jersey-client</artifactId>
+    </dependency>
+    <!-- MinIO for S3 testing -->
+    <dependency>
+      <groupId>io.minio</groupId>
+      <artifactId>minio</artifactId>
+      <version>8.5.7</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>1.19.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>minio</artifactId>
+      <version>1.19.3</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.awaitility</groupId>
