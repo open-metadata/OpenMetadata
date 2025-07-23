@@ -220,3 +220,25 @@ export const verifyDatabaseAndSchemaInExploreTree = async (
     page.getByTestId(`explore-tree-title-${schemaName}`)
   ).toBeVisible();
 };
+
+export const validateBucketsForIndexAndSort = async (
+  page: Page,
+  asset: {
+    key: string;
+    label: string;
+    indexType: string;
+  },
+  docCount: number
+) => {
+  const { apiContext } = await getApiContext(page);
+
+  const response = await apiContext
+    .get(
+      `/api/v1/search/query?q=pw&index=${asset.indexType}&from=0&size=15&deleted=false&sort_field=_score&sort_order=desc`
+    )
+    .then((res) => res.json());
+
+  const totalCount = response.hits.total.value ?? 0;
+
+  expect(totalCount).toEqual(docCount);
+};
