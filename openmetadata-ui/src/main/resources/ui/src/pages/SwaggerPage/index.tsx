@@ -11,18 +11,28 @@
  *  limitations under the License.
  */
 
+import { useEffect, useRef } from 'react';
 import {
   GRAPH_BACKGROUND_COLOR,
   TEXT_BODY_COLOR,
 } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { getOidcToken } from '../../utils/LocalStorageUtils';
+import { getOidcToken } from '../../utils/SwTokenStorageUtils';
 import RapiDocReact from './RapiDocReact';
 import './swagger.less';
 
 const SwaggerPage = () => {
   const { theme } = useApplicationStore();
-  const idToken = getOidcToken();
+  const idTokenRef = useRef<string>('');
+
+  const fetchIdToken = async () => {
+    const idToken = await getOidcToken();
+    idTokenRef.current = idToken;
+  };
+
+  useEffect(() => {
+    fetchIdToken();
+  }, []);
 
   return (
     <div
@@ -33,7 +43,7 @@ const SwaggerPage = () => {
         allow-spec-file-download
         api-key-location="header"
         api-key-name="Authorization"
-        api-key-value={`Bearer ${idToken}`}
+        api-key-value={`Bearer ${idTokenRef.current}`}
         font-size="large"
         nav-bg-color={GRAPH_BACKGROUND_COLOR}
         nav-item-spacing="compact"
