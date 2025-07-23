@@ -1439,6 +1439,14 @@ public class SearchRepository {
   }
 
   /**
+   * Creates a ReindexHandler instance for recreate operations during reindexing.
+   * This method can be overridden in subclasses to provide different implementations.
+   */
+  public RecreateIndexHandler createReindexHandler() {
+    return new DefaultRecreateHandler();
+  }
+
+  /**
    * Checks if vector embedding is enabled.
    * This method can be overridden in subclasses to provide different configurations.
    */
@@ -1447,6 +1455,7 @@ public class SearchRepository {
     return false;
   }
 
+  @SuppressWarnings("unused")
   public <T> T getHighLevelClient() {
     return (T) searchClient.getHighLevelClient();
   }
