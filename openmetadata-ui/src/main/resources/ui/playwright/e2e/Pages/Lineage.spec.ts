@@ -470,6 +470,8 @@ test('Verify table search with special characters as handledd', async ({
   const table = new TableClass(tableNameWithSlash);
 
   await table.create(apiContext);
+
+  const db = table.databaseResponseData.name;
   try {
     await sidebarClick(page, SidebarItem.LINEAGE);
 
@@ -490,6 +492,7 @@ test('Verify table search with special characters as handledd', async ({
     await page.waitForSelector('.ant-select-dropdown');
 
     const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const dbFqn = get(table, 'entityResponseData.database.fullyQualifiedName');
     await page
       .locator(`[data-testid="node-suggestion-${nodeFqn}"]`)
       .dispatchEvent('click');
@@ -501,6 +504,27 @@ test('Verify table search with special characters as handledd', async ({
     await expect(
       page.locator(`[data-testid="lineage-node-${nodeFqn}"]`)
     ).toBeVisible();
+
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.LINEAGE);
+    await page.waitForSelector('[data-testid="search-entity-select"]');
+    await page.click('[data-testid="search-entity-select"]');
+
+    await page.fill(
+      '[data-testid="search-entity-select"] .ant-select-selection-search-input',
+      db
+    );
+    await page.waitForSelector(`[data-testid="node-suggestion-${dbFqn}"]`);
+    await page
+      .locator(`[data-testid="node-suggestion-${dbFqn}"]`)
+      .dispatchEvent('click');
+    await page.waitForResponse('/api/v1/lineage/getLineage?*');
+
+    await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
+
+    await page.locator(`[data-testid="lineage-node-${dbFqn}"]`).click();
+
+    await expect(page.locator('.ant-drawer-wrapper-body')).toBeVisible();
   } finally {
     // Cleanup
     await table.delete(apiContext);
