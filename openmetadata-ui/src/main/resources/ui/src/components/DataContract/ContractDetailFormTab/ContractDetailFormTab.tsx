@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { EntityReference } from '../../../generated/type/entityReference';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
 } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 
 export const ContractDetailFormTab: React.FC<{
   initialValues?: Partial<DataContract>;
@@ -27,6 +29,8 @@ export const ContractDetailFormTab: React.FC<{
 }> = ({ initialValues, onNext }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+
+  const owners = Form.useWatch<EntityReference[]>('owners', form);
 
   const fields: FieldProp[] = [
     {
@@ -76,30 +80,38 @@ export const ContractDetailFormTab: React.FC<{
     },
   ];
 
+  const handleSubmit = () => {
+    form.submit();
+  };
+
   return (
-    <Card className="container bg-grey p-box">
-      <div className="m-b-sm">
-        <Typography.Title className="m-0" level={5}>
-          {t('label.contract-detail-plural')}
-        </Typography.Title>
-        <Typography.Paragraph className="m-0 text-sm" type="secondary">
-          {t('message.contract-detail-plural-description')}
-        </Typography.Paragraph>
-      </div>
-
-      <Form
-        className="bg-white p-box"
-        form={form}
-        layout="vertical"
-        onFinish={onNext}>
-        {generateFormFields(fields)}
-
-        <div className="d-flex justify-end m-t-md">
-          <Button htmlType="submit" type="primary">
-            {t('label.next')}
-          </Button>
+    <>
+      <Card className="container bg-grey p-box">
+        <div className="m-b-sm">
+          <Typography.Title className="m-0" level={5}>
+            {t('label.contract-detail-plural')}
+          </Typography.Title>
+          <Typography.Paragraph className="m-0 text-sm" type="secondary">
+            {t('message.contract-detail-plural-description')}
+          </Typography.Paragraph>
         </div>
-      </Form>
-    </Card>
+
+        <Form
+          className="bg-white p-box"
+          form={form}
+          layout="vertical"
+          onFinish={onNext}>
+          {generateFormFields(fields)}
+
+          {owners?.length > 0 && <OwnerLabel owners={owners} />}
+        </Form>
+      </Card>
+      <div className="d-flex justify-end m-t-md">
+        <Button htmlType="submit" type="primary" onClick={handleSubmit}>
+          {t('label.next')}
+          <ArrowRightOutlined />
+        </Button>
+      </div>
+    </>
   );
 };

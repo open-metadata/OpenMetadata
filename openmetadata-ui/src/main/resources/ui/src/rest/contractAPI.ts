@@ -47,7 +47,7 @@ export const getContract = async (fqn: string) => {
 
 export const createContract = async (contract: CreateDataContract) => {
   const response = await APIClient.post<CreateDataContract>(
-    `/data-contracts`,
+    `/dataContracts`,
     contract
   );
 
@@ -56,7 +56,7 @@ export const createContract = async (contract: CreateDataContract) => {
 
 export const updateContract = async (contract: DataContract) => {
   const response = await APIClient.put<DataContract>(
-    `/data-contracts`,
+    `/dataContracts`,
     contract
   );
 
@@ -64,7 +64,7 @@ export const updateContract = async (contract: DataContract) => {
 };
 
 export const deleteContract = async (fqn: string) => {
-  const response = await APIClient.delete<void>(`/data-contracts/${fqn}`);
+  const response = await APIClient.delete<void>(`/dataContracts/${fqn}`);
 
   return response.data;
 };
@@ -89,7 +89,9 @@ export const validateContractById = async (contractId: string) => {
 };
 
 export const deleteContractById = async (contractId: string) => {
-  const response = await APIClient.delete<void>(`/dataContracts/${contractId}`);
+  const response = await APIClient.delete<void>(
+    `/dataContracts/${contractId}?hardDelete=true`
+  );
 
   return response.data;
 };

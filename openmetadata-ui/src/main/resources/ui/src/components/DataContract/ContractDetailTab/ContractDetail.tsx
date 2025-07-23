@@ -30,12 +30,13 @@ import {
   DataContract,
 } from '../../../generated/entity/data/dataContract';
 import {
-  deleteContractById,
   getLatestContractResults,
   validateContractById,
 } from '../../../rest/contractAPI';
+import { showSuccessToast } from '../../../utils/ToastUtils';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { OwnerAvatar } from '../../common/OwnerAvtar/OwnerAvatar';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
@@ -61,7 +62,8 @@ const getStatusType = (status: string) => {
 const ContractDetail: React.FC<{
   contract?: DataContract | null;
   onEdit: () => void;
-}> = ({ contract, onEdit }) => {
+  onDelete: () => void;
+}> = ({ contract, onEdit, onDelete }) => {
   const { t } = useTranslation();
   const [validateLoading, setValidateLoading] = useState(false);
 
@@ -161,40 +163,49 @@ const ContractDetail: React.FC<{
 
   useEffect(() => {
     if (contract?.id) {
-      getLatestContractResults(contract.id).then((res) => {
-        // eslint-disable-next-line no-console
-        console.log(res);
-      });
+      getLatestContractResults(contract.id)
+        .then((res) => {
+          // eslint-disable-next-line no-console
+          console.log(res);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.log(err);
+        });
     }
   }, [contract]);
 
   const handleRunNow = () => {
     if (contract?.id) {
       setValidateLoading(true);
-      validateContractById(contract.id).finally(() => {
-        setValidateLoading(false);
-      });
-    }
-  };
-
-  const handleDelete = () => {
-    if (contract?.id) {
-      deleteContractById(contract.id);
+      validateContractById(contract.id)
+        .then(() =>
+          showSuccessToast('Contract validation trigger successfully.')
+        )
+        .finally(() => {
+          setValidateLoading(false);
+        });
     }
   };
 
   if (!contract) {
     return (
       <ErrorPlaceHolderNew
-        icon={<EmptyContractIcon />}
+        icon={
+          <EmptyContractIcon className="empty-contract-icon" height={140} />
+        }
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        Create a contract based on all the metadata which you got for this
-        entity.
-        <div>
-          <Button icon={<PlusOutlined />} type="primary" onClick={onEdit}>
-            {t('label.add-entity', { entity: t('label.contract') })}
-          </Button>
-        </div>
+        <Typography.Paragraph className="m-t-md w-80" type="secondary">
+          {t('message.create-contract-description')}
+        </Typography.Paragraph>
+
+        <Button
+          className="m-t-md"
+          icon={<PlusOutlined />}
+          type="primary"
+          onClick={onEdit}>
+          {t('label.add-entity', { entity: t('label.contract') })}
+        </Button>
       </ErrorPlaceHolderNew>
     );
   }
@@ -230,7 +241,7 @@ const ContractDetail: React.FC<{
               <Button
                 icon={<DeleteOutlined />}
                 size="small"
-                onClick={handleDelete}
+                onClick={onDelete}
               />
               <Button
                 icon={<EditOutlined />}
@@ -266,17 +277,17 @@ const ContractDetail: React.FC<{
           />
 
           {/* Schema Card */}
-          <Card
-            className="new-header-border-card"
-            style={{ marginTop: 16 }}
-            title={
-              <div>
-                <Title level={5}>{t('label.schema')}</Title>
-                <Typography.Text type="secondary">
-                  Expected schema structure of this asset
-                </Typography.Text>
-              </div>
-            }>
+          <ExpandableCard
+            cardProps={{
+              title: (
+                <div>
+                  <Title level={5}>{t('label.schema')}</Title>
+                  <Typography.Text type="secondary">
+                    Expected schema structure of this asset
+                  </Typography.Text>
+                </div>
+              ),
+            }}>
             <Table
               columns={schemaColumns}
               dataSource={contract.schema || []}
@@ -284,15 +295,16 @@ const ContractDetail: React.FC<{
               rowKey="name"
               size="small"
             />
-          </Card>
+          </ExpandableCard>
         </Col>
 
         {/* Right Column */}
         <Col span={8}>
           {/* Contract Status Card */}
-          <Card
-            className="new-header-border-card"
-            title={<Title level={5}>{t('label.contract-status')}</Title>}>
+          <ExpandableCard
+            cardProps={{
+              title: <Title level={5}>{t('label.contract-status')}</Title>,
+            }}>
             {contractStatus.map((item) => (
               <Row align="middle" key={item.label} style={{ marginBottom: 12 }}>
                 <Col span={12}>
@@ -311,13 +323,13 @@ const ContractDetail: React.FC<{
                 </Col>
               </Row>
             ))}
-          </Card>
+          </ExpandableCard>
 
           {/* Semantics Card */}
-          <Card
-            className="new-header-border-card"
-            style={{ marginTop: 16 }}
-            title={<Title level={5}>{t('label.semantics')}</Title>}>
+          <ExpandableCard
+            cardProps={{
+              title: <Title level={5}>{t('label.semantics')}</Title>,
+            }}>
             <Row gutter={[0, 8]}>
               <Col span={24}>
                 <Text strong>{t('label.entity-description')}</Text>{' '}
@@ -353,13 +365,13 @@ const ContractDetail: React.FC<{
                 </div>
               </Col>
             </Row>
-          </Card>
+          </ExpandableCard>
 
           {/* Quality Card */}
-          <Card
-            className="new-header-border-card"
-            style={{ marginTop: 16 }}
-            title={<Title level={5}>{t('label.quality')}</Title>}>
+          <ExpandableCard
+            cardProps={{
+              title: <Title level={5}>{t('label.quality')}</Title>,
+            }}>
             <Row gutter={[0, 8]}>
               <Col span={24}>
                 <Row align="middle" gutter={8}>
@@ -400,7 +412,7 @@ const ContractDetail: React.FC<{
                 </Space>
               </Col>
             </Row>
-          </Card>
+          </ExpandableCard>
         </Col>
       </Row>
     </>

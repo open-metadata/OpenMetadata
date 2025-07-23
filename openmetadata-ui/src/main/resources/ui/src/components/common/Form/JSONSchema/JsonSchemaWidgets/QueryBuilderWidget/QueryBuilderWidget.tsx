@@ -69,7 +69,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   schema,
   value,
   ...props
-}: WidgetProps) => {
+}) => {
   const {
     config,
     treeInternal,

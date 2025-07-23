@@ -14,7 +14,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { DataContract } from '../../../generated/entity/data/dataContract';
-import { getContractByEntityId } from '../../../rest/contractAPI';
+import {
+  deleteContractById,
+  getContractByEntityId,
+} from '../../../rest/contractAPI';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import AddDataContract from '../AddDataContract/AddDataContract';
 import { ContractDetail } from '../ContractDetailTab/ContractDetail';
@@ -35,12 +39,31 @@ export const ContractTab = () => {
     fetchContract();
   }, [id]);
 
+  const handleDelete = () => {
+    if (contract?.id) {
+      deleteContractById(contract.id)
+        .then(() => {
+          showSuccessToast('Contract deleted successfully');
+          fetchContract();
+          setTabMode('view');
+        })
+        .catch((err) => {
+          showErrorToast(err);
+        });
+    }
+  };
+
   const content = useMemo(() => {
     switch (tabMode) {
       case 'add':
         return (
           <AddDataContract
+            contract={contract || undefined}
             onCancel={() => {
+              setTabMode('view');
+            }}
+            onSave={() => {
+              fetchContract();
               setTabMode('view');
             }}
           />
@@ -53,6 +76,10 @@ export const ContractTab = () => {
             onCancel={() => {
               setTabMode('view');
             }}
+            onSave={() => {
+              fetchContract();
+              setTabMode('view');
+            }}
           />
         );
 
@@ -60,6 +87,7 @@ export const ContractTab = () => {
         return (
           <ContractDetail
             contract={contract}
+            onDelete={handleDelete}
             onEdit={() => {
               setTabMode(contract ? 'edit' : 'add');
             }}

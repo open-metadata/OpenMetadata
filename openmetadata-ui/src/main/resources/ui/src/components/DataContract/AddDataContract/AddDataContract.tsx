@@ -24,12 +24,16 @@ import {
   Tabs,
   Typography,
 } from 'antd';
+import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ContractDetailFormTab } from '../ContractDetailFormTab/ContractDetailFormTab';
 import { ContractQualityFormTab } from '../ContractQualityFormTab/ContractQualityFormTab';
@@ -50,13 +54,15 @@ const TABS = ['contract-detail', 'schema', 'semantics', 'quality'];
 
 const AddDataContract: React.FC<{
   onCancel: () => void;
+  onSave: () => void;
   contract?: DataContract;
-}> = ({ onCancel, contract }) => {
+}> = ({ onCancel, onSave, contract }) => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<'YAML' | 'UI'>('UI');
   const [yaml, setYaml] = useState('');
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: table } = useGenericContext<Table>();
 
   const [formValues, setFormValues] = useState<DataContract>(
     contract || ({} as DataContract)
@@ -65,6 +71,29 @@ const AddDataContract: React.FC<{
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
   }, []);
+
+  const handleSave = useCallback(async () => {
+    setIsSubmitting(true);
+
+    try {
+      await (contract
+        ? updateContract({ ...contract, ...formValues } as DataContract)
+        : createContract({
+            ...formValues,
+            entity: {
+              id: table.id,
+              type: EntityType.TABLE,
+            },
+          }));
+
+      showSuccessToast(t('message.data-contract-saved-successfully'));
+      onSave();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [t, contract, formValues]);
 
   const onNext = useCallback(
     async (data: Partial<DataContract>) => {
@@ -82,29 +111,12 @@ const AddDataContract: React.FC<{
         setActiveTab(TABS[TABS.indexOf(activeTab) + 1]);
       }
     },
-    [activeTab, t]
+    [activeTab, t, handleSave]
   );
 
   const onPrev = useCallback(() => {
     setActiveTab(TABS[TABS.indexOf(activeTab) - 1]);
   }, [activeTab]);
-
-  const handleSave = useCallback(async () => {
-    setIsSubmitting(true);
-
-    try {
-      await (contract
-        ? updateContract({ ...contract, ...formValues } as DataContract)
-        : createContract(formValues));
-
-      showSuccessToast(t('message.data-contract-saved-successfully'));
-    } catch (error) {
-      console.error('Validation or submission failed:', error);
-      showErrorToast(t('message.please-fill-all-required-fields'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [t]);
 
   const items = useMemo(
     () => [
@@ -146,16 +158,6 @@ const AddDataContract: React.FC<{
         key: 'semantics',
         children: <ContractSemanticFormTab onNext={onNext} onPrev={onPrev} />,
       },
-      //   {
-      //     label: (
-      //       <div className="d-flex items-center">
-      //         <TableOutlined />
-      //         <span>{t('label.security')}</span>
-      //       </div>
-      //     ),
-      //     key: 'security',
-      //     children: <ContractSecurityFormTab />,
-      //   },
       {
         label: (
           <div className="d-flex items-center">
@@ -164,18 +166,14 @@ const AddDataContract: React.FC<{
           </div>
         ),
         key: 'quality',
-        children: <ContractQualityFormTab />,
+        children: (
+          <ContractQualityFormTab
+            onUpdate={(partialDataContract) =>
+              setFormValues((prev) => ({ ...prev, ...partialDataContract }))
+            }
+          />
+        ),
       },
-      //   {
-      //     label: (
-      //       <div className="d-flex items-center">
-      //         <TableOutlined />
-      //         <span>{t('label.sla')}</span>
-      //       </div>
-      //     ),
-      //     key: 'sla',
-      //     children: <ContractSLAFormTab />,
-      //   },
     ],
     [t, onNext, onPrev]
   );
@@ -249,23 +247,7 @@ const AddDataContract: React.FC<{
     );
   }, [mode, items, handleTabChange, activeTab, yaml]);
 
-  return (
-    <Card className="h-full" title={cardTitle}>
-      {cardContent}
-
-      {/* Debug: Show accumulated form data */}
-      <div className="m-t-md">
-        <Typography.Title level={5}>
-          {t('label.debug-accumulated-form-data')}
-        </Typography.Title>
-        <SchemaEditor
-          readOnly
-          mode={{ name: CSMode.JAVASCRIPT }}
-          value={JSON.stringify(formValues, null, 2)}
-        />
-      </div>
-    </Card>
-  );
+  return <Card title={cardTitle}>{cardContent}</Card>;
 };
 
 export default AddDataContract;

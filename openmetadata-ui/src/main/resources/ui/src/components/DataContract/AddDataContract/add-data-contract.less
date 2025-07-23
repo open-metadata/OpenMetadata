@@ -10,18 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../styles/variables.less');
+
 .ant-tabs.ant-tabs-left.contract-tabs {
   .ant-tabs-content-holder {
     background: #fff;
     border-radius: 0 8px 8px 8px;
-    border: 1px solid #e5e7eb;
-    border-left: none;
-    margin-left: 0;
     flex: 1;
+    padding-left: @size-lg;
 
     .ant-tabs-tabpane {
       margin-top: 0;
       border: none;
+      padding: 0;
+      background: @white;
+      height: initial;
+      overflow: initial;
     }
   }
 
@@ -103,8 +108,8 @@
 
 // Additional styling for the contract form container
 .container.bg-grey {
-  background: transparent;
-  padding: 0;
+  background: @grey-50;
+  border: none;
   height: 100%;
 
   & > div:first-child {
