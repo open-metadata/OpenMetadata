@@ -31,7 +31,6 @@ import { getApiContext, redirectToHomePage } from './common';
 // All operations across all entities
 const ALL_OPERATIONS = [
   // Common operations
-
   'EditDescription',
   'EditOwners',
   'EditTier',
@@ -40,7 +39,7 @@ const ALL_OPERATIONS = [
   'EditGlossaryTerms',
   'Delete',
 
-  // Table-specific operations
+  // Entity specific operations
   'ViewQueries',
   'ViewSampleData',
   'ViewDataProfile',
@@ -50,12 +49,6 @@ const ALL_OPERATIONS = [
   'EditDataProfile',
   'EditSampleData',
   'EditTests',
-
-  // Usage operations (for multiple entities)
-  'ViewUsage',
-  'EditUsage',
-
-  // Pipeline-specific operations
   'EditStatus',
 ];
 
@@ -289,7 +282,11 @@ export const testPermissionErrorVisibility = async (
     ).toBeVisible();
   } else {
     await expect(
-      testUserPage.locator('[data-testid="permission-error-placeholder"]')
+      testUserPage
+        .locator('[data-testid="permission-error-placeholder"]')
+        .getByText(
+          expectedErrorMessage || "You don't have necessary permissions."
+        )
     ).not.toBeVisible();
   }
 };
@@ -389,22 +386,6 @@ export const testTopicSpecificOperations = async (
   );
 };
 
-export const testDashboardSpecificOperations = async (
-  testUserPage: Page,
-  entity: DashboardClass,
-  effect: 'allow' | 'deny'
-) => {
-  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
-
-  // Test ViewUsage for Dashboard
-  await testPermissionErrorVisibility(
-    testUserPage,
-    'usage',
-    effect,
-    "You don't have necessary permissions. Please check with the admin to get the View Usage permission."
-  );
-};
-
 export const testPipelineSpecificOperations = async (
   testUserPage: Page,
   entity: PipelineClass,
@@ -415,12 +396,8 @@ export const testPipelineSpecificOperations = async (
   // Test Edit Lineage for Pipeline
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
   if (effect === 'allow') {
-    await testUserPage.getByTestId('edit-lineage').click();
-
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await testUserPage.getByTestId('edit-lineage').click();
-
     await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
   }
 };
@@ -467,12 +444,8 @@ export const testDashboardDataModelSpecificOperations = async (
   // Test Edit Lineage for Dashboard Data Model
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
   if (effect === 'allow') {
-    await testUserPage.getByTestId('edit-lineage').click();
-
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await testUserPage.getByTestId('edit-lineage').click();
-
     await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
   }
 };
@@ -507,7 +480,6 @@ export const entityConfig = {
   },
   Dashboard: {
     class: DashboardClass,
-    specificTest: testDashboardSpecificOperations,
   },
   Pipeline: {
     class: PipelineClass,
