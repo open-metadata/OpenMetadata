@@ -291,7 +291,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   });
 
   await redirectToHomePage(page);
-  await table1.visitEntityPageWithCustomSearchBox(page);
+  await table1.visitEntityPage(page);
   const queryResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=query_search_index*'
   );
