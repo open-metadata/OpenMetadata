@@ -299,7 +299,8 @@ class KubernetesSecretsManagerTest {
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(CLUSTER_NAME, "", new ArrayList<>(), parameters);
 
-    KubernetesSecretsManager secretsManagerWithEmptyPrefix = KubernetesSecretsManager.getInstance(secretsConfig);
+    KubernetesSecretsManager secretsManagerWithEmptyPrefix =
+        KubernetesSecretsManager.getInstance(secretsConfig);
     secretsManagerWithEmptyPrefix.setApiClient(mockApiClient);
     secretsManagerWithEmptyPrefix.setNamespace(NAMESPACE);
 
@@ -330,7 +331,8 @@ class KubernetesSecretsManagerTest {
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(CLUSTER_NAME, null, new ArrayList<>(), parameters);
 
-    KubernetesSecretsManager secretsManagerWithNullPrefix = KubernetesSecretsManager.getInstance(secretsConfig);
+    KubernetesSecretsManager secretsManagerWithNullPrefix =
+        KubernetesSecretsManager.getInstance(secretsConfig);
     secretsManagerWithNullPrefix.setApiClient(mockApiClient);
     secretsManagerWithNullPrefix.setNamespace(NAMESPACE);
 
@@ -362,7 +364,8 @@ class KubernetesSecretsManagerTest {
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(CLUSTER_NAME, customPrefix, new ArrayList<>(), parameters);
 
-    KubernetesSecretsManager secretsManagerWithCustomPrefix = KubernetesSecretsManager.getInstance(secretsConfig);
+    KubernetesSecretsManager secretsManagerWithCustomPrefix =
+        KubernetesSecretsManager.getInstance(secretsConfig);
     secretsManagerWithCustomPrefix.setApiClient(mockApiClient);
     secretsManagerWithCustomPrefix.setNamespace(NAMESPACE);
 
@@ -394,7 +397,8 @@ class KubernetesSecretsManagerTest {
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(CLUSTER_NAME, customPrefix, new ArrayList<>(), parameters);
 
-    KubernetesSecretsManager secretsManagerWithCustomPrefix = KubernetesSecretsManager.getInstance(secretsConfig);
+    KubernetesSecretsManager secretsManagerWithCustomPrefix =
+        KubernetesSecretsManager.getInstance(secretsConfig);
     secretsManagerWithCustomPrefix.setApiClient(mockApiClient);
     secretsManagerWithCustomPrefix.setNamespace(NAMESPACE);
 
@@ -424,7 +428,8 @@ class KubernetesSecretsManagerTest {
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(CLUSTER_NAME, customPrefix, new ArrayList<>(), parameters);
 
-    KubernetesSecretsManager secretsManagerWithCustomPrefix = KubernetesSecretsManager.getInstance(secretsConfig);
+    KubernetesSecretsManager secretsManagerWithCustomPrefix =
+        KubernetesSecretsManager.getInstance(secretsConfig);
     secretsManagerWithCustomPrefix.setApiClient(mockApiClient);
     secretsManagerWithCustomPrefix.setNamespace(NAMESPACE);
 
@@ -455,18 +460,15 @@ class KubernetesSecretsManagerTest {
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(CLUSTER_NAME, "", new ArrayList<>(), parameters);
 
-    KubernetesSecretsManager secretsManagerWithEmptyPrefix = KubernetesSecretsManager.getInstance(secretsConfig);
+    KubernetesSecretsManager secretsManagerWithEmptyPrefix =
+        KubernetesSecretsManager.getInstance(secretsConfig);
     secretsManagerWithEmptyPrefix.setApiClient(mockApiClient);
     secretsManagerWithEmptyPrefix.setNamespace(NAMESPACE);
 
     // Test empty string name - this should result in "om-secret-field"
     // Input "" becomes "/field" after buildSecretId
     // After sanitization: "field" (starts with 'f', so no prefix needed)
-    testSanitizedNameWithPrefix(
-        secretsManagerWithEmptyPrefix,
-        "",
-        "field",
-        "secret:/field");
+    testSanitizedNameWithPrefix(secretsManagerWithEmptyPrefix, "", "field", "secret:/field");
   }
 
   @Test
@@ -487,18 +489,15 @@ class KubernetesSecretsManagerTest {
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(CLUSTER_NAME, customPrefix, new ArrayList<>(), parameters);
 
-    KubernetesSecretsManager secretsManagerWithCustomPrefix = KubernetesSecretsManager.getInstance(secretsConfig);
+    KubernetesSecretsManager secretsManagerWithCustomPrefix =
+        KubernetesSecretsManager.getInstance(secretsConfig);
     secretsManagerWithCustomPrefix.setApiClient(mockApiClient);
     secretsManagerWithCustomPrefix.setNamespace(NAMESPACE);
 
     // Test empty string name with custom prefix
     // Input "" becomes "/field" after buildSecretId
     // After sanitization: "field" (starts with 'f', so no prefix needed)
-    testSanitizedNameWithPrefix(
-        secretsManagerWithCustomPrefix,
-        "",
-        "field",
-        "secret:/field");
+    testSanitizedNameWithPrefix(secretsManagerWithCustomPrefix, "", "field", "secret:/field");
   }
 
   // Add tests that actually trigger prefix application
@@ -520,18 +519,15 @@ class KubernetesSecretsManagerTest {
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(CLUSTER_NAME, customPrefix, new ArrayList<>(), parameters);
 
-    KubernetesSecretsManager secretsManagerWithCustomPrefix = KubernetesSecretsManager.getInstance(secretsConfig);
+    KubernetesSecretsManager secretsManagerWithCustomPrefix =
+        KubernetesSecretsManager.getInstance(secretsConfig);
     secretsManagerWithCustomPrefix.setApiClient(mockApiClient);
     secretsManagerWithCustomPrefix.setNamespace(NAMESPACE);
 
     // Test with a name that will actually trigger prefix application
     // Input "-" becomes "-/field" after buildSecretId
     // After sanitization: "field" (leading hyphen gets removed, so no prefix needed)
-    testSanitizedNameWithPrefix(
-        secretsManagerWithCustomPrefix,
-        "-",
-        "field",
-        "secret:-/field");
+    testSanitizedNameWithPrefix(secretsManagerWithCustomPrefix, "-", "field", "secret:-/field");
   }
 
   @Test
@@ -552,7 +548,8 @@ class KubernetesSecretsManagerTest {
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(CLUSTER_NAME, customPrefix, new ArrayList<>(), parameters);
 
-    KubernetesSecretsManager secretsManagerWithCustomPrefix = KubernetesSecretsManager.getInstance(secretsConfig);
+    KubernetesSecretsManager secretsManagerWithCustomPrefix =
+        KubernetesSecretsManager.getInstance(secretsConfig);
     secretsManagerWithCustomPrefix.setApiClient(mockApiClient);
     secretsManagerWithCustomPrefix.setNamespace(NAMESPACE);
 
@@ -560,10 +557,7 @@ class KubernetesSecretsManagerTest {
     // Input "@special" becomes "_special/field" after buildSecretId (special chars replaced with _)
     // After sanitization: "special-field" (starts with 's', so no prefix needed)
     testSanitizedNameWithPrefix(
-        secretsManagerWithCustomPrefix,
-        "@special",
-        "special-field",
-        "secret:_special/field");
+        secretsManagerWithCustomPrefix, "@special", "special-field", "secret:_special/field");
   }
 
   private V1Secret createMockSecret(String value) {
