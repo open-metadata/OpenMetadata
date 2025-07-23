@@ -1819,6 +1819,11 @@ export const getLineageEntityExclusionFilter = () => {
               entityType: EntityType.DATA_PRODUCT,
             },
           },
+          {
+            term: {
+              entityType: EntityType.KNOWLEDGE_PAGE,
+            },
+          },
         ],
       },
     },
