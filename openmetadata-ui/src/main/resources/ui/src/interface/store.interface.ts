@@ -76,6 +76,7 @@ export interface ApplicationStore
   setApplicationsName: (applications: string[]) => void;
   setAppVersion: (version: string) => void;
   setRdfEnabled: (enabled: boolean) => void;
+  initializeAuthState: () => void;
 }
 
 export interface DomainStore {

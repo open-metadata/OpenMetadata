@@ -78,14 +78,14 @@ import {
   prepareUserProfileFromClaims,
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
+import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import {
   getOidcToken,
   getRefreshToken,
   setOidcToken,
   setRefreshToken,
-} from '../../../utils/LocalStorageUtils';
-import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
-import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
+} from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
@@ -155,6 +155,7 @@ export const AuthProvider = ({
     setJwtPrincipalClaimsMapping,
     isApplicationLoading,
     setApplicationLoading,
+    initializeAuthState,
   } = useApplicationStore();
   const { updateDomains, updateDomainLoading } = useDomainStore();
   const tokenService = useRef<TokenService>(TokenService.getInstance());
@@ -201,8 +202,9 @@ export const AuthProvider = ({
     // remove analytics session on logout
     removeSession();
 
-    // remove the refresh token on logout
-    setRefreshToken('');
+    // Clear tokens properly during logout
+    await setOidcToken('');
+    await setRefreshToken('');
 
     setApplicationLoading(false);
 
@@ -297,12 +299,11 @@ export const AuthProvider = ({
    * It will also ensure that we have time left for token expiry
    * This method will be call upon successful signIn
    */
-  const startTokenExpiryTimer = () => {
+  const startTokenExpiryTimer = async () => {
+    const oidcToken = await getOidcToken();
     // Extract expiry
-    const { isExpired, timeoutExpiry } = extractDetailsFromToken(
-      getOidcToken()
-    );
-    const refreshToken = getRefreshToken();
+    const { isExpired, timeoutExpiry } = extractDetailsFromToken(oidcToken);
+    const refreshToken = await getRefreshToken();
 
     // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
     const shouldStartExpiry =
@@ -323,6 +324,10 @@ export const AuthProvider = ({
       setTimeoutId(Number(timerId));
     }
   };
+
+  useEffect(() => {
+    initializeAuthState();
+  }, []);
 
   useEffect(() => {
     if (authenticatorRef.current?.renewIdToken) {
@@ -500,7 +505,7 @@ export const AuthProvider = ({
    * Initialize Axios interceptors to intercept every request and response
    * to handle appropriately. This should be called only when security is enabled.
    */
-  const initializeAxiosInterceptors = () => {
+  const initializeAxiosInterceptors = async () => {
     // Axios Request interceptor to add Bearer tokens in Header
     if (requestInterceptor != null) {
       axiosClient.interceptors.request.eject(requestInterceptor);
@@ -515,7 +520,7 @@ export const AuthProvider = ({
       config: InternalAxiosRequestConfig<any>
     ) {
       // Need to read token from local storage as it might have been updated with refresh
-      const token: string = getOidcToken() || '';
+      const token: string = await getOidcToken();
       if (token) {
         if (config.headers) {
           config.headers['Authorization'] = `Bearer ${token}`;
@@ -621,7 +626,8 @@ export const AuthProvider = ({
           setAuthorizerConfig(authorizerConfig);
           // RDF enabled status is already set from system config in App.tsx
           updateAuthInstance(configJson);
-          if (!getOidcToken()) {
+          const oidcToken = await getOidcToken();
+          if (!oidcToken) {
             handleStoreProtectedRedirectPath();
             setApplicationLoading(false);
           } else {
@@ -690,7 +696,7 @@ export const AuthProvider = ({
         return (
           <Auth0Provider
             useRefreshTokens
-            cacheLocation="localstorage"
+            cacheLocation="memory"
             clientId={authConfig.clientId.toString()}
             domain={authConfig.authority.toString()}
             redirectUri={authConfig.callbackUrl.toString()}>
