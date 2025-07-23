@@ -579,6 +579,13 @@ site_menu:
   - category: Connectors / ML Model / VertexAI / Troubleshooting
     url: /connectors/ml-model/vertexai/troubleshooting
 
+  - category: Connectors / Security
+    url: /connectors/security
+  - category: Connectors / Security / Ranger
+    url: /connectors/security/ranger
+  - category: Connectors / Security / Ranger / Run Externally
+    url: /connectors/security/ranger/yaml
+
   - category: Connectors / Storage
     url: /connectors/storage
   - category: Connectors / Storage / ADLS

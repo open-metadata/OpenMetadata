@@ -10,7 +10,9 @@
       "title": "Ranger Type",
       "description": "Apache Ranger service type",
       "type": "string",
-      "enum": ["Ranger"],
+      "enum": [
+        "Ranger"
+      ],
       "default": "Ranger"
     },
     "basicAuth": {
@@ -29,7 +31,10 @@
           "format": "password"
         }
       },
-      "required": ["username", "password"],
+      "required": [
+        "username",
+        "password"
+      ],
       "additionalProperties": false
     },
     "kerberosAuth": {
@@ -47,7 +52,10 @@
           "type": "string"
         }
       },
-      "required": ["keytabPath", "principal"],
+      "required": [
+        "keytabPath",
+        "principal"
+      ],
       "additionalProperties": false
     }
   },
@@ -76,27 +84,11 @@
           "$ref": "#/definitions/kerberosAuth"
         }
       ]
-    },
-    "verifySSL": {
-      "title": "Verify SSL",
-      "description": "Flag to verify SSL Certificate for Apache Ranger.",
-      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
-      "default": "no-ssl"
-    },
-    "sslConfig": {
-      "title": "SSL Configuration",
-      "description": "SSL Configuration for Apache Ranger",
-      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
-    },
-    "connectionOptions": {
-      "title": "Connection Options",
-      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
-    },
-    "connectionArguments": {
-      "title": "Connection Arguments",
-      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "authType"]
+  "required": [
+    "hostPort",
+    "authType"
+  ]
 }

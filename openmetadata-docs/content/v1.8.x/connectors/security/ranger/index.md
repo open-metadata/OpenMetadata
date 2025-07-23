@@ -21,7 +21,7 @@ Configure and schedule Apache Ranger metadata workflows from the OpenMetadata UI
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
 
-{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/security/ranger/yaml"} /%}
+{% partial file="/v1.8/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/security/ranger/yaml"} /%}
 
 ## Requirements
 
@@ -47,7 +47,7 @@ We support Apache Ranger with the following authentication methods:
 - **Kerberos Authentication**: Keytab file and principal (for Kerberos-enabled clusters)
 
 ### Python Requirements
-{% partial file="/v1.9/connectors/python-requirements.md" /%}
+{% partial file="/v1.8/connectors/python-requirements.md" /%}
 
 To run the Apache Ranger connector, you need to install:
 
@@ -57,7 +57,7 @@ pip3 install "openmetadata-ingestion[ranger]"
 
 ## Metadata Ingestion
 
-{% partial file="/v1.9/connectors/metadata-ingestion-ui.md" /%}
+{% partial file="/v1.8/connectors/metadata-ingestion-ui.md" /%}
 
 ### 1. Visit the Services Page
 
@@ -66,7 +66,7 @@ The first step is ingesting the metadata from your Apache Ranger instance. Under
 To visit the Services page, select Services from the Settings menu.
 
 {% image
-src="/images/v1.9/connectors/visit-services.png"
+src="/images/v1.8/connectors/visit-services.png"
 alt="Visit Services Page"
 caption="Find Services under the Settings menu"
 /%}
@@ -76,7 +76,7 @@ caption="Find Services under the Settings menu"
 Click on the Add New Service button to start the Service creation.
 
 {% image
-src="/images/v1.9/connectors/create-service.png"
+src="/images/v1.8/connectors/create-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Services page"
 /%}
@@ -86,7 +86,7 @@ caption="Add a new Service from the Services page"
 Select Security Service as the service type and click Next.
 
 {% image
-src="/images/v1.9/connectors/select-security-service.png"
+src="/images/v1.8/connectors/select-security-service.png"
 alt="Select Service"
 caption="Select your service from the list"
 /%}
@@ -103,7 +103,7 @@ Provide a name and description for your service as illustrated below.
 {% /table %}
 
 {% image
-src="/images/v1.9/connectors/add-new-service.png"
+src="/images/v1.8/connectors/add-new-service.png"
 alt="Add New Service"
 caption="Provide a Name and description for your Service"
 /%}
@@ -113,7 +113,7 @@ caption="Provide a Name and description for your Service"
 In this step, we will configure the connection settings required to connect to Apache Ranger.
 
 {% image
-src="/images/v1.9/connectors/security/ranger/service-connection.png"
+src="/images/v1.8/connectors/security/ranger/service-connection.png"
 alt="Configure service connection"
 caption="Configure the service connection by filling the form"
 /%}
@@ -138,11 +138,11 @@ name="Apache Ranger"
 - If you need information about how to configure these credentials, please reach out on [Slack](https://slack.open-metadata.org/).
 {% /table %}
 
-{% partial file="/v1.9/connectors/test-connection.md" /%}
+{% partial file="/v1.8/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9/connectors/security/configure-ingestion.md" /%}
+{% partial file="/v1.8/connectors/security/configure-ingestion.md" /%}
 
-{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.8/connectors/ingestion-schedule-and-deploy.md" /%}
 
 ## Security
 
@@ -176,4 +176,4 @@ Apache Ranger provides fine-grained access control and security policies for you
 - Check if the Apache Ranger API endpoints are enabled and accessible
 - Ensure proper permissions are granted for policy and role retrieval
 
-{% partial file="/v1.9/connectors/troubleshooting.md" /%} 
+{% partial file="/v1.8/connectors/troubleshooting.md" /%} 
