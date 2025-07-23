@@ -120,8 +120,7 @@ export const CustomizablePage = () => {
             : t('label.created-lowercase'),
         })
       );
-    } catch (error) {
-      // Error
+    } catch {
       showErrorToast(
         t('server.page-layout-operation-error', {
           operation: document.id

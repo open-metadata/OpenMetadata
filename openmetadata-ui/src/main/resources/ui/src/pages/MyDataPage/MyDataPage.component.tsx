@@ -35,10 +35,7 @@ import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
-import {
-  getWidgetFromKey,
-  processLayoutFromAPI,
-} from '../../utils/CustomizableLandingPageUtils';
+import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
@@ -113,14 +110,14 @@ const MyDataPage = () => {
 
         setLayout(
           isEmpty(filteredLayout)
-            ? processLayoutFromAPI(customizePageClassBase.defaultLayout)
-            : processLayoutFromAPI(filteredLayout)
+            ? customizePageClassBase.defaultLayout
+            : filteredLayout
         );
       } else {
-        setLayout(processLayoutFromAPI(customizePageClassBase.defaultLayout));
+        setLayout(customizePageClassBase.defaultLayout);
       }
     } catch {
-      setLayout(processLayoutFromAPI(customizePageClassBase.defaultLayout));
+      setLayout(customizePageClassBase.defaultLayout);
     } finally {
       setIsLoading(false);
     }
@@ -271,7 +268,7 @@ const MyDataPage = () => {
             customizePageClassBase.landingPageWidgetMargin,
             customizePageClassBase.landingPageWidgetMargin,
           ]}
-          rowHeight={100}>
+          rowHeight={customizePageClassBase.landingPageRowHeight}>
           {widgets}
         </ReactGridLayout>
       </div>

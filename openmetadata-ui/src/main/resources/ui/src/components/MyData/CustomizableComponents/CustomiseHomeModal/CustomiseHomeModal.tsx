@@ -225,6 +225,8 @@ const CustomiseHomeModal = ({
               )}
               data-testid={`sidebar-option-${item.key}`}
               key={item.key}
+              role="button"
+              tabIndex={0}
               onClick={() => handleSidebarClick(item.key)}>
               {isWidgetItem && widgetIcon && (
                 <span className="sidebar-widget-icon">
@@ -274,7 +276,7 @@ const CustomiseHomeModal = ({
       setSelectedWidgets([]);
       onClose();
     } catch (error) {
-      return;
+      showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }

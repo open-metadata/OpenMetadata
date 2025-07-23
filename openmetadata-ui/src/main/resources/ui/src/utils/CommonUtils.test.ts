@@ -14,7 +14,6 @@
 import {
   filterSelectOptions,
   getTableFQNFromColumnFQN,
-  getVisiblePopupContainer,
   isLinearGradient,
 } from './CommonUtils';
 
@@ -119,113 +118,6 @@ describe('Tests for CommonUtils', () => {
       expect(isLinearGradient('hsla(0, 100%, 50%, 0.5)')).toBe(false);
       expect(isLinearGradient('inherit')).toBe(false);
       expect(isLinearGradient('')).toBe(false);
-    });
-  });
-
-  describe('getVisiblePopupContainer', () => {
-    let mockBody: HTMLElement;
-    let mockParentElement: HTMLElement;
-
-    beforeEach(() => {
-      // Mock document.body
-      mockBody = {
-        scrollHeight: 1000,
-        clientHeight: 800,
-      } as HTMLElement;
-
-      // Mock document.body property
-      Object.defineProperty(document, 'body', {
-        value: mockBody,
-        writable: true,
-      });
-
-      mockParentElement = {
-        scrollHeight: 800,
-        clientHeight: 500,
-        parentElement: mockBody,
-      } as HTMLElement;
-
-      // Mock window.getComputedStyle
-      Object.defineProperty(window, 'getComputedStyle', {
-        value: jest.fn(),
-        writable: true,
-      });
-    });
-
-    afterEach(() => {
-      jest.clearAllMocks();
-    });
-
-    it('should return document.body when no trigger is provided', () => {
-      expect(getVisiblePopupContainer()).toBe(mockBody);
-    });
-
-    it('should find suitable container with auto overflow', () => {
-      const mockGetComputedStyle = window.getComputedStyle as jest.Mock;
-
-      // Set up element hierarchy for this test
-      const testElement = {
-        scrollHeight: 500,
-        clientHeight: 400,
-        parentElement: mockParentElement,
-      } as HTMLElement;
-
-      mockGetComputedStyle
-        .mockReturnValueOnce({ overflow: 'visible', overflowY: 'visible' }) // testElement
-        .mockReturnValueOnce({ overflow: 'auto', overflowY: 'auto' }); // mockParentElement
-
-      expect(getVisiblePopupContainer(testElement)).toBe(mockParentElement);
-    });
-
-    it('should fallback to document.body when no suitable container found', () => {
-      const mockGetComputedStyle = window.getComputedStyle as jest.Mock;
-
-      // Set up element hierarchy for this test
-      const testElement = {
-        scrollHeight: 500,
-        clientHeight: 400,
-        parentElement: mockParentElement,
-      } as HTMLElement;
-
-      mockGetComputedStyle
-        .mockReturnValueOnce({ overflow: 'visible', overflowY: 'visible' }) // testElement
-        .mockReturnValueOnce({ overflow: 'visible', overflowY: 'visible' }); // mockParentElement
-
-      expect(getVisiblePopupContainer(testElement)).toBe(mockBody);
-    });
-
-    it('should not return container with hidden overflow', () => {
-      const mockGetComputedStyle = window.getComputedStyle as jest.Mock;
-
-      // Set up element hierarchy for this test
-      const testElement = {
-        scrollHeight: 500,
-        clientHeight: 400,
-        parentElement: mockParentElement,
-      } as HTMLElement;
-
-      mockGetComputedStyle
-        .mockReturnValueOnce({ overflow: 'visible', overflowY: 'visible' }) // testElement
-        .mockReturnValueOnce({ overflow: 'hidden', overflowY: 'hidden' }); // mockParentElement
-
-      expect(getVisiblePopupContainer(testElement)).toBe(mockBody);
-    });
-
-    it('should handle null parentElement', () => {
-      const mockGetComputedStyle = window.getComputedStyle as jest.Mock;
-
-      const elementWithNullParent = {
-        scrollHeight: 500,
-        clientHeight: 400,
-        parentElement: null,
-      } as HTMLElement;
-
-      mockGetComputedStyle.mockReturnValue({
-        overflow: 'visible',
-        overflowY: 'visible',
-      });
-
-      expect(getVisiblePopupContainer(elementWithNullParent)).toBe(mockBody);
     });
   });
 });

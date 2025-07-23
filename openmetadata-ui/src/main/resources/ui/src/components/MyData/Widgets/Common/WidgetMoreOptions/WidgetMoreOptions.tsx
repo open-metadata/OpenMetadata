@@ -15,7 +15,7 @@ import { MoreOutlined } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
-import { getVisiblePopupContainer } from '../../../../../utils/CommonUtils';
+import { getVisiblePopupContainer } from '../../../../../utils/LandingPageWidget/WidgetsUtils';
 import './widget-more-options.less';
 
 export interface MoreOption {

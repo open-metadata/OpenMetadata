@@ -12,6 +12,7 @@
  */
 
 import { Col, Row, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -46,6 +47,7 @@ import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -152,7 +154,7 @@ const CuratedAssetsWidget = ({
 
         setData(source);
       } catch (error) {
-        return;
+        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
@@ -330,27 +332,27 @@ const CuratedAssetsWidget = ({
     []
   );
 
+  const entityListData = useMemo(() => {
+    return isFullSize ? (
+      <Row className="curated-assets-grid">
+        {data.map((item) => (
+          <Col key={item.id} span={12}>
+            {entityListLinkItem(item)}
+          </Col>
+        ))}
+      </Row>
+    ) : (
+      data.map((item) => entityListLinkItem(item))
+    );
+  }, [data, isFullSize, entityListLinkItem]);
+
   const entityList = useMemo(
     () => (
       <div className="entity-list-body">
-        {data.length > 0 ? (
-          isFullSize ? (
-            <Row className="curated-assets-grid">
-              {data.map((item) => (
-                <Col key={item.id} span={12}>
-                  {entityListLinkItem(item)}
-                </Col>
-              ))}
-            </Row>
-          ) : (
-            data.map((item) => entityListLinkItem(item))
-          )
-        ) : (
-          noDataState
-        )}
+        {data.length > 0 ? entityListData : noDataState}
       </div>
     ),
-    [data, noDataState, isFullSize]
+    [data, noDataState, entityListData]
   );
 
   const widgetContent = (

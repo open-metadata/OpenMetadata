@@ -131,7 +131,7 @@ const MyTaskWidget = ({
                   feed={feed}
                   hideCardBorder={false}
                   hidePopover={isEditView}
-                  isOpenInDrawer={myTaskData?.w === 1 ? true : false}
+                  isOpenInDrawer={myTaskData?.w === 1}
                   key={feed.id}
                   showThread={false}
                   onAfterClose={handleAfterTaskClose}

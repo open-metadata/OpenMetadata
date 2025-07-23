@@ -15,16 +15,9 @@ import { Button, Carousel, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get } from 'lodash';
-import {
-  DOMAttributes,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ArrowRightIcon } from '../../../../assets/svg/arrow-right.svg';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/filter.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
@@ -41,6 +34,10 @@ import {
   getRecentlyViewedData,
   isLinearGradient,
 } from '../../../../utils/CommonUtils';
+import {
+  CustomNextArrow,
+  CustomPrevArrow,
+} from '../../../../utils/CustomizableLandingPageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -126,23 +123,6 @@ const CustomiseLandingPageHeader = ({
     setShowCustomiseHomeModal(false);
   };
 
-  const CustomNextArrow = (props: DOMAttributes<HTMLDivElement>) => (
-    <Icon
-      className="custom-arrow right-arrow"
-      component={ArrowRightIcon}
-      onClick={props.onClick}
-    />
-  );
-
-  const CustomPrevArrow = (props: DOMAttributes<HTMLDivElement>) => (
-    <Icon
-      className="custom-arrow left-arrow"
-      component={ArrowRightIcon}
-      //   style={{ transform: 'rotate(180deg)' }}
-      onClick={props.onClick}
-    />
-  );
-
   const handleDomainChange = useCallback(
     async (domain: EntityReference | EntityReference[]) => {
       updateActiveDomain(domain as EntityReference);
@@ -209,6 +189,8 @@ const CustomiseLandingPageHeader = ({
                     }
                   )}
                   data-testid="domain-selector"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     setIsDomainDropdownOpen(!isDomainDropdownOpen);
                   }}>
@@ -243,11 +225,14 @@ const CustomiseLandingPageHeader = ({
                 prevArrow={<CustomPrevArrow />}
                 slidesToScroll={6}
                 slidesToShow={6}>
-                {recentlyViewData.map((data) => (
+                {recentlyViewData.map((data, index) => (
                   <div
                     className={classNames('customise-recently-viewed-data', {
                       disabled: !onHomePage,
                     })}
+                    key={index}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       navigate(`/${data.entityType}/${data.name}`);
                     }}>

@@ -37,7 +37,6 @@ import {
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
   getWidgetFromKey,
-  processLayoutFromAPI,
 } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -64,10 +63,8 @@ function CustomizeMyData({
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(
-      processLayoutFromAPI(
-        (initialPageData?.layout as WidgetConfig[]) ??
-          customizeMyDataPageClassBase.defaultLayout
-      ),
+      (initialPageData?.layout as WidgetConfig[]) ??
+        customizeMyDataPageClassBase.defaultLayout,
       2,
       4
     )
