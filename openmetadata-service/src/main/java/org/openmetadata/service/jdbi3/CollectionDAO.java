@@ -3664,23 +3664,30 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT SUBSTRING_INDEX(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
+            ""
+                + "SELECT t.classificationHash, COUNT(*) AS termCount "
                 + "FROM tag t "
+                + "JOIN JSON_TABLE("
+                + "    :jsonHashes, "
+                + "    '$[*]' COLUMNS (classificationHash VARCHAR(64) PATH '$')"
+                + ") AS h "
+                + "  ON t.classificationHash = h.classificationHash "
                 + "WHERE t.deleted = FALSE "
-                + "AND t.fqnHash REGEXP :classificationHashPattern "
-                + "GROUP BY SUBSTRING_INDEX(t.fqnHash, '.', 1)",
+                + "GROUP BY t.classificationHash",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT SPLIT_PART(t.fqnHash, '.', 1) as classificationHash, COUNT(*) as termCount "
+            ""
+                + "SELECT t.classificationHash, COUNT(*) AS termCount "
                 + "FROM tag t "
+                + "JOIN UNNEST(:hashArray::text[]) AS h(classificationHash) "
+                + "  ON t.classificationHash = h.classificationHash "
                 + "WHERE t.deleted = FALSE "
-                + "AND t.fqnHash ~ :classificationHashPattern "
-                + "GROUP BY SPLIT_PART(t.fqnHash, '.', 1)",
+                + "GROUP BY t.classificationHash",
         connectionType = POSTGRES)
     @RegisterRowMapper(TermCountMapper.class)
     List<Pair<String, Integer>> bulkGetTermCounts(
-        @Bind("classificationHashPattern") String classificationHashPattern);
+        @Bind("jsonHashes") String jsonHashes, @Bind("hashArray") List<String> hashArray);
 
     class TermCountMapper implements RowMapper<Pair<String, Integer>> {
       @Override
@@ -3973,16 +3980,14 @@ public interface CollectionDAO {
         value =
             "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
                 + "FROM ("
-                + "  SELECT gterm.* , tu.* "
+                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gterm.json "
                 + "  FROM glossary_term_entity AS gterm "
-                + "  JOIN tag_usage AS tu "
-                + "  ON gterm.fqnHash = tu.tagFQNHash "
+                + "  JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 1 "
                 + "  UNION ALL "
-                + "  SELECT ta.*, tu.* "
+                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, ta.json "
                 + "  FROM tag AS ta "
-                + "  JOIN tag_usage AS tu "
-                + "  ON ta.fqnHash = tu.tagFQNHash "
+                + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 0 "
                 + ") AS combined_data "
                 + "WHERE combined_data.targetFQNHash LIKE :targetFQNHash",
@@ -3991,12 +3996,12 @@ public interface CollectionDAO {
         value =
             "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
                 + "FROM ("
-                + "  SELECT gterm.*, tu.* "
+                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gterm.json "
                 + "  FROM glossary_term_entity AS gterm "
                 + "  JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 1 "
                 + "  UNION ALL "
-                + "  SELECT ta.*, tu.* "
+                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, ta.json "
                 + "  FROM tag AS ta "
                 + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 0 "

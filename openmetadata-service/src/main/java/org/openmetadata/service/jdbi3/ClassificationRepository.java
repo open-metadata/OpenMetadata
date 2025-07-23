@@ -19,6 +19,7 @@ import static org.openmetadata.service.search.SearchClient.TAG_SEARCH_INDEX;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -137,24 +138,23 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     }
 
     try {
-      // Build regex pattern for bulk fetch
-      StringBuilder patternBuilder = new StringBuilder("^(");
+      // Convert classifications to their hash representations
+      List<String> classificationHashes = new ArrayList<>();
       Map<String, String> hashToFqnMap = new HashMap<>();
 
-      for (int i = 0; i < classifications.size(); i++) {
-        if (i > 0) {
-          patternBuilder.append("|");
-        }
-        String fqn = classifications.get(i).getFullyQualifiedName();
+      for (Classification classification : classifications) {
+        String fqn = classification.getFullyQualifiedName();
         String hash = FullyQualifiedName.buildHash(fqn);
-        patternBuilder.append(hash);
+        classificationHashes.add(hash);
         hashToFqnMap.put(hash, fqn);
       }
-      patternBuilder.append(")\\..*$");
+
+      // Convert the list to JSON array for MySQL
+      String jsonHashes = JsonUtils.pojoToJson(classificationHashes);
 
       // Use the DAO method for database-specific query
       List<Pair<String, Integer>> results =
-          daoCollection.classificationDAO().bulkGetTermCounts(patternBuilder.toString());
+          daoCollection.classificationDAO().bulkGetTermCounts(jsonHashes, classificationHashes);
 
       // Process results
       for (Pair<String, Integer> result : results) {

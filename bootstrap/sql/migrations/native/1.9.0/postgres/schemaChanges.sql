@@ -134,3 +134,12 @@ CREATE TABLE IF NOT EXISTS entity_deletion_lock (
 -- Use btree index for entityFqn prefix matching
 CREATE INDEX IF NOT EXISTS idx_deletion_lock_fqn ON entity_deletion_lock(entityFqn);
 CREATE INDEX IF NOT EXISTS idx_deletion_lock_time ON entity_deletion_lock(lockedAt);
+
+-- 1. Add classificationHash column to support fast lookup and grouping by classification fqnHash
+ALTER TABLE tag
+  ADD COLUMN classificationHash TEXT
+  GENERATED ALWAYS AS (SPLIT_PART(fqnhash, '.', 1)) STORED;
+
+-- 2. Create index on classificationHash + deleted
+CREATE INDEX idx_tag_classification_hash_deleted
+  ON tag (classificationHash, deleted);

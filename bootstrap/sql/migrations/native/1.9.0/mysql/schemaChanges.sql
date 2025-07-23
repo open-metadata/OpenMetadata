@@ -101,3 +101,13 @@ CREATE TABLE IF NOT EXISTS entity_deletion_lock (
     INDEX idx_deletion_lock_fqn (entityFqn(255)),
     INDEX idx_deletion_lock_time (lockedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- 1. Add generated classificationHash column to support fast lookup and grouping by classification fqnHash
+ALTER TABLE tag
+  ADD COLUMN classificationHash VARCHAR(255)
+  GENERATED ALWAYS AS (SUBSTRING_INDEX(fqnhash, '.', 1)) STORED;
+
+-- 2. Create index on classificationHash + deleted
+CREATE INDEX idx_tag_classification_hash_deleted
+  ON tag (classificationHash, deleted);
