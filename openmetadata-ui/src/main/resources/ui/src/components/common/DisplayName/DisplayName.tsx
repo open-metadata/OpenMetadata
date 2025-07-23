@@ -81,7 +81,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   }, [displayName, name, renderNameWithOptionalLink]);
 
   return (
-    <div className="d-inline-flex w-max-90 vertical-align-inherit">
+    <div className="d-inline-flex flex-column hover-icon-group w-max-full vertical-align-inherit">
       <Typography.Text className="m-b-0 d-block" data-testid="column-name">
         {renderMainContent}
       </Typography.Text>
