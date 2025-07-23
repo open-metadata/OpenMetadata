@@ -1,6 +1,7 @@
 package org.openmetadata.service.monitoring;
 
 import static org.openmetadata.service.monitoring.MetricUtils.LATENCY_SLA_BUCKETS;
+import static org.openmetadata.service.monitoring.MetricUtils.normalizeUri;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
@@ -52,7 +53,7 @@ public class RequestLatencyContext {
     requestContext.set(context);
 
     requestTimers.computeIfAbsent(
-        endpoint,
+        normalizeUri(endpoint),
         k ->
             Timer.builder("request.latency.total")
                 .tag(ENDPOINT, endpoint)
@@ -133,7 +134,7 @@ public class RequestLatencyContext {
     try {
       // Stop request timer
       if (context.requestTimerSample != null) {
-        Timer requestTimer = requestTimers.get(context.endpoint);
+        Timer requestTimer = requestTimers.get(normalizeUri(context.endpoint));
         if (requestTimer != null) {
           context.totalTime = context.requestTimerSample.stop(requestTimer);
         }
@@ -147,7 +148,7 @@ public class RequestLatencyContext {
       // This gives us the total DB time for THIS request
       Timer dbTimer =
           databaseTimers.computeIfAbsent(
-              context.endpoint,
+              normalizeUri(context.endpoint),
               k ->
                   Timer.builder("request.latency.database")
                       .tag(ENDPOINT, context.endpoint)
@@ -159,7 +160,7 @@ public class RequestLatencyContext {
       // Record total search time for THIS request
       Timer searchTimer =
           searchTimers.computeIfAbsent(
-              context.endpoint,
+              normalizeUri(context.endpoint),
               k ->
                   Timer.builder("request.latency.search")
                       .tag(ENDPOINT, context.endpoint)
@@ -171,7 +172,7 @@ public class RequestLatencyContext {
       // Record internal processing time for THIS request
       Timer internalTimer =
           internalTimers.computeIfAbsent(
-              context.endpoint,
+              normalizeUri(context.endpoint),
               k ->
                   Timer.builder("request.latency.internal")
                       .tag(ENDPOINT, context.endpoint)
@@ -200,7 +201,7 @@ public class RequestLatencyContext {
         // Get or create percentage holder for this endpoint
         PercentageHolder holder =
             percentageHolders.computeIfAbsent(
-                context.endpoint,
+                normalizeUri(context.endpoint),
                 k -> {
                   PercentageHolder newHolder = new PercentageHolder();
 
