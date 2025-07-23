@@ -1,5 +1,6 @@
 ---
 title: Entity Usage | OpenMetadata Entity Usage Information
+description: EntityUsage schema records interaction patterns and usage frequency of metadata entities.
 slug: /main-concepts/metadata-standard/schemas/type/entityusage
 ---
 

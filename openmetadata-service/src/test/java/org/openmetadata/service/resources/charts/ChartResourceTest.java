@@ -175,12 +175,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a dashboard service, carry it forward from the chart
     CreateDashboardService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a chart without domain and ensure it inherits domain from the parent
     CreateChart create = createRequest("chart").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test

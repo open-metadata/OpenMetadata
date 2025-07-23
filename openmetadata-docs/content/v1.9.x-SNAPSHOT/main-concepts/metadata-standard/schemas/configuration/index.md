@@ -1,5 +1,6 @@
 ---
 title: Configuration Schemas | OpenMetadata Configuration
+description: Configuration schema used to define platform settings, custom options, and extensible configuration fields.
 slug: /main-concepts/metadata-standard/schemas/configuration
 ---
 

@@ -53,7 +53,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   breadCrumbList,
@@ -82,9 +82,9 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const columns = useMemo(() => {
@@ -180,7 +180,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />

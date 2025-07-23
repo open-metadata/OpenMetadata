@@ -101,9 +101,9 @@ export class EntityDataClass {
   static readonly pipelineService = new PipelineServiceClass();
   static readonly searchIndexService = new SearchIndexServiceClass();
   static readonly storageService = new StorageServiceClass();
-  static readonly dataProduct1 = new DataProduct(this.domain1);
-  static readonly dataProduct2 = new DataProduct(this.domain1);
-  static readonly dataProduct3 = new DataProduct(this.domain2);
+  static readonly dataProduct1 = new DataProduct([this.domain1]);
+  static readonly dataProduct2 = new DataProduct([this.domain1]);
+  static readonly dataProduct3 = new DataProduct([this.domain2]);
 
   static async preRequisitesForTests(
     apiContext: APIRequestContext,

@@ -1,5 +1,6 @@
 ---
 title: How to Set Up Bots | OpenMetadata Developer Guide
+description: Create and manage bots for task automation, data notifications, and metadata workflows.
 slug: /developers/bots
 ---
 

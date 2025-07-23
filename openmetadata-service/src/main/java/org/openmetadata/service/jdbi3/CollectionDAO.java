@@ -73,6 +73,7 @@ import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -2727,6 +2728,17 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM data_contract_entity WHERE JSON_EXTRACT(json, '$.entity.id') = :entityId AND JSON_EXTRACT(json, '$.entity.type') = :entityType LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM data_contract_entity WHERE json#>>'{entity,id}' = :entityId AND json#>>'{entity,type}' = :entityType LIMIT 1",
+        connectionType = POSTGRES)
+    String getContractByEntityId(
+        @Bind("entityId") String entityId, @Bind("entityType") String entityType);
   }
 
   interface EventSubscriptionDAO extends EntityDAO<EventSubscription> {
@@ -3191,12 +3203,17 @@ public interface CollectionDAO {
       }
 
       if (filter.getQueryParam("provider") != null) {
-        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        String providerCondition =
+            String.format(" and %s", filter.getProviderCondition(getTableName()));
         condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
+      String provider = filter.getQueryParam("provider");
+      if (!nullOrEmpty(provider)) {
+        bindMap.put("provider", provider);
+      }
       if (!nullOrEmpty(serviceType)) {
 
         condition =
@@ -3232,12 +3249,17 @@ public interface CollectionDAO {
       }
 
       if (filter.getQueryParam("provider") != null) {
-        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        String providerCondition =
+            String.format(" and %s", filter.getProviderCondition(getTableName()));
         condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
+      String provider = filter.getQueryParam("provider");
+      if (!nullOrEmpty(provider)) {
+        bindMap.put("provider", provider);
+      }
       if (!nullOrEmpty(serviceType)) {
 
         condition =
@@ -3278,12 +3300,17 @@ public interface CollectionDAO {
       }
 
       if (filter.getQueryParam("provider") != null) {
-        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        String providerCondition =
+            String.format(" and %s", filter.getProviderCondition(getTableName()));
         condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
+      String provider = filter.getQueryParam("provider");
+      if (!nullOrEmpty(provider)) {
+        bindMap.put("provider", provider);
+      }
       if (!nullOrEmpty(serviceType)) {
         condition =
             String.format(
@@ -6517,6 +6544,7 @@ public interface CollectionDAO {
                 json, AssetCertificationSettings.class);
             case WORKFLOW_SETTINGS -> JsonUtils.readValue(json, WorkflowSettings.class);
             case LINEAGE_SETTINGS -> JsonUtils.readValue(json, LineageSettings.class);
+            case ENTITY_RULES_SETTINGS -> JsonUtils.readValue(json, EntityRulesSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
