@@ -19,7 +19,7 @@ import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.inter
 import Loader from '../../components/common/Loader/Loader';
 import { REFRESH_TOKEN_KEY } from '../../constants/constants';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import { setOidcToken, setRefreshToken } from '../../utils/LocalStorageUtils';
+import { setOidcToken, setRefreshToken } from '../../utils/SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
@@ -35,29 +35,38 @@ const SamlCallback = () => {
     const name = params.get('name');
     const email = params.get('email');
     if (idToken) {
-      setOidcToken(idToken);
-      const oidcUser: OidcUser = {
-        id_token: idToken,
-        scope: '',
-        profile: {
-          email: email || '',
-          name: name || '',
-          picture: '',
-          locale: '',
-          sub: '',
-        },
+      const processLogin = async () => {
+        try {
+          await setOidcToken(idToken);
+
+          const oidcUser: OidcUser = {
+            id_token: idToken,
+            scope: '',
+            profile: {
+              email: email || '',
+              name: name || '',
+              picture: '',
+              locale: '',
+              sub: '',
+            },
+          };
+
+          const refreshToken = cookieStorage.getItem(REFRESH_TOKEN_KEY);
+          if (refreshToken) {
+            await setRefreshToken(refreshToken);
+            // Remove refresh token from cookie storage, don't want to keep it in the browser
+            cookieStorage.removeItem(REFRESH_TOKEN_KEY);
+          }
+
+          await handleSuccessfulLogin(oidcUser);
+        } catch {
+          // Error handling is already done in handleSuccessfulLogin
+        }
       };
 
-      const refreshToken = cookieStorage.getItem(REFRESH_TOKEN_KEY);
-      if (refreshToken) {
-        setRefreshToken(refreshToken);
-        // Remove refresh token from cookie storage, don't want to keep it in the browser
-        cookieStorage.removeItem(REFRESH_TOKEN_KEY);
-      }
-
-      handleSuccessfulLogin(oidcUser);
+      processLogin();
     }
-  }, [location]);
+  }, [location, handleSuccessfulLogin]);
 
   return (
     <>
