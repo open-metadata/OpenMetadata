@@ -1,5 +1,7 @@
 package org.openmetadata.service.monitoring;
 
+import static org.openmetadata.service.monitoring.MetricUtils.LATENCY_SLA_BUCKETS;
+
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
@@ -55,7 +57,7 @@ public class RequestLatencyContext {
             Timer.builder("request.latency.total")
                 .tag(ENDPOINT, endpoint)
                 .description("Total request latency")
-                .publishPercentileHistogram()
+                .sla(LATENCY_SLA_BUCKETS)
                 .register(Metrics.globalRegistry));
     context.requestTimerSample = Timer.start(Metrics.globalRegistry);
     context.internalTimerStartNanos = System.nanoTime();
@@ -150,7 +152,7 @@ public class RequestLatencyContext {
                   Timer.builder("request.latency.database")
                       .tag(ENDPOINT, context.endpoint)
                       .description("Total database latency per request")
-                      .publishPercentileHistogram()
+                      .sla(LATENCY_SLA_BUCKETS)
                       .register(Metrics.globalRegistry));
       dbTimer.record(context.dbTime, java.util.concurrent.TimeUnit.NANOSECONDS);
 
@@ -162,7 +164,7 @@ public class RequestLatencyContext {
                   Timer.builder("request.latency.search")
                       .tag(ENDPOINT, context.endpoint)
                       .description("Total search latency per request")
-                      .publishPercentileHistogram()
+                      .sla(LATENCY_SLA_BUCKETS)
                       .register(Metrics.globalRegistry));
       searchTimer.record(context.searchTime, java.util.concurrent.TimeUnit.NANOSECONDS);
 
@@ -174,7 +176,7 @@ public class RequestLatencyContext {
                   Timer.builder("request.latency.internal")
                       .tag(ENDPOINT, context.endpoint)
                       .description("Internal processing latency per request")
-                      .publishPercentileHistogram()
+                      .sla(LATENCY_SLA_BUCKETS)
                       .register(Metrics.globalRegistry));
       internalTimer.record(context.internalTime, java.util.concurrent.TimeUnit.NANOSECONDS);
 

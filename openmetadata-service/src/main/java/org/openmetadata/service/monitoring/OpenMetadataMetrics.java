@@ -1,5 +1,7 @@
 package org.openmetadata.service.monitoring;
 
+import static org.openmetadata.service.monitoring.MetricUtils.LATENCY_SLA_BUCKETS;
+
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -51,12 +53,7 @@ public class OpenMetadataMetrics {
     this.httpRequestTimer =
         Timer.builder("http.server.requests")
             .description("HTTP server request duration")
-            .publishPercentileHistogram()
-            .serviceLevelObjectives(
-                Duration.ofMillis(50),
-                Duration.ofMillis(100),
-                Duration.ofMillis(500),
-                Duration.ofSeconds(1))
+            .sla(LATENCY_SLA_BUCKETS)
             .register(meterRegistry);
 
     this.httpRequestCounter =
@@ -68,16 +65,14 @@ public class OpenMetadataMetrics {
         DistributionSummary.builder("http.server.response.size")
             .description("HTTP response size in bytes")
             .baseUnit("bytes")
-            .publishPercentileHistogram()
+            .serviceLevelObjectives(1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216)
             .register(meterRegistry);
 
     // Initialize Database metrics
     this.jdbiQueryTimer =
         Timer.builder("db.query.duration")
             .description("Database query duration")
-            .publishPercentileHistogram()
-            .serviceLevelObjectives(
-                Duration.ofMillis(10), Duration.ofMillis(50), Duration.ofMillis(100))
+            .sla(LATENCY_SLA_BUCKETS)
             .register(meterRegistry);
 
     this.jdbiConnectionCounter =
@@ -123,7 +118,7 @@ public class OpenMetadataMetrics {
     this.pipelineExecutionTimer =
         Timer.builder("pipeline.execution.duration")
             .description("Pipeline execution duration")
-            .publishPercentileHistogram()
+            .sla(LATENCY_SLA_BUCKETS)
             .register(meterRegistry);
 
     // Initialize Authentication metrics
@@ -268,9 +263,75 @@ public class OpenMetadataMetrics {
   // Utility methods
   private String normalizeUri(String uri) {
     // Normalize URIs to avoid high cardinality
-    // Replace IDs with placeholders
-    return uri.replaceAll("/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "/{id}")
-        .replaceAll("/[0-9]+", "/{id}");
+    if (uri == null || uri.isEmpty()) {
+      return "/unknown";
+    }
+
+    // Remove query parameters to reduce cardinality
+    String normalizedUri = uri.split("\\?")[0];
+
+    // Replace various ID patterns with placeholders
+    normalizedUri =
+        normalizedUri
+            // UUID patterns (e.g., /api/v1/tables/12345678-1234-1234-1234-123456789abc)
+            .replaceAll("/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "/{id}")
+            // Numeric IDs (e.g., /api/v1/tables/123456)
+            .replaceAll("/\\d+", "/{id}")
+            // Entity names that contain special characters or spaces (encoded)
+            .replaceAll("/[^/]*%[0-9a-fA-F]{2}[^/]*", "/{name}")
+            // Long alphanumeric strings that might be encoded names
+            .replaceAll("/[a-zA-Z0-9_.-]{20,}", "/{name}")
+            // Handle common OpenMetadata API patterns - split into multiple patterns to reduce
+            // complexity
+            .replaceAll(
+                "/(tables|databases|services|pipelines|topics|dashboards|charts|containers)/[^/]+/[^/]+",
+                "/$1/{name}/{subresource}")
+            .replaceAll(
+                "/(glossaryTerms|tags|policies|roles|users|teams|dataModels|searchIndexes)/[^/]+/[^/]+",
+                "/$1/{name}/{subresource}")
+            .replaceAll(
+                "/(testSuites|testCases|webhooks|bots|automations|applications|connections)/[^/]+/[^/]+",
+                "/$1/{name}/{subresource}")
+            .replaceAll(
+                "/(secrets|storedProcedures|databaseSchemas|mlModels|reports|metrics)/[^/]+/[^/]+",
+                "/$1/{name}/{subresource}")
+            .replaceAll(
+                "/(queries|suggestions|lineage|events|feeds|conversations|activities)/[^/]+/[^/]+",
+                "/$1/{name}/{subresource}")
+            .replaceAll(
+                "/(tasks|kpis|domains|dataProducts|governanceWorkflows)/[^/]+/[^/]+",
+                "/$1/{name}/{subresource}")
+            .replaceAll(
+                "/(tables|databases|services|pipelines|topics|dashboards|charts|containers)/[^/]+",
+                "/$1/{name}")
+            .replaceAll(
+                "/(glossaryTerms|tags|policies|roles|users|teams|dataModels|searchIndexes)/[^/]+",
+                "/$1/{name}")
+            .replaceAll(
+                "/(testSuites|testCases|webhooks|bots|automations|applications|connections)/[^/]+",
+                "/$1/{name}")
+            .replaceAll(
+                "/(secrets|storedProcedures|databaseSchemas|mlModels|reports|metrics)/[^/]+",
+                "/$1/{name}")
+            .replaceAll(
+                "/(queries|suggestions|lineage|events|feeds|conversations|activities)/[^/]+",
+                "/$1/{name}")
+            .replaceAll(
+                "/(tasks|kpis|domains|dataProducts|governanceWorkflows)/[^/]+", "/$1/{name}");
+
+    // Ensure we don't have empty path segments
+    normalizedUri = normalizedUri.replaceAll("/+", "/");
+
+    // Limit to reasonable URI length to prevent edge cases
+    if (normalizedUri.length() > 100) {
+      // For very long URIs, just use the first few path segments
+      String[] segments = normalizedUri.split("/");
+      if (segments.length > 5) {
+        normalizedUri = String.join("/", java.util.Arrays.copyOfRange(segments, 0, 5)) + "/...";
+      }
+    }
+
+    return normalizedUri.isEmpty() ? "/" : normalizedUri;
   }
 
   private String getStatusClass(int status) {
