@@ -37,14 +37,12 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
       Map<String, Object> assigneesConfig =
           JsonUtils.readOrConvertValue(assigneesExpr.getValue(execution), Map.class);
-      Boolean addReviewers = (Boolean) assigneesConfig.get("addReviewers");
-      Optional<List<EntityReference>> oExtraAssignees =
-          Optional.ofNullable(
-              JsonUtils.readOrConvertValue(assigneesConfig.get("extraAssignees"), List.class));
+      Boolean addReviewers = (Boolean) assigneesConfig.getOrDefault("addReviewers", false);
 
       List<String> assignees = new ArrayList<>();
 
-      if (addReviewers) {
+      // Add reviewers from the related entity if requested
+      if (addReviewers != null && addReviewers) {
         MessageParser.EntityLink entityLink =
             MessageParser.EntityLink.parse(
                 (String)
@@ -54,10 +52,57 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         assignees.addAll(getEntityLinkStringFromEntityReference(entity.getReviewers()));
       }
 
-      oExtraAssignees.ifPresent(
-          extraAssignees ->
-              assignees.addAll(getEntityLinkStringFromEntityReference(extraAssignees)));
+      // 1.3 Explicit USERS array -------------------------------------------------------------
+      Optional.ofNullable((List<String>) assigneesConfig.get("users"))
+          .ifPresent(
+              users ->
+                  users.forEach(
+                      userName ->
+                          assignees.add(
+                              new MessageParser.EntityLink(Entity.USER, userName)
+                                  .getLinkString())));
 
+      // 1.4 Explicit TEAMS array -------------------------------------------------------------
+      Optional.ofNullable((List<String>) assigneesConfig.get("teams"))
+          .ifPresent(
+              teams ->
+                  teams.forEach(
+                      teamName ->
+                          assignees.add(
+                              new MessageParser.EntityLink(Entity.TEAM, teamName)
+                                  .getLinkString())));
+
+      // 1.5 extraAssignees (object with optional users/teams arrays) ------------------------
+      Object extraAssigneesObj = assigneesConfig.get("extraAssignees");
+      if (extraAssigneesObj instanceof Map) {
+        Map<String, Object> extraAssignees = (Map<String, Object>) extraAssigneesObj;
+
+        // Extra users
+        Optional.ofNullable((List<String>) extraAssignees.get("users"))
+            .ifPresent(
+                users ->
+                    users.forEach(
+                        userName ->
+                            assignees.add(
+                                new MessageParser.EntityLink(Entity.USER, userName)
+                                    .getLinkString())));
+
+        // Extra teams
+        Optional.ofNullable((List<String>) extraAssignees.get("teams"))
+            .ifPresent(
+                teams ->
+                    teams.forEach(
+                        teamName ->
+                            assignees.add(
+                                new MessageParser.EntityLink(Entity.TEAM, teamName)
+                                    .getLinkString())));
+      }
+
+      /*
+       * ---------------------------------------------------------------------
+       * 2️⃣  Persist the list as JSON array so TaskListener can read it
+       * ---------------------------------------------------------------------
+       */
       execution.setVariableLocal(
           assigneesVarNameExpr.getValue(execution).toString(), JsonUtils.pojoToJson(assignees));
     } catch (Exception exc) {

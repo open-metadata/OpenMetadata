@@ -45,8 +45,45 @@
               "description": "Add the Reviewers to the assignees List.",
               "type": "boolean",
               "default": false
+            },
+
+            "users": {
+              "description": "List of user names to assign the task to.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "teams": {
+              "description": "List of team names to assign the task to.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "extraAssignees": {
+              "description": "Additional assignees with optional users and teams.",
+              "type": "object",
+              "properties": {
+                "users": {
+                  "description": "List of additional user names to assign the task to.",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "teams": {
+                  "description": "List of additional team names to assign the task to.",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "required": ["assignees"],

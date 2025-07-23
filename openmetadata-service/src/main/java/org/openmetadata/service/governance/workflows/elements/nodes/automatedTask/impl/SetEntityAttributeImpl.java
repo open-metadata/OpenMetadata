@@ -369,7 +369,11 @@ public class SetEntityAttributeImpl implements JavaDelegate {
 
     if (fieldValue == null || fieldValue.isEmpty()) {
       // Remove item with matching property
-      arrayList.removeIf(item -> fieldValue.equals(item.get(propertyName)));
+      arrayList.removeIf(
+          item -> {
+            assert fieldValue != null;
+            return fieldValue.equals(item.get(propertyName));
+          });
     } else {
       // Find existing item or create new one
       Map<String, Object> targetItem =
