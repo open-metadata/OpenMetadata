@@ -71,8 +71,11 @@ export const DataAssetSummaryPanel = ({
   const { isTourPage } = useTourProvider();
 
   const entityInfo = useMemo(
-    () => getEntityOverview(entityType, dataAsset, additionalInfo),
-    [dataAsset, additionalInfo]
+    () =>
+      Object.keys(dataAsset).length
+        ? getEntityOverview(entityType, dataAsset, additionalInfo)
+        : [],
+    [dataAsset, additionalInfo, entityType]
   );
 
   const entityDetails = useMemo(() => {
