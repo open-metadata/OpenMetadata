@@ -16,7 +16,7 @@
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 import { CarousalData } from './FeaturesCarousel.interface';
 
-export const COOKIE_VERSION = 'VERSION_1_8_4'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_8_7'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1136,6 +1136,25 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - Updated button names for consistency.
 - Set Presidio logger to ERROR level to reduce noise.
 - Reverse Metadata - Illegal result error. ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 79,
+    version: 'v1.8.7',
+    description: 'Released on 23rd July 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- Add Permission Debugger to understand roles & permissions for a user
+- Smart Reindex functionality for improved performance
+- Pass GX description on test case creation
+- Add Actual Case on the displayName to aggregate with right bucket`,
+      Fixes: `- Add support for editing "Compute row count" from parameter screen
+- Explore page count mismatch
+- Fix lineage search issue in UI
+- Fix domain custom property persistence improvements
+- Fix table query pagination showing incorrect pageSize 
+- Fix stored procedure temp table processing and lineage filtering with db & schema
+`,
     },
   },
 ];
