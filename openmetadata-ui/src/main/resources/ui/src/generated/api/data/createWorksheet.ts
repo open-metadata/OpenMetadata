@@ -35,9 +35,9 @@ export interface CreateWorksheet {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Worksheet belongs to.
+     * Fully qualified names of the domains the Worksheet belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */

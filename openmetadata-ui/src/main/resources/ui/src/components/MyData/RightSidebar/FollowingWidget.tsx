@@ -118,11 +118,11 @@ function FollowingWidget({
   const getEntityExtraInfo = (item: SourceType): ExtraInfo[] => {
     const extraInfo: ExtraInfo[] = [];
     // Add domain info
-    if (item.domain) {
+    if (item.domains) {
       extraInfo.push({
         key: 'Domain',
-        value: getDomainPath(item.domain.fullyQualifiedName),
-        placeholderText: getEntityName(item.domain),
+        value: getDomainPath(item.domains[0]?.fullyQualifiedName ?? ''),
+        placeholderText: getEntityName(item.domains[0] ?? {}),
         isLink: true,
         openInNewTab: false,
       });
@@ -183,6 +183,11 @@ function FollowingWidget({
   const showMoreCount = useMemo(() => {
     return followedData.length > 0 ? followedData.length.toString() : '';
   }, [followedData]);
+
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!isLoadingOwnedData) && followedData?.length > 10,
+    [followedData, isLoadingOwnedData]
+  );
 
   const followingContent = useMemo(() => {
     return (
@@ -278,9 +283,7 @@ function FollowingWidget({
             moreButtonText={t('label.view-more-count', {
               countValue: showMoreCount,
             })}
-            showMoreButton={
-              Boolean(!isLoadingOwnedData) && !isEmpty(followedData)
-            }
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>

@@ -47,10 +47,10 @@ export interface GlossaryTerm {
      */
     displayName?: string;
     /**
-     * Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain
+     * Domains the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain
      * from the Glossary it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -226,9 +226,6 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain
- * from the Glossary it belongs to.
  *
  * Glossary that this term belongs to.
  *

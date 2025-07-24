@@ -1,5 +1,6 @@
 ---
 title: Basic Analytics Schema | OpenMetadata Basic Analytics
+description: Basic analytics schema defines primary reporting metrics and visual indicators.
 slug: /main-concepts/metadata-standard/schemas/analytics/basic
 ---
 

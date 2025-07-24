@@ -1,5 +1,6 @@
 ---
 title: Test Case | OpenMetadata Test Case Information
+description: Structure a test case schema including test type, inputs, expected results, and test execution metadata.
 slug: /main-concepts/metadata-standard/schemas/tests/testcase
 ---
 

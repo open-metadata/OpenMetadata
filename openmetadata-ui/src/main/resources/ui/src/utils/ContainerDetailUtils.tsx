@@ -116,7 +116,7 @@ export const updateContainerColumnDescription = (
 };
 
 // eslint-disable-next-line max-len
-export const ContainerFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.FOLLOWERS},${TabSpecificField.DATAMODEL}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+export const ContainerFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.FOLLOWERS},${TabSpecificField.DATAMODEL}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const getContainerDetailPageTabs = ({
   isDataModelEmpty,

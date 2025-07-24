@@ -228,7 +228,7 @@ source:
       type: Alation
 ```
 ```yaml {% srNumber=12 %}
-      hostPort: http://localhost:21000
+      hostPort: https://xxxx.alationcloud.com:443
 ```
 ```yaml {% srNumber=13 %}
       # Select one authentication type from below

@@ -25,7 +25,6 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
 from metadata.generated.schema.entity.data.table import Column, Table, TableConstraint
-from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
@@ -34,7 +33,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.reverseIngesti
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import EntityLink, Markdown
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.tagLabel import TagLabel
@@ -612,17 +610,37 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             )
             return None
 
-    def patch_domain(self, entity: Entity, domain: Domain) -> Optional[Entity]:
-        """Patch domain data for an Entity"""
-        try:
-            destination: Entity = entity.model_copy(deep=True)
-            destination.domain = EntityReference(id=domain.id, type="domain")
-            return self.patch(
-                entity=type(entity), source=entity, destination=destination
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to Patch Domain for {entity.fullyQualifiedName.root}: {exc}"
-            )
+    def patch_domain(
+        self,
+        entity: Type[T],
+        source: T,
+        domains: EntityReferenceList = None,
+        force: bool = False,
+    ) -> Optional[T]:
+        """
+        Given an Entity type and ID, JSON PATCH the owner. If not owner Entity type and
+        not owner ID are provided, the owner is removed.
+
+        Args
+            entity (T): Entity Type of the entity to be patched
+            entity_id: ID of the entity to be patched
+            owner: Entity Reference of the owner. If None, the owner will be removed
+            force: if True, we will patch any existing owner. Otherwise, we will maintain
+                the existing data.
+        Returns
+            Updated Entity
+        """
+        instance: Optional[T] = self._fetch_entity_if_exists(
+            entity=entity, entity_id=source.id, fields=["domains"]
+        )
+
+        if not instance:
             return None
+
+        if instance.domains and instance.domains.root and not force:
+            return None
+
+        destination = deepcopy(instance)
+        destination.domains = domains
+
+        return self.patch(entity=entity, source=instance, destination=destination)
