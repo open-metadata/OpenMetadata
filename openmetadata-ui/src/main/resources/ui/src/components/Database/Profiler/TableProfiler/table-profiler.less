@@ -13,17 +13,14 @@
 
 @import (reference) url('../../../../styles/variables.less');
 
-@succesColor: #28a745;
-@failedColor: #cb2431;
-@abortedColor: #efae2f;
-@grayColor: #dde3ea;
-
 .table-profiler-container {
   height: 100%;
   flex-grow: 1;
   border-radius: @border-radius-sm;
   border: 1px solid @grey-15;
   display: flex;
+  padding: @padding-md;
+  background-color: @white;
 
   .overall-summery-card:not(:first-child) {
     border-left: 1px solid rgb(229, 231, 235);
@@ -31,15 +28,15 @@
   }
 
   .success {
-    color: @succesColor;
+    color: @green-10;
   }
 
   .failed {
-    color: @failedColor;
+    color: @red-10;
   }
 
   .aborted {
-    color: @abortedColor;
+    color: @aborted-color;
   }
 
   .ant-table-row .ant-table-cell:first-child,
@@ -47,19 +44,16 @@
     padding-left: 16px;
   }
 
-  .custom-menu.data-quality-left-panel.ant-menu-inline {
-    flex: 0.17;
-    border-right: @global-border;
-    // need to add !important as in AntD menu padding is given inline
-    padding-right: 1px !important;
-    padding-top: @padding-xs;
-    border-top-left-radius: @border-radius-sm;
+  .custom-menu-v1.data-quality-left-panel.ant-menu-inline {
+    flex: 0.14;
+    border: 0.5px solid @grey-200;
+    border-radius: @border-radius-sm;
   }
 
   .data-quality-content-panel {
-    flex: 0.83;
+    flex: 0.86;
     overflow-y: scroll;
-    padding: @padding-md;
+    margin-left: @margin-mlg;
     background-color: @white;
   }
 }
