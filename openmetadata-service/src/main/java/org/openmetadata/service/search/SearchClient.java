@@ -121,12 +121,24 @@ public interface SearchClient {
           + "ctx._source.owners = params.updatedOwners; "
           + "}";
 
+  String ADD_DOMAINS_SCRIPT =
+      "if (ctx._source.domains == null || ctx._source.domains.isEmpty() || "
+          + "(ctx._source.domains.size() > 0 && ctx._source.domains[0] != null && ctx._source.domains[0].inherited == true)) { "
+          + "ctx._source.domains = params.updatedDomains; "
+          + "}";
+
   String PROPAGATE_TEST_SUITES_SCRIPT = "ctx._source.testSuites = params.testSuites";
 
   String REMOVE_OWNERS_SCRIPT =
       "if (ctx._source.owners != null) { "
           + "ctx._source.owners.removeIf(owner -> owner.inherited == true); "
           + "ctx._source.owners.addAll(params.deletedOwners); "
+          + "}";
+
+  String REMOVE_DOMAINS_SCRIPT =
+      "if (ctx._source.domains != null) { "
+          + "ctx._source.domains.removeIf(domain -> domain.inherited == true); "
+          + "ctx._source.domains.addAll(params.deletedDomains); "
           + "}";
 
   String UPDATE_TAGS_FIELD_SCRIPT =
@@ -223,7 +235,7 @@ public interface SearchClient {
           "dataProducts",
           "tags",
           "followers",
-          "domain",
+          "domains",
           "votes",
           "tier",
           "changeDescription");
@@ -332,6 +344,8 @@ public interface SearchClient {
   JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filters)
       throws IOException;
+
+  Response getEntityTypeCounts(SearchRequest request, String index) throws IOException;
 
   DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException;
