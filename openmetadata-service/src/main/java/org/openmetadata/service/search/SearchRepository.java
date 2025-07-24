@@ -228,9 +228,8 @@ public class SearchRepository {
   }
 
   public void createIndexes() {
-    for (IndexMapping indexMapping : entityIndexMap.values()) {
-      createIndex(indexMapping);
-    }
+    RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
+    recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
   }
 
   public void updateIndexes() {
