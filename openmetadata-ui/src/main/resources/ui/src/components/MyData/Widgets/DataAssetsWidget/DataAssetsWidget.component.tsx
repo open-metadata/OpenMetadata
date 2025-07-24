@@ -52,7 +52,7 @@ const DataAssetsWidget = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [services, setServices] = useState<Bucket[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
-    DATA_ASSETS_SORT_BY_KEYS.LATEST
+    DATA_ASSETS_SORT_BY_KEYS.A_TO_Z
   );
 
   const widgetData = useMemo(
@@ -102,7 +102,6 @@ const DataAssetsWidget = ({
         return [...services].sort((a, b) => a.key.localeCompare(b.key));
       case DATA_ASSETS_SORT_BY_KEYS.Z_TO_A:
         return [...services].sort((a, b) => b.key.localeCompare(a.key));
-      case DATA_ASSETS_SORT_BY_KEYS.LATEST:
       default:
         return services;
     }
