@@ -28,9 +28,9 @@ export interface CreateDatabaseService {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Database Service belongs to.
+     * Fully qualified names of the domains the Database Service belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
      * at runtime based on the Ingestion Agent of the service.

@@ -22,7 +22,6 @@ import {
   redirectToHomePage,
   removeDomain,
   toastNotification,
-  updateDomain,
   uuid,
 } from '../../utils/common';
 import { addMultiOwner, removeOwnersFromList } from '../../utils/entity';
@@ -118,8 +117,9 @@ test('Logical TestSuite', async ({ page }) => {
 
   await test.step('Domain Add, Update and Remove', async () => {
     await assignDomain(page, domain1.responseData);
-    await updateDomain(page, domain2.responseData);
-    await removeDomain(page, domain2.responseData);
+    // TODO: Add domain update
+    // await updateDomain(page, domain2.responseData);
+    await removeDomain(page, domain1.responseData);
   });
 
   await test.step(

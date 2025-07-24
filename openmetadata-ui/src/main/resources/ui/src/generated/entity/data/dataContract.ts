@@ -810,6 +810,14 @@ export interface SemanticsRule {
      */
     description: string;
     /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
+    /**
      * Name of the semantics rule.
      */
     name: string;

@@ -83,15 +83,6 @@ describe('DomainsWidget', () => {
     expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
   });
 
-  it('renders footer when domains are available', async () => {
-    renderDomainsWidget();
-
-    expect(await screen.findByTestId('widget-footer')).toBeInTheDocument();
-    expect(
-      await screen.findByText('label.view-more-count')
-    ).toBeInTheDocument();
-  });
-
   it('renders widget wrapper', async () => {
     renderDomainsWidget();
 

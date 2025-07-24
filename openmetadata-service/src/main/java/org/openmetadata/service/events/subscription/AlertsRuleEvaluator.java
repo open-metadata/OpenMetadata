@@ -470,11 +470,13 @@ public class AlertsRuleEvaluator {
     EntityInterface entity = getEntity(changeEvent);
     EntityInterface entityWithDomainData =
         Entity.getEntity(
-            changeEvent.getEntityType(), entity.getId(), "domain", Include.NON_DELETED);
-    if (entityWithDomainData.getDomain() != null) {
+            changeEvent.getEntityType(), entity.getId(), "domains", Include.NON_DELETED);
+    if (!nullOrEmpty(entityWithDomainData.getDomains())) {
       for (String name : fieldChangeUpdate) {
-        if (entityWithDomainData.getDomain().getFullyQualifiedName().equals(name)) {
-          return true;
+        for (EntityReference domain : entityWithDomainData.getDomains()) {
+          if (domain.getFullyQualifiedName().equals(name)) {
+            return true;
+          }
         }
       }
     }
@@ -586,9 +588,11 @@ public class AlertsRuleEvaluator {
         Pattern pattern = Pattern.compile(name);
         Matcher matcherTestSuiteFQN = pattern.matcher(testSuite.getFullyQualifiedName());
         if (matcherTestSuiteFQN.find()) return true;
-        if (testSuite.getDomain() != null) {
-          Matcher matcherDomainFQN = pattern.matcher(testSuite.getDomain().getFullyQualifiedName());
-          if (matcherDomainFQN.find()) return true;
+        if (!nullOrEmpty(testSuite.getDomains())) {
+          for (EntityReference domain : testSuite.getDomains()) {
+            Matcher matcherDomainFQN = pattern.matcher(domain.getFullyQualifiedName());
+            if (matcherDomainFQN.find()) return true;
+          }
         }
       }
     }

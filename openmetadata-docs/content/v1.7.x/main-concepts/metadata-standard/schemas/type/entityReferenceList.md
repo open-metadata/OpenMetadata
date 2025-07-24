@@ -1,5 +1,6 @@
 ---
 title: entityReferenceList | OpenMetadata Entity Reference List
+description: EntityReferenceList schema enables storing multiple references to other metadata entities.
 slug: /main-concepts/metadata-standard/schemas/type/entityreferencelist
 ---
 

@@ -131,14 +131,16 @@ export const TOPIC_DUMMY_DATA: Topic = {
   ],
   tags: [],
   deleted: false,
-  domain: {
-    id: '761f0a12-7b08-4889-acc3-b8d4d11a7865',
-    type: 'domain',
-    name: 'domain.with.dot',
-    fullyQualifiedName: '"domain.with.dot"',
-    description: 'domain.with.dot',
-    displayName: 'domain.with.dot',
-  },
+  domains: [
+    {
+      id: '761f0a12-7b08-4889-acc3-b8d4d11a7865',
+      type: 'domain',
+      name: 'domain.with.dot',
+      fullyQualifiedName: '"domain.with.dot"',
+      description: 'domain.with.dot',
+      displayName: 'domain.with.dot',
+    },
+  ],
   dataProducts: [],
   votes: {
     upVotes: 0,
