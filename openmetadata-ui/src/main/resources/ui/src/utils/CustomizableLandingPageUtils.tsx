@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import i18next from 'i18next';
 import {
   capitalize,
@@ -20,8 +21,9 @@ import {
   uniqBy,
   uniqueId,
 } from 'lodash';
+import { DOMAttributes } from 'react';
 import { Layout } from 'react-grid-layout';
-import { AdvanceSearchProvider } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
 import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../enums/common.enum';
 import {
@@ -233,16 +235,14 @@ export const getWidgetFromKey = ({
   const Widget = customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig.i);
 
   return (
-    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
-      <Widget
-        currentLayout={currentLayout}
-        handleLayoutUpdate={handleLayoutUpdate}
-        handleRemoveWidget={handleRemoveWidget}
-        isEditView={isEditView}
-        selectedGridSize={widgetConfig.w}
-        widgetKey={widgetConfig.i}
-      />
-    </AdvanceSearchProvider>
+    <Widget
+      currentLayout={currentLayout}
+      handleLayoutUpdate={handleLayoutUpdate}
+      handleRemoveWidget={handleRemoveWidget}
+      isEditView={isEditView}
+      selectedGridSize={widgetConfig.w}
+      widgetKey={widgetConfig.i}
+    />
   );
 };
 
@@ -272,3 +272,19 @@ export const getUniqueFilteredLayout = (layout: WidgetConfig[]) =>
     ),
     'i'
   );
+
+export const CustomNextArrow = (props: DOMAttributes<HTMLDivElement>) => (
+  <Icon
+    className="custom-arrow right-arrow"
+    component={ArrowRightIcon}
+    onClick={props.onClick}
+  />
+);
+
+export const CustomPrevArrow = (props: DOMAttributes<HTMLDivElement>) => (
+  <Icon
+    className="custom-arrow left-arrow"
+    component={ArrowRightIcon}
+    onClick={props.onClick}
+  />
+);
