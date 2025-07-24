@@ -947,7 +947,20 @@
           <version>${maven-surefire.version}</version>
           <configuration>
             <includes>
-              <include>org.openmetadata.service.**.java</include>
+              <include>org.openmetadata.service.apps.*.java</include>
+              <include>org.openmetadata.service.cache.*.java</include>
+              <include>org.openmetadata.service.events.*.java</include>
+              <include>org.openmetadata.service.governance.*.java</include>
+              <include>org.openmetadata.service.jdbi3.*.java</include>
+              <include>org.openmetadata.service.monitoring.*.java</include>
+              <include>org.openmetadata.service.pipelineService.*.java</include>
+              <include>org.openmetadata.service.resources.**.*.java</include>
+              <include>org.openmetadata.service.rules.*.java</include>
+              <include>org.openmetadata.service.search.*.java</include>
+              <include>org.openmetadata.service.secrets.*.java</include>
+              <include>org.openmetadata.service.security.*.java</include>
+              <include>org.openmetadata.service.util.*.java</include>
+              <include>org.openmetadata.service.EnumBackwardCompatibilityTest</include>
             </includes>
           </configuration>
         </plugin>
