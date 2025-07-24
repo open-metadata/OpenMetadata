@@ -20,7 +20,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.8.7</version>
+    <version>1.8.8</version>
   </parent>
 
   <artifactId>openmetadata-dist</artifactId>
