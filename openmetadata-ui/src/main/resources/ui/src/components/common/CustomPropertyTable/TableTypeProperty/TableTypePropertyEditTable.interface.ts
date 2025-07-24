@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { CopyEvent, PasteEvent } from 'react-data-grid';
+import { Column, CopyEvent, PasteEvent } from 'react-data-grid';
 
 export interface TableTypePropertyEditTableProps {
-  columns: string[];
+  columns: Column<Record<string, string>[]>[];
   dataSource: Record<string, string>[];
-  gridContainerRef: React.RefObject<HTMLDivElement>;
-  handleEditDataSource: (data: Record<string, string>[]) => void;
   handleCopy: (event: CopyEvent<Record<string, string>>) => void;
   handlePaste: (event: PasteEvent<Record<string, string>>) => void;
-  pushToUndoStack: (dataSource: Record<string, string>[]) => void;
+  handleOnRowsChange: (updatedRows: Record<string, string>[]) => void;
+  setGridContainer: (container: HTMLElement | null) => void;
 }

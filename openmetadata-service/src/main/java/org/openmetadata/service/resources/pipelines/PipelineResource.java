@@ -78,7 +78,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public static final String COLLECTION_PATH = "v1/pipelines/";
   private final PipelineMapper mapper = new PipelineMapper();
   static final String FIELDS =
-      "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
+      "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domains,sourceHash";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {

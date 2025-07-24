@@ -73,6 +73,7 @@ import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -2748,6 +2749,17 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM data_contract_entity WHERE JSON_EXTRACT(json, '$.entity.id') = :entityId AND JSON_EXTRACT(json, '$.entity.type') = :entityType LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM data_contract_entity WHERE json#>>'{entity,id}' = :entityId AND json#>>'{entity,type}' = :entityType LIMIT 1",
+        connectionType = POSTGRES)
+    String getContractByEntityId(
+        @Bind("entityId") String entityId, @Bind("entityType") String entityType);
   }
 
   interface EventSubscriptionDAO extends EntityDAO<EventSubscription> {
@@ -3212,12 +3224,17 @@ public interface CollectionDAO {
       }
 
       if (filter.getQueryParam("provider") != null) {
-        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        String providerCondition =
+            String.format(" and %s", filter.getProviderCondition(getTableName()));
         condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
+      String provider = filter.getQueryParam("provider");
+      if (!nullOrEmpty(provider)) {
+        bindMap.put("provider", provider);
+      }
       if (!nullOrEmpty(serviceType)) {
 
         condition =
@@ -3253,12 +3270,17 @@ public interface CollectionDAO {
       }
 
       if (filter.getQueryParam("provider") != null) {
-        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        String providerCondition =
+            String.format(" and %s", filter.getProviderCondition(getTableName()));
         condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
+      String provider = filter.getQueryParam("provider");
+      if (!nullOrEmpty(provider)) {
+        bindMap.put("provider", provider);
+      }
       if (!nullOrEmpty(serviceType)) {
 
         condition =
@@ -3299,12 +3321,17 @@ public interface CollectionDAO {
       }
 
       if (filter.getQueryParam("provider") != null) {
-        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        String providerCondition =
+            String.format(" and %s", filter.getProviderCondition(getTableName()));
         condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
+      String provider = filter.getQueryParam("provider");
+      if (!nullOrEmpty(provider)) {
+        bindMap.put("provider", provider);
+      }
       if (!nullOrEmpty(serviceType)) {
         condition =
             String.format(
@@ -3682,6 +3709,40 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            ""
+                + "SELECT t.classificationHash, COUNT(*) AS termCount "
+                + "FROM tag t "
+                + "JOIN JSON_TABLE("
+                + "    :jsonHashes, "
+                + "    '$[*]' COLUMNS (classificationHash VARCHAR(64) PATH '$')"
+                + ") AS h "
+                + "  ON t.classificationHash = h.classificationHash "
+                + "WHERE t.deleted = FALSE "
+                + "GROUP BY t.classificationHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            ""
+                + "SELECT t.classificationHash, COUNT(*) AS termCount "
+                + "FROM tag t "
+                + "JOIN UNNEST(:hashArray::text[]) AS h(classificationHash) "
+                + "  ON t.classificationHash = h.classificationHash "
+                + "WHERE t.deleted = FALSE "
+                + "GROUP BY t.classificationHash",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(TermCountMapper.class)
+    List<Pair<String, Integer>> bulkGetTermCounts(
+        @Bind("jsonHashes") String jsonHashes, @Bind("hashArray") List<String> hashArray);
+
+    class TermCountMapper implements RowMapper<Pair<String, Integer>> {
+      @Override
+      public Pair<String, Integer> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Pair.of(rs.getString("classificationHash"), rs.getInt("termCount"));
+      }
+    }
   }
 
   interface TagDAO extends EntityDAO<Tag> {
@@ -3702,6 +3763,23 @@ public interface CollectionDAO {
 
     @Override
     default int listCount(ListFilter filter) {
+      String parent = filter.getQueryParam("parent");
+
+      // If parent parameter is provided, filter tags by parent classification FQN
+      if (parent != null) {
+        String parentFqnHash = FullyQualifiedName.buildHash(parent);
+        filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
+        String condition = filter.getCondition("tag");
+        if (!condition.isEmpty()) {
+          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
+        } else {
+          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
+        }
+        return listCount(
+            getTableName(), getNameHashColumn(), filter.getQueryParams(), condition, condition);
+      }
+
+      // Original behavior for classification.disabled parameter
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =
           String.format(
@@ -3744,6 +3822,29 @@ public interface CollectionDAO {
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
+      String parent = filter.getQueryParam("parent");
+
+      // If parent parameter is provided, filter tags by parent classification FQN
+      if (parent != null) {
+        String parentFqnHash = FullyQualifiedName.buildHash(parent);
+        filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
+        String condition = filter.getCondition("tag");
+        if (!condition.isEmpty()) {
+          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
+        } else {
+          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
+        }
+        return listBefore(
+            getTableName(),
+            filter.getQueryParams(),
+            condition,
+            condition,
+            limit,
+            beforeName,
+            beforeId);
+      }
+
+      // Original behavior for classification.disabled parameter
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =
           String.format(
@@ -3789,6 +3890,29 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
+      String parent = filter.getQueryParam("parent");
+
+      // If parent parameter is provided, filter tags by parent classification FQN
+      if (parent != null) {
+        String parentFqnHash = FullyQualifiedName.buildHash(parent);
+        filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
+        String condition = filter.getCondition("tag");
+        if (!condition.isEmpty()) {
+          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
+        } else {
+          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
+        }
+        return listAfter(
+            getTableName(),
+            filter.getQueryParams(),
+            condition,
+            condition,
+            limit,
+            afterName,
+            afterId);
+      }
+
+      // Original behavior for classification.disabled parameter
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =
           String.format(
@@ -3904,16 +4028,14 @@ public interface CollectionDAO {
         value =
             "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
                 + "FROM ("
-                + "  SELECT gterm.* , tu.* "
+                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gterm.json "
                 + "  FROM glossary_term_entity AS gterm "
-                + "  JOIN tag_usage AS tu "
-                + "  ON gterm.fqnHash = tu.tagFQNHash "
+                + "  JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 1 "
                 + "  UNION ALL "
-                + "  SELECT ta.*, tu.* "
+                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, ta.json "
                 + "  FROM tag AS ta "
-                + "  JOIN tag_usage AS tu "
-                + "  ON ta.fqnHash = tu.tagFQNHash "
+                + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 0 "
                 + ") AS combined_data "
                 + "WHERE combined_data.targetFQNHash LIKE :targetFQNHash",
@@ -3922,12 +4044,12 @@ public interface CollectionDAO {
         value =
             "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
                 + "FROM ("
-                + "  SELECT gterm.*, tu.* "
+                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gterm.json "
                 + "  FROM glossary_term_entity AS gterm "
                 + "  JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 1 "
                 + "  UNION ALL "
-                + "  SELECT ta.*, tu.* "
+                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, ta.json "
                 + "  FROM tag AS ta "
                 + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 0 "
@@ -6443,6 +6565,7 @@ public interface CollectionDAO {
                 json, AssetCertificationSettings.class);
             case WORKFLOW_SETTINGS -> JsonUtils.readValue(json, WorkflowSettings.class);
             case LINEAGE_SETTINGS -> JsonUtils.readValue(json, LineageSettings.class);
+            case ENTITY_RULES_SETTINGS -> JsonUtils.readValue(json, EntityRulesSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

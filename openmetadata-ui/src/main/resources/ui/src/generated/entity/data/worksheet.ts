@@ -45,9 +45,9 @@ export interface Worksheet {
      */
     displayName?: string;
     /**
-     * Domain the worksheet belongs to.
+     * Domains the Worksheet belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -554,8 +554,6 @@ export interface CustomMetric {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the worksheet belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
