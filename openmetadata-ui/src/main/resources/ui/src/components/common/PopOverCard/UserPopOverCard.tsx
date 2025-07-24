@@ -210,7 +210,11 @@ export const PopoverTitle = React.memo(
             type="link"
             onClick={(e) => {
               e.stopPropagation();
-              onTitleClickHandler(getUserPath(name));
+              onTitleClickHandler(
+                type === OwnerType.TEAM
+                  ? getTeamAndUserDetailsPath(name)
+                  : getUserPath(name)
+              );
             }}>
             <span className="font-medium m-r-xs" data-testid="user-name">
               {displayName}
