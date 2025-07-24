@@ -1189,6 +1189,7 @@
     "query-log-duration": "ระยะเวลาบันทึกการสอบถาม",
     "query-lowercase": "การสอบถาม",
     "query-lowercase-plural": "การสอบถามหลายรายการ",
+    "query-parameter-plural": "พารามิเตอร์ค้นหา",
     "query-plural": "การสอบถาม",
     "query-used-in": "การสอบถามที่ใช้ใน",
     "queued": "Queued",

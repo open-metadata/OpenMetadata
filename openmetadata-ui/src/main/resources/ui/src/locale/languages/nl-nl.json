@@ -1189,6 +1189,7 @@
     "query-log-duration": "Duur van querylogboek",
     "query-lowercase": "query",
     "query-lowercase-plural": "query's",
+    "query-parameter-plural": "Query Parameters",
     "query-plural": "Query's",
     "query-used-in": "Query gebruikt in",
     "queued": "Queued",

@@ -1189,6 +1189,7 @@
     "query-log-duration": "查询日志时长",
     "query-lowercase": "查询",
     "query-lowercase-plural": "查询",
+    "query-parameter-plural": "查询参数",
     "query-plural": "查询",
     "query-used-in": "查询语句被使用在",
     "queued": "排队中",
