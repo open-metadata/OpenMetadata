@@ -49,7 +49,7 @@
       "description": "Quality expectations defined in the data contract.",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/dataContract.json#/definitions/qualityExpectation"
+        "$ref": "../../type/entityReference.json"
       },
       "default": null
     },

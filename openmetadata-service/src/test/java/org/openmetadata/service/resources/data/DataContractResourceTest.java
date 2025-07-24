@@ -45,7 +45,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateDataContract;
-import org.openmetadata.schema.api.data.CreateDataContractResult;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -70,7 +69,6 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.ContractStatus;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.QualityExpectation;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -545,26 +543,35 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     String originalJson = JsonUtils.pojoToJson(created);
 
-    // Add quality expectations via patch
-    List<QualityExpectation> qualityExpectations = new ArrayList<>();
-    qualityExpectations.add(
-        new QualityExpectation()
-            .withName("DataIntegrity")
-            .withDescription("Data must be consistent and valid")
-            .withDefinition("All records must pass validation rules"));
-    qualityExpectations.add(
-        new QualityExpectation()
-            .withName("Completeness")
-            .withDescription("All required fields must be populated")
-            .withDefinition("No null values in required columns"));
+    // Create test cases first for quality expectations
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_data_integrity_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+    
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    // Add quality expectations as EntityReferences to TestCases
+    List<EntityReference> qualityExpectations = new ArrayList<>();
+    qualityExpectations.add(testCase1.getEntityReference());
+    qualityExpectations.add(testCase2.getEntityReference());
     created.setQualityExpectations(qualityExpectations);
 
     DataContract patched = patchDataContract(created.getId(), originalJson, created);
 
     assertNotNull(patched.getQualityExpectations());
     assertEquals(2, patched.getQualityExpectations().size());
-    assertEquals("DataIntegrity", patched.getQualityExpectations().get(0).getName());
-    assertEquals("Completeness", patched.getQualityExpectations().get(1).getName());
+    assertEquals(testCase1.getId(), patched.getQualityExpectations().get(0).getId());
+    assertEquals(testCase2.getId(), patched.getQualityExpectations().get(1).getId());
   }
 
   @Test
@@ -646,12 +653,17 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
   void testDataContractWithQualityExpectations(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
 
-    List<QualityExpectation> qualityExpectations = new ArrayList<>();
-    qualityExpectations.add(
-        new QualityExpectation()
-            .withName("Completeness")
-            .withDescription("Data should be complete")
-            .withDefinition("All required fields should have values"));
+    // Create test case first for quality expectations
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase =
+        testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> qualityExpectations = new ArrayList<>();
+    qualityExpectations.add(testCase.getEntityReference());
 
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table)
@@ -661,7 +673,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     assertNotNull(dataContract.getQualityExpectations());
     assertEquals(1, dataContract.getQualityExpectations().size());
-    assertEquals("Completeness", dataContract.getQualityExpectations().getFirst().getName());
+    assertEquals(testCase.getId(), dataContract.getQualityExpectations().getFirst().getId());
   }
 
   @Test
@@ -762,6 +774,16 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void testDataContractYAMLAPI(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
+    
+    // Create test case first for quality expectations
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest("test_case_email_format_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase =
+        testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+    
     String yamlContent =
         String.format(
             "name: %s\n"
@@ -777,10 +799,9 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
                 + "    description: Email field with format constraints\n"
                 + "    dataType: STRING\n"
                 + "qualityExpectations:\n"
-                + "  - name: EmailFormat\n"
-                + "    description: Email must be properly formatted\n"
-                + "    definition: Email must contain @ and valid domain",
-            "contract_" + test.getDisplayName(), table.getId(), C1, EMAIL_COL);
+                + "  - id: %s\n"
+                + "    type: testCase",
+            "contract_" + test.getDisplayName(), table.getId(), C1, EMAIL_COL, testCase.getId());
 
     DataContract dataContract = postYaml(yamlContent);
 
@@ -788,7 +809,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(ContractStatus.Active, dataContract.getStatus());
     assertEquals(2, dataContract.getSchema().size());
     assertEquals(1, dataContract.getQualityExpectations().size());
-    assertEquals("EmailFormat", dataContract.getQualityExpectations().getFirst().getName());
+    assertEquals(testCase.getId(), dataContract.getQualityExpectations().getFirst().getId());
   }
 
   @Test
@@ -1238,8 +1259,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertNull(dataContract.getLatestResult());
 
     // Create a contract result
-    CreateDataContractResult createResult =
-        new CreateDataContractResult()
+    DataContractResult createResult =
+        new DataContractResult()
             .withDataContractFQN(dataContract.getFullyQualifiedName())
             .withTimestamp(System.currentTimeMillis())
             .withContractExecutionStatus(ContractExecutionStatus.Running)
@@ -1265,13 +1286,13 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertNotNull(latest);
     assertEquals(result.getId(), latest.getId());
 
-    createResult
+    latest
         .withContractExecutionStatus(ContractExecutionStatus.Success)
         .withResult("Success result")
         .withExecutionTime(2000L);
 
     // Update the same result
-    SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult));
+    SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(latest));
     // Check the result was properly updated in the db
     WebTarget getResultTarget =
         getResource(dataContract.getId()).path("/results").path(result.getId().toString());
@@ -1298,11 +1319,11 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
     DataContract dataContract = createDataContract(create);
 
-    // Create multiple contract results with different dates
+    // Create multiple contract results with different dates and ids
     String dateStr = "2024-01-";
     for (int i = 1; i <= 5; i++) {
-      CreateDataContractResult createResult =
-          new CreateDataContractResult()
+      DataContractResult createResult =
+          new DataContractResult()
               .withDataContractFQN(dataContract.getFullyQualifiedName())
               .withTimestamp(TestUtils.dateToTimestamp(dateStr + String.format("%02d", i)))
               .withContractExecutionStatus(
@@ -1313,7 +1334,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
       WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
       Response response =
           SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS)
-              .post(Entity.json(createResult));
+              .put(Entity.json(createResult));
       assertEquals(Status.OK.getStatusCode(), response.getStatus());
       response.readEntity(String.class); // Consume response
     }
@@ -1351,8 +1372,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     // Create multiple results with different dates
     String[] dates = {"2024-01-01", "2024-01-02", "2024-01-03"};
     for (int i = 0; i < dates.length; i++) {
-      CreateDataContractResult createResult =
-          new CreateDataContractResult()
+      DataContractResult createResult =
+          new DataContractResult()
               .withDataContractFQN(dataContract.getFullyQualifiedName())
               .withTimestamp(TestUtils.dateToTimestamp(dates[i]))
               .withContractExecutionStatus(ContractExecutionStatus.Success)
@@ -1362,7 +1383,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
       WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
       Response response =
           SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS)
-              .post(Entity.json(createResult));
+              .put(Entity.json(createResult));
       assertEquals(Status.OK.getStatusCode(), response.getStatus());
       response.readEntity(String.class); // Consume response
     }
@@ -1384,8 +1405,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     // Create a result with a specific date
     long timestamp = TestUtils.dateToTimestamp("2024-01-15");
-    CreateDataContractResult createResult =
-        new CreateDataContractResult()
+    DataContractResult createResult =
+        new DataContractResult()
             .withDataContractFQN(dataContract.getFullyQualifiedName())
             .withTimestamp(timestamp)
             .withContractExecutionStatus(ContractExecutionStatus.Success)
@@ -1394,7 +1415,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
     Response createResponse =
-        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).post(Entity.json(createResult));
+        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult));
     assertEquals(Status.OK.getStatusCode(), createResponse.getStatus());
     createResponse.readEntity(String.class); // Consume response
 
@@ -1467,13 +1488,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     TestCase testCase =
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
 
-    List<QualityExpectation> qualityExpectations =
-        List.of(
-            new QualityExpectation()
-                .withName("Completeness")
-                .withDescription("Data should be complete")
-                .withDefinition("All required fields should have values")
-                .withTestCase(testCase.getEntityReference()));
+    List<EntityReference> qualityExpectations = List.of(testCase.getEntityReference());
 
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table)
@@ -1534,13 +1549,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
 
-    List<QualityExpectation> initialExpectations =
-        List.of(
-            new QualityExpectation()
-                .withName("Completeness")
-                .withDescription("Data should be complete")
-                .withDefinition("All required fields should have values")
-                .withTestCase(testCase1.getEntityReference()));
+    List<EntityReference> initialExpectations = List.of(testCase1.getEntityReference());
 
     // Create data contract with initial quality expectations
     CreateDataContract create =
@@ -1564,18 +1573,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
 
     // Update quality expectations with additional test case
-    List<QualityExpectation> updatedExpectations =
-        List.of(
-            new QualityExpectation()
-                .withName("Completeness")
-                .withDescription("Data should be complete")
-                .withDefinition("All required fields should have values")
-                .withTestCase(testCase1.getEntityReference()),
-            new QualityExpectation()
-                .withName("Accuracy")
-                .withDescription("Data should be accurate")
-                .withDefinition("Values should be within expected ranges")
-                .withTestCase(testCase2.getEntityReference()));
+    List<EntityReference> updatedExpectations = 
+        List.of(testCase1.getEntityReference(), testCase2.getEntityReference());
 
     // Update the data contract with new quality expectations
     String originalJson = JsonUtils.pojoToJson(dataContract);
@@ -1728,8 +1727,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     // Create first result with timestamp T1
     long timestamp1 = System.currentTimeMillis();
-    CreateDataContractResult createResult1 =
-        new CreateDataContractResult()
+    DataContractResult createResult1 =
+        new DataContractResult()
             .withDataContractFQN(dataContract.getFullyQualifiedName())
             .withTimestamp(timestamp1)
             .withContractExecutionStatus(ContractExecutionStatus.Success)
@@ -1751,8 +1750,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     // Create second result with OLDER timestamp T2 < T1 (should NOT update latestResult)
     long timestamp2 = timestamp1 - 10000; // 10 seconds earlier
-    CreateDataContractResult createResult2 =
-        new CreateDataContractResult()
+    DataContractResult createResult2 =
+        new DataContractResult()
             .withDataContractFQN(dataContract.getFullyQualifiedName())
             .withTimestamp(timestamp2)
             .withContractExecutionStatus(ContractExecutionStatus.Failed)
@@ -1778,8 +1777,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     // Create third result with NEWER timestamp T3 > T1 (should update latestResult)
     long timestamp3 = timestamp1 + 10000; // 10 seconds later
-    CreateDataContractResult createResult3 =
-        new CreateDataContractResult()
+    DataContractResult createResult3 =
+        new DataContractResult()
             .withDataContractFQN(dataContract.getFullyQualifiedName())
             .withTimestamp(timestamp3)
             .withContractExecutionStatus(ContractExecutionStatus.Running)

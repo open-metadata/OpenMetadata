@@ -42,7 +42,6 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.QualityExpectation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -90,7 +89,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   @Override
   public void setFullyQualifiedName(DataContract dataContract) {
-    String entityFQN = dataContract.getEntity().getFullyQualifiedName();
+    EntityReference entityRef = Entity.getEntityReferenceById(
+        dataContract.getEntity().getType(),
+        dataContract.getEntity().getId(),
+        Include.NON_DELETED
+    );
+    String entityFQN = entityRef.getFullyQualifiedName();
     String name = dataContract.getName();
     dataContract.setFullyQualifiedName(entityFQN + ".dataContract_" + name);
   }
@@ -247,7 +251,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       // Collect test case references from quality expectations
       List<UUID> testCaseRefs =
           dataContract.getQualityExpectations().stream()
-              .map(QualityExpectation::getTestCase)
               .map(EntityReference::getId)
               .toList();
 

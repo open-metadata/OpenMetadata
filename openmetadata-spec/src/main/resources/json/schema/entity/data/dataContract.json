@@ -31,35 +31,6 @@
         }
       ]
     },
-    "qualityExpectation": {
-      "type": "object",
-      "javaType": "org.openmetadata.schema.type.QualityExpectation",
-      "description": "Quality expectation defined in the data contract.",
-      "properties": {
-        "name": {
-          "description": "Name of the quality expectation.",
-          "type": "string"
-        },
-        "description": {
-          "description": "Description of the quality expectation.",
-          "$ref": "../../type/basic.json#/definitions/markdown"
-        },
-        "definition": {
-          "description": "Definition of the quality expectation.",
-          "type": "string"
-        },
-        "testCase": {
-          "description": "Reference to a test case that enforces this quality expectation.",
-          "$ref": "../../type/entityReference.json",
-          "default": null
-        }
-      },
-      "required": [
-        "name",
-        "definition"
-      ],
-      "additionalProperties": false
-    },
     "contractUpdate": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.ContractUpdate",
@@ -159,7 +130,7 @@
       "description": "Quality expectations defined in the data contract.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/qualityExpectation"
+        "$ref": "../../type/entityReference.json"
       },
       "default": null
     },

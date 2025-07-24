@@ -50,7 +50,6 @@ import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.CreateDataContract;
-import org.openmetadata.schema.api.data.CreateDataContractResult;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
@@ -753,7 +752,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
-      @Valid CreateDataContractResult create) {
+      @Valid DataContractResult newResult) {
     DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.EDIT_ALL);
@@ -761,7 +760,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    DataContractResult result = getContractResult(dataContract, create);
+    DataContractResult result = getContractResult(dataContract, newResult);
     result = repository.addContractResult(dataContract, result);
     return Response.ok(result).build();
   }
@@ -866,38 +865,13 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     return Response.ok(result).build();
   }
 
+  // Add runId and dataContractFQN to the result if not incoming
   private DataContractResult getContractResult(
-      DataContract dataContract, CreateDataContractResult create) {
-    DataContractResult result =
-        new DataContractResult()
-            .withId(dataContract.getId() == null ? UUID.randomUUID() : dataContract.getId())
-            .withDataContractFQN(dataContract.getFullyQualifiedName())
-            .withTimestamp(create.getTimestamp())
-            .withContractExecutionStatus(create.getContractExecutionStatus())
-            .withResult(create.getResult())
-            .withExecutionTime(create.getExecutionTime());
+      DataContract dataContract, DataContractResult newResult) {
+    return newResult
+        .withId(newResult.getId() == null ? UUID.randomUUID() : newResult.getId())
+        .withDataContractFQN(dataContract.getFullyQualifiedName());
 
-    if (create.getSchemaValidation() != null) {
-      result.withSchemaValidation(create.getSchemaValidation());
-    }
-
-    if (create.getSemanticsValidation() != null) {
-      result.withSemanticsValidation(create.getSemanticsValidation());
-    }
-
-    if (create.getQualityValidation() != null) {
-      result.withQualityValidation(create.getQualityValidation());
-    }
-
-    if (create.getSlaValidation() != null) {
-      result.withSlaValidation(create.getSlaValidation());
-    }
-
-    if (create.getIncidentId() != null) {
-      result.withIncidentId(create.getIncidentId());
-    }
-
-    return result;
   }
 
   public static class DataContractList extends ResultList<DataContract> {
