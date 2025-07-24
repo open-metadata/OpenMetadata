@@ -1,5 +1,6 @@
 ---
 title: Create Glossary Term | OpenMetadata Glossary Term API
+description: Connect Createglossaryterm to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/data/createglossaryterm
 ---
 
