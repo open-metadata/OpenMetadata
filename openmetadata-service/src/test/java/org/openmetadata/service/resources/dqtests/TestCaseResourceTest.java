@@ -2118,7 +2118,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 new TestCaseParameterValue().withName("maxLength").withValue("5")));
 
     assertResponseContains(
-        () -> createEntity(invalidTestCase, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Value");
+        () -> createEntity(invalidTestCase, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Parameter");
 
     CreateTestCase invalidTestCaseMixedTypes = createRequest(test, 3);
     invalidTestCaseMixedTypes
@@ -2129,7 +2129,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 new TestCaseParameterValue().withName("maxLength").withValue("5")));
 
     assertResponseContains(
-        () -> createEntity(invalidTestCaseMixedTypes, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Value");
+        () -> createEntity(invalidTestCaseMixedTypes, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Parameter");
   }
 
   @Test
