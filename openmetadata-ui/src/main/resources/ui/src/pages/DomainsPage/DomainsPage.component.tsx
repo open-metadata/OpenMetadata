@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import EntityTable from '../../components/common/EntityTable/EntityTable.component';
+import EntityTable, {
+  EntityTableFilters,
+} from '../../components/common/EntityTable/EntityTable.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderCard from '../../components/common/HeaderCard/HeaderCard.component';
-import Loader from '../../components/common/Loader/Loader';
 import AddEntityFormV2 from '../../components/Domains/AddEntityForm/AddEntityForm.component';
-import PageLayoutV2 from '../../components/PageLayoutV2/PageLayoutV2.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ES_MAX_PAGE_SIZE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -37,6 +37,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
+import { useDynamicEntitySearch } from '../../hooks/useDynamicEntitySearch';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDomains,
@@ -52,6 +53,8 @@ import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
+import './domains-page.less';
+
 const DomainPage = () => {
   const { fqn: domainFqn } = useFqn();
   const { t } = useTranslation();
@@ -66,6 +69,23 @@ const DomainPage = () => {
   const [isFollowingLoading, setIsFollowingLoading] = useState<boolean>(false);
   const [isAddDomainPanelOpen, setIsAddDomainPanelOpen] = useState(false);
   const [isDomainFormLoading, setIsDomainFormLoading] = useState(false);
+
+  // Use dynamic search hook for handling search and filtering
+  const {
+    data: searchResults,
+    loading: searchLoading,
+    total,
+    searchTerm,
+    filters,
+    setSearchTerm,
+    setFilters,
+    refetch,
+  } = useDynamicEntitySearch<Domain>({
+    searchIndex: SearchIndex.DOMAIN,
+    pageSize: ES_MAX_PAGE_SIZE,
+    enableFilters: true,
+    enableSearch: true,
+  });
 
   const { isFollowing } = useMemo(() => {
     return {
@@ -98,12 +118,15 @@ const DomainPage = () => {
       );
 
       updateDomains(domainsFromSearch);
+
+      // Also refetch search results to keep them in sync
+      refetch();
     } catch {
       // silent fail
     } finally {
       updateDomainLoading(false);
     }
-  }, []);
+  }, [updateDomains, updateDomainLoading, refetch]);
 
   const [
     createDomainPermission,
@@ -185,7 +208,7 @@ const DomainPage = () => {
     }
   };
 
-  const handleBulkDomainDelete = async (ids: string[]) => {
+  const handleBulkDomainDelete = async (ids: Key[]) => {
     try {
       // TODO: Implement actual bulk delete API calls
       // eslint-disable-next-line no-console
@@ -195,6 +218,22 @@ const DomainPage = () => {
       showErrorToast(error as AxiosError);
     }
   };
+
+  // Handle search term changes from EntityTable
+  const handleSearchChange = useCallback(
+    (newSearchTerm: string) => {
+      setSearchTerm(newSearchTerm);
+    },
+    [setSearchTerm]
+  );
+
+  // Handle filter changes from EntityTable
+  const handleFiltersUpdate = useCallback(
+    (newFilters: EntityTableFilters) => {
+      setFilters(newFilters);
+    },
+    [setFilters]
+  );
 
   const fetchDomainByName = async (domainFqn: string) => {
     setIsMainContentLoading(true);
@@ -286,10 +325,6 @@ const DomainPage = () => {
     refreshDomains();
   }, [refreshDomains]);
 
-  if (domainLoading) {
-    return <Loader />;
-  }
-
   if (!(viewBasicDomainPermission || viewAllDomainPermission)) {
     return (
       <div className="d-flex justify-center items-center full-height">
@@ -305,7 +340,7 @@ const DomainPage = () => {
     );
   }
 
-  if (isEmpty(rootDomains)) {
+  if (isEmpty(rootDomains) && !searchLoading) {
     return (
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
@@ -339,43 +374,41 @@ const DomainPage = () => {
     { label: t('label.domain-plural'), path: '/domains' },
   ];
 
-  // Header component
-  const headerComponent = (
-    <HeaderCard
-      addLabel={t('label.add-entity', {
-        entity: t('label.domain'),
-      })}
-      description="Test description"
-      disabled={!createDomainPermission}
-      title={t('label.domain-plural')}
-      onAdd={handleAddDomainClick}
-    />
-  );
-
-  const BUTTON_LABEL = 'Refresh';
-
   return (
-    <PageLayoutV2
-      breadcrumbs={breadcrumbs}
-      header={headerComponent}
-      pageTitle={t('label.domain-plural')}>
-      <Button onClick={refreshDomains}>{BUTTON_LABEL}</Button>
-      <EntityTable
-        data={rootDomains}
-        loading={domainLoading}
-        type="domains"
-        onBulkDelete={handleBulkDomainDelete}
-        onDelete={handleDomainDelete}
-      />
-      <AddEntityFormV2<CreateDomain>
-        config={createFormConfig.domain({
-          onSubmit: handleDomainSave,
-        })}
-        loading={isDomainFormLoading}
-        open={isAddDomainPanelOpen}
-        onClose={handleAddDomainPanelClose}
-      />
-    </PageLayoutV2>
+    <PageLayoutV1 pageTitle={t('label.domain-plural')}>
+      <div className="domains-page-container">
+        <HeaderCard
+          addLabel={t('label.add-entity', {
+            entity: t('label.domain'),
+          })}
+          description="Test description"
+          disabled={!createDomainPermission}
+          title={t('label.domain-plural')}
+          onAdd={handleAddDomainClick}
+        />
+        <EntityTable
+          data={searchResults}
+          filters={filters}
+          loading={searchLoading || domainLoading}
+          searchIndex={SearchIndex.DOMAIN}
+          searchTerm={searchTerm}
+          total={total}
+          type="domains"
+          onBulkDelete={handleBulkDomainDelete}
+          onDelete={handleDomainDelete}
+          onFiltersUpdate={handleFiltersUpdate}
+          onSearchChange={handleSearchChange}
+        />
+        <AddEntityFormV2<CreateDomain>
+          config={createFormConfig.domain({
+            onSubmit: handleDomainSave,
+          })}
+          loading={isDomainFormLoading}
+          open={isAddDomainPanelOpen}
+          onClose={handleAddDomainPanelClose}
+        />
+      </div>
+    </PageLayoutV1>
   );
 };
 

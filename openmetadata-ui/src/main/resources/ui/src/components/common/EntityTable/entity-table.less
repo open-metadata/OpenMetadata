@@ -13,48 +13,94 @@
 @import '../../../styles/variables.less';
 
 .entity-table {
-  // Checkbox styling
-  .entity-table-checkbox {
+  .ant-list {
+    box-sizing: border-box;
+    height: initial !important;
+    border-radius: @size-sm;
+    background-color: @white;
+    border: 1px solid @grey-200;
+    overflow: hidden;
+
+    .ant-list-header {
+      padding: @size-md;
+      border-radius: @size-xxs @size-xxs 0 0;
+    }
+  }
+
+  .ant-table-selection-column {
     .ant-checkbox {
+      .ant-checkbox-input {
+        width: 20px;
+        height: 20px;
+      }
+
       .ant-checkbox-inner {
         width: 20px;
         height: 20px;
-        border-radius: 4px !important; // Force square corners, prevent circle
-        border: 1px solid var(--Colors-Border-border-primary, #d5d7da);
-        opacity: 1;
+        border-radius: 6px;
+        border: 1px solid #d5d7da;
+        background-color: transparent;
 
-        // Prevent circular hover state
-        &:hover {
-          border-radius: 4px !important;
-        }
-
-        // Ensure checked state maintains square shape
-        &.ant-checkbox-inner-checked {
-          border-radius: 4px !important;
+        &::after {
+          width: 6.4px;
+          height: 9.33px;
+          border: 2px solid #ffffff;
+          border-top: 0;
+          border-left: 0;
+          transform: rotate(45deg) scale(0.8) translate(-50%, -60%);
+          transition: all 0.2s ease;
         }
       }
 
-      // Fix the checkbox wrapper hover state
       &:hover .ant-checkbox-inner {
-        border-radius: 4px !important;
-        border-color: #1890ff;
+        border-radius: 6px;
+        border-color: #1570ef;
       }
 
-      // Ensure checked state styling
       &.ant-checkbox-checked .ant-checkbox-inner {
-        background-color: #1890ff;
-        border-color: #1890ff;
-        border-radius: 4px !important;
+        background-color: #1570ef;
+        border-color: #1570ef;
+        border-radius: 6px;
+
+        &::after {
+          border-color: #ffffff;
+          opacity: 1;
+        }
       }
 
-      // Focus state
       &.ant-checkbox-focused .ant-checkbox-inner {
-        border-radius: 4px !important;
+        border-radius: 6px;
+        box-shadow: 0 0 0 2px rgba(21, 112, 239, 0.2);
+      }
+
+      &.ant-checkbox-indeterminate .ant-checkbox-inner {
+        background-color: #1570ef;
+        border-color: #1570ef;
+        border-radius: 6px;
+
+        &::after {
+          background-color: #ffffff;
+          border: 0;
+          width: 8px;
+          height: 2px;
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+
+      &.ant-checkbox-disabled {
+        .ant-checkbox-inner {
+          background-color: #f5f5f5;
+          border-color: #d9d9d9;
+          border-radius: 6px;
+
+          &::after {
+            border-color: #cccccc;
+          }
+        }
       }
     }
   }
 
-  // Entity name cell styling
   .entity-name-cell {
     display: flex;
     align-items: center;
@@ -124,7 +170,6 @@
     }
   }
 
-  // Owner cell styling
   .owner-cell {
     display: flex;
     align-items: center;
@@ -137,7 +182,6 @@
     }
   }
 
-  // Text utilities
   .text-grey-muted {
     color: #9ca3af;
     font-size: 14px;
@@ -148,21 +192,19 @@
     margin-right: 4px;
   }
 
-  // Generic badge styling for entity tables
   .entity-badge {
     display: inline-flex;
     align-items: center;
     height: 22px;
-    padding: 2px 8px 2px 6px; // spacing-xxs top, spacing-sm right, spacing-xxs bottom, 6px left
-    border-radius: 4px; // radius-sm
+    padding: 2px 8px 2px 6px;
+    border-radius: 4px;
     border: 1px solid;
-    gap: @size-xxs; // spacing-xs
+    gap: @size-xxs;
     font-size: 12px;
     font-weight: 500;
     line-height: 16px;
     white-space: nowrap;
 
-    // Domain type badge variants
     &.aggregate-domain-type {
       background-color: @violet-50;
       border-color: @violet-200;
@@ -197,11 +239,13 @@
     }
   }
 
-  .tags-container {
+  .table-tags-container {
+    display: flex;
+    align-items: center;
     gap: @size-xs;
+    flex-wrap: wrap;
   }
 
-  // First column header styling (checkbox + title)
   .first-column-header {
     display: flex;
     align-items: center;
@@ -213,7 +257,6 @@
     }
   }
 
-  // First column content styling (checkbox + content)
   .first-column-content {
     display: flex;
     align-items: center;
@@ -247,11 +290,39 @@
         }
       }
 
-      .header-actions {
+      .header-filters {
         display: flex;
         align-items: center;
         gap: @size-md;
         flex: 1;
+      }
+
+      .header-actions-row {
+        display: flex;
+        align-items: center;
+        gap: @size-xs;
+
+        .list-view-icon,
+        .grid-view-icon {
+          padding: 0px;
+          height: auto;
+          border: none;
+          margin: 0px;
+        }
+
+        .list-view-icon.active {
+          svg path {
+            stroke: @blue-17;
+            stroke-width: 0.6px;
+          }
+        }
+
+        .grid-view-icon.active {
+          svg path {
+            stroke: @blue-17;
+            stroke-width: 1.5px;
+          }
+        }
       }
     }
 
@@ -276,6 +347,14 @@
         }
       }
     }
+
+    .search-loading-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 2px;
+      text-align: center;
+      font-style: italic;
+    }
   }
 
   .table-container {
@@ -285,12 +364,12 @@
     }
   }
 
-  // Table wrapper styles - force left alignment for all content
   .ant-table-wrapper {
     .ant-table {
       .ant-table-thead {
         .ant-table-cell {
-          background: #f8fafc;
+          background: @grey-50;
+          border-top: 1px solid @grey-200;
           border-bottom: 1px solid #e5e7eb;
           font-weight: 500;
           color: #374151;
@@ -317,7 +396,6 @@
     }
   }
 
-  // Force all table headers to be left-aligned with higher specificity
   .ant-table-thead > tr > th,
   .ant-table-thead > tr > th.ant-table-cell {
     text-align: left !important;
@@ -333,7 +411,6 @@
     }
   }
 
-  // Force all table cell content to be left-aligned with higher specificity
   .ant-table-tbody > tr > td,
   .ant-table-tbody > tr > td.ant-table-cell {
     text-align: left !important;
@@ -344,7 +421,6 @@
     }
   }
 
-  // Ensure content wrapper elements are also left-aligned
   .ant-table-cell-content,
   .ant-table-cell-content > div,
   .ant-table-cell-content > span {
@@ -363,7 +439,6 @@
     }
   }
 
-  // Ensure all cell content is left-aligned
   .entity-name-cell,
   .owner-cell {
     display: flex;
@@ -372,12 +447,10 @@
     gap: @size-sm;
   }
 
-  // Force badge containers to be left-aligned
   .entity-badge {
     text-align: left !important;
   }
 
-  // Force any span or div content to be left-aligned
   .ant-table-cell {
     > span,
     > div {
@@ -386,14 +459,12 @@
     }
   }
 
-  // Override any flex centering
   .ant-table-cell-content {
     display: flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
   }
 
-  // Most specific selectors to force left alignment
   &.entity-table {
     .ant-table-wrapper {
       .ant-table-container {
@@ -432,7 +503,6 @@
     }
   }
 
-  // Remove shadow from table
   .ant-table-wrapper {
     box-shadow: none !important;
 
@@ -441,13 +511,11 @@
     }
   }
 
-  // Remove shadow from table container
   .table-container {
     box-shadow: none !important;
   }
 }
 
-// Domain type clickable badge styles
 .domain-type-clickable {
   display: inline-flex;
   align-items: center;
@@ -467,7 +535,6 @@
   gap: 4px;
 }
 
-// Domain type popover styles
 .entity-type-popover {
   max-width: 184px;
   .popover-title {
@@ -521,7 +588,6 @@
   }
 }
 
-// Enhanced entity badge styles
 .entity-badge {
   display: inline-flex;
   align-items: center;
@@ -588,6 +654,96 @@
       font-weight: 500;
       line-height: 16px;
       color: #404040;
+    }
+  }
+}
+
+// Entity Grid Layout Styles
+.entity-grid-container {
+  .entity-grid {
+    margin-top: 16px;
+  }
+
+  .entity-grid-loading {
+    padding: 40px 0;
+    text-align: center;
+  }
+}
+
+.entity-card {
+  background: #ffffff;
+  border: 1px solid #e9eaeb;
+  border-radius: 12px;
+  padding: 24px 20px 20px 20px;
+  height: 224px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    border-color: #1570ef;
+    box-shadow: 0 1px 2px rgba(10, 13, 18, 0.06),
+      0 1px 3px rgba(10, 13, 18, 0.21);
+    transform: translateY(-2px);
+  }
+
+  .entity-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+
+    .entity-icon-container {
+      flex-shrink: 0;
+      width: 54px;
+      height: 54px;
+      border-radius: 5px;
+      border: 1px solid #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #bf4cf1;
+
+      .anticon,
+      svg {
+        width: 34px;
+        height: 34px;
+        color: #ffffff;
+      }
+    }
+
+    .entity-card-content {
+      flex: 1;
+      min-width: 0;
+      padding-top: 5px;
+
+      .entity-card-title {
+        display: block;
+        font-weight: 500;
+        font-size: 16px;
+        line-height: 24px;
+        color: #181d27;
+        margin-bottom: 2px;
+      }
+
+      .entity-card-description {
+        display: block;
+        font-size: 14px;
+        line-height: 18px;
+        color: #717680;
+      }
+    }
+  }
+}
+
+// View Toggle Styles
+.view-toggle {
+  .ant-segmented-item {
+    padding: 4px 8px;
+
+    .anticon {
+      font-size: 16px;
     }
   }
 }

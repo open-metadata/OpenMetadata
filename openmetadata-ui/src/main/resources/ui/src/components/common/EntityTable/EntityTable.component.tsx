@@ -13,7 +13,7 @@
 
 import {
   Avatar,
-  Checkbox,
+  Button,
   Col,
   Modal,
   Popover,
@@ -22,98 +22,104 @@ import {
   Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/es/table';
-import { ReactNode, useCallback, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DeleteIconColored from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as DropDownIcon } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as GridViewIcon } from '../../../assets/svg/ic-grid-view.svg';
 import { ReactComponent as LayersIcon } from '../../../assets/svg/ic-layers-white.svg';
-import { ReactComponent as ListViewIcon } from '../../../assets/svg/ic-list-layout.svg';
+import { ReactComponent as ListViewIcon } from '../../../assets/svg/ic-list-view.svg';
 import { ReactComponent as TagIcon } from '../../../assets/svg/ic-tag-gray.svg';
 import { ReactComponent as AggregateIcon } from '../../../assets/svg/tags/ic-aggregate.svg';
 import { ReactComponent as ConsumerAlignedIcon } from '../../../assets/svg/tags/ic-consumer-aligned.svg';
 import { ReactComponent as SourceAlignedIcon } from '../../../assets/svg/tags/ic-source-aligned.svg';
-import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { SearchIndex } from '../../../enums/search.enum';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getDomainsPath } from '../../../utils/RouterUtils';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import AppBadge from '../Badge/Badge.component';
+import FilterTablePlaceHolder from '../ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../Table/Table';
-import EntitySearchInput from './EntitySearchInput.component';
-import './EntityTable.less';
 import {
-  EntityTableFilter,
-  EntityTableFilterOption,
-} from './EntityTableFilter.component';
+  EntityData,
+  EntityListViewOptions,
+  EntityTableColumn,
+  EntityTableFilters,
+  EntityTableProps,
+  EntityTableType,
+} from './EntityTable.interface';
+import GridView from './GridView/GridView.component';
+import SearchInput from './SearchInput/SearchInput.component';
+import TableFilters from './TableFilters/TableFilters.component';
+
+import './entity-table.less';
 
 const { Title, Text } = Typography;
 
-// Entity type discriminator
-export type EntityTableType = 'domains' | 'data-products' | 'sub-domains';
+const SearchLoadingIndicator = ({
+  isVisible,
+  t,
+}: {
+  isVisible: boolean;
+  t: any;
+}) => {
+  if (!isVisible) {
+    return null;
+  }
 
-// Union type for all supported entity data
-export type EntityData = Domain | DataProduct;
+  return <Text className="search-loading-text">{t('label.searching')}...</Text>;
+};
 
-// Helper function to safely access rowKey property
 const getRowKeyValue = (record: EntityData, rowKey: string): string => {
   return (record as unknown as Record<string, string>)[rowKey] || '';
 };
 
-export interface EntityTableColumn {
-  key: string;
-  title: string | ReactNode;
-  dataIndex?: string;
-  render?: (value: unknown, record: EntityData) => ReactNode;
-  sorter?: boolean | ((a: EntityData, b: EntityData) => number);
-  width?: number;
-  fixed?: 'left' | 'right';
-  ellipsis?: boolean;
-}
-
-export interface EntityTableProps {
-  // Main props - only these are required
-  type: EntityTableType;
-  data: EntityData[];
-
-  // Optional callbacks for actions
-  onDelete?: (id: string) => Promise<void>;
-  onBulkDelete?: (ids: string[]) => Promise<void>;
-  onRowClick?: (record: EntityData) => void;
-  onDomainTypeChange?: (recordId: string, newDomainType: string) => void;
-
-  // Optional table configuration
-  loading?: boolean;
-  rowKey?: string;
-  [key: string]: unknown;
-}
-
 const EntityTable = ({
   type,
-  data,
-  onDelete,
-  onBulkDelete,
-  onRowClick,
-  onDomainTypeChange,
+  data = [],
   loading = false,
-  rowKey = 'id',
-  ...rest
-}: EntityTableProps) => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-
-  // Internal state for all table functionality
-  const [selectedRows, setSelectedRows] = useState<EntityData[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  // Replace individual filter states with a single filters state
-  const [filters, setFilters] = useState({
+  total = 0,
+  searchTerm = '',
+  filters = {
     owners: [],
     glossaryTerms: [],
     domainTypes: [],
     tags: [],
-  });
+  },
+  searchIndex,
+  baseQueryFilter,
+  onSearchChange,
+  onFiltersUpdate,
+  onDelete,
+  onBulkDelete,
+  onRowClick,
+  onDomainTypeChange,
+  rowKey = 'id',
+  showPagination = true,
+}: EntityTableProps) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const effectiveSearchIndex = useMemo(() => {
+    if (searchIndex) {
+      return searchIndex;
+    }
+
+    switch (type) {
+      case 'domains':
+      case 'sub-domains':
+        return SearchIndex.DOMAIN;
+      case 'data-products':
+        return SearchIndex.DATA_PRODUCT;
+      default:
+        return SearchIndex.DOMAIN;
+    }
+  }, [type, searchIndex]);
+
+  const [selectedRows, setSelectedRows] = useState<Key[]>([]);
   const [deleteModal, setDeleteModal] = useState<{
     visible: boolean;
     entity?: EntityData;
@@ -124,135 +130,45 @@ const EntityTable = ({
     recordId: string;
     domainType: string;
   } | null>(null);
+  const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
+  const [view, setView] = useState<EntityListViewOptions>(
+    EntityListViewOptions.GRID
+  );
 
-  // Update filteredData to use filters state
-  const filteredData = useMemo(() => {
-    return data.filter((entity) => {
-      // Search term filter
-      const searchMatch =
-        !searchTerm ||
-        entity.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entity.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entity.description?.toLowerCase().includes(searchTerm.toLowerCase());
+  // Update local search term when prop changes
+  useEffect(() => {
+    setLocalSearchTerm(searchTerm);
+  }, [searchTerm]);
 
-      // Owners filter
-      const ownerNames = (entity.owners || [])
-        .map((owner: EntityReference) => owner.name)
-        .filter(Boolean) as string[];
-      const ownerMatch =
-        filters.owners.length === 0 ||
-        filters.owners.some((opt) => ownerNames.includes(opt));
+  const handleFilterChange = useCallback(
+    (newFilters: EntityTableFilters) => {
+      onFiltersUpdate?.(newFilters);
+    },
+    [onFiltersUpdate]
+  );
 
-      // Glossary Terms filter
-      const glossaryTerms = (entity.tags || [])
-        .filter((tag: TagLabel) => tag.source === 'Glossary')
-        .map((tag: TagLabel) => tag.tagFQN);
-      const glossaryMatch =
-        filters.glossaryTerms.length === 0 ||
-        filters.glossaryTerms.some((opt) => glossaryTerms.includes(opt));
-
-      // Domain Type filter
-      const domainType = String((entity as Domain).domainType);
-      const domainTypeMatch =
-        filters.domainTypes.length === 0 ||
-        filters.domainTypes.includes(domainType);
-
-      // Tags filter
-      const tags = (entity.tags || [])
-        .filter((tag: TagLabel) => tag.source !== 'Glossary')
-        .map((tag: TagLabel) => tag.tagFQN);
-      const tagMatch =
-        filters.tags.length === 0 ||
-        filters.tags.some((opt) => tags.includes(opt));
-
-      return (
-        searchMatch &&
-        ownerMatch &&
-        glossaryMatch &&
-        domainTypeMatch &&
-        tagMatch
-      );
-    });
-  }, [data, searchTerm, filters]);
-
-  // Generate filter options with counts
-  const filterOptions = useMemo(() => {
-    const countMap = (arr: string[]) =>
-      arr.reduce((acc, key) => {
-        acc[key] = (acc[key] || 0) + 1;
-
-        return acc;
-      }, {} as Record<string, number>);
-
-    // Owners
-    const allOwners = data.flatMap((entity) =>
-      (entity.owners || [])
-        .map((owner: EntityReference) => owner.name)
-        .filter((name): name is string => Boolean(name))
-    );
-    const ownerCounts = countMap(allOwners);
-    const ownerOptions: EntityTableFilterOption[] = Array.from(
-      new Set(allOwners)
-    ).map((name) => ({
-      key: name,
-      label: name,
-      count: ownerCounts[name],
-    }));
-
-    // Glossary Terms
-    const allGlossary = data.flatMap((entity) =>
-      (entity.tags || [])
-        .filter((tag: TagLabel) => tag.source === 'Glossary')
-        .map((tag: TagLabel) => tag.tagFQN)
-        .filter((name) => Boolean(name))
-    );
-    const glossaryCounts = countMap(allGlossary);
-    const glossaryOptions: EntityTableFilterOption[] = Array.from(
-      new Set(allGlossary)
-    ).map((name) => ({
-      key: name,
-      label: name,
-      count: glossaryCounts[name],
-    }));
-
-    // Domain Types
-    const allDomainTypes = data
-      .map((entity) => String((entity as Domain).domainType))
-      .filter(Boolean);
-    const domainTypeCounts = countMap(allDomainTypes);
-    const domainTypeOptions: EntityTableFilterOption[] = Array.from(
-      new Set(allDomainTypes)
-    ).map((type) => ({
-      key: type,
-      label: type,
-      count: domainTypeCounts[type],
-    }));
-
-    // Tags
-    const allTags = data.flatMap((entity) =>
-      (entity.tags || [])
-        .filter((tag: TagLabel) => tag.source !== 'Glossary')
-        .map((tag: TagLabel) => tag.tagFQN)
-        .filter((tag) => Boolean(tag))
-    );
-    const tagCounts = countMap(allTags);
-    const tagOptions: EntityTableFilterOption[] = Array.from(
-      new Set(allTags)
-    ).map((tagFQN) => ({
-      key: tagFQN,
-      label: tagFQN,
-      count: tagCounts[tagFQN],
-    }));
-
-    return {
-      owners: ownerOptions,
-      glossaryTerms: glossaryOptions,
-      domainTypes: domainTypeOptions,
-      tags: tagOptions,
+  const handleClearAllFilters = useCallback(() => {
+    const emptyFilters: EntityTableFilters = {
+      owners: [],
+      glossaryTerms: [],
+      domainTypes: [],
+      tags: [],
     };
-  }, [data]);
+    onFiltersUpdate?.(emptyFilters);
+  }, [onFiltersUpdate]);
 
-  // Generate dynamic entity icon based on style property or default
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setLocalSearchTerm(value);
+
+      if (onSearchChange) {
+        onSearchChange(value);
+      }
+    },
+    [onSearchChange]
+  );
+
   const generateEntityIcon = useCallback((record: EntityData) => {
     const style = record.style;
 
@@ -273,7 +189,6 @@ const EntityTable = ({
     );
   }, []);
 
-  // Get domain type for display
   const getDomainTypeForDisplay = useCallback(
     (record: EntityData): string => {
       if (type === 'data-products') {
@@ -287,7 +202,6 @@ const EntityTable = ({
     [type]
   );
 
-  // Get domain type CSS class
   const getDomainTypeClass = useCallback((domainType: string) => {
     switch (domainType) {
       case 'Aggregate':
@@ -303,7 +217,6 @@ const EntityTable = ({
     }
   }, []);
 
-  // Get domain type icon
   const getDomainTypeIcon = useCallback((domainType: string) => {
     switch (domainType) {
       case 'Aggregate':
@@ -317,7 +230,6 @@ const EntityTable = ({
     }
   }, []);
 
-  // Handle popover visibility
   const handlePopoverVisibility = useCallback(
     (recordId: string, domainType: string, visible: boolean) => {
       setIsPopoverVisible(visible);
@@ -330,20 +242,15 @@ const EntityTable = ({
     []
   );
 
-  // Handle domain type selection from popover
   const handleDomainTypeSelection = useCallback(
     (recordId: string, newDomainType: string) => {
-      // Close the popover
       setIsPopoverVisible(false);
       setSelectedRecord(null);
-
-      // Call the callback to handle the actual domain type change
       onDomainTypeChange?.(recordId, newDomainType);
     },
     [onDomainTypeChange]
   );
 
-  // Render popover content for domain type selection
   const renderDomainTypePopover = useCallback(() => {
     if (!selectedRecord) {
       return null;
@@ -396,7 +303,6 @@ const EntityTable = ({
     );
   }, [selectedRecord, t, handleDomainTypeSelection, getDomainTypeClass]);
 
-  // Get entity display name for header
   const getEntityDisplayName = (entityType: EntityTableType): string => {
     switch (entityType) {
       case 'domains':
@@ -410,7 +316,6 @@ const EntityTable = ({
     }
   };
 
-  // Generate columns based on entity type
   const generateColumns = useCallback((): EntityTableColumn[] => {
     const baseColumns: EntityTableColumn[] = [
       {
@@ -442,6 +347,7 @@ const EntityTable = ({
             </div>
           </div>
         ),
+        width: 300,
       },
       {
         key: 'owner',
@@ -490,6 +396,7 @@ const EntityTable = ({
             </span>
           ));
         },
+        width: 250,
       },
       {
         key: 'domainType',
@@ -507,28 +414,32 @@ const EntityTable = ({
                 {domainType}
               </div>
 
-              <Popover
-                destroyTooltipOnHide
-                content={renderDomainTypePopover()}
-                open={isPopoverVisible && selectedRecord?.recordId === recordId}
-                overlayClassName="entity-type-popover"
-                placement="bottom"
-                trigger="click"
-                onOpenChange={(visible) =>
-                  handlePopoverVisibility(recordId, domainType, visible)
-                }>
-                <DropDownIcon
-                  className="entity-type-dropdown-icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePopoverVisibility(recordId, domainType, true);
-                  }}
-                />
-              </Popover>
+              {onDomainTypeChange && (
+                <Popover
+                  destroyTooltipOnHide
+                  content={renderDomainTypePopover()}
+                  open={
+                    isPopoverVisible && selectedRecord?.recordId === recordId
+                  }
+                  overlayClassName="entity-type-popover"
+                  placement="bottom"
+                  trigger="click"
+                  onOpenChange={(visible) =>
+                    handlePopoverVisibility(recordId, domainType, visible)
+                  }>
+                  <DropDownIcon
+                    className="entity-type-dropdown-icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePopoverVisibility(recordId, domainType, true);
+                    }}
+                  />
+                </Popover>
+              )}
             </div>
           );
         },
-        width: 200,
+        width: 150,
       },
       {
         key: 'tags',
@@ -543,17 +454,22 @@ const EntityTable = ({
             return <span className="text-grey-muted">-</span>;
           }
 
-          return nonGlossaryTags.map((tag, index) => (
-            <div
-              className="d-flex align-items-center tags-container"
-              key={`${tag.tagFQN}-${index}`}>
-              <span className="entity-badge tags-badge">
-                <TagIcon className="tag-icon" />
-                <span className="tag-text">{tag.name || tag.tagFQN}</span>
-              </span>
+          return (
+            <div className="table-tags-container">
+              {nonGlossaryTags.map((tag, index) => (
+                <div
+                  className="d-flex align-items-center tags-container"
+                  key={`${tag.tagFQN}-${index}`}>
+                  <span className="entity-badge tags-badge">
+                    <TagIcon className="tag-icon" />
+                    <span className="tag-text">{tag.name || tag.tagFQN}</span>
+                  </span>
+                </div>
+              ))}
             </div>
-          ));
+          );
         },
+        width: 200,
       },
     ];
 
@@ -570,104 +486,28 @@ const EntityTable = ({
     renderDomainTypePopover,
     rowKey,
     getDomainTypeIcon,
+    onDomainTypeChange,
   ]);
 
-  // Convert EntityTableColumn to Ant Design ColumnsType
   const antdColumns: ColumnsType<EntityData> = useMemo(() => {
     const columns = generateColumns();
 
-    const baseColumns = columns.map(
-      (column: EntityTableColumn, index: number) => {
-        // For the first column, add checkbox functionality
-        if (index === 0) {
-          return {
-            key: column.key,
-            title: (
-              <div className="first-column-header">
-                <Checkbox
-                  checked={
-                    selectedRows.length === filteredData.length &&
-                    filteredData.length > 0
-                  }
-                  className="entity-table-checkbox"
-                  indeterminate={
-                    selectedRows.length > 0 &&
-                    selectedRows.length < filteredData.length
-                  }
-                  onChange={(e) => {
-                    const newSelectedRows = e.target.checked
-                      ? filteredData
-                      : [];
-                    setSelectedRows(newSelectedRows);
-                  }}
-                />
-                <span className="column-title">
-                  {typeof column.title === 'string' ? column.title : ''}
-                </span>
-              </div>
-            ),
-            dataIndex: column.dataIndex || column.key,
-            render: (value: unknown, record: EntityData) => (
-              <div className="first-column-content">
-                <Checkbox
-                  checked={selectedRows.some(
-                    (row: EntityData) =>
-                      getRowKeyValue(row, rowKey) ===
-                      getRowKeyValue(record, rowKey)
-                  )}
-                  className="entity-table-checkbox"
-                  data-testid={`${
-                    record.name || getRowKeyValue(record, rowKey)
-                  }-checkbox`}
-                  onChange={(e) => handleRowSelection(record, e.target.checked)}
-                />
-                <div className="column-content">
-                  {column.render
-                    ? column.render(value, record)
-                    : String(value || '')}
-                </div>
-              </div>
-            ),
-            sorter: column.sorter,
-            width: column.width,
-            fixed: column.fixed,
-            ellipsis: column.ellipsis,
-          };
-        }
-
-        // For other columns, return as normal
-        return {
-          key: column.key,
-          title: column.title,
-          dataIndex: column.dataIndex || column.key,
-          render: column.render,
-          sorter: column.sorter,
-          width: column.width,
-          fixed: column.fixed,
-          ellipsis: column.ellipsis,
-        };
-      }
-    );
+    const baseColumns = columns.map((column: EntityTableColumn) => {
+      return {
+        key: column.key,
+        title: column.title,
+        dataIndex: column.dataIndex || column.key,
+        render: column.render,
+        sorter: column.sorter,
+        width: column.width,
+        fixed: column.fixed,
+        ellipsis: column.ellipsis,
+      };
+    });
 
     return baseColumns;
-  }, [generateColumns, selectedRows, filteredData, rowKey]);
+  }, [generateColumns, selectedRows, data, rowKey]);
 
-  // Handle individual row selection
-  const handleRowSelection = useCallback(
-    (record: EntityData, checked: boolean) => {
-      const newSelectedRows = checked
-        ? [...selectedRows, record]
-        : selectedRows.filter(
-            (row: EntityData) =>
-              getRowKeyValue(row, rowKey) !== getRowKeyValue(record, rowKey)
-          );
-
-      setSelectedRows(newSelectedRows);
-    },
-    [selectedRows, rowKey]
-  );
-
-  // Handle row click
   const handleRowClick = useCallback(
     (record: EntityData) => {
       if (onRowClick) {
@@ -677,7 +517,6 @@ const EntityTable = ({
     [onRowClick]
   );
 
-  // Handle delete functionality
   const handleDelete = async (entity: EntityData) => {
     if (!onDelete) {
       return;
@@ -686,16 +525,12 @@ const EntityTable = ({
     setIsDeleting(true);
     try {
       await onDelete(entity.id);
-      setSelectedRows(selectedRows.filter((row) => row.id !== entity.id));
       setDeleteModal({ visible: false });
-    } catch (error) {
-      // Error handling should be done by parent component
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Handle bulk delete
   const handleBulkDelete = async () => {
     if (!onBulkDelete) {
       return;
@@ -703,27 +538,15 @@ const EntityTable = ({
 
     setIsDeleting(true);
     try {
-      const ids = selectedRows.map((row) => row.id);
+      const ids = selectedRows.map((key) => String(key));
       await onBulkDelete(ids);
       setSelectedRows([]);
       setDeleteModal({ visible: false });
-    } catch (error) {
-      // Error handling should be done by parent component
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Handler for filter changes
-  const handleFilterChange = (newFilters: typeof filters) => {
-    setFilters(newFilters);
-  };
-
-  const handleClearAll = () => {
-    setFilters({ owners: [], glossaryTerms: [], domainTypes: [], tags: [] });
-  };
-
-  // Render table header with all controls
   const renderHeader = () => {
     const displayTitle = getEntityDisplayName(type);
 
@@ -738,33 +561,60 @@ const EntityTable = ({
               <AppBadge
                 bgColor="#EFF8FF"
                 className="header-count"
-                label={filteredData.length.toString()}
+                label={total.toString()}
               />
             </div>
           </Col>
           <Col>
-            <EntitySearchInput
+            <SearchInput
               placeholder={t('label.search')}
-              value={searchTerm}
+              style={{
+                opacity: loading ? 0.7 : 1,
+                transition: 'opacity 0.2s ease',
+              }}
+              value={localSearchTerm}
               variant="header"
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
             />
+            <SearchLoadingIndicator isVisible={loading} t={t} />
           </Col>
-          <Col className="header-actions">
-            <EntityTableFilter
+          <Col className="header-filters">
+            {/* Filter Section */}
+            <TableFilters
               filters={filters}
-              options={filterOptions}
-              onClearAll={handleClearAll}
+              options={{
+                owners: [],
+                glossaryTerms: [],
+                domainTypes: [],
+                tags: [],
+              }}
+              queryFilter={baseQueryFilter}
+              searchIndex={effectiveSearchIndex}
+              onClearAll={handleClearAllFilters}
               onFilterChange={handleFilterChange}
             />
           </Col>
           <Col>
-            <Row>
+            <Row className="header-actions-row">
               <Col>
-                <ListViewIcon />
+                <Button
+                  className={`${
+                    view === EntityListViewOptions.LIST ? 'active' : ''
+                  } list-view-icon`}
+                  type="ghost"
+                  onClick={() => setView(EntityListViewOptions.LIST)}>
+                  <ListViewIcon />
+                </Button>
               </Col>
               <Col>
-                <GridViewIcon />
+                <Button
+                  className={`${
+                    view === EntityListViewOptions.GRID ? 'active' : ''
+                  } grid-view-icon`}
+                  type="ghost"
+                  onClick={() => setView(EntityListViewOptions.GRID)}>
+                  <GridViewIcon />
+                </Button>
               </Col>
               {selectedRows.length > 0 && onDelete && (
                 <Col>
@@ -790,26 +640,67 @@ const EntityTable = ({
     );
   };
 
-  return (
-    <div className="entity-table">
-      <Table
-        {...rest}
-        resizableColumns
-        columns={antdColumns}
-        dataSource={filteredData}
-        entityType={type}
-        expandable={{ expandIcon: () => null }}
-        loading={loading}
-        pagination={false}
-        rowKey={rowKey}
-        title={() => renderHeader()}
-        onRow={(record) => ({
-          onClick: () => handleRowClick(record),
-          style: { cursor: onRowClick ? 'pointer' : 'default' },
-        })}
-      />
+  const renderLayoutType = () => {
+    switch (view) {
+      case EntityListViewOptions.GRID:
+        return (
+          <GridView<EntityData[]>
+            data={data}
+            header={renderHeader()}
+            loading={loading}
+          />
+        );
 
-      {/* Delete Modal */}
+      case EntityListViewOptions.LIST:
+        return (
+          <Table
+            bordered={false}
+            columns={antdColumns}
+            dataSource={data}
+            expandable={{
+              expandedRowRender: undefined,
+              rowExpandable: () => false,
+              showExpandColumn: false,
+            }}
+            loading={loading}
+            locale={{
+              emptyText: (
+                <FilterTablePlaceHolder
+                  placeholderText={t('message.no-entity-found')}
+                />
+              ),
+            }}
+            pagination={showPagination ? undefined : false}
+            rowKey={rowKey}
+            rowSelection={{
+              selectedRowKeys: selectedRows,
+              onChange: (selectedRowKeys) => {
+                setSelectedRows(selectedRowKeys);
+              },
+            }}
+            title={() => renderHeader()}
+            onRow={(record) => ({
+              onClick: () => handleRowClick(record),
+              style: { cursor: onRowClick ? 'pointer' : 'default' },
+            })}
+          />
+        );
+
+      default:
+        return (
+          <GridView<EntityData[]>
+            data={data}
+            header={renderHeader()}
+            loading={loading}
+          />
+        );
+    }
+  };
+
+  return (
+    <div className="entity-table" data-testid="entity-table">
+      {renderLayoutType()}
+
       <Modal
         centered
         destroyOnClose

@@ -120,7 +120,6 @@ function AddEntityForm<T extends CreateEntityType>({
     form.setFieldValue('coverImageURL', url);
   };
 
-  // Common form fields
   const nameField: FieldProp = {
     name: 'name',
     id: 'root/name',
@@ -470,7 +469,11 @@ function AddEntityForm<T extends CreateEntityType>({
         {/* Name and Display Name Row */}
         <Row gutter={16}>
           <Col span={12}>{getField(nameField)}</Col>
-          <Col span={12}>{getField(displayNameField)}</Col>
+          <Col span={12}>
+            <div className="display-name-field">
+              {getField(displayNameField)}
+            </div>
+          </Col>
         </Row>
 
         {/* Description */}

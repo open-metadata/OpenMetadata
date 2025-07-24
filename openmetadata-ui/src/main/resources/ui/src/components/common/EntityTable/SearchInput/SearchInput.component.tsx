@@ -12,34 +12,41 @@
  */
 import { Input } from 'antd';
 import React from 'react';
-import { ReactComponent as SearchIcon } from '../../../assets/svg/ic-input-search.svg';
-import './EntitySearchInput.less';
+import { ReactComponent as SearchIcon } from '../../../../assets/svg/ic-input-search.svg';
+import { SearchInputProps } from './SearchInput.interface';
 
-export interface EntitySearchInputProps {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  placeholder?: string;
-  variant?: 'default' | 'header';
-  className?: string;
-  allowClear?: boolean;
-  style?: React.CSSProperties;
-}
+import './search-input.less';
 
 /**
  * Reusable search input for EntityTable and EntityTableFilter
  */
-export function EntitySearchInput({
+export function SearchInput({
   value,
   onChange,
+  onKeyDown,
   placeholder = 'Search',
   variant = 'default',
   className = '',
   allowClear = true,
   style = {},
   ...rest
-}: EntitySearchInputProps) {
+}: SearchInputProps) {
   const variantClass =
     variant === 'header' ? 'entity-search-input--header' : '';
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onChange(e);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    onKeyDown?.(e);
+  };
 
   return (
     <Input
@@ -49,10 +56,11 @@ export function EntitySearchInput({
       prefix={<SearchIcon style={{ fontSize: 16, color: '#363636' }} />}
       style={style}
       value={value}
-      onChange={onChange}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
       {...rest}
     />
   );
 }
 
-export default EntitySearchInput;
+export default SearchInput;

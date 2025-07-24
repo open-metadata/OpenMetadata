@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import DomainsDetailsPageComponent from '../../components/Domain/DomainsDetailsPage/DomainsDetailsPage.component';
-import PageLayoutV2 from '../../components/PageLayoutV2/PageLayoutV2.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
 import { Domain } from '../../generated/entity/domains/domain';
@@ -206,8 +206,8 @@ const DomainsDetailsPage = () => {
   }
 
   return (
-    <PageLayoutV2
-      breadcrumbs={breadcrumbs}
+    <PageLayoutV1
+      // breadcrumbs={breadcrumbs}
       pageTitle={activeDomain.displayName || activeDomain.name}>
       <DomainsDetailsPageComponent
         domain={activeDomain}
@@ -217,7 +217,7 @@ const DomainsDetailsPage = () => {
         onDelete={handleDomainDelete}
         onUpdate={handleDomainUpdate}
       />
-    </PageLayoutV2>
+    </PageLayoutV1>
   );
 };
 

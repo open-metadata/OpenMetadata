@@ -19,10 +19,5 @@
   },
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-
-  // Jest Extension Settings - Disable auto-run to prevent memory usage
-  "jest.autoRun": "off",
-  "jest.showCoverageOnLoad": false,
-  "jest.runMode": "on-demand"
+  }
 }

@@ -42,7 +42,12 @@ const DomainsRouter = withSuspenseFallback(
   )
 );
 const DomainsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/Domains/DomainsPage.component'))
+  React.lazy(() => import('../../pages/DomainsPage/DomainsPage.component'))
+);
+const DataProductsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/DataProductsPage/DataProductsPage.component')
+  )
 );
 const SettingsRouter = withSuspenseFallback(
   React.lazy(
@@ -713,11 +718,13 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<DomainsRouter />} path="/domains/*" />
 
       <Route
-        element={<DomainsPage pageTitle={t('label.domain')} />}
+        element={<DomainsPage pageTitle={t('label.domain-plural')} />}
         path={ROUTES.DOMAINS}
       />
       <Route
-        element={<DomainsPage pageTitle={t('label.data-product')} />}
+        element={
+          <DataProductsPage pageTitle={t('label.data-product-plural')} />
+        }
         path={ROUTES.DATA_PRODUCTS}
       />
 

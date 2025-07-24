@@ -69,6 +69,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   hideCounts = false,
   hasNullOption = false,
   triggerButtonSize = 'small',
+  prefix,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -250,6 +251,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               placeholder={`${t('label.search-entity', {
                 entity: label,
               })}...`}
+              prefix={prefix}
               onChange={(e) => {
                 const { value } = e.target;
                 debouncedOnSearch(value);

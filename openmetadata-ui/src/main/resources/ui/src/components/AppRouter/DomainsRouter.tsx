@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,8 +15,8 @@ import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import DomainsDetailsPage from '../../pages/Domains/DomainsDetailsPage.component';
-import DomainsPage from '../../pages/Domains/DomainsPage.component';
+import DomainsDetailsPage from '../../pages/DomainsPage/DomainsDetailsPage.component';
+import DomainsPage from '../../pages/DomainsPage/DomainsPage.component';
 import i18n from '../../utils/i18next/LocalUtil';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';

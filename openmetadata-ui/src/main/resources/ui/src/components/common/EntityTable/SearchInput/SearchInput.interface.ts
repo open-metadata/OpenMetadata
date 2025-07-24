@@ -10,39 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactNode } from 'react';
-
-export interface PageLayoutV2Props {
-  /**
-   * The main content to be rendered in the page
-   */
-  children: ReactNode;
-
-  /**
-   * The title of the page
-   */
-  pageTitle: string;
-
-  /**
-   * Optional breadcrumb items
-   */
-  breadcrumbs?: Array<{
-    label: string;
-    path?: string;
-  }>;
-
-  /**
-   * Optional header content (will be rendered above the main content)
-   */
-  header?: ReactNode;
-
-  /**
-   * Additional CSS class names
-   */
+export interface SearchInputProps {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  variant?: 'default' | 'header';
   className?: string;
-
-  /**
-   * Additional CSS styles
-   */
+  allowClear?: boolean;
   style?: React.CSSProperties;
 }

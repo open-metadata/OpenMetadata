@@ -1,0 +1,340 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../../../styles/variables.less');
+
+.entity-grid-container {
+  .ant-list-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .ant-list-item {
+    padding: 0;
+    border: none;
+    margin: 0;
+  }
+
+  .ant-spin-container > .ant-row {
+    padding: @size-lg;
+    margin: 0px;
+
+    .entity-card {
+      background: #ffffff;
+      border: 1px solid #e9eaeb;
+      border-radius: 12px;
+      padding: @size-lg @size-mlg;
+      height: 224px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      width: -webkit-fill-available;
+      margin-right: @size-md;
+      margin-bottom: @size-md;
+
+      &:hover {
+        border-color: #1570ef;
+        box-shadow: 0 1px 2px rgba(10, 13, 18, 0.06),
+          0 1px 3px rgba(10, 13, 18, 0.21);
+        transform: translateY(-2px);
+      }
+
+      .entity-card-header {
+        display: flex;
+        align-items: flex-start;
+        gap: @size-sm;
+        margin-bottom: @size-xs;
+
+        .entity-card-icon-wrapper {
+          flex-shrink: 0;
+
+          .entity-card-icon-container {
+            width: 54px;
+            height: 54px;
+            border-radius: 5px;
+            border: 1px solid #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: @default-domain-background;
+
+            .entity-card-icon-layers {
+              color: #ffffff;
+            }
+          }
+
+          .entity-card-icon {
+            width: 54px;
+            height: 54px;
+            border-radius: 5px;
+            border: 1px solid #ffffff;
+          }
+        }
+
+        .entity-card-content {
+          flex: 1;
+          min-width: 0;
+          padding-top: 5px;
+
+          .entity-card-title {
+            display: block;
+            font-weight: 500;
+            font-size: @size-md;
+            color: #181d27;
+            margin-bottom: 2px;
+          }
+
+          .entity-card-description {
+            display: block;
+            font-size: @size-xs;
+            color: @grey-500;
+          }
+        }
+      }
+
+      .entity-card-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: @size-sm;
+
+        .entity-card-row {
+          display: flex;
+          align-items: flex-start;
+
+          .entity-card-column {
+            padding-right: 8px;
+
+            &:last-child {
+              padding-right: 0;
+              padding-left: 8px;
+            }
+
+            .entity-card-field {
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+
+              .owner-label {
+                font-weight: 600;
+              }
+
+              .entity-card-label {
+                font-size: @size-sm;
+                color: @grey-500;
+                font-weight: 500;
+              }
+
+              .entity-card-value {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+              }
+            }
+          }
+
+          .entity-card-single-owner {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            .entity-card-owner-avatar {
+              border: 2px solid #ffffff;
+              background-color: #e5e7eb;
+              color: #6b7280;
+              font-weight: 600;
+              font-size: 12px;
+            }
+
+            .entity-card-owner-name {
+              font-size: 14px;
+              line-height: 20px;
+              color: #181d27;
+              font-weight: 400;
+            }
+          }
+
+          .entity-card-owners {
+            display: flex;
+            align-items: center;
+
+            .entity-card-owner-avatar {
+              border: 2px solid #ffffff;
+              margin-left: -8px;
+              background-color: #e5e7eb;
+              color: #6b7280;
+              font-weight: 600;
+              font-size: 12px;
+              position: relative;
+
+              .ant-avatar-string {
+                font-size: @size-sm;
+              }
+
+              &:first-child {
+                margin-left: 0;
+              }
+
+              &:hover {
+                z-index: 999 !important;
+              }
+
+              &.entity-card-owners-count {
+                background-color: @blue-50;
+                color: @blue-600;
+                font-weight: 600;
+                font-size: 12px;
+                margin-left: -8px;
+              }
+            }
+          }
+
+          .entity-card-badges {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+
+            .entity-card-count-badge {
+              background: @blue-50;
+              border-radius: @size-md;
+              padding: 2px @size-xs;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              height: 18px;
+
+              .count-text {
+                font-size: @size-sm;
+                font-weight: 500;
+                color: @blue-600;
+                margin: 0;
+              }
+            }
+          }
+
+          .entity-card-required {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+
+            .required-icon {
+              color: #9ca3af;
+              font-size: 8px;
+              line-height: 1;
+            }
+
+            .required-text {
+              font-size: 14px;
+              line-height: 20px;
+              color: #9ca3af;
+              font-weight: 400;
+            }
+          }
+
+          .entity-badge {
+            display: inline-flex;
+            align-items: center;
+            height: 22px;
+            padding: 2px 8px 2px 6px;
+            border-radius: 4px;
+            border: 1px solid;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 16px;
+            white-space: nowrap;
+            width: fit-content;
+
+            &.aggregate-domain-type {
+              background-color: #f0f0ff;
+              border-color: #e0e0ff;
+              color: #4c4cff;
+              svg path {
+                stroke: #4c4cff;
+              }
+            }
+
+            &.consumer-aligned-domain-type {
+              background-color: #e8f4fd;
+              border-color: #bfdbfe;
+              color: #1e40af;
+              svg path {
+                stroke: #1e40af;
+              }
+            }
+
+            &.source-aligned-domain-type {
+              background-color: #ede9fe;
+              border-color: #c4b5fd;
+              color: #7c3aed;
+              svg path {
+                stroke: #7c3aed;
+              }
+            }
+
+            &.badge-secondary {
+              background-color: #f6f6f6;
+              color: #6b7280;
+              border: 1px solid #e0e0e0;
+
+              .required-icon {
+                color: #9ca3af;
+                font-size: 8px;
+                margin-right: 4px;
+              }
+            }
+
+            &.tags-badge {
+              background-color: #f0f5fa;
+              border: 1px solid #d2dbec;
+              border-radius: 8px;
+              color: #404040;
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+              height: 22px;
+              padding: 4px 8px;
+              font-size: 12px;
+              font-weight: 500;
+              line-height: 16px;
+              white-space: nowrap;
+
+              .tag-icon {
+                width: 12px;
+                height: 12px;
+                flex-shrink: 0;
+                color: #404040;
+              }
+
+              .tag-text {
+                font-size: 12px;
+                font-weight: 500;
+                line-height: 16px;
+                color: #404040;
+              }
+            }
+
+            .badge-icon {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              gap: 4px;
+            }
+          }
+        }
+      }
+    }
+  }
+}
