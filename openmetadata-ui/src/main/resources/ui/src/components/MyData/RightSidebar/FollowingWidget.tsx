@@ -253,7 +253,7 @@ function FollowingWidget({
         </div>
       </div>
     );
-  }, [followedData, emptyState]);
+  }, [followedData, emptyState, isExpanded]);
 
   const WidgetContent = useMemo(() => {
     return (
