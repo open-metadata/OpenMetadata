@@ -22,7 +22,7 @@ export interface StoredProcedureVersionProp {
   currentVersionData: StoredProcedure;
   isVersionLoading: boolean;
   owners: StoredProcedure['owners'];
-  domain: StoredProcedure['domain'];
+  domains: StoredProcedure['domains'];
   dataProducts: StoredProcedure['dataProducts'];
   tier: TagLabel;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];

@@ -91,6 +91,7 @@ import es.org.elasticsearch.search.sort.NestedSortBuilder;
 import es.org.elasticsearch.search.sort.SortBuilders;
 import es.org.elasticsearch.search.sort.SortMode;
 import es.org.elasticsearch.search.sort.SortOrder;
+import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.XContentLocation;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
@@ -381,6 +382,13 @@ public class ElasticSearchClient implements SearchClient {
     // Add Filter
     buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
 
+    // Log the actual query being sent to Elasticsearch
+    LOG.debug(
+        "Elasticsearch query for index '{}' with sanitized query '{}': {}",
+        request.getIndex(),
+        request.getQuery(),
+        searchSourceBuilder.toString());
+
     if (!nullOrEmpty(request.getPostFilter())) {
       try {
         XContentParser filterParser =
@@ -456,8 +464,11 @@ public class ElasticSearchClient implements SearchClient {
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
 
+    LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
+    LOG.debug("SearchSourceBuilder query: {}", searchSourceBuilder.query());
+    LOG.debug("Full SearchSourceBuilder: {}", searchSourceBuilder);
+
     try {
-      // Start search operation timing using Micrometer
       io.micrometer.core.instrument.Timer.Sample searchTimerSample =
           org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
 
@@ -852,8 +863,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
-      throws IOException {
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) {
     LOG.info("Searching with NLQ: {}", request.getQuery());
     if (nlqService != null) {
       try {
@@ -1306,9 +1316,134 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
+    try {
+      // Use the EXACT same search building logic as the regular search method
+      // to ensure consistency across all endpoints
+      SearchSettings searchSettings =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      ElasticSearchSourceBuilderFactory searchBuilderFactory =
+          new ElasticSearchSourceBuilderFactory(searchSettings);
+
+      // Build the search exactly as doSearch does
+      SearchSourceBuilder searchSourceBuilder =
+          searchBuilderFactory.getSearchSourceBuilder(
+              index,
+              request.getQuery() != null ? request.getQuery() : "*",
+              0, // from
+              0, // size - we only need aggregations
+              false); // explain
+
+      // No RBAC for now as per user's comment about it being disabled
+
+      // Apply deleted filter if specified
+      if (request.getDeleted() != null && request.getDeleted()) {
+        QueryBuilder currentQuery = searchSourceBuilder.query();
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        if (currentQuery != null) {
+          boolQuery.must(currentQuery);
+        }
+        boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
+        searchSourceBuilder.query(boolQuery);
+      }
+
+      // Apply query filter if specified
+      if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
+        try {
+          // Parse the query filter as JSON
+          XContentParser filterParser =
+              XContentType.JSON
+                  .xContent()
+                  .createParser(
+                      NamedXContentRegistry.EMPTY,
+                      LoggingDeprecationHandler.INSTANCE,
+                      request.getQueryFilter());
+          QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+          if (filter != null) {
+            QueryBuilder currentQuery = searchSourceBuilder.query();
+            BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+            if (currentQuery != null) {
+              boolQuery.must(currentQuery);
+            }
+            boolQuery.must(filter);
+            searchSourceBuilder.query(boolQuery);
+          }
+        } catch (Exception ex) {
+          LOG.warn(
+              "Error parsing query_filter from query parameters, ignoring filter: {}",
+              request.getQueryFilter(),
+              ex);
+        }
+      }
+
+      if (!nullOrEmpty(request.getPostFilter())) {
+        QueryBuilder postFilter = QueryBuilders.queryStringQuery(request.getPostFilter());
+        searchSourceBuilder.postFilter(postFilter);
+      }
+
+      searchSourceBuilder.size(0);
+      searchSourceBuilder.from(0);
+      searchSourceBuilder.trackTotalHits(true);
+
+      // The entityType aggregation is already added by the search builder factory
+      // from the global aggregations configuration, so we don't need to add it again
+
+      // Resolve the index alias properly to ensure we're searching across all appropriate indexes
+      String resolvedIndex =
+          Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+      es.org.elasticsearch.action.search.SearchRequest esSearchRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(resolvedIndex);
+      esSearchRequest.source(searchSourceBuilder);
+
+      LOG.debug("Sending entity type counts request to ElasticSearch: {}", searchSourceBuilder);
+      SearchResponse searchResponse = client.search(esSearchRequest, RequestOptions.DEFAULT);
+
+      // Convert to API response using toString() which returns proper JSON
+      // (not JsonUtils.pojoToJson which fails on internal ES objects)
+      return Response.status(OK).entity(searchResponse.toString()).build();
+    } catch (Exception e) {
+      LOG.error(
+          "Error executing entity type counts search for index: {}, query: {}",
+          index,
+          request.getQuery(),
+          e);
+      throw new SearchException(
+          String.format("Failed to get entity type counts: %s", e.getMessage()));
+    }
+  }
+
+  @Override
   public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+
+    // Check if query is JSON format or simple search query
+    if (request.getQuery() != null && !request.getQuery().isEmpty()) {
+      // Try to parse as JSON first (for backward compatibility with filters)
+      if (request.getQuery().trim().startsWith("{")) {
+        buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+      } else {
+        // Handle as a search query (including field:value syntax)
+        ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+        // Use getSearchSourceBuilder which properly handles field:value syntax
+        SearchSourceBuilder tempBuilder =
+            searchBuilderFactory.getSearchSourceBuilder(
+                request.getIndex(), request.getQuery(), 0, 10);
+        searchSourceBuilder.query(tempBuilder.query());
+      }
+    }
+
+    // Apply deleted filter if specified
+    if (request.getDeleted() != null) {
+      QueryBuilder currentQuery = searchSourceBuilder.query();
+      BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+
+      if (currentQuery != null) {
+        boolQuery.must(currentQuery);
+      }
+      boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
+
+      searchSourceBuilder.query(boolQuery);
+    }
 
     String aggregationField = request.getFieldName();
     if (aggregationField == null || aggregationField.isBlank()) {
@@ -1457,8 +1592,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
-      throws IOException {
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
     if (isClientAvailable) {
       BulkRequest bulkRequest = new BulkRequest();
       for (Map<String, String> docAndId : docsAndIds) {
@@ -2543,7 +2677,6 @@ public class ElasticSearchClient implements SearchClient {
       for (com.fasterxml.jackson.databind.JsonNode indexNode : indices) {
         String indexName = indexNode.get("index").asText();
         try {
-          // 2. Remove ILM policy by updating settings
           Request putSettings = new Request("PUT", "/" + indexName + "/_settings");
           putSettings.setJsonEntity("{\"index.lifecycle.name\": null}");
           es.org.elasticsearch.client.Response putResponse =

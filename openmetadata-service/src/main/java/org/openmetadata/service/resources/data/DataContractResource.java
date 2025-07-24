@@ -53,6 +53,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -244,6 +245,43 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @DefaultValue("non-deleted")
           Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+  }
+
+  @GET
+  @Path("/entity")
+  @Operation(
+      operationId = "getDataContractByEntityId",
+      summary = "Get a data contract by its related Entity ID",
+      description = "Get a data contract by its related Entity ID.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContract.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Data contract for instance {id} is not found")
+      })
+  public DataContract getByEntityId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ID of the related Entity", schema = @Schema(type = "string"))
+          @QueryParam("entityId")
+          UUID entityId,
+      @Parameter(
+              description = "Entity Type to get the data contract for",
+              schema = @Schema(type = "string", example = Entity.TABLE))
+          @QueryParam("entityType")
+          String entityType) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContextById(entityId));
+    return repository.loadEntityDataContract(
+        new EntityReference().withId(entityId).withType(entityType));
   }
 
   @GET
@@ -629,8 +667,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id)
-      throws Exception {
+          UUID id) {
     DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
@@ -670,9 +707,8 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           UUID id,
       @Parameter(description = "Id of the data contract result", schema = @Schema(type = "UUID"))
           @PathParam("resultId")
-          UUID resultId)
-      throws Exception {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+          UUID resultId) {
+    repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
     ResourceContext<DataContract> resourceContext =
@@ -747,8 +783,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               description = "Timestamp of the result to delete",
               schema = @Schema(type = "number"))
           @PathParam("timestamp")
-          Long timestamp)
-      throws Exception {
+          Long timestamp) {
     DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.DELETE);

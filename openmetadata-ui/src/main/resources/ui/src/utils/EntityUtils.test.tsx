@@ -90,6 +90,11 @@ jest.mock('../components/common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn(),
 }));
 
+jest.mock('../components/common/DomainLabel/DomainLabel.component', () => ({
+  __esModule: true,
+  DomainLabel: jest.fn(),
+}));
+
 jest.mock('../components/common/QueryCount/QueryCount.component', () => ({
   __esModule: true,
   default: jest.fn(),

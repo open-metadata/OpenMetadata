@@ -1,5 +1,6 @@
 ---
 title: Remove Tier Action | OpenMetadata Tier Removal
+description: Get started with removetieraction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/removetieraction
 ---
 

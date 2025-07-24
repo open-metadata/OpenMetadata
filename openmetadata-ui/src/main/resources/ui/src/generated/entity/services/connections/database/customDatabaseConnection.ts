@@ -27,7 +27,8 @@ export interface CustomDatabaseConnection {
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
      */
-    sourcePythonClass?: string;
+    sourcePythonClass?:          string;
+    supportsMetadataExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */

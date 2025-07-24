@@ -31,9 +31,9 @@ export interface CreateGlossaryRequest {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Glossary belongs to.
+     * Fully qualified names of the domains the Glossary belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */

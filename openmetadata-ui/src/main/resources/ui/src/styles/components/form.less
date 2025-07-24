@@ -44,3 +44,86 @@
     flex-direction: column;
   }
 }
+
+// As per out design we need to show it on right side of the label
+// Hide the default required mark
+.ant-form-item-label
+  > label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::before {
+  content: '';
+}
+
+// Move the required mark to the right side of the label
+.ant-form-item-label
+  > label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::after {
+  display: inline-block;
+  margin-left: 4px;
+  color: #ff4d4f;
+  font-size: 14px;
+  line-height: 1;
+  content: '*';
+}
+
+.new-form-style {
+  .ant-input,
+  .ant-picker,
+  .ant-input-number,
+  .ant-mentions,
+  .ant-cascader-picker,
+  .ant-tree-select-selector,
+  .ant-upload.ant-upload-drag,
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector,
+  .block-editor-wrapper.block-editor-wrapper--bar-menu {
+    border-color: @grey-300;
+    border-radius: @border-radius-xs;
+
+    &:hover,
+    &:focus {
+      border-color: @primary-5;
+    }
+  }
+  .block-editor-wrapper.block-editor-wrapper--bar-menu {
+    .bar-menu-wrapper {
+      border-top-left-radius: @border-radius-xs;
+      border-top-right-radius: @border-radius-xs;
+      border-color: @grey-300;
+    }
+    .om-block-editor {
+      border-bottom-left-radius: @border-radius-xs;
+      border-bottom-right-radius: @border-radius-xs;
+      border-color: @grey-300;
+    }
+  }
+
+  .ant-switch {
+    background-color: @grey-100;
+    border-color: @grey-100;
+  }
+
+  .ant-switch-checked {
+    background-color: @primary-6;
+  }
+  .ant-switch-checked .ant-switch-handle::before,
+  .ant-switch-handle::before {
+    background-color: @white;
+  }
+  .form-switch-container .ant-typography,
+  .ant-form-item-label > label {
+    color: @grey-700;
+    font-weight: @font-medium;
+    font-size: @font-size-base;
+  }
+
+  // Right align Required label
+  .ant-form-item-label > label.ant-form-item-required::before {
+    display: none;
+  }
+  .ant-form-item-label > label.ant-form-item-required::after {
+    display: inline-block;
+    margin-left: 4px;
+    color: @highlight-color;
+    font-size: 14px;
+    font-family: SimSun, sans-serif;
+    line-height: 1;
+    content: '*';
+  }
+}

@@ -85,6 +85,17 @@ export class ApiServiceClass extends EntityClass {
     );
   }
 
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.entity.name,
+        type: SERVICE_TYPE.ApiService,
+      },
+      false
+    );
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/apiServices/name/${encodeURIComponent(

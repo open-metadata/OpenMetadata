@@ -36,9 +36,9 @@ export interface CreateTable {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Table belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */

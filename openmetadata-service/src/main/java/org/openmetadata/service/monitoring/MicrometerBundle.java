@@ -111,6 +111,14 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
         .addMapping("/prometheus");
 
     LOG.info("Prometheus metrics endpoint registered at admin port on /prometheus");
+
+    // Register user metrics endpoint
+    environment
+        .admin()
+        .addServlet("user-metrics", new UserMetricsServlet())
+        .addMapping("/user-metrics");
+
+    LOG.info("User metrics endpoint registered at admin port on /user-metrics");
   }
 
   private void registerJdbiMetrics(Environment environment) {
@@ -130,8 +138,7 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
     // HTTP request histogram
     io.micrometer.core.instrument.Timer.builder("http_server_requests_sec")
         .description("HTTP methods duration")
-        .publishPercentileHistogram()
-        .serviceLevelObjectives(
+        .sla(
             java.time.Duration.ofMillis(10),
             java.time.Duration.ofMillis(100),
             java.time.Duration.ofSeconds(1),
@@ -145,8 +152,7 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
     // JDBI request histogram
     io.micrometer.core.instrument.Timer.builder("jdbi_requests_seconds")
         .description("jdbi requests duration distribution")
-        .publishPercentileHistogram()
-        .serviceLevelObjectives(
+        .sla(
             java.time.Duration.ofMillis(10),
             java.time.Duration.ofMillis(100),
             java.time.Duration.ofSeconds(1),

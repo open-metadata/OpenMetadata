@@ -1,5 +1,6 @@
 ---
 title: Run the Kafka Connector Externally
+description: Use YAML to configure Kafka ingestion and capture topic metadata, message structure, and event lineage.
 slug: /connectors/messaging/kafka/yaml
 ---
 

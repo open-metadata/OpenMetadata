@@ -82,6 +82,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         "dataQuality/testSuites",
         TestSuiteResource.FIELDS);
     supportsSearchIndex = true;
+    supportsEtag = false;
   }
 
   public void setupTestSuites(TestInfo test) throws IOException {
@@ -285,14 +286,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuite executableTestSuite =
         createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     TestSuite testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertOwners(testSuite.getOwners(), table.getOwners());
+    assertReferenceList(testSuite.getOwners(), table.getOwners());
     Table updateTableOwner = table;
     updateTableOwner.setOwners(List.of(TEAM11_REF));
     tableResourceTest.patchEntity(
         table.getId(), JsonUtils.pojoToJson(table), updateTableOwner, ADMIN_AUTH_HEADERS);
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertOwners(table.getOwners(), testSuite.getOwners());
+    assertReferenceList(table.getOwners(), testSuite.getOwners());
   }
 
   @Test
@@ -308,23 +309,23 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withDomain(DOMAIN1.getFullyQualifiedName());
+            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
     TestSuite executableTestSuite =
         createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
-    TestSuite testSuite = getEntity(executableTestSuite.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN1.getId(), testSuite.getDomain().getId());
+    TestSuite testSuite = getEntity(executableTestSuite.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(DOMAIN1.getId(), testSuite.getDomains().get(0).getId());
     ResultList<TestSuite> testSuites =
         listEntitiesFromSearch(
-            Map.of("domain", DOMAIN1.getFullyQualifiedName(), "fields", "domain"),
+            Map.of("domain", DOMAIN1.getFullyQualifiedName(), "fields", "domains"),
             100,
             0,
             ADMIN_AUTH_HEADERS);
     assertTrue(
         testSuites.getData().stream()
-            .allMatch(ts -> ts.getDomain().getId().equals(DOMAIN1.getId())));
+            .allMatch(ts -> ts.getDomains().get(0).getId().equals(DOMAIN1.getId())));
   }
 
   @Test

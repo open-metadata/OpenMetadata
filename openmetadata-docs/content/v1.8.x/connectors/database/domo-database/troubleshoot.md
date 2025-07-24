@@ -1,5 +1,6 @@
 ---
 title: Domo Database Connector Troubleshooting
+description: Debug Domo database ingestion errors like access token mismatches, schema fetch failures, or rate-limit violations.
 slug: /connectors/database/domo-database/troubleshoot
 ---
 

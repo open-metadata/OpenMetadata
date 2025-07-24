@@ -1,5 +1,6 @@
 ---
-title: Setup Multiple dbt Project
+title: Setup Multiple dbt Project | Official Documentation
+description: Set up multiple dbt projects in ingestion workflows to orchestrate metadata extraction from distinct models and teams.
 slug: /connectors/ingestion/workflows/dbt/setup-multiple-dbt-projects
 ---
 

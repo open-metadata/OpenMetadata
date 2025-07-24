@@ -1,5 +1,6 @@
 ---
 title: Glossary Styling | OpenMetadata Glossary Customization
+description: Style your glossary with custom headers, icons, and formats to reflect organizational tone and branding.
 slug: /how-to-guides/data-governance/glossary/styling
 ---
 

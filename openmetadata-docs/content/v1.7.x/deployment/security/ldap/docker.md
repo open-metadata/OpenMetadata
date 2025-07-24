@@ -1,5 +1,6 @@
 ---
-title: Ldap Authentication for Docker
+title: Ldap Authentication for Docker | Official Documentation
+description: Integrate LDAP-based authentication in Docker for centralized credential management and user access across containerized applications.
 slug: /deployment/security/ldap/docker
 collate: false
 ---
