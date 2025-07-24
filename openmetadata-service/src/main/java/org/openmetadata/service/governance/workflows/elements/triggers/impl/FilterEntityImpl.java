@@ -14,8 +14,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.rules.RuleEngine;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FilterEntityImpl implements JavaDelegate {
+  private static final Logger log = LoggerFactory.getLogger(FilterEntityImpl.class);
   private Expression filterExpr;
 
   @Override
@@ -41,7 +44,7 @@ public class FilterEntityImpl implements JavaDelegate {
     } else {
       passesFilter = true; // No filter means pass
     }
-
+    log.debug("Trigger Glossary Term Approval Workflow: {}", passesFilter);
     execution.setVariable(PASSES_FILTER_VARIABLE, passesFilter);
   }
 }

@@ -61,7 +61,7 @@ public class LogicOps {
           @Override
           public Object evaluate(
               JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data) {
-            return evaluateExcludeFields(evaluator, arguments, data);
+            return evaluateExcludeFields(arguments, data);
           }
         });
 

@@ -2,6 +2,9 @@ package org.openmetadata.service.rules;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.github.jamsesso.jsonlogic.ast.JsonLogicArray;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicNode;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicPrimitive;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicVariable;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
 import java.util.ArrayList;
@@ -18,20 +21,25 @@ import org.openmetadata.service.Entity;
 
 public class JsonLogicUtils {
 
-  public static @NotNull Object evaluateExcludeFields(
-      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data) {
+  public static @NotNull Object evaluateExcludeFields(JsonLogicArray arguments, Object data) {
     if (arguments == null || arguments.size() != 1) return false;
 
     // Need to evaluate it to get the string value from var
     // Eg if the input is var: "owners.fullyQualifiedName", then we need to get the "owners"
-    String parentField;
-    try {
-      Object evaluatedArg = evaluator.evaluate(arguments.getFirst(), data);
-      if (!(evaluatedArg instanceof String evaluatedStr)) return false;
-      parentField = evaluatedStr.split("\\.")[0]; // Eg: "owners" from "owners.fullyQualifiedName"
-    } catch (JsonLogicEvaluationException e) {
+    Object arg = arguments.getFirst();
+    String fieldPath;
+    if (arg instanceof JsonLogicVariable variable) {
+      JsonLogicNode keyNode = variable.getKey();
+      if (keyNode instanceof JsonLogicPrimitive primitive
+          && primitive.getValue() instanceof String) {
+        fieldPath = (String) primitive.getValue(); // This gets "owners.fullyQualifiedName" etc.
+      } else {
+        return false;
+      }
+    } else {
       return false;
     }
+    String excludedField = fieldPath.split("\\.")[0];
 
     if (!(data instanceof Map<?, ?> entityMap)) return false;
 
@@ -58,7 +66,8 @@ public class JsonLogicUtils {
 
     if (allChanges.isEmpty()) return false;
 
-    return allChanges.stream().map(FieldChange::getName).anyMatch(name -> name.equals(parentField));
+    return allChanges.stream()
+        .allMatch(changedField -> changedField.getName().equals(excludedField));
   }
 
   public static @NotNull Object evaluateUserInRole(
