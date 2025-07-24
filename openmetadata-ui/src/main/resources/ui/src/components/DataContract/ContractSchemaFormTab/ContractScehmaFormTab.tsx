@@ -33,7 +33,9 @@ export const ContractSchemaFormTab: React.FC<{
   selectedSchema: string[];
   onNext: (data: Partial<DataContract>) => void;
   onPrev: () => void;
-}> = ({ selectedSchema, onNext, onPrev }) => {
+  nextLabel?: string;
+  prevLabel?: string;
+}> = ({ selectedSchema, onNext, onPrev, nextLabel, prevLabel }) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const [schema, setSchema] = useState<Column[]>([]);
@@ -150,7 +152,7 @@ export const ContractSchemaFormTab: React.FC<{
       </Card>
       <div className="d-flex justify-between m-t-md">
         <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
-          {t('label.previous')}
+          {prevLabel ?? t('label.previous')}
         </Button>
         <Button
           type="primary"
@@ -161,7 +163,7 @@ export const ContractSchemaFormTab: React.FC<{
               ),
             })
           }>
-          {t('label.next')}
+          {nextLabel ?? t('label.next')}
           <ArrowRightOutlined />
         </Button>
       </div>

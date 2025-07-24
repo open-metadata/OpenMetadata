@@ -18,7 +18,6 @@ import {
   Button,
   Card,
   Divider,
-  message,
   Radio,
   RadioChangeEvent,
   Tabs,
@@ -27,6 +26,7 @@ import {
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EDataContractTab } from '../../../constants/DataContract.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -50,8 +50,6 @@ export interface FormStepProps {
   isPrevVisible?: boolean;
 }
 
-const TABS = ['contract-detail', 'schema', 'semantics', 'quality'];
-
 const AddDataContract: React.FC<{
   onCancel: () => void;
   onSave: () => void;
@@ -60,7 +58,9 @@ const AddDataContract: React.FC<{
   const { t } = useTranslation();
   const [mode, setMode] = useState<'YAML' | 'UI'>('UI');
   const [yaml, setYaml] = useState('');
-  const [activeTab, setActiveTab] = useState(TABS[0]);
+  const [activeTab, setActiveTab] = useState(
+    EDataContractTab.CONTRACT_DETAIL.toString()
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: table } = useGenericContext<Table>();
 
@@ -97,25 +97,15 @@ const AddDataContract: React.FC<{
 
   const onNext = useCallback(
     async (data: Partial<DataContract>) => {
-      // Validate current tab before proceeding
+      setFormValues((prev) => ({ ...prev, ...data }));
 
-      if (data) {
-        try {
-          setFormValues((prev) => ({ ...prev, ...data }));
-          setActiveTab(TABS[TABS.indexOf(activeTab) + 1]);
-        } catch (error) {
-          console.error('Validation failed:', error);
-          message.error(t('message.please-fill-required-fields'));
-        }
-      } else {
-        setActiveTab(TABS[TABS.indexOf(activeTab) + 1]);
-      }
+      setActiveTab((prev) => (Number(prev) + 1).toString());
     },
     [activeTab, t, handleSave]
   );
 
   const onPrev = useCallback(() => {
-    setActiveTab(TABS[TABS.indexOf(activeTab) - 1]);
+    setActiveTab((prev) => (Number(prev) - 1).toString());
   }, [activeTab]);
 
   const items = useMemo(
@@ -127,8 +117,13 @@ const AddDataContract: React.FC<{
             <span>{t('label.contract-detail-plural')}</span>
           </div>
         ),
-        key: 'contract-detail',
-        children: <ContractDetailFormTab onNext={onNext} />,
+        key: EDataContractTab.CONTRACT_DETAIL.toString(),
+        children: (
+          <ContractDetailFormTab
+            nextLabel={t('label.schema')}
+            onNext={onNext}
+          />
+        ),
       },
       {
         label: (
@@ -137,9 +132,11 @@ const AddDataContract: React.FC<{
             <span>{t('label.schema')}</span>
           </div>
         ),
-        key: 'schema',
+        key: EDataContractTab.SCHEMA.toString(),
         children: (
           <ContractSchemaFormTab
+            nextLabel={t('label.semantic-plural')}
+            prevLabel={t('label.contract-detail-plural')}
             selectedSchema={
               formValues.schema?.map((column) => column.name) || []
             }
@@ -155,8 +152,15 @@ const AddDataContract: React.FC<{
             <span>{t('label.semantic-plural')}</span>
           </div>
         ),
-        key: 'semantics',
-        children: <ContractSemanticFormTab onNext={onNext} onPrev={onPrev} />,
+        key: EDataContractTab.SEMANTICS.toString(),
+        children: (
+          <ContractSemanticFormTab
+            nextLabel={t('label.quality')}
+            prevLabel={t('label.schema')}
+            onNext={onNext}
+            onPrev={onPrev}
+          />
+        ),
       },
       {
         label: (
@@ -165,9 +169,11 @@ const AddDataContract: React.FC<{
             <span>{t('label.quality')}</span>
           </div>
         ),
-        key: 'quality',
+        key: EDataContractTab.QUALITY.toString(),
         children: (
           <ContractQualityFormTab
+            prevLabel={t('label.semantic-plural')}
+            onPrev={onPrev}
             onUpdate={(partialDataContract) =>
               setFormValues((prev) => ({ ...prev, ...partialDataContract }))
             }
@@ -238,7 +244,7 @@ const AddDataContract: React.FC<{
 
     return (
       <Tabs
-        activeKey={activeTab}
+        activeKey={activeTab.toString()}
         className="contract-tabs"
         items={items}
         tabPosition="left"

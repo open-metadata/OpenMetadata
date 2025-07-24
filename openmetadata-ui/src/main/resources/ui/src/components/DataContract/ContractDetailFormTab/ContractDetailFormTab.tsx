@@ -26,7 +26,8 @@ import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 export const ContractDetailFormTab: React.FC<{
   initialValues?: Partial<DataContract>;
   onNext: (formData: Partial<DataContract>) => Promise<void>;
-}> = ({ initialValues, onNext }) => {
+  nextLabel?: string;
+}> = ({ initialValues, onNext, nextLabel }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -108,7 +109,7 @@ export const ContractDetailFormTab: React.FC<{
       </Card>
       <div className="d-flex justify-end m-t-md">
         <Button htmlType="submit" type="primary" onClick={handleSubmit}>
-          {t('label.next')}
+          {nextLabel ?? t('label.next')}
           <ArrowRightOutlined />
         </Button>
       </div>

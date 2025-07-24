@@ -11,7 +11,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable i18next/no-literal-string */
+
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { FieldErrorProps } from '@rjsf/utils';
 import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
@@ -30,21 +30,11 @@ import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSea
 export const ContractSemanticFormTab: React.FC<{
   onNext: (data: Partial<DataContract>) => void;
   onPrev: () => void;
-}> = ({ onNext, onPrev }) => {
+  nextLabel?: string;
+  prevLabel?: string;
+}> = ({ onNext, onPrev, nextLabel, prevLabel }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  //   const [semantics, setSemantics] = useState<SemanticsRule[]>([
-  //     {
-  //       name: '',
-  //       description: '',
-  //       enabled: false,
-  //       rule: '',
-  //     },
-  //   ]);
-  //   const handleChange = (value: SemanticsRule[]) => {
-  //     console.log(value);
-  //     setSemantics(value);
-  //   };
 
   useEffect(() => {
     form.setFieldsValue({
@@ -161,10 +151,10 @@ export const ContractSemanticFormTab: React.FC<{
 
       <div className="d-flex justify-between m-t-md">
         <Button icon={<ArrowLeftOutlined />} onClick={onPrev}>
-          {t('label.prev')}
+          {prevLabel ?? t('label.previous')}
         </Button>
         <Button type="primary" onClick={handleNext}>
-          {t('label.next')}
+          {nextLabel ?? t('label.next')}
           <ArrowRightOutlined />
         </Button>
       </div>

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 /* eslint-disable i18next/no-literal-string */
-import { Card, Radio, Typography } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Button, Card, Radio, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +29,9 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 
 export const ContractQualityFormTab: React.FC<{
   onUpdate: (data: Partial<DataContract>) => void;
-}> = ({ onUpdate }) => {
+  onPrev: () => void;
+  prevLabel?: string;
+}> = ({ onUpdate, onPrev, prevLabel }) => {
   const [testType, setTestType] = useState<'table' | 'column'>('table');
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const { data: table } = useGenericContext<TableType>();
@@ -120,6 +123,11 @@ export const ContractQualityFormTab: React.FC<{
           }}
         />
       </Card>
+      <div className="d-flex justify-between m-t-md">
+        <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
+          {prevLabel ?? t('label.previous')}
+        </Button>
+      </div>
     </Card>
   );
 };
