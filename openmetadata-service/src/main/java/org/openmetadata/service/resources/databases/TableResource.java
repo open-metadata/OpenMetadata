@@ -95,8 +95,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   private final TableMapper mapper = new TableMapper();
   public static final String COLLECTION_PATH = "v1/tables/";
   public static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,"
-          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
+      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
+          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash";
 
   @Override
   public Table addHref(UriInfo uriInfo, Table table) {
@@ -120,6 +120,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     addViewOperation("customMetrics", MetadataOperation.VIEW_TESTS);
     addViewOperation("testSuite", MetadataOperation.VIEW_TESTS);
+    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
     return listOf(
         MetadataOperation.VIEW_TESTS,
         MetadataOperation.VIEW_QUERIES,

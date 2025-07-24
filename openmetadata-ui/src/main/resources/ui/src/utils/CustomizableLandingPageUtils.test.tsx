@@ -24,7 +24,7 @@ describe('getAddWidgetHandler function', () => {
       mockWidget,
       'ExtraWidget.EmptyWidgetPlaceholder',
       1,
-      4
+      3
     )(mockCurrentAddWidget);
 
     expect(result).toEqual(mockAddWidgetReturnValues);
@@ -35,14 +35,14 @@ describe('getAddWidgetHandler function', () => {
       mockWidget,
       'ExtraWidget.EmptyWidgetPlaceholder',
       1,
-      4
+      3
     )([
       ...mockCurrentAddWidget,
       {
         h: 3,
         i: 'KnowledgePanel.dataAsset',
         w: 1,
-        x: 2,
+        x: 0,
         y: 4,
         static: false,
       },

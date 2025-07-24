@@ -1275,7 +1275,7 @@ export const getExportEntity = (entity: LineageSourceType) => {
     entityType = '',
     direction = '',
     owners,
-    domain,
+    domains,
     tier,
     tags = [],
     depth = '',
@@ -1299,7 +1299,8 @@ export const getExportEntity = (entity: LineageSourceType) => {
     entityType,
     direction,
     owners: owners?.map((owner) => getEntityName(owner) ?? '').join(',') ?? '',
-    domain: domain?.fullyQualifiedName ?? '',
+    domains:
+      domains?.map((domain) => domain.fullyQualifiedName ?? '').join(',') ?? '',
     tags: classificationTags.join(', '),
     tier: (tier as EntityTags)?.tagFQN ?? '',
     glossaryTerms: glossaryTerms.join(', '),
@@ -1816,6 +1817,11 @@ export const getLineageEntityExclusionFilter = () => {
           {
             term: {
               entityType: EntityType.DATA_PRODUCT,
+            },
+          },
+          {
+            term: {
+              entityType: EntityType.KNOWLEDGE_PAGE,
             },
           },
         ],

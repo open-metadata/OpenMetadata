@@ -1,5 +1,6 @@
 ---
 title: Run the Flink Connector Externally
+description: Configure Flink ingestion using YAML to capture streaming pipeline metadata and lineage from real-time jobs.
 slug: /connectors/pipeline/flink/yaml
 ---
 

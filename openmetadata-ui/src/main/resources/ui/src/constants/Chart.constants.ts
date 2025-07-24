@@ -16,6 +16,7 @@ import { GREEN_3, RED_3, YELLOW_2 } from './Color.constants';
 import { WHITE_COLOR } from './constants';
 
 export const CHART_BASE_SIZE = 300;
+export const CHART_SMALL_SIZE = 200;
 
 export const ABORTED_CHART_COLOR_SCHEME: AreaChartColorScheme = {
   gradientEndColor: WHITE_COLOR,

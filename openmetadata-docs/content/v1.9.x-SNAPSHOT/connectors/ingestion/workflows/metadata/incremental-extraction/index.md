@@ -1,5 +1,6 @@
 ---
 title: Metadata Ingestion - Incremental Extraction
+description: Use incremental metadata extraction to reduce ingestion load and process only new or updated records across workflows.
 slug: /connectors/ingestion/workflows/metadata/incremental-extraction
 ---
 
@@ -53,7 +54,3 @@ ingestionPipelineFQN: my_service.my_pipeline
 {% connectorInfoCard name="Snowflake" stage="BETA" href="/connectors/ingestion/workflows/metadata/incremental-extraction/snowflake" platform="OpenMetadata" / %}
 
 {% /connectorsListContainer %}
-
-<!-- [**BigQuery**](/connectors/ingestion/workflows/metadata/incremental-extraction/bigquery) -->
-<!-- [**Redshift**](/connectors/ingestion/workflows/metadata/incremental-extraction/redshift) -->
-<!-- [**Snowflake**](/connectors/ingestion/workflows/metadata/incremental-extraction/snowflake) -->

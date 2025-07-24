@@ -1,5 +1,6 @@
 ---
 title: Run the Glue Connector Externally
+description: Configure AWS Glue ingestion using YAML to capture ETL job metadata, source-target lineage, and transformation logic.
 slug: /connectors/database/glue/yaml
 ---
 

@@ -1,0 +1,10 @@
+{
+  "name": "CuratedAssets",
+  "displayName": "Curated Assets",
+  "description": "Curated Assets KnowledgePanel shows list of Data Assets that User has curated.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.CuratedAssets",
+  "data": {
+    "gridSizes": ["small"]
+  }
+}

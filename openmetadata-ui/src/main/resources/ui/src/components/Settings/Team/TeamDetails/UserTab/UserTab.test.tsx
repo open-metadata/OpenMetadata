@@ -83,7 +83,7 @@ describe('UserTab', () => {
 
     expect(getUsers).toHaveBeenCalledWith({
       fields: 'roles',
-      limit: 25,
+      limit: 15,
       team: 'Marketing',
     });
     expect(

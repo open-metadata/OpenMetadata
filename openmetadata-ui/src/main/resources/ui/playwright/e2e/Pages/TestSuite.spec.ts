@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
-import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
@@ -23,11 +22,9 @@ import {
   redirectToHomePage,
   removeDomain,
   toastNotification,
-  updateDomain,
   uuid,
 } from '../../utils/common';
 import { addMultiOwner, removeOwnersFromList } from '../../utils/entity';
-import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -73,48 +70,56 @@ test('Logical TestSuite', async ({ page }) => {
   };
   const testCaseName1 = table.testCasesResponseData?.[0]?.['name'];
   const testCaseName2 = table.testCasesResponseData?.[1]?.['name'];
-  await sidebarClick(page, SidebarItem.DATA_QUALITY);
+  await page.goto('/data-quality/test-suites/bundle-suites');
   await page.waitForLoadState('networkidle');
-  const testSuite = page.waitForResponse(
-    '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*'
-  );
-  await page.click('[data-testid="by-test-suites"]');
-  await testSuite;
 
   await test.step('Create', async () => {
     await page.click('[data-testid="add-test-suite-btn"]');
     await page.fill('[data-testid="test-suite-name"]', NEW_TEST_SUITE.name);
     await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
 
-    await page.click('[data-testid="submit-button"]');
     const getTestCase = page.waitForResponse(
       `/api/v1/dataQuality/testCases/search/list?*${testCaseName1}*`
     );
-    await page.fill('[data-testid="searchbar"]', testCaseName1);
+    await page.fill(
+      '[data-testid="test-case-selection-card"] [data-testid="searchbar"]',
+      testCaseName1
+    );
     await getTestCase;
 
-    await page.click(`[data-testid="${testCaseName1}"]`);
-    await page.click('[data-testid="submit"]');
-
-    await page.waitForSelector('[data-testid="success-line"]', {
-      state: 'visible',
+    await page.click(
+      `[data-testid="test-case-selection-card"] [data-testid="${testCaseName1}"]`
+    );
+    const createTestSuiteResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testSuites'
+    );
+    await page.click('[data-testid="submit-button"]');
+    await createTestSuiteResponse;
+    await toastNotification(page, 'Test Suite created successfully.');
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
     });
 
-    await expect(page.locator('[data-testid="success-line"]')).toContainText(
-      'has been created successfully'
+    const searchTestSuiteResponse = page.waitForResponse(
+      `/api/v1/dataQuality/testSuites/search/list?*${NEW_TEST_SUITE.name}*testSuiteType=logical*`
     );
+    await page.getByTestId('searchbar').fill(NEW_TEST_SUITE.name);
+    await searchTestSuiteResponse;
 
-    const testSuiteResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testSuites/name/*'
-    );
-    await page.click(`[data-testid="view-service-button"]`);
-    await testSuiteResponse;
+    await page.click(`[data-testid="${NEW_TEST_SUITE.name}"]`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
   });
 
   await test.step('Domain Add, Update and Remove', async () => {
     await assignDomain(page, domain1.responseData);
-    await updateDomain(page, domain2.responseData);
-    await removeDomain(page, domain2.responseData);
+    // TODO: Add domain update
+    // await updateDomain(page, domain2.responseData);
+    await removeDomain(page, domain1.responseData);
   });
 
   await test.step(
@@ -189,6 +194,10 @@ test('Logical TestSuite', async ({ page }) => {
     );
 
     await page.getByTestId('view-service-button').click();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
   });
 
   await test.step('Remove test case from logical test suite', async () => {

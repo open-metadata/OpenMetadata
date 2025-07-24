@@ -1,5 +1,6 @@
 ---
 title: Run the S3 Storage Connector Externally
+description: Use YAML to extract metadata from S3 including files, partitions, and access control details.
 slug: /connectors/storage/s3/yaml
 ---
 

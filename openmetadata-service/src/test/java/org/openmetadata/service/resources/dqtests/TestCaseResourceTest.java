@@ -183,6 +183,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         TestCaseResource.FIELDS);
     supportsTags = false; // Test cases do not support setting tags directly (inherits from Entity)
     testCaseResultsCollectionName = "dataQuality/testCases/testCaseResults";
+    supportsEtag = false;
   }
 
   public void setupTestCase(TestInfo test) throws IOException {
@@ -473,7 +474,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void post_testWithInvalidEntityTestSuite_4xx(TestInfo test) throws IOException {
+  void post_testWithInvalidEntityTestSuite_4xx(TestInfo test) {
     CreateTestCase create = createRequest(test);
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
 
@@ -983,13 +984,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     allEntities
         .getData()
         .forEach(
-            tc -> {
-              assertTrue(
-                  tc.getOwners().stream().anyMatch(owner -> owner.getId().equals(user2Ref.getId())),
-                  String.format(
-                      "Test case %s does not contain the expected owner %s",
-                      tc.getName(), user2Ref.getName()));
-            });
+            tc ->
+                assertTrue(
+                    tc.getOwners().stream()
+                        .anyMatch(owner -> owner.getId().equals(user2Ref.getId())),
+                    String.format(
+                        "Test case %s does not contain the expected owner %s",
+                        tc.getName(), user2Ref.getName())));
 
     queryParams.put("owner", team.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
@@ -1118,7 +1119,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                     .withDataLength(10)
                     .withTags(List.of(PII_SENSITIVE_TAG_LABEL))))
         .withOwners(List.of(USER1_REF))
-        .withDomain(DOMAIN1.getFullyQualifiedName())
+        .withDomains(List.of(DOMAIN1.getFullyQualifiedName()))
         .withTableConstraints(List.of())
         .withTags(List.of(PERSONAL_DATA_TAG_LABEL, TIER1_TAG_LABEL));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
@@ -1149,12 +1150,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("entityLink", String.format("<#E::table::%s>", table.getFullyQualifiedName()));
     queryParams.put("includeAllTests", "true");
-    queryParams.put("fields", "domain,owners,tags");
+    queryParams.put("fields", "domains,owners,tags");
     ResultList<TestCase> testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
     assertEquals(2, testCases.getData().size());
     for (TestCase testCase : testCases.getData()) {
-      assertOwners(table.getOwners(), testCase.getOwners());
-      assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
+      assertReferenceList(table.getOwners(), testCase.getOwners());
+      assertEquals(table.getDomains().get(0).getId(), testCase.getDomains().get(0).getId());
       List<TagLabel> tags = testCase.getTags();
       HashSet<String> actualTags =
           tags.stream().map(TagLabel::getName).collect(Collectors.toCollection(HashSet::new));
@@ -1174,7 +1175,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
 
     createTable.setOwners(List.of(USER2_REF));
-    createTable.setDomain(DOMAIN.getFullyQualifiedName());
+    createTable.setDomains(List.of(DOMAIN.getFullyQualifiedName()));
     createTable.setTags(List.of(USER_ADDRESS_TAG_LABEL));
     createTable.withColumns(
         List.of(
@@ -1188,8 +1189,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
 
     for (TestCase testCase : testCases.getData()) {
-      assertOwners(table.getOwners(), testCase.getOwners());
-      assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
+      assertReferenceList(table.getOwners(), testCase.getOwners());
+      assertEquals(table.getDomains().get(0).getId(), testCase.getDomains().get(0).getId());
     }
   }
 
@@ -3802,7 +3803,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_testCaseInvalidEntityLinkTest(TestInfo testInfo) throws IOException {
+  void test_testCaseInvalidEntityLinkTest(TestInfo testInfo) {
     // Invalid entity link as not parsable by antlr parser
     String entityLink = "<#E::table::special!@#$%^&*()_+[]{}|;:\\'\",./?>";
     CreateTestCase create = createRequest(testInfo);
@@ -3847,7 +3848,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_columnTestCaseValidation(TestInfo testInfo) throws IOException {
+  void test_columnTestCaseValidation(TestInfo testInfo) {
     CreateTestCase create = createRequest(testInfo);
     String invalidFieldNameLink =
         "<#E::table::" + TEST_TABLE1.getFullyQualifiedName() + "::invalidField::columnName>";

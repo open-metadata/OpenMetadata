@@ -1,5 +1,6 @@
 ---
 title: eventMonitorProvider | OpenMetadata Event Monitor Provider
+description: Connect Eventmonitorprovider to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/monitoring/eventmonitorprovider
 noindex: true
 nofollow: true

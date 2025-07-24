@@ -60,7 +60,7 @@ class DatabricksEngineWrapper:
     def get_schemas(self):
         """Get schemas and cache them"""
         if self.schemas is None:
-            self.schemas = self.inspector.get_schema_names(database="demo-test-cat")
+            self.schemas = self.inspector.get_schema_names()
             if self.schemas:
                 # Find the first schema that's not a system schema
                 for schema in self.schemas:

@@ -26,6 +26,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
   activateColumnLayer,
@@ -98,7 +99,7 @@ for (const EntityClass of entities) {
     try {
       await test.step('Should create lineage for the entity', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await verifyColumnLayerInactive(page);
         await editLineage(page);
@@ -109,7 +110,7 @@ for (const EntityClass of entities) {
         }
 
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await page.click('[data-testid="edit-lineage"]');
         await page.getByTestId('fit-screen').click();
@@ -149,7 +150,7 @@ for (const EntityClass of entities) {
 
       await test.step('Should create pipeline between entities', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await editLineage(page);
         await page.getByTestId('fit-screen').click();
@@ -161,14 +162,14 @@ for (const EntityClass of entities) {
 
       await test.step('Verify Lineage Export CSV', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
       });
 
       await test.step('Verify Lineage Export PNG', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await verifyExportLineagePNG(page);
       });
@@ -177,7 +178,7 @@ for (const EntityClass of entities) {
         'Remove lineage between nodes for the entity',
         async () => {
           await redirectToHomePage(page);
-          await currentEntity.visitEntityPage(page);
+          await currentEntity.visitEntityPageWithCustomSearchBox(page);
           await visitLineageTab(page);
           await editLineage(page);
           await performZoomOut(page);
@@ -190,7 +191,7 @@ for (const EntityClass of entities) {
 
       await test.step('Verify Lineage Config', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPage(page);
+        await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await verifyLineageConfig(page);
       });
@@ -274,7 +275,7 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
 
   // Verify column lineage
   await redirectToHomePage(page);
-  await table.visitEntityPage(page);
+  await table.visitEntityPageWithCustomSearchBox(page);
   await visitLineageTab(page);
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="lineage-export"]');
@@ -454,6 +455,79 @@ test('Verify function data in edge drawer', async ({ browser }) => {
     );
   } finally {
     await Promise.all([table1.delete(apiContext), table2.delete(apiContext)]);
+    await afterAction();
+  }
+});
+
+test('Verify table search with special characters as handledd', async ({
+  browser,
+}) => {
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  // Create a table with '/' in the name to test encoding functionality
+  const tableNameWithSlash = `pw-table-with/slash-${uuid()}`;
+  const table = new TableClass(tableNameWithSlash);
+
+  await table.create(apiContext);
+
+  const db = table.databaseResponseData.name;
+  try {
+    await sidebarClick(page, SidebarItem.LINEAGE);
+
+    await page.waitForSelector('[data-testid="search-entity-select"]');
+    await page.click('[data-testid="search-entity-select"]');
+
+    await page.fill(
+      '[data-testid="search-entity-select"] .ant-select-selection-search-input',
+      table.entity.name
+    );
+
+    await page.waitForRequest(
+      (req) =>
+        req.url().includes('/api/v1/search/query') &&
+        req.url().includes('deleted=false')
+    );
+
+    await page.waitForSelector('.ant-select-dropdown');
+
+    const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const dbFqn = get(table, 'entityResponseData.database.fullyQualifiedName');
+    await page
+      .locator(`[data-testid="node-suggestion-${nodeFqn}"]`)
+      .dispatchEvent('click');
+
+    await page.waitForResponse('/api/v1/lineage/getLineage?*');
+
+    await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
+
+    await expect(
+      page.locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    ).toBeVisible();
+
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.LINEAGE);
+    await page.waitForSelector('[data-testid="search-entity-select"]');
+    await page.click('[data-testid="search-entity-select"]');
+
+    await page.fill(
+      '[data-testid="search-entity-select"] .ant-select-selection-search-input',
+      db
+    );
+    await page.waitForSelector(`[data-testid="node-suggestion-${dbFqn}"]`);
+    await page
+      .locator(`[data-testid="node-suggestion-${dbFqn}"]`)
+      .dispatchEvent('click');
+    await page.waitForResponse('/api/v1/lineage/getLineage?*');
+
+    await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
+
+    await page.locator(`[data-testid="lineage-node-${dbFqn}"]`).click();
+
+    await expect(page.locator('.ant-drawer-wrapper-body')).toBeVisible();
+  } finally {
+    // Cleanup
+    await table.delete(apiContext);
     await afterAction();
   }
 });
